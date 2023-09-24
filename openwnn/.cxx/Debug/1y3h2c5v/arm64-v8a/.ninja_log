@@ -1,0 +1,16 @@
+# ninja log v5
+1	67	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndcommon.c.o	8af7109f8db5d834
+2	71	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndrdic.c.o	683d9c5ccca8e999
+2	72	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/neapi.c.o	793b67d52794543a
+2	72	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/necode.c.o	a21da3c9d1897769
+3	82	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/nj_str.c.o	59fb2ac65cbf9e8d
+1	104	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndfdic.c.o	7d3107b7c1ba969a
+0	127	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndapi.c.o	ab37144d7356f7f4
+3	137	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/OpenWnnDictionaryImplJni.c.o	c8637518335cf6c0
+0	147	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndbdic.c.o	22deaeb1190f1c04
+1	162	1695224209	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndldic.c.o	7da5d7cf18ae8864
+162	218	1695224209	/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/build/intermediates/cxx/Debug/1y3h2c5v/obj/arm64-v8a/libwnndict.so	7ee5b1fe4af6f8c
+67	1237	1695224210	libwnnJpnDic/CMakeFiles/wnnjpndic.dir/WnnJpnDic.c.o	abee23634d010602
+1237	1289	1695224210	/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/build/intermediates/cxx/Debug/1y3h2c5v/obj/arm64-v8a/libwnnjpndic.so	7980338bbd115e51
+1	372	1695597381	/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/build/intermediates/cxx/Debug/1y3h2c5v/obj/arm64-v8a/libwnnjpndic.so	7980338bbd115e51
+2	372	1695597381	/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/build/intermediates/cxx/Debug/1y3h2c5v/obj/arm64-v8a/libwnndict.so	7ee5b1fe4af6f8c

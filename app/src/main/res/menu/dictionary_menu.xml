@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/dictionary_load"
+        android:icon="@drawable/baseline_add_circle_outline_24"
+        android:title="辞書を読み込む"
+        app:showAsAction="ifRoom"
+        app:iconTint="@color/white"/>
+
+    <item
+        android:id="@+id/dictionary_save"
+        android:icon="@drawable/baseline_save_24"
+        android:title="辞書を保存する"
+        app:showAsAction="ifRoom"
+        app:iconTint="@color/white"/>
+
+    <item
+        android:id="@+id/dictionary_delete_all"
+        android:icon="@drawable/baseline_delete_24"
+        android:title="現在の辞書を初期化する"
+        app:showAsAction="ifRoom"
+        app:iconTint="@color/white"/>
+</menu>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@+id/navigation_setting">
+
+<!--    <fragment-->
+<!--        android:id="@+id/navigation_home"-->
+<!--        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary.DictionaryFragment"-->
+<!--        android:label="@string/title_home"-->
+<!--        tools:layout="@layout/fragment_home" />-->
+
+    <fragment
+        android:id="@+id/navigation_setting"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingFragment"
+        android:label="@string/title_dashboard"
+        tools:layout="@layout/fragment_dashboard" >
+        <action
+            android:id="@+id/action_navigation_dashboard_to_openSourceFragment"
+            app:destination="@id/openSourceFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/openSourceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource.OpenSourceFragment"
+        android:label="オープンソースライブラリ"
+        tools:layout="@layout/fragment_open_source" />
+
+</navigation>

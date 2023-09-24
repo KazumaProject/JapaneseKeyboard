@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".setting_activity.ui.dictionary.DictionaryFragment"
+    android:layout_marginBottom="?attr/actionBarSize">
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:orientation="horizontal"
+        android:weightSum="10"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="4"
+            app:errorEnabled="true"
+            app:hintEnabled="true"
+            android:layout_marginStart="8dp"
+            app:hintAnimationEnabled="true">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/yomiEditText"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:hint="単語"
+                android:textAlignment="textStart"
+                android:textColor="@color/main_text_color"
+                android:imeOptions="actionSend"
+                android:inputType="text"
+                android:maxLines="1"
+                android:textSize="20sp"
+                android:background="@android:color/transparent"/>
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="4"
+            app:errorEnabled="true"
+            app:hintEnabled="true"
+            app:hintAnimationEnabled="true">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/tangoEditText"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:hint="よみ"
+                android:textAlignment="textStart"
+                android:textColor="@color/main_text_color"
+                android:imeOptions="actionSend"
+                android:inputType="text"
+                android:maxLines="1"
+                android:textSize="20sp"
+                android:layout_marginStart="8dp"
+                android:background="@android:color/transparent"/>
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/tango_register_button"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:layout_marginStart="8dp"
+            android:text="登録"
+            android:textColor="@color/main_text_color"
+            android:backgroundTint="@color/blue"
+            android:enabled="false"/>
+
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/tango_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginHorizontal="4dp"
+        android:layout_marginTop="80dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/linearLayout" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

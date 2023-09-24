@@ -1,0 +1,8 @@
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/CMakeFiles/rebuild_cache.dir
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/CMakeFiles/edit_cache.dir
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/libwnnDictionary/CMakeFiles/rebuild_cache.dir
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/libwnnDictionary/CMakeFiles/edit_cache.dir
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/libwnnDictionary/CMakeFiles/wnndict.dir
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/libwnnJpnDic/CMakeFiles/rebuild_cache.dir
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/libwnnJpnDic/CMakeFiles/edit_cache.dir
+/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/.cxx/RelWithDebInfo/5r6v2c4x/arm64-v8a/libwnnJpnDic/CMakeFiles/wnnjpndic.dir

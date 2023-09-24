@@ -1,0 +1,14 @@
+# ninja log v5
+0	107	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndcommon.c.o	7131163233bab3f2
+1	109	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndrdic.c.o	60afa07c1a09a433
+2	121	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/necode.c.o	72de4bf6bf7f9295
+2	122	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/neapi.c.o	a7c5e23494a82c5a
+5	209	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/nj_str.c.o	a8cf35c292761faa
+1	211	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndfdic.c.o	52edf95510a1bbd8
+0	223	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndapi.c.o	71754fe65fa08827
+7	270	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/OpenWnnDictionaryImplJni.c.o	f2549e70551d989f
+1	422	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndldic.c.o	e5fa5e53c401c713
+0	479	1695597699	libwnnDictionary/CMakeFiles/wnndict.dir/engine/ndbdic.c.o	b918137ad65ce772
+479	553	1695597699	/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/build/intermediates/cxx/RelWithDebInfo/5r6v2c4x/obj/x86_64/libwnndict.so	6801c800c9cf50b5
+107	1382	1695597700	libwnnJpnDic/CMakeFiles/wnnjpndic.dir/WnnJpnDic.c.o	9da9d0ec63e85e41
+1382	1444	1695597700	/Users/kazuma/StudioProjects/MarkdownHelperKeyboard-image-button/openwnn/build/intermediates/cxx/RelWithDebInfo/5r6v2c4x/obj/x86_64/libwnnjpndic.so	35f1fdf0586e117

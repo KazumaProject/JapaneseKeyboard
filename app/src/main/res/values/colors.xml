@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="blue_primary_color">#33B5E5</color>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="gray">#66C0C0C0</color>
+
+    <color name="keyboard_bg">#D1D4DB</color>
+    <color name="keyboard_key_bg">#E3F2FD</color>
+    <color name="suggestion_view_bg">#D1D4DB</color>
+    <color name="main_text_color">#2e484f</color>
+    <color name="sub_text_color">#839096</color>
+    <color name="keyboard_boarder_color">#cfd6d9</color>
+    <color name="keyboard_icon_color">#ff000000</color>
+
+    <color name="keyboard_icon_color_second">#aa000000</color>
+
+    <color name="candidate_background">#FFFFFFFF</color>
+    <color name="candidate_normal">#839096</color>
+    <color name="candidate_recommended">#2e484f</color>
+    <color name="candidate_other">#cfd6d9</color>
+
+    <color name="popup_bg">#f9f9f9</color>
+    <color name="triangle">#90CAF9</color>
+
+    <color name="popup_bg_active">#3478f6</color>
+
+    <color name="green">#3333B5E5</color>
+    <color name="blue">#5533B5A5</color>
+    <color name="orange">#55FFBB33</color>
+
+    <color name="navy">#22303c</color>
+
+    <color name="qwety_bg_color">#D1D4DB</color>
+    <color name="qwety_key_bg_color">#FFFFFF</color>
+    <color name="qwety_key_bg_color_2">#ACB4BF</color>
+    <color name="qwety_suggestion_bg_color">#B8BFC9</color>
+    <color name="qwety_cap_on_bg_color">#B8BFC9</color>
+
+    <color name="enter_key_bg">#3478f6</color>
+</resources>

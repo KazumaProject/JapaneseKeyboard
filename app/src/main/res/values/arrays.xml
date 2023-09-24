@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="suggestion_speed_entries">
+        <item>32 ms</item>
+        <item>64 ms</item>
+        <item>128 ms</item>
+        <item>256 ms</item>
+    </string-array>
+    <string-array name="suggestion_speed_entry_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+</resources>

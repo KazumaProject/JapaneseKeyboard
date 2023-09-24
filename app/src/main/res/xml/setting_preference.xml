@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="操作">
+        <SwitchPreference
+            android:key="vibration_preference"
+            android:title="バイブレーション"
+            android:summary="キーをタップした際のバイブレーションの有無"
+            android:defaultValue="false"/>
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="アプリについて">
+        <Preference
+            android:key="preference_open_source"
+            android:title="使用した Open Source のライブラリ"/>
+    </PreferenceCategory>
+
+</PreferenceScreen>
