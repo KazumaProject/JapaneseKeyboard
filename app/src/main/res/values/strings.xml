@@ -42,7 +42,7 @@
     <string name="string_key11_number">"()[]"</string>
     <string name="string_key12_number">"   .,-/   "</string>
     <string name="md">記</string>
-    <string name="title_activity_main">Geek Board</string>
+    <string name="title_activity_main">Japanese Keyboard</string>
     <string name="title_home">辞書</string>
     <string name="title_dashboard">設定</string>
     <string name="title_notifications">Notifications</string>
