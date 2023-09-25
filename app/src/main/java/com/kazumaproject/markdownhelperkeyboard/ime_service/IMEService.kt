@@ -919,6 +919,8 @@ class IMEService: InputMethodService() {
 
                                 val selPosition = if (_selectionEndtPosition < 0) 0 else _selectionEndtPosition
 
+                                 Timber.d("input value: $inputString $selPosition")
+
                                 when{
                                     deleteKeyPressed &&
                                             hasRequestCursorUpdatesCalled ->{
@@ -1038,7 +1040,6 @@ class IMEService: InputMethodService() {
                                                         insertCharNotContinue -> position - 1
                                                         else -> position
                                                     }
-
                                                 }
 
                                             }
@@ -1304,8 +1305,6 @@ class IMEService: InputMethodService() {
                                 }
                             }
 
-                            Timber.d("input value: $inputString")
-
                         }
                     }
                 }
@@ -1476,20 +1475,12 @@ class IMEService: InputMethodService() {
             Timber.d("onUpdateCursorAnchorInfo: $info" +
                     "\n${_inputString.value}")
 
-            if (info.composingText == null){
-                _inputString.update { EMPTY_STRING }
-                _suggestionList.update { emptyList() }
-                Timber.d("onUpdateCursorAnchorInfo: text is null")
-            }
-
             if (_keyboardModeQWTY.value == KeyboardModeQWTY.LayoutJapanese){
 
                 isSelectionPositionAtNotEnd = _inputString.value.isNotEmpty() &&
                         !info.composingText.isNullOrBlank() &&
                         info.composingText.length != info.selectionEnd - info.composingTextStart
-
             }
-
 
             if (info.selectionStart == info.selectionEnd  && _inputString.value.isNotEmpty() &&   (
                         info.composingTextStart > info.selectionStart
@@ -1525,6 +1516,7 @@ class IMEService: InputMethodService() {
                 info.composingText.isNotEmpty() &&
                 shouldResetConvertStringInHiragana
             ){
+                Timber.d("onUpdateCursorAnchorInfo: selection called 3")
                 _inputString.value = info.composingText.toString()
             }
 
@@ -1534,9 +1526,17 @@ class IMEService: InputMethodService() {
                 shouldResetConvertStringInHiraganaLong &&
                 !hasSuggestionClicked
             ){
+                Timber.d("onUpdateCursorAnchorInfo: selection called drop")
                 _inputString.value = info.composingText.toString().dropLast(1)
             }
 
+            if (info.composingText == null && _inputString.value.isNotEmpty()){
+                if (currentInputType == InputTypeForIME.TextWebSearchView || currentInputType == InputTypeForIME.TextWebSearchViewFireFox) {
+                    _inputString.update { EMPTY_STRING }
+                    _suggestionList.update { emptyList() }
+                    Timber.d("onUpdateCursorAnchorInfo: text is null")
+                }
+            }
 
         }
     }
@@ -1954,7 +1954,6 @@ class IMEService: InputMethodService() {
                 _selectionEndtPosition - _mComposingTextPosition > 0 &&
                         hasRequestCursorUpdatesCalled && _inputString.value.isNotEmpty()  ->{
 
-
                     deleteKeyPressed = true
                     suggestionClickNum = 0
 
@@ -2025,18 +2024,40 @@ class IMEService: InputMethodService() {
         }
 
         setOnClickListener {
-            suggestionClickNum = 0
-            isHenkan = false
-            suggestionClickNum = 0
-            setVibrate()
+            when{
+                _selectionEndtPosition - _mComposingTextPosition > 0 &&
+                        hasRequestCursorUpdatesCalled && _inputString.value.isNotEmpty()  ->{
 
-            isHiragana = true
-            deleteKeyPressed = true
-            _dakutenPressed.value = false
+                    deleteKeyPressed = true
+                    suggestionClickNum = 0
 
-            englishSpaceKeyPressed = false
-            insertCharNotContinue = false
-            deleteStringInEditText()
+                    setVibrate()
+                    deleteStringInEditText()
+
+                    isHiragana = true
+                    _dakutenPressed.value = false
+                    englishSpaceKeyPressed = false
+                    insertCharNotContinue = false
+                    onDeleteLongPressUp = false
+                    isHenkan = false
+                }
+                !hasRequestCursorUpdatesCalled && _inputString.value.isNotEmpty() ->{
+                    deleteKeyPressed = true
+                    suggestionClickNum = 0
+
+                    setVibrate()
+                    deleteStringInEditTextRequestCursorUpdatesNotCalled()
+                    isHiragana = true
+                    _dakutenPressed.value = false
+                    englishSpaceKeyPressed = false
+                    insertCharNotContinue = false
+                    onDeleteLongPressUp = false
+                    isHenkan = false
+                }
+                else ->{
+                    composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                }
+            }
         }
 
         setOnLongClickListener {
@@ -2402,9 +2423,9 @@ class IMEService: InputMethodService() {
                                         _suggestionFlag.update { flag ->
                                             !flag
                                         }
-                                        currentTenKeyId = 0
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
                                         it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                        currentTenKeyId = 0
                                         return@setOnTouchListener false
                                     }
 
@@ -2643,7 +2664,7 @@ class IMEService: InputMethodService() {
                                 }
                             }
                         }
-                        else -> return@setOnTouchListener true
+                        else -> return@setOnTouchListener false
                     }
                 }
                 it.setOnLongClickListener { v ->
@@ -3170,6 +3191,17 @@ class IMEService: InputMethodService() {
         sb: StringBuilder
     ) {
 
+        Timber.d("called setKeyTouchContinuous $char ${_inputString.value}")
+        insertCharNotContinue = false
+        isHiragana = true
+        hasSuggestionClicked = false
+        suggestionClickNum = 0
+        deleteKeyPressed = false
+
+        _dakutenPressed.value = false
+        englishSpaceKeyPressed = false
+        onDeleteLongPressUp = false
+
         if (hasRequestCursorUpdatesCalled){
 
             if (insertString.isNotEmpty()){
@@ -3230,8 +3262,8 @@ class IMEService: InputMethodService() {
         inputForInsert: String,
         sb: StringBuilder
     ) {
-        if (inputForInsert.isNotEmpty()){
-            if (hasRequestCursorUpdatesCalled){
+        if (hasRequestCursorUpdatesCalled){
+            if (inputForInsert.isNotEmpty()){
                 val position = when{
                     (_selectionEndtPosition - _mComposingTextPosition - 1) < 0 -> 0
                     else -> _selectionEndtPosition - _mComposingTextPosition - 1
@@ -3270,7 +3302,15 @@ class IMEService: InputMethodService() {
                 }catch (e: Exception){
                     if (e is CancellationException) throw e
                 }
-            }else {
+            }else{
+                insertCharNotContinue = false
+                Timber.d("Add char else not con 2: $_mComposingTextPosition $_selectionEndtPosition $char")
+                _inputString.update {
+                    char.toString()
+                }
+            }
+        }else{
+            if (inputForInsert.isNotEmpty()){
                 try {
                     composingTextTrackingInputConnection?.apply {
                         val position = when{
@@ -3314,24 +3354,14 @@ class IMEService: InputMethodService() {
                     Timber.e(e.stackTraceToString())
                     if (e is CancellationException) throw e
                 }
-            }
-        } else {
-            if (hasRequestCursorUpdatesCalled){
-                insertCharNotContinue = false
-                Timber.d("Add char else not con 2: $_mComposingTextPosition $_selectionEndtPosition $char")
-                sb.append(inputForInsert).append(char)
-                _inputString.update {
-                    sb.toString()
-                }
-            }else {
+            }else{
                 insertCharNotContinue = false
                 Timber.d("key input request not cursor: not con 2: $_mComposingTextPosition $_selectionEndtPosition")
                 _inputString.update {
-                    it + char
+                    char.toString()
                 }
             }
         }
-
     }
 
     private fun sendCharTap(
@@ -3353,7 +3383,7 @@ class IMEService: InputMethodService() {
             }
             else ->{
                 if (isContinuousTapInputEnabled && lastFlickConvertedNextHiragana){
-                    setKeyTouchContinuous(
+                    setCurrentInputCharacterContinuous(
                         charToSend,
                         insertString,
                         sb
@@ -3388,7 +3418,7 @@ class IMEService: InputMethodService() {
                 sendKeyChar(charToSend)
             }
             else ->{
-                setKeyTouchContinuous(
+                setCurrentInputCharacterContinuous(
                     charToSend,
                     insertString,
                     sb
@@ -3521,7 +3551,7 @@ class IMEService: InputMethodService() {
         insertString: String,
         sb: StringBuilder
     ) {
-        Timber.d("called setKeyTouch $key")
+        Timber.d("called setKeyTouch $key ${_inputString.value}")
         isHiragana = true
         hasSuggestionClicked = false
         suggestionClickNum = 0
@@ -3545,31 +3575,6 @@ class IMEService: InputMethodService() {
             )
         }
     }
-
-    private fun setKeyTouchContinuous(
-        key: Char,
-        insertString: String,
-        sb: StringBuilder
-    ){
-        Timber.d("called setKeyTouchContinuous $key")
-        insertCharNotContinue = false
-        isHiragana = true
-        hasSuggestionClicked = false
-        suggestionClickNum = 0
-        deleteKeyPressed = false
-
-        _dakutenPressed.value = false
-        englishSpaceKeyPressed = false
-        onDeleteLongPressUp = false
-
-        setCurrentInputCharacterContinuous(
-            key,
-            insertString,
-            sb
-        )
-
-    }
-
 
     private var startSelPosInSuggestion = 0
 
