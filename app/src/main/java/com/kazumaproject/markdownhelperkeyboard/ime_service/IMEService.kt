@@ -1424,7 +1424,7 @@ class IMEService: InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("finish input  called")
-        
+
         _inputString.value = EMPTY_STRING
         suggestionClickNum = 0
         hasSuggestionClicked = false
