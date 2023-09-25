@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
@@ -411,7 +412,6 @@ class IMEService: InputMethodService() {
                     insertCharNotContinue = false
                     lastFlickConvertedNextHiragana = false
                     onDeleteLongPressUp = false
-                    //continuousTimer.cancel()
                     hasSuggestionClicked = false
 
                     _currentKeyboardMode.value = KeyboardMode.ModeMarkDownHelper
@@ -419,7 +419,6 @@ class IMEService: InputMethodService() {
                     if (_inputString.value.isNotEmpty()){
                         var newPos = _inputString.value.length - (_inputString.value.length  - 1)
                         if (newPos < 0 || newPos == 0) newPos = 1
-                        ////continuousTimer.cancel()
                         composingTextTrackingInputConnection?.apply {
                             commitText(_inputString.value,newPos)
                             finishComposingText()
@@ -2405,6 +2404,7 @@ class IMEService: InputMethodService() {
                                         }
                                         currentTenKeyId = 0
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                         return@setOnTouchListener false
                                     }
 
@@ -2437,6 +2437,7 @@ class IMEService: InputMethodService() {
                                     }
                                     currentTenKeyId = 0
                                     it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                     return@setOnTouchListener false
 
                                 }
@@ -2451,6 +2452,7 @@ class IMEService: InputMethodService() {
                                         }
                                         it.setTenKeyTextEnglish(currentTenKeyId)
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                         currentTenKeyId = 0
                                         return@setOnTouchListener false
                                     }
@@ -2490,6 +2492,7 @@ class IMEService: InputMethodService() {
                                     }
                                     currentTenKeyId = 0
                                     it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                     return@setOnTouchListener false
 
                                 }
@@ -2505,6 +2508,7 @@ class IMEService: InputMethodService() {
                                         }
                                         currentTenKeyId = 0
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                         return@setOnTouchListener false
                                     }
 
@@ -2535,6 +2539,7 @@ class IMEService: InputMethodService() {
                                     }
                                     currentTenKeyId = 0
                                     it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                     return@setOnTouchListener false
                                 }
                             }
@@ -2573,12 +2578,13 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeEnglish ->{
                                     if (abs(distanceX) < 100 && abs(distanceY) < 100){
                                         hidePopUpWindowActive()
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
                                         it.setTenKeyTextWhenTapEnglish(currentTenKeyId)
                                         return@setOnTouchListener false
@@ -2602,12 +2608,13 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeNumber ->{
                                     if (abs(distanceX) < 100 && abs(distanceY) < 100){
                                         hidePopUpWindowActive()
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
                                         it.setTenKeyTextWhenTapNumber(currentTenKeyId)
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
                                         return@setOnTouchListener false
@@ -2631,6 +2638,7 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
                                     return@setOnTouchListener false
                                 }
                             }
@@ -2741,6 +2749,7 @@ class IMEService: InputMethodService() {
                                             !flag
                                         }
                                         it.setImageDrawable(drawableNumberSmall)
+                                        it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))
                                         return@setOnTouchListener false
                                     }
                                     if (abs(distanceX) > abs(distanceY)) {
@@ -2762,6 +2771,7 @@ class IMEService: InputMethodService() {
                                     }
                                     hidePopUpWindowActive()
                                     it.setImageDrawable(drawableNumberSmall)
+                                    it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))
                                     return@setOnTouchListener false
                                 }
                             }
@@ -2785,6 +2795,7 @@ class IMEService: InputMethodService() {
                                             R.id.key_small_letter -> {
                                                 popTextActive.text = EMPTY_STRING
                                                 it.setImageDrawable(drawableOpenBracket)
+                                                it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.popup_bg_active))
                                             }
                                         }
                                         hidePopUpWindowActive()
@@ -2827,6 +2838,7 @@ class IMEService: InputMethodService() {
                                     }
                                 }
                             }
+                            it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))
                             return@setOnTouchListener false
                         }
                         else -> return@setOnTouchListener true
