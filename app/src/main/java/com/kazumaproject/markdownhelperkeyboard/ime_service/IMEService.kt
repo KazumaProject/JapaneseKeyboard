@@ -2550,7 +2550,7 @@ class IMEService: InputMethodService() {
                                 is InputMode.ModeJapanese ->{
                                     if (abs(distanceX) < 100 && abs(distanceY) < 100){
                                         hidePopUpWindowActive()
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
                                         it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
                                         return@setOnTouchListener false
