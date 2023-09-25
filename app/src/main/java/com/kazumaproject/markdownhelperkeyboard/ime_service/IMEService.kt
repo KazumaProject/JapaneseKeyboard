@@ -1424,12 +1424,7 @@ class IMEService: InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("finish input  called")
-
-        composingTextTrackingInputConnection?.apply {
-            requestCursorUpdates(0)
-            resetComposingText()
-        }
-
+        
         _inputString.value = EMPTY_STRING
         suggestionClickNum = 0
         hasSuggestionClicked = false
@@ -1449,10 +1444,6 @@ class IMEService: InputMethodService() {
 
         Timber.d("windows hidden called")
 
-        composingTextTrackingInputConnection?.apply {
-            requestCursorUpdates(0)
-            resetComposingText()
-        }
         hasRequestCursorUpdatesCalled = false
         _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
         _qwertyCapMode.value = true
