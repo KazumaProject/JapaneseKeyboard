@@ -1,6 +1,6 @@
 # Japanese Keyboard
 
-## 作成したもの
+## Usage
 
 [Play Store のリンク](https://play.google.com/store/apps/details?id=com.kazumaproject.markdownhelperkeyboard&pli=1)
 
