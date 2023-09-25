@@ -2346,7 +2346,7 @@ class IMEService: InputMethodService() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setTouchListenerForMainKeys(
-        keys: List<Any>,
+        keyList: List<Any>,
         popTextActive: MaterialTextView,
         bubbleLayoutActive: BubbleLayout,
         popTextTop: MaterialTextView,
@@ -2358,7 +2358,7 @@ class IMEService: InputMethodService() {
         popTextRight: MaterialTextView,
         bubbleLayoutRight: BubbleLayout,
     ){
-        keys.forEach {
+        keyList.forEach {
             if (it is AppCompatButton){
                 it.setOnTouchListener { v, event ->
                     val insertString = _inputString.value
