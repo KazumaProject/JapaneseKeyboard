@@ -3,7 +3,7 @@
     <item
         android:state_pressed="true">
         <shape android:shape="rectangle" >
-            <solid android:color="@color/qwety_key_bg_color_2"/>
+            <solid android:color="@color/popup_bg_active"/>
             <corners
                 android:radius="8dp"/>
         </shape>
