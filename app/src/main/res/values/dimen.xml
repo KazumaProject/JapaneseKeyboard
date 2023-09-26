@@ -16,13 +16,13 @@
 
     <dimen name="key_width_size">90dp</dimen>
 
-    <dimen name="keyboard_height_land">252dp</dimen>
+    <dimen name="keyboard_height_land">200dp</dimen>
     <dimen name="keyboard_qwerty_land">197dp</dimen>
     <dimen name="keyboard_number_height_land">192dp</dimen>
     <dimen name="setting_view_margin_bottom">252dp</dimen>
     <dimen name="key_height_land">63dp</dimen>
     <dimen name="keyboard_side_boarder_height_land">192dp</dimen>
-    <dimen name="key_text_size_land">8sp</dimen>
+    <dimen name="key_text_size_land">12sp</dimen>
 
     <dimen name="enter_key_height">140dp</dimen>
     <dimen name="key_side_min_width">76dp</dimen>
