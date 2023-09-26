@@ -415,7 +415,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:contentDescription="@string/space_key"
-        android:padding="18dp"
+        android:padding="22dp"
         android:elevation="4dp"
         android:scaleType="fitCenter"
         android:layout_marginEnd="@dimen/key_margin_end_size"
