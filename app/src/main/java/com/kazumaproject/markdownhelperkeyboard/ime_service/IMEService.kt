@@ -765,7 +765,6 @@ class IMEService: InputMethodService() {
 
                 mainView.suggestionRecyclerView.apply {
                     suggestionAdapter?.let { sugAdapter ->
-                        this.isVisible = false
                         this.adapter = sugAdapter
                         this.layoutManager = flexboxLayoutManager
                     }
@@ -1276,10 +1275,10 @@ class IMEService: InputMethodService() {
 
                             } else {
                                 Timber.d("suggestion clicked not henkan emopty input: ")
-                                _suggestionList.value = emptyList()
                                 if (!hasRequestCursorUpdatesCalled){
                                     composingTextTrackingInputConnection?.resetComposingText()
                                 }
+                                _suggestionList.update { emptyList() }
                                 withContext(mainDispatcher){
                                     mainView.keyboardView.keySpace.apply {
                                         setImageDrawable(drawableSpaceBar)
@@ -1299,9 +1298,7 @@ class IMEService: InputMethodService() {
                                             }
                                         }
                                     }
-                                    mainView.suggestionRecyclerView.apply {
-                                        this.visibility = View.INVISIBLE
-                                    }
+
                                 }
                             }
 
