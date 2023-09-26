@@ -12,7 +12,6 @@ import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.*
-import android.view.ViewGroup.MarginLayoutParams
 import android.view.inputmethod.*
 import android.view.textservice.*
 import android.widget.*
@@ -21,7 +20,6 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.GridLayoutManager
 import com.daasuu.bl.BubbleLayout
 import com.google.android.flexbox.*
@@ -186,12 +184,6 @@ class IMEService: InputMethodService() {
 
     private val _suggestionList = MutableStateFlow<List<String>>(emptyList())
     private val _suggestionFlag = MutableStateFlow(false)
-
-    private val _keyboardModeQWTY = MutableStateFlow<KeyboardModeQWTY>(KeyboardModeQWTY.LayoutJapanese)
-
-    private val _qwertyLayoutMode = MutableStateFlow<QWERTYLayoutMode>(QWERTYLayoutMode.KeyboardLayoutNormal)
-    private val _qwertyCapMode = MutableStateFlow(true)
-    private val _qwertyTextType = MutableStateFlow<QWERTYTextType>(QWERTYTextType.TypeDefault)
 
     private var firstXPoint = 0.0f
     private var firstYPoint = 0.0f
@@ -863,37 +855,6 @@ class IMEService: InputMethodService() {
                         }
                     }
 
-                    launch {
-                        _keyboardModeQWTY.asStateFlow().collectLatest { state ->
-                            when(state){
-                                KeyboardModeQWTY.LayoutJapanese ->{
-                                    mainView.keyboardView.root.isVisible = true
-                                    mainView.keyboardView.root.animate().alpha(1f).duration = 1
-
-                                    when(resources.configuration.orientation){
-                                        Configuration.ORIENTATION_PORTRAIT ->{
-                                            mainView.suggestionRecyclerView.updateLayoutParams<MarginLayoutParams> {
-                                                setMargins(0,0,0,300f.convertDp2Px(this@IMEService))
-                                            }
-                                        }
-                                        Configuration.ORIENTATION_LANDSCAPE ->{
-                                            mainView.suggestionRecyclerView.updateLayoutParams<MarginLayoutParams> {
-                                                setMargins(0,0,0,252f.convertDp2Px(this@IMEService))
-                                            }
-                                        }
-                                        Configuration.ORIENTATION_UNDEFINED -> {
-                                            mainView.suggestionRecyclerView.updateLayoutParams<MarginLayoutParams> {
-                                                setMargins(0,0,0,300f.convertDp2Px(this@IMEService))
-                                            }
-                                        }
-                                        else ->{}
-                                    }
-
-                                }
-                            }
-                        }
-                    }
-
                     withContext(imeIoDispatcher){
                         _inputString.asStateFlow().collectLatest { inputString ->
                             if (inputString.isNotBlank()) {
@@ -1321,8 +1282,6 @@ class IMEService: InputMethodService() {
             resetComposingText()
         }
         _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
-        _qwertyLayoutMode.value = QWERTYLayoutMode.KeyboardLayoutNormal
-        _qwertyCapMode.value = true
 
         _inputString.value = EMPTY_STRING
 
@@ -1365,9 +1324,7 @@ class IMEService: InputMethodService() {
                 InputTypeForIME.TextWebSearchViewFireFox,
                 InputTypeForIME.TextSearchView
                 -> {
-                    _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
                     _currentInputMode.value = InputMode.ModeJapanese
-                    _qwertyTextType.value = QWERTYTextType.TypeDefault
                 }
 
                 InputTypeForIME.TextEditTextInBookingTDBank,
@@ -1379,7 +1336,6 @@ class IMEService: InputMethodService() {
                 InputTypeForIME.TextVisiblePassword,
                 InputTypeForIME.TextWebPassword,
                 ->{
-                    _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
                     _currentInputMode.value = InputMode.ModeEnglish
                 }
 
@@ -1396,7 +1352,6 @@ class IMEService: InputMethodService() {
                 InputTypeForIME.Date,
                 InputTypeForIME.Datetime,
                 InputTypeForIME.Time, -> {
-                    _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
                     _currentInputMode.value = InputMode.ModeNumber
                 }
 
@@ -1413,6 +1368,22 @@ class IMEService: InputMethodService() {
 
         _selectionEndtPosition = -1
         _mComposingTextPosition = -1
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        when(newConfig.orientation){
+            Configuration.ORIENTATION_PORTRAIT ->{
+                composingTextTrackingInputConnection?.finishComposingText()
+            }
+            Configuration.ORIENTATION_LANDSCAPE ->{
+                composingTextTrackingInputConnection?.finishComposingText()
+            }
+            Configuration.ORIENTATION_UNDEFINED ->{
+                composingTextTrackingInputConnection?.finishComposingText()
+            }
+            Configuration.ORIENTATION_SQUARE ->{}
+        }
     }
 
     override fun onFinishInput() {
@@ -1440,8 +1411,6 @@ class IMEService: InputMethodService() {
 
         hasRequestCursorUpdatesCalled = false
         _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
-        _qwertyCapMode.value = true
-        _qwertyLayoutMode.value = QWERTYLayoutMode.KeyboardLayoutNormal
         suggestionClickNum = 0
         hasSuggestionClicked = false
         isHenkan = false
@@ -1471,12 +1440,9 @@ class IMEService: InputMethodService() {
             Timber.d("onUpdateCursorAnchorInfo: $info" +
                     "\n${_inputString.value}")
 
-            if (_keyboardModeQWTY.value == KeyboardModeQWTY.LayoutJapanese){
-
-                isSelectionPositionAtNotEnd = _inputString.value.isNotEmpty() &&
-                        !info.composingText.isNullOrBlank() &&
-                        info.composingText.length != info.selectionEnd - info.composingTextStart
-            }
+            isSelectionPositionAtNotEnd = _inputString.value.isNotEmpty() &&
+                    !info.composingText.isNullOrBlank() &&
+                    info.composingText.length != info.selectionEnd - info.composingTextStart
 
             if (info.selectionStart == info.selectionEnd  && _inputString.value.isNotEmpty() &&   (
                         info.composingTextStart > info.selectionStart
@@ -1920,7 +1886,6 @@ class IMEService: InputMethodService() {
             }
 
         }
-
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -2729,7 +2694,6 @@ class IMEService: InputMethodService() {
                                             dakutenSmallLetter(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            _qwertyCapMode.value = true
                                             deleteKeyPressed = false
                                             hasSuggestionClicked = false
                                             inputMethodManager.showInputMethodPicker()
@@ -2744,7 +2708,6 @@ class IMEService: InputMethodService() {
                                             smallBigLetterConversionEnglish(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            _qwertyCapMode.value = true
                                             deleteKeyPressed = false
                                             hasSuggestionClicked = false
                                             inputMethodManager.showInputMethodPicker()

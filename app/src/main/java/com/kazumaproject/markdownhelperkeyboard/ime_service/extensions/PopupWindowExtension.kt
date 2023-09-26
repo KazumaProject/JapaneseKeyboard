@@ -182,7 +182,7 @@ fun PopupWindow.setPopUpWindowFlickTop(
             showAsDropDown(
                 anchorView,
                 0,
-                anchorView.height * 2,
+                -(anchorView.height * 2),
                 Gravity.CENTER
             )
         }
@@ -191,50 +191,6 @@ fun PopupWindow.setPopUpWindowFlickTop(
                 anchorView,
                 0,
                 -(anchorView.height * 2),
-                Gravity.CENTER
-            )
-        }
-        else ->{
-
-        }
-    }
-}
-
-
-fun PopupWindow.setPopUpWindowActiveCenter(
-    context: Context,
-    bubbleLayout: BubbleLayout,
-    anchorView: View
-){
-    this.width = anchorView.width
-    this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-    bubbleLayout.let { bubble ->
-        if (bubble.arrowDirection != ArrowDirection.BOTTOM_CENTER) this.dismiss()
-        bubble.arrowDirection = ArrowDirection.BOTTOM_CENTER
-    }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
-            showAsDropDown(
-                anchorView,
-                0,
-                -(anchorView.height),
-                Gravity.CENTER
-            )
-        }
-        Configuration.ORIENTATION_LANDSCAPE ->{
-            showAsDropDown(
-                anchorView,
-                0,
-                anchorView.height,
-                Gravity.CENTER
-            )
-        }
-        Configuration.ORIENTATION_UNDEFINED -> {
-            showAsDropDown(
-                anchorView,
-                0,
-                -(anchorView.height),
                 Gravity.CENTER
             )
         }
