@@ -1212,16 +1212,16 @@ class IMEService: InputMethodService() {
                                                     delay(32)
                                                     val startIndex = (startOffset + selectionStart)
                                                     when{
-                                                        _dakutenPressed.value -> setSelection(startIndex - 1, startIndex - 1)
-                                                        insertCharNotContinue -> setSelection(startIndex - 1, startIndex - 1)
+                                                        _dakutenPressed.value -> setSelection(startIndex, startIndex)
+                                                        insertCharNotContinue -> setSelection(startIndex, startIndex)
                                                         else -> setSelection(startIndex, startIndex)
                                                     }
                                                 }finally {
                                                     endBatchEdit()
                                                     composingTextInsertPosition = when {
-                                                        _dakutenPressed.value -> position - 1
-                                                        insertCharNotContinue -> position - 1
-                                                        else -> position
+                                                        _dakutenPressed.value -> startOffset + selectionStart
+                                                        insertCharNotContinue -> startOffset + selectionStart
+                                                        else -> startOffset + selectionStart
                                                     }
 
                                                 }
@@ -1320,7 +1320,6 @@ class IMEService: InputMethodService() {
             requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
             resetComposingText()
         }
-
         _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
         _qwertyLayoutMode.value = QWERTYLayoutMode.KeyboardLayoutNormal
         _qwertyCapMode.value = true
@@ -1339,70 +1338,70 @@ class IMEService: InputMethodService() {
             lastFlickConvertedNextHiragana = false
             onDeleteLongPressUp = false
             deleteKeyLongKeyPressed = false
-        }else{
-            attribute?.apply {
-                currentInputType = getCurrentInputTypeForIME(inputType)
-                Timber.d("Input type now: $inputType " +
-                        "\n$currentInputType")
-                when(currentInputType){
-                    InputTypeForIME.Text,
-                    InputTypeForIME.TextAutoComplete,
-                    InputTypeForIME.TextAutoCorrect,
-                    InputTypeForIME.TextCapCharacters,
-                    InputTypeForIME.TextCapSentences,
-                    InputTypeForIME.TextCapWords,
-                    InputTypeForIME.TextEmailSubject,
-                    InputTypeForIME.TextFilter,
-                    InputTypeForIME.TextMultiLine,
-                    InputTypeForIME.TextImeMultiLine,
-                    InputTypeForIME.TextShortMessage,
-                    InputTypeForIME.TextLongMessage,
-                    InputTypeForIME.TextNoSuggestion,
-                    InputTypeForIME.TextPersonName,
-                    InputTypeForIME.TextPhonetic,
-                    InputTypeForIME.TextWebEditText,
-                    InputTypeForIME.TextWebSearchView,
-                    InputTypeForIME.TextWebSearchViewFireFox,
-                    InputTypeForIME.TextSearchView
-                    -> {
-                        _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
-                        _currentInputMode.value = InputMode.ModeJapanese
-                        _qwertyTextType.value = QWERTYTextType.TypeDefault
-                    }
+        }
 
-                    InputTypeForIME.TextEditTextInBookingTDBank,
-                    InputTypeForIME.TextUri,
-                    InputTypeForIME.TextPostalAddress,
-                    InputTypeForIME.TextEmailAddress,
-                    InputTypeForIME.TextWebEmailAddress,
-                    InputTypeForIME.TextPassword,
-                    InputTypeForIME.TextVisiblePassword,
-                    InputTypeForIME.TextWebPassword,
-                    ->{
-                        _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
-                        _currentInputMode.value = InputMode.ModeEnglish
-                    }
+        attribute?.apply {
+            currentInputType = getCurrentInputTypeForIME(inputType)
+            Timber.d("Input type now: $inputType " +
+                    "\n$currentInputType")
+            when(currentInputType){
+                InputTypeForIME.Text,
+                InputTypeForIME.TextAutoComplete,
+                InputTypeForIME.TextAutoCorrect,
+                InputTypeForIME.TextCapCharacters,
+                InputTypeForIME.TextCapSentences,
+                InputTypeForIME.TextCapWords,
+                InputTypeForIME.TextEmailSubject,
+                InputTypeForIME.TextFilter,
+                InputTypeForIME.TextMultiLine,
+                InputTypeForIME.TextImeMultiLine,
+                InputTypeForIME.TextShortMessage,
+                InputTypeForIME.TextLongMessage,
+                InputTypeForIME.TextNoSuggestion,
+                InputTypeForIME.TextPersonName,
+                InputTypeForIME.TextPhonetic,
+                InputTypeForIME.TextWebEditText,
+                InputTypeForIME.TextWebSearchView,
+                InputTypeForIME.TextWebSearchViewFireFox,
+                InputTypeForIME.TextSearchView
+                -> {
+                    _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
+                    _currentInputMode.value = InputMode.ModeJapanese
+                    _qwertyTextType.value = QWERTYTextType.TypeDefault
+                }
 
-                    InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
-                        composingTextTrackingInputConnection?.requestCursorUpdates(0)
-                        hasRequestCursorUpdatesCalled = false
-                    }
+                InputTypeForIME.TextEditTextInBookingTDBank,
+                InputTypeForIME.TextUri,
+                InputTypeForIME.TextPostalAddress,
+                InputTypeForIME.TextEmailAddress,
+                InputTypeForIME.TextWebEmailAddress,
+                InputTypeForIME.TextPassword,
+                InputTypeForIME.TextVisiblePassword,
+                InputTypeForIME.TextWebPassword,
+                ->{
+                    _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
+                    _currentInputMode.value = InputMode.ModeEnglish
+                }
 
-                    InputTypeForIME.Number,
-                    InputTypeForIME.NumberDecimal,
-                    InputTypeForIME.NumberPassword,
-                    InputTypeForIME.NumberSigned,
-                    InputTypeForIME.Phone,
-                    InputTypeForIME.Date,
-                    InputTypeForIME.Datetime,
-                    InputTypeForIME.Time, -> {
-                        _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
-                        _currentInputMode.value = InputMode.ModeNumber
-                    }
+                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
+                    composingTextTrackingInputConnection?.requestCursorUpdates(0)
+                    hasRequestCursorUpdatesCalled = false
+                }
 
+                InputTypeForIME.Number,
+                InputTypeForIME.NumberDecimal,
+                InputTypeForIME.NumberPassword,
+                InputTypeForIME.NumberSigned,
+                InputTypeForIME.Phone,
+                InputTypeForIME.Date,
+                InputTypeForIME.Datetime,
+                InputTypeForIME.Time, -> {
+                    _keyboardModeQWTY.value = KeyboardModeQWTY.LayoutJapanese
+                    _currentInputMode.value = InputMode.ModeNumber
                 }
 
             }
+
         }
 
     }
