@@ -3652,8 +3652,6 @@ class IMEService: InputMethodService() {
             }
 
         } else {
-
-
             if (suggestionClickNum == 0) startSelPosInSuggestion = 0
 
             when{
