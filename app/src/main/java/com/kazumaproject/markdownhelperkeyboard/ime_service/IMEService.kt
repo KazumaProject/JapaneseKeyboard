@@ -1382,7 +1382,9 @@ class IMEService: InputMethodService() {
             Configuration.ORIENTATION_UNDEFINED ->{
                 composingTextTrackingInputConnection?.finishComposingText()
             }
-            Configuration.ORIENTATION_SQUARE ->{}
+            Configuration.ORIENTATION_SQUARE -> {
+                /** empty body **/
+            }
         }
     }
 
