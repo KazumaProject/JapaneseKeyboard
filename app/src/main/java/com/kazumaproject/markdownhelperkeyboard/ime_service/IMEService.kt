@@ -273,514 +273,13 @@ class IMEService: InputMethodService() {
                 bubbleViewRight = mPopupWindowRight.contentView.findViewById(R.id.bubble_layout_right)
                 popTextRight = mPopupWindowRight.contentView.findViewById(R.id.popup_text_right)
 
-                /** Japanese View Start **/
                 suggestionAdapter = SuggestionAdapter()
-                suggestionAdapter?.apply {
-                    this.setOnItemClickListener {
-                        setVibrate()
-                        if (hasRequestCursorUpdatesCalled){
-
-                            if (_inputString.value.isNotBlank()){
-                                val startPosition = _selectionEndtPosition
-                                val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                                val length = _inputString.value.length
-                                val composingTextEndPosition = startPosition - composingTextStartPos
-
-                                Timber.d("suggestion clicked: $length $composingTextEndPosition $isSelectionPositionAtNotEnd")
-
-                                if (length != composingTextEndPosition && isSelectionPositionAtNotEnd){
-
-                                    if (!isHenkan){
-
-                                        CoroutineScope(mainDispatcher).launch {
-                                            composingTextTrackingInputConnection?.commitText(it,1)
-
-                                            val text = try {
-                                                _inputString.value.substring(
-                                                    startPosition - composingTextStartPos, length
-                                                )
-                                            }catch (e: Exception){
-                                                if (e is CancellationException) throw e
-                                                EMPTY_STRING
-                                            }
-
-                                            lastFlickConvertedNextHiragana = false
-                                            isContinuousTapInputEnabled = false
-                                            deleteKeyPressed = false
-                                            _dakutenPressed.value = false
-                                            insertCharNotContinue = false
-                                            onDeleteLongPressUp = false
-                                            isHenkan = false
-                                            suggestionClickNum = 0
-                                            englishSpaceKeyPressed = false
-                                            hasSuggestionClicked = true
-
-                                            delay(240L)
-
-                                            _inputString.value = text
-
-                                            _suggestionFlag.update { flag ->
-                                                !flag
-                                            }
-
-                                            Timber.d("suggestion clicked 2: $length" +
-                                                    "\n$composingTextEndPosition" +
-                                                    "\n$isSelectionPositionAtNotEnd" +
-                                                    "\n$text" +
-                                                    "\n${_inputString.value}"
-                                            )
-
-                                        }
-
-                                    }
-
-                                }else {
-                                    _inputString.value = EMPTY_STRING
-                                    composingTextTrackingInputConnection?.commitText(it,1)
-                                    lastFlickConvertedNextHiragana = false
-                                    isContinuousTapInputEnabled = false
-                                    deleteKeyPressed = false
-                                    _dakutenPressed.value = false
-                                    insertCharNotContinue = false
-                                    onDeleteLongPressUp = false
-                                    isHenkan = false
-                                    suggestionClickNum = 0
-                                    englishSpaceKeyPressed = false
-                                    hasSuggestionClicked = true
-                                }
-                            }
-
-
-                        }else{
-
-                            if (!isHenkan){
-                                composingTextTrackingInputConnection?.commitText(it,1)
-
-                                _inputString.value = EMPTY_STRING
-
-                                lastFlickConvertedNextHiragana = false
-                                isContinuousTapInputEnabled = false
-                                deleteKeyPressed = false
-                                _dakutenPressed.value = false
-                                insertCharNotContinue = false
-                                onDeleteLongPressUp = false
-                                isHenkan = false
-                                suggestionClickNum = 0
-                                englishSpaceKeyPressed = false
-                                hasSuggestionClicked = true
-
-                            }else{
-                                _inputString.value = EMPTY_STRING
-                                composingTextTrackingInputConnection?.commitText(it,1)
-                                lastFlickConvertedNextHiragana = false
-                                isContinuousTapInputEnabled = false
-                                deleteKeyPressed = false
-                                _dakutenPressed.value = false
-                                insertCharNotContinue = false
-                                onDeleteLongPressUp = false
-                                isHenkan = false
-                                suggestionClickNum = 0
-                                englishSpaceKeyPressed = false
-                                hasSuggestionClicked = true
-                            }
-
-                        }
-                    }
-                }
-
                 emojiKigouAdapter = EmojiKigouAdapter()
                 kigouApdater = KigouAdapter()
 
-                mainView.keyboardView.keyLanguageSwitch.setOnClickListener {
-                    setVibrate()
-                    isHenkan = false
-                    suggestionClickNum = 0
-                    isContinuousTapInputEnabled = false
-                    deleteKeyPressed = false
-                    _dakutenPressed.value = false
-
-                    englishSpaceKeyPressed = false
-                    englishSpaceKeyPressed = false
-                    insertCharNotContinue = false
-                    lastFlickConvertedNextHiragana = false
-                    onDeleteLongPressUp = false
-                    hasSuggestionClicked = false
-
-                    _currentKeyboardMode.value = KeyboardMode.ModeMarkDownHelper
-
-                    if (_inputString.value.isNotEmpty()){
-                        var newPos = _inputString.value.length - (_inputString.value.length  - 1)
-                        if (newPos < 0 || newPos == 0) newPos = 1
-                        composingTextTrackingInputConnection?.apply {
-                            commitText(_inputString.value,newPos)
-                            finishComposingText()
-                        }
-                        _inputString.value = EMPTY_STRING
-                        isContinuousTapInputEnabled = false
-                        deleteKeyPressed = false
-                        _dakutenPressed.value = false
-
-                        englishSpaceKeyPressed = false
-                        englishSpaceKeyPressed = false
-                        insertCharNotContinue = false
-                        lastFlickConvertedNextHiragana = false
-                        onDeleteLongPressUp = false
-                        isHiragana = true
-                    }
-                    isHenkan = false
-                    suggestionClickNum = 0
-                }
-
-                mainView.keyboardKigouView.kigouReturnBtn.setOnClickListener {
-                    _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
-                }
-
-                mainView.keyboardKigouView.kigouEmojiButton.setOnClickListener {
-                    _currentModeInKigou.value = ModeInKigou.Emoji
-                }
-                mainView.keyboardKigouView.kigouKaomojiBtn.setOnClickListener {
-                    _currentModeInKigou.value = ModeInKigou.Kaomoji
-                }
-
-                mainView.keyboardView.keySpace.apply {
-                    setOnClickListener {
-                        if (_suggestionList.value.isNotEmpty() && _inputString.value.isNotEmpty()){
-                            when(_currentInputMode.value){
-                                InputMode.ModeJapanese ->{
-                                    isHenkan = true
-                                    setVibrate()
-                                    lastFlickConvertedNextHiragana = false
-                                    isContinuousTapInputEnabled = false
-                                    deleteKeyPressed = false
-
-                                    setConvertLetterInJapaneseFromButton(_suggestionList.value)
-                                    _dakutenPressed.value = false
-
-                                    englishSpaceKeyPressed = false
-                                    englishSpaceKeyPressed = false
-                                    insertCharNotContinue = false
-                                    onDeleteLongPressUp = false
-                                    suggestionClickNum += 1
-                                }
-                                else ->{
-                                    if (_inputString.value.isEmpty()) return@setOnClickListener
-
-                                    setVibrate()
-                                    composingTextTrackingInputConnection?.apply {
-                                        commitText(
-                                            _inputString.value + " ",
-                                            1
-                                        )
-                                    }
-                                    _inputString.value = EMPTY_STRING
-                                    isContinuousTapInputEnabled = false
-                                    deleteKeyPressed = false
-                                    _dakutenPressed.value = false
-
-                                    englishSpaceKeyPressed = true
-                                    insertCharNotContinue = false
-                                    lastFlickConvertedNextHiragana = false
-                                    onDeleteLongPressUp = false
-                                    isHiragana = true
-                                }
-                            }
-                        }else {
-
-                            setVibrate()
-                            composingTextTrackingInputConnection?.apply {
-                                commitText(
-                                    _inputString.value + " ",
-                                    1
-                                )
-                            }
-                            _inputString.value = EMPTY_STRING
-                            isContinuousTapInputEnabled = false
-                            deleteKeyPressed = false
-                            _dakutenPressed.value = false
-
-                            englishSpaceKeyPressed = true
-                            insertCharNotContinue = false
-                            lastFlickConvertedNextHiragana = false
-                            onDeleteLongPressUp = false
-                            isHiragana = true
-                        }
-                    }
-                    setOnLongClickListener {
-                        if (_suggestionList.value.isNotEmpty() && _inputString.value.isNotEmpty()){
-                            when(_currentInputMode.value){
-                                InputMode.ModeJapanese ->{
-                                    isHenkan = true
-                                    setVibrate()
-                                    lastFlickConvertedNextHiragana = false
-                                    isContinuousTapInputEnabled = false
-                                    deleteKeyPressed = false
-                                    setConvertLetterInJapaneseFromButton(_suggestionList.value)
-                                    _dakutenPressed.value = false
-
-                                    englishSpaceKeyPressed = false
-                                    insertCharNotContinue = false
-                                    onDeleteLongPressUp = false
-                                    suggestionClickNum += 1
-                                }
-                                else ->{
-                                    if (_inputString.value.isEmpty()) return@setOnLongClickListener true
-
-                                    setVibrate()
-                                    composingTextTrackingInputConnection?.apply {
-                                        commitText(
-                                            _inputString.value + " ",
-                                            1
-                                        )
-                                    }
-
-                                    _inputString.value = EMPTY_STRING
-                                    isContinuousTapInputEnabled = false
-                                    deleteKeyPressed = false
-                                    _dakutenPressed.value = false
-
-
-                                    englishSpaceKeyPressed = true
-                                    insertCharNotContinue = false
-                                    lastFlickConvertedNextHiragana = false
-                                    onDeleteLongPressUp = false
-                                    isHiragana = true
-                                }
-                            }
-                        }else {
-                            if (_inputString.value.isEmpty()) return@setOnLongClickListener true
-
-                            setVibrate()
-                            composingTextTrackingInputConnection?.apply {
-                                commitText(
-                                    _inputString.value + " ",
-                                    1
-                                )
-                            }
-
-                            _inputString.value = EMPTY_STRING
-                            isContinuousTapInputEnabled = false
-                            deleteKeyPressed = false
-                            _dakutenPressed.value = false
-
-
-                            englishSpaceKeyPressed = true
-                            insertCharNotContinue = false
-                            lastFlickConvertedNextHiragana = false
-                            onDeleteLongPressUp = false
-                            isHiragana = true
-                        }
-                        true
-                    }
-                }
-
-                setDeleteKey(mainView.keyboardView.keyDelete)
-                setDeleteKeyKigou(mainView.keyboardKigouView.kigouDeleteBtn)
-                setLeftKey(mainView.keyboardView.keySoftLeft)
-                setRightKey(mainView.keyboardView.keyMoveCursorRight)
-                setNextReturnKey(mainView.keyboardView.keyReturn)
-                setSwitchModeKey(mainView.keyboardView.keySwitchKeyMode)
-                mainView.keyboardView.keyEnter.setOnClickListener {
-                    if (_inputString.value.isNotEmpty()){
-                        when(_currentInputMode.value){
-                            InputMode.ModeJapanese ->{
-                                setVibrate()
-                                hasSuggestionClicked = false
-
-                                if (isHenkan){
-                                    setVibrate()
-
-                                    if (suggestionClickNum > _suggestionList.value.size) suggestionClickNum = 0
-                                    val listIterator = if (suggestionClickNum > 0) _suggestionList.value.listIterator(suggestionClickNum - 1) else {
-                                        _suggestionList.value.listIterator(suggestionClickNum)
-                                    }
-
-                                    CoroutineScope(mainDispatcher).launch {
-                                        when{
-                                            // First
-                                            !listIterator.hasPrevious() && listIterator.hasNext() ->{
-
-                                                val startPosition = startSelPosInSuggestion
-                                                val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                                                val length = _inputString.value.length
-
-                                                val nextSuggestion = listIterator.next()
-
-                                                composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
-
-                                                val text = try {
-                                                    _inputString.value.substring(
-                                                        startPosition - composingTextStartPos, length
-                                                    )
-                                                }catch (e: Exception){
-                                                    if (e is CancellationException) throw e
-                                                    EMPTY_STRING
-                                                }
-                                                lastFlickConvertedNextHiragana = false
-                                                isContinuousTapInputEnabled = false
-                                                deleteKeyPressed = false
-
-                                                delay(240L)
-
-                                                _inputString.value = text
-
-                                                _suggestionFlag.update {  flag ->
-                                                    !flag
-                                                }
-
-                                            }
-                                            // Middle
-                                            listIterator.hasPrevious() && listIterator.hasNext() ->{
-                                                val startPosition = startSelPosInSuggestion
-                                                val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                                                val length = _inputString.value.length
-
-                                                val nextSuggestion = listIterator.next()
-
-                                                composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
-
-                                                val text = try {
-                                                    _inputString.value.substring(
-                                                        startPosition - composingTextStartPos, length
-                                                    )
-                                                }catch (e: Exception){
-                                                    if (e is CancellationException) throw e
-                                                    EMPTY_STRING
-                                                }
-                                                lastFlickConvertedNextHiragana = false
-                                                isContinuousTapInputEnabled = false
-                                                deleteKeyPressed = false
-
-                                                delay(240L)
-
-                                                _inputString.value = text
-
-                                                _suggestionFlag.update {  flag ->
-                                                    !flag
-                                                }
-                                            }
-                                            // End
-                                            listIterator.hasPrevious() && !listIterator.hasNext() ->{
-                                                val startPosition = startSelPosInSuggestion
-                                                val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                                                val length = _inputString.value.length
-
-                                                val nextSuggestion = listIterator.next()
-
-                                                composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
-
-                                                val text = try {
-                                                    _inputString.value.substring(
-                                                        startPosition - composingTextStartPos, length
-                                                    )
-                                                }catch (e: Exception){
-                                                    if (e is CancellationException) throw e
-                                                    EMPTY_STRING
-                                                }
-
-                                                lastFlickConvertedNextHiragana = false
-                                                isContinuousTapInputEnabled = false
-                                                deleteKeyPressed = false
-
-                                                delay(240L)
-
-                                                _inputString.value = text
-
-                                                _suggestionFlag.update {  flag ->
-                                                    !flag
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    _dakutenPressed.value = false
-                                    insertCharNotContinue = false
-                                    onDeleteLongPressUp = false
-                                    isHenkan = false
-                                    suggestionClickNum = 0
-                                    englishSpaceKeyPressed = false
-                                    hasSuggestionClicked = true
-                                }else {
-                                    composingTextTrackingInputConnection?.apply {
-                                        finishComposingText()
-                                    }
-                                    _inputString.value = EMPTY_STRING
-                                    isContinuousTapInputEnabled = false
-                                    deleteKeyPressed = false
-                                    _dakutenPressed.value = false
-
-                                    englishSpaceKeyPressed = false
-                                    insertCharNotContinue = false
-                                    lastFlickConvertedNextHiragana = false
-                                    onDeleteLongPressUp = false
-                                    isHiragana = true
-                                }
-                                isHenkan = false
-                                suggestionClickNum = 0
-                            }
-                            else ->{
-                                setVibrate()
-                                hasSuggestionClicked = false
-
-                                composingTextTrackingInputConnection?.apply {
-                                    finishComposingText()
-                                }
-                                _inputString.value = EMPTY_STRING
-                                isContinuousTapInputEnabled = false
-                                deleteKeyPressed = false
-                                _dakutenPressed.value = false
-
-                                englishSpaceKeyPressed = false
-                                insertCharNotContinue = false
-                                lastFlickConvertedNextHiragana = false
-                                onDeleteLongPressUp = false
-                                isHiragana = true
-                                isHenkan = false
-                                suggestionClickNum = 0
-                            }
-                        }
-                    }else{
-                        setVibrate()
-                        hasSuggestionClicked = false
-
-                        setEnterKeyPress()
-                        isHenkan = false
-                        suggestionClickNum = 0
-                    }
-                }
-
-                val flexboxLayoutManager = FlexboxLayoutManager(this@IMEService).apply {
-                    flexDirection = FlexDirection.COLUMN
-                    flexWrap = FlexWrap.WRAP
-                    justifyContent = JustifyContent.FLEX_START
-                    alignItems = AlignItems.STRETCH
-                }
-
-                mainView.suggestionRecyclerView.apply {
-                    suggestionAdapter?.let { sugAdapter ->
-                        this.adapter = sugAdapter
-                        this.layoutManager = flexboxLayoutManager
-                    }
-                }
-
-                setKeyLayoutByInputMode(
-                    keyList,
-                    _currentInputMode.value,
-                    mainView.keyboardView.keySmallLetter
-                )
-
-                setTouchListenerForMainKeys(
-                    keyList,
-                    popTextActive,
-                    bubbleViewActive,
-                    popTextTop,
-                    bubbleViewTop,
-                    popTextLeft,
-                    bubbleViewLeft,
-                    popTextBottom,
-                    bubbleViewBottom,
-                    popTextRight,
-                    bubbleViewRight,
-                )
+                setTenKeyJapaneseView(keyList)
+                setSuggestionRecyclerView()
+                setSymbolView()
 
                 scope.launch {
 
@@ -792,8 +291,14 @@ class IMEService: InputMethodService() {
 
                     launch {
                         _suggestionList.asStateFlow().collectLatest { suggestions ->
-                            mainView.suggestionRecyclerView.isVisible = suggestions.isNotEmpty()
                             suggestionAdapter?.suggestions = suggestions
+                            if (suggestions.isEmpty()){
+                                mainView.suggestionRecyclerView.visibility = View.INVISIBLE
+                                delay(100L)
+                                mainView.suggestionRecyclerView.isVisible = false
+                            }else{
+                                mainView.suggestionRecyclerView.isVisible = true
+                            }
                         }
                     }
 
@@ -1514,6 +1019,520 @@ class IMEService: InputMethodService() {
         composingTextTrackingInputConnection?.closeConnection()
         openWnnEngineJAJP.close()
         scope.coroutineContext.cancelChildren()
+    }
+
+    private fun setTenKeyJapaneseView(
+        keyList: List<Any>
+    ){
+        mainLayoutBinding?.let { mainView ->
+            mainView.keyboardView.keySpace.apply {
+                setOnClickListener {
+                    if (_suggestionList.value.isNotEmpty() && _inputString.value.isNotEmpty()){
+                        when(_currentInputMode.value){
+                            InputMode.ModeJapanese ->{
+                                isHenkan = true
+                                setVibrate()
+                                lastFlickConvertedNextHiragana = false
+                                isContinuousTapInputEnabled = false
+                                deleteKeyPressed = false
+
+                                setConvertLetterInJapaneseFromButton(_suggestionList.value)
+                                _dakutenPressed.value = false
+
+                                englishSpaceKeyPressed = false
+                                englishSpaceKeyPressed = false
+                                insertCharNotContinue = false
+                                onDeleteLongPressUp = false
+                                suggestionClickNum += 1
+                            }
+                            else ->{
+                                if (_inputString.value.isEmpty()) return@setOnClickListener
+
+                                setVibrate()
+                                composingTextTrackingInputConnection?.apply {
+                                    commitText(
+                                        _inputString.value + " ",
+                                        1
+                                    )
+                                }
+                                _inputString.value = EMPTY_STRING
+                                isContinuousTapInputEnabled = false
+                                deleteKeyPressed = false
+                                _dakutenPressed.value = false
+
+                                englishSpaceKeyPressed = true
+                                insertCharNotContinue = false
+                                lastFlickConvertedNextHiragana = false
+                                onDeleteLongPressUp = false
+                                isHiragana = true
+                            }
+                        }
+                    }else {
+
+                        setVibrate()
+                        composingTextTrackingInputConnection?.apply {
+                            commitText(
+                                _inputString.value + " ",
+                                1
+                            )
+                        }
+                        _inputString.value = EMPTY_STRING
+                        isContinuousTapInputEnabled = false
+                        deleteKeyPressed = false
+                        _dakutenPressed.value = false
+
+                        englishSpaceKeyPressed = true
+                        insertCharNotContinue = false
+                        lastFlickConvertedNextHiragana = false
+                        onDeleteLongPressUp = false
+                        isHiragana = true
+                    }
+                }
+                setOnLongClickListener {
+                    if (_suggestionList.value.isNotEmpty() && _inputString.value.isNotEmpty()){
+                        when(_currentInputMode.value){
+                            InputMode.ModeJapanese ->{
+                                isHenkan = true
+                                setVibrate()
+                                lastFlickConvertedNextHiragana = false
+                                isContinuousTapInputEnabled = false
+                                deleteKeyPressed = false
+                                setConvertLetterInJapaneseFromButton(_suggestionList.value)
+                                _dakutenPressed.value = false
+
+                                englishSpaceKeyPressed = false
+                                insertCharNotContinue = false
+                                onDeleteLongPressUp = false
+                                suggestionClickNum += 1
+                            }
+                            else ->{
+                                if (_inputString.value.isEmpty()) return@setOnLongClickListener true
+
+                                setVibrate()
+                                composingTextTrackingInputConnection?.apply {
+                                    commitText(
+                                        _inputString.value + " ",
+                                        1
+                                    )
+                                }
+
+                                _inputString.value = EMPTY_STRING
+                                isContinuousTapInputEnabled = false
+                                deleteKeyPressed = false
+                                _dakutenPressed.value = false
+
+
+                                englishSpaceKeyPressed = true
+                                insertCharNotContinue = false
+                                lastFlickConvertedNextHiragana = false
+                                onDeleteLongPressUp = false
+                                isHiragana = true
+                            }
+                        }
+                    }else {
+                        if (_inputString.value.isEmpty()) return@setOnLongClickListener true
+
+                        setVibrate()
+                        composingTextTrackingInputConnection?.apply {
+                            commitText(
+                                _inputString.value + " ",
+                                1
+                            )
+                        }
+
+                        _inputString.value = EMPTY_STRING
+                        isContinuousTapInputEnabled = false
+                        deleteKeyPressed = false
+                        _dakutenPressed.value = false
+
+
+                        englishSpaceKeyPressed = true
+                        insertCharNotContinue = false
+                        lastFlickConvertedNextHiragana = false
+                        onDeleteLongPressUp = false
+                        isHiragana = true
+                    }
+                    true
+                }
+            }
+            setDeleteKey(mainView.keyboardView.keyDelete)
+            setDeleteKeyKigou(mainView.keyboardKigouView.kigouDeleteBtn)
+            setLeftKey(mainView.keyboardView.keySoftLeft)
+            setRightKey(mainView.keyboardView.keyMoveCursorRight)
+            setNextReturnKey(mainView.keyboardView.keyReturn)
+            setSwitchModeKey(mainView.keyboardView.keySwitchKeyMode)
+            mainView.keyboardView.keyEnter.setOnClickListener {
+                if (_inputString.value.isNotEmpty()){
+                    when(_currentInputMode.value){
+                        InputMode.ModeJapanese ->{
+                            setVibrate()
+                            hasSuggestionClicked = false
+
+                            if (isHenkan){
+                                setVibrate()
+
+                                if (suggestionClickNum > _suggestionList.value.size) suggestionClickNum = 0
+                                val listIterator = if (suggestionClickNum > 0) _suggestionList.value.listIterator(suggestionClickNum - 1) else {
+                                    _suggestionList.value.listIterator(suggestionClickNum)
+                                }
+
+                                CoroutineScope(mainDispatcher).launch {
+                                    when{
+                                        // First
+                                        !listIterator.hasPrevious() && listIterator.hasNext() ->{
+
+                                            val startPosition = startSelPosInSuggestion
+                                            val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+                                            val length = _inputString.value.length
+
+                                            val nextSuggestion = listIterator.next()
+
+                                            composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
+
+                                            val text = try {
+                                                _inputString.value.substring(
+                                                    startPosition - composingTextStartPos, length
+                                                )
+                                            }catch (e: Exception){
+                                                if (e is CancellationException) throw e
+                                                EMPTY_STRING
+                                            }
+                                            lastFlickConvertedNextHiragana = false
+                                            isContinuousTapInputEnabled = false
+                                            deleteKeyPressed = false
+
+                                            delay(240L)
+
+                                            _inputString.value = text
+
+                                            _suggestionFlag.update {  flag ->
+                                                !flag
+                                            }
+
+                                        }
+                                        // Middle
+                                        listIterator.hasPrevious() && listIterator.hasNext() ->{
+                                            val startPosition = startSelPosInSuggestion
+                                            val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+                                            val length = _inputString.value.length
+
+                                            val nextSuggestion = listIterator.next()
+
+                                            composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
+
+                                            val text = try {
+                                                _inputString.value.substring(
+                                                    startPosition - composingTextStartPos, length
+                                                )
+                                            }catch (e: Exception){
+                                                if (e is CancellationException) throw e
+                                                EMPTY_STRING
+                                            }
+                                            lastFlickConvertedNextHiragana = false
+                                            isContinuousTapInputEnabled = false
+                                            deleteKeyPressed = false
+
+                                            delay(240L)
+
+                                            _inputString.value = text
+
+                                            _suggestionFlag.update {  flag ->
+                                                !flag
+                                            }
+                                        }
+                                        // End
+                                        listIterator.hasPrevious() && !listIterator.hasNext() ->{
+                                            val startPosition = startSelPosInSuggestion
+                                            val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+                                            val length = _inputString.value.length
+
+                                            val nextSuggestion = listIterator.next()
+
+                                            composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
+
+                                            val text = try {
+                                                _inputString.value.substring(
+                                                    startPosition - composingTextStartPos, length
+                                                )
+                                            }catch (e: Exception){
+                                                if (e is CancellationException) throw e
+                                                EMPTY_STRING
+                                            }
+
+                                            lastFlickConvertedNextHiragana = false
+                                            isContinuousTapInputEnabled = false
+                                            deleteKeyPressed = false
+
+                                            delay(240L)
+
+                                            _inputString.value = text
+
+                                            _suggestionFlag.update {  flag ->
+                                                !flag
+                                            }
+                                        }
+                                    }
+                                }
+
+                                _dakutenPressed.value = false
+                                insertCharNotContinue = false
+                                onDeleteLongPressUp = false
+                                isHenkan = false
+                                suggestionClickNum = 0
+                                englishSpaceKeyPressed = false
+                                hasSuggestionClicked = true
+                            }else {
+                                composingTextTrackingInputConnection?.apply {
+                                    finishComposingText()
+                                }
+                                _inputString.value = EMPTY_STRING
+                                isContinuousTapInputEnabled = false
+                                deleteKeyPressed = false
+                                _dakutenPressed.value = false
+
+                                englishSpaceKeyPressed = false
+                                insertCharNotContinue = false
+                                lastFlickConvertedNextHiragana = false
+                                onDeleteLongPressUp = false
+                                isHiragana = true
+                            }
+                            isHenkan = false
+                            suggestionClickNum = 0
+                        }
+                        else ->{
+                            setVibrate()
+                            hasSuggestionClicked = false
+
+                            composingTextTrackingInputConnection?.apply {
+                                finishComposingText()
+                            }
+                            _inputString.value = EMPTY_STRING
+                            isContinuousTapInputEnabled = false
+                            deleteKeyPressed = false
+                            _dakutenPressed.value = false
+
+                            englishSpaceKeyPressed = false
+                            insertCharNotContinue = false
+                            lastFlickConvertedNextHiragana = false
+                            onDeleteLongPressUp = false
+                            isHiragana = true
+                            isHenkan = false
+                            suggestionClickNum = 0
+                        }
+                    }
+                }else{
+                    setVibrate()
+                    hasSuggestionClicked = false
+
+                    setEnterKeyPress()
+                    isHenkan = false
+                    suggestionClickNum = 0
+                }
+            }
+
+            setKeyLayoutByInputMode(
+                keyList,
+                _currentInputMode.value,
+                mainView.keyboardView.keySmallLetter
+            )
+
+            setTouchListenerForMainKeys(
+                keyList,
+                popTextActive,
+                bubbleViewActive,
+                popTextTop,
+                bubbleViewTop,
+                popTextLeft,
+                bubbleViewLeft,
+                popTextBottom,
+                bubbleViewBottom,
+                popTextRight,
+                bubbleViewRight,
+            )
+        }
+    }
+
+    private fun setSuggestionRecyclerView(){
+        suggestionAdapter?.apply {
+            this.setOnItemClickListener {
+                setVibrate()
+                if (hasRequestCursorUpdatesCalled){
+
+                    if (_inputString.value.isNotBlank()){
+                        val startPosition = _selectionEndtPosition
+                        val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+                        val length = _inputString.value.length
+                        val composingTextEndPosition = startPosition - composingTextStartPos
+
+                        Timber.d("suggestion clicked: $length $composingTextEndPosition $isSelectionPositionAtNotEnd")
+
+                        if (length != composingTextEndPosition && isSelectionPositionAtNotEnd){
+
+                            if (!isHenkan){
+
+                                CoroutineScope(mainDispatcher).launch {
+                                    composingTextTrackingInputConnection?.commitText(it,1)
+
+                                    val text = try {
+                                        _inputString.value.substring(
+                                            startPosition - composingTextStartPos, length
+                                        )
+                                    }catch (e: Exception){
+                                        if (e is CancellationException) throw e
+                                        EMPTY_STRING
+                                    }
+
+                                    lastFlickConvertedNextHiragana = false
+                                    isContinuousTapInputEnabled = false
+                                    deleteKeyPressed = false
+                                    _dakutenPressed.value = false
+                                    insertCharNotContinue = false
+                                    onDeleteLongPressUp = false
+                                    isHenkan = false
+                                    suggestionClickNum = 0
+                                    englishSpaceKeyPressed = false
+                                    hasSuggestionClicked = true
+
+                                    delay(240L)
+
+                                    _inputString.value = text
+
+                                    _suggestionFlag.update { flag ->
+                                        !flag
+                                    }
+
+                                    Timber.d("suggestion clicked 2: $length" +
+                                            "\n$composingTextEndPosition" +
+                                            "\n$isSelectionPositionAtNotEnd" +
+                                            "\n$text" +
+                                            "\n${_inputString.value}"
+                                    )
+
+                                }
+
+                            }
+
+                        }else {
+                            _inputString.value = EMPTY_STRING
+                            composingTextTrackingInputConnection?.commitText(it,1)
+                            lastFlickConvertedNextHiragana = false
+                            isContinuousTapInputEnabled = false
+                            deleteKeyPressed = false
+                            _dakutenPressed.value = false
+                            insertCharNotContinue = false
+                            onDeleteLongPressUp = false
+                            isHenkan = false
+                            suggestionClickNum = 0
+                            englishSpaceKeyPressed = false
+                            hasSuggestionClicked = true
+                        }
+                    }
+
+
+                }else{
+
+                    if (!isHenkan){
+                        composingTextTrackingInputConnection?.commitText(it,1)
+
+                        _inputString.value = EMPTY_STRING
+
+                        lastFlickConvertedNextHiragana = false
+                        isContinuousTapInputEnabled = false
+                        deleteKeyPressed = false
+                        _dakutenPressed.value = false
+                        insertCharNotContinue = false
+                        onDeleteLongPressUp = false
+                        isHenkan = false
+                        suggestionClickNum = 0
+                        englishSpaceKeyPressed = false
+                        hasSuggestionClicked = true
+
+                    }else{
+                        _inputString.value = EMPTY_STRING
+                        composingTextTrackingInputConnection?.commitText(it,1)
+                        lastFlickConvertedNextHiragana = false
+                        isContinuousTapInputEnabled = false
+                        deleteKeyPressed = false
+                        _dakutenPressed.value = false
+                        insertCharNotContinue = false
+                        onDeleteLongPressUp = false
+                        isHenkan = false
+                        suggestionClickNum = 0
+                        englishSpaceKeyPressed = false
+                        hasSuggestionClicked = true
+                    }
+
+                }
+            }
+        }
+        val flexboxLayoutManager = FlexboxLayoutManager(this@IMEService).apply {
+            flexDirection = FlexDirection.COLUMN
+            flexWrap = FlexWrap.WRAP
+            justifyContent = JustifyContent.FLEX_START
+            alignItems = AlignItems.STRETCH
+        }
+        mainLayoutBinding?.let { mainView ->
+            mainView.suggestionRecyclerView.apply {
+                suggestionAdapter?.let { sugAdapter ->
+                    this.adapter = sugAdapter
+                    this.layoutManager = flexboxLayoutManager
+                }
+            }
+        }
+    }
+    private fun setSymbolView(){
+        mainLayoutBinding?.let { mainView ->
+            mainView.keyboardView.keyLanguageSwitch.setOnClickListener {
+                setVibrate()
+                isHenkan = false
+                suggestionClickNum = 0
+                isContinuousTapInputEnabled = false
+                deleteKeyPressed = false
+                _dakutenPressed.value = false
+
+                englishSpaceKeyPressed = false
+                englishSpaceKeyPressed = false
+                insertCharNotContinue = false
+                lastFlickConvertedNextHiragana = false
+                onDeleteLongPressUp = false
+                hasSuggestionClicked = false
+
+                _currentKeyboardMode.value = KeyboardMode.ModeMarkDownHelper
+
+                if (_inputString.value.isNotEmpty()){
+                    var newPos = _inputString.value.length - (_inputString.value.length  - 1)
+                    if (newPos < 0 || newPos == 0) newPos = 1
+                    composingTextTrackingInputConnection?.apply {
+                        commitText(_inputString.value,newPos)
+                        finishComposingText()
+                    }
+                    _inputString.value = EMPTY_STRING
+                    isContinuousTapInputEnabled = false
+                    deleteKeyPressed = false
+                    _dakutenPressed.value = false
+
+                    englishSpaceKeyPressed = false
+                    englishSpaceKeyPressed = false
+                    insertCharNotContinue = false
+                    lastFlickConvertedNextHiragana = false
+                    onDeleteLongPressUp = false
+                    isHiragana = true
+                }
+                isHenkan = false
+                suggestionClickNum = 0
+            }
+
+            mainView.keyboardKigouView.kigouReturnBtn.setOnClickListener {
+                _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
+            }
+
+            mainView.keyboardKigouView.kigouEmojiButton.setOnClickListener {
+                _currentModeInKigou.value = ModeInKigou.Emoji
+            }
+            mainView.keyboardKigouView.kigouKaomojiBtn.setOnClickListener {
+                _currentModeInKigou.value = ModeInKigou.Kaomoji
+            }
+        }
     }
 
     private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) = withContext(mainDispatcher){
