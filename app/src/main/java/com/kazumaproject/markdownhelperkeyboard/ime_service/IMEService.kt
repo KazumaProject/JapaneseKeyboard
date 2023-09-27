@@ -179,6 +179,7 @@ class IMEService: InputMethodService() {
 
     private var _mComposingTextPosition = -1
     private var _selectionEndtPosition = -1
+    private var startSelPosInSuggestion = 0
 
     private val _dakutenPressed = MutableStateFlow(false)
 
@@ -277,7 +278,7 @@ class IMEService: InputMethodService() {
                 emojiKigouAdapter = EmojiKigouAdapter()
                 kigouApdater = KigouAdapter()
 
-                setTenKeyJapaneseView(keyList)
+                setTenKeyView(keyList)
                 setSuggestionRecyclerView()
                 setSymbolView()
 
@@ -292,13 +293,7 @@ class IMEService: InputMethodService() {
                     launch {
                         _suggestionList.asStateFlow().collectLatest { suggestions ->
                             suggestionAdapter?.suggestions = suggestions
-                            if (suggestions.isEmpty()){
-                                mainView.suggestionRecyclerView.visibility = View.INVISIBLE
-                                delay(100L)
-                                mainView.suggestionRecyclerView.isVisible = false
-                            }else{
-                                mainView.suggestionRecyclerView.isVisible = true
-                            }
+                            setSuggestionRecyclerViewVisibility(suggestions.isEmpty())
                         }
                     }
 
@@ -895,45 +890,14 @@ class IMEService: InputMethodService() {
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("finish input  called")
-
-        _inputString.value = EMPTY_STRING
-        suggestionClickNum = 0
-        hasSuggestionClicked = false
-        isContinuousTapInputEnabled = false
-        deleteKeyPressed = false
-        deleteKeyLongKeyPressed = false
-        _dakutenPressed.value = false
-        englishSpaceKeyPressed = false
-        insertCharNotContinue = false
-        lastFlickConvertedNextHiragana = false
-        onDeleteLongPressUp = false
-
+        resetAllFlags()
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
 
         Timber.d("windows hidden called")
-
-        hasRequestCursorUpdatesCalled = false
-        _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
-        suggestionClickNum = 0
-        hasSuggestionClicked = false
-        isHenkan = false
-        isHiragana = true
-        _inputString.value = EMPTY_STRING
-        _currentInputMode.value = InputMode.ModeJapanese
-        isContinuousTapInputEnabled = false
-        deleteKeyPressed = false
-        deleteKeyLongKeyPressed = false
-        _dakutenPressed.value = false
-        _selectionEndtPosition = -1
-        _mComposingTextPosition = -1
-        englishSpaceKeyPressed = false
-        insertCharNotContinue = false
-        lastFlickConvertedNextHiragana = false
-        onDeleteLongPressUp = false
-
+        resetAllFlags()
     }
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
@@ -1021,7 +985,7 @@ class IMEService: InputMethodService() {
         scope.coroutineContext.cancelChildren()
     }
 
-    private fun setTenKeyJapaneseView(
+    private fun setTenKeyView(
         keyList: List<Any>
     ){
         mainLayoutBinding?.let { mainView ->
@@ -1535,6 +1499,40 @@ class IMEService: InputMethodService() {
         }
     }
 
+    private fun resetAllFlags(){
+        _currentKeyboardMode.update { KeyboardMode.ModeKeyboard }
+        _inputString.update { EMPTY_STRING }
+        _suggestionList.update { emptyList() }
+        _currentInputMode.update { InputMode.ModeJapanese }
+        hasRequestCursorUpdatesCalled = false
+        suggestionClickNum = 0
+        hasSuggestionClicked = false
+        isHenkan = false
+        isHiragana = true
+        isContinuousTapInputEnabled = false
+        deleteKeyPressed = false
+        deleteKeyLongKeyPressed = false
+        _dakutenPressed.value = false
+        _selectionEndtPosition = -1
+        _mComposingTextPosition = -1
+        englishSpaceKeyPressed = false
+        insertCharNotContinue = false
+        lastFlickConvertedNextHiragana = false
+        onDeleteLongPressUp = false
+    }
+
+    private suspend fun setSuggestionRecyclerViewVisibility(flag: Boolean){
+        mainLayoutBinding?.let { mainView ->
+            mainView.suggestionRecyclerView.apply {
+                if (flag){
+                    delay(100L)
+                    this.isVisible = false
+                }else{
+                    this.isVisible = true
+                }
+            }
+        }
+    }
     private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) = withContext(mainDispatcher){
 
         mainView.keyboardView.keyEnter.apply {
@@ -3554,8 +3552,6 @@ class IMEService: InputMethodService() {
             )
         }
     }
-
-    private var startSelPosInSuggestion = 0
 
     private fun setConvertLetterInJapaneseFromButton(
         suggestions: List<String>,

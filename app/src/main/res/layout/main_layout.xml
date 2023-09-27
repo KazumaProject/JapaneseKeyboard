@@ -29,6 +29,6 @@
         android:layout_gravity="bottom"
         android:layout_marginBottom="@dimen/keyboard_height"
         android:background="@color/suggestion_view_bg"
-        android:visibility="visible"/>
+        android:visibility="gone"/>
 
 </FrameLayout>
