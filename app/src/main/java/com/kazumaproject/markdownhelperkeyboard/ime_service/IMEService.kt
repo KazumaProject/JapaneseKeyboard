@@ -792,7 +792,7 @@ class IMEService: InputMethodService() {
 
                     launch {
                         _suggestionList.asStateFlow().collectLatest { suggestions ->
-                            if (_inputString.value.isNotEmpty()) mainView.suggestionRecyclerView.isVisible = true
+                            mainView.suggestionRecyclerView.isVisible = suggestions.isNotEmpty()
                             suggestionAdapter?.suggestions = suggestions
                         }
                     }
@@ -1259,7 +1259,6 @@ class IMEService: InputMethodService() {
                                             }
                                         }
                                     }
-
                                 }
                             }
 
