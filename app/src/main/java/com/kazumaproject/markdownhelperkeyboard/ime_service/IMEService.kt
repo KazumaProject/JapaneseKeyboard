@@ -67,6 +67,10 @@ class IMEService: InputMethodService() {
     lateinit var scope : CoroutineScope
 
     @Inject
+    @ImeJob
+    lateinit var imeJob : Job
+
+    @Inject
     @MainDispatcher
     lateinit var mainDispatcher: CoroutineDispatcher
 
@@ -282,7 +286,7 @@ class IMEService: InputMethodService() {
                 setSuggestionRecyclerView()
                 setSymbolView()
 
-                scope.launch {
+                imeJob = scope.launch {
 
                     launch {
                         _suggestionFlag.asStateFlow().collectLatest {
@@ -891,13 +895,14 @@ class IMEService: InputMethodService() {
         super.onFinishInput()
         Timber.d("finish input  called")
         resetAllFlags()
+        openWnnEngineJAJP.close()
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
-
         Timber.d("windows hidden called")
         resetAllFlags()
+        openWnnEngineJAJP.close()
     }
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
@@ -973,16 +978,9 @@ class IMEService: InputMethodService() {
         }
     }
 
-    override fun onDestroy() {
+    override fun onDestroy(){
         super.onDestroy()
-        Timber.d("destory called")
-        suggestionAdapter = null
-        emojiKigouAdapter = null
-        kigouApdater = null
-        mainLayoutBinding = null
-        composingTextTrackingInputConnection?.closeConnection()
-        openWnnEngineJAJP.close()
-        scope.coroutineContext.cancelChildren()
+        actionInDestroy()
     }
 
     private fun setTenKeyView(
@@ -1519,6 +1517,16 @@ class IMEService: InputMethodService() {
         insertCharNotContinue = false
         lastFlickConvertedNextHiragana = false
         onDeleteLongPressUp = false
+    }
+
+    private fun actionInDestroy(){
+        suggestionAdapter = null
+        emojiKigouAdapter = null
+        kigouApdater = null
+        mainLayoutBinding = null
+        composingTextTrackingInputConnection?.closeConnection()
+        imeJob.cancel()
+        openWnnEngineJAJP.close()
     }
 
     private suspend fun setSuggestionRecyclerViewVisibility(flag: Boolean){
