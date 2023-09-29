@@ -191,9 +191,7 @@ class IMEService: InputMethodService() {
     private var keyInputState = false
     private var suggestionClickNum = 0
     private var isHenkan = false
-    private var isCurrentlyTap = false
-    private var isHiragana = true
-
+    
     private var hasRequestCursorUpdatesCalled = false
 
     private var selectionReqPosAfterDelete : Int = -1
@@ -1021,12 +1019,10 @@ class IMEService: InputMethodService() {
                                 isContinuousTapInputEnabled = false
                                 deleteKeyPressed = false
                                 _dakutenPressed.value = false
-
                                 englishSpaceKeyPressed = true
                                 insertCharNotContinue = false
                                 lastFlickConvertedNextHiragana = false
                                 onDeleteLongPressUp = false
-                                isHiragana = true
                             }
                         }
                     }else {
@@ -1047,7 +1043,7 @@ class IMEService: InputMethodService() {
                         insertCharNotContinue = false
                         lastFlickConvertedNextHiragana = false
                         onDeleteLongPressUp = false
-                        isHiragana = true
+                       
                     }
                 }
                 setOnLongClickListener {
@@ -1088,7 +1084,7 @@ class IMEService: InputMethodService() {
                                 insertCharNotContinue = false
                                 lastFlickConvertedNextHiragana = false
                                 onDeleteLongPressUp = false
-                                isHiragana = true
+                               
                             }
                         }
                     }else {
@@ -1112,7 +1108,7 @@ class IMEService: InputMethodService() {
                         insertCharNotContinue = false
                         lastFlickConvertedNextHiragana = false
                         onDeleteLongPressUp = false
-                        isHiragana = true
+                       
                     }
                     true
                 }
@@ -1255,7 +1251,7 @@ class IMEService: InputMethodService() {
                                 insertCharNotContinue = false
                                 lastFlickConvertedNextHiragana = false
                                 onDeleteLongPressUp = false
-                                isHiragana = true
+                               
                             }
                             isHenkan = false
                             suggestionClickNum = 0
@@ -1276,7 +1272,7 @@ class IMEService: InputMethodService() {
                             insertCharNotContinue = false
                             lastFlickConvertedNextHiragana = false
                             onDeleteLongPressUp = false
-                            isHiragana = true
+                           
                             isHenkan = false
                             suggestionClickNum = 0
                         }
@@ -1324,7 +1320,6 @@ class IMEService: InputMethodService() {
                     insertCharNotContinue = false
                     lastFlickConvertedNextHiragana = false
                     onDeleteLongPressUp = false
-                    isHiragana = true
                 }
                 isHenkan = false
                 suggestionClickNum = 0
@@ -1527,7 +1522,7 @@ class IMEService: InputMethodService() {
         suggestionClickNum = 0
         hasSuggestionClicked = false
         isHenkan = false
-        isHiragana = true
+       
         isContinuousTapInputEnabled = false
         deleteKeyPressed = false
         deleteKeyLongKeyPressed = false
@@ -1547,18 +1542,13 @@ class IMEService: InputMethodService() {
         mainLayoutBinding = null
         composingTextTrackingInputConnection?.closeConnection()
         openWnnEngineJAJP.close()
+        scope.coroutineContext.cancelChildren()
     }
 
     private suspend fun setSuggestionRecyclerViewVisibility(flag: Boolean){
         mainLayoutBinding?.let { mainView ->
-            mainView.suggestionRecyclerView.apply {
-                if (flag){
-                    delay(100L)
-                    this.isVisible = false
-                }else{
-                    this.isVisible = true
-                }
-            }
+            if (flag) delay(100L)
+            mainView.suggestionRecyclerView.isVisible = !flag
         }
     }
     private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) = withContext(mainDispatcher){
@@ -1966,7 +1956,7 @@ class IMEService: InputMethodService() {
                     suggestionClickNum = 0
                     deleteStringInEditText()
 
-                    isHiragana = true
+                   
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed = false
                     insertCharNotContinue = false
@@ -1978,7 +1968,7 @@ class IMEService: InputMethodService() {
                     suggestionClickNum = 0
 
                     deleteStringInEditTextRequestCursorUpdatesNotCalled()
-                    isHiragana = true
+                   
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed = false
                     insertCharNotContinue = false
@@ -2039,7 +2029,7 @@ class IMEService: InputMethodService() {
 
                     deleteStringInEditText()
 
-                    isHiragana = true
+                   
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed = false
                     insertCharNotContinue = false
@@ -2051,7 +2041,7 @@ class IMEService: InputMethodService() {
                     suggestionClickNum = 0
 
                     deleteStringInEditTextRequestCursorUpdatesNotCalled()
-                    isHiragana = true
+                   
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed = false
                     insertCharNotContinue = false
@@ -2391,7 +2381,6 @@ class IMEService: InputMethodService() {
 
                     when(event.action and MotionEvent.ACTION_MASK){
                         MotionEvent.ACTION_DOWN ->{
-                            isCurrentlyTap = true
                             setVibrate()
                             keyInputState = true
                             firstXPoint = event.rawX
@@ -2401,7 +2390,7 @@ class IMEService: InputMethodService() {
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_UP ->{
-                            isCurrentlyTap = false
+                            
                             setVibrate()
                             val finalX = event.rawX
                             val finalY = event.rawY
@@ -2713,7 +2702,6 @@ class IMEService: InputMethodService() {
                     val sb = StringBuilder()
                     when(event.action and MotionEvent.ACTION_MASK){
                         MotionEvent.ACTION_DOWN ->{
-                            isCurrentlyTap = true
                             setVibrate()
                             keyInputState = true
                             firstXPoint = event.rawX
@@ -2721,7 +2709,7 @@ class IMEService: InputMethodService() {
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_UP ->{
-                            isCurrentlyTap = false
+                            
                             setVibrate()
                             val finalX = event.rawX
                             val finalY = event.rawY
@@ -3195,7 +3183,7 @@ class IMEService: InputMethodService() {
 
         Timber.d("called setKeyTouchContinuous $char ${_inputString.value}")
         insertCharNotContinue = false
-        isHiragana = true
+       
         hasSuggestionClicked = false
         suggestionClickNum = 0
         deleteKeyPressed = false
@@ -3554,7 +3542,7 @@ class IMEService: InputMethodService() {
         sb: StringBuilder
     ) {
         Timber.d("called setKeyTouch $key ${_inputString.value}")
-        isHiragana = true
+       
         hasSuggestionClicked = false
         suggestionClickNum = 0
         deleteKeyPressed = false
