@@ -94,6 +94,10 @@ object AppModule {
         setDictionary(0)
         setKeyboardType(1)
     }
+
+    @ImeJob
+    @Provides
+    fun providesImeJob(): Job = Job()
     @Singleton
     @Provides
     fun providesComposingText(): ComposingText = ComposingText()
