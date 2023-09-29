@@ -1,6 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.state
 
 sealed class KeyboardMode{
-    object ModeKeyboard: KeyboardMode()
-    object ModeMarkDownHelper: KeyboardMode()
+    object ModeTenKeyboard: KeyboardMode()
+    object ModeKigouView: KeyboardMode()
 }
