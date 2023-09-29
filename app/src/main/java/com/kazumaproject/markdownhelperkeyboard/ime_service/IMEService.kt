@@ -1229,9 +1229,8 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private suspend fun setSuggestionRecyclerViewVisibility(flag: Boolean){
+    private fun setSuggestionRecyclerViewVisibility(flag: Boolean){
         mainLayoutBinding?.let { mainView ->
-            if (flag) delay(100L)
             mainView.suggestionRecyclerView.isVisible = !flag
         }
     }
