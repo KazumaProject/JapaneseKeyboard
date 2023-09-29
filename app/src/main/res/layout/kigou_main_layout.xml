@@ -14,7 +14,7 @@
         android:id="@+id/kigou_recyclerView"
         android:layout_width="match_parent"
         android:layout_height="294dp"
-        android:visibility="gone"
+        android:visibility="visible"
         app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.ConstraintLayout

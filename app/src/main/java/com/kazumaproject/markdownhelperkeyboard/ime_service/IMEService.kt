@@ -67,10 +67,6 @@ class IMEService: InputMethodService() {
     lateinit var scope : CoroutineScope
 
     @Inject
-    @ImeJob
-    lateinit var imeJob : Job
-
-    @Inject
     @MainDispatcher
     lateinit var mainDispatcher: CoroutineDispatcher
 
@@ -177,8 +173,8 @@ class IMEService: InputMethodService() {
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
     private val _inputString = MutableStateFlow(EMPTY_STRING)
 
-    private val _currentKeyboardMode = MutableStateFlow<KeyboardMode>(KeyboardMode.ModeKeyboard)
-    private val _currentModeInKigou = MutableStateFlow<ModeInKigou>(ModeInKigou.Emoji)
+    private val _currentKeyboardMode = MutableStateFlow<KeyboardMode>(KeyboardMode.ModeTenKeyboard)
+    private val _currentModeInKigou = MutableStateFlow<ModeInKigou>(ModeInKigou.Null)
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
 
     private var _mComposingTextPosition = -1
@@ -262,31 +258,13 @@ class IMEService: InputMethodService() {
                     mainView.keyboardView.keySmallLetter,
                     mainView.keyboardView.key12
                 )
-
-                bubbleViewActive = mPopupWindowActive.contentView.findViewById(R.id.bubble_layout)
-                popTextActive = mPopupWindowActive.contentView.findViewById(R.id.popup_text)
-
-                bubbleViewTop = mPopupWindowTop.contentView.findViewById(R.id.bubble_layout_top)
-                popTextTop = mPopupWindowTop.contentView.findViewById(R.id.popup_text_top)
-
-                bubbleViewLeft = mPopupWindowLeft.contentView.findViewById(R.id.bubble_layout_left)
-                popTextLeft = mPopupWindowLeft.contentView.findViewById(R.id.popup_text_left)
-
-                bubbleViewBottom = mPopupWindowBottom.contentView.findViewById(R.id.bubble_layout_bottom)
-                popTextBottom = mPopupWindowBottom.contentView.findViewById(R.id.popup_text_bottom)
-
-                bubbleViewRight = mPopupWindowRight.contentView.findViewById(R.id.bubble_layout_right)
-                popTextRight = mPopupWindowRight.contentView.findViewById(R.id.popup_text_right)
-
-                suggestionAdapter = SuggestionAdapter()
-                emojiKigouAdapter = EmojiKigouAdapter()
-                kigouApdater = KigouAdapter()
+                initializeVariables()
 
                 setTenKeyView(keyList)
                 setSuggestionRecyclerView()
-                setSymbolView()
+                setKigouView()
 
-                imeJob = scope.launch {
+                scope.launch {
 
                     launch {
                         _suggestionFlag.asStateFlow().collectLatest {
@@ -312,13 +290,16 @@ class IMEService: InputMethodService() {
                     launch {
                         _currentKeyboardMode.asStateFlow().collectLatest {
                             when(it){
-                                is KeyboardMode.ModeKeyboard ->{
+                                is KeyboardMode.ModeTenKeyboard ->{
                                     mainView.keyboardView.root.isVisible = true
                                     mainView.keyboardKigouView.root.isVisible = false
                                 }
-                                is KeyboardMode.ModeMarkDownHelper ->{
+                                is KeyboardMode.ModeKigouView ->{
                                     mainView.keyboardView.root.isVisible = false
                                     mainView.keyboardKigouView.root.isVisible = true
+                                    _currentModeInKigou.update {
+                                        ModeInKigou.Emoji
+                                    }
                                 }
                             }
                         }
@@ -326,34 +307,34 @@ class IMEService: InputMethodService() {
 
                     launch {
                         _currentModeInKigou.asStateFlow().collectLatest {
+                            if (_currentKeyboardMode.value != KeyboardMode.ModeKigouView) return@collectLatest
                             when(it){
                                 is ModeInKigou.Emoji ->{
-                                    mainView.keyboardKigouView.kigouRecyclerView.isVisible = true
-
                                     emojiKigouAdapter?.let { a ->
-                                        a.emojiList = EMOJI_LIST
                                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                                             adapter = a
                                             layoutManager = GridLayoutManager(this@IMEService,6)
                                         }
-                                        a.setOnItemClickListener { emoji ->
-                                            composingTextTrackingInputConnection?.commitText(emoji.unicode.convertUnicode(),1)
-                                        }
                                     }
+                                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
                                 }
                                 is ModeInKigou.Kaomoji ->{
-                                    mainView.keyboardKigouView.kigouRecyclerView.isVisible = true
-
                                     kigouApdater?.let { a ->
-                                        a.kigouList = KAOMOJI
                                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                                             adapter = a
                                             layoutManager = GridLayoutManager(this@IMEService,3)
                                         }
-                                        a.setOnItemClickListener { s ->
-                                            composingTextTrackingInputConnection?.commitText(s,1)
+                                    }
+                                    mainView.keyboardKigouView.kigouKaomojiBtn.isChecked = true
+                                }
+                                is ModeInKigou.Null ->{
+                                    emojiKigouAdapter?.let { a ->
+                                        mainView.keyboardKigouView.kigouRecyclerView.apply {
+                                            adapter = a
+                                            layoutManager = GridLayoutManager(this@IMEService,6)
                                         }
                                     }
+                                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
                                 }
                             }
                         }
@@ -373,7 +354,7 @@ class IMEService: InputMethodService() {
                                     }
                                     else ->{}
                                 }
-                                
+
                                 /** 入力された文字の selection と composing region を設定する **/
 
                                 val spannableString = SpannableString(inputString)
@@ -383,7 +364,7 @@ class IMEService: InputMethodService() {
 
                                 val selPosition = if (_selectionEndtPosition < 0) 0 else _selectionEndtPosition
 
-                                 Timber.d("input value: $inputString $selPosition")
+                                Timber.d("input value: $inputString $selPosition")
 
                                 when{
                                     deleteKeyPressed &&
@@ -784,7 +765,7 @@ class IMEService: InputMethodService() {
             requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
             resetComposingText()
         }
-        _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
+        _currentKeyboardMode.value = KeyboardMode.ModeTenKeyboard
 
         _inputString.value = EMPTY_STRING
 
@@ -895,14 +876,12 @@ class IMEService: InputMethodService() {
         super.onFinishInput()
         Timber.d("finish input  called")
         resetAllFlags()
-        openWnnEngineJAJP.close()
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         Timber.d("windows hidden called")
         resetAllFlags()
-        openWnnEngineJAJP.close()
     }
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
@@ -981,6 +960,27 @@ class IMEService: InputMethodService() {
     override fun onDestroy(){
         super.onDestroy()
         actionInDestroy()
+    }
+
+    private fun initializeVariables(){
+        bubbleViewActive = mPopupWindowActive.contentView.findViewById(R.id.bubble_layout)
+        popTextActive = mPopupWindowActive.contentView.findViewById(R.id.popup_text)
+
+        bubbleViewTop = mPopupWindowTop.contentView.findViewById(R.id.bubble_layout_top)
+        popTextTop = mPopupWindowTop.contentView.findViewById(R.id.popup_text_top)
+
+        bubbleViewLeft = mPopupWindowLeft.contentView.findViewById(R.id.bubble_layout_left)
+        popTextLeft = mPopupWindowLeft.contentView.findViewById(R.id.popup_text_left)
+
+        bubbleViewBottom = mPopupWindowBottom.contentView.findViewById(R.id.bubble_layout_bottom)
+        popTextBottom = mPopupWindowBottom.contentView.findViewById(R.id.popup_text_bottom)
+
+        bubbleViewRight = mPopupWindowRight.contentView.findViewById(R.id.bubble_layout_right)
+        popTextRight = mPopupWindowRight.contentView.findViewById(R.id.popup_text_right)
+
+        suggestionAdapter = SuggestionAdapter()
+        emojiKigouAdapter = EmojiKigouAdapter()
+        kigouApdater = KigouAdapter()
     }
 
     private fun setTenKeyView(
@@ -1118,7 +1118,6 @@ class IMEService: InputMethodService() {
                 }
             }
             setDeleteKey(mainView.keyboardView.keyDelete)
-            setDeleteKeyKigou(mainView.keyboardKigouView.kigouDeleteBtn)
             setLeftKey(mainView.keyboardView.keySoftLeft)
             setRightKey(mainView.keyboardView.keyMoveCursorRight)
             setNextReturnKey(mainView.keyboardView.keyReturn)
@@ -1291,6 +1290,45 @@ class IMEService: InputMethodService() {
                     suggestionClickNum = 0
                 }
             }
+            mainView.keyboardView.keyLanguageSwitch.setOnClickListener {
+                setVibrate()
+                isHenkan = false
+                suggestionClickNum = 0
+                isContinuousTapInputEnabled = false
+                deleteKeyPressed = false
+                _dakutenPressed.value = false
+
+                englishSpaceKeyPressed = false
+                englishSpaceKeyPressed = false
+                insertCharNotContinue = false
+                lastFlickConvertedNextHiragana = false
+                onDeleteLongPressUp = false
+                hasSuggestionClicked = false
+
+                _currentKeyboardMode.value = KeyboardMode.ModeKigouView
+
+                if (_inputString.value.isNotEmpty()){
+                    var newPos = _inputString.value.length - (_inputString.value.length  - 1)
+                    if (newPos < 0 || newPos == 0) newPos = 1
+                    composingTextTrackingInputConnection?.apply {
+                        commitText(_inputString.value,newPos)
+                        finishComposingText()
+                    }
+                    _inputString.value = EMPTY_STRING
+                    isContinuousTapInputEnabled = false
+                    deleteKeyPressed = false
+                    _dakutenPressed.value = false
+
+                    englishSpaceKeyPressed = false
+                    englishSpaceKeyPressed = false
+                    insertCharNotContinue = false
+                    lastFlickConvertedNextHiragana = false
+                    onDeleteLongPressUp = false
+                    isHiragana = true
+                }
+                isHenkan = false
+                suggestionClickNum = 0
+            }
 
             setKeyLayoutByInputMode(
                 keyList,
@@ -1442,63 +1480,46 @@ class IMEService: InputMethodService() {
             }
         }
     }
-    private fun setSymbolView(){
+    private fun setKigouView(){
         mainLayoutBinding?.let { mainView ->
-            mainView.keyboardView.keyLanguageSwitch.setOnClickListener {
-                setVibrate()
-                isHenkan = false
-                suggestionClickNum = 0
-                isContinuousTapInputEnabled = false
-                deleteKeyPressed = false
-                _dakutenPressed.value = false
-
-                englishSpaceKeyPressed = false
-                englishSpaceKeyPressed = false
-                insertCharNotContinue = false
-                lastFlickConvertedNextHiragana = false
-                onDeleteLongPressUp = false
-                hasSuggestionClicked = false
-
-                _currentKeyboardMode.value = KeyboardMode.ModeMarkDownHelper
-
-                if (_inputString.value.isNotEmpty()){
-                    var newPos = _inputString.value.length - (_inputString.value.length  - 1)
-                    if (newPos < 0 || newPos == 0) newPos = 1
-                    composingTextTrackingInputConnection?.apply {
-                        commitText(_inputString.value,newPos)
-                        finishComposingText()
-                    }
-                    _inputString.value = EMPTY_STRING
-                    isContinuousTapInputEnabled = false
-                    deleteKeyPressed = false
-                    _dakutenPressed.value = false
-
-                    englishSpaceKeyPressed = false
-                    englishSpaceKeyPressed = false
-                    insertCharNotContinue = false
-                    lastFlickConvertedNextHiragana = false
-                    onDeleteLongPressUp = false
-                    isHiragana = true
-                }
-                isHenkan = false
-                suggestionClickNum = 0
-            }
 
             mainView.keyboardKigouView.kigouReturnBtn.setOnClickListener {
-                _currentKeyboardMode.value = KeyboardMode.ModeKeyboard
+                setVibrate()
+                _currentKeyboardMode.value = KeyboardMode.ModeTenKeyboard
             }
 
             mainView.keyboardKigouView.kigouEmojiButton.setOnClickListener {
+                setVibrate()
                 _currentModeInKigou.value = ModeInKigou.Emoji
             }
             mainView.keyboardKigouView.kigouKaomojiBtn.setOnClickListener {
+                setVibrate()
                 _currentModeInKigou.value = ModeInKigou.Kaomoji
             }
+
+            setDeleteKeyKigou(mainView.keyboardKigouView.kigouDeleteBtn)
+
+            emojiKigouAdapter?.let { a ->
+                a.emojiList = EMOJI_LIST
+                a.setOnItemClickListener { emoji ->
+                    setVibrate()
+                    composingTextTrackingInputConnection?.commitText(emoji.unicode.convertUnicode(),1)
+                }
+            }
+
+            kigouApdater?.let { a ->
+                a.kigouList = KAOMOJI
+                a.setOnItemClickListener { s ->
+                    setVibrate()
+                    composingTextTrackingInputConnection?.commitText(s,1)
+                }
+            }
+
         }
     }
 
     private fun resetAllFlags(){
-        _currentKeyboardMode.update { KeyboardMode.ModeKeyboard }
+        _currentKeyboardMode.update { KeyboardMode.ModeTenKeyboard }
         _inputString.update { EMPTY_STRING }
         _suggestionList.update { emptyList() }
         _currentInputMode.update { InputMode.ModeJapanese }
@@ -1525,7 +1546,6 @@ class IMEService: InputMethodService() {
         kigouApdater = null
         mainLayoutBinding = null
         composingTextTrackingInputConnection?.closeConnection()
-        imeJob.cancel()
         openWnnEngineJAJP.close()
     }
 
@@ -1937,14 +1957,13 @@ class IMEService: InputMethodService() {
         }
 
         setOnClickListener {
+            setVibrate()
             when{
                 _selectionEndtPosition - _mComposingTextPosition > 0 &&
                         hasRequestCursorUpdatesCalled && _inputString.value.isNotEmpty()  ->{
 
                     deleteKeyPressed = true
                     suggestionClickNum = 0
-
-                    setVibrate()
                     deleteStringInEditText()
 
                     isHiragana = true
@@ -1958,7 +1977,6 @@ class IMEService: InputMethodService() {
                     deleteKeyPressed = true
                     suggestionClickNum = 0
 
-                    setVibrate()
                     deleteStringInEditTextRequestCursorUpdatesNotCalled()
                     isHiragana = true
                     _dakutenPressed.value = false
@@ -2011,6 +2029,7 @@ class IMEService: InputMethodService() {
         }
 
         setOnClickListener {
+            setVibrate()
             when{
                 _selectionEndtPosition - _mComposingTextPosition > 0 &&
                         hasRequestCursorUpdatesCalled && _inputString.value.isNotEmpty()  ->{
@@ -2018,7 +2037,6 @@ class IMEService: InputMethodService() {
                     deleteKeyPressed = true
                     suggestionClickNum = 0
 
-                    setVibrate()
                     deleteStringInEditText()
 
                     isHiragana = true
@@ -2032,7 +2050,6 @@ class IMEService: InputMethodService() {
                     deleteKeyPressed = true
                     suggestionClickNum = 0
 
-                    setVibrate()
                     deleteStringInEditTextRequestCursorUpdatesNotCalled()
                     isHiragana = true
                     _dakutenPressed.value = false
