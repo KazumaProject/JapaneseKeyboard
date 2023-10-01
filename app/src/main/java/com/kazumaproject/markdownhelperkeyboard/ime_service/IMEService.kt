@@ -209,6 +209,10 @@ class IMEService: InputMethodService() {
         const val DISPLAY_LEFT_STRING_TIME = 128L
     }
 
+    init {
+
+    }
+
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
     override fun onCreateInputView(): View? {
         val ctx = ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
@@ -249,7 +253,6 @@ class IMEService: InputMethodService() {
         resetAllFlags()
         setCurrentInputType(attribute)
     }
-
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         when(newConfig.orientation){
@@ -734,9 +737,9 @@ class IMEService: InputMethodService() {
                     InputTypeForIME.TextWebSearchViewFireFox -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
                     else ->{ /** empty body **/ }
                 }
-
                 /** 入力された文字の selection と composing region を設定する **/
-                setComposingTextPreEdit(inputString)
+                val spannableString = SpannableString(inputString)
+                setComposingTextPreEdit(inputString, spannableString)
                 delay(DELAY_TIME)
                 if (isHenkan) return@collectLatest
                 if (inputString.isEmpty()) return@collectLatest
@@ -746,7 +749,7 @@ class IMEService: InputMethodService() {
 
                 isContinuousTapInputEnabled = true
                 lastFlickConvertedNextHiragana = true
-                setComposingTextAfterEdit(inputString)
+                setComposingTextAfterEdit(inputString, spannableString)
 
             } else {
                 if (!hasRequestCursorUpdatesCalled) composingTextTrackingInputConnection?.resetComposingText()
@@ -756,8 +759,10 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private suspend fun setComposingTextPreEdit( inputString: String ){
-        val spannableString = SpannableString(inputString)
+    private suspend fun setComposingTextPreEdit(
+        inputString: String,
+        spannableString: SpannableString
+    ){
         spannableString.apply {
             setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
@@ -915,9 +920,9 @@ class IMEService: InputMethodService() {
     }
 
     private suspend fun setComposingTextAfterEdit(
-        inputString: String
+        inputString: String,
+        spannableString: SpannableString
     ){
-        val spannableString = SpannableString(inputString)
         val selPosition = if (_selectionEndtPosition < 0) 0 else _selectionEndtPosition
 
         spannableString.apply {
