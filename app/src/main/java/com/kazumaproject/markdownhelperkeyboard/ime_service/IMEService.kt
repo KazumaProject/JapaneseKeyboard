@@ -65,95 +65,64 @@ class IMEService: InputMethodService() {
     @Inject
     @Named("main_ime_scope")
     lateinit var scope : CoroutineScope
-
     @Inject
     @MainDispatcher
     lateinit var mainDispatcher: CoroutineDispatcher
-
     @Inject
     @InputBackGroundDispatcher
     lateinit var imeIoDispatcher: CoroutineDispatcher
-
-    private var mainLayoutBinding: MainLayoutBinding? = null
-
     @Inject
     lateinit var openWnnEngineJAJP: OpenWnnEngineJAJP
-
     @Inject
     lateinit var appPreference: AppPreference
-
     @Inject
     lateinit var composingText: ComposingText
-
     @Inject
     lateinit var tenKeyMap: TenKeyMapHolder
-
+    @Inject
+    lateinit var inputMethodManager: InputMethodManager
     @Inject
     @DrawableReturn
     lateinit var drawableReturn: Drawable
-
-    @Inject
-    lateinit var inputMethodManager: InputMethodManager
-
     @Inject
     @DrawableKanaSmall
     lateinit var drawableKanaSmall: Drawable
-
     @Inject
     @DrawableHenkan
     lateinit var drawableHenkan: Drawable
-
     @Inject
     @DrawableEnglishSmall
     lateinit var drawableEnglishSmall: Drawable
-
     @Inject
     @DrawableSpaceBar
     lateinit var drawableSpaceBar: Drawable
-
     @Inject
     @DrawableRightArrow
     lateinit var drawableRightArrow: Drawable
-
     @Inject
     @DrawableLanguage
     lateinit var drawableLanguage: Drawable
-
     @Inject
     @DrawableNumberSmall
     lateinit var drawableNumberSmall : Drawable
-
     @Inject
     @DrawableOpenBracket
     lateinit var drawableOpenBracket : Drawable
-
-    private var currentTenKeyId = 0
-
-    private var composingTextTrackingInputConnection: ComposingTextTrackingInputConnection? = null
-
-    private var suggestionAdapter: SuggestionAdapter?= null
-    private var emojiKigouAdapter: EmojiKigouAdapter?= null
-    private var kigouApdater: KigouAdapter?= null
-
-    private var lastFlickConvertedNextHiragana = false
     @Inject
     @PopUpTextActive
     lateinit var mPopupWindowActive: PopupWindow
     private lateinit var bubbleViewActive: BubbleLayout
     private lateinit var popTextActive: MaterialTextView
-
     @Inject
     @PopUpWindowTop
     lateinit var mPopupWindowTop: PopupWindow
     private lateinit var bubbleViewTop: BubbleLayout
     private lateinit var popTextTop: MaterialTextView
-
     @Inject
     @PopUpWindowLeft
     lateinit var mPopupWindowLeft: PopupWindow
     private lateinit var bubbleViewLeft: BubbleLayout
     private lateinit var popTextLeft: MaterialTextView
-
     @Inject
     @PopUpWindowBottom
     lateinit var mPopupWindowBottom: PopupWindow
@@ -165,34 +134,39 @@ class IMEService: InputMethodService() {
     private lateinit var bubbleViewRight: BubbleLayout
     private lateinit var popTextRight: MaterialTextView
 
+    private var mainLayoutBinding: MainLayoutBinding? = null
+    private var composingTextTrackingInputConnection: ComposingTextTrackingInputConnection? = null
+
+    private var suggestionAdapter: SuggestionAdapter?= null
+    private var emojiKigouAdapter: EmojiKigouAdapter?= null
+    private var kigouApdater: KigouAdapter?= null
+
+    private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
+    private val _inputString = MutableStateFlow(EMPTY_STRING)
+    private val _currentKeyboardMode = MutableStateFlow<KeyboardMode>(KeyboardMode.ModeTenKeyboard)
+    private val _currentModeInKigou = MutableStateFlow<ModeInKigou>(ModeInKigou.Null)
+    private val _dakutenPressed = MutableStateFlow(false)
+    private val _suggestionList = MutableStateFlow<List<String>>(emptyList())
+    private val _suggestionFlag = MutableStateFlow(false)
+
+    private var currentInputType: InputTypeForIME = InputTypeForIME.Text
+
+    private var currentTenKeyId = 0
+    private var lastFlickConvertedNextHiragana = false
     private var isContinuousTapInputEnabled = false
     private var englishSpaceKeyPressed = false
     private var isSelectionPositionAtNotEnd = false
 
-    private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
-    private val _inputString = MutableStateFlow(EMPTY_STRING)
-
-    private val _currentKeyboardMode = MutableStateFlow<KeyboardMode>(KeyboardMode.ModeTenKeyboard)
-    private val _currentModeInKigou = MutableStateFlow<ModeInKigou>(ModeInKigou.Null)
-    private var currentInputType: InputTypeForIME = InputTypeForIME.Text
-
     private var _mComposingTextPosition = -1
     private var _selectionEndtPosition = -1
-    private var startSelPosInSuggestion = 0
-
-    private val _dakutenPressed = MutableStateFlow(false)
-
-    private val _suggestionList = MutableStateFlow<List<String>>(emptyList())
-    private val _suggestionFlag = MutableStateFlow(false)
 
     private var firstXPoint = 0.0f
     private var firstYPoint = 0.0f
-    private var keyInputState = false
+
+    private var hasRequestCursorUpdatesCalled = false
+    private var startSelPosInSuggestion = 0
     private var suggestionClickNum = 0
     private var isHenkan = false
-    
-    private var hasRequestCursorUpdatesCalled = false
-
     private var selectionReqPosAfterDelete : Int = -1
 
     private var onLeftKeyLongPressUp = false
@@ -232,6 +206,7 @@ class IMEService: InputMethodService() {
 
         const val DELAY_TIME = 1000L
         const val SUGGESTION_LIST_SHOW_TIME = 64L
+        const val DISPLAY_LEFT_STRING_TIME = 120L
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -341,181 +316,14 @@ class IMEService: InputMethodService() {
                         _inputString.asStateFlow().collectLatest { inputString ->
                             if (inputString.isNotBlank()) {
                                 when(currentInputType){
-                                    InputTypeForIME.TextWebSearchView ->{
-                                        if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
-                                    }
-                                    InputTypeForIME.TextWebSearchViewFireFox ->{
-                                        if (deleteKeyPressed && !_dakutenPressed.value) {
-                                            return@collectLatest
-                                        }
-                                    }
-                                    else ->{}
+                                    InputTypeForIME.TextWebSearchView -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
+                                    InputTypeForIME.TextWebSearchViewFireFox -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
+                                    else ->{ /** empty body **/ }
                                 }
 
                                 /** 入力された文字の selection と composing region を設定する **/
-
-                                val spannableString = SpannableString(inputString)
-                                spannableString.apply {
-                                    setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                                }
-
-                                val selPosition = if (_selectionEndtPosition < 0) 0 else _selectionEndtPosition
-
-                                Timber.d("input value: $inputString $selPosition")
-
-                                when{
-                                    deleteKeyPressed &&
-                                            hasRequestCursorUpdatesCalled ->{
-                                        Timber.d("selection position delete: $selectionReqPosAfterDelete")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selectionReqPosAfterDelete ,selectionReqPosAfterDelete)
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    _dakutenPressed.value &&
-                                            hasRequestCursorUpdatesCalled ->{
-                                        Timber.d("selection position dakuten: $selPosition")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selPosition ,selPosition )
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    onDeleteLongPressUp &&
-                                            hasRequestCursorUpdatesCalled ->{
-                                        Timber.d("selection position delete long: $selPosition")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                setSelection(selPosition ,selPosition )
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    !hasRequestCursorUpdatesCalled &&
-                                            onDeleteLongPressUp ->{
-                                        composingTextTrackingInputConnection?.apply {
-
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                            }finally {
-                                                endBatchEdit()
-                                                composingTextInsertPosition = inputString.length
-                                            }
-                                        }
-
-                                    }
-                                    insertCharNotContinue &&
-                                            inputString.length != (_selectionEndtPosition - _mComposingTextPosition) &&
-                                            hasRequestCursorUpdatesCalled &&
-                                            !isContinuousTapInputEnabled && !lastFlickConvertedNextHiragana
-                                    ->{
-                                        Timber.d("selection position con: $selPosition $inputString $isSelectionPositionAtNotEnd")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selPosition ,selPosition )
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    !hasRequestCursorUpdatesCalled && !deleteKeyPressed ->{
-                                        composingTextTrackingInputConnection?.apply {
-                                            val position = composingTextInsertPosition + 1
-                                            val extractedText = getExtractedText(
-                                                ExtractedTextRequest(),0
-                                            )
-                                            extractedText?.apply {
-
-                                                Timber.d("selection position not request cursor: \n$inputString" +
-                                                        "\n$position" +
-                                                        "\n$composingText" +
-                                                        "\n${_dakutenPressed.value}" +
-                                                        "\n$startOffset" )
-                                                beginBatchEdit()
-                                                try {
-                                                    setComposingText(spannableString,1)
-                                                    delay(32)
-                                                    val startIndex = (startOffset + selectionStart) + 1
-                                                    when{
-                                                        _dakutenPressed.value -> setSelection(startIndex - 1, startIndex - 1)
-                                                        insertCharNotContinue -> setSelection(startIndex - 1, startIndex - 1)
-                                                        else -> setSelection(startIndex, startIndex)
-                                                    }
-                                                }finally {
-                                                    endBatchEdit()
-                                                    composingTextInsertPosition = when {
-                                                        _dakutenPressed.value -> position - 1
-                                                        insertCharNotContinue -> position - 1
-                                                        else -> position
-                                                    }
-                                                }
-
-                                            }
-
-                                        }
-
-                                    }
-
-                                    !hasRequestCursorUpdatesCalled && deleteKeyPressed ->{
-                                        composingTextTrackingInputConnection?.apply {
-                                            val position = composingTextInsertPosition - 1
-                                            val extractedText = getExtractedText(
-                                                ExtractedTextRequest(),0
-                                            )
-                                            extractedText?.text?.let { t ->
-                                                Timber.d("selection position not request cursor delete request: $inputString" +
-                                                        "\n$position" +
-                                                        "\n$composingText")
-                                                val composingTextStartPositionNoCursor = t.indexOf(composingText)
-                                                val selectionPositionNoCursor = position + composingTextStartPositionNoCursor
-                                                beginBatchEdit()
-                                                try {
-                                                    setComposingText(spannableString,1)
-                                                    setSelection(selectionPositionNoCursor, selectionPositionNoCursor)
-                                                }finally {
-                                                    endBatchEdit()
-                                                    composingTextInsertPosition = position
-                                                }
-                                            }
-                                        }
-
-                                    }
-
-                                    else ->{
-                                        Timber.d("selection position else: $selPosition $inputString $isSelectionPositionAtNotEnd $lastFlickConvertedNextHiragana $isContinuousTapInputEnabled")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selPosition + 1 ,selPosition + 1)
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-                                }
-
+                                setComposingTextPreEdit(inputString)
                                 delay(DELAY_TIME)
-
                                 if (isHenkan) return@collectLatest
                                 if (inputString.isEmpty()) return@collectLatest
                                 if (onDeleteLongPressUp) return@collectLatest
@@ -524,166 +332,7 @@ class IMEService: InputMethodService() {
 
                                 isContinuousTapInputEnabled = true
                                 lastFlickConvertedNextHiragana = true
-
-                                val selPosition2 = if (_selectionEndtPosition < 0) 0 else _selectionEndtPosition
-
-                                spannableString.apply {
-                                    setSpan(BackgroundColorSpan(getColor(R.color.blue)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                                    setSpan(UnderlineSpan(),0,inputString.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                                }
-
-                                when{
-                                    deleteKeyPressed &&
-                                            hasRequestCursorUpdatesCalled ->{
-                                        Timber.d("selection position delete: $selectionReqPosAfterDelete")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selPosition2 ,selPosition2)
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    _dakutenPressed.value &&
-                                            hasRequestCursorUpdatesCalled ->{
-                                        Timber.d("selection position dakuten: $selPosition2")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selPosition2 ,selPosition2 )
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    onDeleteLongPressUp &&
-                                            hasRequestCursorUpdatesCalled ->{
-                                        Timber.d("selection position delete long: $selPosition2 $inputString")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                setSelection(selPosition2 ,selPosition2 )
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    !hasRequestCursorUpdatesCalled &&
-                                            onDeleteLongPressUp ->{
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                            }finally {
-                                                endBatchEdit()
-                                                composingTextInsertPosition = inputString.length
-                                            }
-                                        }
-
-                                    }
-                                    insertCharNotContinue &&
-                                            inputString.length != (_selectionEndtPosition - _mComposingTextPosition) &&
-                                            hasRequestCursorUpdatesCalled &&
-                                            !isContinuousTapInputEnabled && !lastFlickConvertedNextHiragana
-                                    ->{
-                                        Timber.d("selection position con: $selPosition $inputString $isSelectionPositionAtNotEnd")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selPosition2 ,selPosition2 )
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-
-                                    !hasRequestCursorUpdatesCalled && !deleteKeyPressed ->{
-                                        composingTextTrackingInputConnection?.apply {
-                                            val position = composingTextInsertPosition
-                                            val extractedText = getExtractedText(
-                                                ExtractedTextRequest(),0
-                                            )
-                                            extractedText?.apply {
-
-                                                Timber.d("selection position not request cursor: \n$inputString" +
-                                                        "\n$position" +
-                                                        "\n$composingText" +
-                                                        "\n${_dakutenPressed.value}" +
-                                                        "\n$startOffset" )
-                                                beginBatchEdit()
-                                                try {
-                                                    setComposingText(spannableString,1)
-                                                    delay(32)
-                                                    val startIndex = (startOffset + selectionStart)
-                                                    when{
-                                                        _dakutenPressed.value -> setSelection(startIndex, startIndex)
-                                                        insertCharNotContinue -> setSelection(startIndex, startIndex)
-                                                        else -> setSelection(startIndex, startIndex)
-                                                    }
-                                                }finally {
-                                                    endBatchEdit()
-                                                    composingTextInsertPosition = when {
-                                                        _dakutenPressed.value -> startOffset + selectionStart
-                                                        insertCharNotContinue -> startOffset + selectionStart
-                                                        else -> startOffset + selectionStart
-                                                    }
-
-                                                }
-
-                                            }
-
-                                        }
-
-                                    }
-
-                                    !hasRequestCursorUpdatesCalled && deleteKeyPressed ->{
-                                        composingTextTrackingInputConnection?.apply {
-                                            val position = composingTextInsertPosition
-                                            val extractedText = getExtractedText(
-                                                ExtractedTextRequest(),0
-                                            )
-                                            extractedText?.text?.let { t ->
-                                                Timber.d("selection position not request cursor delete request: $inputString" +
-                                                        "\n$position" +
-                                                        "\n$composingText")
-                                                val composingTextStartPositionNoCursor = t.indexOf(composingText)
-                                                val selectionPositionNoCursor = position + composingTextStartPositionNoCursor
-                                                beginBatchEdit()
-                                                try {
-                                                    setComposingText(spannableString,1)
-                                                    setSelection(selectionPositionNoCursor, selectionPositionNoCursor)
-                                                }finally {
-                                                    endBatchEdit()
-                                                    composingTextInsertPosition = position
-                                                }
-                                            }
-                                        }
-
-                                    }
-
-                                    else ->{
-                                        Timber.d("selection position else 2: $selPosition2 $inputString $isSelectionPositionAtNotEnd $lastFlickConvertedNextHiragana $isContinuousTapInputEnabled")
-                                        composingTextTrackingInputConnection?.apply {
-                                            beginBatchEdit()
-                                            try {
-                                                setComposingText(spannableString,1)
-                                                if (isSelectionPositionAtNotEnd) setSelection(selPosition2,selPosition2)
-                                            }finally {
-                                                endBatchEdit()
-                                            }
-                                        }
-                                    }
-                                }
-
-                                Timber.d("composing text in scope: ${composingTextTrackingInputConnection?.composingTextInsertPosition} ${composingTextTrackingInputConnection?.composingText}")
+                                setComposingTextAfterEdit(inputString)
 
                             } else {
                                 Timber.d("suggestion clicked not henkan emopty input: ")
@@ -712,112 +361,22 @@ class IMEService: InputMethodService() {
                                     }
                                 }
                             }
-
                         }
                     }
                 }
-
             }
         }
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-
-        Timber.d("start Input: restart $restarting")
-
         composingTextTrackingInputConnection = ComposingTextTrackingInputConnection.newInstance(currentInputConnection)
         composingTextTrackingInputConnection?.apply {
             requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
             resetComposingText()
         }
-        _currentKeyboardMode.value = KeyboardMode.ModeTenKeyboard
-
-        _inputString.value = EMPTY_STRING
-
-        _selectionEndtPosition = -1
-        _mComposingTextPosition = -1
-
-        if (restarting){
-            isContinuousTapInputEnabled = false
-            deleteKeyPressed = false
-            _dakutenPressed.value = false
-            englishSpaceKeyPressed = false
-            insertCharNotContinue = false
-            lastFlickConvertedNextHiragana = false
-            onDeleteLongPressUp = false
-            deleteKeyLongKeyPressed = false
-        }
-
-        attribute?.apply {
-            currentInputType = getCurrentInputTypeForIME(inputType)
-            Timber.d("Input type now: $inputType " +
-                    "\n$currentInputType")
-            when(currentInputType){
-                InputTypeForIME.Text,
-                InputTypeForIME.TextAutoComplete,
-                InputTypeForIME.TextAutoCorrect,
-                InputTypeForIME.TextCapCharacters,
-                InputTypeForIME.TextCapSentences,
-                InputTypeForIME.TextCapWords,
-                InputTypeForIME.TextEmailSubject,
-                InputTypeForIME.TextFilter,
-                InputTypeForIME.TextMultiLine,
-                InputTypeForIME.TextImeMultiLine,
-                InputTypeForIME.TextShortMessage,
-                InputTypeForIME.TextLongMessage,
-                InputTypeForIME.TextNoSuggestion,
-                InputTypeForIME.TextPersonName,
-                InputTypeForIME.TextPhonetic,
-                InputTypeForIME.TextWebEditText,
-                InputTypeForIME.TextWebSearchView,
-                InputTypeForIME.TextWebSearchViewFireFox,
-                InputTypeForIME.TextSearchView
-                -> {
-                    _currentInputMode.value = InputMode.ModeJapanese
-                }
-
-                InputTypeForIME.TextEditTextInBookingTDBank,
-                InputTypeForIME.TextUri,
-                InputTypeForIME.TextPostalAddress,
-                InputTypeForIME.TextEmailAddress,
-                InputTypeForIME.TextWebEmailAddress,
-                InputTypeForIME.TextPassword,
-                InputTypeForIME.TextVisiblePassword,
-                InputTypeForIME.TextWebPassword,
-                ->{
-                    _currentInputMode.value = InputMode.ModeEnglish
-                }
-
-                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
-                    composingTextTrackingInputConnection?.requestCursorUpdates(0)
-                    hasRequestCursorUpdatesCalled = false
-                }
-
-                InputTypeForIME.Number,
-                InputTypeForIME.NumberDecimal,
-                InputTypeForIME.NumberPassword,
-                InputTypeForIME.NumberSigned,
-                InputTypeForIME.Phone,
-                InputTypeForIME.Date,
-                InputTypeForIME.Datetime,
-                InputTypeForIME.Time, -> {
-                    _currentInputMode.value = InputMode.ModeNumber
-                }
-
-            }
-
-        }
-
-    }
-
-    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
-        super.onStartInputView(info, restarting)
-
-        _inputString.value = EMPTY_STRING
-
-        _selectionEndtPosition = -1
-        _mComposingTextPosition = -1
+        resetAllFlags()
+        setCurrentInputType(attribute)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -840,13 +399,11 @@ class IMEService: InputMethodService() {
 
     override fun onFinishInput() {
         super.onFinishInput()
-        Timber.d("finish input  called")
         resetAllFlags()
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
-        Timber.d("windows hidden called")
         resetAllFlags()
     }
 
@@ -925,6 +482,67 @@ class IMEService: InputMethodService() {
     override fun onDestroy(){
         super.onDestroy()
         actionInDestroy()
+    }
+
+    private fun setCurrentInputType(attribute: EditorInfo?){
+        attribute?.apply {
+            currentInputType = getCurrentInputTypeForIME(inputType)
+            Timber.d("Input type now: $inputType " + "\n$currentInputType")
+            when(currentInputType){
+                InputTypeForIME.Text,
+                InputTypeForIME.TextAutoComplete,
+                InputTypeForIME.TextAutoCorrect,
+                InputTypeForIME.TextCapCharacters,
+                InputTypeForIME.TextCapSentences,
+                InputTypeForIME.TextCapWords,
+                InputTypeForIME.TextEmailSubject,
+                InputTypeForIME.TextFilter,
+                InputTypeForIME.TextMultiLine,
+                InputTypeForIME.TextImeMultiLine,
+                InputTypeForIME.TextShortMessage,
+                InputTypeForIME.TextLongMessage,
+                InputTypeForIME.TextNoSuggestion,
+                InputTypeForIME.TextPersonName,
+                InputTypeForIME.TextPhonetic,
+                InputTypeForIME.TextWebEditText,
+                InputTypeForIME.TextWebSearchView,
+                InputTypeForIME.TextWebSearchViewFireFox,
+                InputTypeForIME.TextSearchView
+                -> {
+                    _currentInputMode.value = InputMode.ModeJapanese
+                }
+
+                InputTypeForIME.TextEditTextInBookingTDBank,
+                InputTypeForIME.TextUri,
+                InputTypeForIME.TextPostalAddress,
+                InputTypeForIME.TextEmailAddress,
+                InputTypeForIME.TextWebEmailAddress,
+                InputTypeForIME.TextPassword,
+                InputTypeForIME.TextVisiblePassword,
+                InputTypeForIME.TextWebPassword,
+                ->{
+                    _currentInputMode.value = InputMode.ModeEnglish
+                }
+
+                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
+                    composingTextTrackingInputConnection?.requestCursorUpdates(0)
+                    hasRequestCursorUpdatesCalled = false
+                }
+
+                InputTypeForIME.Number,
+                InputTypeForIME.NumberDecimal,
+                InputTypeForIME.NumberPassword,
+                InputTypeForIME.NumberSigned,
+                InputTypeForIME.Phone,
+                InputTypeForIME.Date,
+                InputTypeForIME.Datetime,
+                InputTypeForIME.Time, -> {
+                    _currentInputMode.value = InputMode.ModeNumber
+                }
+
+            }
+
+        }
     }
 
     private fun initializeVariables(){
@@ -1152,6 +770,327 @@ class IMEService: InputMethodService() {
         isHenkan = false
     }
 
+    private suspend fun setComposingTextPreEdit( inputString: String ){
+        val spannableString = SpannableString(inputString)
+        spannableString.apply {
+            setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        val selPosition = if (_selectionEndtPosition < 0) 0 else _selectionEndtPosition
+        when{
+            deleteKeyPressed &&
+                    hasRequestCursorUpdatesCalled ->{
+                Timber.d("selection position delete: $selectionReqPosAfterDelete")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selectionReqPosAfterDelete ,selectionReqPosAfterDelete)
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            _dakutenPressed.value &&
+                    hasRequestCursorUpdatesCalled ->{
+                Timber.d("selection position dakuten: $selPosition")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selPosition ,selPosition )
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            onDeleteLongPressUp &&
+                    hasRequestCursorUpdatesCalled ->{
+                Timber.d("selection position delete long: $selPosition")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        setSelection(selPosition ,selPosition )
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            !hasRequestCursorUpdatesCalled &&
+                    onDeleteLongPressUp ->{
+                composingTextTrackingInputConnection?.apply {
+
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                    }finally {
+                        endBatchEdit()
+                        composingTextInsertPosition = inputString.length
+                    }
+                }
+
+            }
+            insertCharNotContinue &&
+                    inputString.length != (_selectionEndtPosition - _mComposingTextPosition) &&
+                    hasRequestCursorUpdatesCalled &&
+                    !isContinuousTapInputEnabled && !lastFlickConvertedNextHiragana
+            ->{
+                Timber.d("selection position con: $selPosition $inputString $isSelectionPositionAtNotEnd")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selPosition ,selPosition )
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            !hasRequestCursorUpdatesCalled && !deleteKeyPressed ->{
+                composingTextTrackingInputConnection?.apply {
+                    val position = composingTextInsertPosition + 1
+                    val extractedText = getExtractedText(
+                        ExtractedTextRequest(),0
+                    )
+                    extractedText?.apply {
+
+                        Timber.d("selection position not request cursor: \n$inputString" +
+                                "\n$position" +
+                                "\n$composingText" +
+                                "\n${_dakutenPressed.value}" +
+                                "\n$startOffset" )
+                        beginBatchEdit()
+                        try {
+                            setComposingText(spannableString,1)
+                            delay(32)
+                            val startIndex = (startOffset + selectionStart) + 1
+                            when{
+                                _dakutenPressed.value -> setSelection(startIndex - 1, startIndex - 1)
+                                insertCharNotContinue -> setSelection(startIndex - 1, startIndex - 1)
+                                else -> setSelection(startIndex, startIndex)
+                            }
+                        }finally {
+                            endBatchEdit()
+                            composingTextInsertPosition = when {
+                                _dakutenPressed.value -> position - 1
+                                insertCharNotContinue -> position - 1
+                                else -> position
+                            }
+                        }
+
+                    }
+
+                }
+
+            }
+
+            !hasRequestCursorUpdatesCalled && deleteKeyPressed ->{
+                composingTextTrackingInputConnection?.apply {
+                    val position = composingTextInsertPosition - 1
+                    val extractedText = getExtractedText(
+                        ExtractedTextRequest(),0
+                    )
+                    extractedText?.text?.let { t ->
+                        Timber.d("selection position not request cursor delete request: $inputString" +
+                                "\n$position" +
+                                "\n$composingText")
+                        val composingTextStartPositionNoCursor = t.indexOf(composingText)
+                        val selectionPositionNoCursor = position + composingTextStartPositionNoCursor
+                        beginBatchEdit()
+                        try {
+                            setComposingText(spannableString,1)
+                            setSelection(selectionPositionNoCursor, selectionPositionNoCursor)
+                        }finally {
+                            endBatchEdit()
+                            composingTextInsertPosition = position
+                        }
+                    }
+                }
+
+            }
+
+            else ->{
+                Timber.d("selection position else: $selPosition $inputString $isSelectionPositionAtNotEnd $lastFlickConvertedNextHiragana $isContinuousTapInputEnabled")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selPosition + 1 ,selPosition + 1)
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun setComposingTextAfterEdit(
+        inputString: String
+    ){
+        val spannableString = SpannableString(inputString)
+        val selPosition = if (_selectionEndtPosition < 0) 0 else _selectionEndtPosition
+
+        spannableString.apply {
+            setSpan(BackgroundColorSpan(getColor(R.color.blue)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(UnderlineSpan(),0,inputString.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+
+        when{
+            deleteKeyPressed &&
+                    hasRequestCursorUpdatesCalled ->{
+                Timber.d("selection position delete: $selectionReqPosAfterDelete")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selPosition,selPosition)
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            _dakutenPressed.value &&
+                    hasRequestCursorUpdatesCalled ->{
+                Timber.d("selection position dakuten: $selPosition")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selPosition,selPosition)
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            onDeleteLongPressUp &&
+                    hasRequestCursorUpdatesCalled ->{
+                Timber.d("selection position delete long: $selPosition $inputString")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        setSelection(selPosition ,selPosition )
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            !hasRequestCursorUpdatesCalled &&
+                    onDeleteLongPressUp ->{
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                    }finally {
+                        endBatchEdit()
+                        composingTextInsertPosition = inputString.length
+                    }
+                }
+
+            }
+            insertCharNotContinue &&
+                    inputString.length != (_selectionEndtPosition - _mComposingTextPosition) &&
+                    hasRequestCursorUpdatesCalled &&
+                    !isContinuousTapInputEnabled && !lastFlickConvertedNextHiragana
+            ->{
+                Timber.d("selection position con:$inputString $isSelectionPositionAtNotEnd")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selPosition ,selPosition )
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+
+            !hasRequestCursorUpdatesCalled && !deleteKeyPressed ->{
+                composingTextTrackingInputConnection?.apply {
+                    val position = composingTextInsertPosition
+                    val extractedText = getExtractedText(
+                        ExtractedTextRequest(),0
+                    )
+                    extractedText?.apply {
+
+                        Timber.d("selection position not request cursor: \n$inputString" +
+                                "\n$position" +
+                                "\n$composingText" +
+                                "\n${_dakutenPressed.value}" +
+                                "\n$startOffset" )
+                        beginBatchEdit()
+                        try {
+                            setComposingText(spannableString,1)
+                            delay(32)
+                            val startIndex = (startOffset + selectionStart)
+                            when{
+                                _dakutenPressed.value -> setSelection(startIndex, startIndex)
+                                insertCharNotContinue -> setSelection(startIndex, startIndex)
+                                else -> setSelection(startIndex, startIndex)
+                            }
+                        }finally {
+                            endBatchEdit()
+                            composingTextInsertPosition = when {
+                                _dakutenPressed.value -> startOffset + selectionStart
+                                insertCharNotContinue -> startOffset + selectionStart
+                                else -> startOffset + selectionStart
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+            !hasRequestCursorUpdatesCalled && deleteKeyPressed ->{
+                composingTextTrackingInputConnection?.apply {
+                    val position = composingTextInsertPosition
+                    val extractedText = getExtractedText(
+                        ExtractedTextRequest(),0
+                    )
+                    extractedText?.text?.let { t ->
+                        Timber.d("selection position not request cursor delete request: $inputString" +
+                                "\n$position" +
+                                "\n$composingText")
+                        val composingTextStartPositionNoCursor = t.indexOf(composingText)
+                        val selectionPositionNoCursor = position + composingTextStartPositionNoCursor
+                        beginBatchEdit()
+                        try {
+                            setComposingText(spannableString,1)
+                            setSelection(selectionPositionNoCursor, selectionPositionNoCursor)
+                        }finally {
+                            endBatchEdit()
+                            composingTextInsertPosition = position
+                        }
+                    }
+                }
+
+            }
+
+            else ->{
+                Timber.d("selection position else 2: $selPosition $inputString $isSelectionPositionAtNotEnd $lastFlickConvertedNextHiragana $isContinuousTapInputEnabled")
+                composingTextTrackingInputConnection?.apply {
+                    beginBatchEdit()
+                    try {
+                        setComposingText(spannableString,1)
+                        if (isSelectionPositionAtNotEnd) setSelection(selPosition,selPosition)
+                    }finally {
+                        endBatchEdit()
+                    }
+                }
+            }
+        }
+    }
+
     private fun setEnterKeyAction(listIterator: ListIterator<String>) = CoroutineScope(mainDispatcher).launch {
         when{
             // First
@@ -1172,7 +1111,7 @@ class IMEService: InputMethodService() {
                 lastFlickConvertedNextHiragana = false
                 isContinuousTapInputEnabled = false
                 deleteKeyPressed = false
-                delay(240L)
+                delay(DISPLAY_LEFT_STRING_TIME)
                 _inputString.value = text
                 _suggestionFlag.update {  flag ->
                     !flag
@@ -1196,7 +1135,7 @@ class IMEService: InputMethodService() {
                 lastFlickConvertedNextHiragana = false
                 isContinuousTapInputEnabled = false
                 deleteKeyPressed = false
-                delay(240L)
+                delay(DISPLAY_LEFT_STRING_TIME)
                 _inputString.value = text
                 _suggestionFlag.update {  flag ->
                     !flag
@@ -1220,7 +1159,7 @@ class IMEService: InputMethodService() {
                 lastFlickConvertedNextHiragana = false
                 isContinuousTapInputEnabled = false
                 deleteKeyPressed = false
-                delay(240L)
+                delay(DISPLAY_LEFT_STRING_TIME)
                 _inputString.value = text
                 _suggestionFlag.update {  flag ->
                     !flag
@@ -1229,9 +1168,15 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private fun setSuggestionRecyclerViewVisibility(flag: Boolean){
+    private suspend fun setSuggestionRecyclerViewVisibility(flag: Boolean){
         mainLayoutBinding?.let { mainView ->
-            mainView.suggestionRecyclerView.isVisible = !flag
+            if (flag){
+                mainView.suggestionRecyclerView.visibility = View.INVISIBLE
+                delay(100L)
+                mainView.suggestionRecyclerView.isVisible = false
+            }else{
+                mainView.suggestionRecyclerView.isVisible = true
+            }
         }
     }
     private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) = withContext(mainDispatcher){
@@ -2118,7 +2063,6 @@ class IMEService: InputMethodService() {
                     when(event.action and MotionEvent.ACTION_MASK){
                         MotionEvent.ACTION_DOWN ->{
                             setVibrate()
-                            keyInputState = true
                             firstXPoint = event.rawX
                             firstYPoint = event.rawY
                             currentTenKeyId = v.id
@@ -2439,7 +2383,6 @@ class IMEService: InputMethodService() {
                     when(event.action and MotionEvent.ACTION_MASK){
                         MotionEvent.ACTION_DOWN ->{
                             setVibrate()
-                            keyInputState = true
                             firstXPoint = event.rawX
                             firstYPoint = event.rawY
                             return@setOnTouchListener false
