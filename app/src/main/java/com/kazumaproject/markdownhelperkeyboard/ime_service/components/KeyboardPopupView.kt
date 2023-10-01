@@ -13,20 +13,21 @@ class KeyboardPopupView(
     context : Context,
     attributeSet: AttributeSet,
 ) : View(context, attributeSet) {
-    @SuppressLint("DrawAllocation")
 
-    override fun onDraw(canvas: Canvas?) {
+    private val backgroundPaint = Paint()
+    private val textPaint = Paint()
+    @SuppressLint("DrawAllocation")
+    override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val backgroundPaint = Paint().apply {
+        backgroundPaint.apply {
             color = ContextCompat.getColor(context, R.color.popup_bg)
         }
-        val textPaint = Paint().apply {
+        textPaint.apply {
             color = ContextCompat.getColor(context, R.color.main_text_color)
             textSize = 64f
             textAlign = Paint.Align.CENTER
         }
-
-        canvas?.apply {
+        canvas.apply {
             drawCircle(width/2f,height/2f,width/2f,backgroundPaint)
             drawText("あ", (width / 2f ), ((height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2)), textPaint )
         }
