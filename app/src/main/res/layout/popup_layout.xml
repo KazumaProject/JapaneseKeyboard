@@ -20,6 +20,7 @@
         android:layout_gravity="center"
         android:textSize="@dimen/pop_view_size"
         android:ems="4"
+        android:textStyle="bold"
         android:textColor="@color/white"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
