@@ -398,7 +398,6 @@ class IMEService: InputMethodService() {
 
             launch {
                 _currentModeInKigou.asStateFlow().collectLatest {
-                    if (_currentKeyboardMode.value != KeyboardMode.ModeKigouView) return@collectLatest
                     setTenKeyAndKigouView(it)
                 }
             }
@@ -1320,7 +1319,10 @@ class IMEService: InputMethodService() {
                     null
                 }
                 while (isActive){
-                    composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                    composingTextTrackingInputConnection?.apply {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL))
+                    }
                     delay(32)
                     if (onDeleteLongPressUp) {
                         isContinuousTapInputEnabled = true
@@ -1588,7 +1590,10 @@ class IMEService: InputMethodService() {
                     resetFlagsDeleteKey()
                 }
                 else ->{
-                    composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                    composingTextTrackingInputConnection?.apply {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL))
+                    }
                 }
             }
         }
@@ -1761,7 +1766,10 @@ class IMEService: InputMethodService() {
                     resetFlagsDeleteKey()
                 }
                 else ->{
-                    composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                    composingTextTrackingInputConnection?.apply {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL))
+                    }
                 }
             }
         }
