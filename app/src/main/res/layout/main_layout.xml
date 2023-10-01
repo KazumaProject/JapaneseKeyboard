@@ -19,7 +19,7 @@
         layout="@layout/kigou_main_layout"
         android:layout_gravity="bottom"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="@dimen/keyboard_height"
         android:visibility="gone"/>
 
     <androidx.recyclerview.widget.RecyclerView
