@@ -14,12 +14,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MarkdownKeyboard"
         android:usesCleartextTraffic="true"
-        tools:targetApi="31">
+        tools:targetApi="34">
 
         <activity
             android:name=".setting_activity.MainActivity"
             android:exported="true"
-            android:label="@string/title_activity_main" >
+            android:label="@string/title_activity_main">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
