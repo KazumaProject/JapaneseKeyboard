@@ -35,8 +35,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet): androidx.appcompat
     fun getCurrentInputMode(): InputMode {
         return currentInputMode
     }
-
-    override fun onDraw(canvas: Canvas?) {
+    override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val text = "あa1"
         when(currentInputMode){
