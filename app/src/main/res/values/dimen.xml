@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="keyboard_height">300dp</dimen>
+    <dimen name="keyboard_height">280dp</dimen>
     <dimen name="key_height">75dp</dimen>
     <dimen name="keyboard_side_boarder_height">290dp</dimen>
     <dimen name="key_text_size">12sp</dimen>
