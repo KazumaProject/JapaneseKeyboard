@@ -204,9 +204,9 @@ class IMEService: InputMethodService() {
                 EMOJI_LIST_ANIMALS_NATURE + EMOJI_LIST_FOOD_DRINK +
                 EMOJI_ACTIVITY + EMOJI_TRAVEL + EMOJI_OBJECT
 
-        const val DELAY_TIME = 1000L
+        const val DELAY_TIME = 1024L
         const val SUGGESTION_LIST_SHOW_TIME = 64L
-        const val DISPLAY_LEFT_STRING_TIME = 120L
+        const val DISPLAY_LEFT_STRING_TIME = 128L
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -215,7 +215,6 @@ class IMEService: InputMethodService() {
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
             mainLayoutBinding?.let { mainView ->
-
                 val keyList = listOf<Any>(
                     mainView.keyboardView.key1,
                     mainView.keyboardView.key2,
@@ -235,135 +234,7 @@ class IMEService: InputMethodService() {
                 setTenKeyView(keyList)
                 setSuggestionRecyclerView()
                 setKigouView()
-
-                scope.launch {
-
-                    launch {
-                        _suggestionFlag.asStateFlow().collectLatest {
-                            setSuggestionOnView(mainView)
-                        }
-                    }
-
-                    launch {
-                        _suggestionList.asStateFlow().collectLatest { suggestions ->
-                            suggestionAdapter?.suggestions = suggestions
-                            setSuggestionRecyclerViewVisibility(suggestions.isEmpty())
-                        }
-                    }
-
-                    launch {
-                        _currentInputMode.asStateFlow().collectLatest { state ->
-                            setKeyLayoutByInputMode(keyList, state, mainView.keyboardView.keySmallLetter)
-                            mainView.keyboardView.keySwitchKeyMode.setInputMode(state)
-                            mainView.keyboardView.keySwitchKeyMode.invalidate()
-                        }
-                    }
-
-                    launch {
-                        _currentKeyboardMode.asStateFlow().collectLatest {
-                            when(it){
-                                is KeyboardMode.ModeTenKeyboard ->{
-                                    mainView.keyboardView.root.isVisible = true
-                                    mainView.keyboardKigouView.root.isVisible = false
-                                }
-                                is KeyboardMode.ModeKigouView ->{
-                                    mainView.keyboardView.root.isVisible = false
-                                    mainView.keyboardKigouView.root.isVisible = true
-                                    _currentModeInKigou.update {
-                                        ModeInKigou.Emoji
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    launch {
-                        _currentModeInKigou.asStateFlow().collectLatest {
-                            if (_currentKeyboardMode.value != KeyboardMode.ModeKigouView) return@collectLatest
-                            when(it){
-                                is ModeInKigou.Emoji ->{
-                                    emojiKigouAdapter?.let { a ->
-                                        mainView.keyboardKigouView.kigouRecyclerView.apply {
-                                            adapter = a
-                                            layoutManager = GridLayoutManager(this@IMEService,6)
-                                        }
-                                    }
-                                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
-                                }
-                                is ModeInKigou.Kaomoji ->{
-                                    kigouApdater?.let { a ->
-                                        mainView.keyboardKigouView.kigouRecyclerView.apply {
-                                            adapter = a
-                                            layoutManager = GridLayoutManager(this@IMEService,3)
-                                        }
-                                    }
-                                    mainView.keyboardKigouView.kigouKaomojiBtn.isChecked = true
-                                }
-                                is ModeInKigou.Null ->{
-                                    emojiKigouAdapter?.let { a ->
-                                        mainView.keyboardKigouView.kigouRecyclerView.apply {
-                                            adapter = a
-                                            layoutManager = GridLayoutManager(this@IMEService,6)
-                                        }
-                                    }
-                                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
-                                }
-                            }
-                        }
-                    }
-
-                    withContext(imeIoDispatcher){
-                        _inputString.asStateFlow().collectLatest { inputString ->
-                            if (inputString.isNotBlank()) {
-                                when(currentInputType){
-                                    InputTypeForIME.TextWebSearchView -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
-                                    InputTypeForIME.TextWebSearchViewFireFox -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
-                                    else ->{ /** empty body **/ }
-                                }
-
-                                /** 入力された文字の selection と composing region を設定する **/
-                                setComposingTextPreEdit(inputString)
-                                delay(DELAY_TIME)
-                                if (isHenkan) return@collectLatest
-                                if (inputString.isEmpty()) return@collectLatest
-                                if (onDeleteLongPressUp) return@collectLatest
-                                if (englishSpaceKeyPressed) return@collectLatest
-                                if (deleteKeyLongKeyPressed) return@collectLatest
-
-                                isContinuousTapInputEnabled = true
-                                lastFlickConvertedNextHiragana = true
-                                setComposingTextAfterEdit(inputString)
-
-                            } else {
-                                Timber.d("suggestion clicked not henkan emopty input: ")
-                                if (!hasRequestCursorUpdatesCalled){
-                                    composingTextTrackingInputConnection?.resetComposingText()
-                                }
-                                _suggestionList.update { emptyList() }
-                                withContext(mainDispatcher){
-                                    mainView.keyboardView.keySpace.apply {
-                                        setImageDrawable(drawableSpaceBar)
-                                    }
-                                    mainView.keyboardView.keyEnter.apply {
-                                        setImageDrawable(drawableRightArrow)
-                                    }
-                                    when(_currentInputMode.value){
-                                        is InputMode.ModeJapanese, is InputMode.ModeEnglish ->{
-                                            mainView.keyboardView.keySmallLetter.apply {
-                                                setImageDrawable(drawableLanguage)
-                                            }
-                                        }
-                                        is InputMode.ModeNumber ->{
-                                            mainView.keyboardView.keySmallLetter.apply {
-                                                setImageDrawable(drawableNumberSmall)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                startScope(keyList)
             }
         }
     }
@@ -482,6 +353,58 @@ class IMEService: InputMethodService() {
     override fun onDestroy(){
         super.onDestroy()
         actionInDestroy()
+    }
+
+    private fun startScope(keyList: List<Any>) = scope.launch {
+        mainLayoutBinding?.let { mainView ->
+            launch {
+                _suggestionFlag.asStateFlow().collectLatest {
+                    setSuggestionOnView(mainView)
+                }
+            }
+
+            launch {
+                _suggestionList.asStateFlow().collectLatest { suggestions ->
+                    suggestionAdapter?.suggestions = suggestions
+                    setSuggestionRecyclerViewVisibility(suggestions.isEmpty())
+                }
+            }
+
+            launch {
+                _currentInputMode.asStateFlow().collectLatest { state ->
+                    setKeyLayoutByInputMode(keyList, state, mainView.keyboardView.keySmallLetter)
+                    mainView.keyboardView.keySwitchKeyMode.setInputMode(state)
+                    mainView.keyboardView.keySwitchKeyMode.invalidate()
+                }
+            }
+
+            launch {
+                _currentKeyboardMode.asStateFlow().collectLatest {
+                    when(it){
+                        is KeyboardMode.ModeTenKeyboard ->{
+                            mainView.keyboardView.root.isVisible = true
+                            mainView.keyboardKigouView.root.isVisible = false
+                        }
+                        is KeyboardMode.ModeKigouView ->{
+                            mainView.keyboardView.root.isVisible = false
+                            mainView.keyboardKigouView.root.isVisible = true
+                            _currentModeInKigou.update {
+                                ModeInKigou.Emoji
+                            }
+                        }
+                    }
+                }
+            }
+
+            launch {
+                _currentModeInKigou.asStateFlow().collectLatest {
+                    if (_currentKeyboardMode.value != KeyboardMode.ModeKigouView) return@collectLatest
+                    setTenKeyAndKigouView(it)
+                }
+            }
+
+            launchInputString()
+        }
     }
 
     private fun setCurrentInputType(attribute: EditorInfo?){
@@ -697,6 +620,40 @@ class IMEService: InputMethodService() {
         }
     }
 
+    private fun setTenKeyAndKigouView(modeInKigou: ModeInKigou){
+        mainLayoutBinding?.let { mainView ->
+            when(modeInKigou){
+                is ModeInKigou.Emoji ->{
+                    emojiKigouAdapter?.let { a ->
+                        mainView.keyboardKigouView.kigouRecyclerView.apply {
+                            adapter = a
+                            layoutManager = GridLayoutManager(this@IMEService,6)
+                        }
+                    }
+                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
+                }
+                is ModeInKigou.Kaomoji ->{
+                    kigouApdater?.let { a ->
+                        mainView.keyboardKigouView.kigouRecyclerView.apply {
+                            adapter = a
+                            layoutManager = GridLayoutManager(this@IMEService,3)
+                        }
+                    }
+                    mainView.keyboardKigouView.kigouKaomojiBtn.isChecked = true
+                }
+                is ModeInKigou.Null ->{
+                    emojiKigouAdapter?.let { a ->
+                        mainView.keyboardKigouView.kigouRecyclerView.apply {
+                            adapter = a
+                            layoutManager = GridLayoutManager(this@IMEService,6)
+                        }
+                    }
+                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
+                }
+            }
+        }
+    }
+
     private fun resetAllFlags(){
         _currentKeyboardMode.update { KeyboardMode.ModeTenKeyboard }
         _inputString.update { EMPTY_STRING }
@@ -768,6 +725,36 @@ class IMEService: InputMethodService() {
         insertCharNotContinue = false
         onDeleteLongPressUp = false
         isHenkan = false
+    }
+
+    private suspend fun launchInputString() = withContext(imeIoDispatcher){
+        _inputString.asStateFlow().collectLatest { inputString ->
+            if (inputString.isNotBlank()) {
+                when(currentInputType){
+                    InputTypeForIME.TextWebSearchView -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
+                    InputTypeForIME.TextWebSearchViewFireFox -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
+                    else ->{ /** empty body **/ }
+                }
+
+                /** 入力された文字の selection と composing region を設定する **/
+                setComposingTextPreEdit(inputString)
+                delay(DELAY_TIME)
+                if (isHenkan) return@collectLatest
+                if (inputString.isEmpty()) return@collectLatest
+                if (onDeleteLongPressUp) return@collectLatest
+                if (englishSpaceKeyPressed) return@collectLatest
+                if (deleteKeyLongKeyPressed) return@collectLatest
+
+                isContinuousTapInputEnabled = true
+                lastFlickConvertedNextHiragana = true
+                setComposingTextAfterEdit(inputString)
+
+            } else {
+                if (!hasRequestCursorUpdatesCalled) composingTextTrackingInputConnection?.resetComposingText()
+                _suggestionList.update { emptyList() }
+                setTenkeyIconsEmptyInputString()
+            }
+        }
     }
 
     private suspend fun setComposingTextPreEdit( inputString: String ){
@@ -1163,6 +1150,29 @@ class IMEService: InputMethodService() {
                 _inputString.value = text
                 _suggestionFlag.update {  flag ->
                     !flag
+                }
+            }
+        }
+    }
+
+    private suspend fun setTenkeyIconsEmptyInputString() = withContext(mainDispatcher){
+        mainLayoutBinding?.let { mainView ->
+            mainView.keyboardView.keySpace.apply {
+                setImageDrawable(drawableSpaceBar)
+            }
+            mainView.keyboardView.keyEnter.apply {
+                setImageDrawable(drawableRightArrow)
+            }
+            when(_currentInputMode.value){
+                is InputMode.ModeJapanese, is InputMode.ModeEnglish ->{
+                    mainView.keyboardView.keySmallLetter.apply {
+                        setImageDrawable(drawableLanguage)
+                    }
+                }
+                is InputMode.ModeNumber ->{
+                    mainView.keyboardView.keySmallLetter.apply {
+                        setImageDrawable(drawableNumberSmall)
+                    }
                 }
             }
         }

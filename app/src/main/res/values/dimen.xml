@@ -35,7 +35,7 @@
     <dimen name="candidate_view_size">50sp</dimen>
     <dimen name="candidate_vertical_padding">6dp</dimen>
     <dimen name="main_key_padding">24dp</dimen>
-    <dimen name="pop_view_size">12sp</dimen>
+    <dimen name="pop_view_size">14sp</dimen>
 
     <dimen name="qwety_line_size">72dp</dimen>
     <dimen name="qwety_line_horizontal_size">48dp</dimen>
