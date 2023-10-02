@@ -43,10 +43,6 @@ object AppModule {
     @Provides
     fun providesMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
 
-    @MainImmediateDispatcher
-    @Provides
-    fun providesMainImmediateDispatcher(): CoroutineDispatcher = Dispatchers.Main.immediate
-
     @InputBackGroundDispatcher
     @Provides
     fun providesInputBackgroundDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
