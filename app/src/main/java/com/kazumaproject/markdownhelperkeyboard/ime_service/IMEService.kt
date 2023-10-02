@@ -69,6 +69,9 @@ class IMEService: InputMethodService() {
     @MainDispatcher
     lateinit var mainDispatcher: CoroutineDispatcher
     @Inject
+    @IoDispatcher
+    lateinit var ioDispatcher: CoroutineDispatcher
+    @Inject
     @InputBackGroundDispatcher
     lateinit var imeIoDispatcher: CoroutineDispatcher
     @Inject
@@ -206,11 +209,7 @@ class IMEService: InputMethodService() {
 
         const val DELAY_TIME = 1024L
         const val SUGGESTION_LIST_SHOW_TIME = 64L
-        const val DISPLAY_LEFT_STRING_TIME = 128L
-    }
-
-    init {
-
+        const val DISPLAY_LEFT_STRING_TIME = 64L
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -412,7 +411,6 @@ class IMEService: InputMethodService() {
     private fun setCurrentInputType(attribute: EditorInfo?){
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME(inputType)
-            Timber.d("Input type now: $inputType " + "\n$currentInputType")
             when(currentInputType){
                 InputTypeForIME.Text,
                 InputTypeForIME.TextAutoComplete,
@@ -466,7 +464,6 @@ class IMEService: InputMethodService() {
                 }
 
             }
-
         }
     }
 
@@ -538,7 +535,7 @@ class IMEService: InputMethodService() {
                         val composingTextEndPosition = startPosition - composingTextStartPos
                         if (length != composingTextEndPosition && isSelectionPositionAtNotEnd){
                             if (!isHenkan){
-                                CoroutineScope(mainDispatcher).launch {
+                                CoroutineScope(ioDispatcher).launch {
                                     composingTextTrackingInputConnection?.commitText(it,1)
                                     val text = try {
                                         _inputString.value.substring(
@@ -548,8 +545,11 @@ class IMEService: InputMethodService() {
                                         if (e is CancellationException) throw e
                                         EMPTY_STRING
                                     }
-                                    resetSuggestionAdapterFlags()
-                                    delay(240L)
+                                    _suggestionList.update { emptyList() }
+                                    withContext(mainDispatcher){
+                                        mainLayoutBinding?.suggestionRecyclerView?.visibility = View.INVISIBLE
+                                    }
+                                    delay(DISPLAY_LEFT_STRING_TIME)
                                     _inputString.value = text
                                     _suggestionFlag.update { flag ->
                                         !flag
@@ -559,20 +559,18 @@ class IMEService: InputMethodService() {
                         }else {
                             composingTextTrackingInputConnection?.commitText(it,1)
                             _inputString.value = EMPTY_STRING
-                            resetSuggestionAdapterFlags()
                         }
                     }
                 }else{
                     if (!isHenkan){
                         composingTextTrackingInputConnection?.commitText(it,1)
                         _inputString.value = EMPTY_STRING
-                        resetSuggestionAdapterFlags()
                     }else{
                         composingTextTrackingInputConnection?.commitText(it,1)
                         _inputString.value = EMPTY_STRING
-                        resetSuggestionAdapterFlags()
                     }
                 }
+                resetFlagsKeyEnter()
             }
         }
         val flexboxLayoutManager = FlexboxLayoutManager(this@IMEService).apply {
@@ -685,19 +683,6 @@ class IMEService: InputMethodService() {
         openWnnEngineJAJP.close()
         scope.coroutineContext.cancelChildren()
     }
-
-    private fun resetSuggestionAdapterFlags(){
-        lastFlickConvertedNextHiragana = false
-        isContinuousTapInputEnabled = false
-        deleteKeyPressed = false
-        _dakutenPressed.value = false
-        insertCharNotContinue = false
-        onDeleteLongPressUp = false
-        isHenkan = false
-        suggestionClickNum = 0
-        englishSpaceKeyPressed = false
-    }
-
     private fun resetFlagsKeyEnter(){
         isHenkan = false
         suggestionClickNum = 0
@@ -1082,7 +1067,11 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private fun setEnterKeyAction(listIterator: ListIterator<String>) = CoroutineScope(mainDispatcher).launch {
+    private fun setEnterKeyAction(listIterator: ListIterator<String>) = CoroutineScope(ioDispatcher).launch {
+        _suggestionList.update { emptyList() }
+        withContext(mainDispatcher){
+            mainLayoutBinding?.suggestionRecyclerView?.visibility = View.INVISIBLE
+        }
         when{
             // First
             !listIterator.hasPrevious() && listIterator.hasNext() ->{
@@ -1099,14 +1088,9 @@ class IMEService: InputMethodService() {
                     if (e is CancellationException) throw e
                     EMPTY_STRING
                 }
-                lastFlickConvertedNextHiragana = false
-                isContinuousTapInputEnabled = false
-                deleteKeyPressed = false
                 delay(DISPLAY_LEFT_STRING_TIME)
                 _inputString.value = text
-                _suggestionFlag.update {  flag ->
-                    !flag
-                }
+                _suggestionFlag.update { flag -> !flag }
             }
             // Middle
             listIterator.hasPrevious() && listIterator.hasNext() ->{
@@ -1123,14 +1107,9 @@ class IMEService: InputMethodService() {
                     if (e is CancellationException) throw e
                     EMPTY_STRING
                 }
-                lastFlickConvertedNextHiragana = false
-                isContinuousTapInputEnabled = false
-                deleteKeyPressed = false
                 delay(DISPLAY_LEFT_STRING_TIME)
                 _inputString.value = text
-                _suggestionFlag.update {  flag ->
-                    !flag
-                }
+                _suggestionFlag.update { flag -> !flag }
             }
             // End
             listIterator.hasPrevious() && !listIterator.hasNext() ->{
@@ -1147,14 +1126,9 @@ class IMEService: InputMethodService() {
                     if (e is CancellationException) throw e
                     EMPTY_STRING
                 }
-                lastFlickConvertedNextHiragana = false
-                isContinuousTapInputEnabled = false
-                deleteKeyPressed = false
                 delay(DISPLAY_LEFT_STRING_TIME)
                 _inputString.value = text
-                _suggestionFlag.update {  flag ->
-                    !flag
-                }
+                _suggestionFlag.update { flag -> !flag }
             }
         }
     }
@@ -1222,30 +1196,13 @@ class IMEService: InputMethodService() {
         when {
             _inputString.value.isNotBlank()
                     && hasRequestCursorUpdatesCalled -> {
-
                 if (suggestionClickNum != 0) return
-
                 setSuggestionForJapanese(mainView)
-
             }
             _inputString.value.isNotBlank()
                     && !hasRequestCursorUpdatesCalled -> {
                 if (suggestionClickNum == 0) {
-
-                    val startPos = 0
-                    val endPos = _inputString.value.length
-                    val queryTextTmp = _inputString.value.substring(
-                        startPos, endPos
-                    )
-
-                    Timber.d(
-                        "SuggestionClicked: \n" +
-                                "start: $startPos\n" +
-                                "string: $queryTextTmp"
-                    )
-
                     setSuggestionForJapanese(mainView)
-
                 }
             }
 
@@ -1254,7 +1211,7 @@ class IMEService: InputMethodService() {
 
     private suspend fun setSuggestionForJapanese(mainView: MainLayoutBinding) {
         updateSuggestionUI(mainView)
-        _suggestionList.value = getSuggestionList()
+        _suggestionList.update { getSuggestionList() }
     }
 
     private suspend fun getSuggestionList() = CoroutineScope(mainDispatcher).async{
@@ -1311,7 +1268,7 @@ class IMEService: InputMethodService() {
         return@async emptyList()
     }.await()
 
-    private fun deleteLongPress() = CoroutineScope(mainDispatcher).launch {
+    private fun deleteLongPress() = CoroutineScope(ioDispatcher).launch {
         if (_inputString.value.isNotEmpty()){
             if (hasRequestCursorUpdatesCalled){
                 val startPos = if (_selectionEndtPosition - _mComposingTextPosition < 0) 0 else  _selectionEndtPosition - _mComposingTextPosition
@@ -1337,10 +1294,6 @@ class IMEService: InputMethodService() {
                             val text = composingTextTrackingInputConnection?.getExtractedText(ExtractedTextRequest(),0)
                             text?.text?.let { t ->
                                 if (t.length > _inputString.value.length ){
-                                    Timber.d("delete key long press 1: $t \n" +
-                                            "${_inputString.value} \n" +
-                                            "$_mComposingTextPosition \n" +
-                                            "$_selectionEndtPosition")
                                     try {
                                         if (deleteBefore != null ){
                                             _inputString.value = StringBuilder(
@@ -1435,12 +1388,10 @@ class IMEService: InputMethodService() {
                                             _mComposingTextPosition == -1 ->{
                                                 _inputString.value = EMPTY_STRING
                                             }
-
                                             else ->{
                                                 _inputString.value = EMPTY_STRING
                                             }
                                         }
-
                                     }
                                 }
                             }
@@ -1448,7 +1399,6 @@ class IMEService: InputMethodService() {
                                 _inputString.value = EMPTY_STRING
                             }
                         }
-
                         return@launch
                     }
                 }
@@ -1567,7 +1517,7 @@ class IMEService: InputMethodService() {
         setOnTouchListener { _, event ->
             when(event.action and MotionEvent.ACTION_MASK){
                 MotionEvent.ACTION_UP ->{
-                    CoroutineScope(mainDispatcher).launch {
+                    CoroutineScope(ioDispatcher).launch {
                         onDeleteLongPressUp = true
                         delay(200)
                         onDeleteLongPressUp = false
@@ -1745,7 +1695,7 @@ class IMEService: InputMethodService() {
         setOnTouchListener { _, event ->
             when(event.action and MotionEvent.ACTION_MASK){
                 MotionEvent.ACTION_UP ->{
-                    CoroutineScope(mainDispatcher).launch {
+                    CoroutineScope(ioDispatcher).launch {
                         onDeleteLongPressUp = true
                         delay(200)
                         onDeleteLongPressUp = false
@@ -1828,7 +1778,7 @@ class IMEService: InputMethodService() {
             setOnTouchListener { _, event ->
                 when(event.action and MotionEvent.ACTION_MASK){
                     MotionEvent.ACTION_UP ->{
-                        CoroutineScope(mainDispatcher).launch {
+                        CoroutineScope(ioDispatcher).launch {
                             onLeftKeyLongPressUp = true
                             delay(100)
                             onLeftKeyLongPressUp = false
@@ -1882,7 +1832,7 @@ class IMEService: InputMethodService() {
                         composingTextTrackingInputConnection?.let { inputConnection ->
                             val text = inputConnection.getExtractedText(ExtractedTextRequest(),0)
                             if (text.text.isNotEmpty()) {
-                                CoroutineScope(mainDispatcher).launch {
+                                CoroutineScope(ioDispatcher).launch {
                                     while (isActive){
                                         composingTextTrackingInputConnection?.apply {
                                             if (_inputString.value.isNotEmpty()){
@@ -1903,7 +1853,7 @@ class IMEService: InputMethodService() {
                             }
                         }
                     }else {
-                        CoroutineScope(mainDispatcher).launch {
+                        CoroutineScope(ioDispatcher).launch {
                             while (isActive){
                                 composingTextTrackingInputConnection?.apply {
                                     if (_inputString.value.isNotEmpty()){
@@ -1938,7 +1888,7 @@ class IMEService: InputMethodService() {
             setOnTouchListener { _, event ->
                 when(event.action and MotionEvent.ACTION_MASK){
                     MotionEvent.ACTION_UP ->{
-                        CoroutineScope(mainDispatcher).launch {
+                        CoroutineScope(ioDispatcher).launch {
                             onRightKeyLongPressUp = true
                             delay(100)
                             onRightKeyLongPressUp = false
@@ -2002,7 +1952,7 @@ class IMEService: InputMethodService() {
                     suggestionClickNum = 0
                     lastFlickConvertedNextHiragana = true
                     isContinuousTapInputEnabled = true
-                    CoroutineScope(mainDispatcher).launch {
+                    CoroutineScope(ioDispatcher).launch {
                         while (isActive){
                             composingTextTrackingInputConnection?.apply {
                                 if (_inputString.value.isNotBlank()){
@@ -2734,7 +2684,7 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private fun deleteStringInWebSearchView() = CoroutineScope(mainDispatcher).launch {
+    private fun deleteStringInWebSearchView() = CoroutineScope(ioDispatcher).launch {
         val composingTextStartingPosition = _selectionEndtPosition - _mComposingTextPosition
 
         val deletePos = when{
@@ -2784,7 +2734,7 @@ class IMEService: InputMethodService() {
             _inputString.value = EMPTY_STRING
         }else{
             if (composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL)) == true){
-                CoroutineScope(mainDispatcher).launch {
+                CoroutineScope(ioDispatcher).launch {
                     val composingTextStartingPosition = _selectionEndtPosition - _mComposingTextPosition
                     val deletePos = when{
                         composingTextStartingPosition - 1 < 0 -> 0
