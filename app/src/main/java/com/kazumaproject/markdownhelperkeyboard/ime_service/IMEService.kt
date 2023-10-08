@@ -56,7 +56,6 @@ import javax.inject.Inject
 import javax.inject.Named
 import kotlin.math.abs
 
-
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
 class IMEService: InputMethodService() {
