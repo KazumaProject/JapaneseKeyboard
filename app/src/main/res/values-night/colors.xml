@@ -30,8 +30,9 @@
 
     <color name="popup_bg_active">#5E97F6</color>
 
-    <color name="green">#330099CC</color>
-    <color name="blue">#550099AA</color>
+    <color name="char_in_edit_color">#440099CC</color>
+    <color name="green">#660099CC</color>
+    <color name="blue">#660099cc</color>
     <color name="orange">#55FF8800</color>
 
     <color name="navy">#22303c</color>
