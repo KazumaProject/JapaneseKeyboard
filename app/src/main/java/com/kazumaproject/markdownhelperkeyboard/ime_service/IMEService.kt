@@ -145,6 +145,7 @@ class IMEService: InputMethodService() {
 
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
     private val _inputString = MutableStateFlow(EMPTY_STRING)
+    private var stringInTail = ""
     private val _currentKeyboardMode = MutableStateFlow<KeyboardMode>(KeyboardMode.ModeTenKeyboard)
     private val _currentModeInKigou = MutableStateFlow<ModeInKigou>(ModeInKigou.Null)
     private val _dakutenPressed = MutableStateFlow(false)
@@ -287,7 +288,6 @@ class IMEService: InputMethodService() {
             launch {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
                     suggestionAdapter?.suggestions = suggestions
-                    setSuggestionRecyclerViewVisibility(suggestions.isEmpty())
                 }
             }
 
@@ -450,9 +450,6 @@ class IMEService: InputMethodService() {
                         CoroutineScope(ioDispatcher).launch {
                             currentInputConnection?.commitText(it,1)
                             _suggestionList.update { emptyList() }
-                            withContext(mainDispatcher){
-                                mainLayoutBinding?.suggestionRecyclerView?.visibility = View.INVISIBLE
-                            }
                             delay(DISPLAY_LEFT_STRING_TIME)
                             _inputString.value = stringInTail
                             stringInTail = EMPTY_STRING
@@ -575,8 +572,8 @@ class IMEService: InputMethodService() {
         englishSpaceKeyPressed = false
         onDeleteLongPressUp = false
         _dakutenPressed.value = false
-        lastFlickConvertedNextHiragana = false
-        isContinuousTapInputEnabled = false
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
     }
 
     private fun resetFlagsKeySpace(){
@@ -593,10 +590,10 @@ class IMEService: InputMethodService() {
         englishSpaceKeyPressed = false
         onDeleteLongPressUp = false
         isHenkan = false
-        lastFlickConvertedNextHiragana = false
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
     }
 
-    private var stringInTail = ""
     private suspend fun launchInputString() = withContext(imeIoDispatcher){
         _inputString.asStateFlow().collectLatest { inputString ->
             if (inputString.isNotBlank()) {
@@ -624,14 +621,19 @@ class IMEService: InputMethodService() {
         inputString: String,
         spannableString: SpannableString
     ){
-        spannableString.apply {
-            setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length - 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(BackgroundColorSpan(getColor(R.color.char_in_edit_color)),inputString.length - 1,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        if (isContinuousTapInputEnabled && lastFlickConvertedNextHiragana){
+            spannableString.apply {
+                setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+        }else{
+            spannableString.apply {
+                setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length - 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(BackgroundColorSpan(getColor(R.color.char_in_edit_color)),inputString.length - 1,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
         }
-        currentInputConnection?.apply {
-            setComposingText(spannableString,1)
-        }
+        currentInputConnection?. setComposingText(spannableString,1)
     }
 
     private fun setComposingTextAfterEdit(
@@ -642,16 +644,11 @@ class IMEService: InputMethodService() {
             setSpan(BackgroundColorSpan(getColor(R.color.blue)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(UnderlineSpan(),0,inputString.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        currentInputConnection?.apply {
-            setComposingText(spannableString,1)
-        }
+        currentInputConnection?.setComposingText(spannableString,1)
     }
 
     private fun setEnterKeyAction(listIterator: ListIterator<String>) = CoroutineScope(ioDispatcher).launch {
         _suggestionList.update { emptyList() }
-        withContext(mainDispatcher){
-            mainLayoutBinding?.suggestionRecyclerView?.visibility = View.INVISIBLE
-        }
         val nextSuggestion = listIterator.next()
         currentInputConnection?.commitText(nextSuggestion,1)
         delay(DISPLAY_LEFT_STRING_TIME)
@@ -683,17 +680,6 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private suspend fun setSuggestionRecyclerViewVisibility(flag: Boolean){
-        mainLayoutBinding?.let { mainView ->
-            if (flag){
-                mainView.suggestionRecyclerView.visibility = View.INVISIBLE
-                delay(100L)
-                mainView.suggestionRecyclerView.isVisible = false
-            }else{
-                mainView.suggestionRecyclerView.isVisible = true
-            }
-        }
-    }
     private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) = withContext(mainDispatcher){
         mainView.keyboardView.keyEnter.apply {
             setImageDrawable(drawableReturn)
@@ -782,12 +768,16 @@ class IMEService: InputMethodService() {
                     _inputString.update { it.dropLast(1) }
                 }
                 if (_inputString.value.isEmpty()) {
-                    isContinuousTapInputEnabled = false
-                    if (stringInTail.isNotEmpty()) return@launch
+                    if (stringInTail.isNotEmpty()) {
+                        isContinuousTapInputEnabled = true
+                        lastFlickConvertedNextHiragana = true
+                        return@launch
+                    }
                 }
                 delay(32)
                 if (onDeleteLongPressUp) {
-                    isContinuousTapInputEnabled = false
+                    isContinuousTapInputEnabled = true
+                    lastFlickConvertedNextHiragana = true
                     return@launch
                 }
             }
@@ -797,7 +787,8 @@ class IMEService: InputMethodService() {
                 currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
                 delay(32)
                 if (onDeleteLongPressUp) {
-                    isContinuousTapInputEnabled = false
+                    isContinuousTapInputEnabled = true
+                    lastFlickConvertedNextHiragana = true
                     return@launch
                 }
             }
@@ -1141,7 +1132,7 @@ class IMEService: InputMethodService() {
                     currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT))
                 }else{
                     if (!isHenkan){
-                        lastFlickConvertedNextHiragana = false
+                        lastFlickConvertedNextHiragana = true
                         isContinuousTapInputEnabled = true
                         englishSpaceKeyPressed = false
                         suggestionClickNum = 0
@@ -1229,7 +1220,7 @@ class IMEService: InputMethodService() {
                 if (!isHenkan){
                     onRightKeyLongPressUp = false
                     suggestionClickNum = 0
-                    lastFlickConvertedNextHiragana = false
+                    lastFlickConvertedNextHiragana = true
                     isContinuousTapInputEnabled = true
                     CoroutineScope(ioDispatcher).launch {
                         while (isActive){
@@ -1256,7 +1247,7 @@ class IMEService: InputMethodService() {
         }else{
             if (!isHenkan){
                 englishSpaceKeyPressed = false
-                lastFlickConvertedNextHiragana = false
+                lastFlickConvertedNextHiragana = true
                 isContinuousTapInputEnabled = true
                 suggestionClickNum = 0
                 if (stringInTail.isNotEmpty()){
@@ -2028,7 +2019,7 @@ class IMEService: InputMethodService() {
             _inputString.value = sb.toString()
         }else {
             sb.append(_inputString.value)
-                .deleteAt(_inputString.value.length)
+                .deleteAt(_inputString.value.length - 1)
                 .append(inputChar)
             _inputString.value = sb.toString()
         }
