@@ -83,8 +83,6 @@ class IMEService: InputMethodService() {
     @Inject
     lateinit var inputMethodManager: InputMethodManager
     @Inject
-    lateinit var flexboxLayoutManager: FlexboxLayoutManager
-    @Inject
     @DrawableReturn
     lateinit var drawableReturn: Drawable
     @Inject
@@ -184,6 +182,15 @@ class IMEService: InputMethodService() {
     private fun setVibrate(){
         appPreference.vibration_preference?.let {
             if(it) vibratorManager.vibrate(shortCombinedVibration)
+        }
+    }
+
+    private val flexboxLayoutManager: FlexboxLayoutManager by lazy {
+        FlexboxLayoutManager(this).apply {
+            flexDirection = FlexDirection.COLUMN
+            flexWrap = FlexWrap.WRAP
+            justifyContent = JustifyContent.FLEX_START
+            alignItems = AlignItems.STRETCH
         }
     }
 
@@ -465,8 +472,8 @@ class IMEService: InputMethodService() {
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
                 suggestionAdapter?.let { sugAdapter ->
-                    this.adapter = sugAdapter
-                    this.layoutManager = flexboxLayoutManager
+                    adapter = sugAdapter
+                    layoutManager = flexboxLayoutManager
                 }
             }
         }
