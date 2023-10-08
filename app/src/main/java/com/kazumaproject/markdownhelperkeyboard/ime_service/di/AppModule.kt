@@ -73,15 +73,6 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun providesFlexboxLayoutManager(@ApplicationContext context: Context): FlexboxLayoutManager = FlexboxLayoutManager(context).apply {
-        flexDirection = FlexDirection.COLUMN
-        flexWrap = FlexWrap.WRAP
-        justifyContent = JustifyContent.FLEX_START
-        alignItems = AlignItems.STRETCH
-    }
-
-    @Singleton
-    @Provides
     @Named("main_ime_scope")
     fun providesIMEScope(
         @MainDispatcher mainDispatcher: CoroutineDispatcher,
