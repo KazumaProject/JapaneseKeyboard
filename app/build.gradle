@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
-        minSdk 24
+        minSdk 23
         targetSdk 34
         versionCode 47
         versionName "0.0.1"

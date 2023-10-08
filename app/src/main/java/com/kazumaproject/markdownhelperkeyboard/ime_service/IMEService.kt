@@ -34,7 +34,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyInf
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.*
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.*
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.ComposingTextTrackingInputConnection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_ACTIVITY
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST_ANIMALS_NATURE
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST_FOOD_DRINK
@@ -140,8 +139,7 @@ class IMEService: InputMethodService() {
     private lateinit var popTextRight: MaterialTextView
 
     private var mainLayoutBinding: MainLayoutBinding? = null
-    private var composingTextTrackingInputConnection: ComposingTextTrackingInputConnection? = null
-
+    
     private var suggestionAdapter: SuggestionAdapter?= null
     private var emojiKigouAdapter: EmojiKigouAdapter?= null
     private var kigouApdater: KigouAdapter?= null
@@ -169,7 +167,6 @@ class IMEService: InputMethodService() {
     private var onRightKeyLongPressUp = false
 
     private var onDeleteLongPressUp = false
-    private var deleteKeyPressed = false
     private var deleteKeyLongKeyPressed = false
 
     private val vibratorManager: VibratorManager by lazy {
@@ -237,7 +234,7 @@ class IMEService: InputMethodService() {
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-        composingTextTrackingInputConnection = ComposingTextTrackingInputConnection.newInstance(currentInputConnection)
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         resetAllFlags()
         setCurrentInputType(attribute)
     }
@@ -245,13 +242,13 @@ class IMEService: InputMethodService() {
         super.onConfigurationChanged(newConfig)
         when(newConfig.orientation){
             Configuration.ORIENTATION_PORTRAIT ->{
-                composingTextTrackingInputConnection?.finishComposingText()
+                currentInputConnection?.finishComposingText()
             }
             Configuration.ORIENTATION_LANDSCAPE ->{
-                composingTextTrackingInputConnection?.finishComposingText()
+                currentInputConnection?.finishComposingText()
             }
             Configuration.ORIENTATION_UNDEFINED ->{
-                composingTextTrackingInputConnection?.finishComposingText()
+                currentInputConnection?.finishComposingText()
             }
             Configuration.ORIENTATION_SQUARE -> {
                 /** empty body **/
@@ -271,6 +268,13 @@ class IMEService: InputMethodService() {
     override fun onDestroy(){
         super.onDestroy()
         actionInDestroy()
+    }
+
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
+        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        cursorAnchorInfo?.apply {
+            if (composingText == null) _inputString.update { EMPTY_STRING }
+        }
     }
 
     private fun startScope(keyList: List<Any>) = scope.launch {
@@ -364,7 +368,7 @@ class IMEService: InputMethodService() {
                 }
 
                 InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
-                    composingTextTrackingInputConnection?.requestCursorUpdates(0)
+                    currentInputConnection?.requestCursorUpdates(0)
                 }
 
                 InputTypeForIME.Number,
@@ -445,7 +449,7 @@ class IMEService: InputMethodService() {
                 if (_inputString.value.isNotBlank()){
                     if (!isHenkan){
                         CoroutineScope(ioDispatcher).launch {
-                            composingTextTrackingInputConnection?.commitText(it,1)
+                            currentInputConnection?.commitText(it,1)
                             _suggestionList.update { emptyList() }
                             withContext(mainDispatcher){
                                 mainLayoutBinding?.suggestionRecyclerView?.visibility = View.INVISIBLE
@@ -490,14 +494,14 @@ class IMEService: InputMethodService() {
                 a.emojiList = EMOJI_LIST
                 a.setOnItemClickListener { emoji ->
                     setVibrate()
-                    composingTextTrackingInputConnection?.commitText(emoji.unicode.convertUnicode(),1)
+                    currentInputConnection?.commitText(emoji.unicode.convertUnicode(),1)
                 }
             }
             kigouApdater?.let { a ->
                 a.kigouList = KAOMOJI
                 a.setOnItemClickListener { s ->
                     setVibrate()
-                    composingTextTrackingInputConnection?.commitText(s,1)
+                    currentInputConnection?.commitText(s,1)
                 }
             }
         }
@@ -546,7 +550,6 @@ class IMEService: InputMethodService() {
         suggestionClickNum = 0
         isHenkan = false
         isContinuousTapInputEnabled = false
-        deleteKeyPressed = false
         deleteKeyLongKeyPressed = false
         _dakutenPressed.value = false
         englishSpaceKeyPressed = false
@@ -563,14 +566,13 @@ class IMEService: InputMethodService() {
         emojiKigouAdapter = null
         kigouApdater = null
         mainLayoutBinding = null
-        composingTextTrackingInputConnection?.closeConnection()
+        currentInputConnection?.closeConnection()
         openWnnEngineJAJP.close()
         scope.coroutineContext.cancelChildren()
     }
     private fun resetFlagsKeyEnter(){
         isHenkan = false
         suggestionClickNum = 0
-        deleteKeyPressed = false
         englishSpaceKeyPressed = false
         onDeleteLongPressUp = false
         _dakutenPressed.value = false
@@ -581,7 +583,6 @@ class IMEService: InputMethodService() {
     private fun resetFlagsKeySpace(){
         onDeleteLongPressUp = false
         _dakutenPressed.value = false
-        deleteKeyPressed = false
         isContinuousTapInputEnabled = false
         lastFlickConvertedNextHiragana = false
         englishSpaceKeyPressed = false
@@ -600,11 +601,6 @@ class IMEService: InputMethodService() {
     private suspend fun launchInputString() = withContext(imeIoDispatcher){
         _inputString.asStateFlow().collectLatest { inputString ->
             if (inputString.isNotBlank()) {
-                when(currentInputType){
-                    InputTypeForIME.TextWebSearchView -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
-                    InputTypeForIME.TextWebSearchViewFireFox -> if (deleteKeyPressed && !_dakutenPressed.value) return@collectLatest
-                    else ->{ /** empty body **/ }
-                }
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
                 setComposingTextPreEdit(inputString, spannableString)
@@ -614,14 +610,13 @@ class IMEService: InputMethodService() {
                 if (onDeleteLongPressUp) return@collectLatest
                 if (englishSpaceKeyPressed) return@collectLatest
                 if (deleteKeyLongKeyPressed) return@collectLatest
-
                 isContinuousTapInputEnabled = true
                 lastFlickConvertedNextHiragana = true
                 setComposingTextAfterEdit(inputString, spannableString)
             } else {
                 _suggestionList.update { emptyList() }
                 setTenkeyIconsEmptyInputString()
-                if (stringInTail.isNotEmpty()) composingTextTrackingInputConnection?.setComposingText(stringInTail,1)
+                if (stringInTail.isNotEmpty()) currentInputConnection?.setComposingText(stringInTail,1)
             }
         }
     }
@@ -635,7 +630,7 @@ class IMEService: InputMethodService() {
             setSpan(BackgroundColorSpan(getColor(R.color.char_in_edit_color)),inputString.length - 1,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        composingTextTrackingInputConnection?.apply {
+        currentInputConnection?.apply {
             setComposingText(spannableString,1)
         }
     }
@@ -648,7 +643,7 @@ class IMEService: InputMethodService() {
             setSpan(BackgroundColorSpan(getColor(R.color.blue)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(UnderlineSpan(),0,inputString.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        composingTextTrackingInputConnection?.apply {
+        currentInputConnection?.apply {
             setComposingText(spannableString,1)
         }
     }
@@ -659,7 +654,7 @@ class IMEService: InputMethodService() {
             mainLayoutBinding?.suggestionRecyclerView?.visibility = View.INVISIBLE
         }
         val nextSuggestion = listIterator.next()
-        composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
+        currentInputConnection?.commitText(nextSuggestion,1)
         delay(DISPLAY_LEFT_STRING_TIME)
         _inputString.value = stringInTail
         stringInTail = EMPTY_STRING
@@ -782,19 +777,17 @@ class IMEService: InputMethodService() {
         if (_inputString.value.isNotEmpty()){
             while (isActive){
                 if (_inputString.value.length == 1){
-                    composingTextTrackingInputConnection?.commitText("",0)
+                    currentInputConnection?.commitText("",0)
                     _inputString.update { EMPTY_STRING }
                 }else{
                     _inputString.update { it.dropLast(1) }
                 }
                 if (_inputString.value.isEmpty()) {
-                    deleteKeyPressed = false
                     isContinuousTapInputEnabled = false
                     if (stringInTail.isNotEmpty()) return@launch
                 }
                 delay(32)
                 if (onDeleteLongPressUp) {
-                    deleteKeyPressed = false
                     isContinuousTapInputEnabled = false
                     return@launch
                 }
@@ -802,10 +795,9 @@ class IMEService: InputMethodService() {
         }else {
             while (isActive){
                 if (stringInTail.isNotEmpty()) return@launch
-                composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
                 delay(32)
                 if (onDeleteLongPressUp) {
-                    deleteKeyPressed = false
                     isContinuousTapInputEnabled = false
                     return@launch
                 }
@@ -819,7 +811,7 @@ class IMEService: InputMethodService() {
 
             InputTypeForIME.TextMultiLine,
             InputTypeForIME.TextImeMultiLine ->{
-                composingTextTrackingInputConnection?.commitText("\n",1)
+                currentInputConnection?.commitText("\n",1)
             }
 
             InputTypeForIME.None,
@@ -849,7 +841,7 @@ class IMEService: InputMethodService() {
             InputTypeForIME.TextWebSearchViewFireFox,
             InputTypeForIME.TextEditTextInBookingTDBank
             -> {
-                composingTextTrackingInputConnection?.apply {
+                currentInputConnection?.apply {
                     Timber.d("Enter key: called 3\n" )
                     sendKeyEvent(
                         KeyEvent(
@@ -872,11 +864,11 @@ class IMEService: InputMethodService() {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time, -> {
-                composingTextTrackingInputConnection?.performEditorAction(EditorInfo.IME_ACTION_DONE)
+                currentInputConnection?.performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
             InputTypeForIME.TextSearchView ->{
-                composingTextTrackingInputConnection?.apply {
+                currentInputConnection?.apply {
                     Timber.d("enter key search: ${EditorInfo.IME_ACTION_SEARCH}" +
                             "\n${currentInputEditorInfo.inputType}" +
                             "\n${currentInputEditorInfo.imeOptions}" +
@@ -912,12 +904,11 @@ class IMEService: InputMethodService() {
             when{
                 _inputString.value.isNotEmpty()  ->{
                     deleteStringCommon()
-                    deleteKeyPressed = true
                     resetFlagsDeleteKey()
                 }
                 else ->{
                     if (stringInTail.isNotEmpty()) return@setOnClickListener
-                    composingTextTrackingInputConnection?.apply {
+                    currentInputConnection?.apply {
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL))
                     }
@@ -931,7 +922,6 @@ class IMEService: InputMethodService() {
             _dakutenPressed.value = false
             englishSpaceKeyPressed = false
             deleteKeyLongKeyPressed = true
-            deleteKeyPressed = true
             return@setOnLongClickListener true
         }
     }
@@ -948,7 +938,7 @@ class IMEService: InputMethodService() {
                     }
                     else ->{
                         setVibrate()
-                        composingTextTrackingInputConnection?.apply {
+                        currentInputConnection?.apply {
                             commitText(_inputString.value + " ", 1)
                         }
                         _inputString.value = EMPTY_STRING
@@ -956,7 +946,7 @@ class IMEService: InputMethodService() {
                 }
             }else {
                 setVibrate()
-                composingTextTrackingInputConnection?.apply {
+                currentInputConnection?.apply {
                     commitText(" ", 1)
                 }
                 _inputString.value = EMPTY_STRING
@@ -974,7 +964,7 @@ class IMEService: InputMethodService() {
                     }
                     else ->{
                         setVibrate()
-                        composingTextTrackingInputConnection?.apply {
+                        currentInputConnection?.apply {
                             commitText(
                                 _inputString.value + " ",
                                 1
@@ -985,7 +975,7 @@ class IMEService: InputMethodService() {
                 }
             }else {
                 setVibrate()
-                composingTextTrackingInputConnection?.apply {
+                currentInputConnection?.apply {
                     commitText(" ", 1)
                 }
             }
@@ -1008,14 +998,14 @@ class IMEService: InputMethodService() {
                             }
                             setEnterKeyAction(listIterator)
                         }else {
-                            composingTextTrackingInputConnection?.finishComposingText()
+                            currentInputConnection?.finishComposingText()
                             _inputString.value = EMPTY_STRING
                         }
                         resetFlagsKeyEnter()
                     }
                     else ->{
                         setVibrate()
-                        composingTextTrackingInputConnection?.finishComposingText()
+                        currentInputConnection?.finishComposingText()
                         _inputString.value = EMPTY_STRING
                         resetFlagsKeyEnter()
                     }
@@ -1023,7 +1013,7 @@ class IMEService: InputMethodService() {
             }else{
                 setVibrate()
                 if (stringInTail.isNotEmpty()){
-                    composingTextTrackingInputConnection?.finishComposingText()
+                    currentInputConnection?.finishComposingText()
                     stringInTail = EMPTY_STRING
                     return@setOnClickListener
                 }
@@ -1041,7 +1031,7 @@ class IMEService: InputMethodService() {
             if (_inputString.value.isNotEmpty()){
                 var newPos = _inputString.value.length - (_inputString.value.length  - 1)
                 if (newPos < 0 || newPos == 0) newPos = 1
-                composingTextTrackingInputConnection?.apply {
+                currentInputConnection?.apply {
                     commitText(_inputString.value,newPos)
                     finishComposingText()
                 }
@@ -1074,10 +1064,9 @@ class IMEService: InputMethodService() {
             setVibrate()
             if (_inputString.value.isNotEmpty()){
                 deleteStringCommon()
-                deleteKeyPressed = true
                 resetFlagsDeleteKey()
             }else{
-                composingTextTrackingInputConnection?.apply {
+                currentInputConnection?.apply {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL))
                 }
@@ -1087,7 +1076,6 @@ class IMEService: InputMethodService() {
         setOnLongClickListener {
             onDeleteLongPressUp = false
             deleteLongPress()
-            deleteKeyPressed = true
             deleteKeyLongKeyPressed = true
             _dakutenPressed.value = false
             englishSpaceKeyPressed = false
@@ -1151,7 +1139,7 @@ class IMEService: InputMethodService() {
             setOnClickListener {
                 setVibrate()
                 if (_inputString.value.isEmpty() && stringInTail.isEmpty()){
-                    composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT))
+                    currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT))
                 }else{
                     if (!isHenkan){
                         lastFlickConvertedNextHiragana = false
@@ -1177,7 +1165,7 @@ class IMEService: InputMethodService() {
                     if (_inputString.value.isEmpty()){
                         CoroutineScope(ioDispatcher).launch {
                             while (isActive){
-                                composingTextTrackingInputConnection?.apply {
+                                currentInputConnection?.apply {
                                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT))
                                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_LEFT))
                                 }
@@ -1260,7 +1248,7 @@ class IMEService: InputMethodService() {
     private fun actionInRightKeyPressed(){
         if (_inputString.value.isEmpty()){
             if (stringInTail.isEmpty()){
-                composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT))
+                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT))
             }else{
                 val dropString = stringInTail.first()
                 stringInTail = stringInTail.drop(1)
@@ -1666,7 +1654,6 @@ class IMEService: InputMethodService() {
                                             dakutenSmallLetter(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            deleteKeyPressed = false
                                             inputMethodManager.showInputMethodPicker()
                                         }
                                     }
@@ -1679,7 +1666,6 @@ class IMEService: InputMethodService() {
                                             smallBigLetterConversionEnglish(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            deleteKeyPressed = false
                                             inputMethodManager.showInputMethodPicker()
                                         }
                                     }
@@ -1910,10 +1896,11 @@ class IMEService: InputMethodService() {
             }
         }
     }
+    
     private fun deleteStringCommon(){
         if (_inputString.value.length == 1){
             _inputString.update { EMPTY_STRING}
-            composingTextTrackingInputConnection?.commitText("",1)
+            currentInputConnection?.commitText("",1)
         }else{
             _inputString.update { it.dropLast(1)}
         }
@@ -1925,7 +1912,6 @@ class IMEService: InputMethodService() {
         sb: StringBuilder
     ) {
         suggestionClickNum = 0
-        deleteKeyPressed = false
         _dakutenPressed.value = false
         englishSpaceKeyPressed = false
         onDeleteLongPressUp = false
@@ -2093,14 +2079,13 @@ class IMEService: InputMethodService() {
         sb: StringBuilder
     ) {
         suggestionClickNum = 0
-        deleteKeyPressed = false
         _dakutenPressed.value = false
         englishSpaceKeyPressed = false
         lastFlickConvertedNextHiragana = false
         onDeleteLongPressUp = false
         isContinuousTapInputEnabled = false
         if (isHenkan){
-            composingTextTrackingInputConnection?.finishComposingText()
+            currentInputConnection?.finishComposingText()
             _inputString.value = key.toString()
             isHenkan = false
         } else {
@@ -2133,7 +2118,7 @@ class IMEService: InputMethodService() {
         spannableString2.apply {
             setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        composingTextTrackingInputConnection?. setComposingText(spannableString2,1)
+        currentInputConnection?. setComposingText(spannableString2,1)
     }
 
     private fun setSuggestionComposingTextIteratorLast(suggestions: List<String>){
@@ -2142,7 +2127,7 @@ class IMEService: InputMethodService() {
         spannableStringWithSuggestion.apply {
             setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        composingTextTrackingInputConnection?.setComposingText(spannableStringWithSuggestion,1)
+        currentInputConnection?.setComposingText(spannableStringWithSuggestion,1)
     }
     private fun setNextReturnInputCharacter(){
         _dakutenPressed.value = true
