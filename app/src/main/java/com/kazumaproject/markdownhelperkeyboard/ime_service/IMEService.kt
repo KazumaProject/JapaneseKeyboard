@@ -555,6 +555,10 @@ class IMEService: InputMethodService() {
     }
 
     private fun actionInDestroy(){
+        mainLayoutBinding?.suggestionRecyclerView?.apply {
+            layoutManager = null
+            adapter = null
+        }
         suggestionAdapter = null
         emojiKigouAdapter = null
         kigouApdater = null
@@ -787,7 +791,6 @@ class IMEService: InputMethodService() {
                     deleteKeyPressed = false
                     isContinuousTapInputEnabled = false
                     if (stringInTail.isNotEmpty()) return@launch
-                    composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
                 }
                 delay(32)
                 if (onDeleteLongPressUp) {
@@ -1231,27 +1234,7 @@ class IMEService: InputMethodService() {
 
             setOnClickListener {
                 setVibrate()
-                if (_inputString.value.isEmpty()){
-                    if (stringInTail.isEmpty()){
-                        composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT))
-                    }else{
-                        val dropString = stringInTail.first()
-                        stringInTail = stringInTail.drop(1)
-                        _inputString.update { dropString.toString() }
-                    }
-                }else{
-                    if (!isHenkan){
-                        englishSpaceKeyPressed = false
-                        lastFlickConvertedNextHiragana = false
-                        isContinuousTapInputEnabled = true
-                        suggestionClickNum = 0
-                        if (stringInTail.isNotEmpty()){
-                            val dropString = stringInTail.first()
-                            stringInTail = stringInTail.drop(1)
-                            _inputString.update { it + dropString }
-                        }
-                    }
-                }
+                actionInRightKeyPressed()
             }
 
             setOnLongClickListener {
@@ -1259,37 +1242,41 @@ class IMEService: InputMethodService() {
                 if (!isHenkan){
                     onRightKeyLongPressUp = false
                     suggestionClickNum = 0
-                    lastFlickConvertedNextHiragana = true
+                    lastFlickConvertedNextHiragana = false
                     isContinuousTapInputEnabled = true
                     CoroutineScope(ioDispatcher).launch {
                         while (isActive){
-                            composingTextTrackingInputConnection?.apply {
-                                if (_inputString.value.isNotBlank()){
-                                    val text = getExtractedText(ExtractedTextRequest(),0)
-                                    val beforeCursorText = getTextBeforeCursor(text.text.length,0)
-                                    val beforeCursorTextLength = beforeCursorText?.length ?: 0
-                                    val afterCursorText = getTextAfterCursor(text.text.length,0)
-                                    if (text.text.length != beforeCursorTextLength){
-                                        afterCursorText?.let { _ ->
-                                            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT))
-                                        }
-                                    }
-                                }else{
-                                    val text = getExtractedText(ExtractedTextRequest(),0)
-                                    text?.let { t ->
-                                        val beforeText = getTextBeforeCursor(t.text.length,0)
-                                        beforeText?.let { c ->
-                                            if (t.text.length != c.length) sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT))
-                                        }
-                                    }
-                                }
-                            }
+                            actionInRightKeyPressed()
                             delay(36)
                             if (onRightKeyLongPressUp) return@launch
                         }
                     }
                 }
                 true
+            }
+        }
+    }
+
+    private fun actionInRightKeyPressed(){
+        if (_inputString.value.isEmpty()){
+            if (stringInTail.isEmpty()){
+                composingTextTrackingInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT))
+            }else{
+                val dropString = stringInTail.first()
+                stringInTail = stringInTail.drop(1)
+                _inputString.update { dropString.toString() }
+            }
+        }else{
+            if (!isHenkan){
+                englishSpaceKeyPressed = false
+                lastFlickConvertedNextHiragana = false
+                isContinuousTapInputEnabled = true
+                suggestionClickNum = 0
+                if (stringInTail.isNotEmpty()){
+                    val dropString = stringInTail.first()
+                    stringInTail = stringInTail.drop(1)
+                    _inputString.update { it + dropString }
+                }
             }
         }
     }
