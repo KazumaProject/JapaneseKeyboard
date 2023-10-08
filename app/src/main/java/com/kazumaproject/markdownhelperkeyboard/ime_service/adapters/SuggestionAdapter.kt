@@ -10,7 +10,6 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 
 class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>(){
-
     inner class SuggestionViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
 
     private val diffCallback = object : DiffUtil.ItemCallback<String>() {
@@ -54,7 +53,6 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         holder.itemView.apply {
             val text = findViewById<MaterialTextView>(R.id.suggestion_item_text_view)
             text.text = suggestion
-
             setOnClickListener {
                 onItemClickListener?.let { click ->
                     click(suggestion)

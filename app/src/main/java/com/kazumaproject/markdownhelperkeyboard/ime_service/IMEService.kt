@@ -85,6 +85,8 @@ class IMEService: InputMethodService() {
     @Inject
     lateinit var inputMethodManager: InputMethodManager
     @Inject
+    lateinit var flexboxLayoutManager: FlexboxLayoutManager
+    @Inject
     @DrawableReturn
     lateinit var drawableReturn: Drawable
     @Inject
@@ -168,6 +170,7 @@ class IMEService: InputMethodService() {
 
     private var hasRequestCursorUpdatesCalled = false
     private var startSelPosInSuggestion = 0
+    private var insertRequestPositionFireFox = 0
     private var suggestionClickNum = 0
     private var isHenkan = false
     private var selectionReqPosAfterDelete : Int = -1
@@ -573,12 +576,6 @@ class IMEService: InputMethodService() {
                 resetFlagsKeyEnter()
             }
         }
-        val flexboxLayoutManager = FlexboxLayoutManager(this@IMEService).apply {
-            flexDirection = FlexDirection.COLUMN
-            flexWrap = FlexWrap.WRAP
-            justifyContent = JustifyContent.FLEX_START
-            alignItems = AlignItems.STRETCH
-        }
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
                 suggestionAdapter?.let { sugAdapter ->
@@ -744,7 +741,7 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private suspend fun setComposingTextPreEdit(
+    private fun setComposingTextPreEdit(
         inputString: String,
         spannableString: SpannableString
     ){
@@ -833,17 +830,10 @@ class IMEService: InputMethodService() {
                         ExtractedTextRequest(),0
                     )
                     extractedText?.apply {
-
-                        Timber.d("selection position not request cursor: \n$inputString" +
-                                "\n$position" +
-                                "\n$composingText" +
-                                "\n${_dakutenPressed.value}" +
-                                "\n$startOffset" )
                         beginBatchEdit()
                         try {
                             setComposingText(spannableString,1)
-                            delay(32)
-                            val startIndex = (startOffset + selectionStart) + 1
+                            val startIndex = (startOffset + selectionEnd) + 1
                             when{
                                 _dakutenPressed.value -> setSelection(startIndex - 1, startIndex - 1)
                                 insertCharNotContinue -> setSelection(startIndex - 1, startIndex - 1)
@@ -857,11 +847,8 @@ class IMEService: InputMethodService() {
                                 else -> position
                             }
                         }
-
                     }
-
                 }
-
             }
 
             !hasRequestCursorUpdatesCalled && deleteKeyPressed ->{
@@ -871,9 +858,6 @@ class IMEService: InputMethodService() {
                         ExtractedTextRequest(),0
                     )
                     extractedText?.text?.let { t ->
-                        Timber.d("selection position not request cursor delete request: $inputString" +
-                                "\n$position" +
-                                "\n$composingText")
                         val composingTextStartPositionNoCursor = t.indexOf(composingText)
                         val selectionPositionNoCursor = position + composingTextStartPositionNoCursor
                         beginBatchEdit()
@@ -990,22 +974,15 @@ class IMEService: InputMethodService() {
 
             !hasRequestCursorUpdatesCalled && !deleteKeyPressed ->{
                 composingTextTrackingInputConnection?.apply {
-                    val position = composingTextInsertPosition
                     val extractedText = getExtractedText(
                         ExtractedTextRequest(),0
                     )
                     extractedText?.apply {
-
-                        Timber.d("selection position not request cursor: \n$inputString" +
-                                "\n$position" +
-                                "\n$composingText" +
-                                "\n${_dakutenPressed.value}" +
-                                "\n$startOffset" )
                         beginBatchEdit()
                         try {
                             setComposingText(spannableString,1)
                             delay(32)
-                            val startIndex = (startOffset + selectionStart)
+                            val startIndex = (startOffset + selectionEnd)
                             when{
                                 _dakutenPressed.value -> setSelection(startIndex, startIndex)
                                 insertCharNotContinue -> setSelection(startIndex, startIndex)
@@ -1014,17 +991,13 @@ class IMEService: InputMethodService() {
                         }finally {
                             endBatchEdit()
                             composingTextInsertPosition = when {
-                                _dakutenPressed.value -> startOffset + selectionStart
-                                insertCharNotContinue -> startOffset + selectionStart
-                                else -> startOffset + selectionStart
+                                _dakutenPressed.value -> startOffset + selectionEnd
+                                insertCharNotContinue -> startOffset + selectionEnd
+                                else -> startOffset + selectionEnd
                             }
-
                         }
-
                     }
-
                 }
-
             }
 
             !hasRequestCursorUpdatesCalled && deleteKeyPressed ->{
@@ -1034,9 +1007,6 @@ class IMEService: InputMethodService() {
                         ExtractedTextRequest(),0
                     )
                     extractedText?.text?.let { t ->
-                        Timber.d("selection position not request cursor delete request: $inputString" +
-                                "\n$position" +
-                                "\n$composingText")
                         val composingTextStartPositionNoCursor = t.indexOf(composingText)
                         val selectionPositionNoCursor = position + composingTextStartPositionNoCursor
                         beginBatchEdit()
@@ -1072,55 +1042,31 @@ class IMEService: InputMethodService() {
         withContext(mainDispatcher){
             mainLayoutBinding?.suggestionRecyclerView?.visibility = View.INVISIBLE
         }
-        when{
-            // First
-            !listIterator.hasPrevious() && listIterator.hasNext() ->{
-                val startPosition = startSelPosInSuggestion
-                val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                val length = _inputString.value.length
-                val nextSuggestion = listIterator.next()
-                composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
-                val text = try {
-                    _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
-                    )
-                }catch (e: Exception){
-                    if (e is CancellationException) throw e
-                    EMPTY_STRING
-                }
-                delay(DISPLAY_LEFT_STRING_TIME)
-                _inputString.value = text
-                _suggestionFlag.update { flag -> !flag }
+        if (hasRequestCursorUpdatesCalled){
+            val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+            val length = _inputString.value.length
+            val nextSuggestion = listIterator.next()
+            composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
+            val text = try {
+                _inputString.value.substring(
+                    startSelPosInSuggestion - composingTextStartPos, length
+                )
+            }catch (e: Exception){
+                if (e is CancellationException) throw e
+                EMPTY_STRING
             }
-            // Middle
-            listIterator.hasPrevious() && listIterator.hasNext() ->{
-                val startPosition = startSelPosInSuggestion
-                val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+            delay(DISPLAY_LEFT_STRING_TIME)
+            _inputString.value = text
+            _suggestionFlag.update { flag -> !flag }
+        }else{
+            composingTextTrackingInputConnection?.apply {
                 val length = _inputString.value.length
+                val composingTextStartPos = if ((startSelPosInSuggestion - length) < 0) 0 else startSelPosInSuggestion - length
                 val nextSuggestion = listIterator.next()
                 composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
                 val text = try {
                     _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
-                    )
-                }catch (e: Exception){
-                    if (e is CancellationException) throw e
-                    EMPTY_STRING
-                }
-                delay(DISPLAY_LEFT_STRING_TIME)
-                _inputString.value = text
-                _suggestionFlag.update { flag -> !flag }
-            }
-            // End
-            listIterator.hasPrevious() && !listIterator.hasNext() ->{
-                val startPosition = startSelPosInSuggestion
-                val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                val length = _inputString.value.length
-                val nextSuggestion = listIterator.next()
-                composingTextTrackingInputConnection?.commitText(nextSuggestion,1)
-                val text = try {
-                    _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
+                        startSelPosInSuggestion - composingTextStartPos, length
                     )
                 }catch (e: Exception){
                     if (e is CancellationException) throw e
@@ -1205,7 +1151,6 @@ class IMEService: InputMethodService() {
                     setSuggestionForJapanese(mainView)
                 }
             }
-
         }
     }
 
@@ -1229,11 +1174,9 @@ class IMEService: InputMethodService() {
         }
 
         try {
-
             val queryText = _inputString.value.substring(
                 startPos, endPos
             )
-
             composingText.apply {
                 clear()
                 insertStrSegment(
@@ -1406,7 +1349,6 @@ class IMEService: InputMethodService() {
                 composingTextTrackingInputConnection?.apply {
                     while (isActive){
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
-                        moveLeftComposingTextPosition()
                         delay(32L)
                         if (onDeleteLongPressUp){
                             deleteSurroundingText(composingTextInsertPosition,0)
@@ -1576,13 +1518,9 @@ class IMEService: InputMethodService() {
                         suggestionClickNum += 1
                     }
                     else ->{
-                        if (_inputString.value.isEmpty()) return@setOnClickListener
                         setVibrate()
                         composingTextTrackingInputConnection?.apply {
-                            commitText(
-                                _inputString.value + " ",
-                                1
-                            )
+                            commitText(_inputString.value + " ", 1)
                         }
                         _inputString.value = EMPTY_STRING
                     }
@@ -1590,10 +1528,7 @@ class IMEService: InputMethodService() {
             }else {
                 setVibrate()
                 composingTextTrackingInputConnection?.apply {
-                    commitText(
-                        _inputString.value + " ",
-                        1
-                    )
+                    commitText(" ", 1)
                 }
                 _inputString.value = EMPTY_STRING
             }
@@ -1609,7 +1544,6 @@ class IMEService: InputMethodService() {
                         suggestionClickNum += 1
                     }
                     else ->{
-                        if (_inputString.value.isEmpty()) return@setOnLongClickListener true
                         setVibrate()
                         composingTextTrackingInputConnection?.apply {
                             commitText(
@@ -1621,13 +1555,9 @@ class IMEService: InputMethodService() {
                     }
                 }
             }else {
-                if (_inputString.value.isEmpty()) return@setOnLongClickListener true
                 setVibrate()
                 composingTextTrackingInputConnection?.apply {
-                    commitText(
-                        _inputString.value + " ",
-                        1
-                    )
+                    commitText(" ", 1)
                 }
             }
             resetFlagsKeySpace()
@@ -1801,6 +1731,7 @@ class IMEService: InputMethodService() {
             }
 
             setOnClickListener {
+                setVibrate()
                 if (!hasRequestCursorUpdatesCalled) {
                     composingTextTrackingInputConnection?.apply{
                         moveLeftComposingTextPosition()
@@ -1810,7 +1741,6 @@ class IMEService: InputMethodService() {
                     }
                     return@setOnClickListener
                 }
-                setVibrate()
                 if (!isHenkan){
                     lastFlickConvertedNextHiragana = true
                     isContinuousTapInputEnabled = true
@@ -1907,6 +1837,7 @@ class IMEService: InputMethodService() {
                 setVibrate()
                 if (!hasRequestCursorUpdatesCalled) {
                     composingTextTrackingInputConnection?.apply {
+                        if (composingTextInsertPosition == _inputString.value.length) return@setOnClickListener
                         moveRightComposingTextPosition()
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT))
                         lastFlickConvertedNextHiragana = true
@@ -2752,14 +2683,7 @@ class IMEService: InputMethodService() {
 
                     val extractedText = composingTextTrackingInputConnection?.getExtractedText(ExtractedTextRequest(),0)
                     extractedText?.text?.let { t ->
-                        Timber.d("delete request: $deletePos" +
-                                "\n$stringBuilder" +
-                                "\n$composingTextStartingPosition" +
-                                "\n$t" +
-                                "\n${_inputString.value}")
-
                         if (t.length == stringBuilder.length){composingTextTrackingInputConnection?.finishComposingText()}
-
                         if (stringBuilder.length <= deletePos){
                             try {
                                 stringBuilder.deleteAt(
@@ -3167,7 +3091,6 @@ class IMEService: InputMethodService() {
                 }
             }
         }
-
         _suggestionFlag.update {
             !it
         }
@@ -3203,228 +3126,99 @@ class IMEService: InputMethodService() {
     ){
         if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
         val listIterator = suggestions.listIterator(suggestionClickNum)
-
+        when{
+            listIterator.hasNext() ->{
+                setSuggestionComposingText(listIterator)
+            }
+            !listIterator.hasNext() ->{
+                setSuggestionComposingTextIteratorLast(suggestions)
+                suggestionClickNum = 0
+            }
+        }
+    }
+    private fun setSuggestionComposingText(listIterator: ListIterator<String>){
         if (hasRequestCursorUpdatesCalled){
             if (suggestionClickNum == 0) startSelPosInSuggestion = _selectionEndtPosition
-
-            when{
-                // First
-                !listIterator.hasPrevious() && listIterator.hasNext() ->{
-                    startSelPosInSuggestion = _selectionEndtPosition
-
-                    val startPosition = startSelPosInSuggestion
-                    val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+            val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+            val length = _inputString.value.length
+            val nextSuggestion = listIterator.next()
+            val text2 = _inputString.value.substring(
+                startSelPosInSuggestion - composingTextStartPos, length
+            )
+            val spanString = nextSuggestion + text2
+            val endPos = composingTextStartPos + nextSuggestion.length
+            val spannableString2 = SpannableString(spanString)
+            spannableString2.apply {
+                setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            composingTextTrackingInputConnection?.apply {
+                setComposingText(spannableString2,1)
+                setSelection(endPos,endPos)
+            }
+        }else{
+            composingTextTrackingInputConnection?.apply {
+                val extractedText = getExtractedText(ExtractedTextRequest(),0)
+                extractedText?.let {
+                    if (suggestionClickNum == 0) {
+                        startSelPosInSuggestion = it.startOffset + it.selectionEnd
+                        insertRequestPositionFireFox = composingTextInsertPosition
+                    }
                     val length = _inputString.value.length
-
+                    val composingTextStartPos = if (((it.startOffset + it.selectionEnd) - length) < 0) 0  else (it.startOffset + it.selectionEnd) - length
                     val nextSuggestion = listIterator.next()
-
                     val text2 = _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
+                        insertRequestPositionFireFox, length
                     )
-
                     val spanString = nextSuggestion + text2
-
                     val endPos = composingTextStartPos + nextSuggestion.length
-
                     val spannableString2 = SpannableString(spanString)
                     spannableString2.apply {
                         setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
                     }
-                    composingTextTrackingInputConnection?.apply {
-                        setComposingText(spannableString2,1)
-                        setSelection(endPos,endPos)
-                    }
-                    Timber.d("suggestion space clicked f : \n" +
-                            " $nextSuggestion \n" +
-                            _inputString.value + "\n" +
-                            "$startPosition \n" +
-                            "$composingTextStartPos \n" +
-                            "$length \n" +
-                            "$spanString \n" +
-                            "$endPos \n " +
-                            text2
-                    )
-
-                }
-                // Middle
-                listIterator.hasPrevious() && listIterator.hasNext() ->{
-                    val startPosition = startSelPosInSuggestion
-                    val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                    val length = _inputString.value.length
-
-                    val nextSuggestion = listIterator.next()
-
-                    val text2 = _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
-                    )
-
-                    val spanString = nextSuggestion + text2
-
-                    val endPos = composingTextStartPos + nextSuggestion.length
-
-                    val spannableString2 = SpannableString(spanString)
-                    spannableString2.apply {
-                        setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                    composingTextTrackingInputConnection?.apply {
-                        setComposingText(spannableString2,1)
-                        setSelection(endPos,endPos)
-                    }
-                    Timber.d("suggestion space clicked m: \n" +
-                            " $nextSuggestion \n" +
-                            _inputString.value + "\n" +
-                            "$startPosition \n" +
-                            "$composingTextStartPos \n" +
-                            "$length \n" +
-                            "$spanString \n" +
-                            "$endPos \n " +
-                            text2
-                    )
-                }
-                // End
-                listIterator.hasPrevious() && !listIterator.hasNext() ->{
-                    val startPosition = startSelPosInSuggestion
-                    val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
-                    val length = _inputString.value.length
-
-                    val nextSuggestion = suggestions[0]
-
-                    val text2 = _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
-                    )
-
-                    val spanString = nextSuggestion + text2
-
-                    val endPos = composingTextStartPos + nextSuggestion.length
-
-                    val spannableString2 = SpannableString(spanString)
-                    spannableString2.apply {
-                        setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                    composingTextTrackingInputConnection?.apply {
-                        setComposingText(spannableString2,1)
-                        setSelection(endPos,endPos)
-                    }
-
-                    suggestionClickNum = 0
+                    setComposingText(spannableString2,1)
+                    setSelection(endPos,endPos)
+                    Timber.d("henkan space: $insertRequestPositionFireFox $text2 ${_inputString.value}")
                 }
             }
-
-        } else {
-            if (suggestionClickNum == 0) startSelPosInSuggestion = 0
-
-            when{
-                // First
-                !listIterator.hasPrevious() && listIterator.hasNext() ->{
-                    startSelPosInSuggestion = _inputString.value.length
-
-                    val startPosition = startSelPosInSuggestion
-                    val composingTextStartPos = 0
-                    val length = _inputString.value.length
-
-                    val nextSuggestion = listIterator.next()
-
-                    val text2 = _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
-                    )
-
-                    val spanString = nextSuggestion + text2
-
-                    val endPos = nextSuggestion.length
-
-                    val spannableString2 = SpannableString(spanString)
-                    spannableString2.apply {
-                        setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        setSpan(BackgroundColorSpan(getColor(R.color.green)),nextSuggestion.length,spanString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        //setSpan(UnderlineSpan(),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                    composingTextTrackingInputConnection?.apply {
-                        setComposingText(spannableString2,1)
-                        setSelection(nextSuggestion.length,nextSuggestion.length)
-                    }
-                    Timber.d("suggestion space clicked f : \n" +
-                            " $nextSuggestion \n" +
-                            _inputString.value + "\n" +
-                            "$startPosition \n" +
-                            "$composingTextStartPos \n" +
-                            "$length \n" +
-                            "$spanString \n" +
-                            "$endPos \n " +
-                            text2
-                    )
-
-                }
-                // Middle
-                listIterator.hasPrevious() && listIterator.hasNext() ->{
-                    val startPosition = startSelPosInSuggestion
-                    val composingTextStartPos = 0
-                    val length = _inputString.value.length
-
-                    val nextSuggestion = listIterator.next()
-
-                    val text2 = _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
-                    )
-
-                    val spanString = nextSuggestion + text2
-
-                    val endPos = nextSuggestion.length
-
-                    val spannableString2 = SpannableString(spanString)
-                    spannableString2.apply {
-                        setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        setSpan(BackgroundColorSpan(getColor(R.color.green)),nextSuggestion.length,spanString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        //setSpan(UnderlineSpan(),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                    composingTextTrackingInputConnection?.apply {
-                        setComposingText(spannableString2,1)
-                        setSelection(nextSuggestion.length,nextSuggestion.length)
-                    }
-                    Timber.d("suggestion space clicked m: \n" +
-                            " $nextSuggestion \n" +
-                            _inputString.value + "\n" +
-                            "$startPosition \n" +
-                            "$composingTextStartPos \n" +
-                            "$length \n" +
-                            "$spanString \n" +
-                            "$endPos \n " +
-                            text2
-                    )
-                }
-                // End
-                listIterator.hasPrevious() && !listIterator.hasNext() ->{
-                    val startPosition = startSelPosInSuggestion
-                    val composingTextStartPos = 0
-                    val length = _inputString.value.length
-
-                    val nextSuggestion = suggestions[0]
-
-                    val text2 = _inputString.value.substring(
-                        startPosition - composingTextStartPos, length
-                    )
-
-                    val spanString = nextSuggestion + text2
-
-                    val endPos = nextSuggestion.length
-
-                    val spannableString2 = SpannableString(spanString)
-                    spannableString2.apply {
-                        setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        setSpan(BackgroundColorSpan(getColor(R.color.green)),nextSuggestion.length,spanString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        //setSpan(UnderlineSpan(),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                    composingTextTrackingInputConnection?.apply {
-                        setComposingText(spannableString2,1)
-                        setSelection(endPos,endPos)
-                    }
-
-                    suggestionClickNum = 0
-                }
-            }
-
         }
+    }
 
-
+    private fun setSuggestionComposingTextIteratorLast(suggestions: List<String>){
+        if (hasRequestCursorUpdatesCalled){
+            val composingTextStartPos = if (_mComposingTextPosition < 0) 0 else _mComposingTextPosition
+            val length = _inputString.value.length
+            val nextSuggestion = suggestions[0]
+            val text2 = _inputString.value.substring(
+                startSelPosInSuggestion - composingTextStartPos, length
+            )
+            val spanString = nextSuggestion + text2
+            val endPos = composingTextStartPos + nextSuggestion.length
+            val spannableString2 = SpannableString(spanString)
+            spannableString2.apply {
+                setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
+            composingTextTrackingInputConnection?.apply {
+                setComposingText(spannableString2,1)
+                setSelection(endPos,endPos)
+            }
+        }else{
+            composingTextTrackingInputConnection?.apply {
+                val length = _inputString.value.length
+                val composingTextStartPos = if ((startSelPosInSuggestion - length) < 0) 0 else startSelPosInSuggestion - length
+                val nextSuggestion = suggestions[0]
+                val text2 = _inputString.value.substring(
+                    insertRequestPositionFireFox, length
+                )
+                val spanString = nextSuggestion + text2
+                val endPos = composingTextStartPos + nextSuggestion.length
+                val spannableString2 = SpannableString(spanString)
+                spannableString2.apply {
+                    setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                setComposingText(spannableString2,1)
+                setSelection(endPos,endPos)
+            }
+        }
     }
     private fun setNextReturnInputCharacter(){
         _dakutenPressed.value = true
