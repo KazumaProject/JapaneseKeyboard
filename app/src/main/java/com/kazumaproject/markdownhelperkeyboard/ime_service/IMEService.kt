@@ -245,6 +245,7 @@ class IMEService: InputMethodService() {
         resetAllFlags()
         setCurrentInputType(attribute)
     }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         when(newConfig.orientation){
@@ -452,20 +453,7 @@ class IMEService: InputMethodService() {
         suggestionAdapter?.apply {
             this.setOnItemClickListener {
                 setVibrate()
-                if (_inputString.value.isNotBlank()){
-                    if (!isHenkan){
-                        CoroutineScope(ioDispatcher).launch {
-                            currentInputConnection?.commitText(it,1)
-                            _suggestionList.update { emptyList() }
-                            delay(DISPLAY_LEFT_STRING_TIME)
-                            _inputString.value = stringInTail
-                            stringInTail = EMPTY_STRING
-                            _suggestionFlag.update { flag ->
-                                !flag
-                            }
-                        }
-                    }
-                }
+                setSuggestionAdapterClick(it)
                 resetFlagsKeyEnter()
             }
         }
@@ -474,6 +462,27 @@ class IMEService: InputMethodService() {
                 suggestionAdapter?.let { sugAdapter ->
                     adapter = sugAdapter
                     layoutManager = flexboxLayoutManager
+                }
+            }
+        }
+    }
+
+    private fun setSuggestionAdapterClick(string: String){
+        if (_inputString.value.isNotBlank()){
+            if (!isHenkan){
+                CoroutineScope(ioDispatcher).launch {
+                    currentInputConnection?.commitText(string,1)
+                    _suggestionList.update { emptyList() }
+                    if (stringInTail.isNotEmpty()){
+                        delay(DISPLAY_LEFT_STRING_TIME)
+                        _inputString.update { stringInTail }
+                        stringInTail = EMPTY_STRING
+                    }else{
+                        _inputString.update { EMPTY_STRING }
+                    }
+                    _suggestionFlag.update { flag ->
+                        !flag
+                    }
                 }
             }
         }
@@ -658,9 +667,13 @@ class IMEService: InputMethodService() {
         _suggestionList.update { emptyList() }
         val nextSuggestion = listIterator.next()
         currentInputConnection?.commitText(nextSuggestion,1)
-        delay(DISPLAY_LEFT_STRING_TIME)
-        _inputString.value = stringInTail
-        stringInTail = EMPTY_STRING
+        if (stringInTail.isNotEmpty()){
+            delay(DISPLAY_LEFT_STRING_TIME)
+            _inputString.update { stringInTail }
+            stringInTail = EMPTY_STRING
+        }else{
+            _inputString.update { EMPTY_STRING }
+        }
         _suggestionFlag.update { flag -> !flag }
     }
 
