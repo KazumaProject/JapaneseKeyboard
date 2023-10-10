@@ -185,15 +185,6 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private val flexboxLayoutManager: FlexboxLayoutManager by lazy {
-        FlexboxLayoutManager(this).apply {
-            flexDirection = FlexDirection.COLUMN
-            flexWrap = FlexWrap.WRAP
-            justifyContent = JustifyContent.FLEX_START
-            alignItems = AlignItems.STRETCH
-        }
-    }
-
     companion object {
         val NUMBER_KEY10_SYMBOL_CHAR = listOf('(',')','[',']')
         const val EMPTY_STRING = ""
@@ -456,6 +447,12 @@ class IMEService: InputMethodService() {
                 setSuggestionAdapterClick(it)
                 resetFlagsKeyEnter()
             }
+        }
+        val flexboxLayoutManager = FlexboxLayoutManager(this).apply {
+            flexDirection = FlexDirection.COLUMN
+            flexWrap = FlexWrap.WRAP
+            justifyContent = JustifyContent.FLEX_START
+            alignItems = AlignItems.STRETCH
         }
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
