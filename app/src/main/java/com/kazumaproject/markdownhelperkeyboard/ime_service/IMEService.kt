@@ -232,9 +232,34 @@ class IMEService: InputMethodService() {
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        Timber.d("onStartInput: $restarting")
         currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         resetAllFlags()
         setCurrentInputType(attribute)
+    }
+
+    override fun onFinishInput() {
+        super.onFinishInput()
+        Timber.d("onFinishInput:")
+        resetAllFlags()
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        resetAllFlags()
+    }
+    override fun onDestroy(){
+        super.onDestroy()
+        actionInDestroy()
+    }
+
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
+        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        cursorAnchorInfo?.apply {
+            Timber.d("onUpdateCursorAnchorInfo: $composingText")
+            if (composingText == null) _inputString.update { EMPTY_STRING }
+            if (composingText != null && _inputString.value.isEmpty()) _inputString.update { composingText.toString() }
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -252,27 +277,6 @@ class IMEService: InputMethodService() {
             Configuration.ORIENTATION_SQUARE -> {
                 /** empty body **/
             }
-        }
-    }
-
-    override fun onFinishInput() {
-        super.onFinishInput()
-        resetAllFlags()
-    }
-
-    override fun onWindowHidden() {
-        super.onWindowHidden()
-        resetAllFlags()
-    }
-    override fun onDestroy(){
-        super.onDestroy()
-        actionInDestroy()
-    }
-
-    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
-        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
-        cursorAnchorInfo?.apply {
-            if (composingText == null) _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -329,6 +333,7 @@ class IMEService: InputMethodService() {
     private fun setCurrentInputType(attribute: EditorInfo?){
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME(inputType)
+            Timber.d("setCurrentInputType: $currentInputType")
             when(currentInputType){
                 InputTypeForIME.Text,
                 InputTypeForIME.TextAutoComplete,
@@ -609,6 +614,7 @@ class IMEService: InputMethodService() {
 
     private suspend fun launchInputString() = withContext(imeIoDispatcher){
         _inputString.asStateFlow().collectLatest { inputString ->
+            Timber.d("launchInputString: $inputString")
             if (inputString.isNotBlank()) {
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
@@ -1978,7 +1984,12 @@ class IMEService: InputMethodService() {
             InputTypeForIME.Phone,
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
-            InputTypeForIME.Time, ->{
+            InputTypeForIME.Time,
+            InputTypeForIME.TextPassword,
+            InputTypeForIME.NumberPassword,
+            InputTypeForIME.TextWebPassword,
+            InputTypeForIME.TextVisiblePassword
+            ->{
                 sendKeyChar(charToSend)
             }
             else ->{
