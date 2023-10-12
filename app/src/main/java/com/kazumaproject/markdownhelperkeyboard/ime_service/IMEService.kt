@@ -151,7 +151,6 @@ class IMEService: InputMethodService() {
     private val _suggestionFlag = MutableStateFlow(false)
 
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
-
     private var currentTenKeyId = 0
     private var lastFlickConvertedNextHiragana = false
     private var isContinuousTapInputEnabled = false
@@ -257,8 +256,9 @@ class IMEService: InputMethodService() {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
             Timber.d("onUpdateCursorAnchorInfo: $composingText")
-            if (composingText == null) _inputString.update { EMPTY_STRING }
-            if (composingText != null && _inputString.value.isEmpty()) _inputString.update { composingText.toString() }
+            if (currentInputType == InputTypeForIME.TextWebSearchView || currentInputType == InputTypeForIME.TextWebSearchViewFireFox){
+                if (composingText == null) _inputString.update { EMPTY_STRING }
+            }
         }
     }
 
@@ -1985,10 +1985,6 @@ class IMEService: InputMethodService() {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            InputTypeForIME.TextPassword,
-            InputTypeForIME.NumberPassword,
-            InputTypeForIME.TextWebPassword,
-            InputTypeForIME.TextVisiblePassword
             ->{
                 sendKeyChar(charToSend)
             }
