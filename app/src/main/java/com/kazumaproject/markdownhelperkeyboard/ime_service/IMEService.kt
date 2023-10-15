@@ -333,7 +333,7 @@ class IMEService: InputMethodService() {
     private fun setCurrentInputType(attribute: EditorInfo?){
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME(inputType)
-            Timber.d("setCurrentInputType: $currentInputType")
+            Timber.d("setCurrentInputType: $currentInputType $inputType")
             when(currentInputType){
                 InputTypeForIME.Text,
                 InputTypeForIME.TextAutoComplete,
