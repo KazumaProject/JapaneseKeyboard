@@ -9,9 +9,9 @@
     app:bl_arrowHeight="0dp"
     app:bl_arrowPosition="16dp"
     app:bl_arrowWidth="0dp"
-    app:bl_cornersRadius="12dp"
+    app:bl_cornersRadius="8dp"
     app:bl_bubbleColor="@color/popup_bg_active"
-    android:elevation="4dp"
+    android:elevation="8dp"
     app:bl_strokeWidth="2dp"
     app:bl_strokeColor="@color/qwety_key_bg_color_2">
 
