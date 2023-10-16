@@ -1423,7 +1423,6 @@ class IMEService: InputMethodService() {
                                                     return@setOnTouchListener false
                                                 }
                                                 sendCharFlick(keyInfoEnglish.flickRight, insertString, sb)
-
                                             }
                                         }else {
                                             if (keyInfoEnglish is TenKeyInfo.TenKeyTapFlickInfo){
@@ -1520,22 +1519,37 @@ class IMEService: InputMethodService() {
                                     if (abs(distanceX) > abs(distanceY)) {
                                         if (firstXPoint < finalX) {
                                             popTextActive.setTextFlickRightJapanese(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }else{
                                             popTextActive.setTextFlickLeftJapanese(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowRight.isShowing){
+                                                mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }
                                     }else {
                                         if (firstYPoint < finalY){
                                             popTextActive.setTextFlickBottomJapanese(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowTop.isShowing){
+                                                mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }else{
                                             popTextActive.setTextFlickTopJapanese(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowBottom.isShowing){
+                                                mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }
                                     }
-                                    it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                    setTouchActionInMoveEnd(it)
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeEnglish ->{
@@ -1550,22 +1564,37 @@ class IMEService: InputMethodService() {
                                     if (abs(distanceX) > abs(distanceY)) {
                                         if (firstXPoint < finalX) {
                                             popTextActive.setTextFlickRightEnglish(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }else{
                                             popTextActive.setTextFlickLeftEnglish(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }
                                     }else {
                                         if (firstYPoint < finalY){
                                             popTextActive.setTextFlickBottomEnglish(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }else{
                                             popTextActive.setTextFlickTopEnglish(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }
                                     }
-                                    it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                    setTouchActionInMoveEnd(it)
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeNumber ->{
@@ -1580,22 +1609,37 @@ class IMEService: InputMethodService() {
                                     if (abs(distanceX) > abs(distanceY)) {
                                         if (firstXPoint < finalX) {
                                             popTextActive.setTextFlickRightNumber(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }else{
                                             popTextActive.setTextFlickLeftNumber(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }
                                     }else {
                                         if (firstYPoint < finalY){
                                             popTextActive.setTextFlickBottomNumber(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }else{
                                             popTextActive.setTextFlickTopNumber(currentTenKeyId)
-                                            mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                            if (mPopupWindowLeft.isShowing){
+                                                mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
+                                            }else{
+                                                mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                            }
                                         }
                                     }
-                                    it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                    setTouchActionInMoveEnd(it)
                                     return@setOnTouchListener false
                                 }
                             }
@@ -1632,10 +1676,10 @@ class IMEService: InputMethodService() {
                         }
                     }
 
-                    mPopupWindowTop.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutTop,v)
-                    mPopupWindowLeft.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutLeft,v)
-                    mPopupWindowBottom.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutBottom,v)
-                    mPopupWindowRight.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutRight,v)
+                    mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
+                    mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
+                    mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
+                    mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
                     false
                 }
             }
@@ -1813,10 +1857,10 @@ class IMEService: InputMethodService() {
                             popTextBottom.text = EMPTY_STRING
                             popTextRight.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
 
-                            mPopupWindowTop.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutTop,v)
-                            mPopupWindowLeft.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutLeft,v)
-                            mPopupWindowBottom.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutBottom,v)
-                            mPopupWindowRight.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutRight,v)
+                            mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
+                            mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
+                            mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
+                            mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
                         }
                     }
                     false
@@ -2162,6 +2206,16 @@ class IMEService: InputMethodService() {
         }
         _suggestionFlag.update {
             !it
+        }
+    }
+    private fun setTouchActionInMoveEnd(appCompatButton: AppCompatButton){
+        appCompatButton.apply {
+            background = ContextCompat.getDrawable(this@IMEService,R.drawable.ten_keys_center_bg)
+            if (mPopupWindowTop.isShowing){
+                setTextColor(ContextCompat.getColor(this@IMEService,R.color.keyboard_icon_color))
+            }else{
+                setTextColor(ContextCompat.getColor(this@IMEService,R.color.qwety_key_bg_color))
+            }
         }
     }
 
