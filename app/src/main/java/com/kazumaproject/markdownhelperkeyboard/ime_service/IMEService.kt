@@ -951,18 +951,12 @@ class IMEService: InputMethodService() {
                     }
                     else ->{
                         setVibrate()
-                        currentInputConnection?.apply {
-                            commitText(_inputString.value + " ", 1)
-                        }
-                        _inputString.value = EMPTY_STRING
+                        setSpaceKeyActionEnglishAndNumberNotEmpty()
                     }
                 }
             }else {
                 setVibrate()
-                currentInputConnection?.apply {
-                    commitText(" ", 1)
-                }
-                _inputString.value = EMPTY_STRING
+                setSpaceKeyActionEnglishAndNumberEmpty()
             }
             resetFlagsKeySpace()
         }
@@ -2170,6 +2164,33 @@ class IMEService: InputMethodService() {
             }
         }
     }
+
+    private fun setSpaceKeyActionEnglishAndNumberNotEmpty(){
+        currentInputConnection?.apply {
+            if (stringInTail.isNotEmpty()){
+                commitText(_inputString.value + " " + stringInTail, 1)
+                stringInTail = EMPTY_STRING
+            }else{
+                commitText(_inputString.value + " ", 1)
+            }
+        }
+        _inputString.value = EMPTY_STRING
+    }
+
+    private fun setSpaceKeyActionEnglishAndNumberEmpty(){
+        if (stringInTail.isNotEmpty()){
+            currentInputConnection?.apply {
+                commitText(" $stringInTail", 1)
+                stringInTail = EMPTY_STRING
+            }
+        }else{
+            currentInputConnection?.apply {
+                commitText(" ", 1)
+            }
+        }
+        _inputString.value = EMPTY_STRING
+    }
+
     private fun setSuggestionComposingText(listIterator: ListIterator<String>){
         val nextSuggestion = listIterator.next()
         val spannableString2 = SpannableString(nextSuggestion + stringInTail)
