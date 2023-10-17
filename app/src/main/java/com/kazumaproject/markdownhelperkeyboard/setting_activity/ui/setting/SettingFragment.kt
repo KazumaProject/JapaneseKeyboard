@@ -1,8 +1,12 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -24,7 +28,20 @@ class SettingFragment : PreferenceFragmentCompat() {
                 requireActivity().finish()
             }
         }
+        isKeyboardBoardEnabled()?.let { enabled ->
+            if (!enabled){
+                goToKeyboardSettingScreen()
+            }
+        }
+    }
 
+    override fun onResume() {
+        super.onResume()
+        isKeyboardBoardEnabled()?.let { enabled ->
+            if (!enabled){
+                goToKeyboardSettingScreen()
+            }
+        }
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -39,6 +56,17 @@ class SettingFragment : PreferenceFragmentCompat() {
             true
         }
 
+    }
+
+    private fun isKeyboardBoardEnabled(): Boolean? {
+        val imm = getSystemService(requireContext(),InputMethodManager::class.java)
+        return imm?.enabledInputMethodList?.any { it.packageName == requireContext().packageName }
+    }
+
+    private fun goToKeyboardSettingScreen(){
+        val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        requireActivity().startActivity(intent)
     }
 
 }
