@@ -471,20 +471,18 @@ class IMEService: InputMethodService() {
 
     private fun setSuggestionAdapterClick(string: String){
         if (_inputString.value.isNotBlank()){
-            if (!isHenkan){
-                CoroutineScope(ioDispatcher).launch {
-                    currentInputConnection?.commitText(string,1)
-                    _suggestionList.update { emptyList() }
-                    if (stringInTail.isNotEmpty()){
-                        delay(DISPLAY_LEFT_STRING_TIME)
-                        _inputString.update { stringInTail }
-                        stringInTail = EMPTY_STRING
-                    }else{
-                        _inputString.update { EMPTY_STRING }
-                    }
-                    _suggestionFlag.update { flag ->
-                        !flag
-                    }
+            CoroutineScope(ioDispatcher).launch {
+                currentInputConnection?.commitText(string,1)
+                _suggestionList.update { emptyList() }
+                if (stringInTail.isNotEmpty()){
+                    delay(DISPLAY_LEFT_STRING_TIME)
+                    _inputString.update { stringInTail }
+                    stringInTail = EMPTY_STRING
+                }else{
+                    _inputString.update { EMPTY_STRING }
+                }
+                _suggestionFlag.update { flag ->
+                    !flag
                 }
             }
         }
@@ -1796,7 +1794,6 @@ class IMEService: InputMethodService() {
                                                     popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
                                                 }
                                             }
-
                                             mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
                                         } else {
                                             when(v.id){
@@ -1823,6 +1820,7 @@ class IMEService: InputMethodService() {
                                             mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
                                         }
                                     }
+                                    it.setImageDrawable(null)
                                 }
                             }
                             it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))

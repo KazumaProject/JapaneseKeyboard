@@ -47,4 +47,6 @@
 
     <dimen name="key_number_height">48dp</dimen>
     <dimen name="key_height_number_only_right_column_land">38dp</dimen>
+
+    <dimen name="key_elevation">4dp</dimen>
 </resources>

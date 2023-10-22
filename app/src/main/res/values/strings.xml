@@ -16,7 +16,7 @@
     <string name="string_small">゛゜\n大 小</string>
     <string name="string_ten_hatena">、。？！</string>
 
-    <string name="string_key1_english">"@#&amp;_"</string>
+    <string name="string_key1_english">" @#&amp;_"</string>
     <string name="string_key2_english">"ABC"</string>
     <string name="string_key3_english">"DEF"</string>
     <string name="string_key4_english">"GHI"</string>
@@ -32,12 +32,12 @@
     <string name="string_key1_number">"1\n☆♪→"</string>
     <string name="string_key2_number">"2\n￥$€"</string>
     <string name="string_key3_number">"3\n%°#"</string>
-    <string name="string_key4_number">"4\n○*・"</string>
+    <string name="string_key4_number">"4\n○ *・"</string>
     <string name="string_key5_number">"5\n+×÷"</string>
     <string name="string_key6_number">"6\n&lt;=>"</string>
     <string name="string_key7_number">"7\n「」:"</string>
     <string name="string_key8_number">"8\n〒々〆"</string>
-    <string name="string_key9_number">"9\n^|\\"</string>
+    <string name="string_key9_number">"9\n^ | \\"</string>
     <string name="string_key10_number">"0\n~…@"</string>
     <string name="string_key11_number">"()[]"</string>
     <string name="string_key12_number">"   .,-/   "</string>
