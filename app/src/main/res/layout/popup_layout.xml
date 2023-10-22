@@ -12,7 +12,7 @@
     app:bl_cornersRadius="8dp"
     app:bl_bubbleColor="@color/popup_bg_active"
     android:elevation="8dp"
-    app:bl_strokeWidth="2dp"
+    app:bl_strokeWidth="1dp"
     app:bl_strokeColor="@color/qwety_key_bg_color_2">
 
     <com.google.android.material.textview.MaterialTextView
@@ -23,7 +23,6 @@
         android:layout_gravity="center"
         android:textSize="@dimen/pop_view_size"
         android:ems="4"
-        android:textStyle="bold"
         android:textColor="@color/white"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

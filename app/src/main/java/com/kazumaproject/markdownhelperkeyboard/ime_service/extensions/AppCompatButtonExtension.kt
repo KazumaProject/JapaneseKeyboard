@@ -6,9 +6,9 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 
-const val KEY_JAPANESE_SIZE = 14f
-const val KEY_ENGLISH_SIZE = 12f
-const val KEY_NUMBER_SIZE = 14f
+const val KEY_JAPANESE_SIZE = 16f
+const val KEY_ENGLISH_SIZE = 13f
+const val KEY_NUMBER_SIZE = 16f
 
 private val JP_KEY_LAYOUT_WITH_SPACE = listOf(
     "    あ    ", "    か    ", "    さ    ", "    た    ", "    な    ",
@@ -144,6 +144,6 @@ private fun getSpannableStringForKigouButtonJapanese(str: String): SpannableStri
 private fun getSpannableStringForNumberButton(str: String): SpannableString {
     val spannable = SpannableString(str)
     spannable.setSpan(RelativeSizeSpan(1f),0, 1,0)
-    spannable.setSpan(RelativeSizeSpan(0.8f),1,str.length,0)
+    spannable.setSpan(RelativeSizeSpan(0.5f),1,str.length,0)
     return spannable
 }
