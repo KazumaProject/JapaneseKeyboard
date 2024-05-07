@@ -6,15 +6,24 @@ import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
-import android.os.*
+import android.os.Build
+import android.os.CombinedVibration
+import android.os.VibrationEffect
+import android.os.VibratorManager
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
-import android.view.*
-import android.view.inputmethod.*
-import android.view.textservice.*
-import android.widget.*
+import android.view.ContextThemeWrapper
+import android.view.KeyEvent
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.inputmethod.CursorAnchorInfo
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputMethodManager
+import android.widget.PopupWindow
 import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
@@ -22,9 +31,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
 import com.daasuu.bl.BubbleLayout
-import com.google.android.flexbox.*
+import com.google.android.flexbox.AlignItems
+import com.google.android.flexbox.FlexDirection
+import com.google.android.flexbox.FlexWrap
+import com.google.android.flexbox.FlexboxLayoutManager
+import com.google.android.flexbox.JustifyContent
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.EmojiKigouAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.KigouAdapter
@@ -32,8 +46,54 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionA
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.InputModeSwitch
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyInfo
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.*
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.*
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableEnglishSmall
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableHenkan
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableKanaSmall
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableLanguage
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableNumberSmall
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableOpenBracket
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.InputBackGroundDispatcher
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.IoDispatcher
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpTextActive
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowBottom
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowLeft
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowRight
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowTop
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertUnicode
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextReturnInputChar
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowBottom
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickBottom
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickLeft
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickRight
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickTop
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowLeft
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowRight
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowTop
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextEnglish
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapEnglish
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomEnglish
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickLeftEnglish
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickLeftJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickLeftNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickRightEnglish
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickRightJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickRightNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopEnglish
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_ACTIVITY
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST_ANIMALS_NATURE
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST_FOOD_DRINK
@@ -41,17 +101,26 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJ
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_OBJECT
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_TRAVEL
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.KAOMOJI
-import com.kazumaproject.markdownhelperkeyboard.ime_service.state.*
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputMode
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardMode
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.ModeInKigou
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
-import jp.co.omronsoft.openwnn.ComposingText
-import jp.co.omronsoft.openwnn.JAJP.OpenWnnEngineJAJP
-import jp.co.omronsoft.openwnn.StrSegment
-import jp.co.omronsoft.openwnn.WnnWord
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.util.*
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.math.abs
@@ -73,11 +142,7 @@ class IMEService: InputMethodService() {
     @InputBackGroundDispatcher
     lateinit var imeIoDispatcher: CoroutineDispatcher
     @Inject
-    lateinit var openWnnEngineJAJP: OpenWnnEngineJAJP
-    @Inject
     lateinit var appPreference: AppPreference
-    @Inject
-    lateinit var composingText: ComposingText
     @Inject
     lateinit var tenKeyMap: TenKeyMapHolder
     @Inject
@@ -135,6 +200,9 @@ class IMEService: InputMethodService() {
     private lateinit var bubbleViewRight: BubbleLayout
     private lateinit var popTextRight: MaterialTextView
 
+    @Inject
+    lateinit var kanaKanjiEngine: KanaKanjiEngine
+
     private var mainLayoutBinding: MainLayoutBinding? = null
     
     private var suggestionAdapter: SuggestionAdapter?= null
@@ -187,8 +255,6 @@ class IMEService: InputMethodService() {
     companion object {
         val NUMBER_KEY10_SYMBOL_CHAR = listOf('(',')','[',']')
         const val EMPTY_STRING = ""
-        const val PREDICT_MIN_LENGTH = 1
-        const val PREDICT_MAX_LENGTH = 16
 
         val EMOJI_LIST = EMOJI_LIST_SMILEYS_PEOPLE +
                 EMOJI_LIST_ANIMALS_NATURE + EMOJI_LIST_FOOD_DRINK +
@@ -205,6 +271,7 @@ class IMEService: InputMethodService() {
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
             mainLayoutBinding?.let { mainView ->
+
                 val keyList = listOf<Any>(
                     mainView.keyboardView.key1,
                     mainView.keyboardView.key2,
@@ -579,7 +646,6 @@ class IMEService: InputMethodService() {
         kigouApdater = null
         mainLayoutBinding = null
         currentInputConnection?.closeConnection()
-        openWnnEngineJAJP.close()
         scope.coroutineContext.cancelChildren()
     }
     private fun resetFlagsKeyEnter(){
@@ -740,41 +806,12 @@ class IMEService: InputMethodService() {
         _suggestionList.update { getSuggestionList() }
     }
 
-    private suspend fun getSuggestionList() = CoroutineScope(mainDispatcher).async{
-        delay(SUGGESTION_LIST_SHOW_TIME)
-        val suggestions = mutableListOf<String>()
+    private suspend fun getSuggestionList() = CoroutineScope(ioDispatcher).async{
+        val queryText = _inputString.value
         try {
-            val queryText = _inputString.value
-            composingText.apply {
-                clear()
-                insertStrSegment(
-                    ComposingText.LAYER0,
-                    ComposingText.LAYER1,
-                    StrSegment(queryText)
-                )
-
-                if (queryText.length == 1){
-                    openWnnEngineJAJP.convert(composingText)
-                    for (i in 0 until composingText.size(ComposingText.LAYER2)) {
-                        if (0 < openWnnEngineJAJP.makeCandidateListOf(i)) {
-                            var word: WnnWord?
-                            while (openWnnEngineJAJP.nextCandidate.also { word = it } != null) {
-                                suggestions.add(word?.candidate ?: EMPTY_STRING)
-                            }
-                        }
-                    }
-                    return@async suggestions.toList()
-                }else {
-                    openWnnEngineJAJP.predict(composingText, PREDICT_MIN_LENGTH, PREDICT_MAX_LENGTH)
-                    var word: WnnWord?
-                    while (openWnnEngineJAJP.nextCandidate.also { word = it } != null) {
-                        suggestions.add(word?.candidate ?: EMPTY_STRING)
-                    }
-                }
-                return@async suggestions.toList()
-            }
+            return@async kanaKanjiEngine.nBestPath(queryText, 8)
         }catch (e: Exception){
-            if (e is CancellationException) throw e
+            Timber.e(e.stackTraceToString())
         }
         return@async emptyList()
     }.await()
@@ -939,7 +976,7 @@ class IMEService: InputMethodService() {
 
     private fun setSpaceKey(imageButton: AppCompatImageButton) = imageButton.apply {
         setOnClickListener {
-            if (_suggestionList.value.isNotEmpty() && _inputString.value.isNotEmpty()){
+            if (_inputString.value.isNotEmpty()){
                 when(_currentInputMode.value){
                     InputMode.ModeJapanese ->{
                         isHenkan = true

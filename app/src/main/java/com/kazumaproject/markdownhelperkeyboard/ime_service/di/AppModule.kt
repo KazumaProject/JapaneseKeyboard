@@ -8,8 +8,8 @@ import android.view.LayoutInflater
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
-import com.google.android.flexbox.*
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMap
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -18,10 +18,12 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import jp.co.omronsoft.openwnn.ComposingText
-import jp.co.omronsoft.openwnn.JAJP.OpenWnnEngineJAJP
-import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.CompletableJob
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors
 import javax.inject.Named
 import javax.inject.Singleton
@@ -79,21 +81,6 @@ object AppModule {
         supervisorJob: CompletableJob
     ): CoroutineScope = CoroutineScope(supervisorJob + mainDispatcher)
 
-    @Singleton
-    @Provides
-    fun providesOpenWnnEngineJP(
-        @ApplicationContext context: Context
-    ): OpenWnnEngineJAJP = OpenWnnEngineJAJP(
-        "${context.filesDir.path}/writableJAJP.dic"
-    ).apply {
-        init()
-        setDictionary(0)
-        setKeyboardType(1)
-    }
-
-    @Singleton
-    @Provides
-    fun providesComposingText(): ComposingText = ComposingText()
 
     @Singleton
     @Provides
@@ -101,15 +88,18 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun providesMutex(): Mutex = Mutex()
-
-
-    @Singleton
-    @Provides
     fun providesPreference(@ApplicationContext context: Context): AppPreference {
         return AppPreference.apply {
             init(context)
         }
+    }
+
+    @Singleton
+    @Provides
+    fun provideKanaKanjiHankanEngine(@ApplicationContext context: Context): KanaKanjiEngine {
+        val kanaKanjiEngine = KanaKanjiEngine()
+        kanaKanjiEngine.buildEngine(context)
+        return kanaKanjiEngine
     }
 
     @Singleton
