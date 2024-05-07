@@ -14,7 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MarkdownKeyboard"
         android:usesCleartextTraffic="true"
-        tools:targetApi="34">
+        tools:targetApi="34"
+        android:largeHeap="true"
+        android:hardwareAccelerated="true">
 
         <activity
             android:name=".setting_activity.MainActivity"
