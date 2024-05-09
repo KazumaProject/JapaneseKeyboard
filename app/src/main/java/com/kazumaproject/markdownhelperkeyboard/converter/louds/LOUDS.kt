@@ -222,15 +222,14 @@ class LOUDS {
     }
 
     fun readExternal(objectInput: ObjectInput): LOUDS {
-        objectInput.apply {
+        objectInput.use {
             try {
                 val nodeIdSize = objectInput.readObject() as Int
                 val labelSize = objectInput.readObject() as Int
                 LBS = objectInput.readObject() as BitSet
-                nodeIds = (objectInput.readObject() as ByteArray).inflate(nodeIdSize).toListInt().toMutableList()
+                nodeIds = (objectInput.readObject() as ByteArray).inflate(nodeIdSize).toListInt()
                 labels = (objectInput.readObject() as ByteArray).inflate(labelSize).toListChar()
                 isLeaf = objectInput.readObject() as BitSet
-                close()
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }

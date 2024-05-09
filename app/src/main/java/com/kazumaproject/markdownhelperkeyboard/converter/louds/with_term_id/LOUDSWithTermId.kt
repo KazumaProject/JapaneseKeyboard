@@ -218,17 +218,16 @@ class LOUDSWithTermId {
     }
 
     fun readExternal(objectInput: ObjectInput): LOUDSWithTermId {
-        objectInput.apply {
+        objectInput.use {
             try {
-                val nodeIdSize = objectInput.readObject() as Int
-                val labelsSize = objectInput.readObject() as Int
-                val termIdSize = objectInput.readObject() as Int
-                LBS = objectInput.readObject() as BitSet
-                nodeIds = (objectInput.readObject() as ByteArray).inflate(nodeIdSize).toListInt().toMutableList()
-                labels = (objectInput.readObject() as ByteArray).inflate(labelsSize).toListChar()
-                isLeaf = objectInput.readObject() as BitSet
-                termIds = (objectInput.readObject() as ByteArray).inflate(termIdSize).toListInt().toMutableList()
-                close()
+                val nodeIdSize = it.readObject() as Int
+                val labelsSize = it.readObject() as Int
+                val termIdSize = it.readObject() as Int
+                LBS = it.readObject() as BitSet
+                nodeIds = (it.readObject() as ByteArray).inflate(nodeIdSize).toListInt()
+                labels = (it.readObject() as ByteArray).inflate(labelsSize).toListChar()
+                isLeaf = it.readObject() as BitSet
+                termIds = (it.readObject() as ByteArray).inflate(termIdSize).toListInt()
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }

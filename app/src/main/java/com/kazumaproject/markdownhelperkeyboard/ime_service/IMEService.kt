@@ -896,11 +896,6 @@ class IMEService: InputMethodService() {
                             KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
                         )
                     )
-                    sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER
-                        )
-                    )
                 }
             }
 
