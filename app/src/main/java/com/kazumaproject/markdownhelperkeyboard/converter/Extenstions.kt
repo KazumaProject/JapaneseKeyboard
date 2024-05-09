@@ -1,7 +1,7 @@
 package com.kazumaproject
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.BitSet
 
 fun List<Boolean>.toBitSet(): BitSet {
     val bitSet = BitSet(this.size)
@@ -36,7 +36,7 @@ fun List<Int>.toByteArray(): ByteArray {
     return buffer.array()
 }
 
-fun ByteArray.toListInt(): List<Int> {
+fun ByteArray.toListInt(): MutableList<Int> {
     val intList = mutableListOf<Int>()
     for (i in indices step 4) {
         val value = (this[i].toInt() shl 24) or
