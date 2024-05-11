@@ -37,6 +37,7 @@ import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
@@ -106,6 +107,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIM
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.ModeInKigou
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.viterbi.FindPath
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -203,6 +205,12 @@ class IMEService: InputMethodService() {
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
+    @Inject
+    lateinit var findPath: FindPath
+
+    @Inject
+    lateinit var graphBuilder: GraphBuilder
+
     private var mainLayoutBinding: MainLayoutBinding? = null
     
     private var suggestionAdapter: SuggestionAdapter?= null
@@ -261,8 +269,8 @@ class IMEService: InputMethodService() {
                 EMOJI_ACTIVITY + EMOJI_TRAVEL + EMOJI_OBJECT
 
         const val DELAY_TIME = 1024L
-        const val SUGGESTION_LIST_SHOW_TIME = 64L
         const val DISPLAY_LEFT_STRING_TIME = 64L
+        const val N_BEST = 16
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -809,7 +817,7 @@ class IMEService: InputMethodService() {
     private suspend fun getSuggestionList() = CoroutineScope(ioDispatcher).async{
         val queryText = _inputString.value
         try {
-            return@async kanaKanjiEngine.nBestPath(queryText, 8)
+            return@async kanaKanjiEngine.nBestPath(queryText, N_BEST)
         }catch (e: Exception){
             Timber.e(e.stackTraceToString())
         }

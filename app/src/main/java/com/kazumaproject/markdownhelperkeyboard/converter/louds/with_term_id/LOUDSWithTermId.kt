@@ -137,10 +137,10 @@ class LOUDSWithTermId {
         val resultTemp: MutableList<Char> = mutableListOf()
         val result: MutableList<String> = mutableListOf()
         var n = 0
-        str.forEachIndexed { _, c ->
+        for (c in str){
             n = traverse(n, c)
             val index = LBS.rank1(n)
-            if (n == -1) return@forEachIndexed
+            if (n == -1) break
             if (index >= labels.size) return result
             resultTemp.add(labels[index])
             if (isLeaf[n]){
