@@ -11,12 +11,14 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.connection_id.ConnectionIdBuilder
+import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMap
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.viterbi.FindPath
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -149,6 +151,14 @@ object AppModule {
         )
         return kanaKanjiEngine
     }
+
+    @Singleton
+    @Provides
+    fun providesFindPath(): FindPath = FindPath()
+
+    @Singleton
+    @Provides
+    fun providesGraphBuilder(): GraphBuilder = GraphBuilder()
 
     @Singleton
     @Provides
