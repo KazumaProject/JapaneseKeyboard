@@ -200,9 +200,11 @@ class LOUDSWithTermId {
     fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
-                writeObject(nodeIds.toByteArray().size)
-                writeObject(labels.toByteArrayFromListChar().size)
-                writeObject(termIds.toByteArray().size)
+                writeInt(nodeIds.toByteArray().size)
+                writeInt(labels.toByteArrayFromListChar().size)
+                writeInt(termIds.toByteArray().size)
+
+
 
                 writeObject(LBS)
                 writeObject(nodeIds.toByteArray().deflate())
@@ -220,9 +222,10 @@ class LOUDSWithTermId {
     fun readExternal(objectInput: ObjectInput): LOUDSWithTermId {
         objectInput.use {
             try {
-                val nodeIdSize = it.readObject() as Int
-                val labelsSize = it.readObject() as Int
-                val termIdSize = it.readObject() as Int
+                val nodeIdSize = it.readInt()
+                val labelsSize = it.readInt()
+                val termIdSize = it.readInt()
+
                 LBS = it.readObject() as BitSet
                 nodeIds = (it.readObject() as ByteArray).inflate(nodeIdSize).toListInt()
                 labels = (it.readObject() as ByteArray).inflate(labelsSize).toListChar()
