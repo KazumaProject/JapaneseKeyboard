@@ -37,7 +37,11 @@ import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.Louds.LOUDS
+import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
+import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
@@ -112,6 +116,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
@@ -123,9 +128,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.ObjectInputStream
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.math.abs
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
@@ -202,8 +210,8 @@ class IMEService: InputMethodService() {
     private lateinit var bubbleViewRight: BubbleLayout
     private lateinit var popTextRight: MaterialTextView
 
-    @Inject
-    lateinit var kanaKanjiEngine: KanaKanjiEngine
+//    @Inject
+//    lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     @Inject
     lateinit var findPath: FindPath
@@ -270,7 +278,48 @@ class IMEService: InputMethodService() {
 
         const val DELAY_TIME = 1024L
         const val DISPLAY_LEFT_STRING_TIME = 64L
-        const val N_BEST = 16
+        const val N_BEST = 20
+    }
+
+    private lateinit var kanaKanjiEngine: KanaKanjiEngine
+
+    @OptIn(ExperimentalTime::class)
+    override fun onCreate() {
+        super.onCreate()
+        val time = measureTime {
+            val objectInputYomi = ObjectInputStream(this@IMEService.assets.open("yomi.dat"))
+            val objectInputTango = ObjectInputStream(this@IMEService.assets.open("tango.dat"))
+            val objectInputTokenArray = ObjectInputStream(this@IMEService.assets.open("token.dat"))
+            val objectInputReadPOSTable = ObjectInputStream(this@IMEService.assets.open("pos_table.dat"))
+            val objectInputConnectionId = ObjectInputStream(this@IMEService.assets.open("connectionIds.dat"))
+
+            CoroutineScope(Dispatchers.Main).launch {
+                val yomiTrie = async {
+                    LOUDSWithTermId().readExternal(objectInputYomi)
+                }
+                val tangoTrie = async {
+                    LOUDS().readExternal(objectInputTango)
+                }
+                val tokenArray = async {
+                    val a = TokenArray()
+                    a.readExternal(objectInputTokenArray)
+                    a.readPOSTable(objectInputReadPOSTable)
+                    return@async a
+                }
+                val connectionIds = async {
+                    ConnectionIdBuilder().read(objectInputConnectionId)
+                }
+
+                val yomi = yomiTrie.await()
+                val tango = tangoTrie.await()
+                val token = tokenArray.await()
+                val connection = connectionIds.await()
+
+                kanaKanjiEngine = KanaKanjiEngine()
+                kanaKanjiEngine.buildEngine(yomi,tango,token,connection)
+            }
+        }
+        Timber.d("loading time total: $time")
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -691,7 +740,7 @@ class IMEService: InputMethodService() {
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
                 setComposingTextPreEdit(inputString, spannableString)
-                delay(DELAY_TIME)
+                //delay(DELAY_TIME)
                 if (isHenkan) return@collectLatest
                 if (inputString.isEmpty()) return@collectLatest
                 if (onDeleteLongPressUp) return@collectLatest

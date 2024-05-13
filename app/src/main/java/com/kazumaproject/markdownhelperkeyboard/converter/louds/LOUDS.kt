@@ -207,8 +207,8 @@ class LOUDS {
     fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
-                writeObject(nodeIds.toByteArray().size)
-                writeObject(labels.toByteArrayFromListChar().size)
+                writeInt(nodeIds.toByteArray().size)
+                writeInt(labels.toByteArrayFromListChar().size)
                 writeObject(LBS)
                 writeObject(nodeIds.toByteArray().deflate())
                 writeObject(labels.toByteArrayFromListChar().deflate())
@@ -224,12 +224,12 @@ class LOUDS {
     fun readExternal(objectInput: ObjectInput): LOUDS {
         objectInput.use {
             try {
-                val nodeIdSize = objectInput.readObject() as Int
-                val labelSize = objectInput.readObject() as Int
-                LBS = objectInput.readObject() as BitSet
-                nodeIds = (objectInput.readObject() as ByteArray).inflate(nodeIdSize).toListInt()
-                labels = (objectInput.readObject() as ByteArray).inflate(labelSize).toListChar()
-                isLeaf = objectInput.readObject() as BitSet
+                val nodeIdSize = it.readInt()
+                val labelSize = it.readInt()
+                LBS = it.readObject() as BitSet
+                nodeIds = (it.readObject() as ByteArray).inflate(nodeIdSize).toListInt()
+                labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar()
+                isLeaf = it.readObject() as BitSet
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }

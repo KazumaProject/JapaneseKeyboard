@@ -79,9 +79,9 @@ class TokenArray {
     private fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
-                writeObject(posTableIndexList.toByteArrayFromListShort().size)
-                writeObject(wordCostList.toByteArrayFromListShort().size)
-                writeObject(nodeIdList.toByteArray().size)
+                writeInt(posTableIndexList.toByteArrayFromListShort().size)
+                writeInt(wordCostList.toByteArrayFromListShort().size)
+                writeInt(nodeIdList.toByteArray().size)
 
                 writeObject(posTableIndexList.toByteArrayFromListShort().deflate())
                 writeObject(wordCostList.toByteArrayFromListShort().deflate())
@@ -99,9 +99,9 @@ class TokenArray {
     fun readExternal(objectInput: ObjectInput): TokenArray {
         objectInput.apply {
             try {
-                val posTableIndexListSize = readObject() as Int
-                val wordCostListSize = readObject() as Int
-                val nodeIdListSize = readObject() as Int
+                val posTableIndexListSize = readInt()
+                val wordCostListSize = readInt()
+                val nodeIdListSize = readInt()
                 posTableIndexList = (readObject() as ByteArray).inflate(posTableIndexListSize).byteArrayToShortList().toMutableList()
                 wordCostList = (readObject() as ByteArray).inflate(wordCostListSize).byteArrayToShortList().toMutableList()
                 nodeIdList = (readObject() as ByteArray).inflate(nodeIdListSize).toListInt().toMutableList()
