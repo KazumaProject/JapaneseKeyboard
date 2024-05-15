@@ -6,5 +6,4 @@ data class TokenEntry(
     val posTableIndex: Short,
     val wordCost: Short,
     val nodeId: Int,
-    val isSameYomi: Boolean
 ): Serializable

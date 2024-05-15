@@ -6,20 +6,18 @@ import com.kazumaproject.bitset.select0
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
-import com.kazumaproject.toBitSet
-import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
 import com.kazumaproject.toListChar
-import com.kazumaproject.toListInt
 import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 class LOUDS {
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
-    var nodeIds: MutableList<Int> = arrayListOf()
     var labels: MutableList<Char> = arrayListOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
@@ -28,10 +26,6 @@ class LOUDS {
         LBSTemp.apply {
             add(true)
             add(false)
-        }
-        nodeIds.apply {
-            add(0,0)
-            add(1,1)
         }
         labels.apply {
             add(0,' ')
@@ -47,17 +41,13 @@ class LOUDS {
 
     constructor(
         LBS: BitSet,
-        nodeIds: MutableList<Int>,
         labels: MutableList<Char>,
         isLeaf: BitSet,
     ){
         this.LBS = LBS
-        this.nodeIds = nodeIds
         this.labels = labels
         this.isLeaf = isLeaf
     }
-
-    fun getNodeIdSize(): Int = nodeIds.size
 
     private fun firstChild(pos: Int): Int {
         LBS.apply {
@@ -102,12 +92,6 @@ class LOUDS {
         return result
     }
 
-    fun convertListToBitSet(){
-        LBS = LBSTemp.toBitSet()
-        LBSTemp.clear()
-        isLeaf = isLeafTemp.toBitSet()
-        isLeafTemp.clear()
-    }
 
     fun getLetter(nodeIndex: Int): String {
         val list = mutableListOf<Char>()
@@ -138,49 +122,21 @@ class LOUDS {
     }
 
     fun getNodeIndex(s: String): Int{
-        return search2(2, s.toCharArray(), 0)
-    }
-
-    fun getNodeId(s: String): Int{
-        return LBS.rank0(getNodeIndex(s))
-    }
-
-    fun match(s: String): SearchStatus {
         return search(2, s.toCharArray(), 0)
     }
 
-    private fun search(index: Int, chars: CharArray, wordOffset: Int): SearchStatus {
+    private fun search(index: Int, chars: CharArray, wordOffset: Int): Int {
         var index2 = index
         var wordOffset2 = wordOffset
         var charIndex = LBS.rank1(index2)
         while (LBS[index2]) {
             if (chars[wordOffset2] == labels[charIndex]) {
                 if (isLeaf[index2] && wordOffset2 + 1 == chars.size) {
-                    return SearchStatus.LEAF_FOUND
+                    return index2
                 } else if (wordOffset2 + 1 == chars.size) {
-                    return SearchStatus.PART_CONTAINS
+                    return index2
                 }
                 return search(indexOfLabel(charIndex), chars, ++wordOffset2)
-            } else {
-                index2++
-            }
-            charIndex++
-        }
-        return SearchStatus.NOT_FOUND
-    }
-
-    private fun search2(index: Int, chars: CharArray, wordOffset: Int): Int {
-        var index2 = index
-        var wordOffset2 = wordOffset
-        var charIndex = LBS.rank1(index2)
-        while (LBS[index2]) {
-            if (chars[wordOffset2] == labels[charIndex]) {
-                if (isLeaf[index2] && wordOffset2 + 1 == chars.size) {
-                    return index2
-                } else if (wordOffset2 + 1 == chars.size) {
-                    return index2
-                }
-                return search2(indexOfLabel(charIndex), chars, ++wordOffset2)
             } else {
                 index2++
             }
@@ -207,10 +163,8 @@ class LOUDS {
     fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
-                writeInt(nodeIds.toByteArray().size)
                 writeInt(labels.toByteArrayFromListChar().size)
                 writeObject(LBS)
-                writeObject(nodeIds.toByteArray().deflate())
                 writeObject(labels.toByteArrayFromListChar().deflate())
                 writeObject(isLeaf)
                 flush()
@@ -221,26 +175,23 @@ class LOUDS {
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     fun readExternal(objectInput: ObjectInput): LOUDS {
         objectInput.use {
             try {
-                val nodeIdSize = it.readInt()
-                val labelSize = it.readInt()
-                LBS = it.readObject() as BitSet
-                nodeIds = (it.readObject() as ByteArray).inflate(nodeIdSize).toListInt()
-                labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar()
-                isLeaf = it.readObject() as BitSet
+                val time = measureTime {
+                    val labelSize = it.readInt()
+                    LBS = it.readObject() as BitSet
+                    labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar()
+                    isLeaf = it.readObject() as BitSet
+                }
+                println("loading time tango.dat: $time")
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
         }
-        return LOUDS(LBS, nodeIds, labels, isLeaf)
+        return LOUDS(LBS, labels, isLeaf)
     }
 
-    enum class SearchStatus {
-        LEAF_FOUND,
-        PART_CONTAINS,
-        NOT_FOUND
-    }
 
 }

@@ -54,12 +54,12 @@ class GraphBuilder {
                     val listToken = tokenArray.getListDictionaryByYomiTermId(termId)
                     val tangoList = listToken.map {
                         Node(
-                            l = tokenArray.posTable[it.posTableIndex.toInt()].first,
-                            r = tokenArray.posTable[it.posTableIndex.toInt()].second,
+                            l = tokenArray.leftIds[it.posTableIndex.toInt()],
+                            r = tokenArray.rightIds[it.posTableIndex.toInt()],
                             score = it.wordCost.toInt(),
                             f = it.wordCost.toInt(),
                             g = it.wordCost.toInt(),
-                            tango = if (it.isSameYomi) yomiStr else tangoTrie.getLetter(it.nodeId),
+                            tango = if (it.nodeId == -1) yomiStr else tangoTrie.getLetter(it.nodeId),
                             len = yomiStr.length.toShort(),
                             sPos = i
                         )

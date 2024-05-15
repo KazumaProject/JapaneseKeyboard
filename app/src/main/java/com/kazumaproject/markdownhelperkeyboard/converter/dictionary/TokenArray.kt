@@ -19,16 +19,17 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutput
 import java.io.ObjectOutputStream
 import java.util.BitSet
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 class TokenArray {
     private var posTableIndexList: MutableList<Short> = arrayListOf()
     private var wordCostList: MutableList<Short> = arrayListOf()
     private var nodeIdList: MutableList<Int> = arrayListOf()
-    private var isSameYomiList: BitSet = BitSet()
-    private var isSameYomiListTemp: MutableList<Boolean> = arrayListOf()
     private var bitListTemp: MutableList<Boolean> = arrayListOf()
     private var bitvector: BitSet = BitSet()
-    var posTable: List<Pair<Short, Short>> = listOf()
+    var leftIds: List<Short> = listOf()
+    var rightIds: List<Short> = listOf()
 
     fun getListDictionaryByYomiTermId(
         nodeId: Int,
@@ -42,7 +43,6 @@ class TokenArray {
                     posTableIndex = posTableIndexList[i],
                     wordCost = wordCostList[i],
                     nodeId = nodeIdList[i],
-                    isSameYomi = isSameYomiList.get(i)
                 )
             )
         }
@@ -69,7 +69,6 @@ class TokenArray {
                     posTableIndexList.add(posTableIndex)
                     wordCostList.add(dictionary.cost)
                     nodeIdList.add(if (dictionary.yomi == dictionary.tango || entry.key.hiraToKata() == dictionary.tango) -1 else tangoTrie.getNodeIndex(dictionary.tango))
-                    isSameYomiListTemp.add(dictionary.yomi == dictionary.tango || dictionary.yomi.hiraToKata() == dictionary.tango)
                 }
             }
         }
@@ -86,7 +85,6 @@ class TokenArray {
                 writeObject(posTableIndexList.toByteArrayFromListShort().deflate())
                 writeObject(wordCostList.toByteArrayFromListShort().deflate())
                 writeObject(nodeIdList.toByteArray().deflate())
-                writeObject(isSameYomiListTemp.toBitSet())
                 writeObject(bitListTemp.toBitSet())
                 flush()
                 close()
@@ -96,18 +94,21 @@ class TokenArray {
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     fun readExternal(objectInput: ObjectInput): TokenArray {
         objectInput.apply {
             try {
-                val posTableIndexListSize = readInt()
-                val wordCostListSize = readInt()
-                val nodeIdListSize = readInt()
-                posTableIndexList = (readObject() as ByteArray).inflate(posTableIndexListSize).byteArrayToShortList().toMutableList()
-                wordCostList = (readObject() as ByteArray).inflate(wordCostListSize).byteArrayToShortList().toMutableList()
-                nodeIdList = (readObject() as ByteArray).inflate(nodeIdListSize).toListInt().toMutableList()
-                isSameYomiList = readObject() as BitSet
-                bitvector = readObject() as BitSet
-                close()
+                val time = measureTime {
+                    val posTableIndexListSize = readInt()
+                    val wordCostListSize = readInt()
+                    val nodeIdListSize = readInt()
+                    posTableIndexList = (readObject() as ByteArray).inflate(posTableIndexListSize).byteArrayToShortList().toMutableList()
+                    wordCostList = (readObject() as ByteArray).inflate(wordCostListSize).byteArrayToShortList().toMutableList()
+                    nodeIdList = (readObject() as ByteArray).inflate(nodeIdListSize).toListInt().toMutableList()
+                    bitvector = readObject() as BitSet
+                    close()
+                }
+                println("loading time token.dat $time")
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
@@ -195,14 +196,19 @@ class TokenArray {
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     fun readPOSTable(
         objectInputStream: ObjectInputStream
     ) {
-        var a: List<Pair<Short,Short>>
-        objectInputStream.apply {
-            a = (readObject() as List<Pair<Short,Short>>)
+        val time = measureTime {
+            objectInputStream.apply {
+                val leftIdSize = readInt()
+                val rightIdSize = readInt()
+                leftIds = (readObject() as ByteArray).inflate(leftIdSize).byteArrayToShortList()
+                rightIds = (readObject() as ByteArray).inflate(rightIdSize).byteArrayToShortList()
+            }
         }
-        posTable = a
+        println("loading pos.dat: $time")
     }
 
     fun readPOSTableWithIndex(

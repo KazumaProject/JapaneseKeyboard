@@ -1,17 +1,15 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import android.content.Context
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.viterbi.FindPath
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import timber.log.Timber
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
+import java.io.BufferedInputStream
+import java.io.ObjectInputStream
 
 class KanaKanjiEngine {
 
@@ -20,35 +18,30 @@ class KanaKanjiEngine {
     private lateinit var connectionIds: List<Short>
     private lateinit var tokenArray: TokenArray
 
-    @OptIn(ExperimentalTime::class)
+    fun buildEngine(context: Context){
+        val objectInputYomi = ObjectInputStream(BufferedInputStream(context.assets.open("yomi.dat")))
+        val objectInputTango = ObjectInputStream(BufferedInputStream(context.assets.open("tango.dat")))
+        val objectInputTokenArray = ObjectInputStream(BufferedInputStream(context.assets.open("token.dat")))
+        val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+        val objectInputConnectionId = ObjectInputStream(BufferedInputStream(context.assets.open("connectionIds.dat")))
+        tokenArray = TokenArray()
+        tokenArray.readExternal(objectInputTokenArray)
+        tokenArray.readPOSTable(objectInputReadPOSTable)
+        yomiTrie = LOUDSWithTermId().readExternal(objectInputYomi)
+        tangoTrie = LOUDS().readExternal(objectInputTango)
+        connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
+    }
+
     fun buildEngine(
         yomi: LOUDSWithTermId,
         tango: LOUDS,
         token: TokenArray,
         connectionIdList: List<Short>
-    ) = CoroutineScope(Dispatchers.Main).launch {
-
-        val time = measureTime {
-            val timeA = measureTime {
-                yomiTrie = yomi
-            }
-            val timeB = measureTime {
-                tangoTrie = tango
-            }
-            val timeC = measureTime {
-                connectionIds = connectionIdList
-            }
-            val timeD = measureTime {
-                tokenArray = token
-            }
-            println("yomi.dat: $timeA")
-            println("tango.dat: $timeB")
-            println("connectionIds.dat: $timeC")
-            println("token.dat: $timeD")
-
-        }
-
-        Timber.d("finished to build kana kanji engine $time")
+    ){
+        this.yomiTrie = yomi
+        this.tangoTrie = tango
+        this.connectionIds = connectionIdList
+        this.tokenArray = token
     }
 
     fun nBestPath(
