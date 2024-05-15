@@ -10,6 +10,7 @@ import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMap
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -95,56 +96,13 @@ object AppModule {
         }
     }
 
-//    @Singleton
-//    @Provides
-//    fun providesYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId{
-//        val objectInputYomi = ObjectInputStream(context.assets.open("yomi.dat"))
-//        return LOUDSWithTermId().readExternal(objectInputYomi)
-//    }
-//
-//    @Singleton
-//    @Provides
-//    fun providesTangoTrie(@ApplicationContext context: Context): LOUDS{
-//        val objectInputTango = ObjectInputStream(context.assets.open("tango.dat"))
-//        return LOUDS().readExternal(objectInputTango)
-//    }
-//
-//    @Singleton
-//    @Provides
-//    fun provideTokenArray(@ApplicationContext context: Context): TokenArray{
-//        val objectInputTokenArray = ObjectInputStream(context.assets.open("token.dat"))
-//        val objectInputReadPOSTable = ObjectInputStream(context.assets.open("pos_table.dat"))
-//        val a = TokenArray()
-//        a.readExternal(objectInputTokenArray)
-//        a.readPOSTable(objectInputReadPOSTable)
-//        return a
-//    }
-//
-//    @Singleton
-//    @Provides
-//    @ConnectionIds
-//    fun providesConnectionIds(@ApplicationContext context: Context): List<Short>{
-//        val objectInputConnectionId = ObjectInputStream(context.assets.open("connectionIds.dat"))
-//        return ConnectionIdBuilder().read(objectInputConnectionId)
-//    }
-//
-//    @Singleton
-//    @Provides
-//    fun provideKanaKanjiHankanEngine(
-//        yomiTrie: LOUDSWithTermId,
-//        tangoTrie: LOUDS,
-//        tokenArray: TokenArray,
-//        @ConnectionIds connectionIds: List<Short>
-//    ): KanaKanjiEngine {
-//        val kanaKanjiEngine = KanaKanjiEngine()
-//        kanaKanjiEngine.buildEngine(
-//            yomiTrie,
-//            tangoTrie,
-//            tokenArray,
-//            connectionIds
-//        )
-//        return kanaKanjiEngine
-//    }
+    @Singleton
+    @Provides
+    fun provideKanaKanjiHankanEngine(@ApplicationContext context: Context): KanaKanjiEngine {
+        val kanaKanjiEngine = KanaKanjiEngine()
+        kanaKanjiEngine.buildEngine(context = context)
+        return kanaKanjiEngine
+    }
 
     @Singleton
     @Provides
