@@ -8,7 +8,6 @@ import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.viterbi.FindPath
-import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 
 class KanaKanjiEngine {
@@ -19,11 +18,11 @@ class KanaKanjiEngine {
     private lateinit var tokenArray: TokenArray
 
     fun buildEngine(context: Context){
-        val objectInputYomi = ObjectInputStream(BufferedInputStream(context.assets.open("yomi.dat")))
-        val objectInputTango = ObjectInputStream(BufferedInputStream(context.assets.open("tango.dat")))
-        val objectInputTokenArray = ObjectInputStream(BufferedInputStream(context.assets.open("token.dat")))
-        val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val objectInputConnectionId = ObjectInputStream(BufferedInputStream(context.assets.open("connectionIds.dat")))
+        val objectInputYomi = ObjectInputStream(context.assets.open("yomi.dat"))
+        val objectInputTango = ObjectInputStream(context.assets.open("tango.dat"))
+        val objectInputTokenArray = ObjectInputStream(context.assets.open("token.dat"))
+        val objectInputReadPOSTable = ObjectInputStream(context.assets.open("pos_table.dat"))
+        val objectInputConnectionId = ObjectInputStream(context.assets.open("connectionIds.dat"))
         tokenArray = TokenArray()
         tokenArray.readExternal(objectInputTokenArray)
         tokenArray.readPOSTable(objectInputReadPOSTable)

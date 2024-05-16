@@ -3,7 +3,7 @@ package com.kazumaproject.viterbi
 import com.kazumaproject.Other.BOS
 import com.kazumaproject.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.graph.Node
-import java.util.*
+import java.util.PriorityQueue
 
 class FindPath {
 
@@ -47,7 +47,7 @@ class FindPath {
                     if (!resultFinal.contains(getStringFromNode(node.first))){
                         resultFinal.add(getStringFromNode(node.first))
                     }
-                    pQueue.remove()
+                    //pQueue.remove()
                 } else {
                     val prevNodes = getPrevNodes2(
                         graph,node.first,node.first.sPos

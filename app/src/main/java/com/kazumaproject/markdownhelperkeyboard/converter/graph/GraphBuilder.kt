@@ -66,11 +66,14 @@ class GraphBuilder {
                     }
                     if (graph[i + yomiStr.length].isNullOrEmpty()) graph[i + yomiStr.length] = mutableListOf()
                     graph[i + yomiStr.length]!!.add(tangoList.toMutableList())
+                    println("add graph: ${tangoList.map { "${it.tango} ${it.score} ${it.f} ${it.g}" }}")
                 }
             }
         }
 
         println("time of construct graph: $time $str")
+
+        println("graph: $graph")
 
         return graph.toList().filterNotNull()
     }
