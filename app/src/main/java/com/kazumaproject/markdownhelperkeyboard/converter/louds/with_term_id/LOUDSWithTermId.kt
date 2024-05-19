@@ -4,6 +4,7 @@ import com.kazumaproject.bitset.rank0
 import com.kazumaproject.bitset.rank1
 import com.kazumaproject.bitset.select0
 import com.kazumaproject.bitset.select1
+import com.kazumaproject.byteArrayToShortList
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.toBitSet
@@ -15,8 +16,6 @@ import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
 class LOUDSWithTermId {
 
@@ -24,6 +23,7 @@ class LOUDSWithTermId {
     var LBS: BitSet = BitSet()
     var labels: MutableList<Char> = arrayListOf()
     var termIds: MutableList<Int> = arrayListOf()
+    var termIdsDiff: List<Short> = arrayListOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
 
@@ -48,12 +48,12 @@ class LOUDSWithTermId {
         LBS: BitSet,
         labels: MutableList<Char>,
         isLeaf: BitSet,
-        termIds: MutableList<Int>,
+        termIds: List<Short>,
     ){
         this.LBS = LBS
         this.labels = labels
         this.isLeaf = isLeaf
-        this.termIds = termIds
+        this.termIdsDiff = termIds
     }
 
     fun convertListToBitSet(){
@@ -102,7 +102,12 @@ class LOUDSWithTermId {
     fun getTermId(nodeIndex: Int): Int {
         val firstNodeId = isLeaf.rank1(nodeIndex) - 1
         if (firstNodeId < 0) return -1
-        val firstTermId = termIds[firstNodeId]
+        //val firstTermId = termIds[firstNodeId]
+        val firstTermId = if (termIdsDiff[firstNodeId].toInt() == 0){
+            firstNodeId + 1
+        }else{
+            firstNodeId + termIdsDiff[firstNodeId]
+        }
         return firstTermId
     }
 
@@ -203,26 +208,37 @@ class LOUDSWithTermId {
         }
     }
 
-    @OptIn(ExperimentalTime::class)
     fun readExternal(objectInput: ObjectInput): LOUDSWithTermId {
         objectInput.use {
             try {
-                val time = measureTime {
-                    val labelsSize = it.readInt()
-                    val termIdSize = it.readInt()
-
-                    LBS = it.readObject() as BitSet
-                    labels = (it.readObject() as ByteArray).inflate(labelsSize).toListChar()
-                    isLeaf = it.readObject() as BitSet
-                    termIds = (it.readObject() as ByteArray).inflate(termIdSize).toListInt()
-                    it.close()
-                }
-                println("loading time yomi.dat: $time")
+                val labelsSize = objectInput.readInt()
+                val termIdSize = objectInput.readInt()
+                LBS = objectInput.readObject() as BitSet
+                isLeaf = objectInput.readObject() as BitSet
+                labels = (objectInput.readObject() as ByteArray).inflate(labelsSize).toListChar()
+                termIds = (objectInput.readObject() as ByteArray).inflate(termIdSize).toListInt().toMutableList()
+                it.close()
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
         }
-        return LOUDSWithTermId(LBS, labels, isLeaf, termIds)
+        return LOUDSWithTermId()
+    }
+
+    fun readExternalNotCompress(objectInput: ObjectInput): LOUDSWithTermId {
+        objectInput.apply {
+            try {
+                val size = readInt()
+                LBS = objectInput.readObject() as BitSet
+                isLeaf = objectInput.readObject() as BitSet
+                labels = (objectInput.readObject() as String).toCharArray().toMutableList()
+                termIdsDiff = (objectInput.readObject() as ByteArray).inflate(size).byteArrayToShortList()
+                close()
+            }catch (e: Exception){
+                println(e.stackTraceToString())
+            }
+        }
+        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsDiff)
     }
 
 }

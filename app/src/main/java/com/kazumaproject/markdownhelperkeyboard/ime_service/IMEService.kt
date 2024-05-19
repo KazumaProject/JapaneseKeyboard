@@ -269,7 +269,7 @@ class IMEService: InputMethodService() {
                 EMOJI_ACTIVITY + EMOJI_TRAVEL + EMOJI_OBJECT
 
         const val DISPLAY_LEFT_STRING_TIME = 64L
-        const val N_BEST = 32
+        const val N_BEST = 16
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")

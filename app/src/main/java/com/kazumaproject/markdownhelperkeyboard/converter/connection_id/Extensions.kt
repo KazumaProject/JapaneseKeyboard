@@ -6,7 +6,7 @@ import java.util.zip.Inflater
 fun ByteArray.deflate(): ByteArray{
     val rawData: ByteArray = this
     val compressedData = ByteArray(rawData.size)
-    val compressor = Deflater()
+    val compressor = Deflater(Deflater.BEST_COMPRESSION)
     compressor.apply {
         setInput(rawData)
         finish()
@@ -15,7 +15,9 @@ fun ByteArray.deflate(): ByteArray{
     return compressedData.copyOfRange(0, compressedDataLength)
 }
 
-fun ByteArray.inflate(size: Int): ByteArray{
+fun ByteArray.inflate(
+    size: Int,
+): ByteArray{
     val compressedData: ByteArray = this
     val originalData = ByteArray(size)
     val inflater = Inflater()
@@ -26,4 +28,3 @@ fun ByteArray.inflate(size: Int): ByteArray{
     val originalDataLength = inflater.inflate(originalData)
     return originalData.copyOfRange(0, originalDataLength)
 }
-

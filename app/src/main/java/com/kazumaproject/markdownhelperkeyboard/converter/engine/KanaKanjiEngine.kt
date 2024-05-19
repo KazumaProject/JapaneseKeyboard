@@ -8,7 +8,10 @@ import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.viterbi.FindPath
+import java.io.BufferedInputStream
 import java.io.ObjectInputStream
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 class KanaKanjiEngine {
 
@@ -17,18 +20,45 @@ class KanaKanjiEngine {
     private lateinit var connectionIds: List<Short>
     private lateinit var tokenArray: TokenArray
 
-    fun buildEngine(context: Context){
-        val objectInputYomi = ObjectInputStream(context.assets.open("yomi.dat"))
-        val objectInputTango = ObjectInputStream(context.assets.open("tango.dat"))
-        val objectInputTokenArray = ObjectInputStream(context.assets.open("token.dat"))
-        val objectInputReadPOSTable = ObjectInputStream(context.assets.open("pos_table.dat"))
-        val objectInputConnectionId = ObjectInputStream(context.assets.open("connectionIds.dat"))
-        tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        yomiTrie = LOUDSWithTermId().readExternal(objectInputYomi)
-        tangoTrie = LOUDS().readExternal(objectInputTango)
-        connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
+    @OptIn(ExperimentalTime::class)
+    fun buildEngine(
+        context: Context,
+    ) {
+        val time = measureTime {
+
+            val assetManager = context.assets
+
+            val objectInputYomi = ObjectInputStream(BufferedInputStream(assetManager.open("yomi.dat")))
+            val objectInputTango = ObjectInputStream(BufferedInputStream(assetManager.open("tango.dat")))
+            val objectInputTokenArray = ObjectInputStream(BufferedInputStream(assetManager.open("token.dat")))
+            val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(assetManager.open("pos_table.dat")))
+            val objectInputConnectionId = ObjectInputStream(BufferedInputStream(assetManager.open("connectionIds.dat")))
+
+            val time1 = measureTime {
+                tokenArray =  TokenArray()
+                tokenArray.readExternal(objectInputTokenArray)
+                tokenArray.readPOSTable(objectInputReadPOSTable)
+            }
+
+            val time2 = measureTime {
+                yomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+            }
+
+            val time3 = measureTime {
+                tangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
+            }
+
+            val time4 = measureTime {
+                connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
+            }
+
+            println("token: $time1")
+            println("yomi: $time2")
+            println("tango: $time3")
+            println("connection: $time4")
+        }
+
+        println("loading tries: $time")
     }
 
     fun buildEngine(
@@ -43,7 +73,7 @@ class KanaKanjiEngine {
         this.tokenArray = token
     }
 
-    fun nBestPath(
+    suspend fun nBestPath(
         input: String,
         n: Int
     ): List<String> {
@@ -67,7 +97,7 @@ class KanaKanjiEngine {
         return result
     }
 
-    fun viterbiAlgorithm(
+    suspend fun viterbiAlgorithm(
         input: String
     ): String {
         val findPath = FindPath()
