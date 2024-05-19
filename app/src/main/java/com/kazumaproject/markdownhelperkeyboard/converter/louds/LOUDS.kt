@@ -12,8 +12,6 @@ import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
 class LOUDS {
     val LBSTemp: MutableList<Boolean> = arrayListOf()
@@ -175,17 +173,13 @@ class LOUDS {
         }
     }
 
-    @OptIn(ExperimentalTime::class)
     fun readExternal(objectInput: ObjectInput): LOUDS {
         objectInput.use {
             try {
-                val time = measureTime {
-                    val labelSize = it.readInt()
-                    LBS = it.readObject() as BitSet
-                    labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar()
-                    isLeaf = it.readObject() as BitSet
-                }
-                println("loading time tango.dat: $time")
+                val labelSize = it.readInt()
+                LBS = it.readObject() as BitSet
+                labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar()
+                isLeaf = it.readObject() as BitSet
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
@@ -193,5 +187,18 @@ class LOUDS {
         return LOUDS(LBS, labels, isLeaf)
     }
 
+    fun readExternalNotCompress(objectInput: ObjectInput): LOUDS {
+        objectInput.apply {
+            try {
+                LBS = objectInput.readObject() as BitSet
+                isLeaf = objectInput.readObject() as BitSet
+                labels = (objectInput.readObject() as String).toCharArray().toMutableList()
+                close()
+            }catch (e: Exception){
+                println(e.stackTraceToString())
+            }
+        }
+        return LOUDS(LBS, labels, isLeaf)
+    }
 
 }

@@ -4,8 +4,6 @@ import com.kazumaproject.byteArrayToShortList
 import com.kazumaproject.toByteArrayFromListShort
 import java.io.ObjectInput
 import java.io.ObjectOutput
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
 class ConnectionIdBuilder {
     fun build(
@@ -24,17 +22,13 @@ class ConnectionIdBuilder {
         }
     }
 
-    @OptIn(ExperimentalTime::class)
     fun read(objectInput: ObjectInput): List<Short>{
         var a: List<Short>
         return try {
             objectInput.apply {
-                val time = measureTime {
-                    val byteSize = readObject() as Int
-                    a = (readObject() as ByteArray).inflate(byteSize).byteArrayToShortList()
-                    close()
-                }
-                println("loading time connection ids: $time")
+                val byteSize = readObject() as Int
+                a = (readObject() as ByteArray).inflate(byteSize).byteArrayToShortList()
+                close()
             }
             a
         }catch (e: Exception){
@@ -42,4 +36,21 @@ class ConnectionIdBuilder {
             emptyList()
         }
     }
+
+
+    fun readNotCompress(
+        objectInput: ObjectInput,
+    ): List<Short>{
+        try {
+            objectInput.apply {
+                val a = (readObject() as ByteArray).byteArrayToShortList()
+                close()
+                return a
+            }
+        }catch (e: Exception){
+            println(e.message)
+            return emptyList()
+        }
+    }
+
 }

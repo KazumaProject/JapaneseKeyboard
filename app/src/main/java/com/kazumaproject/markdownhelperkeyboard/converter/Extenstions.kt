@@ -1,5 +1,6 @@
 package com.kazumaproject
 
+import android.content.res.AssetManager
 import java.nio.ByteBuffer
 import java.util.BitSet
 
@@ -71,4 +72,28 @@ fun ByteArray.byteArrayToShortList(): List<Short> {
 
 fun  BitSet.toBooleanList():List<Boolean>{
     return (0 until this.size()).map { this[it] }
+}
+
+fun List<Int>.toBitSetExtension(): BitSet {
+    val bitSet = BitSet()
+    this.forEach { bitSet.set(it) }
+    return bitSet
+}
+
+// Extension function to convert BitSet to List<Int>
+fun BitSet.toIntListExtension(): List<Int> {
+    val intList = mutableListOf<Int>()
+    for (index in 0 until this.size()) {
+        if (this.get(index)) {
+            intList.add(index)
+        }
+    }
+    return intList
+}
+
+fun readTxtFileToListInt(
+    fileName: String,
+    assetManager: AssetManager
+): List<Int> {
+    return assetManager.open(fileName).bufferedReader().readLines().map { it.toInt() }
 }

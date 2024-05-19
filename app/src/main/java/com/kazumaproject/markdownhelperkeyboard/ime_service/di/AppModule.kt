@@ -30,7 +30,6 @@ import java.util.concurrent.Executors
 import javax.inject.Named
 import javax.inject.Singleton
 
-@SuppressLint("ServiceCast")
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {

@@ -19,8 +19,6 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutput
 import java.io.ObjectOutputStream
 import java.util.BitSet
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
 class TokenArray {
     private var posTableIndexList: MutableList<Short> = arrayListOf()
@@ -94,21 +92,19 @@ class TokenArray {
         }
     }
 
-    @OptIn(ExperimentalTime::class)
-    fun readExternal(objectInput: ObjectInput): TokenArray {
+    fun readExternal(
+        objectInput: ObjectInput,
+    ): TokenArray {
         objectInput.apply {
             try {
-                val time = measureTime {
-                    val posTableIndexListSize = readInt()
-                    val wordCostListSize = readInt()
-                    val nodeIdListSize = readInt()
-                    posTableIndexList = (readObject() as ByteArray).inflate(posTableIndexListSize).byteArrayToShortList().toMutableList()
-                    wordCostList = (readObject() as ByteArray).inflate(wordCostListSize).byteArrayToShortList().toMutableList()
-                    nodeIdList = (readObject() as ByteArray).inflate(nodeIdListSize).toListInt().toMutableList()
-                    bitvector = readObject() as BitSet
-                    close()
-                }
-                println("loading time token.dat $time")
+                val posTableIndexListSize = readInt()
+                val wordCostListSize = readInt()
+                val nodeIdListSize = readInt()
+                posTableIndexList = (readObject() as ByteArray).inflate(posTableIndexListSize).byteArrayToShortList().toMutableList()
+                wordCostList = (readObject() as ByteArray).inflate(wordCostListSize).byteArrayToShortList().toMutableList()
+                nodeIdList = (readObject() as ByteArray).inflate(nodeIdListSize).toListInt().toMutableList()
+                bitvector = readObject() as BitSet
+                close()
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
@@ -196,19 +192,15 @@ class TokenArray {
         }
     }
 
-    @OptIn(ExperimentalTime::class)
     fun readPOSTable(
         objectInputStream: ObjectInputStream
     ) {
-        val time = measureTime {
-            objectInputStream.apply {
-                val leftIdSize = readInt()
-                val rightIdSize = readInt()
-                leftIds = (readObject() as ByteArray).inflate(leftIdSize).byteArrayToShortList()
-                rightIds = (readObject() as ByteArray).inflate(rightIdSize).byteArrayToShortList()
-            }
+        objectInputStream.apply {
+            val leftIdSize = readInt()
+            val rightIdSize = readInt()
+            leftIds = (readObject() as ByteArray).inflate(leftIdSize).byteArrayToShortList()
+            rightIds = (readObject() as ByteArray).inflate(rightIdSize).byteArrayToShortList()
         }
-        println("loading pos.dat: $time")
     }
 
     fun readPOSTableWithIndex(
