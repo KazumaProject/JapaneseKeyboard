@@ -8,6 +8,9 @@ import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.viterbi.FindPath
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import kotlin.time.ExperimentalTime
@@ -23,7 +26,7 @@ class KanaKanjiEngine {
     @OptIn(ExperimentalTime::class)
     fun buildEngine(
         context: Context,
-    ) {
+    ) = CoroutineScope(Dispatchers.Main).launch{
         val time = measureTime {
 
             val assetManager = context.assets
@@ -34,22 +37,30 @@ class KanaKanjiEngine {
             val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(assetManager.open("pos_table.dat")))
             val objectInputConnectionId = ObjectInputStream(BufferedInputStream(assetManager.open("connectionIds.dat")))
 
+            val time4 = measureTime {
+               launch { connectionIds = ConnectionIdBuilder().read(objectInputConnectionId) }
+            }
+
             val time1 = measureTime {
-                tokenArray =  TokenArray()
-                tokenArray.readExternal(objectInputTokenArray)
-                tokenArray.readPOSTable(objectInputReadPOSTable)
+                tokenArray = TokenArray()
+                launch {
+                    tokenArray.readExternal(objectInputTokenArray)
+                }
+                launch {
+                    tokenArray.readPOSTable(objectInputReadPOSTable)
+                }
             }
 
             val time2 = measureTime {
-                yomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+                launch {
+                    yomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+                }
             }
 
             val time3 = measureTime {
-                tangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
-            }
-
-            val time4 = measureTime {
-                connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
+                launch {
+                    tangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
+                }
             }
 
             println("token: $time1")

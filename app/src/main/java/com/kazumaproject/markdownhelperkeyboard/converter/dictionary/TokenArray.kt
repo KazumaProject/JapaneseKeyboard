@@ -112,6 +112,7 @@ class TokenArray {
         return TokenArray()
     }
 
+
     /**
      *
      * @param fileList dictionary00 ~ dictionary09
