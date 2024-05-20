@@ -130,28 +130,28 @@ class LOUDSWithTermId {
         return -1
     }
 
-    fun commonPrefixSearch(str: String): List<String> {
+     fun commonPrefixSearch(str: String): List<String>  {
         val resultTemp: MutableList<Char> = mutableListOf()
         val result: MutableList<String> = mutableListOf()
         var n = 0
-        for (c in str){
-            n = traverse(n, c)
-            val index = LBS.rank1(n)
-            if (n == -1) break
-            if (index >= labels.size) return result
-            resultTemp.add(labels[index])
+         for (i in str.indices){
+             n = traverse(n, str[i])
+             val index = LBS.rank1(n)
+             if (n == -1) break
+             if (index >= labels.size) return result
+             resultTemp.add(labels[index])
             if (isLeaf[n]){
                 val tempStr = resultTemp.joinToString("")
                 if (result.size >= 1){
-                    val resultStr = result[0] + tempStr
-                    result.add(resultStr)
+                    println("$tempStr $result")
+                    result.add(tempStr)
                 }else {
                     result.add(tempStr)
-                    resultTemp.clear()
                 }
             }
-        }
-        return result.toList()
+         }
+
+         return result.toList()
     }
 
     private fun search(index: Int, chars: CharArray, wordOffset: Int): Int {
@@ -185,7 +185,6 @@ class LOUDSWithTermId {
             }
             i++
         }
-
         return i + 1
     }
 

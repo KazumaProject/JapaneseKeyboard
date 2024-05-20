@@ -23,6 +23,7 @@ import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import android.widget.PopupWindow
 import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.AppCompatButton
@@ -64,6 +65,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowBottom
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowLeft
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowRight
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowTop
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertUnicode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
@@ -126,6 +128,7 @@ import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
 import kotlin.math.abs
+
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
@@ -225,6 +228,7 @@ class IMEService: InputMethodService() {
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionList = MutableStateFlow<List<String>>(emptyList())
     private val _suggestionFlag = MutableStateFlow(false)
+    private val _suggestionViewStatus = MutableStateFlow(true)
 
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private var currentTenKeyId = 0
@@ -269,6 +273,7 @@ class IMEService: InputMethodService() {
                 EMOJI_ACTIVITY + EMOJI_TRAVEL + EMOJI_OBJECT
 
         const val DISPLAY_LEFT_STRING_TIME = 64L
+        const val DELAY_TIME = 1000L
         const val N_BEST = 16
     }
 
@@ -293,12 +298,17 @@ class IMEService: InputMethodService() {
                     mainView.keyboardView.keySmallLetter,
                     mainView.keyboardView.key12
                 )
+                val flexboxLayoutManager = FlexboxLayoutManager(this@IMEService).apply {
+                    flexWrap = FlexWrap.WRAP
+                    alignItems = AlignItems.STRETCH
+                }
+
                 initializeVariables()
 
                 setTenKeyView(keyList)
-                setSuggestionRecyclerView()
+                setSuggestionRecyclerView(flexboxLayoutManager)
                 setKigouView()
-                startScope(keyList)
+                startScope(keyList, flexboxLayoutManager)
             }
         }
     }
@@ -354,11 +364,56 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private fun startScope(keyList: List<Any>) = scope.launch {
+    private fun startScope(
+        keyList: List<Any>,
+        flexboxLayoutManager: FlexboxLayoutManager
+    ) = scope.launch {
         mainLayoutBinding?.let { mainView ->
             launch {
                 _suggestionFlag.asStateFlow().collectLatest {
                     setSuggestionOnView(mainView)
+                    mainView.keyboardView.root.isVisible = true
+                    mainView.suggestionVisibility?.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
+                }
+            }
+
+            launch {
+                _suggestionViewStatus.asStateFlow().collectLatest {
+                    mainView.keyboardView.root.isVisible = it
+                    println("$it")
+                    if (it){
+                        mainView.suggestionVisibility?.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
+                        val margins = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                            leftMargin = 0
+                            rightMargin = 40f.convertDp2Px(this@IMEService)
+                            topMargin = 0
+                            bottomMargin = 280f.convertDp2Px(this@IMEService)
+                            height = 54f.convertDp2Px(this@IMEService)
+                        }
+                        mainView.suggestionRecyclerView.layoutParams = margins
+                        mainView.suggestionRecyclerView.apply {
+                            layoutManager =  flexboxLayoutManager.apply {
+                                flexDirection = FlexDirection.COLUMN
+                                justifyContent = JustifyContent.SPACE_AROUND
+                            }
+                        }
+                    }else{
+                        mainView.suggestionVisibility?.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_up_24))
+                        val margins = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                            leftMargin = 0
+                            rightMargin = 40f.convertDp2Px(this@IMEService)
+                            topMargin = 0
+                            bottomMargin = 0
+                            height = 336f.convertDp2Px(this@IMEService)
+                        }
+                        mainView.suggestionRecyclerView.layoutParams = margins
+                        mainView.suggestionRecyclerView.apply {
+                            layoutManager = flexboxLayoutManager.apply {
+                                flexDirection = FlexDirection.ROW
+                                justifyContent = JustifyContent.FLEX_START
+                            }
+                        }
+                    }
                 }
             }
 
@@ -400,7 +455,7 @@ class IMEService: InputMethodService() {
                 }
             }
 
-            launchInputString()
+            launchInputString(mainView)
         }
     }
 
@@ -455,7 +510,8 @@ class IMEService: InputMethodService() {
                 InputTypeForIME.Phone,
                 InputTypeForIME.Date,
                 InputTypeForIME.Datetime,
-                InputTypeForIME.Time, -> {
+                InputTypeForIME.Time,
+                -> {
                     _currentInputMode.value = InputMode.ModeNumber
                 }
 
@@ -519,7 +575,9 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private fun setSuggestionRecyclerView(){
+    private fun setSuggestionRecyclerView(
+        flexboxLayoutManager: FlexboxLayoutManager
+    ){
         suggestionAdapter?.apply {
             this.setOnItemClickListener {
                 setVibrate()
@@ -527,18 +585,18 @@ class IMEService: InputMethodService() {
                 resetFlagsKeyEnter()
             }
         }
-        val flexboxLayoutManager = FlexboxLayoutManager(this).apply {
-            flexDirection = FlexDirection.COLUMN
-            flexWrap = FlexWrap.WRAP
-            justifyContent = JustifyContent.FLEX_START
-            alignItems = AlignItems.STRETCH
-        }
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
                 suggestionAdapter?.let { sugAdapter ->
                     adapter = sugAdapter
-                    layoutManager = flexboxLayoutManager
+                    layoutManager = flexboxLayoutManager.apply {
+                        flexDirection = FlexDirection.ROW
+                        justifyContent = JustifyContent.FLEX_START
+                    }
                 }
+            }
+            mainView.suggestionVisibility?.setOnClickListener {
+                _suggestionViewStatus.update { !it }
             }
         }
     }
@@ -557,6 +615,9 @@ class IMEService: InputMethodService() {
                 }
                 _suggestionFlag.update { flag ->
                     !flag
+                }
+                if (!_suggestionViewStatus.value){
+                    _suggestionViewStatus.update { true }
                 }
             }
         }
@@ -683,14 +744,17 @@ class IMEService: InputMethodService() {
         isContinuousTapInputEnabled = true
     }
 
-    private suspend fun launchInputString() = withContext(imeIoDispatcher){
+    private suspend fun launchInputString(mainView: MainLayoutBinding) = withContext(imeIoDispatcher){
         _inputString.asStateFlow().collectLatest { inputString ->
             Timber.d("launchInputString: $inputString")
-            if (inputString.isNotBlank()) {
+            withContext(mainDispatcher){
+                mainView.suggestionVisibility?.isVisible = inputString.isNotBlank()
+            }
+                if (inputString.isNotBlank()) {
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
                 setComposingTextPreEdit(inputString, spannableString)
-                //delay(DELAY_TIME)
+                delay(DELAY_TIME)
                 if (isHenkan) return@collectLatest
                 if (inputString.isEmpty()) return@collectLatest
                 if (onDeleteLongPressUp) return@collectLatest
@@ -913,7 +977,8 @@ class IMEService: InputMethodService() {
             InputTypeForIME.Phone,
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
-            InputTypeForIME.Time, -> {
+            InputTypeForIME.Time,
+            -> {
                 currentInputConnection?.performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
@@ -2096,7 +2161,8 @@ class IMEService: InputMethodService() {
             InputTypeForIME.Phone,
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
-            InputTypeForIME.Time, ->{
+            InputTypeForIME.Time,
+            -> {
                 sendKeyChar(charToSend)
             }
             else ->{

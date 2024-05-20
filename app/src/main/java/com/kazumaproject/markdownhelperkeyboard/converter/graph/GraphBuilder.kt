@@ -47,9 +47,9 @@ class GraphBuilder {
         }
 
         val time = measureTime {
+            var commonPrefixSearch: List<String>
             str.indices.map { i ->
-                async(Dispatchers.Default) {
-                    var commonPrefixSearch: List<String>
+                async(Dispatchers.IO) {
                     val subStr = str.substring(i, str.length)
                     val time1 = measureTime {
                         commonPrefixSearch = yomiTrie.commonPrefixSearch(subStr)
@@ -76,47 +76,12 @@ class GraphBuilder {
                             }
                             if (graph[i + yomiStr.length].isNullOrEmpty()) graph[i + yomiStr.length] = mutableListOf()
                             graph[i + yomiStr.length]!!.add(tangoList.toMutableList())
-                            println("add graph: ${tangoList.map { "${it.tango} ${it.score} ${it.f} ${it.g}" }}")
+                            //println("add graph: ${tangoList.map { "${it.tango} ${it.score} ${it.f} ${it.g}" }}")
                         }
                     }
-
-                    println("$i $commonPrefixSearch $time1 $time2 ${time1 + time2}")
+                    println("$i $commonPrefixSearch $time1 $time2 ${time1 + time2} $subStr")
                 }
             }.awaitAll()
-//            for (i in str.indices){
-//                var commonPrefixSearch: List<String>
-//                val subStr = str.substring(i, str.length)
-//                val time1 = measureTime {
-//                    commonPrefixSearch = yomiTrie.commonPrefixSearch(subStr)
-//                }
-//                val time2 = measureTime {
-//                    commonPrefixSearch.forEach { yomiStr ->
-//                        val termId = yomiTrie.getTermId(yomiTrie.getNodeIndex(yomiStr))
-//                        val listToken = tokenArray.getListDictionaryByYomiTermId(termId)
-//                        val tangoList = listToken.map {
-//                            Node(
-//                                l = tokenArray.leftIds[it.posTableIndex.toInt()],
-//                                r = tokenArray.rightIds[it.posTableIndex.toInt()],
-//                                score = it.wordCost.toInt(),
-//                                f = it.wordCost.toInt(),
-//                                g = it.wordCost.toInt(),
-//                                tango = when (it.nodeId) {
-//                                    -2 -> yomiStr
-//                                    -1 -> yomiStr.hiraToKata()
-//                                    else -> tangoTrie.getLetter(it.nodeId)
-//                                },
-//                                len = yomiStr.length.toShort(),
-//                                sPos = i
-//                            )
-//                        }
-//                        if (graph[i + yomiStr.length].isNullOrEmpty()) graph[i + yomiStr.length] = mutableListOf()
-//                        graph[i + yomiStr.length]!!.add(tangoList.toMutableList())
-//                        println("add graph: ${tangoList.map { "${it.tango} ${it.score} ${it.f} ${it.g}" }}")
-//                    }
-//                }
-//
-//                println("$i $commonPrefixSearch $time1 $time2 ${time1 + time2}")
-//            }
         }
 
         println("time of construct graph: $time $str")
