@@ -18,6 +18,7 @@ android {
     lintOptions {
         abortOnError false
     }
+    namespace 'com.daasuu.bl'
 }
 
 dependencies {

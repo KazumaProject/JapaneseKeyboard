@@ -197,10 +197,8 @@ class TokenArray {
         objectInputStream: ObjectInputStream
     ) {
         objectInputStream.apply {
-            val leftIdSize = readInt()
-            val rightIdSize = readInt()
-            leftIds = (readObject() as ByteArray).inflate(leftIdSize).byteArrayToShortList()
-            rightIds = (readObject() as ByteArray).inflate(rightIdSize).byteArrayToShortList()
+            leftIds = (readObject() as ShortArray).toList()
+            rightIds = (readObject() as ShortArray).toList()
         }
     }
 

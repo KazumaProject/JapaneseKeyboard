@@ -66,7 +66,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowLeft
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowRight
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowTop
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertUnicode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
@@ -97,13 +96,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFl
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_ACTIVITY
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST_ANIMALS_NATURE
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST_FOOD_DRINK
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST_SMILEYS_PEOPLE
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_OBJECT
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_TRAVEL
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.KAOMOJI
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardMode
@@ -268,10 +260,6 @@ class IMEService: InputMethodService() {
         val NUMBER_KEY10_SYMBOL_CHAR = listOf('(',')','[',']')
         const val EMPTY_STRING = ""
 
-        val EMOJI_LIST = EMOJI_LIST_SMILEYS_PEOPLE +
-                EMOJI_LIST_ANIMALS_NATURE + EMOJI_LIST_FOOD_DRINK +
-                EMOJI_ACTIVITY + EMOJI_TRAVEL + EMOJI_OBJECT
-
         const val DISPLAY_LEFT_STRING_TIME = 64L
         const val DELAY_TIME = 1000L
         const val N_BEST = 16
@@ -307,7 +295,7 @@ class IMEService: InputMethodService() {
 
                 setTenKeyView(keyList)
                 setSuggestionRecyclerView(flexboxLayoutManager)
-                setKigouView()
+                //setKigouView()
                 startScope(keyList, flexboxLayoutManager)
             }
         }
@@ -636,20 +624,6 @@ class IMEService: InputMethodService() {
                 _currentModeInKigou.value = ModeInKigou.Kaomoji
             }
             setDeleteKeyKigou(mainView.keyboardKigouView.kigouDeleteBtn)
-            emojiKigouAdapter?.let { a ->
-                a.emojiList = EMOJI_LIST
-                a.setOnItemClickListener { emoji ->
-                    setVibrate()
-                    currentInputConnection?.commitText(emoji.unicode.convertUnicode(),1)
-                }
-            }
-            kigouApdater?.let { a ->
-                a.kigouList = KAOMOJI
-                a.setOnItemClickListener { s ->
-                    setVibrate()
-                    currentInputConnection?.commitText(s,1)
-                }
-            }
         }
     }
 

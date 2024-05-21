@@ -10,7 +10,7 @@ class FindPath {
     fun viterbi(
         graph: List<MutableList<MutableList<Node>>>,
         length: Int,
-        connectionIds: List<Short>
+        connectionIds: ShortArray
     ): String {
         buildViterbi(graph, length, connectionIds)
         var node = graph[length + 1][0][0]
@@ -28,7 +28,7 @@ class FindPath {
     fun backwardAStar(
         graph: List<MutableList<MutableList<Node>>>,
         length: Int,
-        connectionIds: List<Short>,
+        connectionIds: ShortArray,
         n: Int
     ): MutableList<String> {
         forwardDp(graph, length, connectionIds)
@@ -75,7 +75,7 @@ class FindPath {
     private fun buildViterbi(
         graph: List<MutableList<MutableList<Node>>>,
         length: Int,
-        connectionIds: List<Short>
+        connectionIds: ShortArray
     ){
         for (i in 1 .. length + 1){
             val nodes = graph[i].flatten()
@@ -109,7 +109,7 @@ class FindPath {
     private fun forwardDp(
         graph: List<MutableList<MutableList<Node>>>,
         length: Int,
-        connectionIds: List<Short>
+        connectionIds: ShortArray
     ){
         for (i in 1 .. length + 1){
             val nodes = graph[i].flatten()
@@ -176,7 +176,7 @@ class FindPath {
     private fun getEdgeCost(
         leftId: Int,
         rightId: Int,
-        connectionIds: List<Short>
+        connectionIds: ShortArray
     ):Int {
         return connectionIds[leftId * NUM_OF_CONNECTION_ID + rightId].toInt()
     }
