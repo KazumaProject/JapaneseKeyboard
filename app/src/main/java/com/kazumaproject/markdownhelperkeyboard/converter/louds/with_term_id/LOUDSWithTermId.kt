@@ -16,6 +16,7 @@ import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
+import kotlin.time.ExperimentalTime
 
 class LOUDSWithTermId {
 
@@ -112,15 +113,13 @@ class LOUDSWithTermId {
     }
 
     private fun firstChild(pos: Int): Int {
-        LBS.apply {
-            val y = select0(rank1(pos)) + 1
-            return if (!this[y]) -1 else y
-        }
+        val y = LBS.select0(LBS.rank1(pos)) + 1
+        return if (!LBS[y]) -1 else y
     }
 
     private fun traverse(pos: Int, c: Char): Int {
         var childPos = firstChild(pos)
-        if (childPos == -1) return -1
+        if (childPos < 0) return -1
         while (LBS[childPos]){
             if (c == labels[LBS.rank1(childPos)]) {
                 return childPos
@@ -130,27 +129,22 @@ class LOUDSWithTermId {
         return -1
     }
 
-     fun commonPrefixSearch(str: String): List<String>  {
+       @OptIn(ExperimentalTime::class)
+       fun commonPrefixSearch(str: String): List<String>  {
         val resultTemp: MutableList<Char> = mutableListOf()
         val result: MutableList<String> = mutableListOf()
         var n = 0
-         for (i in str.indices){
-             n = traverse(n, str[i])
-             val index = LBS.rank1(n)
-             if (n == -1) break
-             if (index >= labels.size) return result
-             resultTemp.add(labels[index])
-            if (isLeaf[n]){
-                val tempStr = resultTemp.joinToString("")
-                if (result.size >= 1){
-                    println("$tempStr $result")
-                    result.add(tempStr)
-                }else {
-                    result.add(tempStr)
-                }
-            }
-         }
-
+          for (c in str){
+              n = traverse(n, c)
+              val index = LBS.rank1(n)
+              if (n < 0) break
+              if (index >= labels.size) break
+              resultTemp.add(labels[index])
+              if (isLeaf[n]){
+                  val tempStr = resultTemp.joinToString("")
+                  result.add(tempStr)
+              }
+          }
          return result.toList()
     }
 
