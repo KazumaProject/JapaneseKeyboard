@@ -380,7 +380,6 @@ class IMEService: InputMethodService() {
             launch {
                 _suggestionViewStatus.asStateFlow().collectLatest {
                     mainView.keyboardView.root.isVisible = it
-                    println("$it")
                     if (it){
                         mainView.suggestionVisibility?.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
                         val margins = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
@@ -874,7 +873,9 @@ class IMEService: InputMethodService() {
 
     private suspend fun setSuggestionForJapanese(mainView: MainLayoutBinding) {
         updateSuggestionUI(mainView)
-        _suggestionList.update { getSuggestionList() }
+        _suggestionList.update {
+            getSuggestionList()
+        }
     }
 
     private suspend fun getSuggestionList() = CoroutineScope(ioDispatcher).async{

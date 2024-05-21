@@ -21,7 +21,7 @@ class GraphBuilder {
         yomiTrie: LOUDSWithTermId,
         tangoTrie: LOUDS,
         tokenArray: TokenArray
-    ): List<MutableList<MutableList<Node>>> = CoroutineScope(Dispatchers.Main).async {
+    ): List<MutableList<MutableList<Node>>> = CoroutineScope(Dispatchers.IO).async {
         val graph: MutableList<MutableList<MutableList<Node>>?> = mutableListOf()
         for (i in 0 .. str.length + 1){
             when(i){

@@ -16,7 +16,7 @@ import java.io.ObjectInputStream
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
-class KanaKanjiEngine {
+class KanaKanjiEngine() {
 
     private lateinit var yomiTrie: LOUDSWithTermId
     private lateinit var tangoTrie: LOUDS
@@ -26,39 +26,39 @@ class KanaKanjiEngine {
     @OptIn(ExperimentalTime::class)
     fun buildEngine(
         context: Context,
-    ) = CoroutineScope(Dispatchers.Main).launch{
+    ){
         val time = measureTime {
 
             val assetManager = context.assets
 
-            val objectInputYomi = ObjectInputStream(BufferedInputStream(assetManager.open("yomi.dat")))
-            val objectInputTango = ObjectInputStream(BufferedInputStream(assetManager.open("tango.dat")))
+            val objectInputConnectionId = ObjectInputStream(BufferedInputStream(assetManager.open("connectionIds.dat")))
             val objectInputTokenArray = ObjectInputStream(BufferedInputStream(assetManager.open("token.dat")))
             val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(assetManager.open("pos_table.dat")))
-            val objectInputConnectionId = ObjectInputStream(BufferedInputStream(assetManager.open("connectionIds.dat")))
+            val objectInputYomi = ObjectInputStream(BufferedInputStream(assetManager.open("yomi.dat")))
+            val objectInputTango = ObjectInputStream(BufferedInputStream(assetManager.open("tango.dat")))
 
             val time4 = measureTime {
-               launch { connectionIds = ConnectionIdBuilder().read(objectInputConnectionId) }
+                CoroutineScope(Dispatchers.Main).launch {
+                    connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
+                }
             }
 
             val time1 = measureTime {
-                tokenArray = TokenArray()
-                launch {
+                CoroutineScope(Dispatchers.Main).launch {
+                    tokenArray = TokenArray()
                     tokenArray.readExternal(objectInputTokenArray)
-                }
-                launch {
                     tokenArray.readPOSTable(objectInputReadPOSTable)
                 }
             }
 
             val time2 = measureTime {
-                launch {
+                CoroutineScope(Dispatchers.Main).launch {
                     yomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
                 }
             }
 
             val time3 = measureTime {
-                launch {
+                CoroutineScope(Dispatchers.Main).launch {
                     tangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
                 }
             }
