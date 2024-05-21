@@ -192,7 +192,7 @@ class LOUDS {
             try {
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
-                labels = (objectInput.readObject() as String).toCharArray().toMutableList()
+                labels = (objectInput.readObject() as CharArray).toMutableList()
                 close()
             }catch (e: Exception){
                 println(e.stackTraceToString())

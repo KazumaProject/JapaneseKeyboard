@@ -8,19 +8,17 @@ import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.viterbi.FindPath
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import kotlin.time.ExperimentalTime
 import kotlin.time.measureTime
 
-class KanaKanjiEngine() {
+class KanaKanjiEngine {
 
     private lateinit var yomiTrie: LOUDSWithTermId
+
     private lateinit var tangoTrie: LOUDS
-    private lateinit var connectionIds: List<Short>
+    private lateinit var connectionIds: ShortArray
     private lateinit var tokenArray: TokenArray
 
     @OptIn(ExperimentalTime::class)
@@ -38,35 +36,28 @@ class KanaKanjiEngine() {
             val objectInputTango = ObjectInputStream(BufferedInputStream(assetManager.open("tango.dat")))
 
             val time4 = measureTime {
-                CoroutineScope(Dispatchers.Main).launch {
-                    connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
-                }
+                connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
             }
 
             val time1 = measureTime {
-                CoroutineScope(Dispatchers.Main).launch {
-                    tokenArray = TokenArray()
-                    tokenArray.readExternal(objectInputTokenArray)
-                    tokenArray.readPOSTable(objectInputReadPOSTable)
-                }
+                tokenArray = TokenArray()
+                tokenArray.readExternal(objectInputTokenArray)
+                tokenArray.readPOSTable(objectInputReadPOSTable)
             }
 
             val time2 = measureTime {
-                CoroutineScope(Dispatchers.Main).launch {
-                    yomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
-                }
+                yomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
             }
 
             val time3 = measureTime {
-                CoroutineScope(Dispatchers.Main).launch {
-                    tangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
-                }
+                tangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
             }
 
             println("token: $time1")
             println("yomi: $time2")
             println("tango: $time3")
             println("connection: $time4")
+
         }
 
         println("loading tries: $time")
@@ -76,7 +67,7 @@ class KanaKanjiEngine() {
         yomi: LOUDSWithTermId,
         tango: LOUDS,
         token: TokenArray,
-        connectionIdList: List<Short>
+        connectionIdList: ShortArray
     ){
         this.yomiTrie = yomi
         this.tangoTrie = tango

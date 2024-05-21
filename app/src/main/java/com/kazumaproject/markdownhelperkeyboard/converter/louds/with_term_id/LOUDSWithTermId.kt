@@ -4,7 +4,6 @@ import com.kazumaproject.bitset.rank0
 import com.kazumaproject.bitset.rank1
 import com.kazumaproject.bitset.select0
 import com.kazumaproject.bitset.select1
-import com.kazumaproject.byteArrayToShortList
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.toBitSet
@@ -16,7 +15,6 @@ import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
-import kotlin.time.ExperimentalTime
 
 class LOUDSWithTermId {
 
@@ -24,7 +22,7 @@ class LOUDSWithTermId {
     var LBS: BitSet = BitSet()
     var labels: MutableList<Char> = arrayListOf()
     var termIds: MutableList<Int> = arrayListOf()
-    var termIdsDiff: List<Short> = arrayListOf()
+    var termIdsList: IntArray = intArrayOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
 
@@ -49,12 +47,12 @@ class LOUDSWithTermId {
         LBS: BitSet,
         labels: MutableList<Char>,
         isLeaf: BitSet,
-        termIds: List<Short>,
+        termIdsList: IntArray,
     ){
         this.LBS = LBS
         this.labels = labels
         this.isLeaf = isLeaf
-        this.termIdsDiff = termIds
+        this.termIdsList = termIdsList
     }
 
     fun convertListToBitSet(){
@@ -103,13 +101,7 @@ class LOUDSWithTermId {
     fun getTermId(nodeIndex: Int): Int {
         val firstNodeId = isLeaf.rank1(nodeIndex) - 1
         if (firstNodeId < 0) return -1
-        //val firstTermId = termIds[firstNodeId]
-        val firstTermId = if (termIdsDiff[firstNodeId].toInt() == 0){
-            firstNodeId + 1
-        }else{
-            firstNodeId + termIdsDiff[firstNodeId]
-        }
-        return firstTermId
+        return termIdsList[firstNodeId]
     }
 
     private fun firstChild(pos: Int): Int {
@@ -129,7 +121,6 @@ class LOUDSWithTermId {
         return -1
     }
 
-       @OptIn(ExperimentalTime::class)
        fun commonPrefixSearch(str: String): List<String>  {
         val resultTemp: MutableList<Char> = mutableListOf()
         val result: MutableList<String> = mutableListOf()
@@ -221,17 +212,16 @@ class LOUDSWithTermId {
     fun readExternalNotCompress(objectInput: ObjectInput): LOUDSWithTermId {
         objectInput.apply {
             try {
-                val size = readInt()
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
-                labels = (objectInput.readObject() as String).toCharArray().toMutableList()
-                termIdsDiff = (objectInput.readObject() as ByteArray).inflate(size).byteArrayToShortList()
+                labels = (objectInput.readObject() as CharArray).toMutableList()
+                termIdsList = (objectInput.readObject() as IntArray)
                 close()
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
         }
-        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsDiff)
+        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsList)
     }
 
 }

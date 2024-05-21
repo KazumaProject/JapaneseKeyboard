@@ -1,7 +1,9 @@
 package com.kazumaproject.connection_id
 
-import com.kazumaproject.byteArrayToShortList
+import com.kazumaproject.markdownhelperkeyboard.converter.stream.ArraysStream
 import com.kazumaproject.toByteArrayFromListShort
+import java.io.FileOutputStream
+import java.io.InputStream
 import java.io.ObjectInput
 import java.io.ObjectOutput
 
@@ -12,7 +14,6 @@ class ConnectionIdBuilder {
     ){
         try {
             out.apply {
-                writeObject(value.toByteArrayFromListShort().size)
                 writeObject(value.toByteArrayFromListShort().deflate())
                 flush()
                 close()
@@ -22,35 +23,35 @@ class ConnectionIdBuilder {
         }
     }
 
-    fun read(objectInput: ObjectInput): List<Short>{
-        var a: List<Short>
+    fun read(objectInput: ObjectInput):ShortArray{
+        var a: ShortArray
         return try {
             objectInput.apply {
-                val byteSize = readObject() as Int
-                a = (readObject() as ByteArray).inflate(byteSize).byteArrayToShortList()
+                a = (readObject() as ShortArray)
                 close()
             }
             a
         }catch (e: Exception){
             println(e.message)
-            emptyList()
+            shortArrayOf()
         }
     }
 
 
-    fun readNotCompress(
-        objectInput: ObjectInput,
-    ): List<Short>{
-        try {
-            objectInput.apply {
-                val a = (readObject() as ByteArray).byteArrayToShortList()
-                close()
-                return a
-            }
-        }catch (e: Exception){
-            println(e.message)
-            return emptyList()
-        }
+    fun buildWithShortArray(
+        fileOutputStream: FileOutputStream,
+        value: List<Short>,
+    ){
+        ArraysStream.writeShortArray(
+            fileOutputStream,
+            value.toShortArray()
+        )
+    }
+
+     fun readWithShortArray(
+        inputStream: InputStream
+    ): ShortArray{
+        return ArraysStream.readShortArray(inputStream)
     }
 
 }
