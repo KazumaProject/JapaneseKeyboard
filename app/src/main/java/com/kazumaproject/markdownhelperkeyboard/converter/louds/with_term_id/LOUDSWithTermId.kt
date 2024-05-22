@@ -22,7 +22,7 @@ class LOUDSWithTermId {
     var LBS: BitSet = BitSet()
     var labels: MutableList<Char> = arrayListOf()
     var termIds: MutableList<Int> = arrayListOf()
-    var termIdsList: IntArray = intArrayOf()
+    var termIdsDiff: ShortArray = shortArrayOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
 
@@ -47,12 +47,12 @@ class LOUDSWithTermId {
         LBS: BitSet,
         labels: MutableList<Char>,
         isLeaf: BitSet,
-        termIdsList: IntArray,
+        termIdsList: ShortArray,
     ){
         this.LBS = LBS
         this.labels = labels
         this.isLeaf = isLeaf
-        this.termIdsList = termIdsList
+        this.termIdsDiff = termIdsList
     }
 
     fun convertListToBitSet(){
@@ -101,7 +101,12 @@ class LOUDSWithTermId {
     fun getTermId(nodeIndex: Int): Int {
         val firstNodeId = isLeaf.rank1(nodeIndex) - 1
         if (firstNodeId < 0) return -1
-        return termIdsList[firstNodeId]
+        val firstTermId = if (termIdsDiff[firstNodeId].toInt() == 0){
+            firstNodeId + 1
+        }else{
+            firstNodeId + termIdsDiff[firstNodeId]
+        }
+        return firstTermId
     }
 
     private fun firstChild(pos: Int): Int {
@@ -215,13 +220,13 @@ class LOUDSWithTermId {
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
                 labels = (objectInput.readObject() as CharArray).toMutableList()
-                termIdsList = (objectInput.readObject() as IntArray)
+                termIdsDiff = (objectInput.readObject() as ShortArray)
                 close()
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
         }
-        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsList)
+        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsDiff)
     }
 
 }
