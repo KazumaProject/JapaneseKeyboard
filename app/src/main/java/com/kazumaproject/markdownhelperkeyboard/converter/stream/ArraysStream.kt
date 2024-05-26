@@ -61,8 +61,8 @@ object ArraysStream {
         }
     }
 
-    fun readCharArray(fileInputStream: FileInputStream): CharArray {
-        BufferedInputStream(fileInputStream).use { bis ->
+    fun readCharArray(inputStream: InputStream): CharArray {
+        inputStream.use { bis ->
             val charArraySize = bis.read()
             return CharArray(charArraySize) { bis.read().toChar() }
         }
@@ -81,4 +81,5 @@ object ArraysStream {
             return BooleanArray(boolArraySize) { bis.read() != 0 }
         }
     }
+
 }

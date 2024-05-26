@@ -1,17 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
-import android.content.Context
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.viterbi.FindPath
-import java.io.BufferedInputStream
-import java.io.ObjectInputStream
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
 class KanaKanjiEngine {
 
@@ -21,46 +15,40 @@ class KanaKanjiEngine {
     private lateinit var connectionIds: ShortArray
     private lateinit var tokenArray: TokenArray
 
-    @OptIn(ExperimentalTime::class)
+    private lateinit var rank0ArrayLBSYomi: IntArray
+    private lateinit var rank1ArrayLBSYomi: IntArray
+    private lateinit var rank1ArrayIsLeaf: IntArray
+    private lateinit var rank0ArrayTokenArrayBitvector: IntArray
+    private lateinit var rank1ArrayTokenArrayBitvector: IntArray
+    private lateinit var graphBuilder: GraphBuilder
+    private lateinit var findPath: FindPath
+
     fun buildEngine(
-        context: Context,
+        graphBuilder: GraphBuilder,
+        findPath: FindPath,
+        connectionIdList: ShortArray,
+        tangoTrie: LOUDS,
+        yomiTrie: LOUDSWithTermId,
+        tokenArray: TokenArray,
+        rank0ArrayLBSYomi: IntArray,
+        rank1ArrayLBSYomi: IntArray,
+        rank1ArrayIsLeaf: IntArray,
+        rank0ArrayTokenArrayBitvector: IntArray,
+        rank1ArrayTokenArrayBitvector: IntArray
     ){
-        val time = measureTime {
+        this@KanaKanjiEngine.graphBuilder = graphBuilder
+        this@KanaKanjiEngine.findPath = findPath
 
-            val assetManager = context.assets
+        this@KanaKanjiEngine.connectionIds = connectionIdList
+        this@KanaKanjiEngine.tangoTrie = tangoTrie
+        this@KanaKanjiEngine.tokenArray = tokenArray
+        this@KanaKanjiEngine.yomiTrie = yomiTrie
 
-            val objectInputConnectionId = ObjectInputStream(BufferedInputStream(assetManager.open("connectionIds.dat")))
-            val objectInputTokenArray = ObjectInputStream(BufferedInputStream(assetManager.open("token.dat")))
-            val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(assetManager.open("pos_table.dat")))
-            val objectInputYomi = ObjectInputStream(BufferedInputStream(assetManager.open("yomi.dat")))
-            val objectInputTango = ObjectInputStream(BufferedInputStream(assetManager.open("tango.dat")))
-
-            val time4 = measureTime {
-                connectionIds = ConnectionIdBuilder().read(objectInputConnectionId)
-            }
-
-            val time1 = measureTime {
-                tokenArray = TokenArray()
-                tokenArray.readExternal(objectInputTokenArray)
-                tokenArray.readPOSTable(objectInputReadPOSTable)
-            }
-
-            val time2 = measureTime {
-                yomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
-            }
-
-            val time3 = measureTime {
-                tangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
-            }
-
-            println("token: $time1")
-            println("yomi: $time2")
-            println("tango: $time3")
-            println("connection: $time4")
-
-        }
-
-        println("loading tries: $time")
+        this@KanaKanjiEngine.rank0ArrayLBSYomi = rank0ArrayLBSYomi
+        this@KanaKanjiEngine.rank1ArrayLBSYomi = rank1ArrayLBSYomi
+        this@KanaKanjiEngine.rank1ArrayIsLeaf = rank1ArrayIsLeaf
+        this@KanaKanjiEngine.rank0ArrayTokenArrayBitvector = rank0ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector
     }
 
     fun buildEngine(
@@ -79,13 +67,16 @@ class KanaKanjiEngine {
         input: String,
         n: Int
     ): List<String> {
-        val findPath = FindPath()
-        val graphBuilder = GraphBuilder()
         val graph = graphBuilder.constructGraph(
             input,
             yomiTrie,
             tangoTrie,
             tokenArray,
+            rank0ArrayLBSYomi,
+            rank1ArrayLBSYomi,
+            rank1ArrayIsLeaf,
+            rank0ArrayTokenArrayBitvector,
+            rank1ArrayTokenArrayBitvector
         )
         val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
@@ -102,13 +93,16 @@ class KanaKanjiEngine {
     suspend fun viterbiAlgorithm(
         input: String
     ): String {
-        val findPath = FindPath()
-        val graphBuilder = GraphBuilder()
         val graph = graphBuilder.constructGraph(
             input,
             yomiTrie,
             tangoTrie,
             tokenArray,
+            rank0ArrayLBSYomi,
+            rank1ArrayLBSYomi,
+            rank1ArrayIsLeaf,
+            rank0ArrayTokenArrayBitvector,
+            rank1ArrayTokenArrayBitvector
         )
         return findPath.viterbi(graph, input.length, connectionIds)
     }

@@ -6,6 +6,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.ObjectInput
 import java.io.ObjectOutput
+import java.nio.ByteBuffer
 
 class ConnectionIdBuilder {
     fun build(
@@ -52,6 +53,16 @@ class ConnectionIdBuilder {
         inputStream: InputStream
     ): ShortArray{
         return ArraysStream.readShortArray(inputStream)
+    }
+
+    fun readShortArrayFromBytes(
+        inputStream: InputStream
+    ): ShortArray {
+        val byteArray = inputStream.readBytes()
+        val byteBuffer = ByteBuffer.wrap(byteArray)
+        val shortArray = ShortArray(byteArray.size / 2)
+        byteBuffer.asShortBuffer().get(shortArray)
+        return shortArray
     }
 
 }

@@ -38,7 +38,6 @@ import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
@@ -66,6 +65,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowLeft
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowRight
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowTop
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertUnicode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
@@ -96,12 +96,13 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFl
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST
+import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.KAOMOJI
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.ModeInKigou
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.viterbi.FindPath
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -200,12 +201,6 @@ class IMEService: InputMethodService() {
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
-    @Inject
-    lateinit var findPath: FindPath
-
-    @Inject
-    lateinit var graphBuilder: GraphBuilder
-
     private var mainLayoutBinding: MainLayoutBinding? = null
     
     private var suggestionAdapter: SuggestionAdapter?= null
@@ -295,7 +290,7 @@ class IMEService: InputMethodService() {
 
                 setTenKeyView(keyList)
                 setSuggestionRecyclerView(flexboxLayoutManager)
-                //setKigouView()
+                setKigouView()
                 startScope(keyList, flexboxLayoutManager)
             }
         }
@@ -361,7 +356,7 @@ class IMEService: InputMethodService() {
                 _suggestionFlag.asStateFlow().collectLatest {
                     setSuggestionOnView(mainView)
                     mainView.keyboardView.root.isVisible = true
-                    mainView.suggestionVisibility?.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
+                    mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
                 }
             }
 
@@ -369,37 +364,61 @@ class IMEService: InputMethodService() {
                 _suggestionViewStatus.asStateFlow().collectLatest {
                     mainView.keyboardView.root.isVisible = it
                     if (it){
-                        mainView.suggestionVisibility?.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
-                        val margins = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
-                            leftMargin = 0
-                            rightMargin = 40f.convertDp2Px(this@IMEService)
-                            topMargin = 0
-                            bottomMargin = 280f.convertDp2Px(this@IMEService)
-                            height = 54f.convertDp2Px(this@IMEService)
-                        }
-                        mainView.suggestionRecyclerView.layoutParams = margins
+                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
                         mainView.suggestionRecyclerView.apply {
+                            this.scrollToPosition(0)
                             layoutManager =  flexboxLayoutManager.apply {
                                 flexDirection = FlexDirection.COLUMN
                                 justifyContent = JustifyContent.SPACE_AROUND
                             }
                         }
-                    }else{
-                        mainView.suggestionVisibility?.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_up_24))
-                        val margins = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
-                            leftMargin = 0
-                            rightMargin = 40f.convertDp2Px(this@IMEService)
-                            topMargin = 0
-                            bottomMargin = 0
-                            height = 336f.convertDp2Px(this@IMEService)
+
+                        val margins = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                topMargin = 0
+                                bottomMargin = 200f.convertDp2Px(this@IMEService)
+                                height = 52f.convertDp2Px(this@IMEService)
+                            }
+                        } else {
+                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                topMargin = 0
+                                bottomMargin = 280f.convertDp2Px(this@IMEService)
+                                height = 54f.convertDp2Px(this@IMEService)
+                            }
                         }
                         mainView.suggestionRecyclerView.layoutParams = margins
+                    }else{
+                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_up_24))
                         mainView.suggestionRecyclerView.apply {
+                            this.scrollToPosition(0)
                             layoutManager = flexboxLayoutManager.apply {
                                 flexDirection = FlexDirection.ROW
                                 justifyContent = JustifyContent.FLEX_START
                             }
                         }
+
+                        val margins = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                topMargin = 0
+                                bottomMargin = 0
+                                height = 252f.convertDp2Px(this@IMEService)
+                            }
+                        } else {
+                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                topMargin = 0
+                                bottomMargin = 0
+                                height = 336f.convertDp2Px(this@IMEService)
+                            }
+                        }
+                        mainView.suggestionRecyclerView.layoutParams = margins
                     }
                 }
             }
@@ -574,6 +593,7 @@ class IMEService: InputMethodService() {
         }
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
+                itemAnimator = null
                 suggestionAdapter?.let { sugAdapter ->
                     adapter = sugAdapter
                     layoutManager = flexboxLayoutManager.apply {
@@ -582,7 +602,7 @@ class IMEService: InputMethodService() {
                     }
                 }
             }
-            mainView.suggestionVisibility?.setOnClickListener {
+            mainView.suggestionVisibility.setOnClickListener {
                 _suggestionViewStatus.update { !it }
             }
         }
@@ -624,6 +644,20 @@ class IMEService: InputMethodService() {
                 _currentModeInKigou.value = ModeInKigou.Kaomoji
             }
             setDeleteKeyKigou(mainView.keyboardKigouView.kigouDeleteBtn)
+            emojiKigouAdapter?.let { a ->
+                a.emojiList = EMOJI_LIST
+                a.setOnItemClickListener { emoji ->
+                    setVibrate()
+                    currentInputConnection?.commitText(emoji.unicode.convertUnicode(),1)
+                }
+            }
+            kigouApdater?.let { a ->
+                a.kigouList = KAOMOJI
+                a.setOnItemClickListener { s ->
+                    setVibrate()
+                    currentInputConnection?.commitText(s,1)
+                }
+            }
         }
     }
 
@@ -721,7 +755,8 @@ class IMEService: InputMethodService() {
         _inputString.asStateFlow().collectLatest { inputString ->
             Timber.d("launchInputString: $inputString")
             withContext(mainDispatcher){
-                mainView.suggestionVisibility?.isVisible = inputString.isNotBlank()
+                mainView.suggestionVisibility.isVisible = inputString.isNotBlank()
+                mainView.suggestionRecyclerView.scrollToPosition(0)
             }
                 if (inputString.isNotBlank()) {
                 /** 入力された文字の selection と composing region を設定する **/

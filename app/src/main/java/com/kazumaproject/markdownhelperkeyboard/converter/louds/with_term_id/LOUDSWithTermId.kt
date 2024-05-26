@@ -2,7 +2,8 @@ package com.kazumaproject.Louds.with_term_id
 
 import com.kazumaproject.bitset.rank0
 import com.kazumaproject.bitset.rank1
-import com.kazumaproject.bitset.select0
+import com.kazumaproject.bitset.rank1Common
+import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
@@ -20,7 +21,8 @@ class LOUDSWithTermId {
 
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
-    var labels: MutableList<Char> = arrayListOf()
+    var labels: CharArray = charArrayOf()
+    val labelsTemp: MutableList<Char> = arrayListOf()
     var termIds: MutableList<Int> = arrayListOf()
     var termIdsDiff: ShortArray = shortArrayOf()
     var isLeaf: BitSet = BitSet()
@@ -31,7 +33,7 @@ class LOUDSWithTermId {
             add(true)
             add(false)
         }
-        labels.apply {
+        labelsTemp.apply {
             add(0,' ')
             add(1,' ')
         }
@@ -45,7 +47,7 @@ class LOUDSWithTermId {
 
     constructor(
         LBS: BitSet,
-        labels: MutableList<Char>,
+        labels: CharArray,
         isLeaf: BitSet,
         termIdsList: ShortArray,
     ){
@@ -98,8 +100,11 @@ class LOUDSWithTermId {
         return LBS.rank0(getNodeIndex(s))
     }
 
-    fun getTermId(nodeIndex: Int): Int {
-        val firstNodeId = isLeaf.rank1(nodeIndex) - 1
+    fun getTermId(
+        nodeIndex: Int,
+        rank1Array: IntArray
+    ): Int {
+        val firstNodeId = isLeaf.rank1Common(nodeIndex,rank1Array) - 1
         if (firstNodeId < 0) return -1
         val firstTermId = if (termIdsDiff[firstNodeId].toInt() == 0){
             firstNodeId + 1
@@ -109,16 +114,25 @@ class LOUDSWithTermId {
         return firstTermId
     }
 
-    private fun firstChild(pos: Int): Int {
-        val y = LBS.select0(LBS.rank1(pos)) + 1
+    private fun firstChild(
+        pos: Int,
+        rank0Array: IntArray,
+        rank1Array: IntArray
+    ): Int {
+        val y = LBS.select0Common(LBS.rank1Common(pos,rank1Array),rank0Array) + 1
         return if (!LBS[y]) -1 else y
     }
 
-    private fun traverse(pos: Int, c: Char): Int {
-        var childPos = firstChild(pos)
+    private fun traverse(
+        pos: Int,
+        c: Char,
+        rank0Array: IntArray,
+        rank1Array: IntArray
+    ): Int {
+        var childPos = firstChild(pos,rank0Array, rank1Array)
         if (childPos < 0) return -1
         while (LBS[childPos]){
-            if (c == labels[LBS.rank1(childPos)]) {
+            if (c == labels[LBS.rank1Common(childPos,rank1Array)]) {
                 return childPos
             }
             childPos += 1
@@ -126,13 +140,18 @@ class LOUDSWithTermId {
         return -1
     }
 
-       fun commonPrefixSearch(str: String): List<String>  {
+       fun commonPrefixSearch(
+           str: String,
+           rank0Array: IntArray,
+           rank1Array: IntArray
+       ): List<String>  {
         val resultTemp: MutableList<Char> = mutableListOf()
         val result: MutableList<String> = mutableListOf()
         var n = 0
           for (c in str){
-              n = traverse(n, c)
-              val index = LBS.rank1(n)
+              n = traverse(n, c,rank0Array,rank1Array)
+              val index = LBS.rank1Common(n,rank1Array)
+              println("$c $n $index")
               if (n < 0) break
               if (index >= labels.size) break
               resultTemp.add(labels[index])
@@ -182,11 +201,11 @@ class LOUDSWithTermId {
     fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
-                writeInt(labels.toByteArrayFromListChar().size)
+                writeInt(labels.toList().toByteArrayFromListChar().size)
                 writeInt(termIds.toByteArray().size)
 
                 writeObject(LBS)
-                writeObject(labels.toByteArrayFromListChar().deflate())
+                writeObject(labels.toList().toByteArrayFromListChar().deflate())
                 writeObject(isLeaf)
                 writeObject(termIds.toByteArray().deflate())
                 flush()
@@ -204,7 +223,7 @@ class LOUDSWithTermId {
                 val termIdSize = objectInput.readInt()
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
-                labels = (objectInput.readObject() as ByteArray).inflate(labelsSize).toListChar()
+                labels = (objectInput.readObject() as ByteArray).inflate(labelsSize).toListChar().toCharArray()
                 termIds = (objectInput.readObject() as ByteArray).inflate(termIdSize).toListInt().toMutableList()
                 it.close()
             }catch (e: Exception){
@@ -219,7 +238,7 @@ class LOUDSWithTermId {
             try {
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
-                labels = (objectInput.readObject() as CharArray).toMutableList()
+                labels = (objectInput.readObject() as CharArray)
                 termIdsDiff = (objectInput.readObject() as ShortArray)
                 close()
             }catch (e: Exception){
