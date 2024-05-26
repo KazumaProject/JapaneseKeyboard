@@ -10,11 +10,12 @@ import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.bitset.rank0GetIntArray
+import com.kazumaproject.bitset.rank1GetIntArray
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.bitset.BitSetWithRankSelect
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMap
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
@@ -145,18 +146,28 @@ object AppModule {
 
     @Singleton
     @Provides
-    @LBSYomi
-    fun provideRank0ArrayLBSYomi(yomiTrie: LOUDSWithTermId): BitSetWithRankSelect = BitSetWithRankSelect(yomiTrie.LBS)
+    @rank0ArrayLBSYomi
+    fun provideRank0ArrayLBSYomi(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank0GetIntArray()
 
     @Singleton
     @Provides
-    @IsLeafYomi
-    fun provideRank1ArrayIsLeaf(yomiTrie: LOUDSWithTermId): BitSetWithRankSelect = BitSetWithRankSelect(yomiTrie.isLeaf)
+    @rank1ArrayLBSYomi
+    fun provideRank1ArrayLBSYomi(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank1GetIntArray()
 
     @Singleton
     @Provides
-    @TokenArrayBitvector
-    fun provideRank0ArrayTokenArrayBitvector(tokenArray: TokenArray): BitSetWithRankSelect = BitSetWithRankSelect(tokenArray.bitvector)
+    @rank1ArrayIsLeafYomi
+    fun provideRank1ArrayIsLeaf(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.isLeaf.rank1GetIntArray()
+
+    @Singleton
+    @Provides
+    @rank0ArrayTokenArrayBitvector
+    fun provideRank0ArrayTokenArrayBitvector(tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank0GetIntArray()
+
+    @Singleton
+    @Provides
+    @rank1ArrayTokenArrayBitvector
+    fun provideRank1ArrayTokenArrayBitvector(tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank1GetIntArray()
 
     @Singleton
     @Provides
@@ -167,12 +178,13 @@ object AppModule {
         tangoTrie: LOUDS,
         yomiTrie: LOUDSWithTermId,
         tokenArray: TokenArray,
-        @LBSYomi bitSetLBSYomi: BitSetWithRankSelect,
-        @IsLeafYomi bitSetIsLeafYomi: BitSetWithRankSelect,
-        @TokenArrayBitvector bitSetTokenArrayBitvector: BitSetWithRankSelect,
+        @rank0ArrayLBSYomi rank0ArrayLBSYomi: IntArray,
+        @rank1ArrayLBSYomi rank1ArrayLBSYomi: IntArray,
+        @rank1ArrayIsLeafYomi rank1ArrayIsLeaf: IntArray,
+        @rank0ArrayTokenArrayBitvector rank0ArrayTokenArrayBitvector: IntArray,
+        @rank1ArrayTokenArrayBitvector rank1ArrayTokenArrayBitvector: IntArray
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
-
         kanaKanjiEngine.buildEngine(
             graphBuilder = graphBuilder,
             findPath = findPath,
@@ -180,9 +192,11 @@ object AppModule {
             tangoTrie = tangoTrie,
             yomiTrie = yomiTrie,
             tokenArray = tokenArray,
-            bitSetLBSYomi = bitSetLBSYomi,
-            bitSetIsLeafYomi = bitSetIsLeafYomi,
-            bitSetTokenArrayBitvector = bitSetTokenArrayBitvector
+            rank0ArrayLBSYomi = rank0ArrayLBSYomi,
+            rank1ArrayLBSYomi =rank1ArrayLBSYomi,
+            rank1ArrayIsLeaf = rank1ArrayIsLeaf,
+            rank0ArrayTokenArrayBitvector = rank0ArrayTokenArrayBitvector,
+            rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector
         )
         return kanaKanjiEngine
     }
