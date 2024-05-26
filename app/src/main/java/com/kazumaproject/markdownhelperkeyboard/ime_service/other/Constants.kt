@@ -1227,5 +1227,8 @@ object Constants {
         Emoji(1380,"moai",0x1f5ff),
         Emoji(1381,"placard",0x1faa7),
         Emoji(1382,"identification card",0x1faaa),
-        )
+    )
+    val EMOJI_LIST = EMOJI_LIST_SMILEYS_PEOPLE +
+            EMOJI_LIST_ANIMALS_NATURE + EMOJI_LIST_FOOD_DRINK +
+            EMOJI_ACTIVITY + EMOJI_TRAVEL + EMOJI_OBJECT
 }

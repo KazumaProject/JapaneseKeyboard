@@ -26,7 +26,7 @@ class Converter {
                 queue.add(entry.value.second)
                 louds.apply {
                     LBSTemp.add(true)
-                    labels.add(entry.key)
+                    labelsTemp.add(entry.key)
                     isLeafTemp.add(entry.value.second.isWord)
                 }
             }

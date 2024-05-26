@@ -16,12 +16,18 @@ import kotlin.time.measureTime
 class GraphBuilder {
 
     @OptIn(ExperimentalTime::class)
-     suspend fun constructGraph(
+    suspend fun constructGraph(
         str: String,
         yomiTrie: LOUDSWithTermId,
         tangoTrie: LOUDS,
-        tokenArray: TokenArray
-    ): List<MutableList<MutableList<Node>>> = CoroutineScope(Dispatchers.IO).async {
+        tokenArray: TokenArray,
+        rank0ArrayLBSYomi: IntArray,
+        rank1ArrayLBSYomi: IntArray,
+        rank1ArrayIsLeafYomi: IntArray,
+        rank0ArrayTokenArrayBitvector: IntArray,
+        rank1ArrayTokenArrayBitvector: IntArray,
+
+    ): List<MutableList<MutableList<Node>>> {
         val graph: MutableList<MutableList<MutableList<Node>>?> = mutableListOf()
         for (i in 0 .. str.length + 1){
             when(i){
@@ -48,16 +54,28 @@ class GraphBuilder {
 
         val time = measureTime {
             var commonPrefixSearch: List<String>
-            str.indices.map { i ->
-                async(Dispatchers.IO) {
-                    val subStr = str.substring(i, str.length)
-                    val time1 = measureTime {
-                        commonPrefixSearch = yomiTrie.commonPrefixSearch(subStr)
-                    }
-                    val time2 = measureTime {
-                        commonPrefixSearch.forEach { yomiStr ->
-                            val termId = yomiTrie.getTermId(yomiTrie.getNodeIndex(yomiStr))
-                            val listToken = tokenArray.getListDictionaryByYomiTermId(termId)
+            for (i in str.indices){
+                val subStr = str.substring(i, str.length)
+                val time1 = measureTime {
+                    commonPrefixSearch = yomiTrie.commonPrefixSearch(
+                        str = subStr,
+                        rank0Array = rank0ArrayLBSYomi,
+                        rank1Array = rank1ArrayLBSYomi
+                    )
+                }
+                println("common prefix $subStr $commonPrefixSearch")
+                val time2 = measureTime {
+                    commonPrefixSearch.map { yomiStr ->
+                        CoroutineScope(Dispatchers.Default).async{
+                            val termId = yomiTrie.getTermId(
+                                yomiTrie.getNodeIndex(yomiStr),
+                                rank1ArrayIsLeafYomi
+                            )
+                            val listToken = tokenArray.getListDictionaryByYomiTermId(
+                                termId,
+                                rank0ArrayTokenArrayBitvector,
+                                rank1ArrayTokenArrayBitvector
+                            )
                             val tangoList = listToken.map {
                                 Node(
                                     l = tokenArray.leftIds[it.posTableIndex.toInt()],
@@ -77,18 +95,19 @@ class GraphBuilder {
                             if (graph[i + yomiStr.length].isNullOrEmpty()) graph[i + yomiStr.length] = mutableListOf()
                             graph[i + yomiStr.length]!!.add(tangoList.toMutableList())
                             //println("add graph: ${tangoList.map { "${it.tango} ${it.score} ${it.f} ${it.g}" }}")
+                            println("$yomiStr $termId")
                         }
-                    }
-                    println("$i $commonPrefixSearch $time1 $time2 ${time1 + time2} $subStr")
+                    }.awaitAll()
                 }
-            }.awaitAll()
+                println("$i $commonPrefixSearch $time1 $time2 ${time1 + time2} $subStr")
+            }
         }
 
         println("time of construct graph: $time $str")
 
         println("graph: $graph")
 
-        return@async graph.toList().filterNotNull()
-    }.await()
+        return graph.toList().filterNotNull()
+    }
 
 }

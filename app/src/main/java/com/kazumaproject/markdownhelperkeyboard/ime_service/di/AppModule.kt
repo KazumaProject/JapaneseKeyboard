@@ -8,8 +8,13 @@ import android.view.LayoutInflater
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
+import com.kazumaproject.Louds.LOUDS
+import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
+import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.BitSetWithRankSelect
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMap
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
@@ -26,6 +31,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import java.io.BufferedInputStream
+import java.io.ObjectInputStream
 import java.util.concurrent.Executors
 import javax.inject.Named
 import javax.inject.Singleton
@@ -97,19 +104,88 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideKanaKanjiHankanEngine(@ApplicationContext context: Context): KanaKanjiEngine {
-        val kanaKanjiEngine = KanaKanjiEngine()
-        kanaKanjiEngine.buildEngine(context = context)
-        return kanaKanjiEngine
+    fun provideGraphBuilder(): GraphBuilder = GraphBuilder()
+
+    @Singleton
+    @Provides
+    fun provideFindPath(): FindPath = FindPath()
+
+    @Singleton
+    @Provides
+    @ConnectionIds
+    fun provideConnectionIds(@ApplicationContext context: Context): ShortArray {
+        val input = BufferedInputStream(context.assets.open("connectionId.dat"))
+        return ConnectionIdBuilder().readShortArrayFromBytes(input)
     }
 
     @Singleton
     @Provides
-    fun providesFindPath(): FindPath = FindPath()
+    fun provideTangoTrie(@ApplicationContext context: Context): LOUDS{
+        val objectInputTango = ObjectInputStream(BufferedInputStream(context.assets.open("tango.dat")))
+        return LOUDS().readExternalNotCompress(objectInputTango)
+    }
 
     @Singleton
     @Provides
-    fun providesGraphBuilder(): GraphBuilder = GraphBuilder()
+    fun provideYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId{
+        val objectInputYomi = ObjectInputStream(BufferedInputStream(context.assets.open("yomi.dat")))
+        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    }
+
+    @Singleton
+    @Provides
+    fun providesTokenArray(@ApplicationContext context: Context): TokenArray{
+        val objectInputTokenArray = ObjectInputStream(BufferedInputStream(context.assets.open("token.dat")))
+        val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+        val tokenArray = TokenArray()
+        tokenArray.readExternal(objectInputTokenArray)
+        tokenArray.readPOSTable(objectInputReadPOSTable)
+        return tokenArray
+    }
+
+    @Singleton
+    @Provides
+    @LBSYomi
+    fun provideRank0ArrayLBSYomi(yomiTrie: LOUDSWithTermId): BitSetWithRankSelect = BitSetWithRankSelect(yomiTrie.LBS)
+
+    @Singleton
+    @Provides
+    @IsLeafYomi
+    fun provideRank1ArrayIsLeaf(yomiTrie: LOUDSWithTermId): BitSetWithRankSelect = BitSetWithRankSelect(yomiTrie.isLeaf)
+
+    @Singleton
+    @Provides
+    @TokenArrayBitvector
+    fun provideRank0ArrayTokenArrayBitvector(tokenArray: TokenArray): BitSetWithRankSelect = BitSetWithRankSelect(tokenArray.bitvector)
+
+    @Singleton
+    @Provides
+    fun provideKanaKanjiHenkanEngine(
+        graphBuilder: GraphBuilder,
+        findPath: FindPath,
+        @ConnectionIds connectionIds: ShortArray,
+        tangoTrie: LOUDS,
+        yomiTrie: LOUDSWithTermId,
+        tokenArray: TokenArray,
+        @LBSYomi bitSetLBSYomi: BitSetWithRankSelect,
+        @IsLeafYomi bitSetIsLeafYomi: BitSetWithRankSelect,
+        @TokenArrayBitvector bitSetTokenArrayBitvector: BitSetWithRankSelect,
+    ): KanaKanjiEngine {
+        val kanaKanjiEngine = KanaKanjiEngine()
+
+        kanaKanjiEngine.buildEngine(
+            graphBuilder = graphBuilder,
+            findPath = findPath,
+            connectionIdList = connectionIds,
+            tangoTrie = tangoTrie,
+            yomiTrie = yomiTrie,
+            tokenArray = tokenArray,
+            bitSetLBSYomi = bitSetLBSYomi,
+            bitSetIsLeafYomi = bitSetIsLeafYomi,
+            bitSetTokenArrayBitvector = bitSetTokenArrayBitvector
+        )
+        return kanaKanjiEngine
+    }
 
     @Singleton
     @Provides

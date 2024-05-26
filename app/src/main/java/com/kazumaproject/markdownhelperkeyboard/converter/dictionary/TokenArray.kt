@@ -1,18 +1,14 @@
 package com.kazumaproject.dictionary
 
 import com.kazumaproject.Louds.LOUDS
-import com.kazumaproject.bitset.rank1
-import com.kazumaproject.bitset.select0
-import com.kazumaproject.byteArrayToShortList
-import com.kazumaproject.connection_id.deflate
-import com.kazumaproject.connection_id.inflate
+import com.kazumaproject.bitset.rank1Common
+import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.dictionary.models.Dictionary
 import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListShort
-import com.kazumaproject.toListInt
 import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectInputStream
@@ -21,19 +17,24 @@ import java.io.ObjectOutputStream
 import java.util.BitSet
 
 class TokenArray {
-    private var posTableIndexList: MutableList<Short> = arrayListOf()
-    private var wordCostList: MutableList<Short> = arrayListOf()
-    private var nodeIdList: MutableList<Int> = arrayListOf()
+    private var posTableIndexList: ShortArray = shortArrayOf()
+    private var wordCostList: ShortArray = shortArrayOf()
+    private var nodeIdList: IntArray = intArrayOf()
+    private val posTableIndexListTemp: MutableList<Short> = arrayListOf()
+    private val wordCostListTemp: MutableList<Short> = arrayListOf()
+    private val nodeIdListTemp: MutableList<Int> = arrayListOf()
     private var bitListTemp: MutableList<Boolean> = arrayListOf()
-    private var bitvector: BitSet = BitSet()
+    var bitvector: BitSet = BitSet()
     var leftIds: List<Short> = listOf()
     var rightIds: List<Short> = listOf()
 
     fun getListDictionaryByYomiTermId(
         nodeId: Int,
+        rank0ArrayTokenArrayBitvector: IntArray,
+        rank1ArrayTokenArrayBitvector: IntArray
     ): List<TokenEntry> {
-        val b = bitvector.rank1(bitvector.select0(nodeId))
-        val c = bitvector.rank1(bitvector.select0(nodeId + 1))
+        val b = bitvector.rank1Common(bitvector.select0Common(nodeId,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)
+        val c = bitvector.rank1Common(bitvector.select0Common(nodeId + 1,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)
         val tempList2 = mutableListOf<TokenEntry>()
         for (i in b until c){
             tempList2.add(
@@ -64,9 +65,9 @@ class TokenArray {
                     println("build token array:$index ${entry.key} ${dictionary.tango}")
                     val posTableIndex = it.toShort()
                     bitListTemp.add(true)
-                    posTableIndexList.add(posTableIndex)
-                    wordCostList.add(dictionary.cost)
-                    nodeIdList.add(if (dictionary.yomi == dictionary.tango || entry.key.hiraToKata() == dictionary.tango) -1 else tangoTrie.getNodeIndex(dictionary.tango))
+                    posTableIndexListTemp.add(posTableIndex)
+                    wordCostListTemp.add(dictionary.cost)
+                    nodeIdListTemp.add(if (dictionary.yomi == dictionary.tango || entry.key.hiraToKata() == dictionary.tango) -1 else tangoTrie.getNodeIndex(dictionary.tango))
                 }
             }
         }
@@ -76,13 +77,13 @@ class TokenArray {
     private fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
-                writeInt(posTableIndexList.toByteArrayFromListShort().size)
-                writeInt(wordCostList.toByteArrayFromListShort().size)
-                writeInt(nodeIdList.toByteArray().size)
+                writeInt(posTableIndexListTemp.toByteArrayFromListShort().size)
+                writeInt(wordCostListTemp.toByteArrayFromListShort().size)
+                writeInt(nodeIdListTemp.toByteArray().size)
 
-                writeObject(posTableIndexList.toByteArrayFromListShort().deflate())
-                writeObject(wordCostList.toByteArrayFromListShort().deflate())
-                writeObject(nodeIdList.toByteArray().deflate())
+                writeObject(posTableIndexListTemp.toShortArray())
+                writeObject(wordCostListTemp.toShortArray())
+                writeObject(nodeIdListTemp.toIntArray())
                 writeObject(bitListTemp.toBitSet())
                 flush()
                 close()
@@ -97,12 +98,9 @@ class TokenArray {
     ): TokenArray {
         objectInput.apply {
             try {
-                val posTableIndexListSize = readInt()
-                val wordCostListSize = readInt()
-                val nodeIdListSize = readInt()
-                posTableIndexList = (readObject() as ByteArray).inflate(posTableIndexListSize).byteArrayToShortList().toMutableList()
-                wordCostList = (readObject() as ByteArray).inflate(wordCostListSize).byteArrayToShortList().toMutableList()
-                nodeIdList = (readObject() as ByteArray).inflate(nodeIdListSize).toListInt().toMutableList()
+                posTableIndexList = readObject() as ShortArray
+                wordCostList = readObject() as ShortArray
+                nodeIdList = readObject() as IntArray
                 bitvector = readObject() as BitSet
                 close()
             }catch (e: Exception){
@@ -111,7 +109,6 @@ class TokenArray {
         }
         return TokenArray()
     }
-
 
     /**
      *

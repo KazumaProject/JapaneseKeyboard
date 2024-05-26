@@ -16,7 +16,8 @@ import java.util.BitSet
 class LOUDS {
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
-    var labels: MutableList<Char> = arrayListOf()
+    var labels: CharArray = charArrayOf()
+    val labelsTemp: MutableList<Char> = arrayListOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
 
@@ -25,7 +26,7 @@ class LOUDS {
             add(true)
             add(false)
         }
-        labels.apply {
+        labelsTemp.apply {
             add(0,' ')
             add(1,' ')
         }
@@ -39,7 +40,7 @@ class LOUDS {
 
     constructor(
         LBS: BitSet,
-        labels: MutableList<Char>,
+        labels: CharArray,
         isLeaf: BitSet,
     ){
         this.LBS = LBS
@@ -161,9 +162,9 @@ class LOUDS {
     fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
-                writeInt(labels.toByteArrayFromListChar().size)
+                writeInt(labelsTemp.toByteArrayFromListChar().size)
                 writeObject(LBS)
-                writeObject(labels.toByteArrayFromListChar().deflate())
+                writeObject(labelsTemp.toByteArrayFromListChar().deflate())
                 writeObject(isLeaf)
                 flush()
                 close()
@@ -178,7 +179,7 @@ class LOUDS {
             try {
                 val labelSize = it.readInt()
                 LBS = it.readObject() as BitSet
-                labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar()
+                labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar().toCharArray()
                 isLeaf = it.readObject() as BitSet
             }catch (e: Exception){
                 println(e.stackTraceToString())
@@ -192,7 +193,7 @@ class LOUDS {
             try {
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
-                labels = (objectInput.readObject() as CharArray).toMutableList()
+                labels = (objectInput.readObject() as CharArray)
                 close()
             }catch (e: Exception){
                 println(e.stackTraceToString())
