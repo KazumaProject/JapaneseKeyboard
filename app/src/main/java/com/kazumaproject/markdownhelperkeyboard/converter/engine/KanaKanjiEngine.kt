@@ -20,6 +20,9 @@ class KanaKanjiEngine {
     private lateinit var rank1ArrayIsLeaf: IntArray
     private lateinit var rank0ArrayTokenArrayBitvector: IntArray
     private lateinit var rank1ArrayTokenArrayBitvector: IntArray
+    private lateinit var rank0ArrayLBSTango: IntArray
+    private lateinit var rank1ArrayLBSTango: IntArray
+
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
 
@@ -34,7 +37,9 @@ class KanaKanjiEngine {
         rank1ArrayLBSYomi: IntArray,
         rank1ArrayIsLeaf: IntArray,
         rank0ArrayTokenArrayBitvector: IntArray,
-        rank1ArrayTokenArrayBitvector: IntArray
+        rank1ArrayTokenArrayBitvector: IntArray,
+        rank0ArrayLBSTango: IntArray,
+        rank1ArrayLBSTango: IntArray,
     ){
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -49,6 +54,9 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.rank1ArrayIsLeaf = rank1ArrayIsLeaf
         this@KanaKanjiEngine.rank0ArrayTokenArrayBitvector = rank0ArrayTokenArrayBitvector
         this@KanaKanjiEngine.rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.rank0ArrayLBSTango = rank0ArrayLBSTango
+        this@KanaKanjiEngine.rank1ArrayLBSTango = rank1ArrayLBSTango
+
     }
 
     fun buildEngine(
@@ -63,7 +71,7 @@ class KanaKanjiEngine {
         this.tokenArray = token
     }
 
-    suspend fun nBestPath(
+    fun nBestPath(
         input: String,
         n: Int
     ): List<String> {
@@ -76,7 +84,9 @@ class KanaKanjiEngine {
             rank1ArrayLBSYomi,
             rank1ArrayIsLeaf,
             rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector
+            rank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = rank0ArrayLBSTango,
+            rank1ArrayLBSTango = rank1ArrayLBSTango
         )
         val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
@@ -90,7 +100,7 @@ class KanaKanjiEngine {
         return result
     }
 
-    suspend fun viterbiAlgorithm(
+    fun viterbiAlgorithm(
         input: String
     ): String {
         val graph = graphBuilder.constructGraph(
@@ -102,7 +112,9 @@ class KanaKanjiEngine {
             rank1ArrayLBSYomi,
             rank1ArrayIsLeaf,
             rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector
+            rank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = rank0ArrayLBSTango,
+            rank1ArrayLBSTango = rank1ArrayLBSTango
         )
         return findPath.viterbi(graph, input.length, connectionIds)
     }

@@ -1,9 +1,12 @@
 package com.kazumaproject.Louds
 
 import com.kazumaproject.bitset.rank0
+import com.kazumaproject.bitset.rank0Common
 import com.kazumaproject.bitset.rank1
+import com.kazumaproject.bitset.rank1Common
 import com.kazumaproject.bitset.select0
 import com.kazumaproject.bitset.select1
+import com.kazumaproject.bitset.select1Common
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.toByteArrayFromListChar
@@ -92,17 +95,21 @@ class LOUDS {
     }
 
 
-    fun getLetter(nodeIndex: Int): String {
+    fun getLetter(
+        nodeIndex: Int,
+        rank0Array: IntArray,
+        rank1Array: IntArray,
+    ): String {
         val list = mutableListOf<Char>()
-        val firstNodeId = LBS.rank1(nodeIndex)
+        val firstNodeId = LBS.rank1Common(nodeIndex,rank1Array)
         val firstChar = labels[firstNodeId]
         list.add(firstChar)
-        var parentNodeIndex = LBS.select1(LBS.rank0(nodeIndex))
+        var parentNodeIndex = LBS.select1Common(LBS.rank0Common(nodeIndex,rank0Array),rank1Array)
         while (parentNodeIndex != 0){
-            val parentNodeId = LBS.rank1(parentNodeIndex)
+            val parentNodeId = LBS.rank1Common(parentNodeIndex,rank1Array)
             val pair = labels[parentNodeId]
             list.add(pair)
-            parentNodeIndex = LBS.select1(LBS.rank0(parentNodeIndex))
+            parentNodeIndex = LBS.select1Common(LBS.rank0Common(parentNodeIndex,rank0Array),rank1Array)
             if (parentNodeId == 0) return ""
         }
         return list.toList().reversed().joinToString("")

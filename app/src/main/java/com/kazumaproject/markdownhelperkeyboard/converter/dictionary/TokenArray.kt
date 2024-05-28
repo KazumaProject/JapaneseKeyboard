@@ -31,7 +31,7 @@ class TokenArray {
     fun getListDictionaryByYomiTermId(
         nodeId: Int,
         rank0ArrayTokenArrayBitvector: IntArray,
-        rank1ArrayTokenArrayBitvector: IntArray
+        rank1ArrayTokenArrayBitvector: IntArray,
     ): List<TokenEntry> {
         val b = bitvector.rank1Common(bitvector.select0Common(nodeId,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)
         val c = bitvector.rank1Common(bitvector.select0Common(nodeId + 1,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)

@@ -143,7 +143,7 @@ class LOUDSWithTermId {
        fun commonPrefixSearch(
            str: String,
            rank0Array: IntArray,
-           rank1Array: IntArray
+           rank1Array: IntArray,
        ): List<String>  {
         val resultTemp: MutableList<Char> = mutableListOf()
         val result: MutableList<String> = mutableListOf()
