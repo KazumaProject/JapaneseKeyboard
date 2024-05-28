@@ -7,16 +7,24 @@ import javax.inject.Qualifier
 annotation class ConnectionIds
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class rank0ArrayLBSYomi
+annotation class Rank0ArrayLBSYomi
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class rank1ArrayLBSYomi
+annotation class Rank1ArrayLBSYomi
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class rank1ArrayIsLeafYomi
+annotation class Rank1ArrayIsLeafYomi
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class rank0ArrayTokenArrayBitvector
+annotation class Rank0ArrayTokenArrayBitvector
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class rank1ArrayTokenArrayBitvector
+annotation class Rank1ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class Rank0ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class Rank1ArrayTangoLBS

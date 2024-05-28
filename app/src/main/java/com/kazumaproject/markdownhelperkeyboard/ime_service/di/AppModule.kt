@@ -146,28 +146,38 @@ object AppModule {
 
     @Singleton
     @Provides
-    @rank0ArrayLBSYomi
+    @Rank0ArrayLBSYomi
     fun provideRank0ArrayLBSYomi(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank0GetIntArray()
 
     @Singleton
     @Provides
-    @rank1ArrayLBSYomi
+    @Rank1ArrayLBSYomi
     fun provideRank1ArrayLBSYomi(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank1GetIntArray()
 
     @Singleton
     @Provides
-    @rank1ArrayIsLeafYomi
+    @Rank1ArrayIsLeafYomi
     fun provideRank1ArrayIsLeaf(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.isLeaf.rank1GetIntArray()
 
     @Singleton
     @Provides
-    @rank0ArrayTokenArrayBitvector
+    @Rank0ArrayTokenArrayBitvector
     fun provideRank0ArrayTokenArrayBitvector(tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank0GetIntArray()
 
     @Singleton
     @Provides
-    @rank1ArrayTokenArrayBitvector
+    @Rank1ArrayTokenArrayBitvector
     fun provideRank1ArrayTokenArrayBitvector(tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank1GetIntArray()
+
+    @Singleton
+    @Provides
+    @Rank0ArrayTangoLBS
+    fun provideRank0ArrayLBSTango(tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank0GetIntArray()
+
+    @Singleton
+    @Provides
+    @Rank1ArrayTangoLBS
+    fun provideRank1ArrayLBSTango(tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank1GetIntArray()
 
     @Singleton
     @Provides
@@ -178,13 +188,16 @@ object AppModule {
         tangoTrie: LOUDS,
         yomiTrie: LOUDSWithTermId,
         tokenArray: TokenArray,
-        @rank0ArrayLBSYomi rank0ArrayLBSYomi: IntArray,
-        @rank1ArrayLBSYomi rank1ArrayLBSYomi: IntArray,
-        @rank1ArrayIsLeafYomi rank1ArrayIsLeaf: IntArray,
-        @rank0ArrayTokenArrayBitvector rank0ArrayTokenArrayBitvector: IntArray,
-        @rank1ArrayTokenArrayBitvector rank1ArrayTokenArrayBitvector: IntArray
+        @Rank0ArrayLBSYomi rank0ArrayLBSYomi: IntArray,
+        @Rank1ArrayLBSYomi rank1ArrayLBSYomi: IntArray,
+        @Rank1ArrayIsLeafYomi rank1ArrayIsLeaf: IntArray,
+        @Rank0ArrayTokenArrayBitvector rank0ArrayTokenArrayBitvector: IntArray,
+        @Rank1ArrayTokenArrayBitvector rank1ArrayTokenArrayBitvector: IntArray,
+        @Rank0ArrayTangoLBS rank0ArrayTangoLBS: IntArray,
+        @Rank1ArrayTangoLBS rank1ArrayTangoLBS: IntArray
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
+
         kanaKanjiEngine.buildEngine(
             graphBuilder = graphBuilder,
             findPath = findPath,
@@ -196,8 +209,11 @@ object AppModule {
             rank1ArrayLBSYomi =rank1ArrayLBSYomi,
             rank1ArrayIsLeaf = rank1ArrayIsLeaf,
             rank0ArrayTokenArrayBitvector = rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector
+            rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = rank0ArrayTangoLBS,
+            rank1ArrayLBSTango = rank1ArrayTangoLBS
         )
+
         return kanaKanjiEngine
     }
 
