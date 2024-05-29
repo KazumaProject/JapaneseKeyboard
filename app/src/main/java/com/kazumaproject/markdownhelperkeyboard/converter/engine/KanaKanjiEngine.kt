@@ -5,6 +5,7 @@ import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
+import com.kazumaproject.toBooleanArray
 import com.kazumaproject.viterbi.FindPath
 
 class KanaKanjiEngine {
@@ -25,6 +26,8 @@ class KanaKanjiEngine {
 
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
+
+    private lateinit var yomiLBSBooleanArray: BooleanArray
 
     fun buildEngine(
         graphBuilder: GraphBuilder,
@@ -57,6 +60,7 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.rank0ArrayLBSTango = rank0ArrayLBSTango
         this@KanaKanjiEngine.rank1ArrayLBSTango = rank1ArrayLBSTango
 
+        this@KanaKanjiEngine.yomiLBSBooleanArray = yomiTrie.LBS.toBooleanArray()
     }
 
     fun buildEngine(
@@ -71,7 +75,7 @@ class KanaKanjiEngine {
         this.tokenArray = token
     }
 
-    fun nBestPath(
+    suspend fun nBestPath(
         input: String,
         n: Int
     ): List<String> {
@@ -86,7 +90,8 @@ class KanaKanjiEngine {
             rank0ArrayTokenArrayBitvector,
             rank1ArrayTokenArrayBitvector,
             rank0ArrayLBSTango = rank0ArrayLBSTango,
-            rank1ArrayLBSTango = rank1ArrayLBSTango
+            rank1ArrayLBSTango = rank1ArrayLBSTango,
+            LBSBooleanArray = yomiLBSBooleanArray
         )
         val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
@@ -100,7 +105,7 @@ class KanaKanjiEngine {
         return result
     }
 
-    fun viterbiAlgorithm(
+    suspend fun viterbiAlgorithm(
         input: String
     ): String {
         val graph = graphBuilder.constructGraph(
@@ -114,7 +119,8 @@ class KanaKanjiEngine {
             rank0ArrayTokenArrayBitvector,
             rank1ArrayTokenArrayBitvector,
             rank0ArrayLBSTango = rank0ArrayLBSTango,
-            rank1ArrayLBSTango = rank1ArrayLBSTango
+            rank1ArrayLBSTango = rank1ArrayLBSTango,
+            LBSBooleanArray = yomiLBSBooleanArray
         )
         return findPath.viterbi(graph, input.length, connectionIds)
     }

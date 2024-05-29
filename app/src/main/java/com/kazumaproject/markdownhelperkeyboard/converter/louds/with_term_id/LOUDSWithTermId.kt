@@ -16,6 +16,8 @@ import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
+import kotlin.time.ExperimentalTime
+import kotlin.time.measureTime
 
 class LOUDSWithTermId {
 
@@ -92,25 +94,29 @@ class LOUDSWithTermId {
         return list.toList().reversed().joinToString("")
     }
 
-    fun getNodeIndex(s: String): Int{
-        return search(2, s.toCharArray(), 0)
+    fun getNodeIndex(s: String, rank1Array: IntArray, LBSInBoolArray: BooleanArray): Int{
+        return search(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray)
     }
 
-    fun getNodeId(s: String): Int{
-        return LBS.rank0(getNodeIndex(s))
-    }
-
+    @OptIn(ExperimentalTime::class)
     fun getTermId(
         nodeIndex: Int,
         rank1Array: IntArray
     ): Int {
-        val firstNodeId = isLeaf.rank1Common(nodeIndex,rank1Array) - 1
-        if (firstNodeId < 0) return -1
-        val firstTermId = if (termIdsDiff[firstNodeId].toInt() == 0){
-            firstNodeId + 1
-        }else{
-            firstNodeId + termIdsDiff[firstNodeId]
+        var firstNodeId: Int
+        val time = measureTime {
+            firstNodeId = isLeaf.rank1Common(nodeIndex,rank1Array) - 1
         }
+        if (firstNodeId < 0) return -1
+        var firstTermId: Int
+        val time1 = measureTime {
+            firstTermId = if (termIdsDiff[firstNodeId].toInt() == 0){
+                firstNodeId + 1
+            }else{
+                firstNodeId + termIdsDiff[firstNodeId]
+            }
+        }
+        println("term id: $time $time1")
         return firstTermId
     }
 
@@ -163,40 +169,88 @@ class LOUDSWithTermId {
          return result.toList()
     }
 
-    private fun search(index: Int, chars: CharArray, wordOffset: Int): Int {
+//    private fun search(
+//        index: Int,
+//        chars: CharArray,
+//        wordOffset: Int,
+//        rank1Array: IntArray
+//    ): Int {
+//        var index2 = index
+//        var charIndex = LBS.rank1Common(index2, rank1Array)
+//        while (index2 < LBS.size() && LBS[index2]) {
+//            val currentChar = chars[wordOffset]
+//            val currentLabel = labels[charIndex]
+//            if (currentChar == currentLabel) {
+//                if (wordOffset + 1 == chars.size) {
+//                    return if (isLeaf[index2]) index2 else index2
+//                }
+//                return search(indexOfLabel(charIndex), chars, wordOffset + 1, rank1Array)
+//            }
+//            index2++
+//            charIndex++
+//        }
+//        return -1
+//    }
+//
+//    private fun indexOfLabel(label: Int): Int {
+//        var count = 0
+//        var i = 0
+//        while (i < LBS.size()) {
+//            if (!LBS[i]) {
+//                if (++count == label) {
+//                    break
+//                }
+//            }
+//            i++
+//        }
+//        return i + 1
+//    }
+
+    private tailrec fun search(
+        index: Int,
+        chars: CharArray,
+        wordOffset: Int,
+        rank1Array: IntArray,
+        LBSInBoolArray: BooleanArray
+    ): Int {
         var index2 = index
-        var wordOffset2 = wordOffset
-        var charIndex = LBS.rank1(index2)
-        while (LBS[index2]) {
-            if (chars[wordOffset2] == labels[charIndex]) {
-                if (isLeaf[index2] && wordOffset2 + 1 == chars.size) {
-                    return index2
-                } else if (wordOffset2 + 1 == chars.size) {
-                    return index2
+        var charIndex = LBS.rank1Common(index2, rank1Array)
+        val charCount = chars.size
+
+        while (index2 < LBSInBoolArray.size && LBSInBoolArray[index2]) {
+            val currentChar = chars[wordOffset]
+            val currentLabel = labels[charIndex]
+
+            if (currentChar == currentLabel) {
+                if (wordOffset + 1 == charCount) {
+                    return if (isLeaf[index2]) index2 else index2
                 }
-                return search(indexOfLabel(charIndex), chars, ++wordOffset2)
-            } else {
-                index2++
+                val nextIndex = indexOfLabel(charIndex,LBSInBoolArray)
+                return search(nextIndex, chars, wordOffset + 1, rank1Array,LBSInBoolArray)
             }
+            index2++
             charIndex++
         }
+
         return -1
     }
 
-    private fun indexOfLabel(label: Int): Int {
+    private fun indexOfLabel(label: Int, LBSInBoolArray: BooleanArray): Int {
         var count = 0
         var i = 0
-        while (i < LBS.size()) {
-            if (!LBS[i]) {
+        val size = LBSInBoolArray.size
+
+        while (i < size) {
+            if (!LBSInBoolArray[i]) {
                 if (++count == label) {
-                    break
+                    return i + 1
                 }
             }
             i++
         }
-        return i + 1
-    }
 
+        return size
+    }
 
     fun writeExternal(out: ObjectOutput){
         try {
