@@ -98,3 +98,7 @@ fun readCharArrayFromBytes(
     byteBuffer.asCharBuffer().get(charArray)
     return charArray
 }
+
+fun BitSet.toBooleanArray(): BooleanArray {
+    return BooleanArray(this.length()) { this[it] }
+}

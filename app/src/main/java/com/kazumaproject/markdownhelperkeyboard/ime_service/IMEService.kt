@@ -889,12 +889,7 @@ class IMEService: InputMethodService() {
 
     private suspend fun getSuggestionList() = CoroutineScope(ioDispatcher).async{
         val queryText = _inputString.value
-        try {
-            return@async kanaKanjiEngine.nBestPath(queryText, N_BEST)
-        }catch (e: Exception){
-            Timber.e(e.stackTraceToString())
-        }
-        return@async emptyList()
+        return@async kanaKanjiEngine.nBestPath(queryText, N_BEST)
     }.await()
 
     private fun deleteLongPress() = CoroutineScope(ioDispatcher).launch {
