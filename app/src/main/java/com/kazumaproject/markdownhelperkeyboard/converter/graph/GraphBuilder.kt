@@ -29,7 +29,7 @@ class GraphBuilder {
         rank1ArrayTokenArrayBitvector: IntArray,
         rank0ArrayLBSTango: IntArray,
         rank1ArrayLBSTango: IntArray,
-        LBSBooleanArray: BooleanArray
+        LBSBooleanArray: BooleanArray,
     ): List<MutableList<MutableList<Node>>> {
         val graph: MutableList<MutableList<MutableList<Node>>?> = mutableListOf()
         for (i in 0 .. str.length + 1){

@@ -1008,8 +1008,6 @@ class IMEService: InputMethodService() {
                 MotionEvent.ACTION_UP ->{
                     CoroutineScope(ioDispatcher).launch {
                         onDeleteLongPressUp = true
-                        delay(200)
-                        onDeleteLongPressUp = false
                         deleteKeyLongKeyPressed = false
                         _suggestionFlag.update {
                             !it
@@ -1165,8 +1163,6 @@ class IMEService: InputMethodService() {
                 MotionEvent.ACTION_UP ->{
                     CoroutineScope(ioDispatcher).launch {
                         onDeleteLongPressUp = true
-                        delay(200)
-                        onDeleteLongPressUp = false
                         deleteKeyLongKeyPressed = false
                     }
                 }

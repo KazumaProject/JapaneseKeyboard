@@ -28,3 +28,7 @@ annotation class Rank0ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class Rank1ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class YomiLBSBooleanArray
