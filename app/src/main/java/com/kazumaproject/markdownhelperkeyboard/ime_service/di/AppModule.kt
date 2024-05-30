@@ -20,6 +20,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMap
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.toBooleanArray
 import com.kazumaproject.viterbi.FindPath
 import dagger.Module
 import dagger.Provides
@@ -181,6 +182,11 @@ object AppModule {
 
     @Singleton
     @Provides
+    @YomiLBSBooleanArray
+    fun providesYomiLBSBooleanArray(yomiTrie: LOUDSWithTermId): BooleanArray = yomiTrie.LBS.toBooleanArray()
+
+    @Singleton
+    @Provides
     fun provideKanaKanjiHenkanEngine(
         graphBuilder: GraphBuilder,
         findPath: FindPath,
@@ -194,7 +200,8 @@ object AppModule {
         @Rank0ArrayTokenArrayBitvector rank0ArrayTokenArrayBitvector: IntArray,
         @Rank1ArrayTokenArrayBitvector rank1ArrayTokenArrayBitvector: IntArray,
         @Rank0ArrayTangoLBS rank0ArrayTangoLBS: IntArray,
-        @Rank1ArrayTangoLBS rank1ArrayTangoLBS: IntArray
+        @Rank1ArrayTangoLBS rank1ArrayTangoLBS: IntArray,
+        @YomiLBSBooleanArray yomiLBSBooleanArray: BooleanArray
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
 
@@ -211,7 +218,8 @@ object AppModule {
             rank0ArrayTokenArrayBitvector = rank0ArrayTokenArrayBitvector,
             rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector,
             rank0ArrayLBSTango = rank0ArrayTangoLBS,
-            rank1ArrayLBSTango = rank1ArrayTangoLBS
+            rank1ArrayLBSTango = rank1ArrayTangoLBS,
+            yomiLBSBooleanArray = yomiLBSBooleanArray
         )
 
         return kanaKanjiEngine

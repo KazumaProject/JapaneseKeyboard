@@ -231,7 +231,6 @@ class LOUDSWithTermId {
             index2++
             charIndex++
         }
-
         return -1
     }
 

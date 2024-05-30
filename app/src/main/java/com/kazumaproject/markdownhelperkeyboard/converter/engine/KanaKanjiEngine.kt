@@ -5,7 +5,6 @@ import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
-import com.kazumaproject.toBooleanArray
 import com.kazumaproject.viterbi.FindPath
 
 class KanaKanjiEngine {
@@ -43,6 +42,7 @@ class KanaKanjiEngine {
         rank1ArrayTokenArrayBitvector: IntArray,
         rank0ArrayLBSTango: IntArray,
         rank1ArrayLBSTango: IntArray,
+        yomiLBSBooleanArray: BooleanArray
     ){
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -60,7 +60,8 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.rank0ArrayLBSTango = rank0ArrayLBSTango
         this@KanaKanjiEngine.rank1ArrayLBSTango = rank1ArrayLBSTango
 
-        this@KanaKanjiEngine.yomiLBSBooleanArray = yomiTrie.LBS.toBooleanArray()
+        this@KanaKanjiEngine.yomiLBSBooleanArray = yomiLBSBooleanArray
+
     }
 
     fun buildEngine(
@@ -125,4 +126,16 @@ class KanaKanjiEngine {
         return findPath.viterbi(graph, input.length, connectionIds)
     }
 
+    private fun precomputeLabelIndexMap(LBSInBoolArray: BooleanArray): Map<Int, Int> {
+        val map = mutableMapOf<Int, Int>()
+        var count = 0
+
+        for (i in LBSInBoolArray.indices) {
+            if (!LBSInBoolArray[i]) {
+                map[count] = i + 1
+                count++
+            }
+        }
+        return map
+    }
 }
