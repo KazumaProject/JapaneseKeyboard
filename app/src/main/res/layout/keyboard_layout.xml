@@ -5,11 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="@dimen/keyboard_height"
     android:background="@color/keyboard_bg"
-    android:layout_gravity="bottom"
-    android:baselineAligned="false"
-    android:layout_alignWithParentIfMissing="true"
-    android:clickable="true"
-    android:focusable="true">
+    android:layout_gravity="bottom">
 
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_return"

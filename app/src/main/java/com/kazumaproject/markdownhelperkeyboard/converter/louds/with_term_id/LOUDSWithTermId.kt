@@ -169,43 +169,6 @@ class LOUDSWithTermId {
          return result.toList()
     }
 
-//    private fun search(
-//        index: Int,
-//        chars: CharArray,
-//        wordOffset: Int,
-//        rank1Array: IntArray
-//    ): Int {
-//        var index2 = index
-//        var charIndex = LBS.rank1Common(index2, rank1Array)
-//        while (index2 < LBS.size() && LBS[index2]) {
-//            val currentChar = chars[wordOffset]
-//            val currentLabel = labels[charIndex]
-//            if (currentChar == currentLabel) {
-//                if (wordOffset + 1 == chars.size) {
-//                    return if (isLeaf[index2]) index2 else index2
-//                }
-//                return search(indexOfLabel(charIndex), chars, wordOffset + 1, rank1Array)
-//            }
-//            index2++
-//            charIndex++
-//        }
-//        return -1
-//    }
-//
-//    private fun indexOfLabel(label: Int): Int {
-//        var count = 0
-//        var i = 0
-//        while (i < LBS.size()) {
-//            if (!LBS[i]) {
-//                if (++count == label) {
-//                    break
-//                }
-//            }
-//            i++
-//        }
-//        return i + 1
-//    }
-
     private tailrec fun search(
         index: Int,
         chars: CharArray,

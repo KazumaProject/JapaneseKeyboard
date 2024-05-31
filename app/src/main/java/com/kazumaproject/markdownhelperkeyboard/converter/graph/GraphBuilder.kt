@@ -76,7 +76,7 @@ class GraphBuilder {
                                     yomiTrie.getNodeIndex(
                                         yomiStr,
                                         rank1ArrayLBSYomi,
-                                        LBSBooleanArray
+                                        LBSBooleanArray,
                                     ),
                                     rank1ArrayIsLeafYomi
                                 )

@@ -6,8 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="@dimen/keyboard_height_land"
     android:background="@color/keyboard_bg"
-    android:layout_gravity="bottom"
-    android:baselineAligned="false">
+    android:layout_gravity="bottom">
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/kigou_recyclerView"
