@@ -10,13 +10,13 @@
     <color name="white">#FFFFFFFF</color>
     <color name="gray">#66C0C0C0</color>
 
-    <color name="keyboard_bg">#D1D4DB</color>
-    <color name="keyboard_key_bg">#E3F2FD</color>
-    <color name="suggestion_view_bg">#D1D4DB</color>
+    <color name="keyboard_bg">#E0E5EC</color>
+    <color name="keyboard_key_bg">#F0F0F3</color>
+    <color name="suggestion_view_bg">#E0E5EC</color>
     <color name="main_text_color">#2e484f</color>
     <color name="sub_text_color">#839096</color>
     <color name="keyboard_boarder_color">#cfd6d9</color>
-    <color name="keyboard_icon_color">#ff000000</color>
+    <color name="keyboard_icon_color">#ff1C1C1C</color>
 
     <color name="keyboard_icon_color_second">#aa000000</color>
 
@@ -28,7 +28,8 @@
     <color name="popup_bg">#f9f9f9</color>
     <color name="triangle">#90CAF9</color>
 
-    <color name="popup_bg_active">#3478f6</color>
+    <color name="popup_bg_active">#A3C7FF</color>
+    <color name="popup_bg_stroke">#5487D1</color>
 
     <color name="char_in_edit_color">#4433B5E5</color>
     <color name="green">#7733B5E5</color>
@@ -38,8 +39,10 @@
     <color name="navy">#22303c</color>
 
     <color name="qwety_bg_color">#D1D4DB</color>
-    <color name="qwety_key_bg_color">#FFFFFF</color>
-    <color name="qwety_key_bg_color_2">#ACB4BF</color>
+    <color name="qwety_key_bg_color">#F0F0F3</color>
+    <color name="qwety_key_bg_color_2">#D1D9E6</color>
+    <color name="keyShadowColor">#A3B1C6</color>
+    <color name="specialKeyShadowColor">#B0BEC5</color>
     <color name="qwety_suggestion_bg_color">#B8BFC9</color>
     <color name="qwety_cap_on_bg_color">#B8BFC9</color>
 
