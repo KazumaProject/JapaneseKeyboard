@@ -64,6 +64,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowBottom
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowLeft
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowRight
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowTop
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.SuggestionDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertUnicode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
@@ -139,6 +140,9 @@ class IMEService: InputMethodService() {
     @Inject
     @InputBackGroundDispatcher
     lateinit var imeIoDispatcher: CoroutineDispatcher
+    @Inject
+    @SuggestionDispatcher
+    lateinit var suggestionDispatcher: CoroutineDispatcher
     @Inject
     lateinit var appPreference: AppPreference
     @Inject
@@ -775,6 +779,7 @@ class IMEService: InputMethodService() {
                 _suggestionList.update { emptyList() }
                 setTenkeyIconsEmptyInputString()
                 if (stringInTail.isNotEmpty()) currentInputConnection?.setComposingText(stringInTail,1)
+                Runtime.getRuntime().gc()
             }
         }
     }
@@ -887,7 +892,7 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private suspend fun getSuggestionList() = CoroutineScope(ioDispatcher).async{
+    private suspend fun getSuggestionList() = CoroutineScope(suggestionDispatcher).async{
         val queryText = _inputString.value
         try {
             println("input str: $queryText")
