@@ -27,11 +27,10 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
@@ -81,15 +80,10 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun providesSupervisorJob(): CompletableJob = SupervisorJob()
-
-    @Singleton
-    @Provides
     @Named("main_ime_scope")
     fun providesIMEScope(
         @MainDispatcher mainDispatcher: CoroutineDispatcher,
-        supervisorJob: CompletableJob
-    ): CoroutineScope = CoroutineScope(supervisorJob + mainDispatcher)
+    ): CoroutineScope = CoroutineScope(Job() + mainDispatcher)
 
 
     @Singleton
