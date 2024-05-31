@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">日本語のキーボード</string>
+    <string name="app_name">スミレ 日本語キーボード</string>
 
     <string name="string_あ">あ</string>
     <string name="string_か">か</string>
@@ -42,7 +42,7 @@
     <string name="string_key11_number">"()[]"</string>
     <string name="string_key12_number">"   .,-/   "</string>
     <string name="md">記</string>
-    <string name="title_activity_main">日本語のキーボード</string>
+    <string name="title_activity_main">スミレ 日本語キーボード</string>
     <string name="title_home">辞書</string>
     <string name="title_dashboard">設定</string>
     <string name="title_notifications">Notifications</string>
