@@ -347,7 +347,6 @@
         android:layout_gravity="center"
         android:scaleType="fitCenter"
         android:text="@string/string_ten_hatena"
-        
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         android:letterSpacing="0.1"

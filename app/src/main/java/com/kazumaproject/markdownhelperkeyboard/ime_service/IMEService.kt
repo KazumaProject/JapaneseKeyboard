@@ -84,8 +84,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpW
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomNumber
@@ -98,7 +96,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFl
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.ImageEffects
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.KAOMOJI
@@ -1685,10 +1685,10 @@ class IMEService: InputMethodService() {
                                 }
                                 is InputMode.ModeEnglish ->{
                                     if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        hidePopUpWindowActive()
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
-                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
-                                        it.setTenKeyTextWhenTapEnglish(currentTenKeyId)
+                                        if (mPopupWindowCenter.isShowing){
+                                            mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                            popTextActive.setTextTapEnglish(currentTenKeyId)
+                                        }
                                         return@setOnTouchListener false
                                     }
 
@@ -1730,10 +1730,10 @@ class IMEService: InputMethodService() {
                                 }
                                 is InputMode.ModeNumber ->{
                                     if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        hidePopUpWindowActive()
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
-                                        it.setTenKeyTextWhenTapNumber(currentTenKeyId)
-                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
+                                        if (mPopupWindowCenter.isShowing){
+                                            mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                            popTextActive.setTextTapNumber(currentTenKeyId)
+                                        }
                                         return@setOnTouchListener false
                                     }
 
@@ -1801,12 +1801,14 @@ class IMEService: InputMethodService() {
                             popTextLeft.setTextFlickLeftEnglish(currentTenKeyId)
                             popTextBottom.setTextFlickBottomEnglish(currentTenKeyId)
                             popTextRight.setTextFlickRightEnglish(currentTenKeyId)
+                            popTextCenter.setTextTapEnglish(currentTenKeyId)
                         }
                         is InputMode.ModeNumber ->{
                             popTextTop.setTextFlickTopNumber(currentTenKeyId)
                             popTextLeft.setTextFlickLeftNumber(currentTenKeyId)
                             popTextBottom.setTextFlickBottomNumber(currentTenKeyId)
                             popTextRight.setTextFlickRightNumber(currentTenKeyId)
+                            popTextCenter.setTextTapNumber(currentTenKeyId)
                         }
                     }
 
