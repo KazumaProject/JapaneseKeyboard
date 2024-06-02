@@ -1584,7 +1584,7 @@ class IMEService: InputMethodService() {
                                     if (!tenKeysLongPressed){
                                         mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                     }
-                                    if (!mPopupWindowActive.isShowing) mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                    mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
                                     return@setOnTouchListener false
                                 }
                                 /** Flick Right **/
