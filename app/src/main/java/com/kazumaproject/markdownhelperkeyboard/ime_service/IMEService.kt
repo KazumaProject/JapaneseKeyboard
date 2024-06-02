@@ -111,6 +111,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -906,9 +907,9 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private suspend fun getSuggestionList(): List<String>{
+    private suspend fun getSuggestionList()= CoroutineScope(ioDispatcher).async{
         val queryText = _inputString.value
-        return try {
+        return@async try {
             println("input str: $queryText")
             kanaKanjiEngine.nBestPath(queryText, N_BEST)
         }catch (e: Exception){
@@ -916,7 +917,7 @@ class IMEService: InputMethodService() {
             println(e.stackTraceToString())
             emptyList()
         }
-    }
+    }.await()
 
     private fun deleteLongPress() = CoroutineScope(ioDispatcher).launch {
         if (_inputString.value.isNotEmpty()){
