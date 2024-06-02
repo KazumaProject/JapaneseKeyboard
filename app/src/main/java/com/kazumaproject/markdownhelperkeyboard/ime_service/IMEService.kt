@@ -61,6 +61,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.IoDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpTextActive
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowBottom
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowCenter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowLeft
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowRight
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowTop
@@ -72,6 +73,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakute
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextReturnInputChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowBottom
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowCenter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickBottom
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickLeft
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickRight
@@ -83,7 +85,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKey
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomJapanese
@@ -97,6 +98,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFl
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.ImageEffects
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.KAOMOJI
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputMode
@@ -108,7 +111,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -181,6 +183,7 @@ class IMEService: InputMethodService() {
     lateinit var mPopupWindowActive: PopupWindow
     private lateinit var bubbleViewActive: BubbleLayout
     private lateinit var popTextActive: MaterialTextView
+
     @Inject
     @PopUpWindowTop
     lateinit var mPopupWindowTop: PopupWindow
@@ -201,6 +204,12 @@ class IMEService: InputMethodService() {
     lateinit var mPopupWindowRight: PopupWindow
     private lateinit var bubbleViewRight: BubbleLayout
     private lateinit var popTextRight: MaterialTextView
+
+    @Inject
+    @PopUpWindowCenter
+    lateinit var mPopupWindowCenter: PopupWindow
+    private lateinit var bubbleViewCenter: BubbleLayout
+    private lateinit var popTextCenter: MaterialTextView
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
@@ -226,6 +235,7 @@ class IMEService: InputMethodService() {
     private var lastFlickConvertedNextHiragana = false
     private var isContinuousTapInputEnabled = false
     private var englishSpaceKeyPressed = false
+    private var tenKeysLongPressed = false
 
     private var firstXPoint = 0.0f
     private var firstYPoint = 0.0f
@@ -545,6 +555,9 @@ class IMEService: InputMethodService() {
         bubbleViewRight = mPopupWindowRight.contentView.findViewById(R.id.bubble_layout_right)
         popTextRight = mPopupWindowRight.contentView.findViewById(R.id.popup_text_right)
 
+        bubbleViewCenter = mPopupWindowCenter.contentView.findViewById(R.id.bubble_layout_center)
+        popTextCenter = mPopupWindowCenter.contentView.findViewById(R.id.popup_text_center)
+
         suggestionAdapter = SuggestionAdapter()
         emojiKigouAdapter = EmojiKigouAdapter()
         kigouApdater = KigouAdapter()
@@ -581,6 +594,8 @@ class IMEService: InputMethodService() {
                 bubbleViewBottom,
                 popTextRight,
                 bubbleViewRight,
+                popTextCenter,
+                bubbleViewCenter
             )
         }
     }
@@ -779,7 +794,6 @@ class IMEService: InputMethodService() {
                 _suggestionList.update { emptyList() }
                 setTenkeyIconsEmptyInputString()
                 if (stringInTail.isNotEmpty()) currentInputConnection?.setComposingText(stringInTail,1)
-                Runtime.getRuntime().gc()
             }
         }
     }
@@ -892,17 +906,17 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private suspend fun getSuggestionList() = CoroutineScope(suggestionDispatcher).async{
+    private suspend fun getSuggestionList(): List<String>{
         val queryText = _inputString.value
-        try {
+        return try {
             println("input str: $queryText")
-            return@async kanaKanjiEngine.nBestPath(queryText, N_BEST)
+            kanaKanjiEngine.nBestPath(queryText, N_BEST)
         }catch (e: Exception){
             if (e is CancellationException) throw e
             println(e.stackTraceToString())
-            return@async emptyList()
+            emptyList()
         }
-    }.await()
+    }
 
     private fun deleteLongPress() = CoroutineScope(ioDispatcher).launch {
         if (_inputString.value.isNotEmpty()){
@@ -1425,6 +1439,8 @@ class IMEService: InputMethodService() {
         bubbleLayoutBottom: BubbleLayout,
         popTextRight: MaterialTextView,
         bubbleLayoutRight: BubbleLayout,
+        popTextCenter: MaterialTextView,
+        bubbleLayoutCenter: BubbleLayout
     ){
         keyList.forEach {
             if (it is AppCompatButton){
@@ -1442,7 +1458,12 @@ class IMEService: InputMethodService() {
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_UP ->{
-                            
+                            if (tenKeysLongPressed){
+                                mainLayoutBinding?.root?.let { a ->
+                                    ImageEffects.removeBlurEffect(a)
+                                }
+                                tenKeysLongPressed = false
+                            }
                             setVibrate()
                             val finalX = event.rawX
                             val finalY = event.rawY
@@ -1450,6 +1471,7 @@ class IMEService: InputMethodService() {
                             val distanceX = (finalX - firstXPoint)
                             val distanceY = (finalY - firstYPoint)
                             hidePopUpWindowActive()
+                            hidePopUpWindowCenter()
                             hidePopUpWindowTop()
                             hidePopUpWindowLeft()
                             hidePopUpWindowBottom()
@@ -1619,10 +1641,10 @@ class IMEService: InputMethodService() {
                             when(_currentInputMode.value){
                                 is InputMode.ModeJapanese ->{
                                     if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        hidePopUpWindowActive()
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
-                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
-                                        it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
+                                        if (mPopupWindowCenter.isShowing){
+                                            mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                            popTextActive.setTextTapJapanese(currentTenKeyId)
+                                        }
                                         return@setOnTouchListener false
                                     }
                                     if (abs(distanceX) > abs(distanceY)) {
@@ -1757,8 +1779,10 @@ class IMEService: InputMethodService() {
                     }
                 }
                 it.setOnLongClickListener { v ->
+                    tenKeysLongPressed = true
                     Timber.d("long click detect")
                     hidePopUpWindowActive()
+                    hidePopUpWindowCenter()
                     hidePopUpWindowTop()
                     hidePopUpWindowLeft()
                     hidePopUpWindowBottom()
@@ -1770,6 +1794,7 @@ class IMEService: InputMethodService() {
                             popTextLeft.setTextFlickLeftJapanese(currentTenKeyId)
                             popTextBottom.setTextFlickBottomJapanese(currentTenKeyId)
                             popTextRight.setTextFlickRightJapanese(currentTenKeyId)
+                            popTextCenter.setTextTapJapanese(currentTenKeyId)
                         }
                         is InputMode.ModeEnglish ->{
                             popTextTop.setTextFlickTopEnglish(currentTenKeyId)
@@ -1785,10 +1810,15 @@ class IMEService: InputMethodService() {
                         }
                     }
 
+                    mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,v)
                     mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
                     mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
                     mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
                     mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
+
+                    mainLayoutBinding?.root?.let { a ->
+                        ImageEffects.applyBlurEffect(a,8f)
+                    }
                     false
                 }
             }
@@ -1839,6 +1869,7 @@ class IMEService: InputMethodService() {
                                 }
                                 is InputMode.ModeNumber ->{
                                     hidePopUpWindowActive()
+                                    hidePopUpWindowCenter()
                                     hidePopUpWindowTop()
                                     hidePopUpWindowLeft()
                                     hidePopUpWindowBottom()
@@ -1956,6 +1987,7 @@ class IMEService: InputMethodService() {
                         }
                         is InputMode.ModeNumber ->{
                             hidePopUpWindowActive()
+                            hidePopUpWindowCenter()
                             hidePopUpWindowTop()
                             hidePopUpWindowLeft()
                             hidePopUpWindowBottom()
@@ -2362,6 +2394,14 @@ class IMEService: InputMethodService() {
 
     private fun hidePopUpWindowActive(){
         mPopupWindowActive.apply {
+            if (isShowing){
+                dismiss()
+            }
+        }
+    }
+
+    private fun hidePopUpWindowCenter(){
+        mPopupWindowCenter.apply {
             if (isShowing){
                 dismiss()
             }

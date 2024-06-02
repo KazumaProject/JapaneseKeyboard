@@ -176,22 +176,22 @@ class LOUDSWithTermId {
         rank1Array: IntArray,
         LBSInBoolArray: BooleanArray
     ): Int {
-        var index2 = index
-        var charIndex = LBS.rank1Common(index2, rank1Array)
+        var currentIndex = index
+        var charIndex = LBS.rank1Common(currentIndex, rank1Array)
         val charCount = chars.size
 
-        while (index2 < LBSInBoolArray.size && LBSInBoolArray[index2]) {
+        while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex]
 
             if (currentChar == currentLabel) {
                 if (wordOffset + 1 == charCount) {
-                    return if (isLeaf[index2]) index2 else index2
+                    return if (isLeaf[currentIndex]) currentIndex else currentIndex
                 }
-                val nextIndex = indexOfLabel(charIndex,LBSInBoolArray)
-                return search(nextIndex, chars, wordOffset + 1, rank1Array,LBSInBoolArray)
+                val nextIndex = indexOfLabel(charIndex, LBSInBoolArray)
+                return search(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray)
             }
-            index2++
+            currentIndex++
             charIndex++
         }
         return -1
@@ -210,7 +210,6 @@ class LOUDSWithTermId {
             }
             i++
         }
-
         return size
     }
 

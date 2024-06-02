@@ -208,6 +208,50 @@ fun PopupWindow.setPopUpWindowFlickTop(
     }
 }
 
+fun PopupWindow.setPopUpWindowCenter(
+    context: Context,
+    bubbleLayout: BubbleLayout,
+    anchorView: View
+){
+    println("called center")
+    this.width = anchorView.width
+    this.height = anchorView.height
+    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    bubbleLayout.let { bubble ->
+        if (bubble.arrowDirection != ArrowDirection.TOP_RIGHT) this.dismiss()
+        bubble.arrowDirection = ArrowDirection.TOP_RIGHT
+        bubble.arrowWidth = 0f
+        bubble.arrowHeight = 0f
+    }
+    when(context.resources.configuration.orientation){
+        Configuration.ORIENTATION_PORTRAIT ->{
+            showAsDropDown(
+                anchorView,
+                0,
+                -(anchorView.height),
+                Gravity.CENTER
+            )
+        }
+        Configuration.ORIENTATION_LANDSCAPE ->{
+            showAsDropDown(
+                anchorView,
+                0,
+                -(anchorView.height),
+                Gravity.CENTER
+            )
+        }
+        Configuration.ORIENTATION_UNDEFINED -> {
+            showAsDropDown(
+                anchorView,
+                0,
+                -(anchorView.height),
+                Gravity.CENTER
+            )
+        }
+        else ->{}
+    }
+}
+
 fun PopupWindow.setPopUpWindowRight(
     context: Context,
     bubbleLayout: BubbleLayout,

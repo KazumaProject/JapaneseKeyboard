@@ -10,10 +10,10 @@
     app:bl_arrowPosition="16dp"
     app:bl_arrowWidth="0dp"
     app:bl_cornersRadius="12dp"
-    app:bl_bubbleColor="@color/popup_bg_active"
+    app:bl_strokeColor="@color/keyShadowColor"
+    app:bl_bubbleColor="@color/qwety_key_bg_color"
     android:elevation="4dp"
-    app:bl_strokeWidth="1dp"
-    app:bl_strokeColor="@color/popup_bg_stroke">
+    app:bl_strokeWidth="2dp">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/popup_text_bottom"
