@@ -14,7 +14,7 @@
     <string name="string_enter_1">改行</string>
     <string name="string_space_1">空白</string>
     <string name="string_small">゛゜\n大 小</string>
-    <string name="string_ten_hatena">、。？！</string>
+    <string name="string_ten_hatena">､｡?!</string>
 
     <string name="string_key1_english">" @#&amp;_"</string>
     <string name="string_key2_english">"ABC"</string>
@@ -25,9 +25,9 @@
     <string name="string_key7_english">"PQRS"</string>
     <string name="string_key8_english">"TUV"</string>
     <string name="string_key9_english">"WXYZ"</string>
-    <string name="string_key10_english">"' \" : ;"</string>
+    <string name="string_key10_english">"'\":;"</string>
     <string name="string_key11_english">a A</string>
-    <string name="string_key12_english">". , ? !"</string>
+    <string name="string_key12_english">".,?!"</string>
 
     <string name="string_key1_number">"1\n☆♪→"</string>
     <string name="string_key2_number">"2\n￥$€"</string>

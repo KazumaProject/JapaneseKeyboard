@@ -327,4 +327,16 @@ object AppModule {
         return mPopupWindow
     }
 
+    @SuppressLint("InflateParams")
+    @PopUpWindowCenter
+    @Provides
+    fun providesPopUpWindowCenter(@ApplicationContext context: Context): PopupWindow{
+        val mPopupWindow = PopupWindow(context)
+        val popupView = LayoutInflater
+            .from(context)
+            .inflate(R.layout.popup_layout_center,null)
+        mPopupWindow.contentView = popupView
+        return mPopupWindow
+    }
+
 }
