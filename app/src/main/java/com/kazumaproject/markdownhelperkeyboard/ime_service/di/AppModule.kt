@@ -269,6 +269,18 @@ object AppModule {
         com.kazumaproject.markdownhelperkeyboard.R.drawable.open_bracket)!!
 
     @SuppressLint("InflateParams")
+    @PopUpWindowCenter
+    @Provides
+    fun providesPopUpWindowCenter(@ApplicationContext context: Context): PopupWindow{
+        val mPopupWindow = PopupWindow(context)
+        val popupView = LayoutInflater
+            .from(context)
+            .inflate(R.layout.popup_layout_center,null)
+        mPopupWindow.contentView = popupView
+        return mPopupWindow
+    }
+
+    @SuppressLint("InflateParams")
     @PopUpTextActive
     @Provides
     fun providesPopUpWindowActive(@ApplicationContext context: Context): PopupWindow{
@@ -323,18 +335,6 @@ object AppModule {
         val popupView = LayoutInflater
             .from(context)
             .inflate(R.layout.popup_layout_right,null)
-        mPopupWindow.contentView = popupView
-        return mPopupWindow
-    }
-
-    @SuppressLint("InflateParams")
-    @PopUpWindowCenter
-    @Provides
-    fun providesPopUpWindowCenter(@ApplicationContext context: Context): PopupWindow{
-        val mPopupWindow = PopupWindow(context)
-        val popupView = LayoutInflater
-            .from(context)
-            .inflate(R.layout.popup_layout_center,null)
         mPopupWindow.contentView = popupView
         return mPopupWindow
     }

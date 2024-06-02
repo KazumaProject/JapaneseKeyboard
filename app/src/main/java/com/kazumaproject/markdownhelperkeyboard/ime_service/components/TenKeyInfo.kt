@@ -8,8 +8,8 @@ sealed class TenKeyInfo{
         abstract val tap: Char
         abstract val flickLeft: Char
         abstract val flickTop: Char
-        abstract val flickRight: Char
-        abstract val flickBottom: Char
+        abstract val flickRight: Char?
+        abstract val flickBottom: Char?
     }
 
     object KeyAJapanese : TenKeyTapFlickInfo() {
@@ -175,8 +175,8 @@ sealed class TenKeyInfo{
             get() = 'b'
         override val flickTop: Char
             get() = 'c'
-        override val flickRight: Char
-            get() = ' '
+        override val flickRight: Char?
+            get() = null
         override val flickBottom: Char
             get() = '2'
     }
@@ -188,8 +188,8 @@ sealed class TenKeyInfo{
             get() = 'e'
         override val flickTop: Char
             get() = 'f'
-        override val flickRight: Char
-            get() = ' '
+        override val flickRight: Char?
+            get() = null
         override val flickBottom: Char
             get() = '3'
     }
@@ -201,8 +201,8 @@ sealed class TenKeyInfo{
             get() = 'h'
         override val flickTop: Char
             get() = 'i'
-        override val flickRight: Char
-            get() = ' '
+        override val flickRight: Char?
+            get() = null
         override val flickBottom: Char
             get() = '4'
     }
@@ -214,8 +214,8 @@ sealed class TenKeyInfo{
             get() = 'k'
         override val flickTop: Char
             get() = 'l'
-        override val flickRight: Char
-            get() = ' '
+        override val flickRight: Char?
+            get() = null
         override val flickBottom: Char
             get() = '5'
     }
@@ -227,8 +227,8 @@ sealed class TenKeyInfo{
             get() = 'n'
         override val flickTop: Char
             get() = 'o'
-        override val flickRight: Char
-            get() = ' '
+        override val flickRight: Char?
+            get() = null
         override val flickBottom: Char
             get() = '6'
     }
@@ -253,8 +253,8 @@ sealed class TenKeyInfo{
             get() = 'u'
         override val flickTop: Char
             get() = 'v'
-        override val flickRight: Char
-            get() = ' '
+        override val flickRight: Char?
+            get() = null
         override val flickBottom: Char
             get() = '8'
     }
@@ -307,8 +307,8 @@ sealed class TenKeyInfo{
             get() = '♪'
         override val flickRight: Char
             get() = '→'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key2Number : TenKeyTapFlickInfo() {
@@ -320,8 +320,8 @@ sealed class TenKeyInfo{
             get() = '$'
         override val flickRight: Char
             get() = '€'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key3Number : TenKeyTapFlickInfo() {
@@ -333,8 +333,8 @@ sealed class TenKeyInfo{
             get() = '°'
         override val flickRight: Char
             get() = '#'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key4Number : TenKeyTapFlickInfo() {
@@ -346,8 +346,8 @@ sealed class TenKeyInfo{
             get() = '*'
         override val flickRight: Char
             get() = '・'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key5Number : TenKeyTapFlickInfo() {
@@ -372,8 +372,8 @@ sealed class TenKeyInfo{
             get() = '='
         override val flickRight: Char
             get() = '>'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key7Number : TenKeyTapFlickInfo() {
@@ -385,8 +385,8 @@ sealed class TenKeyInfo{
             get() = '」'
         override val flickRight: Char
             get() = ':'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key8Number : TenKeyTapFlickInfo() {
@@ -398,8 +398,8 @@ sealed class TenKeyInfo{
             get() = '々'
         override val flickRight: Char
             get() = '〆'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key9Number : TenKeyTapFlickInfo() {
@@ -411,8 +411,8 @@ sealed class TenKeyInfo{
             get() = '|'
         override val flickRight: Char
             get() = '\\'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key0Number : TenKeyTapFlickInfo() {
@@ -424,8 +424,8 @@ sealed class TenKeyInfo{
             get() = '…'
         override val flickRight: Char
             get() = '@'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
     object KeyKigouNumber : TenKeyTapFlickInfo() {
@@ -437,8 +437,8 @@ sealed class TenKeyInfo{
             get() = '-'
         override val flickRight: Char
             get() = '/'
-        override val flickBottom: Char
-            get() = ' '
+        override val flickBottom: Char?
+            get() = null
     }
 
 }

@@ -21,15 +21,6 @@ annotation class PopUpWindowRight
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class PopUpWindowCenter
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PopUpBubbleLayoutCenter
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PopUpTextCenter
-
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class PopUpTextActive

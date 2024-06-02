@@ -213,7 +213,6 @@ fun PopupWindow.setPopUpWindowCenter(
     bubbleLayout: BubbleLayout,
     anchorView: View
 ){
-    println("called center")
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))

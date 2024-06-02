@@ -337,10 +337,8 @@ class IMEService: InputMethodService() {
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
-            Timber.d("onUpdateCursorAnchorInfo: $composingText")
-            if (currentInputType == InputTypeForIME.TextWebSearchView || currentInputType == InputTypeForIME.TextWebSearchViewFireFox){
-                if (composingText == null) _inputString.update { EMPTY_STRING }
-            }
+            Timber.d("onUpdateCursorAnchorInfo: $composingText $currentInputType")
+            if (composingText == null) _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -356,7 +354,7 @@ class IMEService: InputMethodService() {
             Configuration.ORIENTATION_UNDEFINED ->{
                 currentInputConnection?.finishComposingText()
             }
-            Configuration.ORIENTATION_SQUARE -> {
+            else -> {
                 /** empty body **/
             }
         }
@@ -1480,157 +1478,87 @@ class IMEService: InputMethodService() {
                             if (currentTenKeyId !in tenKeyMap.keysJapanese) {
                                 return@setOnTouchListener false
                             }
-                            when(_currentInputMode.value){
-                                is InputMode.ModeJapanese ->{
-                                    val keyInfoJapanese = tenKeyMap.getTenKeyInfoJapanese(currentTenKeyId)
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        if (keyInfoJapanese is TenKeyInfo.TenKeyTapFlickInfo){
-                                            sendCharTap(keyInfoJapanese.tap, insertString, sb)
-                                        }
-                                        it.setTenKeyTextJapanese(currentTenKeyId)
-                                        _suggestionFlag.update { flag ->
-                                            !flag
-                                        }
-                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
-                                        currentTenKeyId = 0
-                                        return@setOnTouchListener false
-                                    }
 
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            if (keyInfoJapanese is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoJapanese.flickRight, insertString, sb)
-                                            }
-                                        }else {
-                                            if (keyInfoJapanese is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoJapanese.flickLeft, insertString, sb)
-                                            }
-                                        }
-                                    }else {
-                                        if (firstYPoint < finalY) {
-                                            if (keyInfoJapanese is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoJapanese.flickBottom, insertString, sb)
-                                            }
-                                        }else{
-                                            if (keyInfoJapanese is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoJapanese.flickTop, insertString, sb)
-                                            }
-                                        }
-                                    }
-                                    lastFlickConvertedNextHiragana = true
-                                    isContinuousTapInputEnabled = true
-                                    it.setTenKeyTextJapanese(currentTenKeyId)
+                            val keyInfo = when(_currentInputMode.value){
+                                is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(currentTenKeyId)
+                                is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(currentTenKeyId)
+                                is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(currentTenKeyId)
+                            }
+
+                            when{
+                                /** Tap **/
+                                abs(distanceX) < 100 && abs(distanceY) < 100 ->{
+                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(keyInfo.tap, insertString, sb)
                                     _suggestionFlag.update { flag ->
                                         !flag
                                     }
-                                    currentTenKeyId = 0
+                                    when(_currentInputMode.value){
+                                        is InputMode.ModeJapanese ->{
+                                            it.setTenKeyTextJapanese(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeEnglish ->{
+                                            it.setTenKeyTextEnglish(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeNumber ->{
+                                            it.setTenKeyTextNumber(currentTenKeyId)
+                                        }
+                                    }
                                     it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
                                     it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                    currentTenKeyId = 0
                                     return@setOnTouchListener false
-
                                 }
-                                is InputMode.ModeEnglish ->{
-                                    val keyInfoEnglish = tenKeyMap.getTenKeyInfoEnglish(currentTenKeyId)
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        if (keyInfoEnglish is TenKeyInfo.TenKeyTapFlickInfo){
-                                            sendCharTap(keyInfoEnglish.tap, insertString, sb)
-                                        }
-                                        _suggestionFlag.update { flag ->
-                                            !flag
-                                        }
-                                        it.setTenKeyTextEnglish(currentTenKeyId)
-                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
-                                        currentTenKeyId = 0
-                                        return@setOnTouchListener false
-                                    }
-
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            if (keyInfoEnglish is TenKeyInfo.TenKeyTapFlickInfo){
-                                                if (keyInfoEnglish.flickRight == ' ') {
-                                                    it.setTenKeyTextEnglish(currentTenKeyId)
-                                                    currentTenKeyId = 0
-                                                    return@setOnTouchListener false
-                                                }
-                                                sendCharFlick(keyInfoEnglish.flickRight, insertString, sb)
-                                            }
-                                        }else {
-                                            if (keyInfoEnglish is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoEnglish.flickLeft, insertString, sb)
-                                            }
-                                        }
-                                    }else{
-                                        if (firstYPoint < finalY) {
-                                            if (keyInfoEnglish is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoEnglish.flickBottom, insertString, sb)
-                                            }
-                                        }else{
-                                            if (keyInfoEnglish is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoEnglish.flickTop, insertString, sb)
-                                            }
+                                /** Flick Right **/
+                                abs(distanceX) > abs(distanceY) && firstXPoint < finalX ->{
+                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                                        keyInfo.flickRight?.let { c ->
+                                            sendCharFlick(c, insertString, sb)
                                         }
                                     }
-                                    lastFlickConvertedNextHiragana = true
-                                    isContinuousTapInputEnabled = true
-                                    it.setTenKeyTextEnglish(currentTenKeyId)
-                                    _suggestionFlag.update { flag ->
-                                        !flag
-                                    }
-                                    currentTenKeyId = 0
-                                    it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
-                                    return@setOnTouchListener false
-
                                 }
-                                is InputMode.ModeNumber ->{
-                                    val keyInfoNumber = tenKeyMap.getTenKeyInfoNumber(currentTenKeyId)
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        if (keyInfoNumber is TenKeyInfo.TenKeyTapFlickInfo){
-                                            sendCharFlick(keyInfoNumber.tap, insertString, sb)
-                                        }
-                                        it.setTenKeyTextNumber(currentTenKeyId)
-                                        _suggestionFlag.update { flag ->
-                                            !flag
-                                        }
-                                        currentTenKeyId = 0
-                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
-                                        return@setOnTouchListener false
-                                    }
-
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            if (keyInfoNumber is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoNumber.flickRight, insertString, sb)
-                                            }
-                                        }else {
-                                            if (keyInfoNumber is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoNumber.flickLeft, insertString, sb)
-                                            }
-                                        }
-                                    }else {
-                                        if (firstYPoint < finalY) {
-                                            /** empty body **/
-                                        }else{
-                                            if (keyInfoNumber is TenKeyInfo.TenKeyTapFlickInfo){
-                                                sendCharFlick(keyInfoNumber.flickTop, insertString, sb)
-                                            }
+                                /** Flick Left **/
+                                abs(distanceX) > abs(distanceY) && firstXPoint >= finalX ->{
+                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                                        if (keyInfo.flickLeft != ' '){
+                                            sendCharFlick(keyInfo.flickLeft, insertString, sb)
                                         }
                                     }
-                                    lastFlickConvertedNextHiragana = true
-                                    isContinuousTapInputEnabled = true
-                                    it.setTenKeyTextNumber(currentTenKeyId)
-                                    _suggestionFlag.update { flag ->
-                                        !flag
+                                }
+                                /** Flick Bottom **/
+                                abs(distanceX) <= abs(distanceY) && firstYPoint < finalY ->{
+                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo){
+                                        keyInfo.flickBottom?.let { c ->
+                                            sendCharFlick(c, insertString, sb)
+                                        }
                                     }
-                                    currentTenKeyId = 0
-                                    it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
-                                    return@setOnTouchListener false
+                                }
+                                /** Flick Top **/
+                                abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY ->{
+                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                                        if (keyInfo.flickTop != ' ') sendCharFlick(keyInfo.flickTop, insertString, sb)
+                                    }
                                 }
                             }
+                            _suggestionFlag.update { flag ->
+                                !flag
+                            }
+                            lastFlickConvertedNextHiragana = true
+                            isContinuousTapInputEnabled = true
+                            when(_currentInputMode.value){
+                                is InputMode.ModeJapanese ->{
+                                    it.setTenKeyTextJapanese(currentTenKeyId)
+                                }
+                                is InputMode.ModeEnglish ->{
+                                    it.setTenKeyTextEnglish(currentTenKeyId)
+                                }
+                                is InputMode.ModeNumber ->{
+                                    it.setTenKeyTextNumber(currentTenKeyId)
+                                }
+                            }
+                            currentTenKeyId = 0
+                            it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
+                            it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                            return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_MOVE ->{
 
@@ -1639,156 +1567,127 @@ class IMEService: InputMethodService() {
                             val distanceX = (finalX - firstXPoint)
                             val distanceY = (finalY - firstYPoint)
 
-                            when(_currentInputMode.value){
-                                is InputMode.ModeJapanese ->{
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        if (mPopupWindowCenter.isShowing){
-                                            mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                            when{
+                                /** Tap **/
+                                abs(distanceX) < 100 && abs(distanceY) < 100 ->{
+                                    when(_currentInputMode.value){
+                                        is InputMode.ModeJapanese ->{
                                             popTextActive.setTextTapJapanese(currentTenKeyId)
                                         }
-                                        return@setOnTouchListener false
-                                    }
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            popTextActive.setTextFlickRightJapanese(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }else{
-                                            popTextActive.setTextFlickLeftJapanese(currentTenKeyId)
-                                            if (mPopupWindowRight.isShowing){
-                                                mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }
-                                    }else {
-                                        if (firstYPoint < finalY){
-                                            popTextActive.setTextFlickBottomJapanese(currentTenKeyId)
-                                            if (mPopupWindowTop.isShowing){
-                                                mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }else{
-                                            popTextActive.setTextFlickTopJapanese(currentTenKeyId)
-                                            if (mPopupWindowBottom.isShowing){
-                                                mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }
-                                    }
-                                    setTouchActionInMoveEnd(it)
-                                    return@setOnTouchListener false
-                                }
-                                is InputMode.ModeEnglish ->{
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        if (mPopupWindowCenter.isShowing){
-                                            mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                        is InputMode.ModeEnglish ->{
                                             popTextActive.setTextTapEnglish(currentTenKeyId)
                                         }
-                                        return@setOnTouchListener false
-                                    }
-
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            popTextActive.setTextFlickRightEnglish(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }else{
-                                            popTextActive.setTextFlickLeftEnglish(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }
-                                    }else {
-                                        if (firstYPoint < finalY){
-                                            popTextActive.setTextFlickBottomEnglish(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }else{
-                                            popTextActive.setTextFlickTopEnglish(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }
-                                    }
-                                    setTouchActionInMoveEnd(it)
-                                    return@setOnTouchListener false
-                                }
-                                is InputMode.ModeNumber ->{
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        if (mPopupWindowCenter.isShowing){
-                                            mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                        is InputMode.ModeNumber ->{
                                             popTextActive.setTextTapNumber(currentTenKeyId)
                                         }
-                                        return@setOnTouchListener false
                                     }
-
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            popTextActive.setTextFlickRightNumber(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }else{
-                                            popTextActive.setTextFlickLeftNumber(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }
-                                    }else {
-                                        if (firstYPoint < finalY){
-                                            popTextActive.setTextFlickBottomNumber(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }else{
-                                            popTextActive.setTextFlickTopNumber(currentTenKeyId)
-                                            if (mPopupWindowLeft.isShowing){
-                                                mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
-                                            }else{
-                                                mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
-                                            }
-                                        }
+                                    if (!tenKeysLongPressed){
+                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                     }
-                                    setTouchActionInMoveEnd(it)
+                                    if (!mPopupWindowActive.isShowing) mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
                                     return@setOnTouchListener false
                                 }
+                                /** Flick Right **/
+                                abs(distanceX) > abs(distanceY) && firstXPoint < finalX ->{
+                                    when(_currentInputMode.value){
+                                        is InputMode.ModeJapanese ->{
+                                            popTextActive.setTextFlickRightJapanese(currentTenKeyId)
+                                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeEnglish ->{
+                                            popTextActive.setTextFlickRightEnglish(currentTenKeyId)
+                                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeNumber ->{
+                                            popTextActive.setTextFlickRightNumber(currentTenKeyId)
+                                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                                        }
+                                    }
+                                    if (mPopupWindowLeft.isShowing){
+                                        mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                    }else{
+                                        mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                    }
+                                }
+                                /** Flick Left **/
+                                abs(distanceX) > abs(distanceY) && firstXPoint >= finalX ->{
+                                    when(_currentInputMode.value){
+                                        is InputMode.ModeJapanese ->{
+                                            popTextActive.setTextFlickLeftJapanese(currentTenKeyId)
+                                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeEnglish ->{
+                                            popTextActive.setTextFlickLeftEnglish(currentTenKeyId)
+                                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeNumber ->{
+                                            popTextActive.setTextFlickLeftNumber(currentTenKeyId)
+                                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                                        }
+                                    }
+                                    if (mPopupWindowRight.isShowing){
+                                        mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                    }else{
+                                        mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                    }
+                                }
+                                /** Flick Bottom **/
+                                abs(distanceX) <= abs(distanceY) && firstYPoint < finalY ->{
+                                    when(_currentInputMode.value){
+                                        is InputMode.ModeJapanese ->{
+                                            popTextActive.setTextFlickBottomJapanese(currentTenKeyId)
+                                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeEnglish ->{
+                                            popTextActive.setTextFlickBottomEnglish(currentTenKeyId)
+                                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeNumber ->{
+                                            popTextActive.setTextFlickBottomNumber(currentTenKeyId)
+                                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                                        }
+                                    }
+                                    if (mPopupWindowTop.isShowing){
+                                        mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                    }else{
+                                        mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                    }
+                                }
+                                /** Flick Top **/
+                                abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY ->{
+                                    when(_currentInputMode.value){
+                                        is InputMode.ModeJapanese ->{
+                                            popTextActive.setTextFlickTopJapanese(currentTenKeyId)
+                                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeEnglish ->{
+                                            popTextActive.setTextFlickTopEnglish(currentTenKeyId)
+                                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                                        }
+                                        is InputMode.ModeNumber ->{
+                                            popTextActive.setTextFlickTopNumber(currentTenKeyId)
+                                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                                        }
+                                    }
+                                    if (mPopupWindowTop.isShowing){
+                                        mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                    }else{
+                                        mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                    }
+                                }
                             }
+                            setTouchActionInMoveEnd(it)
+                            return@setOnTouchListener false
                         }
                         else -> return@setOnTouchListener false
                     }
                 }
                 it.setOnLongClickListener { v ->
                     tenKeysLongPressed = true
-                    Timber.d("long click detect")
-                    hidePopUpWindowActive()
-                    hidePopUpWindowCenter()
-                    hidePopUpWindowTop()
-                    hidePopUpWindowLeft()
-                    hidePopUpWindowBottom()
-                    hidePopUpWindowRight()
-
                     when(_currentInputMode.value){
                         is InputMode.ModeJapanese ->{
                             popTextTop.setTextFlickTopJapanese(currentTenKeyId)
@@ -1812,21 +1711,19 @@ class IMEService: InputMethodService() {
                             popTextCenter.setTextTapNumber(currentTenKeyId)
                         }
                     }
-
-                    mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,v)
                     mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
                     mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
                     mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
                     mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
-
                     mainLayoutBinding?.root?.let { a ->
                         ImageEffects.applyBlurEffect(a,8f)
                     }
+
                     false
                 }
             }
             if (it is AppCompatImageButton){
-                it.setOnTouchListener { v, event ->
+                it.setOnTouchListener { _, event ->
                     val insertString = _inputString.value
                     val sb = StringBuilder()
                     when(event.action and MotionEvent.ACTION_MASK){
@@ -1837,7 +1734,12 @@ class IMEService: InputMethodService() {
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_UP ->{
-                            
+                            if (tenKeysLongPressed){
+                                mainLayoutBinding?.root?.let { a ->
+                                    ImageEffects.removeBlurEffect(a)
+                                }
+                                tenKeysLongPressed = false
+                            }
                             setVibrate()
                             val finalX = event.rawX
                             val finalY = event.rawY
@@ -1913,66 +1815,68 @@ class IMEService: InputMethodService() {
                             }
                         }
                         MotionEvent.ACTION_MOVE ->{
-                            when(_currentInputMode.value){
-                                is InputMode.ModeJapanese ->{
+                            if (_currentInputMode.value == InputMode.ModeNumber){
+                                val finalX = event.rawX
+                                val finalY = event.rawY
+                                val distanceX = (finalX - firstXPoint)
+                                val distanceY = (finalY - firstYPoint)
 
-                                }
-                                is InputMode.ModeEnglish ->{
-
-                                }
-                                is InputMode.ModeNumber ->{
-                                    val finalX = event.rawX
-                                    val finalY = event.rawY
-                                    val distanceX = (finalX - firstXPoint)
-                                    val distanceY = (finalY - firstYPoint)
-
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
-                                        when(v.id){
-                                            R.id.key_small_letter -> {
-                                                popTextActive.text = EMPTY_STRING
-                                                it.setImageDrawable(drawableOpenBracket)
-                                                it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.popup_bg_active))
-                                            }
+                                when{
+                                    /** Tap **/
+                                    abs(distanceX) < 100 && abs(distanceY) < 100 ->{
+                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
+                                        if (!tenKeysLongPressed){
+                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                         }
-                                        hidePopUpWindowActive()
+                                        mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
                                         return@setOnTouchListener false
                                     }
-
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            when(v.id){
-                                                R.id.key_small_letter -> {
-                                                    popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
-                                                }
-                                            }
+                                    /** Flick Right **/
+                                    abs(distanceX) > abs(distanceY) && firstXPoint < finalX ->{
+                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
+                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
+                                        if (mPopupWindowLeft.isShowing){
+                                            mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                        }else{
                                             mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
-                                        } else {
-                                            when(v.id){
-                                                R.id.key_small_letter -> {
-                                                    popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
-                                                }
-                                            }
+                                        }
+                                    }
+                                    /** Flick Left **/
+                                    abs(distanceX) > abs(distanceY) && firstXPoint >= finalX ->{
+                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
+                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
+                                        if (mPopupWindowRight.isShowing){
+                                            mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                        }else{
                                             mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
                                         }
-                                    } else {
-                                        if (firstYPoint < finalY) {
-                                            when(v.id){
-                                                R.id.key_small_letter -> {
-                                                    popTextActive.text = EMPTY_STRING
-                                                }
-                                            }
+                                    }
+                                    /** Flick Bottom **/
+                                    abs(distanceX) <= abs(distanceY) && firstYPoint < finalY ->{
+                                        popTextActive.text = EMPTY_STRING
+                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
+                                        if (mPopupWindowTop.isShowing){
+                                            mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                        }else{
                                             mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
-                                        } else {
-                                            when(v.id){
-                                                R.id.key_small_letter -> {
-                                                    popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
-                                                }
-                                            }
+                                        }
+                                    }
+                                    /** Flick Top **/
+                                    abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY ->{
+                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
+                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
+                                        if (mPopupWindowTop.isShowing){
+                                            mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                        }else{
                                             mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
                                         }
                                     }
-                                    it.setImageDrawable(null)
                                 }
+                                it.setImageDrawable(null)
                             }
                             it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))
                             return@setOnTouchListener false
@@ -1981,30 +1885,21 @@ class IMEService: InputMethodService() {
                     }
                 }
                 it.setOnLongClickListener { v ->
-                    Timber.d("long click detect")
+                    tenKeysLongPressed = true
+                    if (_currentInputMode.value == InputMode.ModeNumber){
+                        popTextTop.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
+                        popTextLeft.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
+                        popTextBottom.text = EMPTY_STRING
+                        popTextRight.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
+                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
 
-                    when(_currentInputMode.value){
-                        is InputMode.ModeJapanese ->{
-                        }
-                        is InputMode.ModeEnglish ->{
-                        }
-                        is InputMode.ModeNumber ->{
-                            hidePopUpWindowActive()
-                            hidePopUpWindowCenter()
-                            hidePopUpWindowTop()
-                            hidePopUpWindowLeft()
-                            hidePopUpWindowBottom()
-                            hidePopUpWindowRight()
+                        mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
+                        mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
+                        mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
+                        mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
 
-                            popTextTop.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
-                            popTextLeft.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
-                            popTextBottom.text = EMPTY_STRING
-                            popTextRight.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
-
-                            mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
-                            mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
-                            mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
-                            mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
+                        mainLayoutBinding?.root?.let { a ->
+                            ImageEffects.applyBlurEffect(a,8f)
                         }
                     }
                     false
