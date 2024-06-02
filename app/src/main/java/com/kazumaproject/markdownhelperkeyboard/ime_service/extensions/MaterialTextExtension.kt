@@ -439,6 +439,45 @@ fun MaterialTextView.setTextFlickTopEnglish(
     }
 }
 
+fun MaterialTextView.setTextTapEnglish(
+    keyId: Int
+){
+    when(keyId){
+        R.id.key_1 -> {
+            text = ENGLISH_KEY1_CHAR[0].toString()
+        }
+        R.id.key_2 -> {
+            text = ENGLISH_SMALL_CHAR[0].toString()
+        }
+        R.id.key_3 -> {
+            text = ENGLISH_SMALL_CHAR[3].toString()
+        }
+        R.id.key_4 -> {
+            text = ENGLISH_SMALL_CHAR[6].toString()
+        }
+        R.id.key_5 -> {
+            text = ENGLISH_SMALL_CHAR[9].toString()
+        }
+        R.id.key_6 -> {
+            text = ENGLISH_SMALL_CHAR[12].toString()
+        }
+        R.id.key_7 -> {
+            text = ENGLISH_SMALL_CHAR[15].toString()
+        }
+        R.id.key_8 -> {
+            text = ENGLISH_SMALL_CHAR[18].toString()
+        }
+        R.id.key_9 -> {
+            text = ENGLISH_SMALL_CHAR[21].toString()
+        }
+        R.id.key_11 -> {
+            text = ENGLISH_KEY11_CHAR[0].toString()
+        }
+        R.id.key_12 -> {
+            text = ENGLISH_KEY12_CHAR[0].toString()
+        }
+    }
+}
 
 fun MaterialTextView.setTextFlickRightNumber(
     keyId: Int
@@ -600,3 +639,42 @@ fun MaterialTextView.setTextFlickTopNumber(
     }
 }
 
+fun MaterialTextView.setTextTapNumber(
+    keyId: Int
+){
+    when(keyId){
+        R.id.key_1 -> {
+            text = NUMBER_CHAR[1].toString()
+        }
+        R.id.key_2 -> {
+            text = NUMBER_CHAR[2].toString()
+        }
+        R.id.key_3 -> {
+            text = NUMBER_CHAR[3].toString()
+        }
+        R.id.key_4 -> {
+            text = NUMBER_CHAR[4].toString()
+        }
+        R.id.key_5 -> {
+            text = NUMBER_CHAR[5].toString()
+        }
+        R.id.key_6 -> {
+            text = NUMBER_CHAR[6].toString()
+        }
+        R.id.key_7 -> {
+            text = NUMBER_CHAR[7].toString()
+        }
+        R.id.key_8 -> {
+            text = NUMBER_CHAR[8].toString()
+        }
+        R.id.key_9 -> {
+            text = NUMBER_CHAR[9].toString()
+        }
+        R.id.key_11 -> {
+            text = NUMBER_CHAR[0].toString()
+        }
+        R.id.key_12 -> {
+            text = NUMBER_KEY12_SYMBOL_CHAR[0].toString()
+        }
+    }
+}
