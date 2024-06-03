@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupWindow
 import androidx.core.content.ContextCompat
@@ -97,6 +98,10 @@ object AppModule {
             init(context)
         }
     }
+
+    @Singleton
+    @Provides
+    fun extractedText(): ExtractedTextRequest = ExtractedTextRequest()
 
     @Singleton
     @Provides
@@ -226,47 +231,47 @@ object AppModule {
     @DrawableReturn
     @Provides
     fun providesDrawableReturn(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.baseline_keyboard_return_24)!!
+        R.drawable.baseline_keyboard_return_24)!!
 
     @DrawableKanaSmall
     @Provides
     fun providesDrawableKanaSmall(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.kana_small)!!
+        R.drawable.kana_small)!!
 
     @DrawableEnglishSmall
     @Provides
     fun providesDrawableEnglishSmall(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.english_small)!!
+        R.drawable.english_small)!!
 
     @DrawableHenkan
     @Provides
     fun providesDrawableHenkan(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.henkan)!!
+        R.drawable.henkan)!!
 
     @DrawableSpaceBar
     @Provides
     fun providesDrawableSpaceBar(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.baseline_space_bar_24)!!
+        R.drawable.baseline_space_bar_24)!!
 
     @DrawableRightArrow
     @Provides
     fun providesDrawableRightArrow(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.baseline_arrow_right_alt_24)!!
+        R.drawable.baseline_arrow_right_alt_24)!!
 
     @DrawableLanguage
     @Provides
     fun providesDrawableLanguage(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.baseline_language_24)!!
+        R.drawable.baseline_language_24)!!
 
     @DrawableNumberSmall
     @Provides
     fun providesDrawableNumberSmall(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.number_small)!!
+        R.drawable.number_small)!!
 
     @DrawableOpenBracket
     @Provides
     fun providesDrawableOpenBracket(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        com.kazumaproject.markdownhelperkeyboard.R.drawable.open_bracket)!!
+        R.drawable.open_bracket)!!
 
     @SuppressLint("InflateParams")
     @PopUpWindowCenter

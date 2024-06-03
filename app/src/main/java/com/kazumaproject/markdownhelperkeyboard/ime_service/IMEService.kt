@@ -21,6 +21,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedText
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
@@ -215,6 +217,9 @@ class IMEService: InputMethodService() {
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
+    @Inject
+    lateinit var extractedTextRequest: ExtractedTextRequest
+
     private var mainLayoutBinding: MainLayoutBinding? = null
     
     private var suggestionAdapter: SuggestionAdapter?= null
@@ -311,18 +316,22 @@ class IMEService: InputMethodService() {
         }
     }
 
-    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
-        super.onStartInput(attribute, restarting)
-        Timber.d("onStartInput: $restarting")
+    override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(editorInfo, restarting)
         currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         resetAllFlags()
-        setCurrentInputType(attribute)
+        setCurrentInputType(editorInfo)
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("onFinishInput:")
         resetAllFlags()
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
     }
 
     override fun onWindowHidden() {
@@ -359,7 +368,6 @@ class IMEService: InputMethodService() {
             }
         }
     }
-
     private fun startScope(
         keyList: List<Any>,
         flexboxLayoutManager: FlexboxLayoutManager
@@ -788,6 +796,7 @@ class IMEService: InputMethodService() {
                 if (deleteKeyLongKeyPressed) return@collectLatest
                 isContinuousTapInputEnabled = true
                 lastFlickConvertedNextHiragana = true
+                println("current cursor pos: ${getCurrentText()} ${inputString.length}")
                 setComposingTextAfterEdit(inputString, spannableString)
             } else {
                 _suggestionList.update { emptyList() }
@@ -795,6 +804,11 @@ class IMEService: InputMethodService() {
                 if (stringInTail.isNotEmpty()) currentInputConnection?.setComposingText(stringInTail,1)
             }
         }
+    }
+
+    private fun getCurrentText(): String? {
+        val extractedText: ExtractedText? = currentInputConnection?.getExtractedText(extractedTextRequest, 0)
+        return extractedText?.text?.toString()
     }
 
     private fun setComposingTextPreEdit(
