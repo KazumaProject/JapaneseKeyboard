@@ -22,7 +22,6 @@
         android:background="@android:color/transparent"
         android:src="@drawable/outline_arrow_drop_down_24"
         android:scaleType="center"
-        android:tint="@color/keyboard_icon_color"
         android:layout_gravity="end"
         android:layout_marginEnd="8dp"
         android:layout_marginTop="8dp"
