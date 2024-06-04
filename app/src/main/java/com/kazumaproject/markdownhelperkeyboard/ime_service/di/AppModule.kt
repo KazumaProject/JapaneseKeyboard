@@ -261,7 +261,7 @@ object AppModule {
     @DrawableLanguage
     @Provides
     fun providesDrawableLanguage(@ApplicationContext context: Context): Drawable = ContextCompat.getDrawable(context,
-        R.drawable.baseline_language_24)!!
+        R.drawable.logo_key)!!
 
     @DrawableNumberSmall
     @Provides

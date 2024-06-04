@@ -787,6 +787,9 @@ class IMEService: InputMethodService() {
                 mainView.suggestionVisibility.isVisible = inputString.isNotBlank()
                 mainView.suggestionRecyclerView.scrollToPosition(0)
             }
+            withContext(mainDispatcher){
+                mainView.suggestionRecyclerView.isVisible = inputString.isNotBlank()
+            }
                 if (inputString.isNotBlank()) {
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
@@ -1774,7 +1777,9 @@ class IMEService: InputMethodService() {
                                             dakutenSmallLetter(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            inputMethodManager.showInputMethodPicker()
+                                            mainLayoutBinding?.suggestionRecyclerView?.let { a ->
+                                                a.isVisible = !a.isVisible
+                                            }
                                         }
                                     }
                                     return@setOnTouchListener false
@@ -1786,7 +1791,9 @@ class IMEService: InputMethodService() {
                                             smallBigLetterConversionEnglish(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            inputMethodManager.showInputMethodPicker()
+                                            mainLayoutBinding?.suggestionRecyclerView?.let { a ->
+                                                a.isVisible = !a.isVisible
+                                            }
                                         }
                                     }
                                     return@setOnTouchListener false
