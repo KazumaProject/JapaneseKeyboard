@@ -1604,7 +1604,7 @@ class IMEService: InputMethodService() {
                                         it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
                                         it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
                                     }else{
-                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                        //mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                         mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
                                     }
                                     return@setOnTouchListener false
@@ -1627,7 +1627,6 @@ class IMEService: InputMethodService() {
                                     }
                                     if (mPopupWindowLeft.isShowing){
                                         mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
-                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                     }else{
                                         mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
                                     }
@@ -1650,7 +1649,6 @@ class IMEService: InputMethodService() {
                                     }
                                     if (mPopupWindowRight.isShowing){
                                         mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
-                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                     }else{
                                         mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
                                     }
@@ -1673,7 +1671,6 @@ class IMEService: InputMethodService() {
                                     }
                                     if (mPopupWindowTop.isShowing){
                                         mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
-                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                     }else{
                                         mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
                                     }
@@ -1696,7 +1693,6 @@ class IMEService: InputMethodService() {
                                     }
                                     if (mPopupWindowTop.isShowing){
                                         mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
-                                        mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
                                     }else{
                                         mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
                                     }
@@ -1737,10 +1733,11 @@ class IMEService: InputMethodService() {
                     mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
                     mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
                     mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
+                    mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                    mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
                     mainLayoutBinding?.root?.let { a ->
                         ImageEffects.applyBlurEffect(a,8f)
                     }
-
                     false
                 }
             }
