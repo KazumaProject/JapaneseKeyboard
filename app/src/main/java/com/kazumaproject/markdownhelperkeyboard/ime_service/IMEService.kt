@@ -86,6 +86,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpW
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomNumber
@@ -318,6 +319,7 @@ class IMEService: InputMethodService() {
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        Timber.d("onUpdate onStartInputView called $restarting")
         currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         resetAllFlags()
         setCurrentInputType(editorInfo)
@@ -325,7 +327,7 @@ class IMEService: InputMethodService() {
 
     override fun onFinishInput() {
         super.onFinishInput()
-        Timber.d("onFinishInput:")
+        Timber.d("onUpdate onFinishInput Called")
         resetAllFlags()
     }
 
@@ -346,7 +348,7 @@ class IMEService: InputMethodService() {
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
-            Timber.d("onUpdateCursorAnchorInfo: $composingText $currentInputType")
+            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value}")
             if (composingText == null) _inputString.update { EMPTY_STRING }
         }
     }
@@ -722,6 +724,7 @@ class IMEService: InputMethodService() {
     }
 
     private fun resetAllFlags(){
+        Timber.d("onUpdate resetAllFlags called")
         _currentKeyboardMode.update { KeyboardMode.ModeTenKeyboard }
         _inputString.update { EMPTY_STRING }
         _suggestionList.update { emptyList() }
@@ -1596,9 +1599,14 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     if (!tenKeysLongPressed){
+                                        hidePopUpWindowActive()
+                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
+                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
+                                        it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
+                                    }else{
                                         mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                        mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
                                     }
-                                    mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
                                     return@setOnTouchListener false
                                 }
                                 /** Flick Right **/
