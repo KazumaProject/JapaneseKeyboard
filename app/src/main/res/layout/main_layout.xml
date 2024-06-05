@@ -2,9 +2,24 @@
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_gravity="bottom"
-    android:background="@color/suggestion_view_bg">
+    android:layout_height="332dp"
+    android:layout_gravity="bottom">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginBottom="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:visibility="invisible"/>
+
+    <View
+        android:id="@+id/dummy_view"
+        android:layout_width="match_parent"
+        android:layout_height="54dp"
+        android:layout_marginBottom="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:background="@color/suggestion_view_bg"
+        android:visibility="invisible"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/suggestion_recycler_view"
@@ -13,6 +28,7 @@
         android:layout_marginBottom="@dimen/keyboard_height"
         android:layout_gravity="bottom"
         android:layout_marginEnd="40dp"
+        android:visibility="invisible"
         android:background="@color/suggestion_view_bg" />
 
     <com.google.android.material.imageview.ShapeableImageView
@@ -26,6 +42,7 @@
         android:layout_gravity="end"
         android:layout_marginEnd="8dp"
         android:layout_marginTop="8dp"
+        android:visibility="invisible"
         />
 
     <include
