@@ -14,6 +14,8 @@ import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
+import android.transition.Transition
+import android.transition.TransitionManager
 import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -86,7 +88,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpW
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapJapanese
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomNumber
@@ -221,6 +225,9 @@ class IMEService: InputMethodService() {
     @Inject
     lateinit var extractedTextRequest: ExtractedTextRequest
 
+    @Inject
+    lateinit var transition: Transition
+
     private var mainLayoutBinding: MainLayoutBinding? = null
     
     private var suggestionAdapter: SuggestionAdapter?= null
@@ -283,7 +290,7 @@ class IMEService: InputMethodService() {
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
     override fun onCreateInputView(): View? {
-        val ctx = ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+        val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
             mainLayoutBinding?.let { mainView ->
@@ -302,7 +309,7 @@ class IMEService: InputMethodService() {
                     mainView.keyboardView.keySmallLetter,
                     mainView.keyboardView.key12
                 )
-                val flexboxLayoutManager = FlexboxLayoutManager(this@IMEService).apply {
+                val flexboxLayoutManager = FlexboxLayoutManager(applicationContext).apply {
                     flexWrap = FlexWrap.WRAP
                     alignItems = AlignItems.STRETCH
                 }
@@ -379,7 +386,7 @@ class IMEService: InputMethodService() {
                 _suggestionFlag.asStateFlow().collectLatest {
                     setSuggestionOnView(mainView)
                     mainView.keyboardView.root.isVisible = true
-                    mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
+                    mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(applicationContext,R.drawable.outline_arrow_drop_down_24))
                 }
             }
 
@@ -387,7 +394,7 @@ class IMEService: InputMethodService() {
                 _suggestionViewStatus.asStateFlow().collectLatest {
                     mainView.keyboardView.root.isVisible = it
                     if (it){
-                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_down_24))
+                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(applicationContext,R.drawable.outline_arrow_drop_down_24))
                         mainView.suggestionRecyclerView.apply {
                             this.scrollToPosition(0)
                             layoutManager =  flexboxLayoutManager.apply {
@@ -396,26 +403,42 @@ class IMEService: InputMethodService() {
                             }
                         }
 
-                        val margins = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                        val marginsSuggestionView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
                             (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
                                 leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                rightMargin = 40f.convertDp2Px(applicationContext)
                                 topMargin = 0
-                                bottomMargin = 200f.convertDp2Px(this@IMEService)
-                                height = 52f.convertDp2Px(this@IMEService)
+                                bottomMargin = 200f.convertDp2Px(applicationContext)
+                                height = 52f.convertDp2Px(applicationContext)
                             }
                         } else {
                             (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
                                 leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                rightMargin = 40f.convertDp2Px(applicationContext)
                                 topMargin = 0
-                                bottomMargin = 280f.convertDp2Px(this@IMEService)
-                                height = 54f.convertDp2Px(this@IMEService)
+                                bottomMargin = 280f.convertDp2Px(applicationContext)
+                                height = 54f.convertDp2Px(applicationContext)
                             }
                         }
-                        mainView.suggestionRecyclerView.layoutParams = margins
+                        mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
+                        val marginsDummyView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                topMargin = 0
+                                bottomMargin = 200f.convertDp2Px(applicationContext)
+                                height = 52f.convertDp2Px(applicationContext)
+                            }
+                        } else {
+                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                topMargin = 0
+                                bottomMargin = 280f.convertDp2Px(applicationContext)
+                                height = 54f.convertDp2Px(applicationContext)
+                            }
+                        }
+                        mainView.dummyView.layoutParams = marginsDummyView
                     }else{
-                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(this@IMEService,R.drawable.outline_arrow_drop_up_24))
+                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(applicationContext,R.drawable.outline_arrow_drop_up_24))
                         mainView.suggestionRecyclerView.apply {
                             this.scrollToPosition(0)
                             layoutManager = flexboxLayoutManager.apply {
@@ -423,25 +446,40 @@ class IMEService: InputMethodService() {
                                 justifyContent = JustifyContent.FLEX_START
                             }
                         }
-
-                        val margins = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                        val marginsSuggestionView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
                             (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
                                 leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                rightMargin = 40f.convertDp2Px(applicationContext)
                                 topMargin = 0
                                 bottomMargin = 0
-                                height = 252f.convertDp2Px(this@IMEService)
+                                height = 252f.convertDp2Px(applicationContext)
                             }
                         } else {
                             (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
                                 leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(this@IMEService)
+                                rightMargin = 40f.convertDp2Px(applicationContext)
                                 topMargin = 0
                                 bottomMargin = 0
-                                height = 336f.convertDp2Px(this@IMEService)
+                                height = 336f.convertDp2Px(applicationContext)
                             }
                         }
-                        mainView.suggestionRecyclerView.layoutParams = margins
+                        mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
+                        val marginsDummyView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                topMargin = 0
+                                bottomMargin = 0
+                                height = 252f.convertDp2Px(applicationContext)
+                            }
+                        } else {
+                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
+                                leftMargin = 0
+                                topMargin = 0
+                                bottomMargin = 0
+                                height = 336f.convertDp2Px(applicationContext)
+                            }
+                        }
+                        mainView.dummyView.layoutParams = marginsDummyView
                     }
                 }
             }
@@ -449,6 +487,16 @@ class IMEService: InputMethodService() {
             launch {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
                     suggestionAdapter?.suggestions = suggestions
+
+                    transition.setDuration(200)
+                    transition.addTarget(mainView.suggestionRecyclerView)
+                    transition.addTarget(mainView.dummyView)
+                    transition.addTarget(mainView.suggestionVisibility)
+                    TransitionManager.beginDelayedTransition(mainView.keyboardView.root, transition)
+
+                    mainView.suggestionRecyclerView.isVisible = suggestions.isNotEmpty()
+                    mainView.dummyView.isVisible = suggestions.isNotEmpty()
+                    mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
                 }
             }
 
@@ -696,7 +744,7 @@ class IMEService: InputMethodService() {
                     emojiKigouAdapter?.let { a ->
                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                             adapter = a
-                            layoutManager = GridLayoutManager(this@IMEService,6)
+                            layoutManager = GridLayoutManager(applicationContext,6)
                         }
                     }
                     mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
@@ -705,7 +753,7 @@ class IMEService: InputMethodService() {
                     kigouApdater?.let { a ->
                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                             adapter = a
-                            layoutManager = GridLayoutManager(this@IMEService,3)
+                            layoutManager = GridLayoutManager(applicationContext,3)
                         }
                     }
                     mainView.keyboardKigouView.kigouKaomojiBtn.isChecked = true
@@ -714,7 +762,7 @@ class IMEService: InputMethodService() {
                     emojiKigouAdapter?.let { a ->
                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                             adapter = a
-                            layoutManager = GridLayoutManager(this@IMEService,6)
+                            layoutManager = GridLayoutManager(applicationContext,6)
                         }
                     }
                     mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
@@ -784,11 +832,7 @@ class IMEService: InputMethodService() {
         _inputString.asStateFlow().collectLatest { inputString ->
             Timber.d("launchInputString: $inputString")
             withContext(mainDispatcher){
-                mainView.suggestionVisibility.isVisible = inputString.isNotBlank()
                 mainView.suggestionRecyclerView.scrollToPosition(0)
-            }
-            withContext(mainDispatcher){
-                mainView.suggestionRecyclerView.isVisible = inputString.isNotBlank()
             }
                 if (inputString.isNotBlank()) {
                 /** 入力された文字の selection と composing region を設定する **/
@@ -809,6 +853,7 @@ class IMEService: InputMethodService() {
                 setTenkeyIconsEmptyInputString()
                 if (stringInTail.isNotEmpty()) currentInputConnection?.setComposingText(stringInTail,1)
             }
+
         }
     }
 
@@ -1523,8 +1568,8 @@ class IMEService: InputMethodService() {
                                             it.setTenKeyTextNumber(currentTenKeyId)
                                         }
                                     }
-                                    it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                                    it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                                    it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
+                                    it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
                                     currentTenKeyId = 0
                                     return@setOnTouchListener false
                                 }
@@ -1576,8 +1621,8 @@ class IMEService: InputMethodService() {
                                 }
                             }
                             currentTenKeyId = 0
-                            it.background = ContextCompat.getDrawable(this,R.drawable.ten_keys_center_bg)
-                            it.setTextColor(ContextCompat.getColor(this,R.color.keyboard_icon_color))
+                            it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
+                            it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_MOVE ->{
@@ -1603,12 +1648,22 @@ class IMEService: InputMethodService() {
                                     }
                                     if (!tenKeysLongPressed){
                                         hidePopUpWindowActive()
-                                        it.setTextColor(ContextCompat.getColor(this,R.color.white))
-                                        it.background = ContextCompat.getDrawable(this,R.drawable.ten_key_active_bg)
-                                        it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
+                                        it.setTextColor(ContextCompat.getColor(applicationContext,R.color.white))
+                                        it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_key_active_bg)
+                                        when(_currentInputMode.value){
+                                            is InputMode.ModeJapanese ->{
+                                                it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
+                                            }
+                                            is InputMode.ModeEnglish ->{
+                                                it.setTenKeyTextWhenTapEnglish(currentTenKeyId)
+                                            }
+                                            is InputMode.ModeNumber ->{
+                                                it.setTenKeyTextWhenTapNumber(currentTenKeyId)
+                                            }
+                                        }
                                     }else{
-                                        //mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
-                                        mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                        //mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
+                                        mPopupWindowActive.setPopUpWindowCenter(applicationContext,bubbleLayoutActive,it)
                                     }
                                     return@setOnTouchListener false
                                 }
@@ -1629,9 +1684,9 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     if (mPopupWindowLeft.isShowing){
-                                        mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowRight(applicationContext,bubbleLayoutActive,it)
                                     }else{
-                                        mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowFlickRight(applicationContext,bubbleLayoutActive,it)
                                     }
                                 }
                                 /** Flick Left **/
@@ -1651,9 +1706,9 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     if (mPopupWindowRight.isShowing){
-                                        mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowLeft(applicationContext,bubbleLayoutActive,it)
                                     }else{
-                                        mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowFlickLeft(applicationContext,bubbleLayoutActive,it)
                                     }
                                 }
                                 /** Flick Bottom **/
@@ -1673,9 +1728,9 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     if (mPopupWindowTop.isShowing){
-                                        mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowBottom(applicationContext,bubbleLayoutActive,it)
                                     }else{
-                                        mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowFlickBottom(applicationContext,bubbleLayoutActive,it)
                                     }
                                 }
                                 /** Flick Top **/
@@ -1695,9 +1750,9 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     if (mPopupWindowTop.isShowing){
-                                        mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowTop(applicationContext,bubbleLayoutActive,it)
                                     }else{
-                                        mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowFlickTop(applicationContext,bubbleLayoutActive,it)
                                     }
                                 }
                             }
@@ -1732,12 +1787,12 @@ class IMEService: InputMethodService() {
                             popTextCenter.setTextTapNumber(currentTenKeyId)
                         }
                     }
-                    mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
-                    mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
-                    mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
-                    mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
-                    mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
-                    mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                    mPopupWindowTop.setPopUpWindowTop(applicationContext,bubbleLayoutTop,v)
+                    mPopupWindowLeft.setPopUpWindowLeft(applicationContext,bubbleLayoutLeft,v)
+                    mPopupWindowBottom.setPopUpWindowBottom(applicationContext,bubbleLayoutBottom,v)
+                    mPopupWindowRight.setPopUpWindowRight(applicationContext,bubbleLayoutRight,v)
+                    mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
+                    mPopupWindowActive.setPopUpWindowCenter(applicationContext,bubbleLayoutActive,it)
                     mainLayoutBinding?.root?.let { a ->
                         ImageEffects.applyBlurEffect(a,8f)
                     }
@@ -1777,9 +1832,6 @@ class IMEService: InputMethodService() {
                                             dakutenSmallLetter(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            mainLayoutBinding?.suggestionRecyclerView?.let { a ->
-                                                a.isVisible = !a.isVisible
-                                            }
                                         }
                                     }
                                     return@setOnTouchListener false
@@ -1791,9 +1843,6 @@ class IMEService: InputMethodService() {
                                             smallBigLetterConversionEnglish(sb)
                                         }else{
                                             _inputString.value = EMPTY_STRING
-                                            mainLayoutBinding?.suggestionRecyclerView?.let { a ->
-                                                a.isVisible = !a.isVisible
-                                            }
                                         }
                                     }
                                     return@setOnTouchListener false
@@ -1813,7 +1862,7 @@ class IMEService: InputMethodService() {
                                             !flag
                                         }
                                         it.setImageDrawable(drawableNumberSmall)
-                                        it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))
+                                        it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
                                         return@setOnTouchListener false
                                     }
                                     if (abs(distanceX) > abs(distanceY)) {
@@ -1835,7 +1884,7 @@ class IMEService: InputMethodService() {
                                     }
                                     hidePopUpWindowActive()
                                     it.setImageDrawable(drawableNumberSmall)
-                                    it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))
+                                    it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
                                     return@setOnTouchListener false
                                 }
                             }
@@ -1852,9 +1901,9 @@ class IMEService: InputMethodService() {
                                     abs(distanceX) < 100 && abs(distanceY) < 100 ->{
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
                                         if (!tenKeysLongPressed){
-                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
                                         }
-                                        mPopupWindowActive.setPopUpWindowCenter(this@IMEService,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowCenter(applicationContext,bubbleLayoutActive,it)
                                         return@setOnTouchListener false
                                     }
                                     /** Flick Right **/
@@ -1862,10 +1911,10 @@ class IMEService: InputMethodService() {
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
                                         if (mPopupWindowLeft.isShowing){
-                                            mPopupWindowActive.setPopUpWindowRight(this@IMEService,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                            mPopupWindowActive.setPopUpWindowRight(applicationContext,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
                                         }else{
-                                            mPopupWindowActive.setPopUpWindowFlickRight(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowActive.setPopUpWindowFlickRight(applicationContext,bubbleLayoutActive,it)
                                         }
                                     }
                                     /** Flick Left **/
@@ -1873,10 +1922,10 @@ class IMEService: InputMethodService() {
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
                                         if (mPopupWindowRight.isShowing){
-                                            mPopupWindowActive.setPopUpWindowLeft(this@IMEService,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                            mPopupWindowActive.setPopUpWindowLeft(applicationContext,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
                                         }else{
-                                            mPopupWindowActive.setPopUpWindowFlickLeft(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowActive.setPopUpWindowFlickLeft(applicationContext,bubbleLayoutActive,it)
                                         }
                                     }
                                     /** Flick Bottom **/
@@ -1884,10 +1933,10 @@ class IMEService: InputMethodService() {
                                         popTextActive.text = EMPTY_STRING
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
                                         if (mPopupWindowTop.isShowing){
-                                            mPopupWindowActive.setPopUpWindowBottom(this@IMEService,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                            mPopupWindowActive.setPopUpWindowBottom(applicationContext,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
                                         }else{
-                                            mPopupWindowActive.setPopUpWindowFlickBottom(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowActive.setPopUpWindowFlickBottom(applicationContext,bubbleLayoutActive,it)
                                         }
                                     }
                                     /** Flick Top **/
@@ -1895,16 +1944,16 @@ class IMEService: InputMethodService() {
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
                                         if (mPopupWindowTop.isShowing){
-                                            mPopupWindowActive.setPopUpWindowTop(this@IMEService,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(this@IMEService,bubbleLayoutCenter,it)
+                                            mPopupWindowActive.setPopUpWindowTop(applicationContext,bubbleLayoutActive,it)
+                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
                                         }else{
-                                            mPopupWindowActive.setPopUpWindowFlickTop(this@IMEService,bubbleLayoutActive,it)
+                                            mPopupWindowActive.setPopUpWindowFlickTop(applicationContext,bubbleLayoutActive,it)
                                         }
                                     }
                                 }
                                 it.setImageDrawable(null)
                             }
-                            it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this,R.color.qwety_key_bg_color))
+                            it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
                             return@setOnTouchListener false
                         }
                         else -> return@setOnTouchListener true
@@ -1919,10 +1968,10 @@ class IMEService: InputMethodService() {
                         popTextRight.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
 
-                        mPopupWindowTop.setPopUpWindowTop(this@IMEService,bubbleLayoutTop,v)
-                        mPopupWindowLeft.setPopUpWindowLeft(this@IMEService,bubbleLayoutLeft,v)
-                        mPopupWindowBottom.setPopUpWindowBottom(this@IMEService,bubbleLayoutBottom,v)
-                        mPopupWindowRight.setPopUpWindowRight(this@IMEService,bubbleLayoutRight,v)
+                        mPopupWindowTop.setPopUpWindowTop(applicationContext,bubbleLayoutTop,v)
+                        mPopupWindowLeft.setPopUpWindowLeft(applicationContext,bubbleLayoutLeft,v)
+                        mPopupWindowBottom.setPopUpWindowBottom(applicationContext,bubbleLayoutBottom,v)
+                        mPopupWindowRight.setPopUpWindowRight(applicationContext,bubbleLayoutRight,v)
 
                         mainLayoutBinding?.root?.let { a ->
                             ImageEffects.applyBlurEffect(a,8f)
@@ -2307,11 +2356,11 @@ class IMEService: InputMethodService() {
     }
     private fun setTouchActionInMoveEnd(appCompatButton: AppCompatButton){
         appCompatButton.apply {
-            background = ContextCompat.getDrawable(this@IMEService,R.drawable.ten_keys_center_bg)
+            background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
             if (mPopupWindowTop.isShowing){
-                setTextColor(ContextCompat.getColor(this@IMEService,R.color.keyboard_icon_color))
+                setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
             }else{
-                setTextColor(ContextCompat.getColor(this@IMEService,R.color.qwety_key_bg_color))
+                setTextColor(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
             }
         }
     }

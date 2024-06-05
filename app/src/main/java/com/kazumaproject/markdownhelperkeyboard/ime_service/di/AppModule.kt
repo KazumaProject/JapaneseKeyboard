@@ -4,6 +4,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.graphics.drawable.Drawable
+import android.transition.Slide
+import android.transition.Transition
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
@@ -31,7 +34,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
@@ -81,10 +84,14 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun providesTransition(): Transition = Slide(Gravity.BOTTOM)
+
+    @Singleton
+    @Provides
     @Named("main_ime_scope")
     fun providesIMEScope(
         @MainDispatcher mainDispatcher: CoroutineDispatcher,
-    ): CoroutineScope = CoroutineScope(Job() + mainDispatcher)
+    ): CoroutineScope = CoroutineScope(SupervisorJob() + mainDispatcher)
 
 
     @Singleton
