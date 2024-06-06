@@ -2,7 +2,7 @@
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="332dp"
+    android:layout_height="wrap_content"
     android:layout_gravity="bottom">
 
     <View
@@ -10,7 +10,8 @@
         android:layout_height="54dp"
         android:layout_marginBottom="@dimen/keyboard_height"
         android:layout_gravity="bottom"
-        android:visibility="invisible"/>
+        android:visibility="visible"
+        android:background="@color/suggestion_view_bg"/>
 
     <View
         android:id="@+id/dummy_view"
