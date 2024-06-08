@@ -47,36 +47,29 @@ import javax.inject.Singleton
 object AppModule {
 
     @DefaultDispatcher
+    @Singleton
     @Provides
     fun providesDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
 
     @IoDispatcher
+    @Singleton
     @Provides
     fun providesIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
 
     @MainDispatcher
+    @Singleton
     @Provides
     fun providesMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
 
     @InputBackGroundDispatcher
+    @Singleton
     @Provides
     fun providesInputBackgroundDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
 
-    @KeyInputDispatcher
-    @Provides
-    fun providesIKeyInputDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
-
     @SuggestionDispatcher
+    @Singleton
     @Provides
     fun providesSuggestionDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
-
-    @CursorMoveDispatcher
-    @Provides
-    fun providesCursorMoveDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
-
-    @DeleteLongDispatcher
-    @Provides
-    fun providesDeleteLongDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
 
     @Singleton
     @Provides

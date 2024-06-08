@@ -8,29 +8,30 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 
 class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>(){
     inner class SuggestionViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
 
-    private val diffCallback = object : DiffUtil.ItemCallback<String>() {
-        override fun areItemsTheSame(oldItem: String, newItem: String): Boolean {
+    private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
+        override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
             return oldItem == newItem
         }
 
-        override fun areContentsTheSame(oldItem: String, newItem: String): Boolean {
+        override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
             return oldItem.hashCode() == newItem.hashCode()
         }
     }
 
-    private var onItemClickListener: ((String) -> Unit)? = null
+    private var onItemClickListener: ((Candidate) -> Unit)? = null
 
-    fun setOnItemClickListener(onItemClick: (String) -> Unit) {
+    fun setOnItemClickListener(onItemClick: (Candidate) -> Unit) {
         this.onItemClickListener = onItemClick
     }
 
     private val differ = AsyncListDiffer(this, diffCallback)
 
-    var suggestions: List<String>
+    var suggestions: List<Candidate>
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
@@ -48,11 +49,23 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         return suggestions.size
     }
 
+    override fun getItemId(position: Int): Long {
+        return position.toLong()
+    }
+
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
         holder.itemView.apply {
             val text = findViewById<MaterialTextView>(R.id.suggestion_item_text_view)
-            text.text = suggestion
+            val typeText = findViewById<MaterialTextView>(R.id.suggestion_item_type_text_view)
+            text.text = suggestion.string
+            typeText.text = when(suggestion.type){
+                (1).toByte() -> ""
+                (2).toByte() -> "[部分]"
+                (3).toByte() -> "[ひらがな]"
+                (4).toByte() -> "[カタカナ]"
+                else -> ""
+            }
             setOnClickListener {
                 onItemClickListener?.let { click ->
                     click(suggestion)

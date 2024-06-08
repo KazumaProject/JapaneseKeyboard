@@ -16,24 +16,8 @@ annotation class MainDispatcher
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class MainImmediateDispatcher
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
 annotation class InputBackGroundDispatcher
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class KeyInputDispatcher
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
 annotation class SuggestionDispatcher
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class CursorMoveDispatcher
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class DeleteLongDispatcher
