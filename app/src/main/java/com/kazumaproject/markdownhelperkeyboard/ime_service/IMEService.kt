@@ -43,6 +43,7 @@ import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.EmojiKigouAdapter
@@ -153,6 +154,7 @@ class IMEService: InputMethodService() {
     @Inject
     @SuggestionDispatcher
     lateinit var suggestionDispatcher: CoroutineDispatcher
+
     @Inject
     lateinit var appPreference: AppPreference
     @Inject
@@ -240,7 +242,7 @@ class IMEService: InputMethodService() {
     private val _currentKeyboardMode = MutableStateFlow<KeyboardMode>(KeyboardMode.ModeTenKeyboard)
     private val _currentModeInKigou = MutableStateFlow<ModeInKigou>(ModeInKigou.Null)
     private val _dakutenPressed = MutableStateFlow(false)
-    private val _suggestionList = MutableStateFlow<List<String>>(emptyList())
+    private val _suggestionList = MutableStateFlow<List<Candidate>>(emptyList())
     private val _suggestionFlag = MutableStateFlow(false)
     private val _suggestionViewStatus = MutableStateFlow(true)
 
@@ -285,7 +287,7 @@ class IMEService: InputMethodService() {
 
         const val DISPLAY_LEFT_STRING_TIME = 64L
         const val DELAY_TIME = 1000L
-        const val N_BEST = 16
+        const val N_BEST = 4
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -327,7 +329,11 @@ class IMEService: InputMethodService() {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
+        if (currentInputType == InputTypeForIME.TextWebSearchView )
+            currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
+        else
+            currentInputConnection?.requestCursorUpdates(0)
+
         resetAllFlags()
         setCurrentInputType(editorInfo)
     }
@@ -340,7 +346,10 @@ class IMEService: InputMethodService() {
 
     override fun onWindowShown() {
         super.onWindowShown()
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
+        if (currentInputType == InputTypeForIME.TextWebSearchView )
+            currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
+        else
+            currentInputConnection?.requestCursorUpdates(0)
     }
 
     override fun onWindowHidden() {
@@ -356,7 +365,9 @@ class IMEService: InputMethodService() {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
             Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value}")
-            if (composingText == null) _inputString.update { EMPTY_STRING }
+            if (_currentInputMode.value == InputMode.ModeEnglish && (currentInputType == InputTypeForIME.TextWebSearchView) ) {
+                if (composingText == null) _inputString.update { EMPTY_STRING }
+            }
         }
     }
 
@@ -486,8 +497,6 @@ class IMEService: InputMethodService() {
 
             launch {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
-                    suggestionAdapter?.suggestions = suggestions
-
                     transition.setDuration(200)
                     transition.addTarget(mainView.suggestionRecyclerView)
                     transition.addTarget(mainView.dummyView)
@@ -497,6 +506,8 @@ class IMEService: InputMethodService() {
                     mainView.suggestionRecyclerView.isVisible = suggestions.isNotEmpty()
                     mainView.dummyView.isVisible = suggestions.isNotEmpty()
                     mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+
+                    suggestionAdapter?.suggestions = suggestions
                 }
             }
 
@@ -661,9 +672,10 @@ class IMEService: InputMethodService() {
         flexboxLayoutManager: FlexboxLayoutManager
     ){
         suggestionAdapter?.apply {
+            setHasStableIds(true)
             this.setOnItemClickListener {
                 setVibrate()
-                setSuggestionAdapterClick(it)
+                setCandidateClick(it)
                 resetFlagsKeyEnter()
             }
         }
@@ -684,10 +696,14 @@ class IMEService: InputMethodService() {
         }
     }
 
-    private fun setSuggestionAdapterClick(string: String){
+    private fun setCandidateClick(candidate: Candidate){
+        if (candidate.type == (2).toByte()){
+            val length = candidate.length.toInt()
+            stringInTail = _inputString.value.substring(length)
+        }
         if (_inputString.value.isNotBlank()){
             CoroutineScope(ioDispatcher).launch {
-                currentInputConnection?.commitText(string,1)
+                currentInputConnection?.commitText(candidate.string,1)
                 _suggestionList.update { emptyList() }
                 if (stringInTail.isNotEmpty()){
                     delay(DISPLAY_LEFT_STRING_TIME)
@@ -704,6 +720,7 @@ class IMEService: InputMethodService() {
                 }
             }
         }
+        _inputString.update { EMPTY_STRING }
     }
     private fun setKigouView(){
         mainLayoutBinding?.let { mainView ->
@@ -808,6 +825,7 @@ class IMEService: InputMethodService() {
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
+        _inputString.update { EMPTY_STRING }
     }
 
     private fun resetFlagsKeySpace(){
@@ -892,10 +910,10 @@ class IMEService: InputMethodService() {
         currentInputConnection?.setComposingText(spannableString,1)
     }
 
-    private fun setEnterKeyAction(listIterator: ListIterator<String>) = CoroutineScope(ioDispatcher).launch {
+    private fun setEnterKeyAction(listIterator: ListIterator<Candidate>) = CoroutineScope(ioDispatcher).launch {
         _suggestionList.update { emptyList() }
         val nextSuggestion = listIterator.next()
-        currentInputConnection?.commitText(nextSuggestion,1)
+        currentInputConnection?.commitText(nextSuggestion.string,1)
         if (stringInTail.isNotEmpty()){
             delay(DISPLAY_LEFT_STRING_TIME)
             _inputString.update { stringInTail }
@@ -974,7 +992,7 @@ class IMEService: InputMethodService() {
         val queryText = _inputString.value
         return@async try {
             println("input str: $queryText")
-            kanaKanjiEngine.nBestPath(queryText, N_BEST)
+            kanaKanjiEngine.getCandidates(queryText, N_BEST)
         }catch (e: Exception){
             if (e is CancellationException) throw e
             println(e.stackTraceToString())
@@ -2271,7 +2289,7 @@ class IMEService: InputMethodService() {
     }
 
     private fun setConvertLetterInJapaneseFromButton(
-        suggestions: List<String>,
+        suggestions: List<Candidate>,
     ){
         if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
         val listIterator = suggestions.listIterator(suggestionClickNum)
@@ -2316,20 +2334,20 @@ class IMEService: InputMethodService() {
         _inputString.value = EMPTY_STRING
     }
 
-    private fun setSuggestionComposingText(listIterator: ListIterator<String>){
+    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>){
         val nextSuggestion = listIterator.next()
-        val spannableString2 = SpannableString(nextSuggestion + stringInTail)
+        val spannableString2 = SpannableString(nextSuggestion.string + stringInTail)
         spannableString2.apply {
-            setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         currentInputConnection?. setComposingText(spannableString2,1)
     }
 
-    private fun setSuggestionComposingTextIteratorLast(suggestions: List<String>){
+    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>){
         val nextSuggestion = suggestions[0]
-        val spannableStringWithSuggestion = SpannableString(nextSuggestion + stringInTail)
+        val spannableStringWithSuggestion = SpannableString(nextSuggestion.string + stringInTail)
         spannableStringWithSuggestion.apply {
-            setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         currentInputConnection?.setComposingText(spannableStringWithSuggestion,1)
     }

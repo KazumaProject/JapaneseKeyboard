@@ -19,7 +19,7 @@
         android:layout_height="52dp"
         android:layout_gravity="bottom"
         android:layout_marginBottom="@dimen/keyboard_height_land"
-        android:visibility="invisible"/>
+        android:visibility="visible"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/suggestion_recycler_view"

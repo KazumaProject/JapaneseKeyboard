@@ -4,7 +4,9 @@ import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.hiraToKata
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.viterbi.FindPath
 
 class KanaKanjiEngine {
@@ -74,6 +76,77 @@ class KanaKanjiEngine {
         this.tangoTrie = tango
         this.connectionIds = connectionIdList
         this.tokenArray = token
+    }
+
+    suspend fun getCandidates(
+        input: String,
+        n: Int
+    ):List<Candidate>{
+        val graph = graphBuilder.constructGraph(
+            input,
+            yomiTrie,
+            tangoTrie,
+            tokenArray,
+            rank0ArrayLBSYomi,
+            rank1ArrayLBSYomi,
+            rank1ArrayIsLeaf,
+            rank0ArrayTokenArrayBitvector,
+            rank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = rank0ArrayLBSTango,
+            rank1ArrayLBSTango = rank1ArrayLBSTango,
+            LBSBooleanArray = yomiLBSBooleanArray
+        )
+        val resultNBest = findPath.backwardAStar(graph, input.length, connectionIds, n)
+
+        val resultNBestFinal = resultNBest.map { Candidate(
+            string = it,
+            type = 1,
+            it.length.toUByte()
+        ) }
+
+        val yomiPartOf = yomiTrie.commonPrefixSearch(
+            str = input,
+            rank0Array = rank0ArrayLBSYomi,
+            rank1Array = rank1ArrayLBSYomi,
+        ).reversed()
+
+        val yomiPart = yomiPartOf.map { yomi ->
+            val termId  = yomiTrie.getTermId(
+                yomiTrie.getNodeIndex(
+                    yomi,
+                    rank1ArrayLBSYomi,
+                    yomiLBSBooleanArray,
+                ),
+                rank1ArrayIsLeaf
+            )
+            val listToken: List<TokenEntry> = tokenArray.getListDictionaryByYomiTermId(
+                termId,
+                rank0ArrayTokenArrayBitvector,
+                rank1ArrayTokenArrayBitvector
+            )
+            return@map listToken.sortedBy { it.wordCost }.map {
+                Candidate(
+                    when (it.nodeId) {
+                        -2 -> yomi
+                        -1 -> yomi.hiraToKata()
+                        else -> tangoTrie.getLetter(
+                            it.nodeId,
+                            rank0ArrayLBSTango,
+                            rank1ArrayLBSTango
+                        )
+                    },
+                    2,
+                    yomi.length.toUByte()
+                )
+            }.distinctBy { it.string }.toMutableList()
+        }
+        val a = yomiPart.flatten().distinctBy { it.string }.toMutableList()
+        val hirakanaAndKana = listOf(
+            Candidate(input,3,input.length.toUByte()),
+            Candidate(input.hiraToKata(),4,input.length.toUByte()),
+        )
+        val finalResult = resultNBestFinal + a + hirakanaAndKana
+        return finalResult.distinctBy { it.string }
     }
 
     suspend fun nBestPath(
