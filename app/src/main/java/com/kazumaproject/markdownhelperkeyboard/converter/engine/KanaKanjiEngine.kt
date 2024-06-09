@@ -7,6 +7,7 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import com.kazumaproject.viterbi.FindPath
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -101,12 +102,7 @@ class KanaKanjiEngine {
         )
 
         val resultNBestFinal = async(Dispatchers.IO) {
-            val resultNBest = findPath.backwardAStar(graph, input.length, connectionIds, n)
-            resultNBest.map { Candidate(
-                string = it,
-                type = 1,
-                it.length.toUByte()
-            ) }
+            findPath.backwardAStar(graph, input.length, connectionIds, n)
         }.await()
 
         val yomiPartOf = yomiTrie.commonPrefixSearch(
@@ -142,41 +138,43 @@ class KanaKanjiEngine {
                             )
                         },
                         2,
-                        yomi.length.toUByte()
+                        yomi.length.toUByte(),
+                        it.wordCost.toInt(),
+                        tokenArray.leftIds[it.posTableIndex.toInt()]
                     )
-                }.distinctBy { it.string }.toMutableList()
+                }.distinctBy { it.string }. toMutableList()
             }
             yomiPart.flatten().distinctBy { it.string }.toMutableList()
         }.await()
 
         val hirakanaAndKana = listOf(
-            Candidate(input,3,input.length.toUByte()),
-            Candidate(input.hiraToKata(),4,input.length.toUByte()),
+            Candidate(input,3,input.length.toUByte(),6000),
+            Candidate(input.hiraToKata(),4,input.length.toUByte(),6000),
         )
 
         val longest = yomiPartOf.first()
         val longestConversionList = async(Dispatchers.IO) {
-            nBestPathForLongest(longest,n).map { Candidate(
-                it,(5).toByte(),longest.length.toUByte()
+            nBestPathForLongest(longest,n * 2).map { Candidate(
+                it.string,(5).toByte(),longest.length.toUByte(),it.wordCost, it.leftId
             ) }
         }.await()
 
         val secondPart = if (longest.length < input.length){
             async(Dispatchers.IO) {
                 val tempSecondStr = input.substring(longest.length)
-                val tempFirstStrConversionList = nBestPathForLongest(longest,n)
-                val tempSecondStrConversionList = nBestPathForLongest(tempSecondStr,n)
-                val result = mutableListOf<String>()
-                for (item1 in tempFirstStrConversionList) {
-                    for (item2 in tempSecondStrConversionList) {
-                        result.add(item1 + item2)
+                val tempFirstStrConversionList = nBestPathForLongest(longest,n * 2)
+                val tempSecondStrConversionList = nBestPathForLongest(tempSecondStr,n * 2 )
+                val result = tempFirstStrConversionList.flatMap { item1 ->
+                    tempSecondStrConversionList.map { item2 ->
+                        Pair(item1.string + item2.string, item1.wordCost + item2.wordCost)
                     }
                 }
                 result.map { s ->
                     Candidate(
-                        string =  s ,
+                        string =  s.first ,
                         type = (6).toByte(),
-                        length = (longest.length + tempSecondStr.length).toUByte()
+                        length = (longest.length + tempSecondStr.length).toUByte(),
+                        s.second
                     )
                 }
             }.await()
@@ -184,14 +182,18 @@ class KanaKanjiEngine {
             emptyList()
         }
 
-        val finalResult = resultNBestFinal + secondPart + longestConversionList + a + hirakanaAndKana
+        val finalResult = resultNBestFinal +
+                secondPart.sortedBy { it.score }.filter { (it.score - resultNBestFinal.first().score) < 4000 } +
+                longestConversionList +
+                a +
+                hirakanaAndKana
         return@async finalResult.distinctBy { it.string }
     }.await()
 
     suspend fun nBestPath(
         input: String,
         n: Int
-    ): List<String> {
+    ): List<Candidate> {
         val graph = graphBuilder.constructGraph(
             input,
             yomiTrie,
@@ -208,11 +210,25 @@ class KanaKanjiEngine {
         )
         val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
-            if (!this.contains(input)){
-                add(input)
+            if (!this.map { it.string }.contains(input)){
+                add(
+                    Candidate(
+                        string = input,
+                        type = (3).toByte(),
+                        length = (input.length).toUByte(),
+                        score = (input.length) * 2000
+                    )
+                )
             }
-            if (!this.contains(input.hiraToKata())){
-                add(input.hiraToKata())
+            if (!this.map { it.string }.contains(input.hiraToKata())){
+                add(
+                    Candidate(
+                        string = input.hiraToKata(),
+                        type = (3).toByte(),
+                        length = (input.length).toUByte(),
+                        score = (input.length) * 2000
+                    )
+                )
             }
         }
         return result
@@ -221,7 +237,7 @@ class KanaKanjiEngine {
     suspend fun nBestPathForLongest(
         input: String,
         n: Int
-    ): List<String> {
+    ): List<CandidateTemp> {
         val graph = graphBuilder.constructGraph(
             input,
             yomiTrie,
@@ -236,7 +252,7 @@ class KanaKanjiEngine {
             rank1ArrayLBSTango = rank1ArrayLBSTango,
             LBSBooleanArray = yomiLBSBooleanArray
         )
-        return findPath.backwardAStar(graph, input.length, connectionIds, n)
+        return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
     }
 
     suspend fun viterbiAlgorithm(

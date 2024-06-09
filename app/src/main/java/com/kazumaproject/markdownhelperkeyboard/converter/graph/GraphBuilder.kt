@@ -46,7 +46,7 @@ class GraphBuilder {
                                 g = 0,
                                 tango = "EOS",
                                 len = 0,
-                                sPos = str.length + 1
+                                sPos = str.length + 1,
                             )
                         )
                     )
@@ -108,7 +108,7 @@ class GraphBuilder {
                                             )
                                         },
                                         len = yomiStr.length.toShort(),
-                                        sPos = i
+                                        sPos = i,
                                     )
                                 }
                             }
@@ -120,7 +120,6 @@ class GraphBuilder {
 
                             if (graph[i + yomiStr.length].isNullOrEmpty()) graph[i + yomiStr.length] = mutableListOf()
                             graph[i + yomiStr.length]!!.add(tangoList.toMutableList())
-                            println("$yomiStr $termId")
                         }
                     }.awaitAll()
                 }

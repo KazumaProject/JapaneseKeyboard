@@ -3,6 +3,8 @@ package com.kazumaproject.viterbi
 import com.kazumaproject.Other.BOS
 import com.kazumaproject.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import java.util.PriorityQueue
 
 class FindPath {
@@ -30,10 +32,9 @@ class FindPath {
         length: Int,
         connectionIds: ShortArray,
         n: Int
-    ): MutableList<String> {
+    ): MutableList<Candidate> {
         forwardDp(graph, length, connectionIds)
-        val result: MutableList<Pair<Node,Int>> = mutableListOf()
-        val resultFinal: MutableList<String> = mutableListOf()
+        val resultFinal: MutableList<Candidate> = mutableListOf()
         val pQueue: PriorityQueue<Pair<Node,Int>> = PriorityQueue (compareBy{
             it.second
         })
@@ -43,11 +44,62 @@ class FindPath {
             val node: Pair<Node, Int>? = pQueue.poll()
             node?.let {
                 if (node.first.tango == "BOS") {
-                    result.add(node)
-                    if (!resultFinal.contains(getStringFromNode(node.first))){
-                        resultFinal.add(getStringFromNode(node.first))
+                    if (!resultFinal.map { it.string }.contains(getStringFromNode(node.first))){
+                        resultFinal.add(
+                            Candidate(
+                                string = getStringFromNode(node.first),
+                                type = (1).toByte(),
+                                length = length.toUByte(),
+                                score = node.second,
+                            )
+                        )
                     }
-                    //pQueue.remove()
+                } else {
+                    val prevNodes = getPrevNodes2(
+                        graph,node.first,node.first.sPos
+                    ).flatten()
+                    for (prevNode in prevNodes){
+                        val edgeScore = getEdgeCost(
+                            prevNode.l.toInt(),
+                            node.first.r.toInt(),
+                            connectionIds
+                        )
+                        prevNode.g = node.first.g + edgeScore + node.first.score
+                        prevNode.next = node.first
+                        val result2 = Pair(prevNode,prevNode.g + prevNode.f)
+                        pQueue.add(result2)
+                    }
+                }
+                if (resultFinal.size >= n) {
+                    return resultFinal
+                }
+            }
+        }
+        return resultFinal
+    }
+
+    fun backwardAStarForLongest(
+        graph: List<MutableList<MutableList<Node>>>,
+        length: Int,
+        connectionIds: ShortArray,
+        n: Int
+    ): MutableList<CandidateTemp> {
+        forwardDp(graph, length, connectionIds)
+        val resultFinal: MutableList<CandidateTemp> = mutableListOf()
+        val pQueue: PriorityQueue<Pair<Node,Int>> = PriorityQueue (compareBy{
+            it.second
+        })
+        val eos = Pair(graph[length + 1][0][0],0)
+        pQueue.add(eos)
+        while (pQueue.isNotEmpty()){
+            val node: Pair<Node, Int>? = pQueue.poll()
+            node?.let {
+                if (node.first.tango == "BOS") {
+                    if (!resultFinal.map { it.string }.contains(getStringFromNode(node.first))){
+                        resultFinal.add(
+                            CandidateTemp(getStringFromNode(node.first),node.second,node.first.next?.l,)
+                        )
+                    }
                 } else {
                     val prevNodes = getPrevNodes2(
                         graph,node.first,node.first.sPos

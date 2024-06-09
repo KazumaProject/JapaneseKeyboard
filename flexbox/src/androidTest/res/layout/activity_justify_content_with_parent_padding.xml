@@ -20,7 +20,7 @@
     android:layout_height="match_parent"
     android:padding="24dp">
 
-    <com.google.android.flexbox.FlexboxLayout
+    <com.kazumaproject.android.flexbox.FlexboxLayout
         android:id="@+id/flexbox_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -45,6 +45,6 @@
             android:layout_width="60dp"
             android:layout_height="60dp"
             android:text="3" />
-    </com.google.android.flexbox.FlexboxLayout>
+    </com.kazumaproject.android.flexbox.FlexboxLayout>
 </FrameLayout>
 
