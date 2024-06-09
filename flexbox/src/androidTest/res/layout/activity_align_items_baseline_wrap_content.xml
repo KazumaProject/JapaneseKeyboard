@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
-<com.google.android.flexbox.FlexboxLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.kazumaproject.android.flexbox.FlexboxLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/flexbox_layout"
     android:layout_width="match_parent"
@@ -43,4 +43,4 @@
         android:text="3"
         android:paddingTop="20dp"
         android:gravity="center" />
-</com.google.android.flexbox.FlexboxLayout>
+</com.kazumaproject.android.flexbox.FlexboxLayout>

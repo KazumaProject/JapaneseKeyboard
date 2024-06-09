@@ -36,11 +36,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
 import com.daasuu.bl.BubbleLayout
-import com.google.android.flexbox.AlignItems
-import com.google.android.flexbox.FlexDirection
-import com.google.android.flexbox.FlexWrap
-import com.google.android.flexbox.FlexboxLayoutManager
-import com.google.android.flexbox.JustifyContent
+import com.kazumaproject.android.flexbox.AlignItems
+import com.kazumaproject.android.flexbox.FlexDirection
+import com.kazumaproject.android.flexbox.FlexWrap
+import com.kazumaproject.android.flexbox.FlexboxLayoutManager
+import com.kazumaproject.android.flexbox.JustifyContent
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate

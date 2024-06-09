@@ -7,4 +7,6 @@ data class Candidate (
     val string: String,
     val type: Byte,
     val length: UByte,
+    val score: Int,
+    val leftId: Short? = null
 )

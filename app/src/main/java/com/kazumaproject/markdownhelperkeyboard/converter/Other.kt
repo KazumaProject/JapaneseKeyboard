@@ -12,6 +12,6 @@ object Other {
         g = 0,
         tango = "BOS",
         len = 0,
-        0
+        0,
     )
 }

@@ -22,5 +22,5 @@
     android:orientation="horizontal"
     app:reverseLayout="true"
     app:stackFromEnd="true"
-    app:layoutManager="com.google.android.flexbox.FlexboxLayoutManager" />
+    app:layoutManager="com.kazumaproject.android.flexbox.FlexboxLayoutManager" />
 

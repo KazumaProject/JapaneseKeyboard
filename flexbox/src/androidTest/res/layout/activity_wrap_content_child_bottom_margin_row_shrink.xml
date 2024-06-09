@@ -14,7 +14,7 @@
   ~ limitations under the License.
   -->
 
-<com.google.android.flexbox.FlexboxLayout
+<com.kazumaproject.android.flexbox.FlexboxLayout
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/flexbox_layout"
@@ -37,4 +37,4 @@
         android:layout_height="12dp"
         android:text="test2"
         app:layout_flexShrink="1" />
-</com.google.android.flexbox.FlexboxLayout>
+</com.kazumaproject.android.flexbox.FlexboxLayout>
