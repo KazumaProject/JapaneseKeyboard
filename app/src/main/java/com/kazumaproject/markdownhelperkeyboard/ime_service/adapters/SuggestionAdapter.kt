@@ -15,7 +15,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem == newItem
+            return oldItem.string == newItem.string
         }
 
         override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
@@ -60,10 +60,12 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             val typeText = findViewById<MaterialTextView>(R.id.suggestion_item_type_text_view)
             text.text = suggestion.string
             typeText.text = when(suggestion.type){
-                (1).toByte() -> ""
-                (2).toByte() -> "[部分]"
-                (3).toByte() -> "[ひらがな]"
-                (4).toByte() -> "[カタカナ]"
+                (1).toByte() -> "  [N-Best]  "
+                (2).toByte() -> "  [部分]  "
+                (3).toByte() -> "  [ひらがな]  "
+                (4).toByte() -> "  [カタカナ]  "
+                (5).toByte() -> "  [最長]  "
+                (6).toByte() -> "  [候補]  "
                 else -> ""
             }
             setOnClickListener {

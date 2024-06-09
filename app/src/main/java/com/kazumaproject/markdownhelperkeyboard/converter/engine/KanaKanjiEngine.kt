@@ -8,6 +8,9 @@ import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.viterbi.FindPath
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 
 class KanaKanjiEngine {
 
@@ -81,7 +84,7 @@ class KanaKanjiEngine {
     suspend fun getCandidates(
         input: String,
         n: Int
-    ):List<Candidate>{
+    ):List<Candidate> = CoroutineScope(Dispatchers.IO).async{
         val graph = graphBuilder.constructGraph(
             input,
             yomiTrie,
@@ -96,13 +99,15 @@ class KanaKanjiEngine {
             rank1ArrayLBSTango = rank1ArrayLBSTango,
             LBSBooleanArray = yomiLBSBooleanArray
         )
-        val resultNBest = findPath.backwardAStar(graph, input.length, connectionIds, n)
 
-        val resultNBestFinal = resultNBest.map { Candidate(
-            string = it,
-            type = 1,
-            it.length.toUByte()
-        ) }
+        val resultNBestFinal = async(Dispatchers.IO) {
+            val resultNBest = findPath.backwardAStar(graph, input.length, connectionIds, n)
+            resultNBest.map { Candidate(
+                string = it,
+                type = 1,
+                it.length.toUByte()
+            ) }
+        }.await()
 
         val yomiPartOf = yomiTrie.commonPrefixSearch(
             str = input,
@@ -110,44 +115,78 @@ class KanaKanjiEngine {
             rank1Array = rank1ArrayLBSYomi,
         ).reversed()
 
-        val yomiPart = yomiPartOf.map { yomi ->
-            val termId  = yomiTrie.getTermId(
-                yomiTrie.getNodeIndex(
-                    yomi,
-                    rank1ArrayLBSYomi,
-                    yomiLBSBooleanArray,
-                ),
-                rank1ArrayIsLeaf
-            )
-            val listToken: List<TokenEntry> = tokenArray.getListDictionaryByYomiTermId(
-                termId,
-                rank0ArrayTokenArrayBitvector,
-                rank1ArrayTokenArrayBitvector
-            )
-            return@map listToken.sortedBy { it.wordCost }.map {
-                Candidate(
-                    when (it.nodeId) {
-                        -2 -> yomi
-                        -1 -> yomi.hiraToKata()
-                        else -> tangoTrie.getLetter(
-                            it.nodeId,
-                            rank0ArrayLBSTango,
-                            rank1ArrayLBSTango
-                        )
-                    },
-                    2,
-                    yomi.length.toUByte()
+        val a = async(Dispatchers.IO) {
+            val yomiPart = yomiPartOf.map { yomi ->
+                val termId  = yomiTrie.getTermId(
+                    yomiTrie.getNodeIndex(
+                        yomi,
+                        rank1ArrayLBSYomi,
+                        yomiLBSBooleanArray,
+                    ),
+                    rank1ArrayIsLeaf
                 )
-            }.distinctBy { it.string }.toMutableList()
-        }
-        val a = yomiPart.flatten().distinctBy { it.string }.toMutableList()
+                val listToken: List<TokenEntry> = tokenArray.getListDictionaryByYomiTermId(
+                    termId,
+                    rank0ArrayTokenArrayBitvector,
+                    rank1ArrayTokenArrayBitvector
+                )
+                return@map listToken.sortedBy { it.wordCost }.map {
+                    Candidate(
+                        when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> tangoTrie.getLetter(
+                                it.nodeId,
+                                rank0ArrayLBSTango,
+                                rank1ArrayLBSTango
+                            )
+                        },
+                        2,
+                        yomi.length.toUByte()
+                    )
+                }.distinctBy { it.string }.toMutableList()
+            }
+            yomiPart.flatten().distinctBy { it.string }.toMutableList()
+        }.await()
+
         val hirakanaAndKana = listOf(
             Candidate(input,3,input.length.toUByte()),
             Candidate(input.hiraToKata(),4,input.length.toUByte()),
         )
-        val finalResult = resultNBestFinal + a + hirakanaAndKana
-        return finalResult.distinctBy { it.string }
-    }
+
+        val longest = yomiPartOf.first()
+        val longestConversionList = async(Dispatchers.IO) {
+            nBestPathForLongest(longest,n).map { Candidate(
+                it,(5).toByte(),longest.length.toUByte()
+            ) }
+        }.await()
+
+        val secondPart = if (longest.length < input.length){
+            async(Dispatchers.IO) {
+                val tempSecondStr = input.substring(longest.length)
+                val tempFirstStrConversionList = nBestPathForLongest(longest,n)
+                val tempSecondStrConversionList = nBestPathForLongest(tempSecondStr,n)
+                val result = mutableListOf<String>()
+                for (item1 in tempFirstStrConversionList) {
+                    for (item2 in tempSecondStrConversionList) {
+                        result.add(item1 + item2)
+                    }
+                }
+                result.map { s ->
+                    Candidate(
+                        string =  s ,
+                        type = (6).toByte(),
+                        length = (longest.length + tempSecondStr.length).toUByte()
+                    )
+                }
+            }.await()
+        }else{
+            emptyList()
+        }
+
+        val finalResult = resultNBestFinal + secondPart + longestConversionList + a + hirakanaAndKana
+        return@async finalResult.distinctBy { it.string }
+    }.await()
 
     suspend fun nBestPath(
         input: String,
@@ -177,6 +216,27 @@ class KanaKanjiEngine {
             }
         }
         return result
+    }
+
+    suspend fun nBestPathForLongest(
+        input: String,
+        n: Int
+    ): List<String> {
+        val graph = graphBuilder.constructGraph(
+            input,
+            yomiTrie,
+            tangoTrie,
+            tokenArray,
+            rank0ArrayLBSYomi,
+            rank1ArrayLBSYomi,
+            rank1ArrayIsLeaf,
+            rank0ArrayTokenArrayBitvector,
+            rank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = rank0ArrayLBSTango,
+            rank1ArrayLBSTango = rank1ArrayLBSTango,
+            LBSBooleanArray = yomiLBSBooleanArray
+        )
+        return findPath.backwardAStar(graph, input.length, connectionIds, n)
     }
 
     suspend fun viterbiAlgorithm(
