@@ -336,12 +336,16 @@ class IMEService: InputMethodService() {
 
         resetAllFlags()
         setCurrentInputType(editorInfo)
+        mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        _suggestionViewStatus.update { true }
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("onUpdate onFinishInput Called")
         resetAllFlags()
+        mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        _suggestionViewStatus.update { true }
     }
 
     override fun onWindowShown() {
@@ -350,6 +354,9 @@ class IMEService: InputMethodService() {
             currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         else
             currentInputConnection?.requestCursorUpdates(0)
+
+        mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        _suggestionViewStatus.update { true }
     }
 
     override fun onWindowHidden() {
@@ -497,6 +504,7 @@ class IMEService: InputMethodService() {
 
             launch {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
+                    suggestionAdapter?.suggestions = suggestions
                     transition.setDuration(200)
                     transition.addTarget(mainView.suggestionRecyclerView)
                     transition.addTarget(mainView.dummyView)
@@ -506,8 +514,6 @@ class IMEService: InputMethodService() {
                     mainView.suggestionRecyclerView.isVisible = suggestions.isNotEmpty()
                     mainView.dummyView.isVisible = suggestions.isNotEmpty()
                     mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
-
-                    suggestionAdapter?.suggestions = suggestions
                 }
             }
 
@@ -697,7 +703,7 @@ class IMEService: InputMethodService() {
     }
 
     private fun setCandidateClick(candidate: Candidate){
-        if (candidate.type == (2).toByte()){
+        if (candidate.type == (2).toByte() || candidate.type == (5).toByte()){
             val length = candidate.length.toInt()
             stringInTail = _inputString.value.substring(length)
         }
@@ -720,7 +726,6 @@ class IMEService: InputMethodService() {
                 }
             }
         }
-        _inputString.update { EMPTY_STRING }
     }
     private fun setKigouView(){
         mainLayoutBinding?.let { mainView ->
