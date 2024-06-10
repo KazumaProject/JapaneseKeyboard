@@ -15,71 +15,95 @@ import kotlinx.coroutines.async
 
 class KanaKanjiEngine {
 
-    private lateinit var yomiTrie: LOUDSWithTermId
-
-    private lateinit var tangoTrie: LOUDS
-    private lateinit var connectionIds: ShortArray
-    private lateinit var tokenArray: TokenArray
-
-    private lateinit var rank0ArrayLBSYomi: IntArray
-    private lateinit var rank1ArrayLBSYomi: IntArray
-    private lateinit var rank1ArrayIsLeaf: IntArray
-    private lateinit var rank0ArrayTokenArrayBitvector: IntArray
-    private lateinit var rank1ArrayTokenArrayBitvector: IntArray
-    private lateinit var rank0ArrayLBSTango: IntArray
-    private lateinit var rank1ArrayLBSTango: IntArray
-
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
 
-    private lateinit var yomiLBSBooleanArray: BooleanArray
+    private lateinit var connectionIds: ShortArray
+
+    private lateinit var systemYomiTrie: LOUDSWithTermId
+    private lateinit var systemTangoTrie: LOUDS
+    private lateinit var systemTokenArray: TokenArray
+
+    private lateinit var systemRank0ArrayLBSYomi: IntArray
+    private lateinit var systemRank1ArrayLBSYomi: IntArray
+    private lateinit var systemRank1ArrayIsLeaf: IntArray
+    private lateinit var systemRank0ArrayTokenArrayBitvector: IntArray
+    private lateinit var systemRank1ArrayTokenArrayBitvector: IntArray
+    private lateinit var systemRank0ArrayLBSTango: IntArray
+    private lateinit var systemRank1ArrayLBSTango: IntArray
+    private lateinit var systemYomiLBSBooleanArray: BooleanArray
+
+    private lateinit var singleKanjiYomiTrie: LOUDSWithTermId
+    private lateinit var singleKanjiTangoTrie: LOUDS
+    private lateinit var singleKanjiTokenArray: TokenArray
+
+    private lateinit var singleKanjiRank0ArrayLBSYomi: IntArray
+    private lateinit var singleKanjiRank1ArrayLBSYomi: IntArray
+    private lateinit var singleKanjiRank1ArrayIsLeaf: IntArray
+    private lateinit var singleKanjiRank0ArrayTokenArrayBitvector: IntArray
+    private lateinit var singleKanjiRank1ArrayTokenArrayBitvector: IntArray
+    private lateinit var singleKanjiRank0ArrayLBSTango: IntArray
+    private lateinit var singleKanjiRank1ArrayLBSTango: IntArray
+    private lateinit var singleKanjiYomiLBSBooleanArray: BooleanArray
 
     fun buildEngine(
         graphBuilder: GraphBuilder,
         findPath: FindPath,
         connectionIdList: ShortArray,
-        tangoTrie: LOUDS,
-        yomiTrie: LOUDSWithTermId,
-        tokenArray: TokenArray,
-        rank0ArrayLBSYomi: IntArray,
-        rank1ArrayLBSYomi: IntArray,
-        rank1ArrayIsLeaf: IntArray,
-        rank0ArrayTokenArrayBitvector: IntArray,
-        rank1ArrayTokenArrayBitvector: IntArray,
-        rank0ArrayLBSTango: IntArray,
-        rank1ArrayLBSTango: IntArray,
-        yomiLBSBooleanArray: BooleanArray
+        systemTangoTrie: LOUDS,
+        systemYomiTrie: LOUDSWithTermId,
+        systemTokenArray: TokenArray,
+        systemRank0ArrayLBSYomi: IntArray,
+        systemRank1ArrayLBSYomi: IntArray,
+        systemRank1ArrayIsLeaf: IntArray,
+        systemRank0ArrayTokenArrayBitvector: IntArray,
+        systemRank1ArrayTokenArrayBitvector: IntArray,
+        systemRank0ArrayLBSTango: IntArray,
+        systemRank1ArrayLBSTango: IntArray,
+        systemYomiLBSBooleanArray: BooleanArray,
+        singleKanjiTangoTrie: LOUDS,
+        singleKanjiYomiTrie: LOUDSWithTermId,
+        singleKanjiTokenArray: TokenArray,
+        singleKanjiRank0ArrayLBSYomi: IntArray,
+        singleKanjiRank1ArrayLBSYomi: IntArray,
+        singleKanjiRank1ArrayIsLeaf: IntArray,
+        singleKanjiRank0ArrayTokenArrayBitvector: IntArray,
+        singleKanjiRank1ArrayTokenArrayBitvector: IntArray,
+        singleKanjiRank0ArrayLBSTango: IntArray,
+        singleKanjiRank1ArrayLBSTango: IntArray,
+        singleKanjiYomiLBSBooleanArray: BooleanArray,
     ){
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
 
         this@KanaKanjiEngine.connectionIds = connectionIdList
-        this@KanaKanjiEngine.tangoTrie = tangoTrie
-        this@KanaKanjiEngine.tokenArray = tokenArray
-        this@KanaKanjiEngine.yomiTrie = yomiTrie
 
-        this@KanaKanjiEngine.rank0ArrayLBSYomi = rank0ArrayLBSYomi
-        this@KanaKanjiEngine.rank1ArrayLBSYomi = rank1ArrayLBSYomi
-        this@KanaKanjiEngine.rank1ArrayIsLeaf = rank1ArrayIsLeaf
-        this@KanaKanjiEngine.rank0ArrayTokenArrayBitvector = rank0ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.rank0ArrayLBSTango = rank0ArrayLBSTango
-        this@KanaKanjiEngine.rank1ArrayLBSTango = rank1ArrayLBSTango
+        this@KanaKanjiEngine.systemTangoTrie = systemTangoTrie
+        this@KanaKanjiEngine.systemTokenArray = systemTokenArray
+        this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
 
-        this@KanaKanjiEngine.yomiLBSBooleanArray = yomiLBSBooleanArray
+        this@KanaKanjiEngine.systemRank0ArrayLBSYomi = systemRank0ArrayLBSYomi
+        this@KanaKanjiEngine.systemRank1ArrayLBSYomi = systemRank1ArrayLBSYomi
+        this@KanaKanjiEngine.systemRank1ArrayIsLeaf = systemRank1ArrayIsLeaf
+        this@KanaKanjiEngine.systemRank0ArrayTokenArrayBitvector = systemRank0ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.systemRank1ArrayTokenArrayBitvector = systemRank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.systemRank0ArrayLBSTango = systemRank0ArrayLBSTango
+        this@KanaKanjiEngine.systemRank1ArrayLBSTango = systemRank1ArrayLBSTango
+        this@KanaKanjiEngine.systemYomiLBSBooleanArray = systemYomiLBSBooleanArray
 
-    }
+        this@KanaKanjiEngine.singleKanjiTangoTrie = singleKanjiTangoTrie
+        this@KanaKanjiEngine.singleKanjiTokenArray = singleKanjiTokenArray
+        this@KanaKanjiEngine.singleKanjiYomiTrie = singleKanjiYomiTrie
 
-    fun buildEngine(
-        yomi: LOUDSWithTermId,
-        tango: LOUDS,
-        token: TokenArray,
-        connectionIdList: ShortArray
-    ){
-        this.yomiTrie = yomi
-        this.tangoTrie = tango
-        this.connectionIds = connectionIdList
-        this.tokenArray = token
+        this@KanaKanjiEngine.singleKanjiRank0ArrayLBSYomi = singleKanjiRank0ArrayLBSYomi
+        this@KanaKanjiEngine.singleKanjiRank1ArrayLBSYomi = singleKanjiRank1ArrayLBSYomi
+        this@KanaKanjiEngine.singleKanjiRank1ArrayIsLeaf = singleKanjiRank1ArrayIsLeaf
+        this@KanaKanjiEngine.singleKanjiRank0ArrayTokenArrayBitvector = singleKanjiRank0ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.singleKanjiRank1ArrayTokenArrayBitvector = singleKanjiRank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.singleKanjiRank0ArrayLBSTango = singleKanjiRank0ArrayLBSTango
+        this@KanaKanjiEngine.singleKanjiRank1ArrayLBSTango = singleKanjiRank1ArrayLBSTango
+        this@KanaKanjiEngine.singleKanjiYomiLBSBooleanArray = singleKanjiYomiLBSBooleanArray
+
     }
 
     suspend fun getCandidates(
@@ -88,59 +112,59 @@ class KanaKanjiEngine {
     ):List<Candidate> = CoroutineScope(Dispatchers.IO).async{
         val graph = graphBuilder.constructGraph(
             input,
-            yomiTrie,
-            tangoTrie,
-            tokenArray,
-            rank0ArrayLBSYomi,
-            rank1ArrayLBSYomi,
-            rank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = rank0ArrayLBSTango,
-            rank1ArrayLBSTango = rank1ArrayLBSTango,
-            LBSBooleanArray = yomiLBSBooleanArray
+            systemYomiTrie,
+            systemTangoTrie,
+            systemTokenArray,
+            systemRank0ArrayLBSYomi,
+            systemRank1ArrayLBSYomi,
+            systemRank1ArrayIsLeaf,
+            systemRank0ArrayTokenArrayBitvector,
+            systemRank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
+            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+            LBSBooleanArray = systemYomiLBSBooleanArray
         )
 
         val resultNBestFinal = async(Dispatchers.IO) {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
         }.await()
 
-        val yomiPartOf = yomiTrie.commonPrefixSearch(
+        val yomiPartOf = systemYomiTrie.commonPrefixSearch(
             str = input,
-            rank0Array = rank0ArrayLBSYomi,
-            rank1Array = rank1ArrayLBSYomi,
+            rank0Array = systemRank0ArrayLBSYomi,
+            rank1Array = systemRank1ArrayLBSYomi,
         ).reversed()
 
-        val a = async(Dispatchers.IO) {
+        val yomiPartList = async(Dispatchers.IO) {
             val yomiPart = yomiPartOf.map { yomi ->
-                val termId  = yomiTrie.getTermId(
-                    yomiTrie.getNodeIndex(
+                val termId  = systemYomiTrie.getTermId(
+                    systemYomiTrie.getNodeIndex(
                         yomi,
-                        rank1ArrayLBSYomi,
-                        yomiLBSBooleanArray,
+                        systemRank1ArrayLBSYomi,
+                        systemYomiLBSBooleanArray,
                     ),
-                    rank1ArrayIsLeaf
+                    systemRank1ArrayIsLeaf
                 )
-                val listToken: List<TokenEntry> = tokenArray.getListDictionaryByYomiTermId(
+                val listToken: List<TokenEntry> = systemTokenArray.getListDictionaryByYomiTermId(
                     termId,
-                    rank0ArrayTokenArrayBitvector,
-                    rank1ArrayTokenArrayBitvector
+                    systemRank0ArrayTokenArrayBitvector,
+                    systemRank1ArrayTokenArrayBitvector
                 )
                 return@map listToken.sortedBy { it.wordCost }.map {
                     Candidate(
                         when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
-                            else -> tangoTrie.getLetter(
+                            else -> systemTangoTrie.getLetter(
                                 it.nodeId,
-                                rank0ArrayLBSTango,
-                                rank1ArrayLBSTango
+                                systemRank0ArrayLBSTango,
+                                systemRank1ArrayLBSTango
                             )
                         },
                         2,
                         yomi.length.toUByte(),
                         it.wordCost.toInt(),
-                        tokenArray.leftIds[it.posTableIndex.toInt()]
+                        systemTokenArray.leftIds[it.posTableIndex.toInt()]
                     )
                 }.distinctBy { it.string }. toMutableList()
             }
@@ -182,10 +206,53 @@ class KanaKanjiEngine {
             emptyList()
         }
 
+        val singleKanjiCommonPrefix = singleKanjiYomiTrie.commonPrefixSearch(
+            str = input,
+            rank0Array = singleKanjiRank0ArrayLBSYomi,
+            rank1Array = singleKanjiRank1ArrayLBSYomi,
+        ).reversed()
+
+        val singleKanjiList = async(Dispatchers.IO) {
+            val singleKanjis = singleKanjiCommonPrefix.map { yomi ->
+                val termId  = singleKanjiYomiTrie.getTermId(
+                    singleKanjiYomiTrie.getNodeIndex(
+                        yomi,
+                        singleKanjiRank1ArrayLBSYomi,
+                        singleKanjiYomiLBSBooleanArray,
+                    ),
+                    singleKanjiRank1ArrayIsLeaf
+                )
+                val listToken: List<TokenEntry> = singleKanjiTokenArray.getListDictionaryByYomiTermId(
+                    termId,
+                    singleKanjiRank0ArrayTokenArrayBitvector,
+                    singleKanjiRank1ArrayTokenArrayBitvector
+                )
+                return@map listToken.sortedBy { it.wordCost }.map {
+                    Candidate(
+                        when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> singleKanjiTangoTrie.getLetter(
+                                it.nodeId,
+                                singleKanjiRank0ArrayLBSTango,
+                                singleKanjiRank1ArrayLBSTango
+                            )
+                        },
+                        7,
+                        yomi.length.toUByte(),
+                        it.wordCost.toInt(),
+                        singleKanjiTokenArray.leftIds[it.posTableIndex.toInt()]
+                    )
+                }.distinctBy { it.string }. toMutableList()
+            }
+            singleKanjis.flatten().distinctBy { it.string }.toMutableList()
+        }.await()
+
         val finalResult = resultNBestFinal +
                 secondPart.sortedBy { it.score }.filter { (it.score - resultNBestFinal.first().score) < 4000 } +
                 longestConversionList +
-                a +
+                yomiPartList +
+                singleKanjiList +
                 hirakanaAndKana
         return@async finalResult.distinctBy { it.string }
     }.await()
@@ -196,17 +263,17 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         val graph = graphBuilder.constructGraph(
             input,
-            yomiTrie,
-            tangoTrie,
-            tokenArray,
-            rank0ArrayLBSYomi,
-            rank1ArrayLBSYomi,
-            rank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = rank0ArrayLBSTango,
-            rank1ArrayLBSTango = rank1ArrayLBSTango,
-            LBSBooleanArray = yomiLBSBooleanArray
+            systemYomiTrie,
+            systemTangoTrie,
+            systemTokenArray,
+            systemRank0ArrayLBSYomi,
+            systemRank1ArrayLBSYomi,
+            systemRank1ArrayIsLeaf,
+            systemRank0ArrayTokenArrayBitvector,
+            systemRank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
+            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+            LBSBooleanArray = systemYomiLBSBooleanArray
         )
         val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
@@ -240,17 +307,17 @@ class KanaKanjiEngine {
     ): List<CandidateTemp> {
         val graph = graphBuilder.constructGraph(
             input,
-            yomiTrie,
-            tangoTrie,
-            tokenArray,
-            rank0ArrayLBSYomi,
-            rank1ArrayLBSYomi,
-            rank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = rank0ArrayLBSTango,
-            rank1ArrayLBSTango = rank1ArrayLBSTango,
-            LBSBooleanArray = yomiLBSBooleanArray
+            systemYomiTrie,
+            systemTangoTrie,
+            systemTokenArray,
+            systemRank0ArrayLBSYomi,
+            systemRank1ArrayLBSYomi,
+            systemRank1ArrayIsLeaf,
+            systemRank0ArrayTokenArrayBitvector,
+            systemRank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
+            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+            LBSBooleanArray = systemYomiLBSBooleanArray
         )
         return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
     }
@@ -260,17 +327,17 @@ class KanaKanjiEngine {
     ): String {
         val graph = graphBuilder.constructGraph(
             input,
-            yomiTrie,
-            tangoTrie,
-            tokenArray,
-            rank0ArrayLBSYomi,
-            rank1ArrayLBSYomi,
-            rank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = rank0ArrayLBSTango,
-            rank1ArrayLBSTango = rank1ArrayLBSTango,
-            LBSBooleanArray = yomiLBSBooleanArray
+            systemYomiTrie,
+            systemTangoTrie,
+            systemTokenArray,
+            systemRank0ArrayLBSYomi,
+            systemRank1ArrayLBSYomi,
+            systemRank1ArrayIsLeaf,
+            systemRank0ArrayTokenArrayBitvector,
+            systemRank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
+            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+            LBSBooleanArray = systemYomiLBSBooleanArray
         )
         return findPath.viterbi(graph, input.length, connectionIds)
     }
