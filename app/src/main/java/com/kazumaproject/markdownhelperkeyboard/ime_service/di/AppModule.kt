@@ -119,24 +119,27 @@ object AppModule {
         return ConnectionIdBuilder().readShortArrayFromBytes(input)
     }
 
+    @SystemTangoTrie
     @Singleton
     @Provides
     fun provideTangoTrie(@ApplicationContext context: Context): LOUDS{
-        val objectInputTango = ObjectInputStream(BufferedInputStream(context.assets.open("tango.dat")))
+        val objectInputTango = ObjectInputStream(BufferedInputStream(context.assets.open("system/tango.dat")))
         return LOUDS().readExternalNotCompress(objectInputTango)
     }
 
+    @SystemYomiTrie
     @Singleton
     @Provides
     fun provideYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId{
-        val objectInputYomi = ObjectInputStream(BufferedInputStream(context.assets.open("yomi.dat")))
+        val objectInputYomi = ObjectInputStream(BufferedInputStream(context.assets.open("system/yomi.dat")))
         return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
     }
 
+    @SystemTokenArray
     @Singleton
     @Provides
     fun providesTokenArray(@ApplicationContext context: Context): TokenArray{
-        val objectInputTokenArray = ObjectInputStream(BufferedInputStream(context.assets.open("token.dat")))
+        val objectInputTokenArray = ObjectInputStream(BufferedInputStream(context.assets.open("system/token.dat")))
         val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
         val tokenArray = TokenArray()
         tokenArray.readExternal(objectInputTokenArray)
@@ -146,43 +149,112 @@ object AppModule {
 
     @Singleton
     @Provides
-    @Rank0ArrayLBSYomi
-    fun provideRank0ArrayLBSYomi(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank0GetIntArray()
+    @SystemRank0ArrayLBSYomi
+    fun provideRank0ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank0GetIntArray()
 
     @Singleton
     @Provides
-    @Rank1ArrayLBSYomi
-    fun provideRank1ArrayLBSYomi(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank1GetIntArray()
+    @SystemRank1ArrayLBSYomi
+    fun provideRank1ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank1GetIntArray()
 
     @Singleton
     @Provides
-    @Rank1ArrayIsLeafYomi
-    fun provideRank1ArrayIsLeaf(yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.isLeaf.rank1GetIntArray()
+    @SystemRank1ArrayIsLeafYomi
+    fun provideRank1ArrayIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.isLeaf.rank1GetIntArray()
 
     @Singleton
     @Provides
-    @Rank0ArrayTokenArrayBitvector
-    fun provideRank0ArrayTokenArrayBitvector(tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank0GetIntArray()
+    @SystemYomiLBSBooleanArray
+    fun providesYomiLBSBooleanArray(@SystemYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray = yomiTrie.LBS.toBooleanArray()
 
     @Singleton
     @Provides
-    @Rank1ArrayTokenArrayBitvector
-    fun provideRank1ArrayTokenArrayBitvector(tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank1GetIntArray()
+    @SystemRank0ArrayTokenArrayBitvector
+    fun provideRank0ArrayTokenArrayBitvector(@SystemTokenArray tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank0GetIntArray()
 
     @Singleton
     @Provides
-    @Rank0ArrayTangoLBS
-    fun provideRank0ArrayLBSTango(tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank0GetIntArray()
+    @SystemRank1ArrayTokenArrayBitvector
+    fun provideRank1ArrayTokenArrayBitvector(@SystemTokenArray tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank1GetIntArray()
 
     @Singleton
     @Provides
-    @Rank1ArrayTangoLBS
-    fun provideRank1ArrayLBSTango(tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank1GetIntArray()
+    @SystemRank0ArrayTangoLBS
+    fun provideRank0ArrayLBSTango(@SystemTangoTrie tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank0GetIntArray()
 
     @Singleton
     @Provides
-    @YomiLBSBooleanArray
-    fun providesYomiLBSBooleanArray(yomiTrie: LOUDSWithTermId): BooleanArray = yomiTrie.LBS.toBooleanArray()
+    @SystemRank1ArrayTangoLBS
+    fun provideRank1ArrayLBSTango(@SystemTangoTrie tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank1GetIntArray()
+
+
+    @SingleKanjiTangoTrie
+    @Singleton
+    @Provides
+    fun provideSingleKanjiTangoTrie(@ApplicationContext context: Context): LOUDS{
+        val objectInputTango = ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/tango_singleKanji.dat")))
+        return LOUDS().readExternalNotCompress(objectInputTango)
+    }
+
+    @SingleKanjiYomiTrie
+    @Singleton
+    @Provides
+    fun provideSingleKanjiYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId{
+        val objectInputYomi = ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/yomi_singleKanji.dat")))
+        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    }
+
+    @SingleKanjiTokenArray
+    @Singleton
+    @Provides
+    fun providesSingleKanjiTokenArray(@ApplicationContext context: Context): TokenArray{
+        val objectInputTokenArray = ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/token_singleKanji.dat")))
+        val objectInputReadPOSTable = ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+        val tokenArray = TokenArray()
+        tokenArray.readExternal(objectInputTokenArray)
+        tokenArray.readPOSTable(objectInputReadPOSTable)
+        return tokenArray
+    }
+
+    @Singleton
+    @Provides
+    @SingleKanjiRank0ArrayLBSYomi
+    fun provideSingleKanjiRank0ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank0GetIntArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiRank1ArrayLBSYomi
+    fun provideSingleKanjiRank1ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank1GetIntArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiRank1ArrayIsLeafYomi
+    fun provideSingleKanjiRank1ArrayIsLeaf(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.isLeaf.rank1GetIntArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiYomiLBSBooleanArray
+    fun providesSingleKanjiYomiLBSBooleanArray(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray = yomiTrie.LBS.toBooleanArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiRank0ArrayTokenArrayBitvector
+    fun provideSingleKanjiRank0ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank0GetIntArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiRank1ArrayTokenArrayBitvector
+    fun provideSingleKanjiRank1ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank1GetIntArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiRank0ArrayTangoLBS
+    fun provideSingleKanjiRank0ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank0GetIntArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiRank1ArrayTangoLBS
+    fun provideSingleKanjiRank1ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank1GetIntArray()
 
     @Singleton
     @Provides
@@ -190,17 +262,28 @@ object AppModule {
         graphBuilder: GraphBuilder,
         findPath: FindPath,
         @ConnectionIds connectionIds: ShortArray,
-        tangoTrie: LOUDS,
-        yomiTrie: LOUDSWithTermId,
-        tokenArray: TokenArray,
-        @Rank0ArrayLBSYomi rank0ArrayLBSYomi: IntArray,
-        @Rank1ArrayLBSYomi rank1ArrayLBSYomi: IntArray,
-        @Rank1ArrayIsLeafYomi rank1ArrayIsLeaf: IntArray,
-        @Rank0ArrayTokenArrayBitvector rank0ArrayTokenArrayBitvector: IntArray,
-        @Rank1ArrayTokenArrayBitvector rank1ArrayTokenArrayBitvector: IntArray,
-        @Rank0ArrayTangoLBS rank0ArrayTangoLBS: IntArray,
-        @Rank1ArrayTangoLBS rank1ArrayTangoLBS: IntArray,
-        @YomiLBSBooleanArray yomiLBSBooleanArray: BooleanArray
+        @SystemTangoTrie systemTangoTrie: LOUDS,
+        @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
+        @SystemTokenArray systemTokenArray: TokenArray,
+        @SystemRank0ArrayLBSYomi systemRank0ArrayLBSYomi: IntArray,
+        @SystemRank1ArrayLBSYomi systemRank1ArrayLBSYomi: IntArray,
+        @SystemRank1ArrayIsLeafYomi systemRank1ArrayIsLeaf: IntArray,
+        @SystemRank0ArrayTokenArrayBitvector systemRank0ArrayTokenArrayBitvector: IntArray,
+        @SystemRank1ArrayTokenArrayBitvector systemRank1ArrayTokenArrayBitvector: IntArray,
+        @SystemRank0ArrayTangoLBS systemRank0ArrayTangoLBS: IntArray,
+        @SystemRank1ArrayTangoLBS systemRank1ArrayTangoLBS: IntArray,
+        @SystemYomiLBSBooleanArray systemYomiLBSBooleanArray: BooleanArray,
+        @SingleKanjiTangoTrie singleKanjiTangoTrie: LOUDS,
+        @SingleKanjiYomiTrie singleKanjiYomiTrie: LOUDSWithTermId,
+        @SingleKanjiTokenArray singleKanjiTokenArray: TokenArray,
+        @SingleKanjiRank0ArrayLBSYomi singleKanjiRank0ArrayLBSYomi: IntArray,
+        @SingleKanjiRank1ArrayLBSYomi singleKanjiRank1ArrayLBSYomi: IntArray,
+        @SingleKanjiRank1ArrayIsLeafYomi singleKanjiRank1ArrayIsLeaf: IntArray,
+        @SingleKanjiRank0ArrayTokenArrayBitvector singleKanjiRank0ArrayTokenArrayBitvector: IntArray,
+        @SingleKanjiRank1ArrayTokenArrayBitvector singleKanjiRank1ArrayTokenArrayBitvector: IntArray,
+        @SingleKanjiRank0ArrayTangoLBS singleKanjiRank0ArrayTangoLBS: IntArray,
+        @SingleKanjiRank1ArrayTangoLBS singleKanjiRank1ArrayTangoLBS: IntArray,
+        @SingleKanjiYomiLBSBooleanArray singleKanjiYomiLBSBooleanArray: BooleanArray,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
 
@@ -208,17 +291,28 @@ object AppModule {
             graphBuilder = graphBuilder,
             findPath = findPath,
             connectionIdList = connectionIds,
-            tangoTrie = tangoTrie,
-            yomiTrie = yomiTrie,
-            tokenArray = tokenArray,
-            rank0ArrayLBSYomi = rank0ArrayLBSYomi,
-            rank1ArrayLBSYomi =rank1ArrayLBSYomi,
-            rank1ArrayIsLeaf = rank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector = rank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector = rank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = rank0ArrayTangoLBS,
-            rank1ArrayLBSTango = rank1ArrayTangoLBS,
-            yomiLBSBooleanArray = yomiLBSBooleanArray
+            systemTangoTrie = systemTangoTrie,
+            systemYomiTrie = systemYomiTrie,
+            systemTokenArray = systemTokenArray,
+            systemRank0ArrayLBSYomi = systemRank0ArrayLBSYomi,
+            systemRank1ArrayLBSYomi =systemRank1ArrayLBSYomi,
+            systemRank1ArrayIsLeaf = systemRank1ArrayIsLeaf,
+            systemRank0ArrayTokenArrayBitvector = systemRank0ArrayTokenArrayBitvector,
+            systemRank1ArrayTokenArrayBitvector = systemRank1ArrayTokenArrayBitvector,
+            systemRank0ArrayLBSTango = systemRank0ArrayTangoLBS,
+            systemRank1ArrayLBSTango = systemRank1ArrayTangoLBS,
+            systemYomiLBSBooleanArray = systemYomiLBSBooleanArray,
+            singleKanjiTangoTrie = singleKanjiTangoTrie,
+            singleKanjiYomiTrie = singleKanjiYomiTrie,
+            singleKanjiTokenArray = singleKanjiTokenArray,
+            singleKanjiRank0ArrayLBSYomi = singleKanjiRank0ArrayLBSYomi,
+            singleKanjiRank1ArrayLBSYomi =singleKanjiRank1ArrayLBSYomi,
+            singleKanjiRank1ArrayIsLeaf = singleKanjiRank1ArrayIsLeaf,
+            singleKanjiRank0ArrayTokenArrayBitvector = singleKanjiRank0ArrayTokenArrayBitvector,
+            singleKanjiRank1ArrayTokenArrayBitvector = singleKanjiRank1ArrayTokenArrayBitvector,
+            singleKanjiRank0ArrayLBSTango = singleKanjiRank0ArrayTangoLBS,
+            singleKanjiRank1ArrayLBSTango = singleKanjiRank1ArrayTangoLBS,
+            singleKanjiYomiLBSBooleanArray = singleKanjiYomiLBSBooleanArray,
         )
 
         return kanaKanjiEngine
