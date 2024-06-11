@@ -6,20 +6,10 @@
     android:background="@color/suggestion_view_bg">
 
     <View
-        android:id="@+id/dummy_view"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_gravity="bottom"
         android:layout_marginBottom="@dimen/keyboard_height_land"
-        android:visibility="visible"
         android:background="@color/suggestion_view_bg"/>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_gravity="bottom"
-        android:layout_marginBottom="@dimen/keyboard_height_land"
-        android:visibility="visible"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/suggestion_recycler_view"
