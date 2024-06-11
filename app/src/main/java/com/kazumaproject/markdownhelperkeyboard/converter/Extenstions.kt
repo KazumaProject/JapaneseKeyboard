@@ -102,3 +102,72 @@ fun readCharArrayFromBytes(
 fun BitSet.toBooleanArray(): BooleanArray {
     return BooleanArray(this.length()) { this[it] }
 }
+
+fun List<String>.addingCommonPrefixList(): List<String> {
+    val modifiedStrings = mutableListOf<String>()
+    for (s in this) {
+        modifiedStrings.add(s)
+        when{
+            s.contains('た') -> modifiedStrings.add(s.replace('た', 'だ'))
+            s.contains('つ') -> modifiedStrings.add(s.replace('つ', 'っ'))
+            s.contains('や') -> modifiedStrings.add(s.replace('や', 'ゃ'))
+            s.contains('ゆ') -> modifiedStrings.add(s.replace('ゆ', 'ゅ'))
+            s.contains('よ') -> modifiedStrings.add(s.replace('よ', 'ょ'))
+        }
+    }
+    return modifiedStrings
+}
+
+fun List<String>.addingStringToListForCommonPrefix(): List<String> {
+    val result = mutableListOf<String>()
+
+    for (str in this) {
+        val length = str.length
+        val numCombinations = 1 shl length
+
+        for (i in 0 until numCombinations) {
+            val charArray = CharArray(length)
+            for (j in 0 until length) {
+                charArray[j] = if ((i shr j) and 1 == 1) {
+                    when(str[j]){
+
+                        'か' -> 'が'
+                        'き' -> 'ぎ'
+                        'く' -> 'ぐ'
+                        'け' -> 'げ'
+                        'こ' -> 'ご'
+
+                        'さ' -> 'ざ'
+                        'し' -> 'じ'
+                        'す' -> 'ず'
+                        'せ' -> 'ぜ'
+                        'そ' -> 'ぞ'
+
+                        'た' -> 'だ'
+                        'ち' -> 'ぢ'
+                        'つ' -> 'づ'
+                        'て' -> 'で'
+                        'と' -> 'ど'
+
+                        'は' -> 'ば'
+                        'ひ' -> 'び'
+                        'ふ' -> 'ぶ'
+                        'へ' -> 'べ'
+                        'ほ' -> 'ぼ'
+
+                        'や' -> 'ゃ'
+                        'ゆ' -> 'ゅ'
+                        'よ' -> 'ょ'
+
+                        else -> str[j]
+                    }
+                } else {
+                    str[j]
+                }
+            }
+            result.add(String(charArray))
+        }
+
+    }
+    return result
+}

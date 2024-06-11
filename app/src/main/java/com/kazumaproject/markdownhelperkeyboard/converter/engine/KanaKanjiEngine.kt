@@ -110,22 +110,22 @@ class KanaKanjiEngine {
         input: String,
         n: Int
     ):List<Candidate> = CoroutineScope(Dispatchers.IO).async{
-        val graph = graphBuilder.constructGraph(
-            input,
-            systemYomiTrie,
-            systemTangoTrie,
-            systemTokenArray,
-            systemRank0ArrayLBSYomi,
-            systemRank1ArrayLBSYomi,
-            systemRank1ArrayIsLeaf,
-            systemRank0ArrayTokenArrayBitvector,
-            systemRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
-            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-            LBSBooleanArray = systemYomiLBSBooleanArray
-        )
 
         val resultNBestFinal = async(Dispatchers.IO) {
+            val graph = graphBuilder.constructGraph(
+                input,
+                systemYomiTrie,
+                systemTangoTrie,
+                systemTokenArray,
+                systemRank0ArrayLBSYomi,
+                systemRank1ArrayLBSYomi,
+                systemRank1ArrayIsLeaf,
+                systemRank0ArrayTokenArrayBitvector,
+                systemRank1ArrayTokenArrayBitvector,
+                rank0ArrayLBSTango = systemRank0ArrayLBSTango,
+                rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+                LBSBooleanArray = systemYomiLBSBooleanArray
+            )
             findPath.backwardAStar(graph, input.length, connectionIds, n)
         }.await()
 
@@ -250,14 +250,14 @@ class KanaKanjiEngine {
 
         val finalResult = resultNBestFinal +
                 secondPart.sortedBy { it.score }.filter { (it.score - resultNBestFinal.first().score) < 4000 } +
+                hirakanaAndKana +
                 longestConversionList +
                 yomiPartList +
-                singleKanjiList +
-                hirakanaAndKana
+                singleKanjiList
         return@async finalResult.distinctBy { it.string }
     }.await()
 
-    suspend fun nBestPath(
+    fun nBestPath(
         input: String,
         n: Int
     ): List<Candidate> {
@@ -301,7 +301,7 @@ class KanaKanjiEngine {
         return result
     }
 
-    suspend fun nBestPathForLongest(
+    fun nBestPathForLongest(
         input: String,
         n: Int
     ): List<CandidateTemp> {
@@ -322,7 +322,7 @@ class KanaKanjiEngine {
         return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
     }
 
-    suspend fun viterbiAlgorithm(
+    fun viterbiAlgorithm(
         input: String
     ): String {
         val graph = graphBuilder.constructGraph(

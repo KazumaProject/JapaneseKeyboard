@@ -192,6 +192,40 @@ class FindPath {
         }
     }
 
+    private fun forwardDpCompromise(
+        graph: List<MutableList<MutableList<Node>>>,
+        length: Int,
+        connectionIds: ShortArray
+    ){
+        for (i in 1 .. length + 1){
+            val nodes = graph[i].flatten()
+            for (node in nodes){
+                val nodeScore = node.f
+                var score = Int.MAX_VALUE
+                var bestPrev: Node? = null
+                val prevNodes = getPrevNodes(
+                    graph,
+                    node,
+                    i,
+                ).flatten()
+                for (prev in prevNodes){
+                    val edgeCost = getEdgeCost(
+                        prev.l.toInt(),
+                        node.r.toInt(),
+                        connectionIds
+                    )
+                    val tempCost = prev.f + nodeScore + edgeCost
+                    if (tempCost < score){
+                        score = tempCost
+                        bestPrev = prev
+                    }
+                }
+                node.prev = bestPrev
+                node.f = score
+            }
+        }
+    }
+
     private fun getPrevNodes(
         graph: List<MutableList<MutableList<Node>>>,
         node: Node,

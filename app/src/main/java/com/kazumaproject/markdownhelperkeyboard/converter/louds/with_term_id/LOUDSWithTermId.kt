@@ -1,5 +1,6 @@
 package com.kazumaproject.Louds.with_term_id
 
+import com.kazumaproject.addingCommonPrefixList
 import com.kazumaproject.bitset.rank0
 import com.kazumaproject.bitset.rank1
 import com.kazumaproject.bitset.rank1Common
@@ -16,8 +17,6 @@ import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
-import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
 class LOUDSWithTermId {
 
@@ -98,25 +97,17 @@ class LOUDSWithTermId {
         return search(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray)
     }
 
-    @OptIn(ExperimentalTime::class)
     fun getTermId(
         nodeIndex: Int,
         rank1Array: IntArray
     ): Int {
-        var firstNodeId: Int
-        val time = measureTime {
-            firstNodeId = isLeaf.rank1Common(nodeIndex,rank1Array) - 1
-        }
+        val firstNodeId: Int = isLeaf.rank1Common(nodeIndex,rank1Array) - 1
         if (firstNodeId < 0) return -1
-        var firstTermId: Int
-        val time1 = measureTime {
-            firstTermId = if (termIdsDiff[firstNodeId].toInt() == 0){
-                firstNodeId + 1
-            }else{
-                firstNodeId + termIdsDiff[firstNodeId]
-            }
+        val firstTermId: Int = if (termIdsDiff[firstNodeId].toInt() == 0){
+            firstNodeId + 1
+        }else{
+            firstNodeId + termIdsDiff[firstNodeId]
         }
-        println("term id: $time $time1")
         return firstTermId
     }
 
@@ -146,27 +137,52 @@ class LOUDSWithTermId {
         return -1
     }
 
-       fun commonPrefixSearch(
-           str: String,
-           rank0Array: IntArray,
-           rank1Array: IntArray,
-       ): List<String>  {
-        val resultTemp: MutableList<Char> = mutableListOf()
+    fun commonPrefixSearch(
+        str: String,
+        rank0Array: IntArray,
+        rank1Array: IntArray,
+    ): List<String> {
+        val resultTemp = StringBuilder()
         val result: MutableList<String> = mutableListOf()
         var n = 0
-          for (c in str){
-              n = traverse(n, c,rank0Array,rank1Array)
-              val index = LBS.rank1Common(n,rank1Array)
-              println("$c $n $index")
-              if (n < 0) break
-              if (index >= labels.size) break
-              resultTemp.add(labels[index])
-              if (isLeaf[n]){
-                  val tempStr = resultTemp.joinToString("")
-                  result.add(tempStr)
-              }
-          }
-         return result.toList()
+        for (c in str) {
+            n = traverse(n, c, rank0Array, rank1Array)
+            val index = LBS.rank1Common(n, rank1Array)
+            println("$c $n $index")
+            if (n < 0 || index >= labels.size) break
+
+            resultTemp.append(labels[index])
+            if (isLeaf[n]) {
+                result.add(resultTemp.toString())
+            }
+        }
+        println("common prefix result: $result")
+        return result
+    }
+
+
+    fun commonPrefixSearchCompromise(
+        str: String,
+        rank0Array: IntArray,
+        rank1Array: IntArray,
+    ): List<String> {
+        val resultTemp = StringBuilder()
+        val result: MutableList<String> = mutableListOf()
+        var n = 0
+        for (c in str) {
+            n = traverse(n, c, rank0Array, rank1Array)
+            val index = LBS.rank1Common(n, rank1Array)
+            println("$c $n $index")
+            if (n < 0 || index >= labels.size) break
+
+            resultTemp.append(labels[index])
+            if (isLeaf[n]) {
+                result.add(resultTemp.toString())
+            }
+        }
+        val resultFinal = result.addingCommonPrefixList()
+        println("common prefix result: $resultFinal")
+        return resultFinal
     }
 
     private tailrec fun search(

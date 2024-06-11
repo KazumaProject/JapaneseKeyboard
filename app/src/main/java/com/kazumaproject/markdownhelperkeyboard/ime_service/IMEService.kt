@@ -36,12 +36,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.GridLayoutManager
 import com.daasuu.bl.BubbleLayout
+import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.android.flexbox.AlignItems
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexWrap
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
-import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -439,22 +439,6 @@ class IMEService: InputMethodService() {
                             }
                         }
                         mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
-                        val marginsDummyView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                topMargin = 0
-                                bottomMargin = 200f.convertDp2Px(applicationContext)
-                                height = 52f.convertDp2Px(applicationContext)
-                            }
-                        } else {
-                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                topMargin = 0
-                                bottomMargin = 280f.convertDp2Px(applicationContext)
-                                height = 54f.convertDp2Px(applicationContext)
-                            }
-                        }
-                        mainView.dummyView.layoutParams = marginsDummyView
                     }else{
                         mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(applicationContext,R.drawable.outline_arrow_drop_up_24))
                         mainView.suggestionRecyclerView.apply {
@@ -482,22 +466,6 @@ class IMEService: InputMethodService() {
                             }
                         }
                         mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
-                        val marginsDummyView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                topMargin = 0
-                                bottomMargin = 0
-                                height = 252f.convertDp2Px(applicationContext)
-                            }
-                        } else {
-                            (mainView.dummyView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                topMargin = 0
-                                bottomMargin = 0
-                                height = 336f.convertDp2Px(applicationContext)
-                            }
-                        }
-                        mainView.dummyView.layoutParams = marginsDummyView
                     }
                 }
             }
@@ -505,15 +473,6 @@ class IMEService: InputMethodService() {
             launch {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
                     suggestionAdapter?.suggestions = suggestions
-                    transition.setDuration(200)
-                    transition.addTarget(mainView.suggestionRecyclerView)
-                    transition.addTarget(mainView.dummyView)
-                    transition.addTarget(mainView.suggestionVisibility)
-                    TransitionManager.beginDelayedTransition(mainView.keyboardView.root, transition)
-
-                    mainView.suggestionRecyclerView.isVisible = suggestions.isNotEmpty()
-                    mainView.dummyView.isVisible = suggestions.isNotEmpty()
-                    mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
                 }
             }
 
@@ -682,7 +641,7 @@ class IMEService: InputMethodService() {
             this.setOnItemClickListener {
                 setVibrate()
                 setCandidateClick(it)
-                resetFlagsKeyEnter()
+                resetFlagsSuggestionClick()
             }
         }
         mainLayoutBinding?.let { mainView ->
@@ -703,7 +662,7 @@ class IMEService: InputMethodService() {
     }
 
     private fun setCandidateClick(candidate: Candidate){
-        if (candidate.type == (2).toByte() || candidate.type == (5).toByte()){
+        if (candidate.type == (2).toByte() || candidate.type == (5).toByte() || candidate.type == (7).toByte()){
             val length = candidate.length.toInt()
             stringInTail = _inputString.value.substring(length)
         }
@@ -830,6 +789,16 @@ class IMEService: InputMethodService() {
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
+    }
+
+    private fun resetFlagsSuggestionClick(){
+        isHenkan = false
+        suggestionClickNum = 0
+        englishSpaceKeyPressed = false
+        onDeleteLongPressUp = false
+        _dakutenPressed.value = false
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
         _inputString.update { EMPTY_STRING }
     }
 
@@ -856,6 +825,12 @@ class IMEService: InputMethodService() {
             Timber.d("launchInputString: $inputString")
             withContext(mainDispatcher){
                 mainView.suggestionRecyclerView.scrollToPosition(0)
+                transition.setDuration(100)
+                transition.addTarget(mainView.suggestionRecyclerView)
+                transition.addTarget(mainView.suggestionVisibility)
+                TransitionManager.beginDelayedTransition(mainView.keyboardView.root, transition)
+                mainView.suggestionRecyclerView.isVisible = inputString.isNotEmpty()
+                mainView.suggestionVisibility.isVisible = inputString.isNotEmpty()
             }
                 if (inputString.isNotBlank()) {
                 /** 入力された文字の selection と composing region を設定する **/
@@ -1226,13 +1201,13 @@ class IMEService: InputMethodService() {
                             currentInputConnection?.finishComposingText()
                             _inputString.value = EMPTY_STRING
                         }
-                        resetFlagsKeyEnter()
+                        resetFlagsSuggestionClick()
                     }
                     else ->{
                         setVibrate()
                         currentInputConnection?.finishComposingText()
                         _inputString.value = EMPTY_STRING
-                        resetFlagsKeyEnter()
+                        resetFlagsSuggestionClick()
                     }
                 }
             }else{
@@ -1262,7 +1237,7 @@ class IMEService: InputMethodService() {
                 }
                 _inputString.value = EMPTY_STRING
             }
-            resetFlagsKeyEnter()
+            resetFlagsSuggestionClick()
         }
     }
 
