@@ -1,10 +1,11 @@
 package com.kazumaproject.Louds.with_term_id
 
-import com.kazumaproject.addingCommonPrefixList
 import com.kazumaproject.bitset.rank0
 import com.kazumaproject.bitset.rank1
 import com.kazumaproject.bitset.rank1Common
+import com.kazumaproject.bitset.rank1CommonShort
 import com.kazumaproject.bitset.select0Common
+import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
@@ -97,6 +98,10 @@ class LOUDSWithTermId {
         return search(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray)
     }
 
+    fun getNodeIndex(s: String, rank1Array: ShortArray, LBSInBoolArray: BooleanArray): Int{
+        return searchShortArray(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray)
+    }
+
     fun getTermId(
         nodeIndex: Int,
         rank1Array: IntArray
@@ -111,12 +116,35 @@ class LOUDSWithTermId {
         return firstTermId
     }
 
+    fun getTermIdShortArray(
+        nodeIndex: Int,
+        rank1Array: ShortArray
+    ): Short {
+        val firstNodeId: Int = isLeaf.rank1CommonShort(nodeIndex,rank1Array) - 1
+        if (firstNodeId < 0) return -1
+        val firstTermId: Int = if (termIdsDiff[firstNodeId].toInt() == 0){
+            firstNodeId + 1
+        }else{
+            firstNodeId + termIdsDiff[firstNodeId]
+        }
+        return firstTermId.toShort()
+    }
+
     private fun firstChild(
         pos: Int,
         rank0Array: IntArray,
         rank1Array: IntArray
     ): Int {
         val y = LBS.select0Common(LBS.rank1Common(pos,rank1Array),rank0Array) + 1
+        return if (!LBS[y]) -1 else y
+    }
+
+    private fun firstChildShortArray(
+        pos: Int,
+        rank0Array: ShortArray,
+        rank1Array: ShortArray
+    ): Int {
+        val y = LBS.select0CommonShort(LBS.rank1CommonShort(pos,rank1Array),rank0Array) + 1
         return if (!LBS[y]) -1 else y
     }
 
@@ -130,6 +158,23 @@ class LOUDSWithTermId {
         if (childPos < 0) return -1
         while (LBS[childPos]){
             if (c == labels[LBS.rank1Common(childPos,rank1Array)]) {
+                return childPos
+            }
+            childPos += 1
+        }
+        return -1
+    }
+
+    private fun traverseShortArray(
+        pos: Int,
+        c: Char,
+        rank0Array: ShortArray,
+        rank1Array: ShortArray
+    ): Int {
+        var childPos = firstChildShortArray(pos,rank0Array, rank1Array)
+        if (childPos < 0) return -1
+        while (LBS[childPos]){
+            if (c == labels[LBS.rank1CommonShort(childPos,rank1Array).toInt()]) {
                 return childPos
             }
             childPos += 1
@@ -160,29 +205,27 @@ class LOUDSWithTermId {
         return result
     }
 
-
-    fun commonPrefixSearchCompromise(
+    fun commonPrefixSearchShortArray(
         str: String,
-        rank0Array: IntArray,
-        rank1Array: IntArray,
+        rank0Array: ShortArray,
+        rank1Array: ShortArray,
     ): List<String> {
         val resultTemp = StringBuilder()
         val result: MutableList<String> = mutableListOf()
         var n = 0
         for (c in str) {
-            n = traverse(n, c, rank0Array, rank1Array)
-            val index = LBS.rank1Common(n, rank1Array)
+            n = traverseShortArray(n, c, rank0Array, rank1Array)
+            val index = LBS.rank1CommonShort(n, rank1Array)
             println("$c $n $index")
             if (n < 0 || index >= labels.size) break
 
-            resultTemp.append(labels[index])
+            resultTemp.append(labels[index.toInt()])
             if (isLeaf[n]) {
                 result.add(resultTemp.toString())
             }
         }
-        val resultFinal = result.addingCommonPrefixList()
-        println("common prefix result: $resultFinal")
-        return resultFinal
+        println("common prefix result: $result")
+        return result
     }
 
     private tailrec fun search(
@@ -206,6 +249,34 @@ class LOUDSWithTermId {
                 }
                 val nextIndex = indexOfLabel(charIndex, LBSInBoolArray)
                 return search(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray)
+            }
+            currentIndex++
+            charIndex++
+        }
+        return -1
+    }
+
+    private tailrec fun searchShortArray(
+        index: Int,
+        chars: CharArray,
+        wordOffset: Int,
+        rank1Array: ShortArray,
+        LBSInBoolArray: BooleanArray
+    ): Int {
+        var currentIndex = index
+        var charIndex = LBS.rank1CommonShort(currentIndex, rank1Array)
+        val charCount = chars.size
+
+        while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
+            val currentChar = chars[wordOffset]
+            val currentLabel = labels[charIndex.toInt()]
+
+            if (currentChar == currentLabel) {
+                if (wordOffset + 1 == charCount) {
+                    return if (isLeaf[currentIndex]) currentIndex else currentIndex
+                }
+                val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArray)
+                return searchShortArray(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray)
             }
             currentIndex++
             charIndex++

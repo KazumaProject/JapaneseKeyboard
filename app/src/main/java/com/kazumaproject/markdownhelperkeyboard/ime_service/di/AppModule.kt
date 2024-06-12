@@ -15,7 +15,9 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.bitset.rank0GetIntArray
+import com.kazumaproject.bitset.rank0GetShortArray
 import com.kazumaproject.bitset.rank1GetIntArray
+import com.kazumaproject.bitset.rank1GetShortArray
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
@@ -219,17 +221,17 @@ object AppModule {
     @Singleton
     @Provides
     @SingleKanjiRank0ArrayLBSYomi
-    fun provideSingleKanjiRank0ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank0GetIntArray()
+    fun provideSingleKanjiRank0ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray = yomiTrie.LBS.rank0GetShortArray()
 
     @Singleton
     @Provides
     @SingleKanjiRank1ArrayLBSYomi
-    fun provideSingleKanjiRank1ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.LBS.rank1GetIntArray()
+    fun provideSingleKanjiRank1ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray = yomiTrie.LBS.rank1GetShortArray()
 
     @Singleton
     @Provides
     @SingleKanjiRank1ArrayIsLeafYomi
-    fun provideSingleKanjiRank1ArrayIsLeaf(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): IntArray = yomiTrie.isLeaf.rank1GetIntArray()
+    fun provideSingleKanjiRank1ArrayIsLeaf(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray = yomiTrie.isLeaf.rank1GetShortArray()
 
     @Singleton
     @Provides
@@ -239,22 +241,22 @@ object AppModule {
     @Singleton
     @Provides
     @SingleKanjiRank0ArrayTokenArrayBitvector
-    fun provideSingleKanjiRank0ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank0GetIntArray()
+    fun provideSingleKanjiRank0ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): ShortArray = tokenArray.bitvector.rank0GetShortArray()
 
     @Singleton
     @Provides
     @SingleKanjiRank1ArrayTokenArrayBitvector
-    fun provideSingleKanjiRank1ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): IntArray = tokenArray.bitvector.rank1GetIntArray()
+    fun provideSingleKanjiRank1ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): ShortArray = tokenArray.bitvector.rank1GetShortArray()
 
     @Singleton
     @Provides
     @SingleKanjiRank0ArrayTangoLBS
-    fun provideSingleKanjiRank0ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank0GetIntArray()
+    fun provideSingleKanjiRank0ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): ShortArray = tangoTrie.LBS.rank0GetShortArray()
 
     @Singleton
     @Provides
     @SingleKanjiRank1ArrayTangoLBS
-    fun provideSingleKanjiRank1ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): IntArray = tangoTrie.LBS.rank1GetIntArray()
+    fun provideSingleKanjiRank1ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): ShortArray = tangoTrie.LBS.rank1GetShortArray()
 
     @Singleton
     @Provides
@@ -276,13 +278,13 @@ object AppModule {
         @SingleKanjiTangoTrie singleKanjiTangoTrie: LOUDS,
         @SingleKanjiYomiTrie singleKanjiYomiTrie: LOUDSWithTermId,
         @SingleKanjiTokenArray singleKanjiTokenArray: TokenArray,
-        @SingleKanjiRank0ArrayLBSYomi singleKanjiRank0ArrayLBSYomi: IntArray,
-        @SingleKanjiRank1ArrayLBSYomi singleKanjiRank1ArrayLBSYomi: IntArray,
-        @SingleKanjiRank1ArrayIsLeafYomi singleKanjiRank1ArrayIsLeaf: IntArray,
-        @SingleKanjiRank0ArrayTokenArrayBitvector singleKanjiRank0ArrayTokenArrayBitvector: IntArray,
-        @SingleKanjiRank1ArrayTokenArrayBitvector singleKanjiRank1ArrayTokenArrayBitvector: IntArray,
-        @SingleKanjiRank0ArrayTangoLBS singleKanjiRank0ArrayTangoLBS: IntArray,
-        @SingleKanjiRank1ArrayTangoLBS singleKanjiRank1ArrayTangoLBS: IntArray,
+        @SingleKanjiRank0ArrayLBSYomi singleKanjiRank0ArrayLBSYomi: ShortArray,
+        @SingleKanjiRank1ArrayLBSYomi singleKanjiRank1ArrayLBSYomi: ShortArray,
+        @SingleKanjiRank1ArrayIsLeafYomi singleKanjiRank1ArrayIsLeaf: ShortArray,
+        @SingleKanjiRank0ArrayTokenArrayBitvector singleKanjiRank0ArrayTokenArrayBitvector: ShortArray,
+        @SingleKanjiRank1ArrayTokenArrayBitvector singleKanjiRank1ArrayTokenArrayBitvector: ShortArray,
+        @SingleKanjiRank0ArrayTangoLBS singleKanjiRank0ArrayTangoLBS: ShortArray,
+        @SingleKanjiRank1ArrayTangoLBS singleKanjiRank1ArrayTangoLBS: ShortArray,
         @SingleKanjiYomiLBSBooleanArray singleKanjiYomiLBSBooleanArray: BooleanArray,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
