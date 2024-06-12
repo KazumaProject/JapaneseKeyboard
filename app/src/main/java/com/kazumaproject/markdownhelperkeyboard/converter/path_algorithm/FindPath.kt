@@ -51,6 +51,8 @@ class FindPath {
                                 type = (1).toByte(),
                                 length = length.toUByte(),
                                 score = node.second,
+                                leftId =  node.first.next?.l,
+                                rightId =  node.first.next?.r
                             )
                         )
                     }
@@ -97,7 +99,7 @@ class FindPath {
                 if (node.first.tango == "BOS") {
                     if (!resultFinal.map { it.string }.contains(getStringFromNode(node.first))){
                         resultFinal.add(
-                            CandidateTemp(getStringFromNode(node.first),node.second,node.first.next?.l,)
+                            CandidateTemp(getStringFromNode(node.first),node.second,node.first.next?.l,node.first.next?.r)
                         )
                     }
                 } else {

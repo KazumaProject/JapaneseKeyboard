@@ -287,6 +287,7 @@ class IMEService: InputMethodService() {
 
         const val DISPLAY_LEFT_STRING_TIME = 64L
         const val DELAY_TIME = 1000L
+        const val DELETE_DELAY_TIME = 40L
         const val N_BEST = 4
     }
 
@@ -996,7 +997,7 @@ class IMEService: InputMethodService() {
                         return@launch
                     }
                 }
-                delay(32)
+                delay(DELETE_DELAY_TIME)
                 if (onDeleteLongPressUp) {
                     isContinuousTapInputEnabled = true
                     lastFlickConvertedNextHiragana = true
@@ -1007,7 +1008,7 @@ class IMEService: InputMethodService() {
             while (isActive){
                 if (stringInTail.isNotEmpty()) return@launch
                 currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
-                delay(32)
+                delay(DELETE_DELAY_TIME)
                 if (onDeleteLongPressUp) {
                     isContinuousTapInputEnabled = true
                     lastFlickConvertedNextHiragana = true
@@ -1184,6 +1185,8 @@ class IMEService: InputMethodService() {
         }
     }
 
+
+
     private fun setEnterKey(imageButton: AppCompatImageButton) = imageButton.apply {
         setOnClickListener {
             if (_inputString.value.isNotEmpty()){
@@ -1199,14 +1202,14 @@ class IMEService: InputMethodService() {
                             setEnterKeyAction(listIterator)
                         }else {
                             currentInputConnection?.finishComposingText()
-                            _inputString.value = EMPTY_STRING
+                            _inputString.update { EMPTY_STRING }
                         }
                         resetFlagsSuggestionClick()
                     }
                     else ->{
                         setVibrate()
                         currentInputConnection?.finishComposingText()
-                        _inputString.value = EMPTY_STRING
+                        _inputString.update { EMPTY_STRING }
                         resetFlagsSuggestionClick()
                     }
                 }

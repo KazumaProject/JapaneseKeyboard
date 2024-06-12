@@ -45,7 +45,6 @@ class KanaKanjiEngine {
     private lateinit var singleKanjiRank0ArrayLBSTango: IntArray
     private lateinit var singleKanjiRank1ArrayLBSTango: IntArray
     private lateinit var singleKanjiYomiLBSBooleanArray: BooleanArray
-
     fun buildEngine(
         graphBuilder: GraphBuilder,
         findPath: FindPath,
@@ -124,7 +123,7 @@ class KanaKanjiEngine {
                 systemRank1ArrayTokenArrayBitvector,
                 rank0ArrayLBSTango = systemRank0ArrayLBSTango,
                 rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-                LBSBooleanArray = systemYomiLBSBooleanArray
+                LBSBooleanArray = systemYomiLBSBooleanArray,
             )
             findPath.backwardAStar(graph, input.length, connectionIds, n)
         }.await()
@@ -164,7 +163,8 @@ class KanaKanjiEngine {
                         2,
                         yomi.length.toUByte(),
                         it.wordCost.toInt(),
-                        systemTokenArray.leftIds[it.posTableIndex.toInt()]
+                        systemTokenArray.leftIds[it.posTableIndex.toInt()],
+                        systemTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }.distinctBy { it.string }. toMutableList()
             }
@@ -176,10 +176,10 @@ class KanaKanjiEngine {
             Candidate(input.hiraToKata(),4,input.length.toUByte(),6000),
         )
 
-        val longest = yomiPartOf.first()
+        val longest = if (yomiPartOf.isEmpty()) input else yomiPartOf.first()
         val longestConversionList = async(Dispatchers.IO) {
             nBestPathForLongest(longest,n * 2).map { Candidate(
-                it.string,(5).toByte(),longest.length.toUByte(),it.wordCost, it.leftId
+                it.string,(5).toByte(),longest.length.toUByte(),it.wordCost, it.leftId, it.rightId
             ) }
         }.await()
 
@@ -241,7 +241,8 @@ class KanaKanjiEngine {
                         7,
                         yomi.length.toUByte(),
                         it.wordCost.toInt(),
-                        singleKanjiTokenArray.leftIds[it.posTableIndex.toInt()]
+                        singleKanjiTokenArray.leftIds[it.posTableIndex.toInt()],
+                        singleKanjiTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }.distinctBy { it.string }. toMutableList()
             }
@@ -273,7 +274,7 @@ class KanaKanjiEngine {
             systemRank1ArrayTokenArrayBitvector,
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
             rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-            LBSBooleanArray = systemYomiLBSBooleanArray
+            LBSBooleanArray = systemYomiLBSBooleanArray,
         )
         val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
@@ -317,7 +318,7 @@ class KanaKanjiEngine {
             systemRank1ArrayTokenArrayBitvector,
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
             rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-            LBSBooleanArray = systemYomiLBSBooleanArray
+            LBSBooleanArray = systemYomiLBSBooleanArray,
         )
         return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
     }
@@ -337,7 +338,7 @@ class KanaKanjiEngine {
             systemRank1ArrayTokenArrayBitvector,
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
             rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-            LBSBooleanArray = systemYomiLBSBooleanArray
+            LBSBooleanArray = systemYomiLBSBooleanArray,
         )
         return findPath.viterbi(graph, input.length, connectionIds)
     }

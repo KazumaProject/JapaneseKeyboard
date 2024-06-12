@@ -59,7 +59,8 @@ class GraphBuilder {
                     str = subStr,
                     rank0Array = rank0ArrayLBSYomi,
                     rank1Array = rank1ArrayLBSYomi,
-                )
+                ).toMutableList()
+                if (commonPrefixSearch.isEmpty()) commonPrefixSearch.add(subStr)
                 commonPrefixSearch.map { yomiStr ->
                     val termId : Int = yomiTrie.getTermId(
                         yomiTrie.getNodeIndex(
@@ -75,6 +76,7 @@ class GraphBuilder {
                         rank1ArrayTokenArrayBitvector
                     )
                     val tangoList: List<Node> = listToken.map {
+                        println("tangoList $yomiStr ${it.nodeId}")
                         Node(
                             l = tokenArray.leftIds[it.posTableIndex.toInt()],
                             r = tokenArray.rightIds[it.posTableIndex.toInt()],
