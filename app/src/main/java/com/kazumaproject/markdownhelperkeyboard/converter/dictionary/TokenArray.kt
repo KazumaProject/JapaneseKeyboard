@@ -2,7 +2,9 @@ package com.kazumaproject.dictionary
 
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.bitset.rank1Common
+import com.kazumaproject.bitset.rank1CommonShort
 import com.kazumaproject.bitset.select0Common
+import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.dictionary.models.Dictionary
 import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.hiraToKata
@@ -35,6 +37,26 @@ class TokenArray {
     ): List<TokenEntry> {
         val b = bitvector.rank1Common(bitvector.select0Common(nodeId,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)
         val c = bitvector.rank1Common(bitvector.select0Common(nodeId + 1,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)
+        val tempList2 = mutableListOf<TokenEntry>()
+        for (i in b until c){
+            tempList2.add(
+                TokenEntry(
+                    posTableIndex = posTableIndexList[i],
+                    wordCost = wordCostList[i],
+                    nodeId = nodeIdList[i],
+                )
+            )
+        }
+        return tempList2
+    }
+
+    fun getListDictionaryByYomiTermIdShortArray(
+        nodeId: Short,
+        rank0ArrayTokenArrayBitvector: ShortArray,
+        rank1ArrayTokenArrayBitvector: ShortArray,
+    ): List<TokenEntry> {
+        val b = bitvector.rank1CommonShort(bitvector.select0CommonShort(nodeId,rank0ArrayTokenArrayBitvector).toInt(),rank1ArrayTokenArrayBitvector)
+        val c = bitvector.rank1CommonShort(bitvector.select0CommonShort((nodeId + 1).toShort(),rank0ArrayTokenArrayBitvector).toInt(),rank1ArrayTokenArrayBitvector)
         val tempList2 = mutableListOf<TokenEntry>()
         for (i in b until c){
             tempList2.add(

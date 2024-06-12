@@ -2,11 +2,14 @@ package com.kazumaproject.Louds
 
 import com.kazumaproject.bitset.rank0
 import com.kazumaproject.bitset.rank0Common
+import com.kazumaproject.bitset.rank0CommonShort
 import com.kazumaproject.bitset.rank1
 import com.kazumaproject.bitset.rank1Common
+import com.kazumaproject.bitset.rank1CommonShort
 import com.kazumaproject.bitset.select0
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.bitset.select1Common
+import com.kazumaproject.bitset.select1CommonShort
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.toByteArrayFromListChar
@@ -111,6 +114,26 @@ class LOUDS {
             list.add(pair)
             parentNodeIndex = LBS.select1Common(LBS.rank0Common(parentNodeIndex,rank0Array),rank1Array)
             if (parentNodeId == 0) return ""
+        }
+        return list.toList().reversed().joinToString("")
+    }
+
+    fun getLetterShortArray(
+        nodeIndex: Int,
+        rank0Array: ShortArray,
+        rank1Array: ShortArray,
+    ): String {
+        val list = mutableListOf<Char>()
+        val firstNodeId = LBS.rank1CommonShort(nodeIndex,rank1Array)
+        val firstChar = labels[firstNodeId.toInt()]
+        list.add(firstChar)
+        var parentNodeIndex = LBS.select1CommonShort(LBS.rank0CommonShort(nodeIndex.toShort(),rank0Array),rank1Array).toInt()
+        while (parentNodeIndex != 0){
+            val parentNodeId = LBS.rank1CommonShort(parentNodeIndex,rank1Array)
+            val pair = labels[parentNodeId.toInt()]
+            list.add(pair)
+            parentNodeIndex = LBS.select1CommonShort(LBS.rank0CommonShort(parentNodeIndex.toShort(),rank0Array),rank1Array).toInt()
+            if (parentNodeId == (0).toShort()) return ""
         }
         return list.toList().reversed().joinToString("")
     }

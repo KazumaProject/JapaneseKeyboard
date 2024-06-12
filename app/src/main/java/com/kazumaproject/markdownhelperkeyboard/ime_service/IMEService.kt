@@ -287,7 +287,7 @@ class IMEService: InputMethodService() {
 
         const val DISPLAY_LEFT_STRING_TIME = 64L
         const val DELAY_TIME = 1000L
-        const val DELETE_DELAY_TIME = 40L
+        const val DELETE_DELAY_TIME = 64L
         const val N_BEST = 4
     }
 
