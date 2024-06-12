@@ -60,13 +60,20 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             val typeText = findViewById<MaterialTextView>(R.id.suggestion_item_type_text_view)
             text.text = suggestion.string
             typeText.text = when(suggestion.type){
-                (1).toByte() -> "[N-Best]"
+                (1).toByte() -> "   "
                 (2).toByte() -> "[部]"
                 (3).toByte() -> "[ひらがな]"
                 (4).toByte() -> "[カタカナ]"
                 (5).toByte() -> "[最長]"
                 (6).toByte() -> "[候補]"
                 (7).toByte() -> "[単]"
+//                (1).toByte() -> "[N-Best][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
+//                (2).toByte() -> "[部][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
+//                (3).toByte() -> "[ひらがな][${suggestion.score}]"
+//                (4).toByte() -> "[カタカナ][${suggestion.score}]"
+//                (5).toByte() -> "[最長][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
+//                (6).toByte() -> "[候補][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
+//                (7).toByte() -> "[単][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
                 else -> ""
             }
             setOnClickListener {
