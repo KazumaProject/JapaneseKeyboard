@@ -130,14 +130,6 @@ class LOUDSWithTermId {
         return firstTermId.toShort()
     }
 
-    private fun firstChild(
-        pos: Int,
-        rank0Array: IntArray,
-        rank1Array: IntArray
-    ): Int {
-        val y = LBS.select0Common(LBS.rank1Common(pos,rank1Array),rank0Array) + 1
-        return if (!LBS[y]) -1 else y
-    }
 
     private fun firstChildShortArray(
         pos: Int,
@@ -146,23 +138,6 @@ class LOUDSWithTermId {
     ): Int {
         val y = LBS.select0CommonShort(LBS.rank1CommonShort(pos,rank1Array),rank0Array) + 1
         return if (!LBS[y]) -1 else y
-    }
-
-    private fun traverse(
-        pos: Int,
-        c: Char,
-        rank0Array: IntArray,
-        rank1Array: IntArray
-    ): Int {
-        var childPos = firstChild(pos,rank0Array, rank1Array)
-        if (childPos < 0) return -1
-        while (LBS[childPos]){
-            if (c == labels[LBS.rank1Common(childPos,rank1Array)]) {
-                return childPos
-            }
-            childPos += 1
-        }
-        return -1
     }
 
     private fun traverseShortArray(
@@ -182,20 +157,31 @@ class LOUDSWithTermId {
         return -1
     }
 
-    fun commonPrefixSearch(
-        str: String,
-        rank0Array: IntArray,
-        rank1Array: IntArray,
-    ): List<String> {
+    private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
+        val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
+        return if (y < 0 || !LBS[y]) -1 else y
+    }
+
+    private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
+        var childPos = firstChild(pos, rank0Array, rank1Array)
+        while (childPos >= 0 && LBS[childPos]) {
+            if (c == labels[LBS.rank1Common(childPos, rank1Array)]) {
+                return childPos
+            }
+            childPos++
+        }
+        return -1
+    }
+
+    fun commonPrefixSearch(str: String, rank0Array: IntArray, rank1Array: IntArray): List<String> {
+        val result = mutableListOf<String>()
         val resultTemp = StringBuilder()
-        val result: MutableList<String> = mutableListOf()
         var n = 0
         for (c in str) {
             n = traverse(n, c, rank0Array, rank1Array)
+            if (n < 0) break
             val index = LBS.rank1Common(n, rank1Array)
-            println("$c $n $index")
-            if (n < 0 || index >= labels.size) break
-
+            if (index >= labels.size) break
             resultTemp.append(labels[index])
             if (isLeaf[n]) {
                 result.add(resultTemp.toString())
