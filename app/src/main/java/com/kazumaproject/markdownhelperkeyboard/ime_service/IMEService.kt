@@ -401,73 +401,52 @@ class IMEService: InputMethodService() {
         flexboxLayoutManager: FlexboxLayoutManager
     ) = scope.launch {
         mainLayoutBinding?.let { mainView ->
+
+            // Launching state flow collectors
             launch {
                 _suggestionFlag.asStateFlow().collectLatest {
                     setSuggestionOnView(mainView)
                     mainView.keyboardView.root.isVisible = true
-                    mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(applicationContext,R.drawable.outline_arrow_drop_down_24))
+                    mainView.suggestionVisibility.setImageDrawable(
+                        ContextCompat.getDrawable(applicationContext, R.drawable.outline_arrow_drop_down_24)
+                    )
                 }
             }
 
             launch {
-                _suggestionViewStatus.asStateFlow().collectLatest {
-                    mainView.keyboardView.root.isVisible = it
-                    if (it){
-                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(applicationContext,R.drawable.outline_arrow_drop_down_24))
-                        mainView.suggestionRecyclerView.apply {
-                            this.scrollToPosition(0)
-                            layoutManager =  flexboxLayoutManager.apply {
-                                flexDirection = FlexDirection.COLUMN
-                                justifyContent = JustifyContent.SPACE_AROUND
-                            }
-                        }
+                _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
+                    mainView.keyboardView.root.isVisible = isVisible
+                    mainView.suggestionVisibility.setImageDrawable(
+                        ContextCompat.getDrawable(
+                            applicationContext,
+                            if (isVisible) R.drawable.outline_arrow_drop_down_24 else R.drawable.outline_arrow_drop_up_24
+                        )
+                    )
 
-                        val marginsSuggestionView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(applicationContext)
-                                topMargin = 0
-                                bottomMargin = 200f.convertDp2Px(applicationContext)
-                                height = 52f.convertDp2Px(applicationContext)
-                            }
-                        } else {
-                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(applicationContext)
-                                topMargin = 0
-                                bottomMargin = 280f.convertDp2Px(applicationContext)
-                                height = 54f.convertDp2Px(applicationContext)
-                            }
+                    mainView.suggestionRecyclerView.apply {
+                        scrollToPosition(0)
+                        layoutManager = flexboxLayoutManager.apply {
+                            flexDirection = if (isVisible) FlexDirection.COLUMN else FlexDirection.ROW
+                            justifyContent = if (isVisible) JustifyContent.SPACE_AROUND else JustifyContent.FLEX_START
                         }
-                        mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
-                    }else{
-                        mainView.suggestionVisibility.setImageDrawable(ContextCompat.getDrawable(applicationContext,R.drawable.outline_arrow_drop_up_24))
-                        mainView.suggestionRecyclerView.apply {
-                            this.scrollToPosition(0)
-                            layoutManager = flexboxLayoutManager.apply {
-                                flexDirection = FlexDirection.ROW
-                                justifyContent = JustifyContent.FLEX_START
-                            }
-                        }
-                        val marginsSuggestionView = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(applicationContext)
-                                topMargin = 0
-                                bottomMargin = 0
-                                height = 252f.convertDp2Px(applicationContext)
-                            }
-                        } else {
-                            (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
-                                leftMargin = 0
-                                rightMargin = 40f.convertDp2Px(applicationContext)
-                                topMargin = 0
-                                bottomMargin = 0
-                                height = 336f.convertDp2Px(applicationContext)
-                            }
-                        }
-                        mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
                     }
+
+                    val marginsSuggestionView = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                        leftMargin = 0
+                        rightMargin = 40f.convertDp2Px(applicationContext)
+                        topMargin = 0
+                        bottomMargin = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            if (isVisible) 200f.convertDp2Px(applicationContext) else 0
+                        } else {
+                            if (isVisible) 280f.convertDp2Px(applicationContext) else 0
+                        }
+                        height = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                            if (isVisible) 52f.convertDp2Px(applicationContext) else 252f.convertDp2Px(applicationContext)
+                        } else {
+                            if (isVisible) 54f.convertDp2Px(applicationContext) else 336f.convertDp2Px(applicationContext)
+                        }
+                    }
+                    mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
                 }
             }
 
@@ -487,12 +466,12 @@ class IMEService: InputMethodService() {
 
             launch {
                 _currentKeyboardMode.asStateFlow().collectLatest {
-                    when(it){
-                        is KeyboardMode.ModeTenKeyboard ->{
+                    when (it) {
+                        is KeyboardMode.ModeTenKeyboard -> {
                             mainView.keyboardView.root.isVisible = true
                             mainView.keyboardKigouView.root.isVisible = false
                         }
-                        is KeyboardMode.ModeKigouView ->{
+                        is KeyboardMode.ModeKigouView -> {
                             mainView.keyboardView.root.isVisible = false
                             mainView.keyboardKigouView.root.isVisible = true
                             _currentModeInKigou.update {
@@ -824,35 +803,42 @@ class IMEService: InputMethodService() {
     private suspend fun launchInputString(mainView: MainLayoutBinding) = withContext(imeIoDispatcher){
         _inputString.asStateFlow().collectLatest { inputString ->
             Timber.d("launchInputString: $inputString")
-            withContext(mainDispatcher){
-                mainView.suggestionRecyclerView.scrollToPosition(0)
-                transition.setDuration(100)
-                transition.addTarget(mainView.suggestionRecyclerView)
-                transition.addTarget(mainView.suggestionVisibility)
-                TransitionManager.beginDelayedTransition(mainView.keyboardView.root, transition)
-                mainView.suggestionRecyclerView.isVisible = inputString.isNotEmpty()
+            withContext(mainDispatcher) {
+                mainView.suggestionRecyclerView.apply {
+                    scrollToPosition(0)
+                    isVisible = inputString.isNotEmpty()
+                }
                 mainView.suggestionVisibility.isVisible = inputString.isNotEmpty()
+
+                transition.apply {
+                    duration = 100
+                    addTarget(mainView.suggestionRecyclerView)
+                    addTarget(mainView.suggestionVisibility)
+                }
+                TransitionManager.beginDelayedTransition(mainView.keyboardView.root, transition)
             }
-                if (inputString.isNotBlank()) {
+
+            if (inputString.isNotBlank()) {
+                _suggestionFlag.update { !it }
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
                 setComposingTextPreEdit(inputString, spannableString)
                 delay(DELAY_TIME)
-                if (isHenkan) return@collectLatest
-                if (inputString.isEmpty()) return@collectLatest
-                if (onDeleteLongPressUp) return@collectLatest
-                if (englishSpaceKeyPressed) return@collectLatest
-                if (deleteKeyLongKeyPressed) return@collectLatest
-                isContinuousTapInputEnabled = true
-                lastFlickConvertedNextHiragana = true
-                println("current cursor pos: ${getCurrentText()} ${inputString.length}")
-                setComposingTextAfterEdit(inputString, spannableString)
+
+                if (!isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
+                    !englishSpaceKeyPressed && !deleteKeyLongKeyPressed) {
+                    isContinuousTapInputEnabled = true
+                    lastFlickConvertedNextHiragana = true
+                    println("current cursor pos: ${getCurrentText()} ${inputString.length}")
+                    setComposingTextAfterEdit(inputString, spannableString)
+                }
             } else {
                 _suggestionList.update { emptyList() }
                 setTenkeyIconsEmptyInputString()
-                if (stringInTail.isNotEmpty()) currentInputConnection?.setComposingText(stringInTail,1)
+                if (stringInTail.isNotEmpty()) {
+                    currentInputConnection?.setComposingText(stringInTail, 1)
+                }
             }
-
         }
     }
 
@@ -1314,23 +1300,18 @@ class IMEService: InputMethodService() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setLeftKey(
-        leftKey: AppCompatImageButton,
-    ){
+    private fun setLeftKey(leftKey: AppCompatImageButton) {
         leftKey.apply {
             setOnTouchListener { _, event ->
-                when(event.action and MotionEvent.ACTION_MASK){
-                    MotionEvent.ACTION_UP ->{
-                        CoroutineScope(ioDispatcher).launch {
-                            onLeftKeyLongPressUp = true
-                            delay(100)
-                            onLeftKeyLongPressUp = false
-                            if (_inputString.value.isNotBlank())
-                                _suggestionFlag.update {
-                                    !it
-                                }
-                            else
-                                _suggestionList.value = emptyList()
+                if ((event.action and MotionEvent.ACTION_MASK) == MotionEvent.ACTION_UP) {
+                    CoroutineScope(ioDispatcher).launch {
+                        onLeftKeyLongPressUp = true
+                        delay(100)
+                        onLeftKeyLongPressUp = false
+                        if (_inputString.value.isNotBlank()) {
+                            _suggestionFlag.update { !it }
+                        } else {
+                            _suggestionList.value = emptyList()
                         }
                     }
                 }
@@ -1339,62 +1320,67 @@ class IMEService: InputMethodService() {
 
             setOnClickListener {
                 setVibrate()
-                if (_inputString.value.isEmpty() && stringInTail.isEmpty()){
-                    currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT))
-                }else{
-                    if (!isHenkan){
-                        lastFlickConvertedNextHiragana = true
-                        isContinuousTapInputEnabled = true
-                        englishSpaceKeyPressed = false
-                        suggestionClickNum = 0
-                        if (_inputString.value.isEmpty()) return@setOnClickListener
-                        stringInTail = StringBuilder(stringInTail)
-                            .insert(0,_inputString.value.last())
-                            .toString()
-                        _inputString.update { it.dropLast(1) }
-                    }
-                }
+                handleLeftKeyPress()
             }
 
             setOnLongClickListener {
                 setVibrate()
-                if (!isHenkan){
-                    lastFlickConvertedNextHiragana = true
-                    isContinuousTapInputEnabled = true
-                    onLeftKeyLongPressUp = false
-                    suggestionClickNum = 0
-                    if (_inputString.value.isEmpty()){
-                        CoroutineScope(ioDispatcher).launch {
-                            while (isActive){
-                                currentInputConnection?.apply {
-                                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT))
-                                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_LEFT))
-                                }
-                                delay(36)
-                                if (onLeftKeyLongPressUp) {
-                                    return@launch
-                                }
-                            }
-                        }
-                    }else {
-                        CoroutineScope(ioDispatcher).launch {
-                            while (isActive){
-                                if (_inputString.value.isNotEmpty()){
-                                    stringInTail = StringBuilder(stringInTail)
-                                        .insert(0,_inputString.value.last())
-                                        .toString()
-                                    _inputString.update { it.dropLast(1) }
-                                }
-                                delay(36)
-                                if (onLeftKeyLongPressUp) {
-                                    return@launch
-                                }
-                            }
-                        }
-                    }
-                }
+                handleLeftLongPress()
                 true
             }
+        }
+    }
+
+    private fun handleLeftKeyPress() {
+        if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
+            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+        } else if (!isHenkan) {
+            lastFlickConvertedNextHiragana = true
+            isContinuousTapInputEnabled = true
+            englishSpaceKeyPressed = false
+            suggestionClickNum = 0
+            if (_inputString.value.isNotEmpty()) {
+                stringInTail = StringBuilder(stringInTail)
+                    .insert(0, _inputString.value.last())
+                    .toString()
+                _inputString.update { it.dropLast(1) }
+            }
+        }
+    }
+
+    private fun handleLeftLongPress() {
+        if (!isHenkan) {
+            lastFlickConvertedNextHiragana = true
+            isContinuousTapInputEnabled = true
+            onLeftKeyLongPressUp = false
+            suggestionClickNum = 0
+            CoroutineScope(ioDispatcher).launch {
+                while (isActive) {
+                    if (_inputString.value.isEmpty()) {
+                        sendLeftKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+                    } else {
+                        updateLeftInputString()
+                    }
+                    delay(36)
+                    if (onLeftKeyLongPressUp) return@launch
+                }
+            }
+        }
+    }
+
+    private fun sendLeftKeyEvents(keyCode: Int) {
+        currentInputConnection?.apply {
+            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+            sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+        }
+    }
+
+    private fun updateLeftInputString() {
+        if (_inputString.value.isNotEmpty()) {
+            stringInTail = StringBuilder(stringInTail)
+                .insert(0, _inputString.value.last())
+                .toString()
+            _inputString.update { it.dropLast(1) }
         }
     }
 
@@ -1763,6 +1749,7 @@ class IMEService: InputMethodService() {
                         else -> return@setOnTouchListener false
                     }
                 }
+
                 it.setOnLongClickListener { v ->
                     tenKeysLongPressed = true
                     when(_currentInputMode.value){
@@ -2104,25 +2091,16 @@ class IMEService: InputMethodService() {
         inputForInsert: String,
         sb: StringBuilder
     ) {
-        if (inputForInsert.isNotEmpty()){
-            try {
-                val hiraganaAtInsertPosition = inputForInsert.last()
-                hiraganaAtInsertPosition.let { c ->
-                    if (c.getNextInputChar(char) == null){
-                        _inputString.value = sb.append(inputForInsert).append(char).toString()
-                    }else {
-                        appendCharToStringBuilder(
-                            c.getNextInputChar(char)!!,
-                            inputForInsert,
-                            sb
-                        )
-                    }
+        if (inputForInsert.isNotEmpty()) {
+            val hiraganaAtInsertPosition = inputForInsert.last()
+            val nextChar = hiraganaAtInsertPosition.getNextInputChar(char)
 
-                }
-            }catch (e: Exception){
-                if (e is CancellationException) throw e
+            if (nextChar == null) {
+                _inputString.value = sb.append(inputForInsert).append(char).toString()
+            } else {
+                appendCharToStringBuilder(nextChar, inputForInsert, sb)
             }
-        }else{
+        } else {
             _inputString.update {
                 char.toString()
             }

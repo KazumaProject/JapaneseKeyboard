@@ -104,18 +104,23 @@ class LOUDS {
         rank1Array: IntArray,
     ): String {
         val list = mutableListOf<Char>()
-        val firstNodeId = LBS.rank1Common(nodeIndex,rank1Array)
+        val firstNodeId = LBS.rank1Common(nodeIndex, rank1Array)
         val firstChar = labels[firstNodeId]
         list.add(firstChar)
-        var parentNodeIndex = LBS.select1Common(LBS.rank0Common(nodeIndex,rank0Array),rank1Array)
-        while (parentNodeIndex != 0){
-            val parentNodeId = LBS.rank1Common(parentNodeIndex,rank1Array)
-            val pair = labels[parentNodeId]
-            list.add(pair)
-            parentNodeIndex = LBS.select1Common(LBS.rank0Common(parentNodeIndex,rank0Array),rank1Array)
-            if (parentNodeId == 0) return ""
+
+        var parentNodeIndex = LBS.select1Common(LBS.rank0Common(nodeIndex, rank0Array), rank1Array)
+
+        while (parentNodeIndex != 0) {
+            val parentNodeId = LBS.rank1Common(parentNodeIndex, rank1Array)
+            val parentChar = labels[parentNodeId]
+            list.add(parentChar)
+
+            parentNodeIndex = LBS.select1Common(LBS.rank0Common(parentNodeIndex, rank0Array), rank1Array)
+
+            if (parentNodeId == 0) break
         }
-        return list.toList().reversed().joinToString("")
+
+        return list.reversed().joinToString("")
     }
 
     fun getLetterShortArray(

@@ -43,19 +43,15 @@ class GraphBuilder {
             )
         )
 
-        val cache = mutableMapOf<String, List<String>>()
-
         val time = measureTime {
-            str.indices.toList().parallelStream().forEach { i ->
+            for (i in str.indices) {
                 val subStr = str.substring(i)
-                val commonPrefixSearch = cache.getOrPut(subStr) {
-                    yomiTrie.commonPrefixSearch(
-                        str = subStr,
-                        rank0Array = rank0ArrayLBSYomi,
-                        rank1Array = rank1ArrayLBSYomi,
-                    ).toMutableList().apply {
-                        if (isEmpty()) add(subStr)
-                    }
+                val commonPrefixSearch = yomiTrie.commonPrefixSearch(
+                    str = subStr,
+                    rank0Array = rank0ArrayLBSYomi,
+                    rank1Array = rank1ArrayLBSYomi,
+                ).toMutableList().apply {
+                    if (isEmpty()) add(subStr)
                 }
 
                 for (yomiStr in commonPrefixSearch) {
@@ -85,9 +81,10 @@ class GraphBuilder {
                         )
                     }
 
-                    synchronized(graph) {
-                        graph[i + yomiStr.length].add(tangoList.toMutableList())
+                    if (graph[i + yomiStr.length].isEmpty()) {
+                        graph[i + yomiStr.length] = mutableListOf()
                     }
+                    graph[i + yomiStr.length].add(tangoList.toMutableList())
                 }
                 println("$i $commonPrefixSearch $subStr")
             }
@@ -96,7 +93,7 @@ class GraphBuilder {
         println("time of construct graph: $time $str")
         println("graph: $graph")
 
-        return graph
+        return graph.toList()
     }
 
 }
