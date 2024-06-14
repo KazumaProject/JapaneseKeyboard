@@ -85,6 +85,7 @@ class GraphBuilder {
                         graph[i + yomiStr.length] = mutableListOf()
                     }
                     graph[i + yomiStr.length].add(tangoList.toMutableList())
+                    println("tangoList: $i $tangoList")
                 }
                 println("$i $commonPrefixSearch $subStr")
             }
