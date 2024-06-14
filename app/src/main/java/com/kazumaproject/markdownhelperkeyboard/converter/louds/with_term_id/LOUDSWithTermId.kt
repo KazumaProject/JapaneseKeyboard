@@ -157,8 +157,15 @@ class LOUDSWithTermId {
         return -1
     }
 
+    private fun select0CommonCached(pos: Int, rank0Array: IntArray): Int {
+        val cachedResults = mutableMapOf<Pair<Int, IntArray>, Int>()
+        return cachedResults.getOrPut(Pair(pos, rank0Array)) {
+            LBS.select0Common(pos, rank0Array)
+        }
+    }
+
     private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
-        val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
+        val y = select0CommonCached(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
         return if (y < 0 || !LBS[y]) -1 else y
     }
 
@@ -242,6 +249,22 @@ class LOUDSWithTermId {
         return -1
     }
 
+    private fun indexOfLabel(label: Int, LBSInBoolArray: BooleanArray): Int {
+        var count = 0
+        var i = 0
+        val size = LBSInBoolArray.size
+
+        while (i < size) {
+            if (!LBSInBoolArray[i]) {
+                if (++count == label) {
+                    return i + 1
+                }
+            }
+            i++
+        }
+        return size
+    }
+
     private tailrec fun searchShortArray(
         index: Int,
         chars: CharArray,
@@ -269,23 +292,6 @@ class LOUDSWithTermId {
         }
         return -1
     }
-
-    private fun indexOfLabel(label: Int, LBSInBoolArray: BooleanArray): Int {
-        var count = 0
-        var i = 0
-        val size = LBSInBoolArray.size
-
-        while (i < size) {
-            if (!LBSInBoolArray[i]) {
-                if (++count == label) {
-                    return i + 1
-                }
-            }
-            i++
-        }
-        return size
-    }
-
     fun writeExternal(out: ObjectOutput){
         try {
             out.apply {
