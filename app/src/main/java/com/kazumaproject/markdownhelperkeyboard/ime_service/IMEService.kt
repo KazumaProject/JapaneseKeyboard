@@ -119,6 +119,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
@@ -287,7 +288,7 @@ class IMEService: InputMethodService() {
 
         const val DISPLAY_LEFT_STRING_TIME = 64L
         const val DELAY_TIME = 1000L
-        const val DELETE_DELAY_TIME = 64L
+        const val LONG_DELAY_TIME = 64L
         const val N_BEST = 4
     }
 
@@ -330,11 +331,7 @@ class IMEService: InputMethodService() {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
-        if (currentInputType == InputTypeForIME.TextWebSearchView )
-            currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
-        else
-            currentInputConnection?.requestCursorUpdates(0)
-
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         resetAllFlags()
         setCurrentInputType(editorInfo)
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
@@ -351,11 +348,7 @@ class IMEService: InputMethodService() {
 
     override fun onWindowShown() {
         super.onWindowShown()
-        if (currentInputType == InputTypeForIME.TextWebSearchView )
-            currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
-        else
-            currentInputConnection?.requestCursorUpdates(0)
-
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         _suggestionViewStatus.update { true }
     }
@@ -373,9 +366,7 @@ class IMEService: InputMethodService() {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
             Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value}")
-            if (_currentInputMode.value == InputMode.ModeEnglish && (currentInputType == InputTypeForIME.TextWebSearchView) ) {
-                if (composingText == null) _inputString.update { EMPTY_STRING }
-            }
+            if (composingText == null) _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -657,9 +648,6 @@ class IMEService: InputMethodService() {
                 }else{
                     _inputString.update { EMPTY_STRING }
                 }
-                _suggestionFlag.update { flag ->
-                    !flag
-                }
                 if (!_suggestionViewStatus.value){
                     _suggestionViewStatus.update { true }
                 }
@@ -888,7 +876,6 @@ class IMEService: InputMethodService() {
         }else{
             _inputString.update { EMPTY_STRING }
         }
-        _suggestionFlag.update { flag -> !flag }
     }
 
     private suspend fun setTenkeyIconsEmptyInputString() = withContext(mainDispatcher){
@@ -951,15 +938,15 @@ class IMEService: InputMethodService() {
     private suspend fun setSuggestionForJapanese(mainView: MainLayoutBinding) {
         updateSuggestionUI(mainView)
         _suggestionList.update {
-            getSuggestionList()
+            getSuggestionList(ioDispatcher)
         }
     }
 
-    private suspend fun getSuggestionList()= CoroutineScope(ioDispatcher).async{
+    private suspend fun getSuggestionList(ioDispatcher: CoroutineDispatcher)= CoroutineScope(ioDispatcher).async{
         val queryText = _inputString.value
         return@async try {
             println("input str: $queryText")
-            kanaKanjiEngine.getCandidates(queryText, N_BEST)
+            kanaKanjiEngine.getCandidates(queryText, N_BEST, ioDispatcher)
         }catch (e: Exception){
             if (e is CancellationException) throw e
             println(e.stackTraceToString())
@@ -967,41 +954,38 @@ class IMEService: InputMethodService() {
         }
     }.await()
 
-    private fun deleteLongPress() = CoroutineScope(ioDispatcher).launch {
-        if (_inputString.value.isNotEmpty()){
-            while (isActive){
-                if (_inputString.value.length == 1){
-                    currentInputConnection?.commitText("",0)
+    private fun deleteLongPress() = CoroutineScope(Dispatchers.Default).launch {
+        while (isActive) {
+            if (_inputString.value.isNotEmpty()) {
+                if (_inputString.value.length == 1) {
+                    currentInputConnection?.commitText("", 0)
                     _inputString.update { EMPTY_STRING }
-                }else{
+                } else {
                     _inputString.update { it.dropLast(1) }
                 }
-                if (_inputString.value.isEmpty()) {
-                    if (stringInTail.isNotEmpty()) {
-                        isContinuousTapInputEnabled = true
-                        lastFlickConvertedNextHiragana = true
-                        return@launch
-                    }
-                }
-                delay(DELETE_DELAY_TIME)
-                if (onDeleteLongPressUp) {
-                    isContinuousTapInputEnabled = true
-                    lastFlickConvertedNextHiragana = true
-                    return@launch
+            } else {
+                if (stringInTail.isEmpty()) {
+                    currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 }
             }
-        }else {
-            while (isActive){
-                if (stringInTail.isNotEmpty()) return@launch
-                currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
-                delay(DELETE_DELAY_TIME)
-                if (onDeleteLongPressUp) {
-                    isContinuousTapInputEnabled = true
-                    lastFlickConvertedNextHiragana = true
-                    return@launch
-                }
+
+            if (_inputString.value.isEmpty() && stringInTail.isNotEmpty()) {
+                enableContinuousTapInput()
+                return@launch
+            }
+
+            delay(LONG_DELAY_TIME)
+
+            if (onDeleteLongPressUp) {
+                enableContinuousTapInput()
+                return@launch
             }
         }
+    }
+
+    private fun enableContinuousTapInput() {
+        isContinuousTapInputEnabled = true
+        lastFlickConvertedNextHiragana = true
     }
 
     private fun setEnterKeyPress(){
@@ -1084,9 +1068,6 @@ class IMEService: InputMethodService() {
                     CoroutineScope(ioDispatcher).launch {
                         onDeleteLongPressUp = true
                         deleteKeyLongKeyPressed = false
-                        _suggestionFlag.update {
-                            !it
-                        }
                     }
                 }
             }
@@ -1103,7 +1084,6 @@ class IMEService: InputMethodService() {
                     if (stringInTail.isNotEmpty()) return@setOnClickListener
                     currentInputConnection?.apply {
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL))
                     }
                 }
             }
@@ -1255,7 +1235,6 @@ class IMEService: InputMethodService() {
             }else{
                 currentInputConnection?.apply {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DEL))
                 }
             }
         }
@@ -1308,9 +1287,7 @@ class IMEService: InputMethodService() {
                         onLeftKeyLongPressUp = true
                         delay(100)
                         onLeftKeyLongPressUp = false
-                        if (_inputString.value.isNotBlank()) {
-                            _suggestionFlag.update { !it }
-                        } else {
+                        if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
                             _suggestionList.value = emptyList()
                         }
                     }
@@ -1357,21 +1334,20 @@ class IMEService: InputMethodService() {
             CoroutineScope(ioDispatcher).launch {
                 while (isActive) {
                     if (_inputString.value.isEmpty()) {
-                        sendLeftKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+                        sendLeftKeyEvents()
                     } else {
                         updateLeftInputString()
                     }
-                    delay(36)
+                    delay(LONG_DELAY_TIME)
                     if (onLeftKeyLongPressUp) return@launch
                 }
             }
         }
     }
 
-    private fun sendLeftKeyEvents(keyCode: Int) {
+    private fun sendLeftKeyEvents() {
         currentInputConnection?.apply {
-            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-            sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         }
     }
 
@@ -1396,11 +1372,6 @@ class IMEService: InputMethodService() {
                             onRightKeyLongPressUp = true
                             delay(100)
                             onRightKeyLongPressUp = false
-                            if (_inputString.value.isNotBlank()) {
-                                _suggestionFlag.update {
-                                    !it
-                                }
-                            }
                         }
                     }
                 }
@@ -1541,9 +1512,6 @@ class IMEService: InputMethodService() {
                                 /** Tap **/
                                 abs(distanceX) < 100 && abs(distanceY) < 100 ->{
                                     if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(keyInfo.tap, insertString, sb)
-                                    _suggestionFlag.update { flag ->
-                                        !flag
-                                    }
                                     when(_currentInputMode.value){
                                         is InputMode.ModeJapanese ->{
                                             it.setTenKeyTextJapanese(currentTenKeyId)
@@ -1590,9 +1558,6 @@ class IMEService: InputMethodService() {
                                         if (keyInfo.flickTop != ' ') sendCharFlick(keyInfo.flickTop, insertString, sb)
                                     }
                                 }
-                            }
-                            _suggestionFlag.update { flag ->
-                                !flag
                             }
                             lastFlickConvertedNextHiragana = true
                             isContinuousTapInputEnabled = true
@@ -1846,9 +1811,6 @@ class IMEService: InputMethodService() {
                                         hidePopUpWindowActive()
                                         sendCharFlick(NUMBER_KEY10_SYMBOL_CHAR[0], insertString, sb)
                                         lastFlickConvertedNextHiragana = false
-                                        _suggestionFlag.update { flag ->
-                                            !flag
-                                        }
                                         it.setImageDrawable(drawableNumberSmall)
                                         it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
                                         return@setOnTouchListener false
@@ -1867,9 +1829,6 @@ class IMEService: InputMethodService() {
                                         }
                                     }
                                     lastFlickConvertedNextHiragana = false
-                                    _suggestionFlag.update { flag ->
-                                        !flag
-                                    }
                                     hidePopUpWindowActive()
                                     it.setImageDrawable(drawableNumberSmall)
                                     it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
@@ -2200,9 +2159,6 @@ class IMEService: InputMethodService() {
                 }
             }
         }
-        _suggestionFlag.update {
-            !it
-        }
     }
 
     private fun smallBigLetterConversionEnglish(
@@ -2219,9 +2175,6 @@ class IMEService: InputMethodService() {
                 }
             }
 
-        }
-        _suggestionFlag.update {
-            !it
         }
     }
 
@@ -2328,9 +2281,6 @@ class IMEService: InputMethodService() {
                     )
                 }
             }
-        }
-        _suggestionFlag.update {
-            !it
         }
     }
     private fun setTouchActionInMoveEnd(appCompatButton: AppCompatButton){
