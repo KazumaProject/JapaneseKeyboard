@@ -101,26 +101,26 @@ class LOUDS {
     fun getLetter(
         nodeIndex: Int,
         rank0Array: IntArray,
-        rank1Array: IntArray,
+        rank1Array: IntArray
     ): String {
-        val list = mutableListOf<Char>()
-        val firstNodeId = LBS.rank1Common(nodeIndex, rank1Array)
-        val firstChar = labels[firstNodeId]
-        list.add(firstChar)
+        val result = StringBuilder()
+        var currentNodeIndex = nodeIndex
 
-        var parentNodeIndex = LBS.select1Common(LBS.rank0Common(nodeIndex, rank0Array), rank1Array)
+        while (true) {
+            val currentNodeId = LBS.rank1Common(currentNodeIndex, rank1Array)
+            val currentChar = labels[currentNodeId]
 
-        while (parentNodeIndex != 0) {
-            val parentNodeId = LBS.rank1Common(parentNodeIndex, rank1Array)
-            val parentChar = labels[parentNodeId]
-            list.add(parentChar)
+            /** Remove this for Wakati **/
+            if (currentChar != ' ') {
+                result.append(currentChar)
+            }
 
-            parentNodeIndex = LBS.select1Common(LBS.rank0Common(parentNodeIndex, rank0Array), rank1Array)
+            if (currentNodeId == 0) break
 
-            if (parentNodeId == 0) break
+            currentNodeIndex = LBS.select1Common(LBS.rank0Common(currentNodeIndex, rank0Array), rank1Array)
         }
 
-        return list.reversed().joinToString("")
+        return result.reverse().toString()
     }
 
     fun getLetterShortArray(

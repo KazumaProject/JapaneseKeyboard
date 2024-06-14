@@ -107,24 +107,31 @@ class KanaKanjiEngine {
     suspend fun getCandidates(
         input: String,
         n: Int,
+        scope: CoroutineScope,
         ioDispatcher: CoroutineDispatcher
-    ): List<Candidate> = CoroutineScope(ioDispatcher).async {
-        val graph = async {
-            graphBuilder.constructGraph(
-                input, systemYomiTrie, systemTangoTrie, systemTokenArray,
-                systemRank0ArrayLBSYomi, systemRank1ArrayLBSYomi, systemRank1ArrayIsLeaf,
-                systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector,
-                rank0ArrayLBSTango = systemRank0ArrayLBSTango, rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-                LBSBooleanArray = systemYomiLBSBooleanArray
-            )
-        }
-        val resultNBestFinal = async { findPath.backwardAStar(graph.await(), input.length, connectionIds, n) }.await()
+    ): List<Candidate> = scope.async {
+
+        println("called kana kanji $input")
+
+        val graph = graphBuilder.constructGraph(
+            input, systemYomiTrie, systemTangoTrie, systemTokenArray,
+            systemRank0ArrayLBSYomi, systemRank1ArrayLBSYomi, systemRank1ArrayIsLeaf,
+            systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = systemRank0ArrayLBSTango, rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+            LBSBooleanArray = systemYomiLBSBooleanArray,
+        )
+
+        println("called kana kanji after construct graph $input")
+
+        val resultNBestFinal = async(ioDispatcher) {
+            findPath.backwardAStar(graph, input.length, connectionIds, n)
+        }.await()
 
         val yomiPartOf = systemYomiTrie.commonPrefixSearch(
             str = input, rank0Array = systemRank0ArrayLBSYomi, rank1Array = systemRank1ArrayLBSYomi
         ).reversed()
 
-        val yomiPartList = async {
+        val yomiPartList = async(ioDispatcher) {
             yomiPartOf.flatMap { yomi ->
                 val termId = systemYomiTrie.getTermId(
                     systemYomiTrie.getNodeIndex(yomi, systemRank1ArrayLBSYomi, systemYomiLBSBooleanArray),
@@ -155,13 +162,13 @@ class KanaKanjiEngine {
         )
 
         val longest = yomiPartOf.firstOrNull() ?: input
-        val longestConversionList = async {
-            nBestPathForLongest(longest, n * 2).map {
-                Candidate(it.string, 5, longest.length.toUByte(), it.wordCost, it.leftId, it.rightId)
-            }
-        }.await()
+//        val longestConversionList = async {
+//            nBestPathForLongest(longest, n * 2).map {
+//                Candidate(it.string, 5, longest.length.toUByte(), it.wordCost, it.leftId, it.rightId)
+//            }
+//        }.await()
 
-        val secondPart = async {
+        val secondPart = async(ioDispatcher) {
             if (longest.length < input.length) {
                 val tempSecondStr = input.substring(longest.length)
                 val tempFirstStrConversionList = nBestPathForLongest(longest, n * 2)
@@ -187,7 +194,7 @@ class KanaKanjiEngine {
             str = input, rank0Array = singleKanjiRank0ArrayLBSYomi, rank1Array = singleKanjiRank1ArrayLBSYomi
         ).reversed()
 
-        val singleKanjiList = async {
+        val singleKanjiList = async(ioDispatcher) {
             singleKanjiCommonPrefix.flatMap { yomi ->
                 val termId = singleKanjiYomiTrie.getTermIdShortArray(
                     singleKanjiYomiTrie.getNodeIndex(yomi, singleKanjiRank1ArrayLBSYomi, singleKanjiYomiLBSBooleanArray),
@@ -215,7 +222,7 @@ class KanaKanjiEngine {
         val finalResult = resultNBestFinal +
                 secondPart.sortedBy { it.score }.filter { it.score - resultNBestFinal.first().score < 4000 } +
                 hirakanaAndKana +
-                longestConversionList +
+                //longestConversionList +
                 yomiPartList +
                 singleKanjiList
 
@@ -266,11 +273,11 @@ class KanaKanjiEngine {
         return result
     }
 
-    suspend fun nBestPathForLongest(
+    private fun nBestPathForLongest(
         input: String,
         n: Int
     ): List<CandidateTemp> {
-        val graph = graphBuilder.constructGraph(
+        val graph = graphBuilder.constructGraphLongest(
             input,
             systemYomiTrie,
             systemTangoTrie,

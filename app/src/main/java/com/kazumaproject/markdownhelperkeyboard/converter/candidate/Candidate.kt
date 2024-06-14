@@ -1,7 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.candidate
 
 /**
- * @see 1:NBest 2:Part of letters 3:Hirakana 4:Katakana 5:Longest
+ * @see 1:NBest 2:Part of letters 3:Hirakana 4:Katakana 5:Combine part of letter 6. Single Kanji
  **/
 data class Candidate (
     val string: String,
