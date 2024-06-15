@@ -835,7 +835,9 @@ class IMEService: InputMethodService() {
             }
 
             if (inputString.isNotBlank()) {
-                _suggestionFlag.update { !it }
+                withContext(mainDispatcher){
+                    _suggestionFlag.update { !it }
+                }
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
                 setComposingTextPreEdit(inputString, spannableString)
