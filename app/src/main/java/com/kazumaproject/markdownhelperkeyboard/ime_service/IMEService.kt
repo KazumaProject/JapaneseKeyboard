@@ -15,7 +15,6 @@ import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.transition.Transition
-import android.transition.TransitionManager
 import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -334,6 +333,7 @@ class IMEService: InputMethodService() {
         resetAllFlags()
         setCurrentInputType(editorInfo)
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         _suggestionViewStatus.update { true }
     }
 
@@ -342,6 +342,7 @@ class IMEService: InputMethodService() {
         Timber.d("onUpdate onFinishInput Called")
         resetAllFlags()
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         _suggestionViewStatus.update { true }
     }
 
@@ -349,6 +350,7 @@ class IMEService: InputMethodService() {
         super.onWindowShown()
         currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         _suggestionViewStatus.update { true }
     }
 
@@ -443,6 +445,7 @@ class IMEService: InputMethodService() {
             launch {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
                     suggestionAdapter?.suggestions = suggestions
+                    mainView.suggestionRecyclerView.scrollToPosition(0)
                 }
             }
 
@@ -478,7 +481,7 @@ class IMEService: InputMethodService() {
                 }
             }
 
-            launchInputString(mainView)
+            launchInputString()
         }
     }
 
@@ -816,23 +819,9 @@ class IMEService: InputMethodService() {
         isContinuousTapInputEnabled = true
     }
 
-    private suspend fun launchInputString(mainView: MainLayoutBinding) = withContext(scope.coroutineContext){
+    private suspend fun launchInputString() = withContext(scope.coroutineContext){
         _inputString.asStateFlow().collectLatest { inputString ->
             Timber.d("launchInputString: $inputString")
-            withContext(mainDispatcher) {
-                mainView.suggestionRecyclerView.apply {
-                    scrollToPosition(0)
-                    isVisible = inputString.isNotEmpty()
-                }
-                mainView.suggestionVisibility.isVisible = inputString.isNotEmpty()
-
-                transition.apply {
-                    duration = 100
-                    addTarget(mainView.suggestionRecyclerView)
-                    addTarget(mainView.suggestionVisibility)
-                }
-                TransitionManager.beginDelayedTransition(mainView.keyboardView.root, transition)
-            }
 
             if (inputString.isNotBlank()) {
                 withContext(mainDispatcher){
