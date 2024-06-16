@@ -107,9 +107,8 @@ class KanaKanjiEngine {
     suspend fun getCandidates(
         input: String,
         n: Int,
-        scope: CoroutineScope,
         ioDispatcher: CoroutineDispatcher
-    ): List<Candidate> = scope.async {
+    ): List<Candidate> = CoroutineScope(ioDispatcher).async {
 
         println("called kana kanji $input")
 
@@ -125,7 +124,7 @@ class KanaKanjiEngine {
 
         val resultNBestFinal = async(ioDispatcher) {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
-        }.await()
+        }
 
         val yomiPartOf = systemYomiTrie.commonPrefixSearch(
             str = input, rank0Array = systemRank0ArrayLBSYomi, rank1Array = systemRank1ArrayLBSYomi
@@ -134,7 +133,7 @@ class KanaKanjiEngine {
         val yomiPartList = async(ioDispatcher) {
             yomiPartOf.flatMap { yomi ->
                 val termId = systemYomiTrie.getTermId(
-                    systemYomiTrie.getNodeIndex(yomi, systemRank1ArrayLBSYomi, systemYomiLBSBooleanArray),
+                    systemYomiTrie.getNodeIndex(yomi, systemRank1ArrayLBSYomi, systemYomiLBSBooleanArray,),
                     systemRank1ArrayIsLeaf
                 )
                 systemTokenArray.getListDictionaryByYomiTermId(
@@ -154,7 +153,7 @@ class KanaKanjiEngine {
                     )
                 }.distinctBy { it.string }
             }.distinctBy { it.string }
-        }.await()
+        }
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
@@ -188,7 +187,7 @@ class KanaKanjiEngine {
             } else {
                 emptyList()
             }
-        }.await()
+        }
 
         val singleKanjiCommonPrefix = singleKanjiYomiTrie.commonPrefixSearchShortArray(
             str = input, rank0Array = singleKanjiRank0ArrayLBSYomi, rank1Array = singleKanjiRank1ArrayLBSYomi
@@ -217,14 +216,16 @@ class KanaKanjiEngine {
                     )
                 }.distinctBy { it.string }
             }.distinctBy { it.string }
-        }.await()
+        }
 
-        val finalResult = resultNBestFinal +
-                secondPart.sortedBy { it.score }.filter { it.score - resultNBestFinal.first().score < 4000 } +
+        val resultFinal = resultNBestFinal.await()
+
+        val finalResult = resultFinal +
+                secondPart.await().sortedBy { it.score }.filter { it.score - resultFinal.first().score < 4000 } +
                 hirakanaAndKana +
                 //longestConversionList +
-                yomiPartList +
-                singleKanjiList
+                yomiPartList.await() +
+                singleKanjiList.await()
 
         return@async finalResult.distinctBy { it.string }
     }.await()

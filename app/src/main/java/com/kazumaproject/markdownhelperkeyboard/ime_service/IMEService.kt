@@ -367,7 +367,7 @@ class IMEService: InputMethodService() {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
             Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value}")
-            if (composingText == null) _inputString.update { EMPTY_STRING }
+            if (composingText == null && stringInTail.isNotEmpty()) _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -393,15 +393,10 @@ class IMEService: InputMethodService() {
         flexboxLayoutManager: FlexboxLayoutManager
     ) = scope.launch {
         mainLayoutBinding?.let { mainView ->
-
-            // Launching state flow collectors
             launch {
                 _suggestionFlag.asStateFlow().collectLatest {
                     setSuggestionOnView(mainView)
                     mainView.keyboardView.root.isVisible = true
-                    mainView.suggestionVisibility.setImageDrawable(
-                        ContextCompat.getDrawable(applicationContext, R.drawable.outline_arrow_drop_down_24)
-                    )
                 }
             }
 
@@ -414,9 +409,7 @@ class IMEService: InputMethodService() {
                             if (isVisible) R.drawable.outline_arrow_drop_down_24 else R.drawable.outline_arrow_drop_up_24
                         )
                     )
-
                     mainView.suggestionRecyclerView.apply {
-                        scrollToPosition(0)
                         layoutManager = flexboxLayoutManager.apply {
                             flexDirection = if (isVisible) FlexDirection.COLUMN else FlexDirection.ROW
                             justifyContent = if (isVisible) JustifyContent.SPACE_AROUND else JustifyContent.FLEX_START
@@ -425,7 +418,6 @@ class IMEService: InputMethodService() {
 
                     val marginsSuggestionView = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
                         leftMargin = 0
-                        rightMargin = 40f.convertDp2Px(applicationContext)
                         topMargin = 0
                         bottomMargin = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
                             if (isVisible) 200f.convertDp2Px(applicationContext) else 0
@@ -446,6 +438,7 @@ class IMEService: InputMethodService() {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
                     suggestionAdapter?.suggestions = suggestions
                     mainView.suggestionRecyclerView.scrollToPosition(0)
+                    mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
                 }
             }
 
@@ -789,6 +782,17 @@ class IMEService: InputMethodService() {
         _inputString.update { EMPTY_STRING }
     }
 
+    private fun resetFlagsLanguageModeClick(){
+        isHenkan = false
+        suggestionClickNum = 0
+        englishSpaceKeyPressed = false
+        onDeleteLongPressUp = false
+        _dakutenPressed.value = false
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
+        _inputString.update { EMPTY_STRING }
+    }
+
     private fun resetFlagsEnterKey(){
         isHenkan = false
         suggestionClickNum = 0
@@ -824,12 +828,10 @@ class IMEService: InputMethodService() {
             Timber.d("launchInputString: $inputString")
 
             if (inputString.isNotBlank()) {
-                withContext(mainDispatcher){
-                    _suggestionFlag.update { !it }
-                }
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
                 setComposingTextPreEdit(inputString, spannableString)
+                _suggestionFlag.update { flag -> !flag }
                 delay(DELAY_TIME)
                 if (!isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
                     !englishSpaceKeyPressed && !deleteKeyLongKeyPressed) {
@@ -966,7 +968,7 @@ class IMEService: InputMethodService() {
         val queryText = _inputString.value
         return@async try {
             println("input str: $queryText")
-            kanaKanjiEngine.getCandidates(queryText, N_BEST, scope,ioDispatcher)
+            kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher)
         }catch (e: Exception){
             if (e is CancellationException) throw e
             println(e.stackTraceToString())
@@ -1228,7 +1230,7 @@ class IMEService: InputMethodService() {
                 }
                 _inputString.value = EMPTY_STRING
             }
-            resetFlagsSuggestionClick()
+            resetFlagsLanguageModeClick()
         }
     }
 
@@ -1331,8 +1333,9 @@ class IMEService: InputMethodService() {
     }
 
     private fun handleLeftKeyPress() {
+
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
-            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+            //currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         } else if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
@@ -1355,11 +1358,7 @@ class IMEService: InputMethodService() {
             suggestionClickNum = 0
             scope.launch {
                 while (isActive) {
-                    if (_inputString.value.isEmpty()) {
-                        sendLeftKeyEvents()
-                    } else {
-                        updateLeftInputString()
-                    }
+                    if (_inputString.value.isNotEmpty()) updateLeftInputString()
                     delay(LONG_DELAY_TIME)
                     if (onLeftKeyLongPressUp) return@launch
                 }
@@ -1410,8 +1409,9 @@ class IMEService: InputMethodService() {
                     isContinuousTapInputEnabled = true
                     scope.launch {
                         while (isActive) {
+
                             actionInRightKeyPressed()
-                            delay(36)
+                            delay(LONG_DELAY_TIME)
                             if (onRightKeyLongPressUp) return@launch
                         }
                     }
@@ -1430,7 +1430,7 @@ class IMEService: InputMethodService() {
 
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
-            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+            //currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
             val dropString = stringInTail.first()
             stringInTail = stringInTail.drop(1)
@@ -1466,6 +1466,7 @@ class IMEService: InputMethodService() {
                 }
                 else ->{
                     setNextReturnInputCharacter()
+
                 }
             }
         }
@@ -1499,7 +1500,6 @@ class IMEService: InputMethodService() {
                             firstXPoint = event.rawX
                             firstYPoint = event.rawY
                             currentTenKeyId = v.id
-
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_UP ->{
@@ -1521,6 +1521,7 @@ class IMEService: InputMethodService() {
                             hidePopUpWindowLeft()
                             hidePopUpWindowBottom()
                             hidePopUpWindowRight()
+
                             if (currentTenKeyId !in tenKeyMap.keysJapanese) {
                                 return@setOnTouchListener false
                             }
@@ -1549,6 +1550,7 @@ class IMEService: InputMethodService() {
                                     it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
                                     it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
                                     currentTenKeyId = 0
+
                                     return@setOnTouchListener false
                                 }
                                 /** Flick Right **/
@@ -1598,6 +1600,7 @@ class IMEService: InputMethodService() {
                             currentTenKeyId = 0
                             it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
                             it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
+
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_MOVE ->{
@@ -1810,6 +1813,7 @@ class IMEService: InputMethodService() {
                                             _inputString.value = EMPTY_STRING
                                         }
                                     }
+
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeEnglish ->{
@@ -1821,6 +1825,7 @@ class IMEService: InputMethodService() {
                                             _inputString.value = EMPTY_STRING
                                         }
                                     }
+
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeNumber ->{
@@ -1836,6 +1841,7 @@ class IMEService: InputMethodService() {
                                         lastFlickConvertedNextHiragana = false
                                         it.setImageDrawable(drawableNumberSmall)
                                         it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
+
                                         return@setOnTouchListener false
                                     }
                                     if (abs(distanceX) > abs(distanceY)) {

@@ -4,6 +4,7 @@ import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.Other.BOS
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import kotlin.time.ExperimentalTime
@@ -12,7 +13,7 @@ import kotlin.time.measureTime
 class GraphBuilder {
 
     @OptIn(ExperimentalTime::class)
-    fun constructGraph(
+     fun constructGraph(
         str: String,
         yomiTrie: LOUDSWithTermId,
         tangoTrie: LOUDS,
@@ -46,40 +47,62 @@ class GraphBuilder {
         val time = measureTime {
             for (i in str.indices) {
                 val subStr = str.substring(i)
-                val commonPrefixSearch = yomiTrie.commonPrefixSearch(
-                    str = subStr,
-                    rank0Array = rank0ArrayLBSYomi,
-                    rank1Array = rank1ArrayLBSYomi,
-                ).toMutableList().apply {
-                    if (isEmpty()) add(subStr)
+                var commonPrefixSearch: MutableList<String>
+                val commonPrefixSearchTime = measureTime {
+                    commonPrefixSearch = yomiTrie.commonPrefixSearch(
+                        str = subStr,
+                        rank0Array = rank0ArrayLBSYomi,
+                        rank1Array = rank1ArrayLBSYomi,
+                    ).toMutableList().apply {
+                        if (isEmpty()) add(subStr)
+                    }
                 }
+                println("commonPrefixSearchTime: $commonPrefixSearchTime $subStr")
 
                 for (yomiStr in commonPrefixSearch) {
-                    val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray)
-                    val termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
+                    var nodeIndex: Int
+                    val nodeIndexTime = measureTime {
+                        nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray)
+                    }
+                    var termId: Int
+                    val termIdTime = measureTime {
+                        termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
+                    }
 
-                    val listToken = tokenArray.getListDictionaryByYomiTermId(
-                        termId,
-                        rank0ArrayTokenArrayBitvector,
-                        rank1ArrayTokenArrayBitvector
-                    )
+                    var listToken: List<TokenEntry>
 
-                    val tangoList = listToken.map {
-                        Node(
-                            l = tokenArray.leftIds[it.posTableIndex.toInt()],
-                            r = tokenArray.rightIds[it.posTableIndex.toInt()],
-                            score = it.wordCost.toInt(),
-                            f = it.wordCost.toInt(),
-                            g = it.wordCost.toInt(),
-                            tango = when (it.nodeId) {
-                                -2 -> yomiStr
-                                -1 -> yomiStr.hiraToKata()
-                                else -> tangoTrie.getLetter(it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango)
-                            },
-                            len = yomiStr.length.toShort(),
-                            sPos = i,
+                    val listTokenTime = measureTime {
+                        listToken = tokenArray.getListDictionaryByYomiTermId(
+                            termId,
+                            rank0ArrayTokenArrayBitvector,
+                            rank1ArrayTokenArrayBitvector
                         )
                     }
+
+                    var tangoList: List<Node>
+                    val tangoListTime = measureTime {
+                        tangoList = listToken.map {
+                            Node(
+                                l = tokenArray.leftIds[it.posTableIndex.toInt()],
+                                r = tokenArray.rightIds[it.posTableIndex.toInt()],
+                                score = it.wordCost.toInt(),
+                                f = it.wordCost.toInt(),
+                                g = it.wordCost.toInt(),
+                                tango = when (it.nodeId) {
+                                    -2 -> yomiStr
+                                    -1 -> yomiStr.hiraToKata()
+                                    else -> tangoTrie.getLetter(it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango)
+                                },
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                            )
+                        }
+                    }
+
+                    println("nodeIndexTime: $nodeIndexTime $yomiStr $nodeIndex")
+                    println("termIdTime: $termIdTime $yomiStr $termId")
+                    println("listTokenTime: $listTokenTime $yomiStr")
+                    println("tangoListTime: $tangoListTime $yomiStr")
 
                     if (graph[i + yomiStr.length].isEmpty()) {
                         graph[i + yomiStr.length] = mutableListOf()
@@ -140,13 +163,11 @@ class GraphBuilder {
                 for (yomiStr in commonPrefixSearch) {
                     val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray)
                     val termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
-
                     val listToken = tokenArray.getListDictionaryByYomiTermId(
                         termId,
                         rank0ArrayTokenArrayBitvector,
                         rank1ArrayTokenArrayBitvector
                     )
-
                     val tangoList = listToken.map {
                         Node(
                             l = tokenArray.leftIds[it.posTableIndex.toInt()],

@@ -33,19 +33,21 @@ class TokenArray {
     fun getListDictionaryByYomiTermId(
         nodeId: Int,
         rank0ArrayTokenArrayBitvector: IntArray,
-        rank1ArrayTokenArrayBitvector: IntArray,
+        rank1ArrayTokenArrayBitvector: IntArray
     ): List<TokenEntry> {
-        val b = bitvector.rank1Common(bitvector.select0Common(nodeId,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)
-        val c = bitvector.rank1Common(bitvector.select0Common(nodeId + 1,rank0ArrayTokenArrayBitvector),rank1ArrayTokenArrayBitvector)
-        val tempList2 = mutableListOf<TokenEntry>()
-        for (i in b until c){
-            tempList2.add(
-                TokenEntry(
-                    posTableIndex = posTableIndexList[i],
-                    wordCost = wordCostList[i],
-                    nodeId = nodeIdList[i],
+        val startRank = bitvector.rank1Common(bitvector.select0Common(nodeId, rank0ArrayTokenArrayBitvector), rank1ArrayTokenArrayBitvector)
+        val endRank = bitvector.rank1Common(bitvector.select0Common(nodeId + 1, rank0ArrayTokenArrayBitvector), rank1ArrayTokenArrayBitvector)
+
+        val tempList2 = mutableListOf<TokenEntry>().apply {
+            for (i in startRank until endRank) {
+                add(
+                    TokenEntry(
+                        posTableIndex = posTableIndexList[i],
+                        wordCost = wordCostList[i],
+                        nodeId = nodeIdList[i]
+                    )
                 )
-            )
+            }
         }
         return tempList2
     }
