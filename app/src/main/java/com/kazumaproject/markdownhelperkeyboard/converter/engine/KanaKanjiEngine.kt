@@ -112,19 +112,21 @@ class KanaKanjiEngine {
 
         println("called kana kanji $input")
 
-        val graph = graphBuilder.constructGraph(
-            input, systemYomiTrie, systemTangoTrie, systemTokenArray,
-            systemRank0ArrayLBSYomi, systemRank1ArrayLBSYomi, systemRank1ArrayIsLeaf,
-            systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = systemRank0ArrayLBSTango, rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-            LBSBooleanArray = systemYomiLBSBooleanArray,
-        )
+        val graph = async {
+            graphBuilder.constructGraph(
+                input, systemYomiTrie, systemTangoTrie, systemTokenArray,
+                systemRank0ArrayLBSYomi, systemRank1ArrayLBSYomi, systemRank1ArrayIsLeaf,
+                systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector,
+                rank0ArrayLBSTango = systemRank0ArrayLBSTango, rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+                LBSBooleanArray = systemYomiLBSBooleanArray,
+            )
+        }.await()
 
         println("called kana kanji after construct graph $input")
 
         val resultNBestFinal = async(ioDispatcher) {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
-        }
+        }.await()
 
         val yomiPartOf = systemYomiTrie.commonPrefixSearch(
             str = input, rank0Array = systemRank0ArrayLBSYomi, rank1Array = systemRank1ArrayLBSYomi
@@ -218,10 +220,9 @@ class KanaKanjiEngine {
             }.distinctBy { it.string }
         }
 
-        val resultFinal = resultNBestFinal.await()
 
-        val finalResult = resultFinal +
-                secondPart.await().sortedBy { it.score }.filter { it.score - resultFinal.first().score < 4000 } +
+        val finalResult = resultNBestFinal +
+                secondPart.await().sortedBy { it.score }.filter { it.score - resultNBestFinal.first().score < 4000 } +
                 hirakanaAndKana +
                 //longestConversionList +
                 yomiPartList.await() +

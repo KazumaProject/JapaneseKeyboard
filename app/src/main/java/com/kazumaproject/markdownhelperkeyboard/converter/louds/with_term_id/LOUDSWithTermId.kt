@@ -229,10 +229,10 @@ class LOUDSWithTermId {
         LBSInBoolArray: BooleanArray
     ): Int {
         var currentIndex = index
+        var charIndex = LBS.rank1Common(currentIndex, rank1Array)
         val charCount = chars.size
 
         while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
-            val charIndex = LBS.rank1Common(currentIndex, rank1Array)
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex]
 
@@ -244,24 +244,25 @@ class LOUDSWithTermId {
                 return search(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray)
             }
             currentIndex++
+            charIndex++
         }
         return -1
     }
 
-    private fun indexOfLabel(
-        label: Int,
-        LBSInBoolArray: BooleanArray
-    ): Int {
+    private fun indexOfLabel(label: Int, LBSInBoolArray: BooleanArray): Int {
         var count = 0
-        for (i in LBSInBoolArray.indices) {
+        var i = 0
+        val size = LBSInBoolArray.size
+
+        while (i < size) {
             if (!LBSInBoolArray[i]) {
-                count++
-                if (count == label) {
+                if (++count == label) {
                     return i + 1
                 }
             }
+            i++
         }
-        return LBSInBoolArray.size
+        return size
     }
 
     private tailrec fun searchShortArray(
