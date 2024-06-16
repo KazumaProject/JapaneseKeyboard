@@ -416,7 +416,7 @@ class IMEService: InputMethodService() {
                         }
                     }
 
-                    val marginsSuggestionView = (mainView.suggestionRecyclerView.layoutParams as FrameLayout.LayoutParams).apply {
+                    val marginsSuggestionView = (mainView.suggestionViewParent.layoutParams as FrameLayout.LayoutParams).apply {
                         leftMargin = 0
                         topMargin = 0
                         bottomMargin = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
@@ -430,7 +430,7 @@ class IMEService: InputMethodService() {
                             if (isVisible) 54f.convertDp2Px(applicationContext) else 336f.convertDp2Px(applicationContext)
                         }
                     }
-                    mainView.suggestionRecyclerView.layoutParams = marginsSuggestionView
+                    mainView.suggestionViewParent.layoutParams = marginsSuggestionView
                 }
             }
 

@@ -2,8 +2,10 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_gravity="bottom"
     android:background="@color/suggestion_view_bg">
+
 
     <View
         android:layout_width="match_parent"
@@ -12,29 +14,44 @@
         android:background="@color/suggestion_view_bg"
         android:backgroundTint="@color/suggestion_view_bg"/>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/suggestion_recycler_view"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/suggestionView_parent"
         android:layout_width="match_parent"
         android:layout_height="52dp"
-        android:layout_gravity="bottom"
         android:layout_marginBottom="@dimen/keyboard_height_land"
-        android:layout_marginEnd="40dp"
         android:background="@color/suggestion_view_bg"
-        android:visibility="visible"/>
+        android:backgroundTint="@color/suggestion_view_bg">
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/suggestion_visibility"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="@color/keyboard_bg"
-        android:src="@drawable/outline_arrow_drop_down_24"
-        android:scaleType="center"
-        android:tint="@color/keyboard_icon_color"
-        android:layout_gravity="end"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="8dp"
-        android:visibility="visible"
-        />
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/suggestion_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="@dimen/keyboard_height_land"
+            android:layout_marginEnd="40dp"
+            android:background="@color/suggestion_view_bg"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"/>
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/suggestion_visibility"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@color/suggestion_view_bg"
+            android:src="@drawable/outline_arrow_drop_down_24"
+            android:scaleType="center"
+            android:tint="@color/keyboard_icon_color"
+            android:layout_gravity="end"
+            android:visibility="visible"
+            android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <include
         android:id="@+id/keyboard_view"
