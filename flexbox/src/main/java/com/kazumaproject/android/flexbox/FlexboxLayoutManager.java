@@ -1965,7 +1965,11 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         } else {
             int scrolled = handleScrollingSubOrientation(dy);
             mAnchorInfo.mPerpendicularCoordinate += scrolled;
-            mSubOrientationHelper.offsetChildren(-scrolled);
+            try {
+                mSubOrientationHelper.offsetChildren(-scrolled);
+            }catch (Exception e){
+
+            }
             return scrolled;
         }
     }
