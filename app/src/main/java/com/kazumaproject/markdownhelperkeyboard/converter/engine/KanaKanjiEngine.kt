@@ -119,20 +119,18 @@ class KanaKanjiEngine {
 
         println("called kana kanji $input")
 
-        val graph = async {
-            graphBuilder.constructGraph(
-                input, systemYomiTrie, systemTangoTrie, systemTokenArray,
-                systemRank0ArrayLBSYomi, systemRank1ArrayLBSYomi, systemRank1ArrayIsLeaf,
-                systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector,
-                rank0ArrayLBSTango = systemRank0ArrayLBSTango, rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-                LBSBooleanArray = systemYomiLBSBooleanArray,
-                LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
-            )
-        }.await()
+        val graph = graphBuilder.constructGraph(
+            input, systemYomiTrie, systemTangoTrie, systemTokenArray,
+            systemRank0ArrayLBSYomi, systemRank1ArrayLBSYomi, systemRank1ArrayIsLeaf,
+            systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector,
+            rank0ArrayLBSTango = systemRank0ArrayLBSTango, rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+            LBSBooleanArray = systemYomiLBSBooleanArray,
+            LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
+        )
 
         println("called kana kanji after construct graph $input")
 
-        val resultNBestFinal = async(ioDispatcher) {
+        val resultNBestFinal = async {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
         }.await()
 
@@ -140,7 +138,7 @@ class KanaKanjiEngine {
             str = input, rank0Array = systemRank0ArrayLBSYomi, rank1Array = systemRank1ArrayLBSYomi
         ).reversed()
 
-        val yomiPartList = async(ioDispatcher) {
+        val yomiPartList = async {
             yomiPartOf.flatMap { yomi ->
                 val termId = systemYomiTrie.getTermId(
                     systemYomiTrie.getNodeIndex(yomi, systemRank1ArrayLBSYomi, systemYomiLBSBooleanArray, systemYomiLBSPreprocess),
@@ -177,7 +175,7 @@ class KanaKanjiEngine {
 //            }
 //        }.await()
 
-        val secondPart = async(ioDispatcher) {
+        val secondPart = async {
             if (longest.length < input.length) {
                 val tempSecondStr = input.substring(longest.length)
                 val tempFirstStrConversionList = nBestPathForLongest(longest, n * 2)
@@ -203,7 +201,7 @@ class KanaKanjiEngine {
             str = input, rank0Array = singleKanjiRank0ArrayLBSYomi, rank1Array = singleKanjiRank1ArrayLBSYomi
         ).reversed()
 
-        val singleKanjiList = async(ioDispatcher) {
+        val singleKanjiList = async {
             singleKanjiCommonPrefix.flatMap { yomi ->
                 val termId = singleKanjiYomiTrie.getTermIdShortArray(
                     singleKanjiYomiTrie.getNodeIndex(yomi, singleKanjiRank1ArrayLBSYomi, singleKanjiYomiLBSBooleanArray,singleKanjiYomiLBSPreprocess),

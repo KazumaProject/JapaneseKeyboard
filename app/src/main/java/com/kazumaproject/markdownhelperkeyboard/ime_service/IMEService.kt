@@ -639,6 +639,7 @@ class IMEService: InputMethodService() {
                 updateSuggestionList()
                 handleStringInTail()
                 showSuggestionView()
+                _suggestionFlag.update { flag -> !flag }
             }
         }
     }
@@ -831,7 +832,6 @@ class IMEService: InputMethodService() {
                 /** 入力された文字の selection と composing region を設定する **/
                 val spannableString = SpannableString(inputString + stringInTail)
                 setComposingTextPreEdit(inputString, spannableString)
-                _suggestionFlag.update { flag -> !flag }
                 delay(DELAY_TIME)
                 if (!isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
                     !englishSpaceKeyPressed && !deleteKeyLongKeyPressed) {
@@ -995,9 +995,8 @@ class IMEService: InputMethodService() {
                 enableContinuousTapInput()
                 return@launch
             }
-
+            _suggestionFlag.update { flag -> !flag }
             delay(LONG_DELAY_TIME)
-
             if (onDeleteLongPressUp) {
                 enableContinuousTapInput()
                 return@launch
@@ -1101,6 +1100,7 @@ class IMEService: InputMethodService() {
                 _inputString.value.isNotEmpty()  ->{
                     deleteStringCommon()
                     resetFlagsDeleteKey()
+                    _suggestionFlag.update { flag -> !flag }
                 }
                 else ->{
                     if (stringInTail.isNotEmpty()) return@setOnClickListener
@@ -1256,6 +1256,7 @@ class IMEService: InputMethodService() {
             if (_inputString.value.isNotEmpty()){
                 deleteStringCommon()
                 resetFlagsDeleteKey()
+                _suggestionFlag.update { flag -> !flag }
             }else{
                 currentInputConnection?.apply {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
@@ -1322,6 +1323,7 @@ class IMEService: InputMethodService() {
             setOnClickListener {
                 setVibrate()
                 handleLeftKeyPress()
+                _suggestionFlag.update { flag -> !flag }
             }
 
             setOnLongClickListener {
@@ -1359,6 +1361,7 @@ class IMEService: InputMethodService() {
             scope.launch {
                 while (isActive) {
                     if (_inputString.value.isNotEmpty()) updateLeftInputString()
+                    _suggestionFlag.update { flag -> !flag }
                     delay(LONG_DELAY_TIME)
                     if (onLeftKeyLongPressUp) return@launch
                 }
@@ -1400,6 +1403,7 @@ class IMEService: InputMethodService() {
             setOnClickListener {
                 setVibrate()
                 actionInRightKeyPressed()
+                _suggestionFlag.update { flag -> !flag }
             }
 
             setOnLongClickListener {
@@ -1412,6 +1416,7 @@ class IMEService: InputMethodService() {
                     scope.launch {
                         while (isActive) {
                             actionInRightKeyPressed()
+                            _suggestionFlag.update { flag -> !flag }
                             delay(LONG_DELAY_TIME)
                             if (onRightKeyLongPressUp) return@launch
                         }
@@ -1553,7 +1558,7 @@ class IMEService: InputMethodService() {
                                     it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
                                     it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
                                     currentTenKeyId = 0
-
+                                    _suggestionFlag.update { flag -> !flag }
                                     return@setOnTouchListener false
                                 }
                                 /** Flick Right **/
@@ -1603,7 +1608,7 @@ class IMEService: InputMethodService() {
                             currentTenKeyId = 0
                             it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
                             it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-
+                            _suggestionFlag.update { flag -> !flag }
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_MOVE ->{
@@ -1816,7 +1821,7 @@ class IMEService: InputMethodService() {
                                             _inputString.value = EMPTY_STRING
                                         }
                                     }
-
+                                    _suggestionFlag.update { flag -> !flag }
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeEnglish ->{
@@ -1828,7 +1833,7 @@ class IMEService: InputMethodService() {
                                             _inputString.value = EMPTY_STRING
                                         }
                                     }
-
+                                    _suggestionFlag.update { flag -> !flag }
                                     return@setOnTouchListener false
                                 }
                                 is InputMode.ModeNumber ->{
@@ -1844,7 +1849,7 @@ class IMEService: InputMethodService() {
                                         lastFlickConvertedNextHiragana = false
                                         it.setImageDrawable(drawableNumberSmall)
                                         it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
-
+                                        _suggestionFlag.update { flag -> !flag }
                                         return@setOnTouchListener false
                                     }
                                     if (abs(distanceX) > abs(distanceY)) {
@@ -1864,6 +1869,7 @@ class IMEService: InputMethodService() {
                                     hidePopUpWindowActive()
                                     it.setImageDrawable(drawableNumberSmall)
                                     it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
+                                    _suggestionFlag.update { flag -> !flag }
                                     return@setOnTouchListener false
                                 }
                             }
