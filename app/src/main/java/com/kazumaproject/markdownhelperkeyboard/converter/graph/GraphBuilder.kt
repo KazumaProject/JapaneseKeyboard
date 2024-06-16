@@ -13,7 +13,7 @@ import kotlin.time.measureTime
 class GraphBuilder {
 
     @OptIn(ExperimentalTime::class)
-     fun constructGraph(
+    fun constructGraph(
         str: String,
         yomiTrie: LOUDSWithTermId,
         tangoTrie: LOUDS,
