@@ -31,6 +31,7 @@ class KanaKanjiEngine {
     private lateinit var systemRank0ArrayLBSTango: IntArray
     private lateinit var systemRank1ArrayLBSTango: IntArray
     private lateinit var systemYomiLBSBooleanArray: BooleanArray
+    private lateinit var systemYomiLBSPreprocess: IntArray
 
     private lateinit var singleKanjiYomiTrie: LOUDSWithTermId
     private lateinit var singleKanjiTangoTrie: LOUDS
@@ -44,6 +45,9 @@ class KanaKanjiEngine {
     private lateinit var singleKanjiRank0ArrayLBSTango: ShortArray
     private lateinit var singleKanjiRank1ArrayLBSTango: ShortArray
     private lateinit var singleKanjiYomiLBSBooleanArray: BooleanArray
+    private lateinit var singleKanjiYomiLBSPreprocess: IntArray
+
+
     fun buildEngine(
         graphBuilder: GraphBuilder,
         findPath: FindPath,
@@ -102,6 +106,9 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.singleKanjiRank1ArrayLBSTango = singleKanjiRank1ArrayLBSTango
         this@KanaKanjiEngine.singleKanjiYomiLBSBooleanArray = singleKanjiYomiLBSBooleanArray
 
+        this@KanaKanjiEngine.systemYomiLBSPreprocess = preprocessLBSInBoolArray(systemYomiLBSBooleanArray)
+        this@KanaKanjiEngine.singleKanjiYomiLBSPreprocess = preprocessLBSInBoolArray(singleKanjiYomiLBSBooleanArray)
+
     }
 
     suspend fun getCandidates(
@@ -119,6 +126,7 @@ class KanaKanjiEngine {
                 systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector,
                 rank0ArrayLBSTango = systemRank0ArrayLBSTango, rank1ArrayLBSTango = systemRank1ArrayLBSTango,
                 LBSBooleanArray = systemYomiLBSBooleanArray,
+                LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
             )
         }.await()
 
@@ -135,7 +143,7 @@ class KanaKanjiEngine {
         val yomiPartList = async(ioDispatcher) {
             yomiPartOf.flatMap { yomi ->
                 val termId = systemYomiTrie.getTermId(
-                    systemYomiTrie.getNodeIndex(yomi, systemRank1ArrayLBSYomi, systemYomiLBSBooleanArray,),
+                    systemYomiTrie.getNodeIndex(yomi, systemRank1ArrayLBSYomi, systemYomiLBSBooleanArray, systemYomiLBSPreprocess),
                     systemRank1ArrayIsLeaf
                 )
                 systemTokenArray.getListDictionaryByYomiTermId(
@@ -198,7 +206,7 @@ class KanaKanjiEngine {
         val singleKanjiList = async(ioDispatcher) {
             singleKanjiCommonPrefix.flatMap { yomi ->
                 val termId = singleKanjiYomiTrie.getTermIdShortArray(
-                    singleKanjiYomiTrie.getNodeIndex(yomi, singleKanjiRank1ArrayLBSYomi, singleKanjiYomiLBSBooleanArray),
+                    singleKanjiYomiTrie.getNodeIndex(yomi, singleKanjiRank1ArrayLBSYomi, singleKanjiYomiLBSBooleanArray,singleKanjiYomiLBSPreprocess),
                     singleKanjiRank1ArrayIsLeaf
                 )
                 singleKanjiTokenArray.getListDictionaryByYomiTermIdShortArray(
@@ -248,6 +256,7 @@ class KanaKanjiEngine {
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
             rank1ArrayLBSTango = systemRank1ArrayLBSTango,
             LBSBooleanArray = systemYomiLBSBooleanArray,
+            LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
         )
         val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
@@ -292,6 +301,7 @@ class KanaKanjiEngine {
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
             rank1ArrayLBSTango = systemRank1ArrayLBSTango,
             LBSBooleanArray = systemYomiLBSBooleanArray,
+            LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
         )
         return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
     }
@@ -312,20 +322,17 @@ class KanaKanjiEngine {
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
             rank1ArrayLBSTango = systemRank1ArrayLBSTango,
             LBSBooleanArray = systemYomiLBSBooleanArray,
+            LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
         )
         return findPath.viterbi(graph, input.length, connectionIds)
     }
 
-    private fun precomputeLabelIndexMap(LBSInBoolArray: BooleanArray): Map<Int, Int> {
-        val map = mutableMapOf<Int, Int>()
-        var count = 0
-
+    private fun preprocessLBSInBoolArray(LBSInBoolArray: BooleanArray): IntArray {
+        val prefixSum = IntArray(LBSInBoolArray.size + 1)
         for (i in LBSInBoolArray.indices) {
-            if (!LBSInBoolArray[i]) {
-                map[count] = i + 1
-                count++
-            }
+            prefixSum[i + 1] = prefixSum[i] + if (LBSInBoolArray[i]) 0 else 1
         }
-        return map
+        return prefixSum
     }
+
 }

@@ -1335,7 +1335,7 @@ class IMEService: InputMethodService() {
     private fun handleLeftKeyPress() {
 
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
-            //currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         } else if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
@@ -1363,6 +1363,8 @@ class IMEService: InputMethodService() {
                     if (onLeftKeyLongPressUp) return@launch
                 }
             }
+        }else{
+            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
         }
     }
 
@@ -1409,12 +1411,13 @@ class IMEService: InputMethodService() {
                     isContinuousTapInputEnabled = true
                     scope.launch {
                         while (isActive) {
-
                             actionInRightKeyPressed()
                             delay(LONG_DELAY_TIME)
                             if (onRightKeyLongPressUp) return@launch
                         }
                     }
+                }else {
+                    currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 }
                 true
             }
@@ -1430,7 +1433,7 @@ class IMEService: InputMethodService() {
 
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
-            //currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
             val dropString = stringInTail.first()
             stringInTail = stringInTail.drop(1)

@@ -19,6 +19,7 @@ import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
 
+
 class LOUDSWithTermId {
 
     val LBSTemp: MutableList<Boolean> = arrayListOf()
@@ -94,12 +95,13 @@ class LOUDSWithTermId {
         return list.toList().reversed().joinToString("")
     }
 
-    fun getNodeIndex(s: String, rank1Array: IntArray, LBSInBoolArray: BooleanArray): Int{
-        return search(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray)
+
+    fun getNodeIndex(s: String, rank1Array: IntArray,LBSInBoolArray: BooleanArray, LBSInBoolArrayPreprocess: IntArray): Int{
+        return search(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray, LBSInBoolArrayPreprocess)
     }
 
-    fun getNodeIndex(s: String, rank1Array: ShortArray, LBSInBoolArray: BooleanArray): Int{
-        return searchShortArray(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray)
+    fun getNodeIndex(s: String, rank1Array: ShortArray, LBSInBoolArray: BooleanArray, LBSInBoolArrayPreprocess: IntArray): Int{
+        return searchShortArray(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray, LBSInBoolArrayPreprocess)
     }
 
     fun getTermId(
@@ -226,7 +228,8 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         rank1Array: IntArray,
-        LBSInBoolArray: BooleanArray
+        LBSInBoolArray: BooleanArray,
+        LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = LBS.rank1Common(currentIndex, rank1Array)
@@ -240,8 +243,8 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else currentIndex
                 }
-                val nextIndex = indexOfLabel(charIndex, LBSInBoolArray)
-                return search(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray)
+                val nextIndex = indexOfLabel(charIndex, LBSInBoolArrayPreprocess)
+                return search(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray,LBSInBoolArrayPreprocess)
             }
             currentIndex++
             charIndex++
@@ -249,20 +252,19 @@ class LOUDSWithTermId {
         return -1
     }
 
-    private fun indexOfLabel(label: Int, LBSInBoolArray: BooleanArray): Int {
-        var count = 0
-        var i = 0
-        val size = LBSInBoolArray.size
+    private fun indexOfLabel(label: Int, prefixSum: IntArray): Int {
+        var low = 0
+        var high = prefixSum.size - 1
 
-        while (i < size) {
-            if (!LBSInBoolArray[i]) {
-                if (++count == label) {
-                    return i + 1
-                }
+        while (low < high) {
+            val mid = (low + high) / 2
+            if (prefixSum[mid] < label) {
+                low = mid + 1
+            } else {
+                high = mid
             }
-            i++
         }
-        return size
+        return low
     }
 
     private tailrec fun searchShortArray(
@@ -270,7 +272,8 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         rank1Array: ShortArray,
-        LBSInBoolArray: BooleanArray
+        LBSInBoolArray: BooleanArray,
+        LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = LBS.rank1CommonShort(currentIndex, rank1Array)
@@ -284,8 +287,8 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else currentIndex
                 }
-                val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArray)
-                return searchShortArray(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray)
+                val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess)
+                return searchShortArray(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray,LBSInBoolArrayPreprocess)
             }
             currentIndex++
             charIndex++

@@ -26,6 +26,7 @@ class GraphBuilder {
         rank0ArrayLBSTango: IntArray,
         rank1ArrayLBSTango: IntArray,
         LBSBooleanArray: BooleanArray,
+        LBSBooleanArrayPreprocess: IntArray
     ): List<MutableList<MutableList<Node>>> {
         val graph: MutableList<MutableList<MutableList<Node>>> = MutableList(str.length + 2) { mutableListOf() }
         graph[0].add(mutableListOf(BOS))
@@ -62,7 +63,7 @@ class GraphBuilder {
                 for (yomiStr in commonPrefixSearch) {
                     var nodeIndex: Int
                     val nodeIndexTime = measureTime {
-                        nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray)
+                        nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray,LBSBooleanArrayPreprocess)
                     }
                     var termId: Int
                     val termIdTime = measureTime {
@@ -131,6 +132,7 @@ class GraphBuilder {
         rank0ArrayLBSTango: IntArray,
         rank1ArrayLBSTango: IntArray,
         LBSBooleanArray: BooleanArray,
+        LBSBooleanArrayPreprocess: IntArray
     ): List<MutableList<MutableList<Node>>> {
         val graph: MutableList<MutableList<MutableList<Node>>> = MutableList(str.length + 2) { mutableListOf() }
         graph[0].add(mutableListOf(BOS))
@@ -161,7 +163,7 @@ class GraphBuilder {
                 }
 
                 for (yomiStr in commonPrefixSearch) {
-                    val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray)
+                    val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray,LBSBooleanArrayPreprocess)
                     val termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
                     val listToken = tokenArray.getListDictionaryByYomiTermId(
                         termId,
