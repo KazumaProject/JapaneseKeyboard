@@ -347,14 +347,6 @@ class IMEService: InputMethodService() {
         _suggestionViewStatus.update { true }
     }
 
-    override fun onWindowShown() {
-        super.onWindowShown()
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
-        mainLayoutBinding?.keyboardView?.root?.isVisible = true
-        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        _suggestionViewStatus.update { true }
-    }
-
     override fun onWindowHidden() {
         super.onWindowHidden()
         resetAllFlags()
@@ -368,7 +360,7 @@ class IMEService: InputMethodService() {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
             Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail")
-            if (composingText == null) _inputString.update { EMPTY_STRING }
+            if (composingText == null && _inputString.value.isNotEmpty()) _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -475,7 +467,33 @@ class IMEService: InputMethodService() {
                 }
             }
 
-            launchInputString()
+            launch {
+                _inputString.asStateFlow().collectLatest { inputString ->
+                    Timber.d("launchInputString: $inputString")
+
+                    if (inputString.isNotBlank()) {
+                        /** 入力された文字の selection と composing region を設定する **/
+                        /** 入力された文字の selection と composing region を設定する **/
+                        val spannableString = SpannableString(inputString + stringInTail)
+                        setComposingTextPreEdit(inputString, spannableString)
+                        delay(DELAY_TIME)
+                        if (!isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
+                            !englishSpaceKeyPressed && !deleteKeyLongKeyPressed) {
+                            isContinuousTapInputEnabled = true
+                            lastFlickConvertedNextHiragana = true
+                            println("current cursor pos: ${getCurrentText()} ${inputString.length}")
+                            setComposingTextAfterEdit(inputString, spannableString)
+                        }
+                    } else {
+                        _suggestionList.update { emptyList() }
+                        setTenkeyIconsEmptyInputString()
+                        if (stringInTail.isNotEmpty()) {
+                            currentInputConnection?.setComposingText(stringInTail, 1)
+                        }
+                    }
+                }
+            }
+
         }
     }
 
@@ -833,32 +851,6 @@ class IMEService: InputMethodService() {
         isHenkan = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
-    }
-
-    private suspend fun launchInputString() = withContext(scope.coroutineContext){
-        _inputString.asStateFlow().collectLatest { inputString ->
-            Timber.d("launchInputString: $inputString")
-
-            if (inputString.isNotBlank()) {
-                /** 入力された文字の selection と composing region を設定する **/
-                val spannableString = SpannableString(inputString + stringInTail)
-                setComposingTextPreEdit(inputString, spannableString)
-                delay(DELAY_TIME)
-                if (!isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
-                    !englishSpaceKeyPressed && !deleteKeyLongKeyPressed) {
-                    isContinuousTapInputEnabled = true
-                    lastFlickConvertedNextHiragana = true
-                    println("current cursor pos: ${getCurrentText()} ${inputString.length}")
-                    setComposingTextAfterEdit(inputString, spannableString)
-                }
-            } else {
-                _suggestionList.update { emptyList() }
-                setTenkeyIconsEmptyInputString()
-                if (stringInTail.isNotEmpty()) {
-                    currentInputConnection?.setComposingText(stringInTail, 1)
-                }
-            }
-        }
     }
 
     private fun getCurrentText(): String? {
