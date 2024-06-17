@@ -2301,22 +2301,34 @@ class IMEService: InputMethodService() {
         _inputString.value = EMPTY_STRING
     }
 
-    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>){
+    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) = scope.launch{
         val nextSuggestion = listIterator.next()
-        val spannableString2 = SpannableString(nextSuggestion.string + stringInTail)
+        val candidateType = nextSuggestion.type.toInt()
+        if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
+            stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
+            delay(DELAY_CANDIDATE_CLICK)
+        }
+        val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
         spannableString2.apply {
             setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         currentInputConnection?. setComposingText(spannableString2,1)
+        _suggestionFlag.update { flag -> !flag }
     }
 
-    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>){
+    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) = scope.launch{
         val nextSuggestion = suggestions[0]
-        val spannableStringWithSuggestion = SpannableString(nextSuggestion.string + stringInTail)
-        spannableStringWithSuggestion.apply {
+        val candidateType = nextSuggestion.type.toInt()
+        if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
+            stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
+            delay(DELAY_CANDIDATE_CLICK)
+        }
+        val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
+        spannableString2.apply {
             setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        currentInputConnection?.setComposingText(spannableStringWithSuggestion,1)
+        currentInputConnection?. setComposingText(spannableString2,1)
+        _suggestionFlag.update { flag -> !flag }
     }
     private fun setNextReturnInputCharacter(){
         _dakutenPressed.value = true
