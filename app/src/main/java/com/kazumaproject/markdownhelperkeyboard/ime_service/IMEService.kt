@@ -284,7 +284,8 @@ class IMEService: InputMethodService() {
         val NUMBER_KEY10_SYMBOL_CHAR = listOf('(',')','[',']')
         const val EMPTY_STRING = ""
 
-        const val DISPLAY_LEFT_STRING_TIME = 16L
+        const val DISPLAY_LEFT_STRING_TIME = 64L
+        const val DELAY_CANDIDATE_CLICK = 64L
         const val DELAY_TIME = 1000L
         const val LONG_DELAY_TIME = 64L
         const val N_BEST = 4
@@ -366,8 +367,8 @@ class IMEService: InputMethodService() {
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
-            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value}")
-            if (composingText == null && stringInTail.isNotEmpty()) _inputString.update { EMPTY_STRING }
+            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail")
+            if (composingText == null) _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -632,7 +633,6 @@ class IMEService: InputMethodService() {
         if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
             stringInTail = _inputString.value.substring(candidate.length.toInt())
         }
-
         if (_inputString.value.isNotBlank()) {
             scope.launch {
                 commitCandidateText(candidate.string)
@@ -654,7 +654,7 @@ class IMEService: InputMethodService() {
 
     private suspend fun handleStringInTail() {
         if (stringInTail.isNotEmpty()) {
-            delay(DISPLAY_LEFT_STRING_TIME)
+            delay(DELAY_CANDIDATE_CLICK)
             _inputString.update { stringInTail }
             stringInTail = EMPTY_STRING
         } else {
@@ -795,6 +795,17 @@ class IMEService: InputMethodService() {
     }
 
     private fun resetFlagsEnterKey(){
+        println("enter key reset is called")
+        isHenkan = false
+        suggestionClickNum = 0
+        englishSpaceKeyPressed = false
+        onDeleteLongPressUp = false
+        _dakutenPressed.value = false
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
+    }
+
+    private fun resetFlagsEnterKeyNotHenkan(){
         isHenkan = false
         suggestionClickNum = 0
         englishSpaceKeyPressed = false
@@ -803,7 +814,7 @@ class IMEService: InputMethodService() {
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
         _inputString.update { EMPTY_STRING }
-        stringInTail = ""
+        stringInTail = EMPTY_STRING
     }
 
     private fun resetFlagsKeySpace(){
@@ -889,13 +900,16 @@ class IMEService: InputMethodService() {
         _suggestionList.update { emptyList() }
         val nextSuggestion = listIterator.next()
         currentInputConnection?.commitText(nextSuggestion.string,1)
+        println("enter key pressed: $stringInTail")
         if (stringInTail.isNotEmpty()){
             delay(DISPLAY_LEFT_STRING_TIME)
             _inputString.update { stringInTail }
+            _suggestionFlag.update { flag -> !flag }
             stringInTail = EMPTY_STRING
         }else{
             _inputString.update { EMPTY_STRING }
         }
+        resetFlagsEnterKey()
     }
 
     private suspend fun setTenkeyIconsEmptyInputString() = withContext(mainDispatcher){
@@ -1161,6 +1175,7 @@ class IMEService: InputMethodService() {
         isHenkan = true
         setConvertLetterInJapaneseFromButton(_suggestionList.value)
         suggestionClickNum += 1
+        println("henkan in Japanese: $stringInTail ${_inputString.value}")
     }
 
     private fun commitTextWithSpace() {
@@ -1192,7 +1207,6 @@ class IMEService: InputMethodService() {
             }
             else -> finishInputEnterKey()
         }
-        resetFlagsEnterKey()
     }
 
     private fun handleHenkanModeEnterKey() {
@@ -1215,6 +1229,7 @@ class IMEService: InputMethodService() {
     private fun finishInputEnterKey() {
         currentInputConnection?.finishComposingText()
         _inputString.update { EMPTY_STRING }
+        resetFlagsEnterKeyNotHenkan()
     }
 
     private fun setLanguageSwitchKey(appCompatButton: AppCompatButton) = appCompatButton.apply {
