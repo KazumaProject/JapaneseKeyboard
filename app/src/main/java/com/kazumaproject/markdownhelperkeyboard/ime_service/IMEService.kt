@@ -326,42 +326,46 @@ class IMEService: InputMethodService() {
         }
     }
 
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
+        Timber.d("onUpdate onStartInput called $restarting")
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+        resetAllFlags()
+        setCurrentInputType(attribute)
+        _suggestionViewStatus.update { true }
+    }
+
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
-        Timber.d("onUpdate onStartInputView called $restarting")
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
-        resetAllFlags()
-        setCurrentInputType(editorInfo)
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        _suggestionViewStatus.update { true }
     }
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("onUpdate onFinishInput Called")
         resetAllFlags()
-        mainLayoutBinding?.keyboardView?.root?.isVisible = true
-        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        _suggestionViewStatus.update { true }
-        currentInputConnection?.requestCursorUpdates(0)
     }
 
-    override fun onWindowHidden() {
-        super.onWindowHidden()
-        resetAllFlags()
-        currentInputConnection?.requestCursorUpdates(0)
+    override fun onFinishInputView(finishingInput: Boolean) {
+        super.onFinishInputView(finishingInput)
+        mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
     override fun onDestroy(){
         super.onDestroy()
         actionInDestroy()
-        currentInputConnection?.requestCursorUpdates(0)
     }
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
             Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail")
-            if (composingText == null && _inputString.value.isNotEmpty()) _inputString.update { EMPTY_STRING }
+            val isEmptyOrBlank = _inputString.value.isEmpty() || _inputString.value.isBlank()
+            if (composingText == null || isEmptyOrBlank) {
+                _inputString.update { EMPTY_STRING }
+                _suggestionFlag.update { flag -> !flag }
+            }
         }
     }
 
@@ -396,103 +400,144 @@ class IMEService: InputMethodService() {
 
             launch {
                 _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
-                    mainView.keyboardView.root.isVisible = isVisible
-                    mainView.suggestionVisibility.setImageDrawable(
-                        ContextCompat.getDrawable(
-                            applicationContext,
-                            if (isVisible) R.drawable.outline_arrow_drop_down_24 else R.drawable.outline_arrow_drop_up_24
-                        )
-                    )
-                    mainView.suggestionRecyclerView.apply {
-                        layoutManager = flexboxLayoutManager.apply {
-                            flexDirection = if (isVisible) FlexDirection.COLUMN else FlexDirection.ROW
-                            justifyContent = if (isVisible) JustifyContent.SPACE_AROUND else JustifyContent.FLEX_START
-                        }
-                    }
-
-                    val marginsSuggestionView = (mainView.suggestionViewParent.layoutParams as FrameLayout.LayoutParams).apply {
-                        leftMargin = 0
-                        topMargin = 0
-                        bottomMargin = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            if (isVisible) 200f.convertDp2Px(applicationContext) else 0
-                        } else {
-                            if (isVisible) 280f.convertDp2Px(applicationContext) else 0
-                        }
-                        height = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                            if (isVisible) 52f.convertDp2Px(applicationContext) else 252f.convertDp2Px(applicationContext)
-                        } else {
-                            if (isVisible) 54f.convertDp2Px(applicationContext) else 336f.convertDp2Px(applicationContext)
-                        }
-                    }
-                    mainView.suggestionViewParent.layoutParams = marginsSuggestionView
+                    updateSuggestionViewVisibility(mainView, flexboxLayoutManager, isVisible)
                 }
             }
 
             launch {
                 _suggestionList.asStateFlow().collectLatest { suggestions ->
-                    suggestionAdapter?.suggestions = suggestions
-                    mainView.suggestionRecyclerView.scrollToPosition(0)
-                    mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+                    updateSuggestionList(mainView, suggestions)
                 }
             }
 
             launch {
                 _currentInputMode.asStateFlow().collectLatest { state ->
-                    setKeyLayoutByInputMode(keyList, state, mainView.keyboardView.keySmallLetter)
-                    mainView.keyboardView.keySwitchKeyMode.setInputMode(state)
-                    mainView.keyboardView.keySwitchKeyMode.invalidate()
+                    updateKeyLayoutByInputMode(keyList, state, mainView)
                 }
             }
 
             launch {
-                _currentKeyboardMode.asStateFlow().collectLatest {
-                    when (it) {
-                        is KeyboardMode.ModeTenKeyboard -> {
-                            mainView.keyboardView.root.isVisible = true
-                            mainView.keyboardKigouView.root.isVisible = false
-                        }
-                        is KeyboardMode.ModeKigouView -> {
-                            mainView.keyboardView.root.isVisible = false
-                            mainView.keyboardKigouView.root.isVisible = true
-                            _currentModeInKigou.update {
-                                ModeInKigou.Emoji
-                            }
-                        }
-                    }
+                _currentKeyboardMode.asStateFlow().collectLatest { keyboardMode ->
+                    updateKeyboardMode(mainView, keyboardMode)
                 }
             }
 
             launch {
-                _currentModeInKigou.asStateFlow().collectLatest {
-                    setTenKeyAndKigouView(it)
+                _currentModeInKigou.asStateFlow().collectLatest { modeInKigou ->
+                    setTenKeyAndKigouView(modeInKigou)
                 }
             }
 
             launch {
                 _inputString.asStateFlow().collectLatest { inputString ->
-                    Timber.d("launchInputString: $inputString")
-
-                    if (inputString.isNotBlank()) {
-                        /** 入力された文字の selection と composing region を設定する **/
-                        val spannableString = SpannableString(inputString + stringInTail)
-                        setComposingTextPreEdit(inputString, spannableString)
-                        delay(DELAY_TIME)
-                        if (!isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
-                            !englishSpaceKeyPressed && !deleteKeyLongKeyPressed) {
-                            isContinuousTapInputEnabled = true
-                            lastFlickConvertedNextHiragana = true
-                            setComposingTextAfterEdit(inputString, spannableString)
-                        }
-                    } else {
-                        _suggestionList.update { emptyList() }
-                        setTenkeyIconsEmptyInputString()
-                        if (stringInTail.isNotEmpty()) {
-                            currentInputConnection?.setComposingText(stringInTail, 1)
-                        }
-                    }
+                    processInputString(inputString)
                 }
             }
+        }
+    }
 
+    private fun updateSuggestionViewVisibility(
+        mainView: MainLayoutBinding,
+        flexboxLayoutManager: FlexboxLayoutManager,
+        isVisible: Boolean
+    ) {
+        mainView.keyboardView.root.isVisible = isVisible
+        mainView.suggestionVisibility.setImageDrawable(
+            ContextCompat.getDrawable(
+                applicationContext,
+                if (isVisible) R.drawable.outline_arrow_drop_down_24 else R.drawable.outline_arrow_drop_up_24
+            )
+        )
+        mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManager.apply {
+            flexDirection = if (isVisible) FlexDirection.COLUMN else FlexDirection.ROW
+            justifyContent = if (isVisible) JustifyContent.SPACE_AROUND else JustifyContent.FLEX_START
+        }
+
+        val marginsSuggestionView = (mainView.suggestionViewParent.layoutParams as FrameLayout.LayoutParams).apply {
+            leftMargin = 0
+            topMargin = 0
+            bottomMargin = calculateBottomMargin(isVisible)
+            height = calculateHeight(isVisible)
+        }
+        mainView.suggestionViewParent.layoutParams = marginsSuggestionView
+    }
+
+    private fun calculateBottomMargin(isVisible: Boolean): Int {
+        return if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            if (isVisible) 200f.convertDp2Px(applicationContext) else 0
+        } else {
+            if (isVisible) 280f.convertDp2Px(applicationContext) else 0
+        }
+    }
+
+    private fun calculateHeight(isVisible: Boolean): Int {
+        return if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            if (isVisible) 52f.convertDp2Px(applicationContext) else 252f.convertDp2Px(applicationContext)
+        } else {
+            if (isVisible) 54f.convertDp2Px(applicationContext) else 336f.convertDp2Px(applicationContext)
+        }
+    }
+
+    private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
+        suggestionAdapter?.suggestions = suggestions
+        mainView.suggestionRecyclerView.scrollToPosition(0)
+        mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+    }
+
+    private fun updateKeyLayoutByInputMode(
+        keyList: List<Any>,
+        state: InputMode,
+        mainView: MainLayoutBinding
+    ) {
+        setKeyLayoutByInputMode(keyList, state, mainView.keyboardView.keySmallLetter)
+        mainView.keyboardView.keySwitchKeyMode.setInputMode(state)
+        mainView.keyboardView.keySwitchKeyMode.invalidate()
+    }
+
+    private fun updateKeyboardMode(
+        mainView: MainLayoutBinding,
+        keyboardMode: KeyboardMode
+    ) {
+        when (keyboardMode) {
+            is KeyboardMode.ModeTenKeyboard -> {
+                mainView.keyboardView.root.isVisible = true
+                mainView.keyboardKigouView.root.isVisible = false
+            }
+            is KeyboardMode.ModeKigouView -> {
+                mainView.keyboardView.root.isVisible = false
+                mainView.keyboardKigouView.root.isVisible = true
+                _currentModeInKigou.update { ModeInKigou.Emoji }
+            }
+        }
+    }
+
+    private suspend fun processInputString(inputString: String) {
+        Timber.d("launchInputString: $inputString")
+
+        if (inputString.isNotBlank()) {
+            val spannableString = SpannableString(inputString + stringInTail)
+            setComposingTextPreEdit(inputString, spannableString)
+            delay(DELAY_TIME)
+            if (shouldEnableContinuousTap(inputString)) {
+                isContinuousTapInputEnabled = true
+                lastFlickConvertedNextHiragana = true
+                setComposingTextAfterEdit(inputString, spannableString)
+            }
+        } else {
+            resetInputString()
+        }
+    }
+
+    private fun shouldEnableContinuousTap(inputString: String): Boolean {
+        return !isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
+                !englishSpaceKeyPressed && !deleteKeyLongKeyPressed
+    }
+
+    private suspend fun resetInputString() {
+        _suggestionList.update { emptyList() }
+        setTenkeyIconsEmptyInputString()
+        if (stringInTail.isNotEmpty()) {
+            currentInputConnection?.setComposingText(stringInTail, 1)
         }
     }
 
@@ -1593,6 +1638,7 @@ class IMEService: InputMethodService() {
                                     }
                                 }
                             }
+
                             lastFlickConvertedNextHiragana = true
                             isContinuousTapInputEnabled = true
                             when(_currentInputMode.value){
