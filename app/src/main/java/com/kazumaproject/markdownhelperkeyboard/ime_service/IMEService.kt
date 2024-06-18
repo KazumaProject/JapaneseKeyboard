@@ -326,12 +326,6 @@ class IMEService: InputMethodService() {
         }
     }
 
-    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
-        super.onStartInput(attribute, restarting)
-        Timber.d("onUpdate onStartInput called")
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
-    }
-
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
@@ -349,15 +343,18 @@ class IMEService: InputMethodService() {
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         _suggestionViewStatus.update { true }
+        currentInputConnection?.requestCursorUpdates(0)
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         resetAllFlags()
+        currentInputConnection?.requestCursorUpdates(0)
     }
     override fun onDestroy(){
         super.onDestroy()
         actionInDestroy()
+        currentInputConnection?.requestCursorUpdates(0)
     }
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
