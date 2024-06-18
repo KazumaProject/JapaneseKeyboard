@@ -22,7 +22,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
@@ -327,6 +326,12 @@ class IMEService: InputMethodService() {
         }
     }
 
+    override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
+        super.onStartInput(attribute, restarting)
+        Timber.d("onUpdate onStartInput called")
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR)
+    }
+
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
@@ -337,7 +342,6 @@ class IMEService: InputMethodService() {
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         _suggestionViewStatus.update { true }
     }
-
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("onUpdate onFinishInput Called")
@@ -473,7 +477,6 @@ class IMEService: InputMethodService() {
 
                     if (inputString.isNotBlank()) {
                         /** 入力された文字の selection と composing region を設定する **/
-                        /** 入力された文字の selection と composing region を設定する **/
                         val spannableString = SpannableString(inputString + stringInTail)
                         setComposingTextPreEdit(inputString, spannableString)
                         delay(DELAY_TIME)
@@ -481,7 +484,6 @@ class IMEService: InputMethodService() {
                             !englishSpaceKeyPressed && !deleteKeyLongKeyPressed) {
                             isContinuousTapInputEnabled = true
                             lastFlickConvertedNextHiragana = true
-                            println("current cursor pos: ${getCurrentText()} ${inputString.length}")
                             setComposingTextAfterEdit(inputString, spannableString)
                         }
                     } else {
@@ -853,11 +855,6 @@ class IMEService: InputMethodService() {
         isContinuousTapInputEnabled = true
     }
 
-    private fun getCurrentText(): String? {
-        val extractedText: ExtractedText? = currentInputConnection?.getExtractedText(extractedTextRequest, 0)
-        return extractedText?.text?.toString()
-    }
-
     private fun setComposingTextPreEdit(
         inputString: String,
         spannableString: SpannableString
@@ -874,7 +871,7 @@ class IMEService: InputMethodService() {
                 setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
-        currentInputConnection?. setComposingText(spannableString,1)
+        currentInputConnection?.setComposingText(spannableString,1)
     }
 
     private fun setComposingTextAfterEdit(
