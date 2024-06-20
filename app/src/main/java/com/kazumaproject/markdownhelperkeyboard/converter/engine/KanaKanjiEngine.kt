@@ -117,7 +117,7 @@ class KanaKanjiEngine {
         ioDispatcher: CoroutineDispatcher
     ): List<Candidate> = CoroutineScope(ioDispatcher).async {
 
-        println("called kana kanji $input")
+        //println("called kana kanji $input")
 
         val graph = graphBuilder.constructGraph(
             input, systemYomiTrie, systemTangoTrie, systemTokenArray,
@@ -128,7 +128,7 @@ class KanaKanjiEngine {
             LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
         )
 
-        println("called kana kanji after construct graph $input")
+        //println("called kana kanji after construct graph $input")
 
         val resultNBestFinal = async {
             findPath.backwardAStar(graph, input.length, connectionIds, n)

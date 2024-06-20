@@ -329,7 +329,7 @@ class IMEService: InputMethodService() {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting")
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+        currentInputConnection.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
         resetAllFlags()
         setCurrentInputType(attribute)
         _suggestionViewStatus.update { true }
@@ -337,7 +337,7 @@ class IMEService: InputMethodService() {
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+        Timber.d("onUpdate onStartInputView called $restarting")
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
@@ -349,10 +349,12 @@ class IMEService: InputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        Timber.d("onUpdate onFinishInputView")
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
     override fun onDestroy(){
+        Timber.d("onUpdate onDestroy")
         super.onDestroy()
         actionInDestroy()
     }
@@ -360,9 +362,8 @@ class IMEService: InputMethodService() {
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
-            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail")
-            val isEmptyOrBlank = _inputString.value.isEmpty() || _inputString.value.isBlank()
-            if (composingText == null || isEmptyOrBlank) {
+            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail ${_inputString.value.isEmpty()}")
+            if (composingText == null) {
                 _inputString.update { EMPTY_STRING }
                 _suggestionFlag.update { flag -> !flag }
             }
@@ -373,16 +374,28 @@ class IMEService: InputMethodService() {
         super.onConfigurationChanged(newConfig)
         when(newConfig.orientation){
             Configuration.ORIENTATION_PORTRAIT ->{
-                currentInputConnection?.finishComposingText()
+                currentInputConnection?.apply {
+                    finishComposingText()
+                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
+                }
             }
             Configuration.ORIENTATION_LANDSCAPE ->{
-                currentInputConnection?.finishComposingText()
+                currentInputConnection?.apply {
+                    finishComposingText()
+                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
+                }
             }
             Configuration.ORIENTATION_UNDEFINED ->{
-                currentInputConnection?.finishComposingText()
+                currentInputConnection?.apply {
+                    finishComposingText()
+                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
+                }
             }
             else -> {
-                /** empty body **/
+                currentInputConnection?.apply {
+                    finishComposingText()
+                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
+                }
             }
         }
     }
@@ -514,7 +527,7 @@ class IMEService: InputMethodService() {
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: $inputString")
 
-        if (inputString.isNotBlank()) {
+        if (inputString.isNotEmpty()) {
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
@@ -525,6 +538,7 @@ class IMEService: InputMethodService() {
             }
         } else {
             resetInputString()
+            setTenkeyIconsEmptyInputString()
         }
     }
 
@@ -533,12 +547,16 @@ class IMEService: InputMethodService() {
                 !englishSpaceKeyPressed && !deleteKeyLongKeyPressed
     }
 
-    private suspend fun resetInputString() {
-        _suggestionList.update { emptyList() }
-        setTenkeyIconsEmptyInputString()
+    private fun resetInputString() {
         if (stringInTail.isNotEmpty()) {
             currentInputConnection?.setComposingText(stringInTail, 1)
+        } else {
+            currentInputConnection?.apply {
+                setComposingText(EMPTY_STRING, 1)
+            }
         }
+        _suggestionList.update { emptyList() }
+
     }
 
     private fun setCurrentInputType(attribute: EditorInfo?){
@@ -995,12 +1013,13 @@ class IMEService: InputMethodService() {
         when {
             _inputString.value.isNotBlank() -> {
                 if (suggestionClickNum != 0) return
-                setSuggestionForJapanese(mainView)
+
+                setCandidates(mainView)
             }
         }
     }
 
-    private suspend fun setSuggestionForJapanese(mainView: MainLayoutBinding) {
+    private suspend fun setCandidates(mainView: MainLayoutBinding) {
         updateSuggestionUI(mainView)
         _suggestionList.update {
             getSuggestionList(ioDispatcher)
@@ -1131,10 +1150,8 @@ class IMEService: InputMethodService() {
         setOnTouchListener { _, event ->
             when(event.action and MotionEvent.ACTION_MASK){
                 MotionEvent.ACTION_UP ->{
-                    scope.launch {
-                        onDeleteLongPressUp = true
-                        deleteKeyLongKeyPressed = false
-                    }
+                    onDeleteLongPressUp = true
+                    deleteKeyLongKeyPressed = false
                 }
             }
             return@setOnTouchListener false
@@ -2100,13 +2117,8 @@ class IMEService: InputMethodService() {
         }
     }
     
-    private fun deleteStringCommon(){
-        if (_inputString.value.length == 1){
-            _inputString.update { EMPTY_STRING}
-            currentInputConnection?.commitText("",1)
-        }else{
-            _inputString.update { it.dropLast(1)}
-        }
+    private fun deleteStringCommon() {
+        _inputString.update { it.dropLast(1) }
     }
 
     private fun setCurrentInputCharacterContinuous(

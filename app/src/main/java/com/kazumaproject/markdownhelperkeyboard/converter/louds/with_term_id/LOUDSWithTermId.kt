@@ -196,7 +196,7 @@ class LOUDSWithTermId {
                 result.add(resultTemp.toString())
             }
         }
-        println("common prefix result: $result")
+        //println("common prefix result: $result")
         return result
     }
 
@@ -211,7 +211,7 @@ class LOUDSWithTermId {
         for (c in str) {
             n = traverseShortArray(n, c, rank0Array, rank1Array)
             val index = LBS.rank1CommonShort(n, rank1Array)
-            println("$c $n $index")
+            //println("$c $n $index")
             if (n < 0 || index >= labels.size) break
 
             resultTemp.append(labels[index.toInt()])
@@ -219,7 +219,7 @@ class LOUDSWithTermId {
                 result.add(resultTemp.toString())
             }
         }
-        println("common prefix result: $result")
+        //println("common prefix result: $result")
         return result
     }
 
