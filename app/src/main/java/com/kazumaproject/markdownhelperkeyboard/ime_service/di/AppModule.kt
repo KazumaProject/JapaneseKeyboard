@@ -36,6 +36,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.BufferedInputStream
@@ -86,7 +87,7 @@ object AppModule {
     @Named("main_ime_scope")
     fun providesIMEScope(
         @MainDispatcher mainDispatcher: CoroutineDispatcher,
-    ): CoroutineScope = CoroutineScope(SupervisorJob() + mainDispatcher)
+    ): CoroutineScope = CoroutineScope(SupervisorJob(Job()) + mainDispatcher)
 
 
     @Singleton
