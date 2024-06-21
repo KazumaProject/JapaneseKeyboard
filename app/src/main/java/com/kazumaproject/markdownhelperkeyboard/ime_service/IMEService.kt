@@ -32,6 +32,9 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.GridLayoutManager
 import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
@@ -135,7 +138,7 @@ import kotlin.math.abs
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
-class IMEService: InputMethodService() {
+class IMEService: InputMethodService(), LifecycleOwner {
 
     @Inject
     @Named("main_ime_scope")
@@ -290,10 +293,21 @@ class IMEService: InputMethodService() {
         const val N_BEST = 4
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        lifecycleRegistry = LifecycleRegistry(this)
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
+        println("onCreate called")
+    }
+
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
     override fun onCreateInputView(): View? {
+
+        println("onCreateInputView called ${lifecycle.currentState}")
+
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
+
         return mainLayoutBinding?.root.apply {
             mainLayoutBinding?.let { mainView ->
 
@@ -321,7 +335,12 @@ class IMEService: InputMethodService() {
                 setTenKeyView(keyList)
                 setSuggestionRecyclerView(flexboxLayoutManager)
                 setKigouView()
-                startScope(keyList, flexboxLayoutManager)
+                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                    startScope(keyList, flexboxLayoutManager)
+                } else{
+                    scope.coroutineContext.cancelChildren()
+                    startScope(keyList, flexboxLayoutManager)
+                }
             }
         }
     }
@@ -340,6 +359,7 @@ class IMEService: InputMethodService() {
         Timber.d("onUpdate onStartInputView called $restarting")
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
+        lifecycleRegistry.currentState = Lifecycle.State.STARTED
     }
     override fun onFinishInput() {
         super.onFinishInput()
@@ -357,6 +377,7 @@ class IMEService: InputMethodService() {
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
         actionInDestroy()
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
     }
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
@@ -370,31 +391,32 @@ class IMEService: InputMethodService() {
         }
     }
 
+    override fun updateFullscreenMode() {
+        super.updateFullscreenMode()
+        Timber.d("updateFullscreenMode: FullScreenMode")
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         when(newConfig.orientation){
             Configuration.ORIENTATION_PORTRAIT ->{
                 currentInputConnection?.apply {
                     finishComposingText()
-                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
                 }
             }
             Configuration.ORIENTATION_LANDSCAPE ->{
                 currentInputConnection?.apply {
                     finishComposingText()
-                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
                 }
             }
             Configuration.ORIENTATION_UNDEFINED ->{
                 currentInputConnection?.apply {
                     finishComposingText()
-                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
                 }
             }
             else -> {
                 currentInputConnection?.apply {
                     finishComposingText()
-                    requestCursorUpdates(InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR)
                 }
             }
         }
@@ -442,12 +464,58 @@ class IMEService: InputMethodService() {
             }
 
             launch {
-                _inputString.asStateFlow().collectLatest { inputString ->
+                _inputString.asStateFlow() .collectLatest { inputString ->
                     processInputString(inputString)
                 }
             }
         }
     }
+
+    private fun startScope2(
+        keyList: List<Any>,
+        flexboxLayoutManager: FlexboxLayoutManager
+    ) = scope.launch {
+        mainLayoutBinding?.let { mainView ->
+            launch {
+                _suggestionFlag.asStateFlow().collectLatest {
+                    setSuggestionOnView(mainView)
+                    mainView.keyboardView.root.isVisible = true
+                }
+            }
+
+            launch {
+                _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
+                    updateSuggestionViewVisibility(mainView, flexboxLayoutManager, isVisible)
+                }
+            }
+
+            launch {
+                _suggestionList.asStateFlow().collectLatest { suggestions ->
+                    updateSuggestionList(mainView, suggestions)
+                }
+            }
+
+            launch {
+                _currentInputMode.asStateFlow().collectLatest { state ->
+                    updateKeyLayoutByInputMode(keyList, state, mainView)
+                }
+            }
+
+            launch {
+                _currentKeyboardMode.asStateFlow().collectLatest { keyboardMode ->
+                    updateKeyboardMode(mainView, keyboardMode)
+                }
+            }
+
+            launch {
+                _currentModeInKigou.asStateFlow().collectLatest { modeInKigou ->
+                    setTenKeyAndKigouView(modeInKigou)
+                }
+            }
+
+        }
+    }
+
 
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding,
@@ -526,7 +594,6 @@ class IMEService: InputMethodService() {
 
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: $inputString")
-
         if (inputString.isNotEmpty()) {
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
@@ -1031,7 +1098,6 @@ class IMEService: InputMethodService() {
     )= scope.async{
         val queryText = _inputString.value
         return@async try {
-            println("input str: $queryText")
             kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher)
         }catch (e: Exception){
             if (e is CancellationException) throw e
@@ -2118,7 +2184,19 @@ class IMEService: InputMethodService() {
     }
     
     private fun deleteStringCommon() {
-        _inputString.update { it.dropLast(1) }
+        val length = _inputString.value.length
+        when{
+            length > 1 -> {
+                _inputString.update {
+                    println("deleteStringCommon called")
+                    it.dropLast(1)
+                }
+            }
+            else -> {
+                _inputString.update { it.dropLast(1) }
+                currentInputConnection?.commitText("",0)
+                }
+        }
     }
 
     private fun setCurrentInputCharacterContinuous(
@@ -2450,5 +2528,9 @@ class IMEService: InputMethodService() {
             }
         }
     }
+
+    private lateinit var lifecycleRegistry: LifecycleRegistry
+    override val lifecycle: Lifecycle
+        get() = lifecycleRegistry
 
 }

@@ -36,6 +36,11 @@
             <meta-data
                 android:name="android.view.im"
                 android:resource="@xml/method" />
+
+            <meta-data
+                android:name="android:screenOrientation"
+                android:value="portrait" />
+
             <intent-filter>
                 <action android:name="android.view.InputMethod" />
             </intent-filter>

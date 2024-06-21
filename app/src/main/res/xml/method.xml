@@ -1,2 +1,9 @@
-<input-method>
+<input-method
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity=".MainActivity"
+    android:isDefault="true">
+    <subtype
+        android:label="@string/app_name"
+        android:imeSubtypeLocale="jp_JP"
+        android:imeSubtypeMode="keyboard"/>
 </input-method >
