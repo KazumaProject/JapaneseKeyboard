@@ -286,10 +286,10 @@ class IMEService: InputMethodService(), LifecycleOwner {
         val NUMBER_KEY10_SYMBOL_CHAR = listOf('(',')','[',']')
         const val EMPTY_STRING = ""
 
-        const val DISPLAY_LEFT_STRING_TIME = 64L
-        const val DELAY_CANDIDATE_CLICK = 64L
+        const val DISPLAY_LEFT_STRING_TIME = 100L
+        const val DELAY_CANDIDATE_CLICK = 100L
         const val DELAY_TIME = 1000L
-        const val LONG_DELAY_TIME = 64L
+        const val LONG_DELAY_TIME = 100L
         const val N_BEST = 4
     }
 
