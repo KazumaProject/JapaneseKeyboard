@@ -471,52 +471,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
         }
     }
 
-    private fun startScope2(
-        keyList: List<Any>,
-        flexboxLayoutManager: FlexboxLayoutManager
-    ) = scope.launch {
-        mainLayoutBinding?.let { mainView ->
-            launch {
-                _suggestionFlag.asStateFlow().collectLatest {
-                    setSuggestionOnView(mainView)
-                    mainView.keyboardView.root.isVisible = true
-                }
-            }
-
-            launch {
-                _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
-                    updateSuggestionViewVisibility(mainView, flexboxLayoutManager, isVisible)
-                }
-            }
-
-            launch {
-                _suggestionList.asStateFlow().collectLatest { suggestions ->
-                    updateSuggestionList(mainView, suggestions)
-                }
-            }
-
-            launch {
-                _currentInputMode.asStateFlow().collectLatest { state ->
-                    updateKeyLayoutByInputMode(keyList, state, mainView)
-                }
-            }
-
-            launch {
-                _currentKeyboardMode.asStateFlow().collectLatest { keyboardMode ->
-                    updateKeyboardMode(mainView, keyboardMode)
-                }
-            }
-
-            launch {
-                _currentModeInKigou.asStateFlow().collectLatest { modeInKigou ->
-                    setTenKeyAndKigouView(modeInKigou)
-                }
-            }
-
-        }
-    }
-
-
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding,
         flexboxLayoutManager: FlexboxLayoutManager,
@@ -776,10 +730,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun setCandidateClick(candidate: Candidate) {
-        val candidateType = candidate.type.toInt()
-        if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
-            stringInTail = _inputString.value.substring(candidate.length.toInt())
-        }
         if (_inputString.value.isNotBlank()) {
             scope.launch {
                 commitCandidateText(candidate.string)
