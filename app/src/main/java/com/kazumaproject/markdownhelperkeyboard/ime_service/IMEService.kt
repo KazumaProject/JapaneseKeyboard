@@ -709,7 +709,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
             this.setOnItemClickListener {
                 setVibrate()
                 setCandidateClick(it)
-                resetFlagsSuggestionClick()
             }
         }
         mainLayoutBinding?.let { mainView ->
@@ -730,19 +729,26 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun setCandidateClick(candidate: Candidate) {
-        if (_inputString.value.isNotBlank()) {
+        if (_inputString.value.isNotEmpty()) {
             scope.launch {
-                commitCandidateText(candidate.string)
+                commitCandidateText(candidate)
                 updateSuggestionList()
                 handleStringInTail()
                 showSuggestionView()
                 _suggestionFlag.update { flag -> !flag }
+                resetFlagsSuggestionClick()
             }
         }
     }
 
-    private fun commitCandidateText(text: String) {
-        currentInputConnection?.commitText(text, 1)
+    private suspend fun commitCandidateText(candidate: Candidate) {
+        println("clicked candidate: $candidate ${_inputString.value}")
+        val candidateType = candidate.type.toInt()
+        if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
+            stringInTail = _inputString.value.substring(candidate.length.toInt())
+            delay(DELAY_CANDIDATE_CLICK)
+        }
+        currentInputConnection?.commitText(candidate.string, 1)
     }
 
     private fun updateSuggestionList() {
@@ -877,7 +883,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
-        _inputString.update { EMPTY_STRING }
     }
 
     private fun resetFlagsLanguageModeClick(){
