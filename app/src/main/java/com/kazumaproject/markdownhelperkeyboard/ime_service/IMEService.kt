@@ -1558,7 +1558,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 }
                 else ->{
                     setNextReturnInputCharacter()
-
+                    _suggestionFlag.update { !it }
                 }
             }
         }
