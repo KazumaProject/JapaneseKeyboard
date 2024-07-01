@@ -61,7 +61,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             text.text = suggestion.string
             typeText.text = when(suggestion.type){
                 (1).toByte() -> "   "
-                (2).toByte() -> "[部]"
+                (2).toByte() -> "   "
                 (3).toByte() -> "[ひらがな]"
                 (4).toByte() -> "[カタカナ]"
                 (5).toByte() -> "   "
