@@ -1948,7 +1948,7 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
             try {
                 mSubOrientationHelper.offsetChildren(-scrolled);
             }catch (Exception e){
-
+                Log.d("FlexboxLayoutManager","error horizontal");
             }
             return scrolled;
         }
@@ -1968,7 +1968,7 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
             try {
                 mSubOrientationHelper.offsetChildren(-scrolled);
             }catch (Exception e){
-
+                Log.d("FlexboxLayoutManager","error vertical");
             }
             return scrolled;
         }
