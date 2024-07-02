@@ -289,7 +289,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
         const val DISPLAY_LEFT_STRING_TIME = 100L
         const val DELAY_CANDIDATE_CLICK = 100L
         const val DELAY_TIME = 1000L
-        const val LONG_DELAY_TIME = 100L
+        const val LONG_DELAY_TIME = 64L
         const val N_BEST = 4
     }
 
@@ -513,10 +513,11 @@ class IMEService: InputMethodService(), LifecycleOwner {
         }
     }
 
-    private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
+    private suspend fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
         suggestionAdapter?.suggestions = suggestions
-        mainView.suggestionRecyclerView.scrollToPosition(0)
         mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+        delay(32)
+        mainView.suggestionRecyclerView.scrollToPosition(0)
     }
 
     private fun updateKeyLayoutByInputMode(
