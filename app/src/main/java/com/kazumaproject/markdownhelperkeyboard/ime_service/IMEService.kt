@@ -360,6 +360,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        currentInputConnection.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
     }
     override fun onFinishInput() {
         super.onFinishInput()
@@ -373,6 +374,17 @@ class IMEService: InputMethodService(), LifecycleOwner {
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        currentInputConnection.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        resetAllFlags()
+    }
+
     override fun onDestroy(){
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
@@ -380,10 +392,11 @@ class IMEService: InputMethodService(), LifecycleOwner {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
     }
 
+
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
-            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail ${_inputString.value.isEmpty()}")
+            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail")
             if (composingText == null) {
                 _inputString.update { EMPTY_STRING }
                 _suggestionFlag.update { flag -> !flag }
@@ -572,13 +585,11 @@ class IMEService: InputMethodService(), LifecycleOwner {
     private fun resetInputString() {
         if (stringInTail.isNotEmpty()) {
             currentInputConnection?.setComposingText(stringInTail, 1)
-        } else {
-            currentInputConnection?.apply {
-                setComposingText(EMPTY_STRING, 1)
-            }
+        }
+        currentInputConnection?.apply {
+            setComposingText(EMPTY_STRING, 1)
         }
         _suggestionList.update { emptyList() }
-
     }
 
     private fun setCurrentInputType(attribute: EditorInfo?){
@@ -746,8 +757,10 @@ class IMEService: InputMethodService(), LifecycleOwner {
         println("clicked candidate: $candidate ${_inputString.value}")
         val candidateType = candidate.type.toInt()
         if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
-            stringInTail = _inputString.value.substring(candidate.length.toInt())
-            delay(DELAY_CANDIDATE_CLICK)
+            if (stringInTail.isEmpty()){
+                stringInTail = _inputString.value.substring(candidate.length.toInt())
+                delay(DELAY_CANDIDATE_CLICK)
+            }
         }
         currentInputConnection?.commitText(candidate.string, 1)
     }
@@ -1036,7 +1049,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
         when {
             _inputString.value.isNotBlank() -> {
                 if (suggestionClickNum != 0) return
-
                 setCandidates(mainView)
             }
         }
@@ -1054,7 +1066,13 @@ class IMEService: InputMethodService(), LifecycleOwner {
     )= scope.async{
         val queryText = _inputString.value
         return@async try {
-            kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher)
+            if (stringInTail.isNotEmpty()){
+                kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher).filter {
+                    it.length.toInt() == _inputString.value.length
+                }
+            }else{
+                kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher)
+            }
         }catch (e: Exception){
             if (e is CancellationException) throw e
             println(e.stackTraceToString())

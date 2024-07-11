@@ -117,8 +117,6 @@ class KanaKanjiEngine {
         ioDispatcher: CoroutineDispatcher
     ): List<Candidate> = CoroutineScope(ioDispatcher).async {
 
-        //println("called kana kanji $input")
-
         val graph = graphBuilder.constructGraph(
             input, systemYomiTrie, systemTangoTrie, systemTokenArray,
             systemRank0ArrayLBSYomi, systemRank1ArrayLBSYomi, systemRank1ArrayIsLeaf,
