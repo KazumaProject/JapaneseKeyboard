@@ -399,15 +399,13 @@ class IMEService: InputMethodService(), LifecycleOwner {
         cursorAnchorInfo?.apply {
             Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail")
             if (composingText == null) {
+                if (_inputString.value.isEmpty()){
+                    stringInTail = ""
+                }
                 _inputString.update { EMPTY_STRING }
                 _suggestionFlag.update { flag -> !flag }
             }
         }
-    }
-
-    override fun updateFullscreenMode() {
-        super.updateFullscreenMode()
-        Timber.d("updateFullscreenMode: FullScreenMode")
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -562,7 +560,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private suspend fun processInputString(inputString: String) {
-        Timber.d("launchInputString: $inputString")
+        Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
@@ -584,12 +582,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun resetInputString() {
-        if (stringInTail.isNotEmpty()) {
-            currentInputConnection?.setComposingText(stringInTail, 1)
-        }
-        currentInputConnection?.apply {
-            setComposingText(EMPTY_STRING, 1)
-        }
         _suggestionList.update { emptyList() }
     }
 
