@@ -17,14 +17,13 @@ class FindPath {
         buildViterbi(graph, length, connectionIds)
         var node = graph[length + 1][0][0]
         val result: MutableList<String> = mutableListOf()
-        while (node.tango != "BOS"){
+        while (node.tango != "BOS") {
             node.prev?.let {
                 result.add(it.tango)
                 node = it
             }
         }
-        val final = result.reversed().drop(1).joinToString(separator = "") { it }
-        return final
+        return result.asReversed().drop(1).joinToString(separator = "") { it }
     }
 
     fun backwardAStar(

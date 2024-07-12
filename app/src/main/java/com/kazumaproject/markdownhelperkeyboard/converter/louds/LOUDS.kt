@@ -140,7 +140,7 @@ class LOUDS {
             parentNodeIndex = LBS.select1CommonShort(LBS.rank0CommonShort(parentNodeIndex.toShort(),rank0Array),rank1Array).toInt()
             if (parentNodeId == (0).toShort()) return ""
         }
-        return list.toList().reversed().joinToString("")
+        return list.toList().asReversed().joinToString("")
     }
 
     fun getLetterByNodeId(nodeId: Int): String {
@@ -152,7 +152,7 @@ class LOUDS {
             list.add(pair)
             parentNodeIndex = LBS.select1(LBS.rank0(parentNodeIndex))
         }
-        return list.toList().reversed().joinToString("")
+        return list.toList().asReversed().joinToString("")
     }
 
     fun getNodeIndex(s: String): Int{
