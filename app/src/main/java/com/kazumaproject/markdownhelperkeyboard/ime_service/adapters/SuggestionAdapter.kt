@@ -11,7 +11,10 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 
 class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>(){
-    inner class SuggestionViewHolder(itemView: View): RecyclerView.ViewHolder(itemView)
+    inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
+        val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
+    }
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
@@ -19,7 +22,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         }
 
         override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem.hashCode() == newItem.hashCode()
+            return oldItem == newItem
         }
     }
 
@@ -36,51 +39,29 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         set(value) = differ.submitList(value)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionViewHolder {
-        return SuggestionViewHolder(
-            LayoutInflater.from(parent.context).inflate(
-                R.layout.suggestion_item,
-                parent,
-                false
-            )
-        )
+        val itemView = LayoutInflater.from(parent.context)
+            .inflate(R.layout.suggestion_item, parent, false)
+        return SuggestionViewHolder(itemView)
     }
 
-    override fun getItemCount(): Int {
-        return suggestions.size
-    }
+    override fun getItemCount(): Int = suggestions.size
 
-    override fun getItemId(position: Int): Long {
-        return position.toLong()
-    }
+    override fun getItemId(position: Int): Long = position.toLong()
 
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
-        holder.itemView.apply {
-            val text = findViewById<MaterialTextView>(R.id.suggestion_item_text_view)
-            val typeText = findViewById<MaterialTextView>(R.id.suggestion_item_type_text_view)
-            text.text = suggestion.string
-            typeText.text = when(suggestion.type){
-                (1).toByte() -> "   "
-                (2).toByte() -> "   "
-                (3).toByte() -> "[ひらがな]"
-                (4).toByte() -> "[カタカナ]"
-                (5).toByte() -> "   "
-                (6).toByte() -> "[候補]"
-                (7).toByte() -> "[単]"
-//                (1).toByte() -> "[N-Best][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
-//                (2).toByte() -> "[部][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
-//                (3).toByte() -> "[ひらがな][${suggestion.score}]"
-//                (4).toByte() -> "[カタカナ][${suggestion.score}]"
-//                (5).toByte() -> "[最長][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
-//                (6).toByte() -> "[候補][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
-//                (7).toByte() -> "[単][${suggestion.leftId}][${suggestion.rightId}][${suggestion.score}]"
-                else -> ""
-            }
-            setOnClickListener {
-                onItemClickListener?.let { click ->
-                    click(suggestion)
-                }
-            }
+        holder.text.text = suggestion.string
+        holder.typeText.text = when (suggestion.type) {
+            (1).toByte(), (2).toByte(), (5).toByte() -> "   "
+            (3).toByte() -> "[ひらがな]"
+            (4).toByte() -> "[カタカナ]"
+            (6).toByte() -> "[候補]"
+            (7).toByte() -> "[単]"
+            else -> ""
+        }
+
+        holder.itemView.setOnClickListener {
+            onItemClickListener?.invoke(suggestion)
         }
     }
 
