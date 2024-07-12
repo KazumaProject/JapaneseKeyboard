@@ -120,6 +120,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
@@ -526,10 +527,13 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private suspend fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
-        suggestionAdapter?.suggestions = suggestions
-        mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
-        delay(SUGGESTION_SCROLL_UP_TIME)
-        mainView.suggestionRecyclerView.scrollToPosition(0)
+        withContext(Dispatchers.Main){
+            suggestionAdapter?.suggestions = suggestions
+            println("suggestions: ${suggestions.map { it.string}}")
+            mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+            delay(SUGGESTION_SCROLL_UP_TIME)
+            mainView.suggestionRecyclerView.scrollToPosition(0)
+        }
     }
 
     private fun updateKeyLayoutByInputMode(
@@ -710,7 +714,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
         flexboxLayoutManager: FlexboxLayoutManager
     ){
         suggestionAdapter?.apply {
-            setHasStableIds(true)
+//            setHasStableIds(true)
             this.setOnItemClickListener {
                 setVibrate()
                 setCandidateClick(it)
@@ -1049,14 +1053,13 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
     private suspend fun setCandidates(mainView: MainLayoutBinding) {
         updateSuggestionUI(mainView)
+        val candidates = getSuggestionList(ioDispatcher)
         _suggestionList.update {
-            getSuggestionList(ioDispatcher)
+            candidates
         }
     }
 
-    private suspend fun getSuggestionList(
-        ioDispatcher: CoroutineDispatcher
-    )= scope.async{
+    private suspend fun getSuggestionList(ioDispatcher: CoroutineDispatcher)= scope.async{
         val queryText = _inputString.value
         return@async try {
             if (stringInTail.isNotEmpty()){
