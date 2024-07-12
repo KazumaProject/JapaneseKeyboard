@@ -134,7 +134,7 @@ class KanaKanjiEngine {
 
         val yomiPartOf = systemYomiTrie.commonPrefixSearch(
             str = input, rank0Array = systemRank0ArrayLBSYomi, rank1Array = systemRank1ArrayLBSYomi
-        ).reversed()
+        ).asReversed()
 
         val yomiPartList = async {
             yomiPartOf.flatMap { yomi ->
@@ -197,7 +197,7 @@ class KanaKanjiEngine {
 
         val singleKanjiCommonPrefix = singleKanjiYomiTrie.commonPrefixSearchShortArray(
             str = input, rank0Array = singleKanjiRank0ArrayLBSYomi, rank1Array = singleKanjiRank1ArrayLBSYomi
-        ).reversed()
+        ).asReversed()
 
         val singleKanjiList = async {
             singleKanjiCommonPrefix.flatMap { yomi ->

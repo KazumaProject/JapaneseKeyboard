@@ -80,7 +80,7 @@ class LOUDSWithTermId {
             parentNodeIndex = LBS.select1(LBS.rank0(parentNodeIndex))
             if (parentNodeId == 0) return ""
         }
-        return list.toList().reversed().joinToString("")
+        return list.toList().asReversed().joinToString("")
     }
 
     fun getLetterByNodeId(nodeId: Int): String {
@@ -92,7 +92,7 @@ class LOUDSWithTermId {
             list.add(pair)
             parentNodeIndex = LBS.select1(LBS.rank0(parentNodeIndex))
         }
-        return list.toList().reversed().joinToString("")
+        return list.toList().asReversed().joinToString("")
     }
 
 
