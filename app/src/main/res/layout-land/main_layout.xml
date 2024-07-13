@@ -6,13 +6,6 @@
     android:layout_gravity="bottom"
     android:background="@color/keyboard_bg">
 
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginBottom="@dimen/keyboard_height_land"
-        android:background="@color/keyboard_bg" />
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/suggestionView_parent"
         android:layout_width="match_parent"

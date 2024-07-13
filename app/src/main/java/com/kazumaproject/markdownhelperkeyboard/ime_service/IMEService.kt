@@ -350,7 +350,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting")
-        currentInputConnection.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
         resetAllFlags()
         setCurrentInputType(attribute)
         _suggestionViewStatus.update { true }
@@ -362,7 +362,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
-        currentInputConnection.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
     }
     override fun onFinishInput() {
         super.onFinishInput()
@@ -379,7 +379,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
     override fun onWindowShown() {
         super.onWindowShown()
-        currentInputConnection.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
     }
 
     override fun onWindowHidden() {
@@ -575,8 +575,12 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 setComposingTextAfterEdit(inputString, spannableString)
             }
         } else {
-            resetInputString()
-            setTenkeyIconsEmptyInputString()
+            if (stringInTail.isNotEmpty()){
+                currentInputConnection?.setComposingText(stringInTail,0)
+            }else{
+                resetInputString()
+                setTenkeyIconsEmptyInputString()
+            }
         }
     }
 
@@ -714,7 +718,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
         flexboxLayoutManager: FlexboxLayoutManager
     ){
         suggestionAdapter?.apply {
-//            setHasStableIds(true)
             this.setOnItemClickListener {
                 setVibrate()
                 setCandidateClick(it)
@@ -722,6 +725,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
         }
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
+                focusable = View.NOT_FOCUSABLE
                 itemAnimator = null
                 suggestionAdapter?.let { sugAdapter ->
                     adapter = sugAdapter
@@ -1080,8 +1084,9 @@ class IMEService: InputMethodService(), LifecycleOwner {
         while (isActive) {
             if (_inputString.value.isNotEmpty()) {
                 if (_inputString.value.length == 1) {
-                    currentInputConnection?.commitText("", 0)
                     _inputString.update { EMPTY_STRING }
+                    _suggestionList.update { emptyList() }
+                    if (stringInTail.isEmpty()) currentInputConnection?.setComposingText("",0)
                 } else {
                     _inputString.update { it.dropLast(1) }
                 }
@@ -1183,6 +1188,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setDeleteKey( imageButton: AppCompatImageButton) = imageButton.apply {
+        focusable = View.NOT_FOCUSABLE
         setOnTouchListener { _, event ->
             when(event.action and MotionEvent.ACTION_MASK){
                 MotionEvent.ACTION_UP ->{
@@ -1220,6 +1226,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun setSpaceKey(imageButton: AppCompatImageButton) = imageButton.apply {
+        focusable = View.NOT_FOCUSABLE
         setOnClickListener {
             handleSpaceKeyClick()
         }
@@ -1270,6 +1277,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun setEnterKey(imageButton: AppCompatImageButton) = imageButton.apply {
+        focusable = View.NOT_FOCUSABLE
         setOnClickListener {
             setVibrate()
             if (_inputString.value.isNotEmpty()) {
@@ -1317,6 +1325,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun setLanguageSwitchKey(appCompatButton: AppCompatButton) = appCompatButton.apply {
+        focusable = View.NOT_FOCUSABLE
         setOnClickListener {
             setVibrate()
             _currentKeyboardMode.value = KeyboardMode.ModeKigouView
@@ -1382,6 +1391,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
      *
      **/
     private fun setSwitchModeKey(inputModeSwitch: InputModeSwitch?) = inputModeSwitch?.apply {
+        focusable = View.NOT_FOCUSABLE
         setOnClickListener {
             setVibrate()
             when(getCurrentInputMode()){
@@ -1405,6 +1415,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     @SuppressLint("ClickableViewAccessibility")
     private fun setLeftKey(leftKey: AppCompatImageButton) {
         leftKey.apply {
+            focusable = View.NOT_FOCUSABLE
             setOnTouchListener { _, event ->
                 if ((event.action and MotionEvent.ACTION_MASK) == MotionEvent.ACTION_UP) {
                     scope.launch {
@@ -1434,7 +1445,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun handleLeftKeyPress() {
-
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         } else if (!isHenkan) {
@@ -1459,20 +1469,19 @@ class IMEService: InputMethodService(), LifecycleOwner {
             suggestionClickNum = 0
             scope.launch {
                 while (isActive) {
-                    if (_inputString.value.isNotEmpty()) updateLeftInputString()
+                    if (_inputString.value.isNotEmpty()){
+                        updateLeftInputString()
+                    }else{
+                        if (stringInTail.isEmpty()){
+                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                        }
+                        _suggestionList.update { emptyList() }
+                    }
                     _suggestionFlag.update { flag -> !flag }
                     delay(LONG_DELAY_TIME)
                     if (onLeftKeyLongPressUp) return@launch
                 }
             }
-        }else{
-            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-        }
-    }
-
-    private fun sendLeftKeyEvents() {
-        currentInputConnection?.apply {
-            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         }
     }
 
@@ -1488,6 +1497,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     @SuppressLint("ClickableViewAccessibility")
     private fun setRightKey(rightKey: AppCompatImageButton) {
         rightKey.apply {
+            focusable = View.NOT_FOCUSABLE
             setOnTouchListener { _, event ->
                 if (event.action and MotionEvent.ACTION_MASK == MotionEvent.ACTION_UP) {
                     scope.launch {
@@ -1537,6 +1547,9 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
+            val extractedText = currentInputConnection?.getExtractedText(ExtractedTextRequest(),0)?.text ?: return
+            val afterText = currentInputConnection?.getTextAfterCursor(extractedText.length,0) ?: return
+            if (afterText.isEmpty()) return
             currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
             val dropString = stringInTail.first()
@@ -1565,6 +1578,9 @@ class IMEService: InputMethodService(), LifecycleOwner {
     private fun setNextReturnKey(
         nextReturn: AppCompatImageButton,
     ){
+        nextReturn.apply {
+            focusable = View.NOT_FOCUSABLE
+        }
         nextReturn.setOnClickListener {
             setVibrate()
             when(_currentInputMode.value){
@@ -2081,12 +2097,16 @@ class IMEService: InputMethodService(), LifecycleOwner {
             is InputMode.ModeJapanese ->{
                 keys.forEachIndexed { index, button ->
                     if (button is AppCompatButton){
-                        button.setTenKeyTextJapanese(button.id)
+                        button.apply {
+                            focusable = View.NOT_FOCUSABLE
+                            setTenKeyTextJapanese(button.id)
+                        }
                     }
                     if (button is AppCompatImageButton){
                         when(index){
                             10 -> {
                                 keySmallLetter.apply {
+                                    focusable = View.NOT_FOCUSABLE
                                     setImageDrawable(drawableLanguage)
                                 }
                             }
@@ -2098,13 +2118,17 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
                 keys.forEachIndexed { index, button ->
                     if (button is AppCompatButton){
-                        button.setTenKeyTextEnglish(button.id)
+                        button.apply {
+                            focusable = View.NOT_FOCUSABLE
+                            setTenKeyTextEnglish(button.id)
+                        }
                     }
 
                     if (button is AppCompatImageButton){
                         when(index){
                             10 -> {
                                 keySmallLetter.apply {
+                                    focusable = View.NOT_FOCUSABLE
                                     setImageDrawable(drawableLanguage)
                                 }
                             }
@@ -2115,13 +2139,17 @@ class IMEService: InputMethodService(), LifecycleOwner {
             is InputMode.ModeNumber ->{
                 keys.forEachIndexed { index, button ->
                     if (button is AppCompatButton){
-                        button.setTenKeyTextNumber(button.id)
+                        button.apply {
+                            focusable = View.NOT_FOCUSABLE
+                            setTenKeyTextNumber(button.id)
+                        }
                     }
 
                     if (button is AppCompatImageButton){
                         when(index){
                             10 -> {
                                 keySmallLetter.apply {
+                                    focusable = View.NOT_FOCUSABLE
                                     setImageDrawable(drawableNumberSmall)
                                 }
                             }
@@ -2155,16 +2183,18 @@ class IMEService: InputMethodService(), LifecycleOwner {
     
     private fun deleteStringCommon() {
         val length = _inputString.value.length
+        println("deleteStringCommon: $length")
         when{
             length > 1 -> {
                 _inputString.update {
-                    println("deleteStringCommon called")
                     it.dropLast(1)
                 }
             }
             else -> {
-                _inputString.update { it.dropLast(1) }
-                currentInputConnection?.commitText("",0)
+                println("deleteStringCommon else called")
+                _inputString.update { EMPTY_STRING }
+                _suggestionList.update { emptyList() }
+                if (stringInTail.isEmpty()) currentInputConnection?.setComposingText("",0)
                 }
         }
     }
