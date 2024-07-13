@@ -20,7 +20,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet): androidx.appcompat
     }
 
     private val textPaintBold = Paint().apply {
-        color = ContextCompat.getColor(context, R.color.keyboard_icon_color)
+        color = ContextCompat.getColor(context, R.color.keyboard_enter_key_color)
         textSize = 16f.convertSp2Px(context)
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)

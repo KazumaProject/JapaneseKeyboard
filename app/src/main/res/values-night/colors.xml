@@ -17,6 +17,7 @@
     <color name="sub_text_color">#4b595e</color>
     <color name="keyboard_boarder_color">#3a3a3a</color>
     <color name="keyboard_icon_color">#B8B8B8</color>
+    <color name="keyboard_enter_key_color">#212529</color>
 
     <color name="keyboard_icon_color_second">#929292</color>
 
@@ -39,13 +40,14 @@
     <color name="navy">#22303c</color>
 
     <color name="qwety_bg_color">#000000</color>
-    <color name="qwety_key_bg_color">#3B4048</color>
-    <color name="qwety_key_bg_color_2">#272A2F</color>
+    <color name="qwety_key_bg_color">#2D3134</color>
+    <color name="qwety_key_bg_color_2">#3B4048</color>
     <color name="keyShadowColor">#1C1F23</color>
     <color name="specialKeyShadowColor">#1A1D21</color>
     <color name="qwety_suggestion_bg_color">#B8BFC9</color>
 
     <color name="qwety_cap_on_bg_color">#B8BFC9</color>
 
-    <color name="enter_key_bg">#5E97F6</color>
+    <color name="enter_key_bg">#C9E7FD</color>
+    <color name="enter_key_press">#A3D0F5</color>
 </resources>
