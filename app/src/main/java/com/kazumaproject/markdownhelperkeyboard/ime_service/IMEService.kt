@@ -7,7 +7,9 @@ import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
+import android.os.Bundle
 import android.os.CombinedVibration
+import android.os.Handler
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.text.Spannable
@@ -20,10 +22,14 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.CompletionInfo
+import android.view.inputmethod.CorrectionInfo
 import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
+import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import android.widget.PopupWindow
@@ -136,10 +142,9 @@ import javax.inject.Inject
 import javax.inject.Named
 import kotlin.math.abs
 
-
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
-class IMEService: InputMethodService(), LifecycleOwner {
+class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     @Named("main_ime_scope")
@@ -286,9 +291,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
     companion object {
         val NUMBER_KEY10_SYMBOL_CHAR = listOf('(',')','[',']')
         const val EMPTY_STRING = ""
-
-        const val DISPLAY_LEFT_STRING_TIME = 100L
-        const val DELAY_CANDIDATE_CLICK = 100L
         const val DELAY_TIME = 1000L
         const val LONG_DELAY_TIME = 64L
         const val SUGGESTION_SCROLL_UP_TIME = 64L
@@ -350,7 +352,8 @@ class IMEService: InputMethodService(), LifecycleOwner {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting")
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
+        requestCursorUpdates(0)
+        requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
         resetAllFlags()
         setCurrentInputType(attribute)
         _suggestionViewStatus.update { true }
@@ -362,7 +365,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
         mainLayoutBinding?.keyboardView?.root?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
     }
     override fun onFinishInput() {
         super.onFinishInput()
@@ -377,10 +379,6 @@ class IMEService: InputMethodService(), LifecycleOwner {
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
-    override fun onWindowShown() {
-        super.onWindowShown()
-        currentInputConnection?.requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
-    }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
@@ -394,17 +392,24 @@ class IMEService: InputMethodService(), LifecycleOwner {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
     }
 
-
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         cursorAnchorInfo?.apply {
-            Timber.d("onUpdateCursorAnchorInfo: $composingText ${_inputString.value} $stringInTail")
-            if (composingText == null) {
-                if (_inputString.value.isEmpty()){
+            Timber.d("onUpdateCursorAnchorInfo\n" +
+                    "composingText: $composingText " +
+                    "\ninputString:${_inputString.value}" +
+                    "\nstringInTail: $stringInTail")
+            if (composingText == null){
+                if (_inputString.value.isNotEmpty()){
                     stringInTail = ""
                 }
                 _inputString.update { EMPTY_STRING }
-                _suggestionFlag.update { flag -> !flag }
+                _suggestionFlag.update { !it }
+            }else {
+                if (_inputString.value.isEmpty() && stringInTail.isEmpty()){
+                    _inputString.update { composingText.toString() }
+                    _suggestionFlag.update { !it }
+                }
             }
         }
     }
@@ -413,24 +418,16 @@ class IMEService: InputMethodService(), LifecycleOwner {
         super.onConfigurationChanged(newConfig)
         when(newConfig.orientation){
             Configuration.ORIENTATION_PORTRAIT ->{
-                currentInputConnection?.apply {
-                    finishComposingText()
-                }
+                finishComposingText()
             }
             Configuration.ORIENTATION_LANDSCAPE ->{
-                currentInputConnection?.apply {
-                    finishComposingText()
-                }
+                finishComposingText()
             }
             Configuration.ORIENTATION_UNDEFINED ->{
-                currentInputConnection?.apply {
-                    finishComposingText()
-                }
+                finishComposingText()
             }
             else -> {
-                currentInputConnection?.apply {
-                    finishComposingText()
-                }
+                finishComposingText()
             }
         }
     }
@@ -576,7 +573,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
             }
         } else {
             if (stringInTail.isNotEmpty()){
-                currentInputConnection?.setComposingText(stringInTail,0)
+                setComposingText(stringInTail,0)
             }else{
                 resetInputString()
                 setTenkeyIconsEmptyInputString()
@@ -634,7 +631,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 }
 
                 InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
-                    currentInputConnection?.requestCursorUpdates(0)
+                    requestCursorUpdates(0)
                 }
 
                 InputTypeForIME.Number,
@@ -745,46 +742,29 @@ class IMEService: InputMethodService(), LifecycleOwner {
         if (_inputString.value.isNotEmpty()) {
             scope.launch {
                 commitCandidateText(candidate)
-                updateSuggestionList()
-                handleStringInTail()
-                showSuggestionView()
                 _suggestionFlag.update { flag -> !flag }
                 resetFlagsSuggestionClick()
             }
         }
     }
 
-    private suspend fun commitCandidateText(candidate: Candidate) {
+    private fun commitCandidateText(candidate: Candidate) {
         println("clicked candidate: $candidate ${_inputString.value}")
         val candidateType = candidate.type.toInt()
         if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
-            if (stringInTail.isEmpty()){
-                stringInTail = _inputString.value.substring(candidate.length.toInt())
-                delay(DELAY_CANDIDATE_CLICK)
-            }
+            stringInTail = _inputString.value.substring(candidate.length.toInt())
         }
-        currentInputConnection?.commitText(candidate.string, 1)
-    }
-
-    private fun updateSuggestionList() {
-        _suggestionList.update { emptyList() }
-    }
-
-    private suspend fun handleStringInTail() {
-        if (stringInTail.isNotEmpty()) {
-            delay(DELAY_CANDIDATE_CLICK)
+        if (stringInTail.isNotEmpty()){
+            commitText(candidate.string, 1)
+            setComposingText(stringInTail,0)
             _inputString.update { stringInTail }
             stringInTail = EMPTY_STRING
-        } else {
+        }else{
+            commitText(candidate.string, 1)
             _inputString.update { EMPTY_STRING }
         }
     }
 
-    private fun showSuggestionView() {
-        if (!_suggestionViewStatus.value) {
-            _suggestionViewStatus.update { true }
-        }
-    }
     private fun setKigouView(){
         mainLayoutBinding?.let { mainView ->
             mainView.keyboardKigouView.kigouReturnBtn.setOnClickListener {
@@ -804,14 +784,14 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 a.emojiList = EMOJI_LIST
                 a.setOnItemClickListener { emoji ->
                     setVibrate()
-                    currentInputConnection?.commitText(emoji.unicode.convertUnicode(),1)
+                    commitText(emoji.unicode.convertUnicode(),1)
                 }
             }
             kigouApdater?.let { a ->
                 a.kigouList = KAOMOJI
                 a.setOnItemClickListener { s ->
                     setVibrate()
-                    currentInputConnection?.commitText(s,1)
+                    commitText(s,1)
                 }
             }
         }
@@ -877,7 +857,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
         emojiKigouAdapter = null
         kigouApdater = null
         mainLayoutBinding = null
-        currentInputConnection?.closeConnection()
+        closeConnection()
         scope.coroutineContext.cancelChildren()
     }
     private fun resetFlagsSwitchMode(){
@@ -968,7 +948,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
-        currentInputConnection?.setComposingText(spannableString,1)
+        setComposingText(spannableString,1)
     }
 
     private fun setComposingTextAfterEdit(
@@ -979,16 +959,15 @@ class IMEService: InputMethodService(), LifecycleOwner {
             setSpan(BackgroundColorSpan(getColor(R.color.blue)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(UnderlineSpan(),0,inputString.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        currentInputConnection?.setComposingText(spannableString,1)
+        setComposingText(spannableString,1)
     }
 
     private fun setEnterKeyAction(listIterator: ListIterator<Candidate>) = scope.launch {
         _suggestionList.update { emptyList() }
         val nextSuggestion = listIterator.next()
-        currentInputConnection?.commitText(nextSuggestion.string,1)
+        commitText(nextSuggestion.string,1)
         println("enter key pressed: $stringInTail")
         if (stringInTail.isNotEmpty()){
-            delay(DISPLAY_LEFT_STRING_TIME)
             _inputString.update { stringInTail }
             _suggestionFlag.update { flag -> !flag }
             stringInTail = EMPTY_STRING
@@ -1086,13 +1065,13 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 if (_inputString.value.length == 1) {
                     _inputString.update { EMPTY_STRING }
                     _suggestionList.update { emptyList() }
-                    if (stringInTail.isEmpty()) currentInputConnection?.setComposingText("",0)
+                    if (stringInTail.isEmpty()) setComposingText("",0)
                 } else {
                     _inputString.update { it.dropLast(1) }
                 }
             } else {
                 if (stringInTail.isEmpty()) {
-                    currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 }
             }
 
@@ -1120,7 +1099,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
             InputTypeForIME.TextMultiLine,
             InputTypeForIME.TextImeMultiLine ->{
-                currentInputConnection?.commitText("\n",1)
+                commitText("\n",1)
             }
 
             InputTypeForIME.None,
@@ -1150,14 +1129,12 @@ class IMEService: InputMethodService(), LifecycleOwner {
             InputTypeForIME.TextWebSearchViewFireFox,
             InputTypeForIME.TextEditTextInBookingTDBank
             -> {
-                currentInputConnection?.apply {
-                    Timber.d("Enter key: called 3\n" )
-                    sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
-                        )
+                Timber.d("Enter key: called 3\n" )
+                sendKeyEvent(
+                    KeyEvent(
+                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
                     )
-                }
+                )
             }
 
             InputTypeForIME.Number,
@@ -1169,18 +1146,16 @@ class IMEService: InputMethodService(), LifecycleOwner {
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
             -> {
-                currentInputConnection?.performEditorAction(EditorInfo.IME_ACTION_DONE)
+                performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
             InputTypeForIME.TextSearchView ->{
-                currentInputConnection?.apply {
-                    Timber.d("enter key search: ${EditorInfo.IME_ACTION_SEARCH}" +
-                            "\n${currentInputEditorInfo.inputType}" +
-                            "\n${currentInputEditorInfo.imeOptions}" +
-                            "\n${currentInputEditorInfo.actionId}" +
-                            "\n${currentInputEditorInfo.privateImeOptions}")
-                    performEditorAction(EditorInfo.IME_ACTION_SEARCH)
-                }
+                Timber.d("enter key search: ${EditorInfo.IME_ACTION_SEARCH}" +
+                        "\n${currentInputEditorInfo.inputType}" +
+                        "\n${currentInputEditorInfo.imeOptions}" +
+                        "\n${currentInputEditorInfo.actionId}" +
+                        "\n${currentInputEditorInfo.privateImeOptions}")
+                performEditorAction(EditorInfo.IME_ACTION_SEARCH)
             }
 
         }
@@ -1208,9 +1183,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 }
                 else ->{
                     if (stringInTail.isNotEmpty()) return@setOnClickListener
-                    currentInputConnection?.apply {
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
-                    }
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
                 }
             }
         }
@@ -1270,9 +1243,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun commitTextWithSpace() {
-        currentInputConnection?.apply {
-            commitText(_inputString.value + " ", 1)
-        }
+        commitText(_inputString.value + " ", 1)
         _inputString.value = EMPTY_STRING
     }
 
@@ -1309,7 +1280,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
     private fun handleEmptyInputEnterKey() {
         if (stringInTail.isNotEmpty()) {
-            currentInputConnection?.finishComposingText()
+            finishComposingText()
             stringInTail = EMPTY_STRING
         } else {
             setEnterKeyPress()
@@ -1319,7 +1290,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun finishInputEnterKey() {
-        currentInputConnection?.finishComposingText()
+        finishComposingText()
         _inputString.update { EMPTY_STRING }
         resetFlagsEnterKeyNotHenkan()
     }
@@ -1332,10 +1303,8 @@ class IMEService: InputMethodService(), LifecycleOwner {
             if (_inputString.value.isNotEmpty()){
                 var newPos = _inputString.value.length - (_inputString.value.length  - 1)
                 if (newPos < 0 || newPos == 0) newPos = 1
-                currentInputConnection?.apply {
-                    commitText(_inputString.value,newPos)
-                    finishComposingText()
-                }
+                commitText(_inputString.value,newPos)
+                finishComposingText()
                 _inputString.value = EMPTY_STRING
             }
             resetFlagsLanguageModeClick()
@@ -1366,9 +1335,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 resetFlagsDeleteKey()
                 _suggestionFlag.update { flag -> !flag }
             }else{
-                currentInputConnection?.apply {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
-                }
+                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
             }
         }
 
@@ -1446,7 +1413,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
     private fun handleLeftKeyPress() {
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
-            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         } else if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
@@ -1473,7 +1440,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                         updateLeftInputString()
                     }else{
                         if (stringInTail.isEmpty()){
-                            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
                         }
                         _suggestionList.update { emptyList() }
                     }
@@ -1531,7 +1498,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                         }
                     }
                 }else {
-                    currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 }
                 true
             }
@@ -1547,10 +1514,10 @@ class IMEService: InputMethodService(), LifecycleOwner {
 
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
-            val extractedText = currentInputConnection?.getExtractedText(ExtractedTextRequest(),0)?.text ?: return
-            val afterText = currentInputConnection?.getTextAfterCursor(extractedText.length,0) ?: return
+            val extractedText = getExtractedText(ExtractedTextRequest(),0).text ?: return
+            val afterText = getTextAfterCursor(extractedText.length,0) ?: return
             if (afterText.isEmpty()) return
-            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
             val dropString = stringInTail.first()
             stringInTail = stringInTail.drop(1)
@@ -2194,7 +2161,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
                 println("deleteStringCommon else called")
                 _inputString.update { EMPTY_STRING }
                 _suggestionList.update { emptyList() }
-                if (stringInTail.isEmpty()) currentInputConnection?.setComposingText("",0)
+                if (stringInTail.isEmpty()) setComposingText("",0)
                 }
         }
     }
@@ -2365,7 +2332,7 @@ class IMEService: InputMethodService(), LifecycleOwner {
         onDeleteLongPressUp = false
         isContinuousTapInputEnabled = false
         if (isHenkan){
-            currentInputConnection?.finishComposingText()
+            finishComposingText()
             _inputString.value = key.toString()
             isHenkan = false
         } else {
@@ -2394,30 +2361,24 @@ class IMEService: InputMethodService(), LifecycleOwner {
     }
 
     private fun setSpaceKeyActionEnglishAndNumberNotEmpty(){
-        currentInputConnection?.apply {
-            if (stringInTail.isNotEmpty()){
-                commitText(_inputString.value + " " + stringInTail, 1)
-                stringInTail = EMPTY_STRING
-            }else{
-                commitText(_inputString.value + " ", 1)
-            }
+        if (stringInTail.isNotEmpty()){
+            commitText(_inputString.value + " " + stringInTail, 1)
+            stringInTail = EMPTY_STRING
+        }else{
+            commitText(_inputString.value + " ", 1)
         }
         _inputString.value = EMPTY_STRING
     }
 
     private fun setSpaceKeyActionEnglishAndNumberEmpty(){
         if (stringInTail.isNotEmpty()){
-            currentInputConnection?.apply {
-                commitText(" $stringInTail", 1)
-                stringInTail = EMPTY_STRING
-            }
+            commitText(" $stringInTail", 1)
+            stringInTail = EMPTY_STRING
         }else{
-            currentInputConnection?.apply {
-                if (_currentInputMode.value == InputMode.ModeJapanese){
-                    commitText("　", 1)
-                }else{
-                    commitText(" ", 1)
-                }
+            if (_currentInputMode.value == InputMode.ModeJapanese){
+                commitText("　", 1)
+            }else{
+                commitText(" ", 1)
             }
         }
         _inputString.value = EMPTY_STRING
@@ -2428,13 +2389,12 @@ class IMEService: InputMethodService(), LifecycleOwner {
         val candidateType = nextSuggestion.type.toInt()
         if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
             stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
-            delay(DELAY_CANDIDATE_CLICK)
         }
         val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
         spannableString2.apply {
             setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        currentInputConnection?. setComposingText(spannableString2,1)
+        setComposingText(spannableString2,1)
         _suggestionFlag.update { flag -> !flag }
     }
 
@@ -2443,13 +2403,12 @@ class IMEService: InputMethodService(), LifecycleOwner {
         val candidateType = nextSuggestion.type.toInt()
         if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
             stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
-            delay(DELAY_CANDIDATE_CLICK)
         }
         val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
         spannableString2.apply {
             setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
-        currentInputConnection?. setComposingText(spannableString2,1)
+        setComposingText(spannableString2,1)
         _suggestionFlag.update { flag -> !flag }
     }
     private fun setNextReturnInputCharacter(){
@@ -2533,4 +2492,154 @@ class IMEService: InputMethodService(), LifecycleOwner {
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
 
+    override fun getTextBeforeCursor(p0: Int, p1: Int): CharSequence? {
+        println("getTextBeforeCursor")
+        return currentInputConnection?.getTextBeforeCursor(p0, p1)
+    }
+
+    override fun getTextAfterCursor(p0: Int, p1: Int): CharSequence? {
+        println("getTextAfterCursor")
+        return currentInputConnection?.getTextAfterCursor(p0, p1)
+    }
+
+    override fun getSelectedText(p0: Int): CharSequence {
+        println("getSelectedText")
+        return currentInputConnection.getSelectedText(p0)
+    }
+
+    override fun getCursorCapsMode(p0: Int): Int {
+        println("getCursorCapsMode")
+        if (currentInputConnection == null) return 0
+        return currentInputConnection.getCursorCapsMode(p0)
+    }
+
+    override fun getExtractedText(p0: ExtractedTextRequest?, p1: Int): ExtractedText {
+        println("getExtractedText")
+        return currentInputConnection.getExtractedText(p0, p1)
+    }
+
+    override fun deleteSurroundingText(p0: Int, p1: Int): Boolean {
+        println("deleteSurroundingText")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.deleteSurroundingText(p0, p1)
+    }
+
+    override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean {
+        println("deleteSurroundingTextInCodePoints")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.deleteSurroundingTextInCodePoints(p0, p1)
+    }
+
+    override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
+        println("setComposingText $p0 $p1")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.setComposingText(p0, p1)
+    }
+
+    override fun setComposingRegion(p0: Int, p1: Int): Boolean {
+        println("setComposingRegion")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.setComposingRegion(p0, p1)
+    }
+
+    override fun finishComposingText(): Boolean {
+        if (currentInputConnection == null) return false
+        println("finishComposingText")
+        return currentInputConnection.finishComposingText()
+    }
+
+    override fun commitText(p0: CharSequence?, p1: Int): Boolean {
+        if (currentInputConnection == null) return false
+        println("commitText")
+        return currentInputConnection.commitText(p0, p1)
+    }
+
+    override fun commitCompletion(p0: CompletionInfo?): Boolean {
+        println("commitCompletion")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.commitCompletion(p0)
+    }
+
+    override fun commitCorrection(p0: CorrectionInfo?): Boolean {
+        println("commitCorrection")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.commitCorrection(p0)
+    }
+
+    override fun setSelection(p0: Int, p1: Int): Boolean {
+        println("setSelection")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.setSelection(p0, p1)
+    }
+
+    override fun performEditorAction(p0: Int): Boolean {
+        println("performEditorAction")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.performEditorAction(p0)
+    }
+
+    override fun performContextMenuAction(p0: Int): Boolean {
+        println("performContextMenuAction")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.performContextMenuAction(p0)
+    }
+
+    override fun beginBatchEdit(): Boolean {
+        println("beginBatchEdit")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.beginBatchEdit()
+    }
+
+    override fun endBatchEdit(): Boolean {
+        println("endBatchEdit")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.endBatchEdit()
+    }
+
+    override fun sendKeyEvent(p0: KeyEvent?): Boolean {
+        println("sendKeyEvent")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.sendKeyEvent(p0)
+    }
+
+    override fun clearMetaKeyStates(p0: Int): Boolean {
+        println("clearMetaKeyStates")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.clearMetaKeyStates(p0)
+    }
+
+    override fun reportFullscreenMode(p0: Boolean): Boolean {
+        println("reportFullscreenMode")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.reportFullscreenMode(p0)
+    }
+
+    override fun performPrivateCommand(p0: String?, p1: Bundle?): Boolean {
+        println("performPrivateCommand")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.performPrivateCommand(p0, p1)
+    }
+
+    override fun requestCursorUpdates(p0: Int): Boolean {
+        println("requestCursorUpdates")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.requestCursorUpdates(p0)
+    }
+
+    override fun getHandler(): Handler? {
+        println("getHandler")
+        return currentInputConnection?.handler
+    }
+
+    override fun closeConnection() {
+        println("closeConnection")
+        if (currentInputConnection == null) return
+        return currentInputConnection.closeConnection()
+    }
+
+    override fun commitContent(p0: InputContentInfo, p1: Int, p2: Bundle?): Boolean {
+        println("commitContent")
+        if (currentInputConnection == null) return false
+        return currentInputConnection.commitContent(p0, p1, p2)
+    }
 }
