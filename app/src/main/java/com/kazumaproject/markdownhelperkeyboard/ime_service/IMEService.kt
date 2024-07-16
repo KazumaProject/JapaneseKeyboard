@@ -1300,14 +1300,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         setOnClickListener {
             setVibrate()
             _currentKeyboardMode.value = KeyboardMode.ModeKigouView
-            if (_inputString.value.isNotEmpty()){
-                var newPos = _inputString.value.length - (_inputString.value.length  - 1)
-                if (newPos < 0 || newPos == 0) newPos = 1
-                commitText(_inputString.value,newPos)
-                finishComposingText()
-                _inputString.value = EMPTY_STRING
-            }
-            resetFlagsLanguageModeClick()
+            finishComposingText()
+            resetFlagsSwitchMode()
         }
     }
 
@@ -1365,14 +1359,17 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 is InputMode.ModeJapanese ->{
                     setInputMode(InputMode.ModeEnglish)
                     _currentInputMode.value = InputMode.ModeEnglish
+                    finishComposingText()
                 }
                 is InputMode.ModeEnglish ->{
                     setInputMode(InputMode.ModeNumber)
                     _currentInputMode.value = InputMode.ModeNumber
+                    finishComposingText()
                 }
                 is InputMode.ModeNumber ->{
                     setInputMode(InputMode.ModeJapanese)
                     _currentInputMode.value = InputMode.ModeJapanese
+                    finishComposingText()
                 }
             }
             resetFlagsSwitchMode()
