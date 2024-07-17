@@ -24,7 +24,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
-import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
@@ -352,8 +351,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting")
-        requestCursorUpdates(0)
-        requestCursorUpdates(InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE)
         resetAllFlags()
         setCurrentInputType(attribute)
         _suggestionViewStatus.update { true }
@@ -392,28 +389,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
     }
 
-    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
-        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
-        cursorAnchorInfo?.apply {
-            Timber.d("onUpdateCursorAnchorInfo\n" +
-                    "composingText: $composingText " +
-                    "\ninputString:${_inputString.value}" +
-                    "\nstringInTail: $stringInTail")
-            if (composingText == null){
-                if (_inputString.value.isNotEmpty()){
-                    stringInTail = ""
-                }
-                _inputString.update { EMPTY_STRING }
-                _suggestionFlag.update { !it }
-            }else {
-                if (_inputString.value.isEmpty() && stringInTail.isEmpty()){
-                    _inputString.update { composingText.toString() }
-                    _suggestionFlag.update { !it }
-                }
-            }
-        }
-    }
-
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         when(newConfig.orientation){
@@ -431,6 +406,34 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
     }
+
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int
+    ) {
+        super.onUpdateSelection(
+            oldSelStart,
+            oldSelEnd,
+            newSelStart,
+            newSelEnd,
+            candidatesStart,
+            candidatesEnd
+        )
+        println("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
+        if (candidatesStart == -1 && candidatesEnd == -1){
+            _inputString.update { EMPTY_STRING }
+            scope.launch {
+                delay(64L)
+                _suggestionList.update { emptyList() }
+                _suggestionFlag.update { !it }
+            }
+        }
+    }
+
     private fun startScope(
         keyList: List<Any>,
         flexboxLayoutManager: FlexboxLayoutManager
@@ -474,7 +477,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             launch {
-                _inputString.asStateFlow() .collectLatest { inputString ->
+                _inputString.asStateFlow().collectLatest { inputString ->
                     processInputString(inputString)
                 }
             }
@@ -631,7 +634,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
-                    requestCursorUpdates(0)
+                    
                 }
 
                 InputTypeForIME.Number,
@@ -948,6 +951,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
         }
+        Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
+
         setComposingText(spannableString,1)
     }
 
@@ -959,6 +964,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             setSpan(BackgroundColorSpan(getColor(R.color.blue)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(UnderlineSpan(),0,inputString.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
+        Timber.d("launchInputString: setComposingTextAfterEdit $spannableString")
         setComposingText(spannableString,1)
     }
 
@@ -1179,10 +1185,10 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 _inputString.value.isNotEmpty()  ->{
                     deleteStringCommon()
                     resetFlagsDeleteKey()
-                    _suggestionFlag.update { flag -> !flag }
                 }
                 else ->{
                     if (stringInTail.isNotEmpty()) return@setOnClickListener
+                    println("delete sendKeyEvent")
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
                 }
             }
@@ -1301,6 +1307,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             setVibrate()
             _currentKeyboardMode.value = KeyboardMode.ModeKigouView
             finishComposingText()
+            if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+            _inputString.update { EMPTY_STRING }
             resetFlagsSwitchMode()
         }
     }
@@ -1360,16 +1368,22 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                     setInputMode(InputMode.ModeEnglish)
                     _currentInputMode.value = InputMode.ModeEnglish
                     finishComposingText()
+                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+                    _inputString.update { EMPTY_STRING }
                 }
                 is InputMode.ModeEnglish ->{
                     setInputMode(InputMode.ModeNumber)
                     _currentInputMode.value = InputMode.ModeNumber
                     finishComposingText()
+                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+                    _inputString.update { EMPTY_STRING }
                 }
                 is InputMode.ModeNumber ->{
                     setInputMode(InputMode.ModeJapanese)
                     _currentInputMode.value = InputMode.ModeJapanese
                     finishComposingText()
+                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+                    _inputString.update { EMPTY_STRING }
                 }
             }
             resetFlagsSwitchMode()
@@ -2147,20 +2161,20 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     
     private fun deleteStringCommon() {
         val length = _inputString.value.length
-        println("deleteStringCommon: $length")
         when{
             length > 1 -> {
+                println("deleteStringCommon: ${_inputString.value}")
                 _inputString.update {
                     it.dropLast(1)
                 }
             }
             else -> {
-                println("deleteStringCommon else called")
                 _inputString.update { EMPTY_STRING }
                 _suggestionList.update { emptyList() }
                 if (stringInTail.isEmpty()) setComposingText("",0)
                 }
         }
+        _suggestionFlag.update { flag -> !flag }
     }
 
     private fun setCurrentInputCharacterContinuous(
@@ -2528,7 +2542,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
-        println("setComposingText $p0 $p1")
+        println("setComposingText : $p0 $p1 ")
         if (currentInputConnection == null) return false
         return currentInputConnection.setComposingText(p0, p1)
     }
