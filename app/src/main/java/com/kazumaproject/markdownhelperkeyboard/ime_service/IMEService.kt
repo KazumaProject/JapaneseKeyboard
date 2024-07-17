@@ -423,14 +423,15 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             candidatesStart,
             candidatesEnd
         )
-        println("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
+        println("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd ${_inputString.value} $stringInTail")
         if (candidatesStart == -1 && candidatesEnd == -1){
-            _inputString.update { EMPTY_STRING }
-            scope.launch {
-                delay(64L)
-                _suggestionList.update { emptyList() }
-                _suggestionFlag.update { !it }
+            if (stringInTail.isNotEmpty()){
+                _inputString.update { stringInTail }
+                stringInTail = EMPTY_STRING
+            } else {
+                _inputString.update { EMPTY_STRING }
             }
+            _suggestionFlag.update { !it }
         }
     }
 
@@ -582,6 +583,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 setTenkeyIconsEmptyInputString()
             }
         }
+        _suggestionFlag.update { !it }
     }
 
     private fun shouldEnableContinuousTap(inputString: String): Boolean {
@@ -634,7 +636,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
-                    
+
                 }
 
                 InputTypeForIME.Number,
@@ -759,9 +761,9 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
         if (stringInTail.isNotEmpty()){
             commitText(candidate.string, 1)
-            setComposingText(stringInTail,0)
-            _inputString.update { stringInTail }
-            stringInTail = EMPTY_STRING
+//            setComposingText(stringInTail,0)
+//            _inputString.update { stringInTail }
+//            stringInTail = EMPTY_STRING
         }else{
             commitText(candidate.string, 1)
             _inputString.update { EMPTY_STRING }
@@ -973,11 +975,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         val nextSuggestion = listIterator.next()
         commitText(nextSuggestion.string,1)
         println("enter key pressed: $stringInTail")
-        if (stringInTail.isNotEmpty()){
-            _inputString.update { stringInTail }
-            _suggestionFlag.update { flag -> !flag }
-            stringInTail = EMPTY_STRING
-        }else{
+        if (stringInTail.isEmpty()){
             _inputString.update { EMPTY_STRING }
         }
         resetFlagsEnterKey()
