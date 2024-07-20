@@ -582,8 +582,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 resetInputString()
                 setTenkeyIconsEmptyInputString()
             }
+            _suggestionFlag.update { !it }
         }
-        _suggestionFlag.update { !it }
     }
 
     private fun shouldEnableContinuousTap(inputString: String): Boolean {
