@@ -525,14 +525,11 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
+    private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
         suggestionAdapter?.let {
             it.suggestions = suggestions
             mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
-            if (suggestions.isNotEmpty()){
-                delay(16L)
-                mainView.suggestionRecyclerView.scrollToPosition(0)
-            }
+            mainView.suggestionRecyclerView.scrollToPosition(0)
         }
     }
 
