@@ -291,7 +291,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         const val EMPTY_STRING = ""
         const val DELAY_TIME = 1000L
         const val LONG_DELAY_TIME = 64L
-        const val SUGGESTION_SCROLL_UP_TIME = 1L
         const val N_BEST = 4
     }
 
@@ -527,9 +526,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
-        mainView.suggestionRecyclerView.smoothScrollToPosition(0)
         suggestionAdapter?.suggestions = suggestions
-        println("suggestions: ${suggestions.map { it.string}}")
         mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
     }
 
