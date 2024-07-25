@@ -125,7 +125,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
@@ -292,7 +291,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         const val EMPTY_STRING = ""
         const val DELAY_TIME = 1000L
         const val LONG_DELAY_TIME = 64L
-        const val SUGGESTION_SCROLL_UP_TIME = 64L
+        const val SUGGESTION_SCROLL_UP_TIME = 1L
         const val N_BEST = 4
     }
 
@@ -527,14 +526,11 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
-        withContext(Dispatchers.Main){
-            suggestionAdapter?.suggestions = suggestions
-            println("suggestions: ${suggestions.map { it.string}}")
-            mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
-            delay(SUGGESTION_SCROLL_UP_TIME)
-            mainView.suggestionRecyclerView.scrollToPosition(0)
-        }
+    private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
+        mainView.suggestionRecyclerView.smoothScrollToPosition(0)
+        suggestionAdapter?.suggestions = suggestions
+        println("suggestions: ${suggestions.map { it.string}}")
+        mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
     }
 
     private fun updateKeyLayoutByInputMode(
