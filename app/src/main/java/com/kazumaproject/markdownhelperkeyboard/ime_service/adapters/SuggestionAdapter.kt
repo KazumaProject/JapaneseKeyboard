@@ -18,11 +18,11 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem.string == newItem.string
+            return oldItem == newItem
         }
 
         override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem == newItem
+            return oldItem.string == newItem.string
         }
     }
 
