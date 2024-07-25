@@ -525,9 +525,15 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
-        suggestionAdapter?.suggestions = suggestions
-        mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+    private suspend fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
+        suggestionAdapter?.let {
+            it.suggestions = suggestions
+            mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+            if (suggestions.isNotEmpty()){
+                delay(16L)
+                mainView.suggestionRecyclerView.scrollToPosition(0)
+            }
+        }
     }
 
     private fun updateKeyLayoutByInputMode(
