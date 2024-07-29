@@ -50,13 +50,17 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
-        holder.text.text = suggestion.string
+        if (position == 0) holder.text.text = suggestion.string
+            .padStart(suggestion.string.length + 4).plus(" ".repeat(4))
+        else holder.text.text = suggestion.string
         holder.typeText.text = when (suggestion.type) {
-            (1).toByte(), (2).toByte(), (5).toByte() -> "   "
-            (3).toByte() -> "[ひらがな]"
-            (4).toByte() -> "[カタカナ]"
-            (6).toByte() -> "[候補]"
-            (7).toByte() -> "[単]"
+            (1).toByte(), (2).toByte(), (5).toByte() -> " ".repeat(6)
+            (8).toByte() -> " [修飾] "
+            (9).toByte() -> " [予測] "
+            (3).toByte() -> " ".repeat(6)
+            (4).toByte() -> " ".repeat(6)
+            (6).toByte() -> " ".repeat(6)
+            (7).toByte() -> " [単] "
             else -> ""
         }
 

@@ -196,7 +196,37 @@ class LOUDSWithTermId {
                 result.add(resultTemp.toString())
             }
         }
-        //println("common prefix result: $result")
+        return result
+    }
+
+    private fun collectWords(pos: Int, prefix: StringBuilder, rank0Array: IntArray, rank1Array: IntArray, result: MutableList<String>) {
+        if (isLeaf[pos]) {
+            result.add(prefix.toString())
+        }
+        var childPos = firstChild(pos, rank0Array, rank1Array)
+        while (childPos >= 0 && LBS[childPos]) {
+            val index = LBS.rank1Common(childPos, rank1Array)
+            if (index >= labels.size) break
+            prefix.append(labels[index])
+            collectWords(childPos, prefix, rank0Array, rank1Array, result)
+            prefix.deleteCharAt(prefix.length - 1)
+            childPos++
+        }
+    }
+
+    fun predictiveSearch(prefix: String, rank0Array: IntArray, rank1Array: IntArray): List<String> {
+        val result = mutableListOf<String>()
+        val resultTemp = StringBuilder()
+        var n = 0
+        for (c in prefix) {
+            n = traverse(n, c, rank0Array, rank1Array)
+            if (n < 0) return result // No match found
+            val index = LBS.rank1Common(n, rank1Array)
+            if (index >= labels.size) return result
+            resultTemp.append(labels[index])
+        }
+        // Collect all words starting from the last matched node
+        collectWords(n, resultTemp, rank0Array, rank1Array, result)
         return result
     }
 

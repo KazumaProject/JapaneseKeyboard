@@ -7,7 +7,6 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import kotlin.time.ExperimentalTime
-import kotlin.time.measureTime
 
 class GraphBuilder {
 
@@ -43,20 +42,17 @@ class GraphBuilder {
                 )
             )
         )
-
         for (i in str.indices) {
             val subStr = str.substring(i)
-            var commonPrefixSearch: MutableList<String>
-            val commonPrefixSearchTime = measureTime {
-                commonPrefixSearch = yomiTrie.commonPrefixSearch(
-                    str = subStr,
-                    rank0Array = rank0ArrayLBSYomi,
-                    rank1Array = rank1ArrayLBSYomi,
-                ).toMutableList().apply {
-                    if (isEmpty()) add(subStr)
-                }
+            val commonPrefixSearch: MutableList<String> = yomiTrie.commonPrefixSearch(
+                str = subStr,
+                rank0Array = rank0ArrayLBSYomi,
+                rank1Array = rank1ArrayLBSYomi,
+            ).toMutableList().apply {
+                if (isEmpty()) add(subStr)
             }
-            //println("commonPrefixSearchTime: $commonPrefixSearchTime $subStr")
+
+            println("common prefix search: $commonPrefixSearch")
 
             for (yomiStr in commonPrefixSearch) {
                 val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray,LBSBooleanArrayPreprocess)
@@ -84,20 +80,12 @@ class GraphBuilder {
                     )
                 }
 
-//                println("nodeIndexTime: $nodeIndexTime $yomiStr $nodeIndex")
-//                println("termIdTime: $termIdTime $yomiStr $termId")
-//                println("listTokenTime: $listTokenTime $yomiStr")
-//                println("tangoListTime: $tangoListTime $yomiStr")
-
                 if (graph[i + yomiStr.length].isEmpty()) {
                     graph[i + yomiStr.length] = mutableListOf()
                 }
                 graph[i + yomiStr.length].add(tangoList.toMutableList())
             }
         }
-
-//        println("time of construct graph: $str")
-//        println("graph: $graph")
         return graph.toList()
     }
 
