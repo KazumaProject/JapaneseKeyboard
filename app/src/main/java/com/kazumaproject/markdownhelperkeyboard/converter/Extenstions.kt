@@ -4,6 +4,7 @@ import java.io.InputStream
 import java.nio.ByteBuffer
 import java.util.BitSet
 
+
 fun List<Boolean>.toBitSet(): BitSet {
     val bitSet = BitSet(this.size)
     this.forEachIndexed { index, value ->
@@ -22,6 +23,11 @@ fun String.hiraToKata() =
             it
         }
     }.joinToString("")
+
+
+fun String.shushokuMoji(): List<String>{
+    return emptyList()
+}
 
 fun List<Char>.toByteArrayFromListChar(): ByteArray {
     return this.map { it.code }.toByteArray()

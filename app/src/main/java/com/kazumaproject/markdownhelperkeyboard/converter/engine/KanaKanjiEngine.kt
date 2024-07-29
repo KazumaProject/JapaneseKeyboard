@@ -136,6 +136,47 @@ class KanaKanjiEngine {
             str = input, rank0Array = systemRank0ArrayLBSYomi, rank1Array = systemRank1ArrayLBSYomi
         ).asReversed()
 
+        val predictiveSearch = systemYomiTrie.predictiveSearch(
+            prefix = input, rank0Array = systemRank0ArrayLBSYomi, rank1Array = systemRank1ArrayLBSYomi
+        )
+
+        val predictiveSearchResult = if (input.length == 1){
+            emptyList()
+        } else{
+            async {
+                predictiveSearch
+                    .sortedBy { it.length }
+                    .filterNot { it.length == input.length }
+                    .flatMap { yomi ->
+                        val termId = systemYomiTrie.getTermId(
+                            systemYomiTrie.getNodeIndex(yomi, systemRank1ArrayLBSYomi, systemYomiLBSBooleanArray, systemYomiLBSPreprocess),
+                            systemRank1ArrayIsLeaf
+                        )
+                        systemTokenArray.getListDictionaryByYomiTermId(
+                            termId, systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector
+                        ).sortedBy { it.wordCost }
+                            .map {
+                                Candidate(
+                                    string = when (it.nodeId) {
+                                        -2 -> yomi
+                                        -1 -> yomi.hiraToKata()
+                                        else -> systemTangoTrie.getLetter(it.nodeId, systemRank0ArrayLBSTango, systemRank1ArrayLBSTango)
+                                    },
+                                    type = 9,
+                                    length = yomi.length.toUByte(),
+                                    score = it.wordCost.toInt(),
+                                    leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
+                                    rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
+                                )
+                            }.distinctBy { it.string }
+                    }
+                    .distinctBy { it.string }
+                    .filter { it.score <= 6000 }
+            }.await()
+        }
+
+        println("predictive search result: ${predictiveSearchResult.map { it.string + " " + it.score}}")
+
         val yomiPartList = async {
             yomiPartOf.flatMap { yomi ->
                 val termId = systemYomiTrie.getTermId(
@@ -159,7 +200,7 @@ class KanaKanjiEngine {
                     )
                 }.distinctBy { it.string }
             }.distinctBy { it.string }
-        }
+        }.await()
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
@@ -167,32 +208,25 @@ class KanaKanjiEngine {
         )
 
         val longest = yomiPartOf.firstOrNull() ?: input
-//        val longestConversionList = async {
-//            nBestPathForLongest(longest, n * 2).map {
-//                Candidate(it.string, 5, longest.length.toUByte(), it.wordCost, it.leftId, it.rightId)
-//            }
-//        }.await()
 
-        val secondPart = async {
-            if (longest.length < input.length) {
-                val tempSecondStr = input.substring(longest.length)
-                val tempFirstStrConversionList = nBestPathForLongest(longest, n * 2)
-                val tempSecondStrConversionList = nBestPathForLongest(tempSecondStr, n * 2)
-                tempFirstStrConversionList.flatMap { item1 ->
-                    tempSecondStrConversionList.map { item2 ->
-                        Pair(item1.string + item2.string, item1.wordCost + item2.wordCost)
-                    }
-                }.map { (combinedString, combinedScore) ->
-                    Candidate(
-                        string = combinedString,
-                        type = 6,
-                        length = (longest.length + tempSecondStr.length).toUByte(),
-                        score = combinedScore
-                    )
+        val secondPart = if (longest.length < input.length) {
+            val tempSecondStr = input.substring(longest.length)
+            val tempFirstStrConversionList = nBestPathForLongest(longest, n * 2)
+            val tempSecondStrConversionList = nBestPathForLongest(tempSecondStr, n * 2)
+            tempFirstStrConversionList.flatMap { item1 ->
+                tempSecondStrConversionList.map { item2 ->
+                    Pair(item1.string + item2.string, item1.wordCost + item2.wordCost)
                 }
-            } else {
-                emptyList()
+            }.map { (combinedString, combinedScore) ->
+                Candidate(
+                    string = combinedString,
+                    type = 6,
+                    length = (longest.length + tempSecondStr.length).toUByte(),
+                    score = combinedScore
+                )
             }
+        } else {
+            emptyList()
         }
 
         val singleKanjiCommonPrefix = singleKanjiYomiTrie.commonPrefixSearchShortArray(
@@ -222,15 +256,33 @@ class KanaKanjiEngine {
                     )
                 }.distinctBy { it.string }
             }.distinctBy { it.string }
-        }
+        }.await()
 
+//        val shushokuKeyResult = generateCombinations(longest).map { str ->
+//            if (str.length == input.length && str.length <= 6) {
+//                val tempFirstStrConversionList = nBestPathForLongest(str, n * 2)
+//                tempFirstStrConversionList.map { (combinedString, combinedScore) ->
+//                    Candidate(
+//                        string = combinedString,
+//                        type = 8,
+//                        length = (str.length).toUByte(),
+//                        score = combinedScore
+//                    )
+//                }.filter{  it.score <= 7000 }
+//            } else {
+//                emptyList()
+//            }
+//        }.flatten()
+//
+//        println("shushoku: ${shushokuKeyResult.map { it.string }}")
 
         val finalResult = resultNBestFinal +
-                secondPart.await().sortedBy { it.score }.filter { it.score - resultNBestFinal.first().score < 4000 } +
+//                shushokuKeyResult +
+                secondPart.sortedBy { it.score }.filter { it.score - resultNBestFinal.first().score < 4000 } +
                 hirakanaAndKana +
-                //longestConversionList +
-                yomiPartList.await() +
-                singleKanjiList.await()
+                predictiveSearchResult +
+                yomiPartList +
+                singleKanjiList
 
         return@async finalResult.distinctBy { it.string }
     }.await()

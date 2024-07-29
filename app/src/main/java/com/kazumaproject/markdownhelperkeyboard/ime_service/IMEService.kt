@@ -525,11 +525,14 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
+    private suspend fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
         suggestionAdapter?.let {
             it.suggestions = suggestions
             mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
-            mainView.suggestionRecyclerView.scrollToPosition(0)
+            withContext(mainDispatcher){
+                delay(32L)
+                mainView.suggestionRecyclerView.scrollToPosition(0)
+            }
         }
     }
 
@@ -752,14 +755,11 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     private fun commitCandidateText(candidate: Candidate) {
         println("clicked candidate: $candidate ${_inputString.value}")
         val candidateType = candidate.type.toInt()
-        if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
+        if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = _inputString.value.substring(candidate.length.toInt())
         }
         if (stringInTail.isNotEmpty()){
             commitText(candidate.string, 1)
-//            setComposingText(stringInTail,0)
-//            _inputString.update { stringInTail }
-//            stringInTail = EMPTY_STRING
         }else{
             commitText(candidate.string, 1)
             _inputString.update { EMPTY_STRING }
@@ -879,6 +879,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
+        _suggestionViewStatus.update { true }
     }
 
     private fun resetFlagsLanguageModeClick(){
@@ -1044,19 +1045,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private suspend fun getSuggestionList(ioDispatcher: CoroutineDispatcher)= scope.async{
         val queryText = _inputString.value
-        return@async try {
-            if (stringInTail.isNotEmpty()){
-                kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher).filter {
-                    it.length.toInt() == _inputString.value.length
-                }
-            }else{
-                kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher)
-            }
-        }catch (e: Exception){
-            if (e is CancellationException) throw e
-            println(e.stackTraceToString())
-            emptyList()
-        }
+        return@async kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher)
     }.await()
 
     private fun deleteLongPress() = scope.launch {
@@ -1599,8 +1588,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                         }
                         MotionEvent.ACTION_UP ->{
                             if (tenKeysLongPressed){
-                                mainLayoutBinding?.root?.let { a ->
-                                    ImageEffects.removeBlurEffect(a)
+                                mainLayoutBinding?.keyboardView?.let { a ->
+                                    ImageEffects.removeBlurEffect(a.root)
                                 }
                                 tenKeysLongPressed = false
                             }
@@ -1868,8 +1857,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                     mPopupWindowRight.setPopUpWindowRight(applicationContext,bubbleLayoutRight,v)
                     mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
                     mPopupWindowActive.setPopUpWindowCenter(applicationContext,bubbleLayoutActive,it)
-                    mainLayoutBinding?.root?.let { a ->
-                        ImageEffects.applyBlurEffect(a,8f)
+                    mainLayoutBinding?.keyboardView?.let { a ->
+                        ImageEffects.applyBlurEffect(a.root,8f)
                     }
                     false
                 }
@@ -1887,8 +1876,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                         }
                         MotionEvent.ACTION_UP ->{
                             if (tenKeysLongPressed){
-                                mainLayoutBinding?.root?.let { a ->
-                                    ImageEffects.removeBlurEffect(a)
+                                mainLayoutBinding?.keyboardView?.let { a ->
+                                    ImageEffects.removeBlurEffect(a.root)
                                 }
                                 tenKeysLongPressed = false
                             }
@@ -2046,8 +2035,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                         mPopupWindowBottom.setPopUpWindowBottom(applicationContext,bubbleLayoutBottom,v)
                         mPopupWindowRight.setPopUpWindowRight(applicationContext,bubbleLayoutRight,v)
 
-                        mainLayoutBinding?.root?.let { a ->
-                            ImageEffects.applyBlurEffect(a,8f)
+                        mainLayoutBinding?.keyboardView?.let { a ->
+                            ImageEffects.applyBlurEffect(a.root,8f)
                         }
                     }
                     false
@@ -2392,7 +2381,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) = scope.launch{
         val nextSuggestion = listIterator.next()
         val candidateType = nextSuggestion.type.toInt()
-        if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
+        if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
         }
         val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
@@ -2406,7 +2395,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) = scope.launch{
         val nextSuggestion = suggestions[0]
         val candidateType = nextSuggestion.type.toInt()
-        if (candidateType == 2 || candidateType == 5 || candidateType == 7) {
+        if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
         }
         val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
