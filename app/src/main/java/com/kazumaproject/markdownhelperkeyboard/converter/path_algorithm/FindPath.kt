@@ -30,7 +30,8 @@ class FindPath {
         graph: List<MutableList<MutableList<Node>>>,
         length: Int,
         connectionIds: ShortArray,
-        n: Int
+        n: Int,
+        input: String
     ): MutableList<Candidate> {
         forwardDp(graph, length, connectionIds)
         val resultFinal: MutableList<Candidate> = mutableListOf()
@@ -44,21 +45,23 @@ class FindPath {
             node?.let {
                 if (node.first.tango == "BOS") {
                     if (!resultFinal.map { it.string }.contains(getStringFromNode(node.first))){
-                        resultFinal.add(
-                            Candidate(
-                                string = getStringFromNode(node.first),
-                                type = (1).toByte(),
-                                length = length.toUByte(),
-                                score = node.second,
-                                leftId =  node.first.next?.l,
-                                rightId =  node.first.next?.r
-                            )
+                        val candidate = Candidate(
+                            string = getStringFromNode(node.first),
+                            type = (1).toByte(),
+                            length = length.toUByte(),
+                            score = node.second,
+                            leftId =  node.first.next?.l,
+                            rightId =  node.first.next?.r
                         )
+                        println("candidate: ${candidate.string} $input ${candidate.score}")
+                        resultFinal.add(candidate)
                     }
                 } else {
                     val prevNodes = getPrevNodes2(
                         graph,node.first,node.first.sPos
                     ).flatten()
+
+                    println("prevNodes:  $input ${prevNodes.map { it.tango + " " + it.score }}")
                     for (prevNode in prevNodes){
                         val edgeScore = getEdgeCost(
                             prevNode.l.toInt(),
@@ -68,6 +71,7 @@ class FindPath {
                         prevNode.g = node.first.g + edgeScore + node.first.score
                         prevNode.next = node.first
                         val result2 = Pair(prevNode,prevNode.g + prevNode.f)
+                        println("result2:  $input $result2")
                         pQueue.add(result2)
                     }
                 }
