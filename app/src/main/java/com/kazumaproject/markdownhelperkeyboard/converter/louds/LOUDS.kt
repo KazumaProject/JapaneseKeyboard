@@ -110,6 +110,8 @@ class LOUDS {
             val currentNodeId = LBS.rank1Common(currentNodeIndex, rank1Array)
             val currentChar = labels[currentNodeId]
 
+            println("currentNodeIndex: $currentNodeIndex, currentNodeId: $currentNodeId, currentChar: $currentChar")
+
             /** Remove this for Wakati **/
             if (currentChar != ' ') {
                 result.append(currentChar)
@@ -119,7 +121,7 @@ class LOUDS {
 
             currentNodeIndex = LBS.select1Common(LBS.rank0Common(currentNodeIndex, rank0Array), rank1Array)
         }
-
+        println("Final result before reverse: ${result.toString()}")
         return result.reverse().toString()
     }
 

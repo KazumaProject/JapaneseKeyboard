@@ -529,10 +529,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.let {
             it.suggestions = suggestions
             mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
-            withContext(mainDispatcher){
-                delay(32L)
-                mainView.suggestionRecyclerView.scrollToPosition(0)
-            }
         }
     }
 
