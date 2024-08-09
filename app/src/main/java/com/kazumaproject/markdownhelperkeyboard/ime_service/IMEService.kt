@@ -1631,7 +1631,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private var firstPointerId = 0
-    private var firstFingerUp = false
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setTouchListenerForMainKeys(
@@ -1663,7 +1662,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                             currentTenKeyId = v.id
                             isPointerDown = false
                             firstPointerId = event.getPointerId(0)
-                            firstFingerUp = false
                             return@setOnTouchListener false
                         }
                         MotionEvent.ACTION_UP ->{
@@ -1698,8 +1696,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                                 is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(currentTenKeyId)
                                 is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(currentTenKeyId)
                             }
-
-                            firstFingerUp = false
 
                             when{
                                 /** Tap **/
@@ -1792,7 +1788,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                             val finalY = event.rawY
                             val distanceX = (finalX - firstXPoint)
                             val distanceY = (finalY - firstYPoint)
-                            if (event.pointerCount == 1 && !isPointerDown && currentTenKeyId != 0 && !firstFingerUp){
+                            if (event.pointerCount == 1 && !isPointerDown && currentTenKeyId != 0){
                                 when{
                                     /** Tap **/
                                     abs(distanceX) < 100 && abs(distanceY) < 100 ->{
@@ -1969,11 +1965,6 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                                     return@setOnTouchListener true
                                 }
 
-                                if (firstFingerUp){
-                                    getCurrentKeyID(x2, y2, keyList)
-                                    return@setOnTouchListener true
-                                }
-
                                 isPointerDown = true
 
                                 if (currentTenKeyId !in tenKeyMap.keysJapanese) {
@@ -2092,14 +2083,10 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                                 }
 
                                 if (it.id != currentTenKeyId && pointerId == 0) {
-                                    isPointerDown = false
-                                    firstFingerUp = true
                                     return@setOnTouchListener false
                                 }
 
-                                if (it.id == currentTenKeyId && pointerId == 0) {
-                                    isPointerDown = false
-                                    firstFingerUp = true
+                                if (it.id == currentTenKeyId && pointerId == 1) {
                                     return@setOnTouchListener false
                                 }
 
