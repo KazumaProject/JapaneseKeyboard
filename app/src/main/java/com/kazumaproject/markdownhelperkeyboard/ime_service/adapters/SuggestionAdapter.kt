@@ -55,13 +55,13 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         else holder.text.text = suggestion.string
         holder.typeText.text = when (suggestion.type) {
             (1).toByte()-> "[${suggestion.score}]"
-            (2).toByte() -> "[最長]"
+            (2).toByte() -> "   "
             (8).toByte() -> " [修飾] "
             (9).toByte() -> " [予測] "
-            (3).toByte() -> "[ひらがな]"
-            (4).toByte() -> "[カタカナ]"
+            (3).toByte() -> "   "
+            (4).toByte() -> "   "
             (5).toByte() -> "[部分]"
-            (6).toByte() -> "[最長一致法]"
+            (6).toByte() -> "   "
             (7).toByte() -> " [単] "
             else -> ""
         }
