@@ -25,6 +25,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMap
 import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.toBooleanArray
 import com.kazumaproject.viterbi.FindPath
@@ -320,6 +321,10 @@ object AppModule {
 
         return kanaKanjiEngine
     }
+
+    @Singleton
+    @Provides
+    fun providePressedKeyStatus(): PressedKeyStatus = PressedKeyStatus()
 
     @Singleton
     @Provides
