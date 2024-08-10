@@ -114,6 +114,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTa
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapJapanese
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.ImageEffects
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST
 import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.KAOMOJI
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputMode
@@ -142,57 +143,73 @@ import kotlin.math.abs
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
-class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
+class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     @Named("main_ime_scope")
-    lateinit var scope : CoroutineScope
+    lateinit var scope: CoroutineScope
+
     @Inject
     @MainDispatcher
     lateinit var mainDispatcher: CoroutineDispatcher
+
     @Inject
     @IoDispatcher
     lateinit var ioDispatcher: CoroutineDispatcher
+
     @Inject
     @InputBackGroundDispatcher
     lateinit var imeIoDispatcher: CoroutineDispatcher
+
     @Inject
     @SuggestionDispatcher
     lateinit var suggestionDispatcher: CoroutineDispatcher
 
     @Inject
     lateinit var appPreference: AppPreference
+
     @Inject
     lateinit var tenKeyMap: TenKeyMapHolder
+
     @Inject
     lateinit var inputMethodManager: InputMethodManager
+
     @Inject
     @DrawableReturn
     lateinit var drawableReturn: Drawable
+
     @Inject
     @DrawableKanaSmall
     lateinit var drawableKanaSmall: Drawable
+
     @Inject
     @DrawableHenkan
     lateinit var drawableHenkan: Drawable
+
     @Inject
     @DrawableEnglishSmall
     lateinit var drawableEnglishSmall: Drawable
+
     @Inject
     @DrawableSpaceBar
     lateinit var drawableSpaceBar: Drawable
+
     @Inject
     @DrawableRightArrow
     lateinit var drawableRightArrow: Drawable
+
     @Inject
     @DrawableLanguage
     lateinit var drawableLanguage: Drawable
+
     @Inject
     @DrawableNumberSmall
-    lateinit var drawableNumberSmall : Drawable
+    lateinit var drawableNumberSmall: Drawable
+
     @Inject
     @DrawableOpenBracket
-    lateinit var drawableOpenBracket : Drawable
+    lateinit var drawableOpenBracket: Drawable
+
     @Inject
     @PopUpTextActive
     lateinit var mPopupWindowActive: PopupWindow
@@ -204,16 +221,19 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var mPopupWindowTop: PopupWindow
     private lateinit var bubbleViewTop: BubbleLayout
     private lateinit var popTextTop: MaterialTextView
+
     @Inject
     @PopUpWindowLeft
     lateinit var mPopupWindowLeft: PopupWindow
     private lateinit var bubbleViewLeft: BubbleLayout
     private lateinit var popTextLeft: MaterialTextView
+
     @Inject
     @PopUpWindowBottom
     lateinit var mPopupWindowBottom: PopupWindow
     private lateinit var bubbleViewBottom: BubbleLayout
     private lateinit var popTextBottom: MaterialTextView
+
     @Inject
     @PopUpWindowRight
     lateinit var mPopupWindowRight: PopupWindow
@@ -235,11 +255,14 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var transition: Transition
 
+    @Inject
+    lateinit var pressedKeyStatus: PressedKeyStatus
+
     private var mainLayoutBinding: MainLayoutBinding? = null
 
-    private var suggestionAdapter: SuggestionAdapter?= null
-    private var emojiKigouAdapter: EmojiKigouAdapter?= null
-    private var kigouApdater: KigouAdapter?= null
+    private var suggestionAdapter: SuggestionAdapter? = null
+    private var emojiKigouAdapter: EmojiKigouAdapter? = null
+    private var kigouApdater: KigouAdapter? = null
 
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
     private val _inputString = MutableStateFlow(EMPTY_STRING)
@@ -284,14 +307,14 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         CombinedVibration.createParallel(shortVibrationEffect)
     }
 
-    private fun setVibrate(){
+    private fun setVibrate() {
         appPreference.vibration_preference?.let {
-            if(it) vibratorManager.vibrate(shortCombinedVibration)
+            if (it) vibratorManager.vibrate(shortCombinedVibration)
         }
     }
 
     companion object {
-        val NUMBER_KEY10_SYMBOL_CHAR = listOf('(',')','[',']')
+        val NUMBER_KEY10_SYMBOL_CHAR = listOf('(', ')', '[', ']')
         const val EMPTY_STRING = ""
         const val DELAY_TIME = 1000L
         const val LONG_DELAY_TIME = 64L
@@ -342,7 +365,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 setKigouView()
                 if (lifecycle.currentState == Lifecycle.State.CREATED) {
                     startScope(keyList, flexboxLayoutManager)
-                } else{
+                } else {
                     scope.coroutineContext.cancelChildren()
                     startScope(keyList, flexboxLayoutManager)
                 }
@@ -365,6 +388,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
     }
+
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("onUpdate onFinishInput Called")
@@ -384,7 +408,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         resetAllFlags()
     }
 
-    override fun onDestroy(){
+    override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
         actionInDestroy()
@@ -393,16 +417,19 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        when(newConfig.orientation){
-            Configuration.ORIENTATION_PORTRAIT ->{
+        when (newConfig.orientation) {
+            Configuration.ORIENTATION_PORTRAIT -> {
                 finishComposingText()
             }
-            Configuration.ORIENTATION_LANDSCAPE ->{
+
+            Configuration.ORIENTATION_LANDSCAPE -> {
                 finishComposingText()
             }
-            Configuration.ORIENTATION_UNDEFINED ->{
+
+            Configuration.ORIENTATION_UNDEFINED -> {
                 finishComposingText()
             }
+
             else -> {
                 finishComposingText()
             }
@@ -418,16 +445,11 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         candidatesEnd: Int
     ) {
         super.onUpdateSelection(
-            oldSelStart,
-            oldSelEnd,
-            newSelStart,
-            newSelEnd,
-            candidatesStart,
-            candidatesEnd
+            oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
         println("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd ${_inputString.value} $stringInTail")
-        if (candidatesStart == -1 && candidatesEnd == -1){
-            if (stringInTail.isNotEmpty()){
+        if (candidatesStart == -1 && candidatesEnd == -1) {
+            if (stringInTail.isNotEmpty()) {
                 _inputString.update { stringInTail }
                 stringInTail = EMPTY_STRING
             } else {
@@ -438,8 +460,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun startScope(
-        keyList: List<Any>,
-        flexboxLayoutManager: FlexboxLayoutManager
+        keyList: List<Any>, flexboxLayoutManager: FlexboxLayoutManager
     ) = scope.launch {
         mainLayoutBinding?.let { mainView ->
             launch {
@@ -488,9 +509,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun updateSuggestionViewVisibility(
-        mainView: MainLayoutBinding,
-        flexboxLayoutManager: FlexboxLayoutManager,
-        isVisible: Boolean
+        mainView: MainLayoutBinding, flexboxLayoutManager: FlexboxLayoutManager, isVisible: Boolean
     ) {
         mainView.keyboardView.root.isVisible = isVisible
         mainView.suggestionVisibility.setImageDrawable(
@@ -501,15 +520,17 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         )
         mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManager.apply {
             flexDirection = if (isVisible) FlexDirection.COLUMN else FlexDirection.ROW
-            justifyContent = if (isVisible) JustifyContent.SPACE_AROUND else JustifyContent.FLEX_START
+            justifyContent =
+                if (isVisible) JustifyContent.SPACE_AROUND else JustifyContent.FLEX_START
         }
 
-        val marginsSuggestionView = (mainView.suggestionViewParent.layoutParams as FrameLayout.LayoutParams).apply {
-            leftMargin = 0
-            topMargin = 0
-            bottomMargin = calculateBottomMargin(isVisible)
-            height = calculateHeight(isVisible)
-        }
+        val marginsSuggestionView =
+            (mainView.suggestionViewParent.layoutParams as FrameLayout.LayoutParams).apply {
+                leftMargin = 0
+                topMargin = 0
+                bottomMargin = calculateBottomMargin(isVisible)
+                height = calculateHeight(isVisible)
+            }
         mainView.suggestionViewParent.layoutParams = marginsSuggestionView
     }
 
@@ -523,9 +544,13 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun calculateHeight(isVisible: Boolean): Int {
         return if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            if (isVisible) 52f.convertDp2Px(applicationContext) else 252f.convertDp2Px(applicationContext)
+            if (isVisible) 52f.convertDp2Px(applicationContext) else 252f.convertDp2Px(
+                applicationContext
+            )
         } else {
-            if (isVisible) 54f.convertDp2Px(applicationContext) else 336f.convertDp2Px(applicationContext)
+            if (isVisible) 54f.convertDp2Px(applicationContext) else 336f.convertDp2Px(
+                applicationContext
+            )
         }
     }
 
@@ -537,9 +562,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun updateKeyLayoutByInputMode(
-        keyList: List<Any>,
-        state: InputMode,
-        mainView: MainLayoutBinding
+        keyList: List<Any>, state: InputMode, mainView: MainLayoutBinding
     ) {
         setKeyLayoutByInputMode(keyList, state, mainView.keyboardView.keySmallLetter)
         mainView.keyboardView.keySwitchKeyMode.setInputMode(state)
@@ -547,14 +570,14 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun updateKeyboardMode(
-        mainView: MainLayoutBinding,
-        keyboardMode: KeyboardMode
+        mainView: MainLayoutBinding, keyboardMode: KeyboardMode
     ) {
         when (keyboardMode) {
             is KeyboardMode.ModeTenKeyboard -> {
                 mainView.keyboardView.root.isVisible = true
                 mainView.keyboardKigouView.root.isVisible = false
             }
+
             is KeyboardMode.ModeKigouView -> {
                 mainView.keyboardView.root.isVisible = false
                 mainView.keyboardKigouView.root.isVisible = true
@@ -575,9 +598,9 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 setComposingTextAfterEdit(inputString, spannableString)
             }
         } else {
-            if (stringInTail.isNotEmpty()){
-                setComposingText(stringInTail,0)
-            }else{
+            if (stringInTail.isNotEmpty()) {
+                setComposingText(stringInTail, 0)
+            } else {
                 resetInputString()
                 setTenkeyIconsEmptyInputString()
             }
@@ -586,39 +609,19 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun shouldEnableContinuousTap(inputString: String): Boolean {
-        return !isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp &&
-                !englishSpaceKeyPressed && !deleteKeyLongKeyPressed
+        return !isHenkan && inputString.isNotEmpty() && !onDeleteLongPressUp && !englishSpaceKeyPressed && !deleteKeyLongKeyPressed
     }
 
     private fun resetInputString() {
         _suggestionList.update { emptyList() }
     }
 
-    private fun setCurrentInputType(attribute: EditorInfo?){
+    private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME(inputType)
             Timber.d("setCurrentInputType: $currentInputType $inputType")
-            when(currentInputType){
-                InputTypeForIME.Text,
-                InputTypeForIME.TextAutoComplete,
-                InputTypeForIME.TextAutoCorrect,
-                InputTypeForIME.TextCapCharacters,
-                InputTypeForIME.TextCapSentences,
-                InputTypeForIME.TextCapWords,
-                InputTypeForIME.TextEmailSubject,
-                InputTypeForIME.TextFilter,
-                InputTypeForIME.TextMultiLine,
-                InputTypeForIME.TextImeMultiLine,
-                InputTypeForIME.TextShortMessage,
-                InputTypeForIME.TextLongMessage,
-                InputTypeForIME.TextNoSuggestion,
-                InputTypeForIME.TextPersonName,
-                InputTypeForIME.TextPhonetic,
-                InputTypeForIME.TextWebEditText,
-                InputTypeForIME.TextWebSearchView,
-                InputTypeForIME.TextWebSearchViewFireFox,
-                InputTypeForIME.TextSearchView
-                -> {
+            when (currentInputType) {
+                InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                     _currentInputMode.value = InputMode.ModeJapanese
                 }
 
@@ -630,11 +633,11 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 InputTypeForIME.TextPassword,
                 InputTypeForIME.TextVisiblePassword,
                 InputTypeForIME.TextWebPassword,
-                ->{
+                -> {
                     _currentInputMode.value = InputMode.ModeEnglish
                 }
 
-                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate ->{
+                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
 
                 }
 
@@ -654,7 +657,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun initializeVariables(){
+    private fun initializeVariables() {
         bubbleViewActive = mPopupWindowActive.contentView.findViewById(R.id.bubble_layout)
         popTextActive = mPopupWindowActive.contentView.findViewById(R.id.popup_text)
 
@@ -680,7 +683,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setTenKeyView(
         keyList: List<Any>
-    ){
+    ) {
         mainLayoutBinding?.let { mainView ->
             setSpaceKey(mainView.keyboardView.keySpace)
             setDeleteKey(mainView.keyboardView.keyDelete)
@@ -692,9 +695,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             setLanguageSwitchKey(mainView.keyboardView.keyLanguageSwitch)
 
             setKeyLayoutByInputMode(
-                keyList,
-                _currentInputMode.value,
-                mainView.keyboardView.keySmallLetter
+                keyList, _currentInputMode.value, mainView.keyboardView.keySmallLetter
             )
 
             setTouchListenerForMainKeys(
@@ -717,7 +718,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setSuggestionRecyclerView(
         flexboxLayoutManager: FlexboxLayoutManager
-    ){
+    ) {
         suggestionAdapter?.apply {
             this.setOnItemClickListener {
                 setVibrate()
@@ -758,15 +759,15 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = _inputString.value.substring(candidate.length.toInt())
         }
-        if (stringInTail.isNotEmpty()){
+        if (stringInTail.isNotEmpty()) {
             commitText(candidate.string, 1)
-        }else{
+        } else {
             commitText(candidate.string, 1)
             _inputString.update { EMPTY_STRING }
         }
     }
 
-    private fun setKigouView(){
+    private fun setKigouView() {
         mainLayoutBinding?.let { mainView ->
             mainView.keyboardKigouView.kigouReturnBtn.setOnClickListener {
                 setVibrate()
@@ -785,45 +786,47 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 a.emojiList = EMOJI_LIST
                 a.setOnItemClickListener { emoji ->
                     setVibrate()
-                    commitText(emoji.unicode.convertUnicode(),1)
+                    commitText(emoji.unicode.convertUnicode(), 1)
                 }
             }
             kigouApdater?.let { a ->
                 a.kigouList = KAOMOJI
                 a.setOnItemClickListener { s ->
                     setVibrate()
-                    commitText(s,1)
+                    commitText(s, 1)
                 }
             }
         }
     }
 
-    private fun setTenKeyAndKigouView(modeInKigou: ModeInKigou){
+    private fun setTenKeyAndKigouView(modeInKigou: ModeInKigou) {
         mainLayoutBinding?.let { mainView ->
-            when(modeInKigou){
-                is ModeInKigou.Emoji ->{
+            when (modeInKigou) {
+                is ModeInKigou.Emoji -> {
                     emojiKigouAdapter?.let { a ->
                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                             adapter = a
-                            layoutManager = GridLayoutManager(applicationContext,6)
+                            layoutManager = GridLayoutManager(applicationContext, 6)
                         }
                     }
                     mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
                 }
-                is ModeInKigou.Kaomoji ->{
+
+                is ModeInKigou.Kaomoji -> {
                     kigouApdater?.let { a ->
                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                             adapter = a
-                            layoutManager = GridLayoutManager(applicationContext,3)
+                            layoutManager = GridLayoutManager(applicationContext, 3)
                         }
                     }
                     mainView.keyboardKigouView.kigouKaomojiBtn.isChecked = true
                 }
-                is ModeInKigou.Null ->{
+
+                is ModeInKigou.Null -> {
                     emojiKigouAdapter?.let { a ->
                         mainView.keyboardKigouView.kigouRecyclerView.apply {
                             adapter = a
-                            layoutManager = GridLayoutManager(applicationContext,6)
+                            layoutManager = GridLayoutManager(applicationContext, 6)
                         }
                     }
                     mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
@@ -832,7 +835,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun resetAllFlags(){
+    private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
         _currentKeyboardMode.update { KeyboardMode.ModeTenKeyboard }
         _inputString.update { EMPTY_STRING }
@@ -849,7 +852,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         onDeleteLongPressUp = false
     }
 
-    private fun actionInDestroy(){
+    private fun actionInDestroy() {
         mainLayoutBinding?.suggestionRecyclerView?.apply {
             layoutManager = null
             adapter = null
@@ -861,7 +864,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         closeConnection()
         scope.coroutineContext.cancelChildren()
     }
-    private fun resetFlagsSwitchMode(){
+
+    private fun resetFlagsSwitchMode() {
         isHenkan = false
         suggestionClickNum = 0
         englishSpaceKeyPressed = false
@@ -871,7 +875,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled = true
     }
 
-    private fun resetFlagsSuggestionClick(){
+    private fun resetFlagsSuggestionClick() {
         isHenkan = false
         suggestionClickNum = 0
         englishSpaceKeyPressed = false
@@ -882,7 +886,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         _suggestionViewStatus.update { true }
     }
 
-    private fun resetFlagsLanguageModeClick(){
+    private fun resetFlagsLanguageModeClick() {
         isHenkan = false
         suggestionClickNum = 0
         englishSpaceKeyPressed = false
@@ -893,7 +897,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         _inputString.update { EMPTY_STRING }
     }
 
-    private fun resetFlagsEnterKey(){
+    private fun resetFlagsEnterKey() {
         println("enter key reset is called")
         isHenkan = false
         suggestionClickNum = 0
@@ -904,7 +908,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled = true
     }
 
-    private fun resetFlagsEnterKeyNotHenkan(){
+    private fun resetFlagsEnterKeyNotHenkan() {
         isHenkan = false
         suggestionClickNum = 0
         englishSpaceKeyPressed = false
@@ -916,7 +920,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         stringInTail = EMPTY_STRING
     }
 
-    private fun resetFlagsKeySpace(){
+    private fun resetFlagsKeySpace() {
         onDeleteLongPressUp = false
         _dakutenPressed.value = false
         isContinuousTapInputEnabled = false
@@ -924,7 +928,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         englishSpaceKeyPressed = false
     }
 
-    private fun resetFlagsDeleteKey(){
+    private fun resetFlagsDeleteKey() {
         suggestionClickNum = 0
         _dakutenPressed.value = false
         englishSpaceKeyPressed = false
@@ -935,50 +939,78 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setComposingTextPreEdit(
-        inputString: String,
-        spannableString: SpannableString
-    ){
-        if (isContinuousTapInputEnabled && lastFlickConvertedNextHiragana){
+        inputString: String, spannableString: SpannableString
+    ) {
+        if (isContinuousTapInputEnabled && lastFlickConvertedNextHiragana) {
             spannableString.apply {
-                setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(
+                    BackgroundColorSpan(getColor(R.color.green)),
+                    0,
+                    inputString.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    UnderlineSpan(),
+                    0,
+                    inputString.length + stringInTail.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
             }
-        }else{
+        } else {
             spannableString.apply {
-                setSpan(BackgroundColorSpan(getColor(R.color.green)),0,inputString.length - 1, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                setSpan(BackgroundColorSpan(getColor(R.color.char_in_edit_color)),inputString.length - 1,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-                setSpan(UnderlineSpan(),0,inputString.length + stringInTail.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                setSpan(
+                    BackgroundColorSpan(getColor(R.color.green)),
+                    0,
+                    inputString.length - 1,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    BackgroundColorSpan(getColor(R.color.char_in_edit_color)),
+                    inputString.length - 1,
+                    inputString.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                setSpan(
+                    UnderlineSpan(),
+                    0,
+                    inputString.length + stringInTail.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
             }
         }
         Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
 
-        setComposingText(spannableString,1)
+        setComposingText(spannableString, 1)
     }
 
     private fun setComposingTextAfterEdit(
-        inputString: String,
-        spannableString: SpannableString
-    ){
+        inputString: String, spannableString: SpannableString
+    ) {
         spannableString.apply {
-            setSpan(BackgroundColorSpan(getColor(R.color.blue)),0,inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-            setSpan(UnderlineSpan(),0,inputString.length,Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(
+                BackgroundColorSpan(getColor(R.color.blue)),
+                0,
+                inputString.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            setSpan(UnderlineSpan(), 0, inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         Timber.d("launchInputString: setComposingTextAfterEdit $spannableString")
-        setComposingText(spannableString,1)
+        setComposingText(spannableString, 1)
     }
 
     private fun setEnterKeyAction(listIterator: ListIterator<Candidate>) = scope.launch {
         _suggestionList.update { emptyList() }
         val nextSuggestion = listIterator.next()
-        commitText(nextSuggestion.string,1)
+        commitText(nextSuggestion.string, 1)
         println("enter key pressed: $stringInTail")
-        if (stringInTail.isEmpty()){
+        if (stringInTail.isEmpty()) {
             _inputString.update { EMPTY_STRING }
         }
         resetFlagsEnterKey()
     }
 
-    private suspend fun setTenkeyIconsEmptyInputString() = withContext(mainDispatcher){
+    private suspend fun setTenkeyIconsEmptyInputString() = withContext(mainDispatcher) {
         mainLayoutBinding?.let { mainView ->
             mainView.keyboardView.keySpace.apply {
                 setImageDrawable(drawableSpaceBar)
@@ -986,13 +1018,14 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             mainView.keyboardView.keyEnter.apply {
                 setImageDrawable(drawableRightArrow)
             }
-            when(_currentInputMode.value){
-                is InputMode.ModeJapanese, is InputMode.ModeEnglish ->{
+            when (_currentInputMode.value) {
+                is InputMode.ModeJapanese, is InputMode.ModeEnglish -> {
                     mainView.keyboardView.keySmallLetter.apply {
                         setImageDrawable(drawableLanguage)
                     }
                 }
-                is InputMode.ModeNumber ->{
+
+                is InputMode.ModeNumber -> {
                     mainView.keyboardView.keySmallLetter.apply {
                         setImageDrawable(drawableNumberSmall)
                     }
@@ -1001,28 +1034,33 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) = withContext(mainDispatcher){
-        mainView.keyboardView.keyEnter.apply {
-            setImageDrawable(drawableReturn)
-        }
-        when(_currentInputMode.value){
-            InputMode.ModeJapanese ->{
-                mainView.keyboardView.keySmallLetter.apply {
-                    setImageDrawable(drawableKanaSmall)
-                }
-                mainView.keyboardView.keySpace.apply {
-                    setImageDrawable(drawableHenkan)
-                }
+    private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) =
+        withContext(mainDispatcher) {
+            mainView.keyboardView.keyEnter.apply {
+                setImageDrawable(drawableReturn)
             }
-            InputMode.ModeEnglish ->{
-                mainView.keyboardView.keySmallLetter.apply {
-                    setImageDrawable(drawableEnglishSmall)
+            when (_currentInputMode.value) {
+                InputMode.ModeJapanese -> {
+                    mainView.keyboardView.keySmallLetter.apply {
+                        setImageDrawable(drawableKanaSmall)
+                    }
+                    mainView.keyboardView.keySpace.apply {
+                        setImageDrawable(drawableHenkan)
+                    }
                 }
-            }
-            InputMode.ModeNumber ->{/** empty body **/}
-        }
 
-    }
+                InputMode.ModeEnglish -> {
+                    mainView.keyboardView.keySmallLetter.apply {
+                        setImageDrawable(drawableEnglishSmall)
+                    }
+                }
+
+                InputMode.ModeNumber -> {
+                    /** empty body **/
+                }
+            }
+
+        }
 
     private suspend fun setSuggestionOnView(
         mainView: MainLayoutBinding,
@@ -1043,9 +1081,9 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun getSuggestionList(ioDispatcher: CoroutineDispatcher)= scope.async{
+    private suspend fun getSuggestionList(ioDispatcher: CoroutineDispatcher) = scope.async {
         val queryText = _inputString.value
-        return@async kanaKanjiEngine.getCandidates(queryText, N_BEST,ioDispatcher)
+        return@async kanaKanjiEngine.getCandidates(queryText, N_BEST, ioDispatcher)
     }.await()
 
     private fun deleteLongPress() = scope.launch {
@@ -1054,7 +1092,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 if (_inputString.value.length == 1) {
                     _inputString.update { EMPTY_STRING }
                     _suggestionList.update { emptyList() }
-                    if (stringInTail.isEmpty()) setComposingText("",0)
+                    if (stringInTail.isEmpty()) setComposingText("", 0)
                 } else {
                     _inputString.update { it.dropLast(1) }
                 }
@@ -1082,43 +1120,16 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         lastFlickConvertedNextHiragana = true
     }
 
-    private fun setEnterKeyPress(){
+    private fun setEnterKeyPress() {
         setVibrate()
-        when(currentInputType){
+        when (currentInputType) {
 
-            InputTypeForIME.TextMultiLine,
-            InputTypeForIME.TextImeMultiLine ->{
-                commitText("\n",1)
+            InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine -> {
+                commitText("\n", 1)
             }
 
-            InputTypeForIME.None,
-            InputTypeForIME.Text,
-            InputTypeForIME.TextAutoComplete,
-            InputTypeForIME.TextAutoCorrect,
-            InputTypeForIME.TextCapCharacters,
-            InputTypeForIME.TextCapSentences,
-            InputTypeForIME.TextCapWords,
-            InputTypeForIME.TextEmailSubject,
-            InputTypeForIME.TextFilter,
-            InputTypeForIME.TextShortMessage,
-            InputTypeForIME.TextLongMessage,
-            InputTypeForIME.TextNoSuggestion,
-            InputTypeForIME.TextPersonName,
-            InputTypeForIME.TextPhonetic,
-            InputTypeForIME.TextWebEditText,
-            InputTypeForIME.TextUri,
-            InputTypeForIME.TextPostalAddress,
-            InputTypeForIME.TextEmailAddress,
-            InputTypeForIME.TextWebEmailAddress,
-            InputTypeForIME.TextPassword,
-            InputTypeForIME.TextVisiblePassword,
-            InputTypeForIME.TextWebPassword,
-            InputTypeForIME.TextWebSearchView,
-            InputTypeForIME.TextNotCursorUpdate,
-            InputTypeForIME.TextWebSearchViewFireFox,
-            InputTypeForIME.TextEditTextInBookingTDBank
-            -> {
-                Timber.d("Enter key: called 3\n" )
+            InputTypeForIME.None, InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextUri, InputTypeForIME.TextPostalAddress, InputTypeForIME.TextEmailAddress, InputTypeForIME.TextWebEmailAddress, InputTypeForIME.TextPassword, InputTypeForIME.TextVisiblePassword, InputTypeForIME.TextWebPassword, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextNotCursorUpdate, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextEditTextInBookingTDBank -> {
+                Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
                     KeyEvent(
                         KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
@@ -1138,12 +1149,10 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                 performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
-            InputTypeForIME.TextSearchView ->{
-                Timber.d("enter key search: ${EditorInfo.IME_ACTION_SEARCH}" +
-                        "\n${currentInputEditorInfo.inputType}" +
-                        "\n${currentInputEditorInfo.imeOptions}" +
-                        "\n${currentInputEditorInfo.actionId}" +
-                        "\n${currentInputEditorInfo.privateImeOptions}")
+            InputTypeForIME.TextSearchView -> {
+                Timber.d(
+                    "enter key search: ${EditorInfo.IME_ACTION_SEARCH}" + "\n${currentInputEditorInfo.inputType}" + "\n${currentInputEditorInfo.imeOptions}" + "\n${currentInputEditorInfo.actionId}" + "\n${currentInputEditorInfo.privateImeOptions}"
+                )
                 performEditorAction(EditorInfo.IME_ACTION_SEARCH)
             }
 
@@ -1151,11 +1160,11 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setDeleteKey( imageButton: AppCompatImageButton) = imageButton.apply {
+    private fun setDeleteKey(imageButton: AppCompatImageButton) = imageButton.apply {
         focusable = View.NOT_FOCUSABLE
         setOnTouchListener { _, event ->
-            when(event.action and MotionEvent.ACTION_MASK){
-                MotionEvent.ACTION_UP ->{
+            when (event.action and MotionEvent.ACTION_MASK) {
+                MotionEvent.ACTION_UP -> {
                     onDeleteLongPressUp = true
                     deleteKeyLongKeyPressed = false
                 }
@@ -1164,15 +1173,16 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
         setOnClickListener {
             setVibrate()
-            when{
-                _inputString.value.isNotEmpty()  ->{
+            when {
+                _inputString.value.isNotEmpty() -> {
                     deleteStringCommon()
                     resetFlagsDeleteKey()
                 }
-                else ->{
+
+                else -> {
                     if (stringInTail.isNotEmpty()) return@setOnClickListener
                     println("delete sendKeyEvent")
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 }
             }
         }
@@ -1257,13 +1267,15 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                     finishInputEnterKey()
                 }
             }
+
             else -> finishInputEnterKey()
         }
     }
 
     private fun handleHenkanModeEnterKey() {
         if (suggestionClickNum > _suggestionList.value.size) suggestionClickNum = 0
-        val listIterator = _suggestionList.value.listIterator(suggestionClickNum.coerceAtLeast(1) - 1)
+        val listIterator =
+            _suggestionList.value.listIterator(suggestionClickNum.coerceAtLeast(1) - 1)
         setEnterKeyAction(listIterator)
     }
 
@@ -1302,8 +1314,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     ) = imageButton?.apply {
 
         setOnTouchListener { _, event ->
-            when(event.action and MotionEvent.ACTION_MASK){
-                MotionEvent.ACTION_UP ->{
+            when (event.action and MotionEvent.ACTION_MASK) {
+                MotionEvent.ACTION_UP -> {
                     scope.launch {
                         onDeleteLongPressUp = true
                         deleteKeyLongKeyPressed = false
@@ -1315,12 +1327,12 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
         setOnClickListener {
             setVibrate()
-            if (_inputString.value.isNotEmpty()){
+            if (_inputString.value.isNotEmpty()) {
                 deleteStringCommon()
                 resetFlagsDeleteKey()
                 _suggestionFlag.update { flag -> !flag }
-            }else{
-                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DEL))
+            } else {
+                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
             }
         }
 
@@ -1346,22 +1358,24 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         focusable = View.NOT_FOCUSABLE
         setOnClickListener {
             setVibrate()
-            when(getCurrentInputMode()){
-                is InputMode.ModeJapanese ->{
+            when (getCurrentInputMode()) {
+                is InputMode.ModeJapanese -> {
                     setInputMode(InputMode.ModeEnglish)
                     _currentInputMode.value = InputMode.ModeEnglish
                     finishComposingText()
                     if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
                     _inputString.update { EMPTY_STRING }
                 }
-                is InputMode.ModeEnglish ->{
+
+                is InputMode.ModeEnglish -> {
                     setInputMode(InputMode.ModeNumber)
                     _currentInputMode.value = InputMode.ModeNumber
                     finishComposingText()
                     if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
                     _inputString.update { EMPTY_STRING }
                 }
-                is InputMode.ModeNumber ->{
+
+                is InputMode.ModeNumber -> {
                     setInputMode(InputMode.ModeJapanese)
                     _currentInputMode.value = InputMode.ModeJapanese
                     finishComposingText()
@@ -1414,9 +1428,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             englishSpaceKeyPressed = false
             suggestionClickNum = 0
             if (_inputString.value.isNotEmpty()) {
-                stringInTail = StringBuilder(stringInTail)
-                    .insert(0, _inputString.value.last())
-                    .toString()
+                stringInTail =
+                    StringBuilder(stringInTail).insert(0, _inputString.value.last()).toString()
                 _inputString.update { it.dropLast(1) }
             }
         }
@@ -1430,10 +1443,10 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             suggestionClickNum = 0
             scope.launch {
                 while (isActive) {
-                    if (_inputString.value.isNotEmpty()){
+                    if (_inputString.value.isNotEmpty()) {
                         updateLeftInputString()
-                    }else{
-                        if (stringInTail.isEmpty()){
+                    } else {
+                        if (stringInTail.isEmpty()) {
                             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
                         }
                         _suggestionList.update { emptyList() }
@@ -1448,9 +1461,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun updateLeftInputString() {
         if (_inputString.value.isNotEmpty()) {
-            stringInTail = StringBuilder(stringInTail)
-                .insert(0, _inputString.value.last())
-                .toString()
+            stringInTail =
+                StringBuilder(stringInTail).insert(0, _inputString.value.last()).toString()
             _inputString.update { it.dropLast(1) }
         }
     }
@@ -1491,7 +1503,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                             if (onRightKeyLongPressUp) return@launch
                         }
                     }
-                }else {
+                } else {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 }
                 true
@@ -1508,8 +1520,8 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
-            val extractedText = getExtractedText(ExtractedTextRequest(),0).text ?: return
-            val afterText = getTextAfterCursor(extractedText.length,0) ?: return
+            val extractedText = getExtractedText(ExtractedTextRequest(), 0).text ?: return
+            val afterText = getTextAfterCursor(extractedText.length, 0) ?: return
             if (afterText.isEmpty()) return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
@@ -1538,17 +1550,18 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
      * **/
     private fun setNextReturnKey(
         nextReturn: AppCompatImageButton,
-    ){
+    ) {
         nextReturn.apply {
             focusable = View.NOT_FOCUSABLE
         }
         nextReturn.setOnClickListener {
             setVibrate()
-            when(_currentInputMode.value){
-                is InputMode.ModeNumber ->{
+            when (_currentInputMode.value) {
+                is InputMode.ModeNumber -> {
 
                 }
-                else ->{
+
+                else -> {
                     setNextReturnInputCharacter()
                     _suggestionFlag.update { !it }
                 }
@@ -1556,81 +1569,595 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private var isPointerDown = false
+    private fun getCurrentKeyID(x2: Float, y2: Float, keyList: List<Any>) {
+        when (currentTenKeyId) {
+            (keyList[0] as AppCompatButton).id -> {
+                currentTenKeyId = when {
+                    x2 in (keyList[0] as AppCompatButton).x..(keyList[0] as AppCompatButton).x + (keyList[0] as AppCompatButton).width && abs(
+                        y2 - firstYPoint
+                    ) < (keyList[0] as AppCompatButton).height -> (keyList[0] as AppCompatButton).id
 
-    private fun getCurrentKeyID(x2: Float, y2: Float, keyList: List<Any>){
-        when(currentTenKeyId){
-            (keyList[0] as AppCompatButton).id ->{
-                currentTenKeyId = when{
-                    x2 in (keyList[0] as AppCompatButton).x ..(keyList[0] as AppCompatButton).x + (keyList[0] as AppCompatButton).width && abs(y2 - firstYPoint) < (keyList[0] as AppCompatButton).height -> (keyList[0] as AppCompatButton).id
-                    x2 in (keyList[1] as AppCompatButton).x ..(keyList[1] as AppCompatButton).x + (keyList[1] as AppCompatButton).width && abs(y2 - firstYPoint) < (keyList[0] as AppCompatButton).height -> (keyList[1] as AppCompatButton).id
-                    x2 in (keyList[2] as AppCompatButton).x ..(keyList[2] as AppCompatButton).x + (keyList[2] as AppCompatButton).width && abs(y2 - firstYPoint) < (keyList[0] as AppCompatButton).height -> (keyList[2] as AppCompatButton).id
-                    x2 in (keyList[3] as AppCompatButton).x ..(keyList[3] as AppCompatButton).x + (keyList[3] as AppCompatButton).width && y2 in 1700.0 .. 1877.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in (keyList[4] as AppCompatButton).x ..(keyList[4] as AppCompatButton).x + (keyList[4] as AppCompatButton).width && y2 in 1700.0 .. 1877.99999 -> (keyList[4] as AppCompatButton).id
-                    x2 in (keyList[5] as AppCompatButton).x ..(keyList[5] as AppCompatButton).x + (keyList[5] as AppCompatButton).width && y2 in 1700.0 .. 1877.99999 -> (keyList[5] as AppCompatButton).id
-                    x2 in (keyList[6] as AppCompatButton).x ..(keyList[6] as AppCompatButton).x + (keyList[6] as AppCompatButton).width && y2 in 1878.0 .. 2055.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in (keyList[7] as AppCompatButton).x ..(keyList[7] as AppCompatButton).x + (keyList[7] as AppCompatButton).width && y2 in 1878.0 .. 2055.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in (keyList[8] as AppCompatButton).x ..(keyList[8] as AppCompatButton).x + (keyList[8] as AppCompatButton).width && y2 in 1878.0 .. 2055.9999 -> (keyList[8] as AppCompatButton).id
-                    x2 in (keyList[9] as AppCompatButton).x ..(keyList[9] as AppCompatButton).x + (keyList[9] as AppCompatButton).width && y2 in 2056.0 .. 2234.0 -> (keyList[9] as AppCompatButton).id
-                    x2 in (keyList[11] as AppCompatButton).x ..(keyList[11] as AppCompatButton).x + (keyList[11] as AppCompatButton).width && y2 in 2056.0 .. 2234.0 -> (keyList[11] as AppCompatButton).id
+                    x2 in (keyList[1] as AppCompatButton).x..(keyList[1] as AppCompatButton).x + (keyList[1] as AppCompatButton).width && abs(
+                        y2 - firstYPoint
+                    ) < (keyList[0] as AppCompatButton).height -> (keyList[1] as AppCompatButton).id
+
+                    x2 in (keyList[2] as AppCompatButton).x..(keyList[2] as AppCompatButton).x + (keyList[2] as AppCompatButton).width && abs(
+                        y2 - firstYPoint
+                    ) < (keyList[0] as AppCompatButton).height -> (keyList[2] as AppCompatButton).id
+
+                    x2 in (keyList[3] as AppCompatButton).x..(keyList[3] as AppCompatButton).x + (keyList[3] as AppCompatButton).width && y2 in 1700.0..1877.99999 -> (keyList[3] as AppCompatButton).id
+                    x2 in (keyList[4] as AppCompatButton).x..(keyList[4] as AppCompatButton).x + (keyList[4] as AppCompatButton).width && y2 in 1700.0..1877.99999 -> (keyList[4] as AppCompatButton).id
+                    x2 in (keyList[5] as AppCompatButton).x..(keyList[5] as AppCompatButton).x + (keyList[5] as AppCompatButton).width && y2 in 1700.0..1877.99999 -> (keyList[5] as AppCompatButton).id
+                    x2 in (keyList[6] as AppCompatButton).x..(keyList[6] as AppCompatButton).x + (keyList[6] as AppCompatButton).width && y2 in 1878.0..2055.9999 -> (keyList[6] as AppCompatButton).id
+                    x2 in (keyList[7] as AppCompatButton).x..(keyList[7] as AppCompatButton).x + (keyList[7] as AppCompatButton).width && y2 in 1878.0..2055.9999 -> (keyList[7] as AppCompatButton).id
+                    x2 in (keyList[8] as AppCompatButton).x..(keyList[8] as AppCompatButton).x + (keyList[8] as AppCompatButton).width && y2 in 1878.0..2055.9999 -> (keyList[8] as AppCompatButton).id
+                    x2 in (keyList[9] as AppCompatButton).x..(keyList[9] as AppCompatButton).x + (keyList[9] as AppCompatButton).width && y2 in 2056.0..2234.0 -> (keyList[9] as AppCompatButton).id
+                    x2 in (keyList[11] as AppCompatButton).x..(keyList[11] as AppCompatButton).x + (keyList[11] as AppCompatButton).width && y2 in 2056.0..2234.0 -> (keyList[11] as AppCompatButton).id
                     else -> 0
                 }
             }
-            (keyList[1] as AppCompatButton).id ->{
-                currentTenKeyId = when{
-                    x2 in (keyList[0] as AppCompatButton).x ..(keyList[0] as AppCompatButton).x + (keyList[0] as AppCompatButton).width && abs(y2 - firstYPoint) < 100 -> (keyList[0] as AppCompatButton).id
+
+            (keyList[1] as AppCompatButton).id -> {
+                currentTenKeyId = when {
+                    x2 in (keyList[0] as AppCompatButton).x..(keyList[0] as AppCompatButton).x + (keyList[0] as AppCompatButton).width && abs(
+                        y2 - firstYPoint
+                    ) < 100 -> (keyList[0] as AppCompatButton).id
+
                     x2 in 475.0..674.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[1] as AppCompatButton).id
                     x2 in 675.0..850.0 && abs(y2 - firstYPoint) < 100 -> (keyList[2] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0 .. 1859.99999 -> (keyList[4] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1700.0 .. 1859.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1700.0 .. 1859.99999 -> (keyList[5] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0 .. 2049.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1860.0 .. 2049.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1860.0 .. 2049.9999 -> (keyList[8] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 2050.0 .. 2200.0 -> (keyList[9] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 2050.0 .. 2200.0 -> (keyList[11] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0..1859.99999 -> (keyList[4] as AppCompatButton).id
+                    x2 in 200.0..474.9999 && y2 in 1700.0..1859.99999 -> (keyList[3] as AppCompatButton).id
+                    x2 in 675.0..850.0 && y2 in 1700.0..1859.99999 -> (keyList[5] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0..2049.9999 -> (keyList[7] as AppCompatButton).id
+                    x2 in 200.0..474.9999 && y2 in 1860.0..2049.9999 -> (keyList[6] as AppCompatButton).id
+                    x2 in 675.0..850.0 && y2 in 1860.0..2049.9999 -> (keyList[8] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 2050.0..2200.0 -> (keyList[9] as AppCompatButton).id
+                    x2 in 675.0..850.0 && y2 in 2050.0..2200.0 -> (keyList[11] as AppCompatButton).id
                     else -> 0
                 }
             }
-            (keyList[2] as AppCompatButton).id ->{
-                currentTenKeyId = when{
+
+            (keyList[2] as AppCompatButton).id -> {
+                currentTenKeyId = when {
                     x2 in 200.0..474.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[0] as AppCompatButton).id
                     x2 in 475.0..674.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[1] as AppCompatButton).id
                     x2 in 675.0..850.0 && abs(y2 - firstYPoint) < 100 -> (keyList[2] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0 .. 1859.99999 -> (keyList[5] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1700.0 .. 1859.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1700.0 .. 1859.99999 -> (keyList[4] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0 .. 2049.9999 -> (keyList[8] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1860.0 .. 2049.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1860.0 .. 2049.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 2050.0 .. 2200.0 -> (keyList[9] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 2050.0 .. 2200.0 -> (keyList[11] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0..1859.99999 -> (keyList[5] as AppCompatButton).id
+                    x2 in 200.0..474.9999 && y2 in 1700.0..1859.99999 -> (keyList[3] as AppCompatButton).id
+                    x2 in 475.0..674.9999 && y2 in 1700.0..1859.99999 -> (keyList[4] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0..2049.9999 -> (keyList[8] as AppCompatButton).id
+                    x2 in 200.0..474.9999 && y2 in 1860.0..2049.9999 -> (keyList[6] as AppCompatButton).id
+                    x2 in 475.0..674.9999 && y2 in 1860.0..2049.9999 -> (keyList[7] as AppCompatButton).id
+                    x2 in 475.0..674.9999 && y2 in 2050.0..2200.0 -> (keyList[9] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 2050.0..2200.0 -> (keyList[11] as AppCompatButton).id
                     else -> 0
                 }
             }
-            (keyList[3] as AppCompatButton).id ->{
-                currentTenKeyId = when{
+
+            (keyList[3] as AppCompatButton).id -> {
+                currentTenKeyId = when {
                     x2 in 200.0..474.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[0] as AppCompatButton).id
                     x2 in 475.0..674.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[1] as AppCompatButton).id
                     x2 in 675.0..850.0 && abs(y2 - firstYPoint) < 100 -> (keyList[2] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0 .. 1859.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1700.0 .. 1859.99999 -> (keyList[4] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1700.0 .. 1859.99999 -> (keyList[5] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0 .. 2049.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1860.0 .. 2049.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1860.0 .. 2049.9999 -> (keyList[8] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 2050.0 .. 2200.0 -> (keyList[9] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 2050.0 .. 2200.0 -> (keyList[11] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0..1859.99999 -> (keyList[3] as AppCompatButton).id
+                    x2 in 475.0..674.9999 && y2 in 1700.0..1859.99999 -> (keyList[4] as AppCompatButton).id
+                    x2 in 675.0..850.0 && y2 in 1700.0..1859.99999 -> (keyList[5] as AppCompatButton).id
+                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0..2049.9999 -> (keyList[6] as AppCompatButton).id
+                    x2 in 475.0..674.9999 && y2 in 1860.0..2049.9999 -> (keyList[7] as AppCompatButton).id
+                    x2 in 675.0..850.0 && y2 in 1860.0..2049.9999 -> (keyList[8] as AppCompatButton).id
+                    x2 in 475.0..674.9999 && y2 in 2050.0..2200.0 -> (keyList[9] as AppCompatButton).id
+                    x2 in 675.0..850.0 && y2 in 2050.0..2200.0 -> (keyList[11] as AppCompatButton).id
                     else -> 0
                 }
             }
-            else ->{
+
+            else -> {
                 currentTenKeyId = 0
             }
         }
     }
 
+    private var isPointerDown = false
     private var firstPointerId = 0
+    private var firstFingerUp = false
+
+    private fun addCharToInputString(
+        distanceX: Float,
+        distanceY: Float,
+        insertString: String,
+        sb: StringBuilder,
+        it: AppCompatButton,
+        finalX: Float,
+        finalY: Float,
+    ) {
+        hidePopUpWindowActive()
+        hidePopUpWindowCenter()
+        hidePopUpWindowTop()
+        hidePopUpWindowLeft()
+        hidePopUpWindowBottom()
+        hidePopUpWindowRight()
+
+        if (pressedKeyStatus.keyId !in tenKeyMap.keysJapanese) {
+            return
+        }
+
+        val keyInfo = when (_currentInputMode.value) {
+            is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(pressedKeyStatus.keyId)
+            is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(pressedKeyStatus.keyId)
+            is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(pressedKeyStatus.keyId)
+        }
+
+        when {
+            /** Tap **/
+            abs(distanceX) < 100 && abs(distanceY) < 100 -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(
+                    keyInfo.tap, insertString, sb
+                )
+                currentTenKeyId = 0
+                isPointerDown = false
+                _suggestionFlag.update { flag -> !flag }
+                return
+            }
+            /** Flick Right **/
+            abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    keyInfo.flickRight?.let { c ->
+                        sendCharFlick(c, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Left **/
+            abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    if (keyInfo.flickLeft != ' ') {
+                        sendCharFlick(keyInfo.flickLeft, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Bottom **/
+            abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    keyInfo.flickBottom?.let { c ->
+                        sendCharFlick(c, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Top **/
+            abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    if (keyInfo.flickTop != ' ') sendCharFlick(keyInfo.flickTop, insertString, sb)
+                }
+            }
+        }
+
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
+
+        currentTenKeyId = 0
+
+        _suggestionFlag.update { flag -> !flag }
+        isPointerDown = false
+        return
+    }
+
+    private fun buttonTextOriginal(
+        appCompatButton: AppCompatButton
+    ) {
+        when (_currentInputMode.value) {
+            is InputMode.ModeJapanese -> {
+                appCompatButton.setTenKeyTextJapanese(currentTenKeyId)
+            }
+
+            is InputMode.ModeEnglish -> {
+                appCompatButton.setTenKeyTextEnglish(currentTenKeyId)
+            }
+
+            is InputMode.ModeNumber -> {
+                appCompatButton.setTenKeyTextNumber(currentTenKeyId)
+            }
+        }
+        appCompatButton.background = ContextCompat.getDrawable(
+            applicationContext, R.drawable.ten_keys_center_bg
+        )
+        appCompatButton.setTextColor(
+            ContextCompat.getColor(
+                applicationContext, R.color.keyboard_icon_color
+            )
+        )
+    }
+
+    private fun handleInputTwoFingersDown(
+        distanceX: Float,
+        distanceY: Float,
+        insertString: String,
+        sb: StringBuilder,
+        it: AppCompatButton,
+        finalX: Float,
+        finalY: Float,
+        event: MotionEvent,
+        x2: Float,
+        y2: Float,
+        x1: Float,
+        y1: Float,
+        keyList: List<Any>
+    ) {
+        hidePopUpWindowActive()
+        hidePopUpWindowCenter()
+        hidePopUpWindowTop()
+        hidePopUpWindowLeft()
+        hidePopUpWindowBottom()
+        hidePopUpWindowRight()
+
+        if (pressedKeyStatus.keyId !in tenKeyMap.keysJapanese) {
+            return
+        }
+
+        val keyInfo = when (_currentInputMode.value) {
+            is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(
+                pressedKeyStatus.keyId
+            )
+
+            is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(
+                pressedKeyStatus.keyId
+            )
+
+            is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(
+                pressedKeyStatus.keyId
+            )
+        }
+
+        when {
+            /** Tap **/
+            abs(distanceX) < 100 && abs(distanceY) < 100 -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(
+                    keyInfo.tap, insertString, sb
+                )
+                _suggestionFlag.update { flag -> !flag }
+                if (event.getPointerId(event.actionIndex) == 0) {
+                    pressedKeyStatus = pressedKeyStatus.copy(
+                        keyId = it.id,
+                        pointer = 0
+                    )
+                    buttonTextOriginal(appCompatButton = it)
+                } else if (event.getPointerId(event.actionIndex) == 1) {
+                    getCurrentKeyID(x2, y2, keyList)
+                    firstXPoint = x2
+                    firstYPoint = y2
+                    pressedKeyStatus = pressedKeyStatus.copy(
+                        keyId = currentTenKeyId,
+                        pointer = 1
+                    )
+                }
+                return
+            }
+            /** Flick Right **/
+            abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    keyInfo.flickRight?.let { c ->
+                        sendCharFlick(c, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Left **/
+            abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    if (keyInfo.flickLeft != ' ') {
+                        sendCharFlick(keyInfo.flickLeft, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Bottom **/
+            abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    keyInfo.flickBottom?.let { c ->
+                        sendCharFlick(c, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Top **/
+            abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    if (keyInfo.flickTop != ' ') sendCharFlick(
+                        keyInfo.flickTop, insertString, sb
+                    )
+                }
+            }
+        }
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
+        buttonTextOriginal(appCompatButton = it)
+        getCurrentKeyID(x2, y2, keyList)
+        _suggestionFlag.update { flag -> !flag }
+        if (event.getPointerId(event.actionIndex) == 0) {
+            pressedKeyStatus = pressedKeyStatus.copy(
+                keyId = it.id,
+                pointer = 0
+            )
+        } else if (event.getPointerId(event.actionIndex) == 1) {
+            pressedKeyStatus = pressedKeyStatus.copy(
+                keyId = currentTenKeyId,
+                pointer = 1
+            )
+        }
+        return
+    }
+
+    private fun handleInputTwoFingersUp(
+        distanceX: Float,
+        distanceY: Float,
+        insertString: String,
+        sb: StringBuilder,
+        it: AppCompatButton,
+        x2: Float,
+        y2: Float,
+    ) {
+        hidePopUpWindowActive()
+        hidePopUpWindowCenter()
+        hidePopUpWindowTop()
+        hidePopUpWindowLeft()
+        hidePopUpWindowBottom()
+        hidePopUpWindowRight()
+
+        if (pressedKeyStatus.keyId !in tenKeyMap.keysJapanese) {
+            return
+        }
+
+        val keyInfo = when (_currentInputMode.value) {
+            is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(
+                pressedKeyStatus.keyId
+            )
+
+            is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(
+                pressedKeyStatus.keyId
+            )
+
+            is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(
+                pressedKeyStatus.keyId
+            )
+        }
+
+        when {
+            /** Tap **/
+            abs(distanceX) < 100 && abs(distanceY) < 100 -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(
+                    keyInfo.tap, insertString, sb
+                )
+                _suggestionFlag.update { flag -> !flag }
+                return
+            }
+            /** Flick Right **/
+            abs(distanceX) > abs(distanceY) && secondXPoint < x2 -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    keyInfo.flickRight?.let { c ->
+                        sendCharFlick(c, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Left **/
+            abs(distanceX) > abs(distanceY) && secondXPoint >= x2 -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    if (keyInfo.flickLeft != ' ') {
+                        sendCharFlick(keyInfo.flickLeft, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Bottom **/
+            abs(distanceX) <= abs(distanceY) && secondYPoint < y2 -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    keyInfo.flickBottom?.let { c ->
+                        sendCharFlick(c, insertString, sb)
+                    }
+                }
+            }
+            /** Flick Top **/
+            abs(distanceX) <= abs(distanceY) && secondYPoint >= y2 -> {
+                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                    if (keyInfo.flickTop != ' ') sendCharFlick(
+                        keyInfo.flickTop, insertString, sb
+                    )
+                }
+            }
+        }
+
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
+        _suggestionFlag.update { flag -> !flag }
+        return
+    }
+
+    private fun handleMove(
+        distanceX: Float,
+        distanceY: Float,
+        it: AppCompatButton,
+        finalX: Float,
+        finalY: Float,
+        event: MotionEvent,
+        bubbleLayoutActive: BubbleLayout,
+    ) {
+        if (event.getPointerId(event.actionIndex) == pressedKeyStatus.pointer){
+            if (it.id != pressedKeyStatus.keyId) return
+            when {
+                /** Tap **/
+                abs(distanceX) < 100 && abs(distanceY) < 100 -> {
+                    when (_currentInputMode.value) {
+                        is InputMode.ModeJapanese -> {
+                            popTextActive.setTextTapJapanese(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeEnglish -> {
+                            popTextActive.setTextTapEnglish(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeNumber -> {
+                            popTextActive.setTextTapNumber(currentTenKeyId)
+                        }
+                    }
+                    if (!tenKeysLongPressed) {
+
+                        hidePopUpWindowActive()
+                        it.setTextColor(
+                            ContextCompat.getColor(
+                                applicationContext, R.color.white
+                            )
+                        )
+                        it.background = ContextCompat.getDrawable(
+                            applicationContext, R.drawable.ten_key_active_bg
+                        )
+                        when (_currentInputMode.value) {
+                            is InputMode.ModeJapanese -> {
+                                it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
+                            }
+
+                            is InputMode.ModeEnglish -> {
+                                it.setTenKeyTextWhenTapEnglish(currentTenKeyId)
+                            }
+
+                            is InputMode.ModeNumber -> {
+                                it.setTenKeyTextWhenTapNumber(currentTenKeyId)
+                            }
+                        }
+                    } else {
+                        mPopupWindowActive.setPopUpWindowCenter(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    }
+                }
+                /** Flick Right **/
+                abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
+                    when (_currentInputMode.value) {
+                        is InputMode.ModeJapanese -> {
+                            popTextActive.setTextFlickRightJapanese(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeEnglish -> {
+                            popTextActive.setTextFlickRightEnglish(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeNumber -> {
+                            popTextActive.setTextFlickRightNumber(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                        }
+                    }
+                    if (mPopupWindowLeft.isShowing) {
+                        mPopupWindowActive.setPopUpWindowRight(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    } else {
+                        mPopupWindowActive.setPopUpWindowFlickRight(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    }
+                }
+                /** Flick Left **/
+                abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
+                    when (_currentInputMode.value) {
+                        is InputMode.ModeJapanese -> {
+                            popTextActive.setTextFlickLeftJapanese(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeEnglish -> {
+                            popTextActive.setTextFlickLeftEnglish(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeNumber -> {
+                            popTextActive.setTextFlickLeftNumber(currentTenKeyId)
+                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                        }
+                    }
+                    if (mPopupWindowRight.isShowing) {
+                        mPopupWindowActive.setPopUpWindowLeft(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    } else {
+                        mPopupWindowActive.setPopUpWindowFlickLeft(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    }
+                }
+                /** Flick Bottom **/
+                abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
+                    when (_currentInputMode.value) {
+                        is InputMode.ModeJapanese -> {
+                            popTextActive.setTextFlickBottomJapanese(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeEnglish -> {
+                            popTextActive.setTextFlickBottomEnglish(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeNumber -> {
+                            popTextActive.setTextFlickBottomNumber(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                        }
+                    }
+                    if (mPopupWindowTop.isShowing) {
+                        mPopupWindowActive.setPopUpWindowBottom(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    } else {
+                        mPopupWindowActive.setPopUpWindowFlickBottom(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    }
+                }
+                /** Flick Top **/
+                abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
+                    when (_currentInputMode.value) {
+                        is InputMode.ModeJapanese -> {
+                            popTextActive.setTextFlickTopJapanese(
+                                currentTenKeyId
+                            )
+                            popTextCenter.setTextTapJapanese(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeEnglish -> {
+                            popTextActive.setTextFlickTopEnglish(currentTenKeyId)
+                            popTextCenter.setTextTapEnglish(currentTenKeyId)
+                        }
+
+                        is InputMode.ModeNumber -> {
+                            popTextActive.setTextFlickTopNumber(currentTenKeyId)
+                            popTextCenter.setTextTapNumber(currentTenKeyId)
+                        }
+                    }
+                    if (mPopupWindowTop.isShowing) {
+                        mPopupWindowActive.setPopUpWindowTop(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    } else {
+                        mPopupWindowActive.setPopUpWindowFlickTop(
+                            applicationContext, bubbleLayoutActive, it
+                        )
+                    }
+                }
+            }
+            setTouchActionInMoveEnd(it)
+        }else{
+            it.isPressed = false
+        }
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setTouchListenerForMainKeys(
@@ -1647,283 +2174,82 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         bubbleLayoutRight: BubbleLayout,
         popTextCenter: MaterialTextView,
         bubbleLayoutCenter: BubbleLayout
-    ){
+    ) {
         keyList.forEach {
-            if (it is AppCompatButton){
+            if (it is AppCompatButton) {
                 it.setOnTouchListener { v, event ->
                     val insertString = _inputString.value
                     val sb = StringBuilder()
 
-                    when(event.action and MotionEvent.ACTION_MASK){
-                        MotionEvent.ACTION_DOWN ->{
+                    when (event.action and MotionEvent.ACTION_MASK) {
+                        MotionEvent.ACTION_DOWN -> {
                             setVibrate()
                             firstXPoint = event.rawX
                             firstYPoint = event.rawY
                             currentTenKeyId = v.id
                             isPointerDown = false
+                            firstFingerUp = false
                             firstPointerId = event.getPointerId(0)
+                            pressedKeyStatus = pressedKeyStatus.copy(
+                                keyId = it.id,
+                                pointer = event.getPointerId(event.actionIndex)
+                            )
                             return@setOnTouchListener false
                         }
-                        MotionEvent.ACTION_UP ->{
-                            if (tenKeysLongPressed){
+
+                        MotionEvent.ACTION_UP -> {
+                            if (tenKeysLongPressed) {
                                 mainLayoutBinding?.keyboardView?.let { a ->
                                     ImageEffects.removeBlurEffect(a.root)
                                 }
                                 tenKeysLongPressed = false
                             }
-                            if (isPointerDown) return@setOnTouchListener false
-                            println("Two up id: single")
-                            firstPointerId = 0
+
                             setVibrate()
                             val finalX = event.rawX
                             val finalY = event.rawY
 
                             val distanceX = (finalX - firstXPoint)
                             val distanceY = (finalY - firstYPoint)
-                            hidePopUpWindowActive()
-                            hidePopUpWindowCenter()
-                            hidePopUpWindowTop()
-                            hidePopUpWindowLeft()
-                            hidePopUpWindowBottom()
-                            hidePopUpWindowRight()
 
-                            if (currentTenKeyId !in tenKeyMap.keysJapanese) {
-                                return@setOnTouchListener false
+                            println(
+                                "Two single UP $currentTenKeyId ${it.id} ${
+                                    event.getPointerId(
+                                        event.actionIndex
+                                    )
+                                } $pressedKeyStatus"
+                            )
+
+                            if (pressedKeyStatus.pointer == event.getPointerId(event.actionIndex)) {
+                                addCharToInputString(
+                                    distanceX,
+                                    distanceY,
+                                    insertString,
+                                    sb,
+                                    it,
+                                    finalX,
+                                    finalY,
+                                )
                             }
 
-                            val keyInfo = when(_currentInputMode.value){
-                                is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(currentTenKeyId)
-                                is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(currentTenKeyId)
-                                is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(currentTenKeyId)
-                            }
-
-                            when{
-                                /** Tap **/
-                                abs(distanceX) < 100 && abs(distanceY) < 100 ->{
-                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(keyInfo.tap, insertString, sb)
-                                    if (currentTenKeyId != it.id){
-                                        currentTenKeyId = 0
-                                        _suggestionFlag.update { flag -> !flag }
-                                        return@setOnTouchListener false
-                                    }
-                                    when(_currentInputMode.value){
-                                        is InputMode.ModeJapanese ->{
-                                            it.setTenKeyTextJapanese(currentTenKeyId)
-                                        }
-                                        is InputMode.ModeEnglish ->{
-                                            it.setTenKeyTextEnglish(currentTenKeyId)
-                                        }
-                                        is InputMode.ModeNumber ->{
-                                            it.setTenKeyTextNumber(currentTenKeyId)
-                                        }
-                                    }
-                                    it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
-                                    it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-                                    currentTenKeyId = 0
-                                    isPointerDown = false
-                                    _suggestionFlag.update { flag -> !flag }
-                                    return@setOnTouchListener false
-                                }
-                                /** Flick Right **/
-                                abs(distanceX) > abs(distanceY) && firstXPoint < finalX ->{
-                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                        keyInfo.flickRight?.let { c ->
-                                            sendCharFlick(c, insertString, sb)
-                                        }
-                                    }
-                                }
-                                /** Flick Left **/
-                                abs(distanceX) > abs(distanceY) && firstXPoint >= finalX ->{
-                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                        if (keyInfo.flickLeft != ' '){
-                                            sendCharFlick(keyInfo.flickLeft, insertString, sb)
-                                        }
-                                    }
-                                }
-                                /** Flick Bottom **/
-                                abs(distanceX) <= abs(distanceY) && firstYPoint < finalY ->{
-                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo){
-                                        keyInfo.flickBottom?.let { c ->
-                                            sendCharFlick(c, insertString, sb)
-                                        }
-                                    }
-                                }
-                                /** Flick Top **/
-                                abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY ->{
-                                    if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                        if (keyInfo.flickTop != ' ') sendCharFlick(keyInfo.flickTop, insertString, sb)
-                                    }
-                                }
-                            }
-
-                            lastFlickConvertedNextHiragana = true
-                            isContinuousTapInputEnabled = true
-
-                            if (currentTenKeyId != it.id){
-                                currentTenKeyId = 0
-                                _suggestionFlag.update { flag -> !flag }
-                                return@setOnTouchListener false
-                            }
-
-                            when(_currentInputMode.value){
-                                is InputMode.ModeJapanese ->{
-                                    it.setTenKeyTextJapanese(currentTenKeyId)
-                                }
-                                is InputMode.ModeEnglish ->{
-                                    it.setTenKeyTextEnglish(currentTenKeyId)
-                                }
-                                is InputMode.ModeNumber ->{
-                                    it.setTenKeyTextNumber(currentTenKeyId)
-                                }
-                            }
-                            currentTenKeyId = 0
-                            it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
-                            it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-                            _suggestionFlag.update { flag -> !flag }
-                            isPointerDown = false
                             return@setOnTouchListener false
                         }
-                        MotionEvent.ACTION_MOVE ->{
+
+                        MotionEvent.ACTION_MOVE -> {
                             val finalX = event.rawX
                             val finalY = event.rawY
                             val distanceX = (finalX - firstXPoint)
                             val distanceY = (finalY - firstYPoint)
-                            if (event.pointerCount == 1 && !isPointerDown && currentTenKeyId != 0){
-                                when{
-                                    /** Tap **/
-                                    abs(distanceX) < 100 && abs(distanceY) < 100 ->{
-                                        when(_currentInputMode.value){
-                                            is InputMode.ModeJapanese ->{
-                                                popTextActive.setTextTapJapanese(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeEnglish ->{
-                                                popTextActive.setTextTapEnglish(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeNumber ->{
-                                                popTextActive.setTextTapNumber(currentTenKeyId)
-                                            }
-                                        }
-                                        if (!tenKeysLongPressed){
-                                            hidePopUpWindowActive()
-                                            it.setTextColor(ContextCompat.getColor(applicationContext,R.color.white))
-                                            it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_key_active_bg)
-                                            when(_currentInputMode.value){
-                                                is InputMode.ModeJapanese ->{
-                                                    it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
-                                                }
-                                                is InputMode.ModeEnglish ->{
-                                                    it.setTenKeyTextWhenTapEnglish(currentTenKeyId)
-                                                }
-                                                is InputMode.ModeNumber ->{
-                                                    it.setTenKeyTextWhenTapNumber(currentTenKeyId)
-                                                }
-                                            }
-                                        }else{
-                                            //mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
-                                            mPopupWindowActive.setPopUpWindowCenter(applicationContext,bubbleLayoutActive,it)
-                                        }
-                                        return@setOnTouchListener false
-                                    }
-                                    /** Flick Right **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint < finalX ->{
-                                        when(_currentInputMode.value){
-                                            is InputMode.ModeJapanese ->{
-                                                popTextActive.setTextFlickRightJapanese(currentTenKeyId)
-                                                popTextCenter.setTextTapJapanese(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeEnglish ->{
-                                                popTextActive.setTextFlickRightEnglish(currentTenKeyId)
-                                                popTextCenter.setTextTapEnglish(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeNumber ->{
-                                                popTextActive.setTextFlickRightNumber(currentTenKeyId)
-                                                popTextCenter.setTextTapNumber(currentTenKeyId)
-                                            }
-                                        }
-                                        if (mPopupWindowLeft.isShowing){
-                                            mPopupWindowActive.setPopUpWindowRight(applicationContext,bubbleLayoutActive,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickRight(applicationContext,bubbleLayoutActive,it)
-                                        }
-                                    }
-                                    /** Flick Left **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint >= finalX ->{
-                                        when(_currentInputMode.value){
-                                            is InputMode.ModeJapanese ->{
-                                                popTextActive.setTextFlickLeftJapanese(currentTenKeyId)
-                                                popTextCenter.setTextTapJapanese(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeEnglish ->{
-                                                popTextActive.setTextFlickLeftEnglish(currentTenKeyId)
-                                                popTextCenter.setTextTapEnglish(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeNumber ->{
-                                                popTextActive.setTextFlickLeftNumber(currentTenKeyId)
-                                                popTextCenter.setTextTapNumber(currentTenKeyId)
-                                            }
-                                        }
-                                        if (mPopupWindowRight.isShowing){
-                                            mPopupWindowActive.setPopUpWindowLeft(applicationContext,bubbleLayoutActive,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickLeft(applicationContext,bubbleLayoutActive,it)
-                                        }
-                                    }
-                                    /** Flick Bottom **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint < finalY ->{
-                                        when(_currentInputMode.value){
-                                            is InputMode.ModeJapanese ->{
-                                                popTextActive.setTextFlickBottomJapanese(currentTenKeyId)
-                                                popTextCenter.setTextTapJapanese(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeEnglish ->{
-                                                popTextActive.setTextFlickBottomEnglish(currentTenKeyId)
-                                                popTextCenter.setTextTapEnglish(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeNumber ->{
-                                                popTextActive.setTextFlickBottomNumber(currentTenKeyId)
-                                                popTextCenter.setTextTapNumber(currentTenKeyId)
-                                            }
-                                        }
-                                        if (mPopupWindowTop.isShowing){
-                                            mPopupWindowActive.setPopUpWindowBottom(applicationContext,bubbleLayoutActive,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickBottom(applicationContext,bubbleLayoutActive,it)
-                                        }
-                                    }
-                                    /** Flick Top **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY ->{
-                                        when(_currentInputMode.value){
-                                            is InputMode.ModeJapanese ->{
-                                                popTextActive.setTextFlickTopJapanese(currentTenKeyId)
-                                                popTextCenter.setTextTapJapanese(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeEnglish ->{
-                                                popTextActive.setTextFlickTopEnglish(currentTenKeyId)
-                                                popTextCenter.setTextTapEnglish(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeNumber ->{
-                                                popTextActive.setTextFlickTopNumber(currentTenKeyId)
-                                                popTextCenter.setTextTapNumber(currentTenKeyId)
-                                            }
-                                        }
-                                        if (mPopupWindowTop.isShowing){
-                                            mPopupWindowActive.setPopUpWindowTop(applicationContext,bubbleLayoutActive,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickTop(applicationContext,bubbleLayoutActive,it)
-                                        }
-                                    }
-                                }
-                                setTouchActionInMoveEnd(it)
-                            }else {
-                                it.isPressed = false
-                            }
 
+                            handleMove(
+                                distanceX, distanceY, it, finalX, finalY, event, bubbleLayoutActive
+                            )
                             return@setOnTouchListener false
                         }
+
                         MotionEvent.ACTION_POINTER_DOWN -> {
                             if (event.pointerCount == 2) {
-
-                                if (tenKeysLongPressed){
+                                if (tenKeysLongPressed) {
                                     mainLayoutBinding?.keyboardView?.let { a ->
                                         ImageEffects.removeBlurEffect(a.root)
                                     }
@@ -1933,126 +2259,48 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                                 val y1 = event.getRawY(0)
                                 val x2 = event.getRawX(1)
                                 val y2 = event.getRawY(1)
-//                                println("Two down ($x1, $y1) and ($x2, $y2) ($firstXPoint, $firstYPoint)")
 
-                                println("Two down $currentTenKeyId ${it.id}")
-
-                                secondXPoint = x2
-                                secondYPoint = y2
+                                println(
+                                    "Two down $currentTenKeyId ${it.id} ${
+                                        event.getPointerId(
+                                            event.actionIndex
+                                        )
+                                    } $pressedKeyStatus"
+                                )
 
                                 setVibrate()
                                 val finalX = event.getRawX(0)
                                 val finalY = event.getRawY(0)
-
                                 val distanceX = (finalX - firstXPoint)
                                 val distanceY = (finalY - firstYPoint)
-                                hidePopUpWindowActive()
-                                hidePopUpWindowCenter()
-                                hidePopUpWindowTop()
-                                hidePopUpWindowLeft()
-                                hidePopUpWindowBottom()
-                                hidePopUpWindowRight()
 
-                                firstXPoint = x2
-                                firstYPoint = y2
+                                firstXPoint = x1
+                                firstYPoint = y1
+                                secondXPoint = x2
+                                secondYPoint = y2
 
-                                if (isPointerDown) {
-                                    if (event.getPointerId(event.actionIndex) == 1){
-                                        getCurrentKeyID(x2, y2, keyList)
-                                    } else if (event.getPointerId(event.actionIndex) == 0){
-                                        currentTenKeyId = it.id
-                                    }
-                                    return@setOnTouchListener true
+                                if (pressedKeyStatus.pointer != event.getPointerId(event.actionIndex)) {
+                                    handleInputTwoFingersDown(
+                                        distanceX,
+                                        distanceY,
+                                        insertString,
+                                        sb,
+                                        it,
+                                        finalX,
+                                        finalY,
+                                        event,
+                                        x2,
+                                        y2,
+                                        x1,
+                                        y1,
+                                        keyList
+                                    )
                                 }
-
-                                isPointerDown = true
-
-                                if (currentTenKeyId !in tenKeyMap.keysJapanese) {
-                                    return@setOnTouchListener false
-                                }
-
-                                val keyInfo = when(_currentInputMode.value){
-                                    is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(currentTenKeyId)
-                                    is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(currentTenKeyId)
-                                    is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(currentTenKeyId)
-                                }
-
-                                when{
-                                    /** Tap **/
-                                    abs(distanceX) < 100 && abs(distanceY) < 100 ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(keyInfo.tap, insertString, sb)
-                                        when(_currentInputMode.value){
-                                            is InputMode.ModeJapanese ->{
-                                                it.setTenKeyTextJapanese(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeEnglish ->{
-                                                it.setTenKeyTextEnglish(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeNumber ->{
-                                                it.setTenKeyTextNumber(currentTenKeyId)
-                                            }
-                                        }
-                                        it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
-                                        it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-                                        getCurrentKeyID(x2,y2,keyList)
-                                        _suggestionFlag.update { flag -> !flag }
-                                        return@setOnTouchListener false
-                                    }
-                                    /** Flick Right **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint < finalX ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                            keyInfo.flickRight?.let { c ->
-                                                sendCharFlick(c, insertString, sb)
-                                            }
-                                        }
-                                    }
-                                    /** Flick Left **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint >= finalX ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                            if (keyInfo.flickLeft != ' '){
-                                                sendCharFlick(keyInfo.flickLeft, insertString, sb)
-                                            }
-                                        }
-                                    }
-                                    /** Flick Bottom **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint < finalY ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo){
-                                            keyInfo.flickBottom?.let { c ->
-                                                sendCharFlick(c, insertString, sb)
-                                            }
-                                        }
-                                    }
-                                    /** Flick Top **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                            if (keyInfo.flickTop != ' ') sendCharFlick(keyInfo.flickTop, insertString, sb)
-                                        }
-                                    }
-                                }
-
-                                lastFlickConvertedNextHiragana = true
-                                isContinuousTapInputEnabled = true
-                                when(_currentInputMode.value){
-                                    is InputMode.ModeJapanese ->{
-                                        it.setTenKeyTextJapanese(currentTenKeyId)
-                                    }
-                                    is InputMode.ModeEnglish ->{
-                                        it.setTenKeyTextEnglish(currentTenKeyId)
-                                    }
-                                    is InputMode.ModeNumber ->{
-                                        it.setTenKeyTextNumber(currentTenKeyId)
-                                    }
-                                }
-                                prevTenKeyId = currentTenKeyId
-                                getCurrentKeyID(x2,y2,keyList)
-                                it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
-                                it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-                                _suggestionFlag.update { flag -> !flag }
-
                             }
                             return@setOnTouchListener false
                         }
-                        MotionEvent.ACTION_POINTER_UP ->{
+
+                        MotionEvent.ACTION_POINTER_UP -> {
                             if (event.pointerCount == 2) {
                                 val x1 = event.getRawX(0)
                                 val y1 = event.getRawY(0)
@@ -2064,113 +2312,26 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                                 val distanceX = (x2 - secondXPoint)
                                 val distanceY = (y2 - secondYPoint)
 
-                                val pointerIndex = event.actionIndex
-                                val pointerId = event.getPointerId(pointerIndex)
-                                println("Two up id: ${it.id} $currentTenKeyId $pointerId")
-                                println("Two up dX: $distanceX dY: $distanceY")
-                                println("Two up  x1: $x1 x2: $x2 y1: $y1 y2: $y2")
-                                println("Two up  $firstXPoint $firstYPoint $secondXPoint $secondYPoint")
+                                println(
+                                    "Two up id: ${it.id} $currentTenKeyId ${
+                                        event.getPointerId(
+                                            event.actionIndex
+                                        )
+                                    } $pressedKeyStatus"
+                                )
 
-                                hidePopUpWindowActive()
-                                hidePopUpWindowCenter()
-                                hidePopUpWindowTop()
-                                hidePopUpWindowLeft()
-                                hidePopUpWindowBottom()
-                                hidePopUpWindowRight()
-
-                                if (currentTenKeyId !in tenKeyMap.keysJapanese) {
-                                    return@setOnTouchListener false
+                                if (pressedKeyStatus.pointer == event.getPointerId(event.actionIndex)) {
+                                    handleInputTwoFingersUp(
+                                        distanceX, distanceY, insertString, sb, it, x2, y2,
+                                    )
                                 }
 
-                                if (it.id != currentTenKeyId && pointerId == 0) {
-                                    return@setOnTouchListener false
-                                }
+                                return@setOnTouchListener false
 
-                                if (it.id == currentTenKeyId && pointerId == 1) {
-                                    return@setOnTouchListener false
-                                }
-
-                                val keyInfo = when(_currentInputMode.value){
-                                    is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(currentTenKeyId)
-                                    is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(currentTenKeyId)
-                                    is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(currentTenKeyId)
-                                }
-
-                                when{
-                                    /** Tap **/
-                                    abs(distanceX) < 100 && abs(distanceY) < 100 ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(keyInfo.tap, insertString, sb)
-                                        _suggestionFlag.update { flag -> !flag }
-                                        if (currentTenKeyId != it.id) return@setOnTouchListener false
-                                        when(_currentInputMode.value){
-                                            is InputMode.ModeJapanese ->{
-                                                it.setTenKeyTextJapanese(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeEnglish ->{
-                                                it.setTenKeyTextEnglish(currentTenKeyId)
-                                            }
-                                            is InputMode.ModeNumber ->{
-                                                it.setTenKeyTextNumber(currentTenKeyId)
-                                            }
-                                        }
-                                        it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
-                                        it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-//                                        currentTenKeyId = 0
-                                        return@setOnTouchListener false
-                                    }
-                                    /** Flick Right **/
-                                    abs(distanceX) > abs(distanceY) && secondXPoint < x2 ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                            keyInfo.flickRight?.let { c ->
-                                                sendCharFlick(c, insertString, sb)
-                                            }
-                                        }
-                                    }
-                                    /** Flick Left **/
-                                    abs(distanceX) > abs(distanceY) && secondXPoint >= x2 ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                            if (keyInfo.flickLeft != ' '){
-                                                sendCharFlick(keyInfo.flickLeft, insertString, sb)
-                                            }
-                                        }
-                                    }
-                                    /** Flick Bottom **/
-                                    abs(distanceX) <= abs(distanceY) && secondYPoint < y2 ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo){
-                                            keyInfo.flickBottom?.let { c ->
-                                                sendCharFlick(c, insertString, sb)
-                                            }
-                                        }
-                                    }
-                                    /** Flick Top **/
-                                    abs(distanceX) <= abs(distanceY) && secondYPoint >= y2 ->{
-                                        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                            if (keyInfo.flickTop != ' ') sendCharFlick(keyInfo.flickTop, insertString, sb)
-                                        }
-                                    }
-                                }
-
-                                lastFlickConvertedNextHiragana = true
-                                isContinuousTapInputEnabled = true
-                                if (currentTenKeyId != it.id) return@setOnTouchListener false
-                                when(_currentInputMode.value){
-                                    is InputMode.ModeJapanese ->{
-                                        it.setTenKeyTextJapanese(currentTenKeyId)
-                                    }
-                                    is InputMode.ModeEnglish ->{
-                                        it.setTenKeyTextEnglish(currentTenKeyId)
-                                    }
-                                    is InputMode.ModeNumber ->{
-                                        it.setTenKeyTextNumber(currentTenKeyId)
-                                    }
-                                }
-                                it.background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
-                                it.setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-                                _suggestionFlag.update { flag -> !flag }
-//                                currentTenKeyId = 0
                             }
                             return@setOnTouchListener false
                         }
+
                         else -> {
                             isPointerDown = false
                             return@setOnTouchListener false
@@ -2180,23 +2341,25 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
                 it.setOnLongClickListener { v ->
                     tenKeysLongPressed = true
-                    if (!isPointerDown){
-                        when(_currentInputMode.value){
-                            is InputMode.ModeJapanese ->{
+                    if (!isPointerDown) {
+                        when (_currentInputMode.value) {
+                            is InputMode.ModeJapanese -> {
                                 popTextTop.setTextFlickTopJapanese(currentTenKeyId)
                                 popTextLeft.setTextFlickLeftJapanese(currentTenKeyId)
                                 popTextBottom.setTextFlickBottomJapanese(currentTenKeyId)
                                 popTextRight.setTextFlickRightJapanese(currentTenKeyId)
                                 popTextCenter.setTextTapJapanese(currentTenKeyId)
                             }
-                            is InputMode.ModeEnglish ->{
+
+                            is InputMode.ModeEnglish -> {
                                 popTextTop.setTextFlickTopEnglish(currentTenKeyId)
                                 popTextLeft.setTextFlickLeftEnglish(currentTenKeyId)
                                 popTextBottom.setTextFlickBottomEnglish(currentTenKeyId)
                                 popTextRight.setTextFlickRightEnglish(currentTenKeyId)
                                 popTextCenter.setTextTapEnglish(currentTenKeyId)
                             }
-                            is InputMode.ModeNumber ->{
+
+                            is InputMode.ModeNumber -> {
                                 popTextTop.setTextFlickTopNumber(currentTenKeyId)
                                 popTextLeft.setTextFlickLeftNumber(currentTenKeyId)
                                 popTextBottom.setTextFlickBottomNumber(currentTenKeyId)
@@ -2204,32 +2367,41 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                                 popTextCenter.setTextTapNumber(currentTenKeyId)
                             }
                         }
-                        mPopupWindowTop.setPopUpWindowTop(applicationContext,bubbleLayoutTop,v)
-                        mPopupWindowLeft.setPopUpWindowLeft(applicationContext,bubbleLayoutLeft,v)
-                        mPopupWindowBottom.setPopUpWindowBottom(applicationContext,bubbleLayoutBottom,v)
-                        mPopupWindowRight.setPopUpWindowRight(applicationContext,bubbleLayoutRight,v)
-                        mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
-                        mPopupWindowActive.setPopUpWindowCenter(applicationContext,bubbleLayoutActive,it)
+                        mPopupWindowTop.setPopUpWindowTop(applicationContext, bubbleLayoutTop, v)
+                        mPopupWindowLeft.setPopUpWindowLeft(applicationContext, bubbleLayoutLeft, v)
+                        mPopupWindowBottom.setPopUpWindowBottom(
+                            applicationContext, bubbleLayoutBottom, v
+                        )
+                        mPopupWindowRight.setPopUpWindowRight(
+                            applicationContext, bubbleLayoutRight, v
+                        )
+                        mPopupWindowCenter.setPopUpWindowCenter(
+                            applicationContext, bubbleLayoutCenter, it
+                        )
+                        mPopupWindowActive.setPopUpWindowCenter(
+                            applicationContext, bubbleLayoutActive, it
+                        )
                         mainLayoutBinding?.keyboardView?.let { a ->
-                            ImageEffects.applyBlurEffect(a.root,8f)
+                            ImageEffects.applyBlurEffect(a.root, 8f)
                         }
                     }
                     false
                 }
             }
-            if (it is AppCompatImageButton){
+            if (it is AppCompatImageButton) {
                 it.setOnTouchListener { _, event ->
                     val insertString = _inputString.value
                     val sb = StringBuilder()
-                    when(event.action and MotionEvent.ACTION_MASK){
-                        MotionEvent.ACTION_DOWN ->{
+                    when (event.action and MotionEvent.ACTION_MASK) {
+                        MotionEvent.ACTION_DOWN -> {
                             setVibrate()
                             firstXPoint = event.rawX
                             firstYPoint = event.rawY
                             return@setOnTouchListener false
                         }
-                        MotionEvent.ACTION_UP ->{
-                            if (tenKeysLongPressed){
+
+                        MotionEvent.ACTION_UP -> {
+                            if (tenKeysLongPressed) {
                                 mainLayoutBinding?.keyboardView?.let { a ->
                                     ImageEffects.removeBlurEffect(a.root)
                                 }
@@ -2242,155 +2414,209 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                             val distanceX = (finalX - firstXPoint)
                             val distanceY = (finalY - firstYPoint)
 
-                            when(_currentInputMode.value){
-                                is InputMode.ModeJapanese ->{
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
+                            when (_currentInputMode.value) {
+                                is InputMode.ModeJapanese -> {
+                                    if (abs(distanceX) < 100 && abs(distanceY) < 100) {
                                         hidePopUpWindowActive()
-                                        if (insertString.isNotBlank()){
+                                        if (insertString.isNotBlank()) {
                                             dakutenSmallLetter(sb)
-                                        }else{
+                                        } else {
                                             _inputString.value = EMPTY_STRING
                                         }
                                     }
                                     _suggestionFlag.update { flag -> !flag }
                                     return@setOnTouchListener false
                                 }
-                                is InputMode.ModeEnglish ->{
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
+
+                                is InputMode.ModeEnglish -> {
+                                    if (abs(distanceX) < 100 && abs(distanceY) < 100) {
                                         hidePopUpWindowActive()
-                                        if (insertString.isNotBlank()){
+                                        if (insertString.isNotBlank()) {
                                             smallBigLetterConversionEnglish(sb)
-                                        }else{
+                                        } else {
                                             _inputString.value = EMPTY_STRING
                                         }
                                     }
                                     _suggestionFlag.update { flag -> !flag }
                                     return@setOnTouchListener false
                                 }
-                                is InputMode.ModeNumber ->{
+
+                                is InputMode.ModeNumber -> {
                                     hidePopUpWindowActive()
                                     hidePopUpWindowCenter()
                                     hidePopUpWindowTop()
                                     hidePopUpWindowLeft()
                                     hidePopUpWindowBottom()
                                     hidePopUpWindowRight()
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100){
+                                    if (abs(distanceX) < 100 && abs(distanceY) < 100) {
                                         hidePopUpWindowActive()
                                         sendCharFlick(NUMBER_KEY10_SYMBOL_CHAR[0], insertString, sb)
                                         lastFlickConvertedNextHiragana = false
                                         it.setImageDrawable(drawableNumberSmall)
-                                        it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
+                                        it.backgroundTintList = ColorStateList.valueOf(
+                                            ContextCompat.getColor(
+                                                applicationContext, R.color.qwety_key_bg_color
+                                            )
+                                        )
                                         _suggestionFlag.update { flag -> !flag }
                                         return@setOnTouchListener false
                                     }
                                     if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX){
-                                            sendCharFlick(NUMBER_KEY10_SYMBOL_CHAR[3], insertString, sb)
-                                        }else{
-                                            sendCharFlick(NUMBER_KEY10_SYMBOL_CHAR[1], insertString, sb)
+                                        if (firstXPoint < finalX) {
+                                            sendCharFlick(
+                                                NUMBER_KEY10_SYMBOL_CHAR[3], insertString, sb
+                                            )
+                                        } else {
+                                            sendCharFlick(
+                                                NUMBER_KEY10_SYMBOL_CHAR[1], insertString, sb
+                                            )
                                         }
-                                    }else{
+                                    } else {
                                         if (firstYPoint < finalY) {
                                             /** empty body **/
-                                        }else{
-                                            sendCharFlick(NUMBER_KEY10_SYMBOL_CHAR[2], insertString, sb)
+                                        } else {
+                                            sendCharFlick(
+                                                NUMBER_KEY10_SYMBOL_CHAR[2], insertString, sb
+                                            )
                                         }
                                     }
                                     lastFlickConvertedNextHiragana = false
                                     hidePopUpWindowActive()
                                     it.setImageDrawable(drawableNumberSmall)
-                                    it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
+                                    it.backgroundTintList = ColorStateList.valueOf(
+                                        ContextCompat.getColor(
+                                            applicationContext, R.color.qwety_key_bg_color
+                                        )
+                                    )
                                     _suggestionFlag.update { flag -> !flag }
                                     return@setOnTouchListener false
                                 }
                             }
                         }
-                        MotionEvent.ACTION_MOVE ->{
-                            if (_currentInputMode.value == InputMode.ModeNumber){
+
+                        MotionEvent.ACTION_MOVE -> {
+                            if (_currentInputMode.value == InputMode.ModeNumber) {
                                 val finalX = event.rawX
                                 val finalY = event.rawY
                                 val distanceX = (finalX - firstXPoint)
                                 val distanceY = (finalY - firstYPoint)
 
-                                when{
+                                when {
                                     /** Tap **/
-                                    abs(distanceX) < 100 && abs(distanceY) < 100 ->{
+                                    abs(distanceX) < 100 && abs(distanceY) < 100 -> {
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (!tenKeysLongPressed){
-                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
+                                        if (!tenKeysLongPressed) {
+                                            mPopupWindowCenter.setPopUpWindowCenter(
+                                                applicationContext, bubbleLayoutCenter, it
+                                            )
                                         }
-                                        mPopupWindowActive.setPopUpWindowCenter(applicationContext,bubbleLayoutActive,it)
+                                        mPopupWindowActive.setPopUpWindowCenter(
+                                            applicationContext, bubbleLayoutActive, it
+                                        )
                                         return@setOnTouchListener false
                                     }
                                     /** Flick Right **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint < finalX ->{
+                                    abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowLeft.isShowing){
-                                            mPopupWindowActive.setPopUpWindowRight(applicationContext,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickRight(applicationContext,bubbleLayoutActive,it)
+                                        if (mPopupWindowLeft.isShowing) {
+                                            mPopupWindowActive.setPopUpWindowRight(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
+                                            mPopupWindowCenter.setPopUpWindowCenter(
+                                                applicationContext, bubbleLayoutCenter, it
+                                            )
+                                        } else {
+                                            mPopupWindowActive.setPopUpWindowFlickRight(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
                                         }
                                     }
                                     /** Flick Left **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint >= finalX ->{
+                                    abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowRight.isShowing){
-                                            mPopupWindowActive.setPopUpWindowLeft(applicationContext,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickLeft(applicationContext,bubbleLayoutActive,it)
+                                        if (mPopupWindowRight.isShowing) {
+                                            mPopupWindowActive.setPopUpWindowLeft(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
+                                            mPopupWindowCenter.setPopUpWindowCenter(
+                                                applicationContext, bubbleLayoutCenter, it
+                                            )
+                                        } else {
+                                            mPopupWindowActive.setPopUpWindowFlickLeft(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
                                         }
                                     }
                                     /** Flick Bottom **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint < finalY ->{
+                                    abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
                                         popTextActive.text = EMPTY_STRING
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowTop.isShowing){
-                                            mPopupWindowActive.setPopUpWindowBottom(applicationContext,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickBottom(applicationContext,bubbleLayoutActive,it)
+                                        if (mPopupWindowTop.isShowing) {
+                                            mPopupWindowActive.setPopUpWindowBottom(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
+                                            mPopupWindowCenter.setPopUpWindowCenter(
+                                                applicationContext, bubbleLayoutCenter, it
+                                            )
+                                        } else {
+                                            mPopupWindowActive.setPopUpWindowFlickBottom(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
                                         }
                                     }
                                     /** Flick Top **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY ->{
+                                    abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
                                         popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
                                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowTop.isShowing){
-                                            mPopupWindowActive.setPopUpWindowTop(applicationContext,bubbleLayoutActive,it)
-                                            mPopupWindowCenter.setPopUpWindowCenter(applicationContext,bubbleLayoutCenter,it)
-                                        }else{
-                                            mPopupWindowActive.setPopUpWindowFlickTop(applicationContext,bubbleLayoutActive,it)
+                                        if (mPopupWindowTop.isShowing) {
+                                            mPopupWindowActive.setPopUpWindowTop(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
+                                            mPopupWindowCenter.setPopUpWindowCenter(
+                                                applicationContext, bubbleLayoutCenter, it
+                                            )
+                                        } else {
+                                            mPopupWindowActive.setPopUpWindowFlickTop(
+                                                applicationContext, bubbleLayoutActive, it
+                                            )
                                         }
                                     }
                                 }
                                 it.setImageDrawable(null)
                             }
-                            it.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
+                            it.backgroundTintList = ColorStateList.valueOf(
+                                ContextCompat.getColor(
+                                    applicationContext, R.color.qwety_key_bg_color
+                                )
+                            )
                             return@setOnTouchListener false
                         }
+
                         else -> return@setOnTouchListener true
                     }
                 }
                 it.setOnLongClickListener { v ->
                     tenKeysLongPressed = true
-                    if (_currentInputMode.value == InputMode.ModeNumber){
+                    if (_currentInputMode.value == InputMode.ModeNumber) {
                         popTextTop.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
                         popTextLeft.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
                         popTextBottom.text = EMPTY_STRING
                         popTextRight.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
                         popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
 
-                        mPopupWindowTop.setPopUpWindowTop(applicationContext,bubbleLayoutTop,v)
-                        mPopupWindowLeft.setPopUpWindowLeft(applicationContext,bubbleLayoutLeft,v)
-                        mPopupWindowBottom.setPopUpWindowBottom(applicationContext,bubbleLayoutBottom,v)
-                        mPopupWindowRight.setPopUpWindowRight(applicationContext,bubbleLayoutRight,v)
+                        mPopupWindowTop.setPopUpWindowTop(applicationContext, bubbleLayoutTop, v)
+                        mPopupWindowLeft.setPopUpWindowLeft(applicationContext, bubbleLayoutLeft, v)
+                        mPopupWindowBottom.setPopUpWindowBottom(
+                            applicationContext, bubbleLayoutBottom, v
+                        )
+                        mPopupWindowRight.setPopUpWindowRight(
+                            applicationContext, bubbleLayoutRight, v
+                        )
 
                         mainLayoutBinding?.keyboardView?.let { a ->
-                            ImageEffects.applyBlurEffect(a.root,8f)
+                            ImageEffects.applyBlurEffect(a.root, 8f)
                         }
                     }
                     false
@@ -2404,21 +2630,19 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
      * Change keyboard layout by input mode
      **/
     private fun setKeyLayoutByInputMode(
-        keys: List<Any>,
-        inputMode: InputMode,
-        keySmallLetter: AppCompatImageButton
-    ){
-        when(inputMode){
-            is InputMode.ModeJapanese ->{
+        keys: List<Any>, inputMode: InputMode, keySmallLetter: AppCompatImageButton
+    ) {
+        when (inputMode) {
+            is InputMode.ModeJapanese -> {
                 keys.forEachIndexed { index, button ->
-                    if (button is AppCompatButton){
+                    if (button is AppCompatButton) {
                         button.apply {
                             focusable = View.NOT_FOCUSABLE
                             setTenKeyTextJapanese(button.id)
                         }
                     }
-                    if (button is AppCompatImageButton){
-                        when(index){
+                    if (button is AppCompatImageButton) {
+                        when (index) {
                             10 -> {
                                 keySmallLetter.apply {
                                     focusable = View.NOT_FOCUSABLE
@@ -2429,18 +2653,19 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
-            is InputMode.ModeEnglish ->{
+
+            is InputMode.ModeEnglish -> {
 
                 keys.forEachIndexed { index, button ->
-                    if (button is AppCompatButton){
+                    if (button is AppCompatButton) {
                         button.apply {
                             focusable = View.NOT_FOCUSABLE
                             setTenKeyTextEnglish(button.id)
                         }
                     }
 
-                    if (button is AppCompatImageButton){
-                        when(index){
+                    if (button is AppCompatImageButton) {
+                        when (index) {
                             10 -> {
                                 keySmallLetter.apply {
                                     focusable = View.NOT_FOCUSABLE
@@ -2451,17 +2676,18 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
-            is InputMode.ModeNumber ->{
+
+            is InputMode.ModeNumber -> {
                 keys.forEachIndexed { index, button ->
-                    if (button is AppCompatButton){
+                    if (button is AppCompatButton) {
                         button.apply {
                             focusable = View.NOT_FOCUSABLE
                             setTenKeyTextNumber(button.id)
                         }
                     }
 
-                    if (button is AppCompatImageButton){
-                        when(index){
+                    if (button is AppCompatImageButton) {
+                        when (index) {
                             10 -> {
                                 keySmallLetter.apply {
                                     focusable = View.NOT_FOCUSABLE
@@ -2474,20 +2700,17 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
     }
+
     private fun appendCharToStringBuilder(
-        char: Char,
-        insertString: String,
-        stringBuilder: StringBuilder
-    ){
-        if (insertString.length == 1){
+        char: Char, insertString: String, stringBuilder: StringBuilder
+    ) {
+        if (insertString.length == 1) {
             stringBuilder.append(char)
             _inputString.value = stringBuilder.toString()
         } else {
             try {
-                stringBuilder.append(insertString)
-                    .deleteCharAt(insertString.lastIndex)
-                    .append(char)
-            }catch (e: Exception){
+                stringBuilder.append(insertString).deleteCharAt(insertString.lastIndex).append(char)
+            } catch (e: Exception) {
                 if (e is CancellationException) throw e
             }
             _inputString.update {
@@ -2498,37 +2721,36 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun deleteStringCommon() {
         val length = _inputString.value.length
-        when{
+        when {
             length > 1 -> {
                 println("deleteStringCommon: ${_inputString.value}")
                 _inputString.update {
                     it.dropLast(1)
                 }
             }
+
             else -> {
                 _inputString.update { EMPTY_STRING }
                 _suggestionList.update { emptyList() }
-                if (stringInTail.isEmpty()) setComposingText("",0)
-                }
+                if (stringInTail.isEmpty()) setComposingText("", 0)
+            }
         }
         _suggestionFlag.update { flag -> !flag }
     }
 
     private fun setCurrentInputCharacterContinuous(
-        char: Char,
-        insertString: String,
-        sb: StringBuilder
+        char: Char, insertString: String, sb: StringBuilder
     ) {
         suggestionClickNum = 0
         _dakutenPressed.value = false
         englishSpaceKeyPressed = false
         onDeleteLongPressUp = false
-        if (insertString.isNotEmpty()){
+        if (insertString.isNotEmpty()) {
             sb.append(insertString).append(char)
             _inputString.update {
                 sb.toString()
             }
-        }else {
+        } else {
             _inputString.update {
                 char.toString()
             }
@@ -2536,9 +2758,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setCurrentInputCharacter(
-        char: Char,
-        inputForInsert: String,
-        sb: StringBuilder
+        char: Char, inputForInsert: String, sb: StringBuilder
     ) {
         if (inputForInsert.isNotEmpty()) {
             val hiraganaAtInsertPosition = inputForInsert.last()
@@ -2557,48 +2777,9 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun sendCharTap(
-        charToSend: Char,
-        insertString: String,
-        sb: StringBuilder
-    ){
-        when(currentInputType){
-            InputTypeForIME.None,
-            InputTypeForIME.Number,
-            InputTypeForIME.NumberDecimal,
-            InputTypeForIME.NumberPassword,
-            InputTypeForIME.NumberSigned,
-            InputTypeForIME.Phone,
-            InputTypeForIME.Date,
-            InputTypeForIME.Datetime,
-            InputTypeForIME.Time,
-            ->{
-                sendKeyChar(charToSend)
-            }
-            else ->{
-                if (isContinuousTapInputEnabled && lastFlickConvertedNextHiragana){
-                    setCurrentInputCharacterContinuous(
-                        charToSend,
-                        insertString,
-                        sb
-                    )
-                    lastFlickConvertedNextHiragana = false
-                }else {
-                    setKeyTouch(
-                        charToSend,
-                        insertString,
-                        sb
-                    )
-                }
-            }
-        }
-    }
-
-    private fun sendCharFlick(
-        charToSend: Char,
-        insertString: String,
-        sb: StringBuilder
-    ){
-        when(currentInputType){
+        charToSend: Char, insertString: String, sb: StringBuilder
+    ) {
+        when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
             InputTypeForIME.NumberDecimal,
@@ -2611,37 +2792,65 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
             -> {
                 sendKeyChar(charToSend)
             }
-            else ->{
+
+            else -> {
+                if (isContinuousTapInputEnabled && lastFlickConvertedNextHiragana) {
+                    setCurrentInputCharacterContinuous(
+                        charToSend, insertString, sb
+                    )
+                    lastFlickConvertedNextHiragana = false
+                } else {
+                    setKeyTouch(
+                        charToSend, insertString, sb
+                    )
+                }
+            }
+        }
+    }
+
+    private fun sendCharFlick(
+        charToSend: Char, insertString: String, sb: StringBuilder
+    ) {
+        when (currentInputType) {
+            InputTypeForIME.None,
+            InputTypeForIME.Number,
+            InputTypeForIME.NumberDecimal,
+            InputTypeForIME.NumberPassword,
+            InputTypeForIME.NumberSigned,
+            InputTypeForIME.Phone,
+            InputTypeForIME.Date,
+            InputTypeForIME.Datetime,
+            InputTypeForIME.Time,
+            -> {
+                sendKeyChar(charToSend)
+            }
+
+            else -> {
                 setCurrentInputCharacterContinuous(
-                    charToSend,
-                    insertString,
-                    sb
+                    charToSend, insertString, sb
                 )
             }
         }
     }
 
     private fun setStringBuilderForConvertStringInHiragana(
-        inputChar: Char,
-        sb: StringBuilder
-    ){
-        if (_inputString.value.length == 1){
+        inputChar: Char, sb: StringBuilder
+    ) {
+        if (_inputString.value.length == 1) {
             sb.append(inputChar)
             _inputString.value = sb.toString()
-        }else {
-            sb.append(_inputString.value)
-                .deleteAt(_inputString.value.length - 1)
-                .append(inputChar)
+        } else {
+            sb.append(_inputString.value).deleteAt(_inputString.value.length - 1).append(inputChar)
             _inputString.value = sb.toString()
         }
     }
 
     private fun dakutenSmallLetter(
         sb: StringBuilder
-    ){
+    ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed = false
-        if (_inputString.value.isNotEmpty()){
+        if (_inputString.value.isNotEmpty()) {
             val insertPosition = _inputString.value.last()
             insertPosition.let { c ->
                 c.getDakutenSmallChar()?.let { dakutenChar ->
@@ -2653,11 +2862,11 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun smallBigLetterConversionEnglish(
         sb: StringBuilder
-    ){
+    ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed = false
 
-        if (_inputString.value.isNotEmpty()){
+        if (_inputString.value.isNotEmpty()) {
             val insertPosition = _inputString.value.last()
             insertPosition.let { c ->
                 c.getDakutenSmallChar()?.let { dakutenChar ->
@@ -2669,9 +2878,7 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setKeyTouch(
-        key: Char,
-        insertString: String,
-        sb: StringBuilder
+        key: Char, insertString: String, sb: StringBuilder
     ) {
         suggestionClickNum = 0
         _dakutenPressed.value = false
@@ -2679,158 +2886,179 @@ class IMEService: InputMethodService(), LifecycleOwner, InputConnection {
         lastFlickConvertedNextHiragana = false
         onDeleteLongPressUp = false
         isContinuousTapInputEnabled = false
-        if (isHenkan){
+        if (isHenkan) {
             finishComposingText()
             _inputString.value = key.toString()
             isHenkan = false
         } else {
             setCurrentInputCharacter(
-                key,
-                insertString,
-                sb
+                key, insertString, sb
             )
         }
     }
 
     private fun setConvertLetterInJapaneseFromButton(
         suggestions: List<Candidate>,
-    ){
+    ) {
         if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
         val listIterator = suggestions.listIterator(suggestionClickNum)
-        when{
-            listIterator.hasNext() ->{
+        when {
+            listIterator.hasNext() -> {
                 setSuggestionComposingText(listIterator)
             }
-            !listIterator.hasNext() ->{
+
+            !listIterator.hasNext() -> {
                 setSuggestionComposingTextIteratorLast(suggestions)
                 suggestionClickNum = 0
             }
         }
     }
 
-    private fun setSpaceKeyActionEnglishAndNumberNotEmpty(){
-        if (stringInTail.isNotEmpty()){
+    private fun setSpaceKeyActionEnglishAndNumberNotEmpty() {
+        if (stringInTail.isNotEmpty()) {
             commitText(_inputString.value + " " + stringInTail, 1)
             stringInTail = EMPTY_STRING
-        }else{
+        } else {
             commitText(_inputString.value + " ", 1)
         }
         _inputString.value = EMPTY_STRING
     }
 
-    private fun setSpaceKeyActionEnglishAndNumberEmpty(){
-        if (stringInTail.isNotEmpty()){
+    private fun setSpaceKeyActionEnglishAndNumberEmpty() {
+        if (stringInTail.isNotEmpty()) {
             commitText(" $stringInTail", 1)
             stringInTail = EMPTY_STRING
-        }else{
-            if (_currentInputMode.value == InputMode.ModeJapanese){
+        } else {
+            if (_currentInputMode.value == InputMode.ModeJapanese) {
                 commitText("　", 1)
-            }else{
+            } else {
                 commitText(" ", 1)
             }
         }
         _inputString.value = EMPTY_STRING
     }
 
-    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) = scope.launch{
+    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) = scope.launch {
         val nextSuggestion = listIterator.next()
         val candidateType = nextSuggestion.type.toInt()
         if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
         }
-        val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
+        val spannableString2 =
+            if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(
+                nextSuggestion.string + stringInTail
+            )
         spannableString2.apply {
-            setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(
+                BackgroundColorSpan(getColor(R.color.orange)),
+                0,
+                nextSuggestion.string.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
         }
-        setComposingText(spannableString2,1)
+        setComposingText(spannableString2, 1)
         _suggestionFlag.update { flag -> !flag }
     }
 
-    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) = scope.launch{
-        val nextSuggestion = suggestions[0]
-        val candidateType = nextSuggestion.type.toInt()
-        if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
-            stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
+    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) =
+        scope.launch {
+            val nextSuggestion = suggestions[0]
+            val candidateType = nextSuggestion.type.toInt()
+            if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
+                stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
+            }
+            val spannableString2 =
+                if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(
+                    nextSuggestion.string + stringInTail
+                )
+            spannableString2.apply {
+                setSpan(
+                    BackgroundColorSpan(getColor(R.color.orange)),
+                    0,
+                    nextSuggestion.string.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+            setComposingText(spannableString2, 1)
+            _suggestionFlag.update { flag -> !flag }
         }
-        val spannableString2 = if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(nextSuggestion.string + stringInTail)
-        spannableString2.apply {
-            setSpan(BackgroundColorSpan(getColor(R.color.orange)),0,nextSuggestion.string.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        setComposingText(spannableString2,1)
-        _suggestionFlag.update { flag -> !flag }
-    }
-    private fun setNextReturnInputCharacter(){
+
+    private fun setNextReturnInputCharacter() {
         _dakutenPressed.value = true
         englishSpaceKeyPressed = false
         val insertForString = _inputString.value
         val sb = StringBuilder()
-        if (insertForString.isNotEmpty() ){
+        if (insertForString.isNotEmpty()) {
             val insertPosition = _inputString.value.last()
             insertPosition.let { c ->
                 c.getNextReturnInputChar()?.let { charForReturn ->
                     appendCharToStringBuilder(
-                        charForReturn,
-                        insertForString,
-                        sb
+                        charForReturn, insertForString, sb
                     )
                 }
             }
         }
     }
-    private fun setTouchActionInMoveEnd(appCompatButton: AppCompatButton){
+
+    private fun setTouchActionInMoveEnd(appCompatButton: AppCompatButton) {
         appCompatButton.apply {
-            background = ContextCompat.getDrawable(applicationContext,R.drawable.ten_keys_center_bg)
-            if (mPopupWindowTop.isShowing){
-                setTextColor(ContextCompat.getColor(applicationContext,R.color.keyboard_icon_color))
-            }else{
-                setTextColor(ContextCompat.getColor(applicationContext,R.color.qwety_key_bg_color))
+            background =
+                ContextCompat.getDrawable(applicationContext, R.drawable.ten_keys_center_bg)
+            if (mPopupWindowTop.isShowing) {
+                setTextColor(
+                    ContextCompat.getColor(
+                        applicationContext, R.color.keyboard_icon_color
+                    )
+                )
+            } else {
+                setTextColor(ContextCompat.getColor(applicationContext, R.color.qwety_key_bg_color))
             }
         }
     }
 
-    private fun hidePopUpWindowActive(){
+    private fun hidePopUpWindowActive() {
         mPopupWindowActive.apply {
-            if (isShowing){
+            if (isShowing) {
                 dismiss()
             }
         }
     }
 
-    private fun hidePopUpWindowCenter(){
+    private fun hidePopUpWindowCenter() {
         mPopupWindowCenter.apply {
-            if (isShowing){
+            if (isShowing) {
                 dismiss()
             }
         }
     }
 
-    private fun hidePopUpWindowTop(){
+    private fun hidePopUpWindowTop() {
         mPopupWindowTop.apply {
-            if (isShowing){
+            if (isShowing) {
                 dismiss()
             }
         }
     }
 
-    private fun hidePopUpWindowLeft(){
+    private fun hidePopUpWindowLeft() {
         mPopupWindowLeft.apply {
-            if (isShowing){
+            if (isShowing) {
                 dismiss()
             }
         }
     }
 
-    private fun hidePopUpWindowBottom(){
+    private fun hidePopUpWindowBottom() {
         mPopupWindowBottom.apply {
-            if (isShowing){
+            if (isShowing) {
                 dismiss()
             }
         }
     }
 
-    private fun hidePopUpWindowRight(){
+    private fun hidePopUpWindowRight() {
         mPopupWindowRight.apply {
-            if (isShowing){
+            if (isShowing) {
                 dismiss()
             }
         }
