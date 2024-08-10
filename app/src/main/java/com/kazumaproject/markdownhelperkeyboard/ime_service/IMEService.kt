@@ -1681,6 +1681,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             return
         }
 
+
         val keyInfo = when (_currentInputMode.value) {
             is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(pressedKeyStatus.keyId)
             is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(pressedKeyStatus.keyId)
@@ -1818,11 +1819,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         keyId = it.id,
                         pointer = 0
                     )
-                    buttonTextOriginal(appCompatButton = it)
                 } else if (event.getPointerId(event.actionIndex) == 1) {
                     getCurrentKeyID(x2, y2, keyList)
-                    firstXPoint = x2
-                    firstYPoint = y2
                     pressedKeyStatus = pressedKeyStatus.copy(
                         keyId = currentTenKeyId,
                         pointer = 1
@@ -2209,11 +2207,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             val finalX = event.rawX
                             val finalY = event.rawY
 
-                            val distanceX = (finalX - firstXPoint)
+                            val distanceX = finalX - firstXPoint
                             val distanceY = (finalY - firstYPoint)
-
+                            
                             println(
-                                "Two single UP $currentTenKeyId ${it.id} ${
+                                "Two single UP ${it.id} ${
                                     event.getPointerId(
                                         event.actionIndex
                                     )
@@ -2241,9 +2239,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             val distanceX = (finalX - firstXPoint)
                             val distanceY = (finalY - firstYPoint)
 
-                            handleMove(
-                                distanceX, distanceY, it, finalX, finalY, event, bubbleLayoutActive
-                            )
+//                            handleMove(
+//                                distanceX, distanceY, it, finalX, finalY, event, bubbleLayoutActive
+//                            )
                             return@setOnTouchListener false
                         }
 
