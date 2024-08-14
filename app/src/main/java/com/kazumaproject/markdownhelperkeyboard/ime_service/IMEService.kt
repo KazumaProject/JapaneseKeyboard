@@ -16,7 +16,6 @@ import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
-import android.transition.Transition
 import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -250,12 +249,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     @Inject
-    lateinit var extractedTextRequest: ExtractedTextRequest
-
-    @Inject
-    lateinit var transition: Transition
-
-    @Inject
     lateinit var pressedKeyStatus: PressedKeyStatus
 
     private var mainLayoutBinding: MainLayoutBinding? = null
@@ -276,7 +269,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private var currentTenKeyId = 0
-    private var prevTenKeyId = 0
     private var lastFlickConvertedNextHiragana = false
     private var isContinuousTapInputEnabled = false
     private var englishSpaceKeyPressed = false
@@ -2209,7 +2201,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                             val distanceX = finalX - firstXPoint
                             val distanceY = (finalY - firstYPoint)
-                            
+
                             println(
                                 "Two single UP ${it.id} ${
                                     event.getPointerId(
