@@ -29,6 +29,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet): androidx.appcompat
 
     fun setInputMode(inputMode: InputMode){
         currentInputMode = inputMode
+        this.invalidate()
     }
 
     fun getCurrentInputMode(): InputMode {
@@ -114,5 +115,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet): androidx.appcompat
             }
         }
     }
+
+
 
 }
