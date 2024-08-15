@@ -5,17 +5,11 @@
     android:id="@+id/mobile_navigation"
     app:startDestination="@+id/navigation_setting">
 
-<!--    <fragment-->
-<!--        android:id="@+id/navigation_home"-->
-<!--        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary.DictionaryFragment"-->
-<!--        android:label="@string/title_home"-->
-<!--        tools:layout="@layout/fragment_home" />-->
-
     <fragment
         android:id="@+id/navigation_setting"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingFragment"
         android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_dashboard" >
+        tools:layout="@layout/fragment_setting_main" >
         <action
             android:id="@+id/action_navigation_dashboard_to_openSourceFragment"
             app:destination="@id/openSourceFragment" />

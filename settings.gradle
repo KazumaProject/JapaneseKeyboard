@@ -14,5 +14,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "MarkdownHelperKeyboard"
 include ':app'
-include ':bl'
 include ':flexbox'
+include ':tenkey'
+include ':bl'
