@@ -12,6 +12,7 @@
             <option value="$PROJECT_DIR$/app" />
             <option value="$PROJECT_DIR$/bl" />
             <option value="$PROJECT_DIR$/flexbox" />
+            <option value="$PROJECT_DIR$/tenkey" />
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="false" />

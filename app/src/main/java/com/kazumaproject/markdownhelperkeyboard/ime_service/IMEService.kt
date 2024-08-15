@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
@@ -30,7 +29,6 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
-import android.widget.PopupWindow
 import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
@@ -39,9 +37,6 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.recyclerview.widget.GridLayoutManager
-import com.daasuu.bl.BubbleLayout
-import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.android.flexbox.AlignItems
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexWrap
@@ -51,12 +46,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
-import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.EmojiKigouAdapter
-import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.KigouAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
-import com.kazumaproject.markdownhelperkeyboard.ime_service.components.InputModeSwitch
-import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyInfo
-import com.kazumaproject.markdownhelperkeyboard.ime_service.components.TenKeyMapHolder
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableEnglishSmall
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableHenkan
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableKanaSmall
@@ -69,58 +59,19 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.InputBackGroundDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.IoDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpTextActive
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowBottom
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowCenter
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowLeft
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowRight
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.PopUpWindowTop
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.SuggestionDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertUnicode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextReturnInputChar
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowBottom
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowCenter
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickBottom
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickLeft
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickRight
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowFlickTop
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowLeft
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowRight
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setPopUpWindowTop
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextJapanese
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapJapanese
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTenKeyTextWhenTapNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomJapanese
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickBottomNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickLeftEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickLeftJapanese
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickLeftNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickRightEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickRightJapanese
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickRightNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopJapanese
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextFlickTopNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapEnglish
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapJapanese
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setTextTapNumber
-import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.ImageEffects
-import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.EMOJI_LIST
-import com.kazumaproject.markdownhelperkeyboard.ime_service.other.Constants.KAOMOJI
-import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
-import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardMode
-import com.kazumaproject.markdownhelperkeyboard.ime_service.state.ModeInKigou
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.tenkey.listener.FlickListener
+import com.kazumaproject.tenkey.listener.LongPressListener
+import com.kazumaproject.tenkey.state.GestureType
+import com.kazumaproject.tenkey.state.InputMode
+import com.kazumaproject.tenkey.state.Key
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -138,7 +89,6 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
-import kotlin.math.abs
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
@@ -166,9 +116,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var appPreference: AppPreference
-
-    @Inject
-    lateinit var tenKeyMap: TenKeyMapHolder
 
     @Inject
     lateinit var inputMethodManager: InputMethodManager
@@ -199,7 +146,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     @DrawableLanguage
-    lateinit var drawableLanguage: Drawable
+    lateinit var drawableLogo: Drawable
 
     @Inject
     @DrawableNumberSmall
@@ -210,75 +157,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var drawableOpenBracket: Drawable
 
     @Inject
-    @PopUpTextActive
-    lateinit var mPopupWindowActive: PopupWindow
-    private lateinit var bubbleViewActive: BubbleLayout
-    private lateinit var popTextActive: MaterialTextView
-
-    @Inject
-    @PopUpWindowTop
-    lateinit var mPopupWindowTop: PopupWindow
-    private lateinit var bubbleViewTop: BubbleLayout
-    private lateinit var popTextTop: MaterialTextView
-
-    @Inject
-    @PopUpWindowLeft
-    lateinit var mPopupWindowLeft: PopupWindow
-    private lateinit var bubbleViewLeft: BubbleLayout
-    private lateinit var popTextLeft: MaterialTextView
-
-    @Inject
-    @PopUpWindowBottom
-    lateinit var mPopupWindowBottom: PopupWindow
-    private lateinit var bubbleViewBottom: BubbleLayout
-    private lateinit var popTextBottom: MaterialTextView
-
-    @Inject
-    @PopUpWindowRight
-    lateinit var mPopupWindowRight: PopupWindow
-    private lateinit var bubbleViewRight: BubbleLayout
-    private lateinit var popTextRight: MaterialTextView
-
-    @Inject
-    @PopUpWindowCenter
-    lateinit var mPopupWindowCenter: PopupWindow
-    private lateinit var bubbleViewCenter: BubbleLayout
-    private lateinit var popTextCenter: MaterialTextView
-
-    @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
-
-    @Inject
-    lateinit var pressedKeyStatus: PressedKeyStatus
 
     private var mainLayoutBinding: MainLayoutBinding? = null
 
     private var suggestionAdapter: SuggestionAdapter? = null
-    private var emojiKigouAdapter: EmojiKigouAdapter? = null
-    private var kigouApdater: KigouAdapter? = null
 
-    private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
     private val _inputString = MutableStateFlow(EMPTY_STRING)
     private var stringInTail = ""
-    private val _currentKeyboardMode = MutableStateFlow<KeyboardMode>(KeyboardMode.ModeTenKeyboard)
-    private val _currentModeInKigou = MutableStateFlow<ModeInKigou>(ModeInKigou.Null)
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionList = MutableStateFlow<List<Candidate>>(emptyList())
     private val _suggestionFlag = MutableStateFlow(false)
     private val _suggestionViewStatus = MutableStateFlow(true)
 
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
-    private var currentTenKeyId = 0
     private var lastFlickConvertedNextHiragana = false
     private var isContinuousTapInputEnabled = false
     private var englishSpaceKeyPressed = false
-    private var tenKeysLongPressed = false
-
-    private var firstXPoint = 0.0f
-    private var firstYPoint = 0.0f
-    private var secondXPoint = 0.0f
-    private var secondYPoint = 0.0f
-
     private var suggestionClickNum = 0
     private var isHenkan = false
     private var onLeftKeyLongPressUp = false
@@ -306,7 +201,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     companion object {
-        val NUMBER_KEY10_SYMBOL_CHAR = listOf('(', ')', '[', ']')
         const val EMPTY_STRING = ""
         const val DELAY_TIME = 1000L
         const val LONG_DELAY_TIME = 64L
@@ -327,40 +221,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
-
         return mainLayoutBinding?.root.apply {
-            mainLayoutBinding?.let { mainView ->
+            val flexboxLayoutManager = FlexboxLayoutManager(applicationContext).apply {
+                flexWrap = FlexWrap.WRAP
+                alignItems = AlignItems.STRETCH
+            }
+            initializeVariables()
+            mainLayoutBinding?.keyboardView?.apply {
+                setOnFlickListener(object : FlickListener {
+                    override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                        Timber.d("Flick: $char $key $gestureType")
+                    }
+                })
+                setOnLongPressListener(object : LongPressListener{
+                    override fun onLongPress(key: Key) {
+                        Timber.d("Long Press: $key")
+                    }
 
-                val keyList = listOf<Any>(
-                    mainView.keyboardView.key1,
-                    mainView.keyboardView.key2,
-                    mainView.keyboardView.key3,
-                    mainView.keyboardView.key4,
-                    mainView.keyboardView.key5,
-                    mainView.keyboardView.key6,
-                    mainView.keyboardView.key7,
-                    mainView.keyboardView.key8,
-                    mainView.keyboardView.key9,
-                    mainView.keyboardView.key11,
-                    mainView.keyboardView.keySmallLetter,
-                    mainView.keyboardView.key12
-                )
-                val flexboxLayoutManager = FlexboxLayoutManager(applicationContext).apply {
-                    flexWrap = FlexWrap.WRAP
-                    alignItems = AlignItems.STRETCH
-                }
-
-                initializeVariables()
-
-                setTenKeyView(keyList)
-                setSuggestionRecyclerView(flexboxLayoutManager)
-                setKigouView()
-                if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                    startScope(keyList, flexboxLayoutManager)
-                } else {
-                    scope.coroutineContext.cancelChildren()
-                    startScope(keyList, flexboxLayoutManager)
-                }
+                })
+            }
+            setSuggestionRecyclerView(flexboxLayoutManager)
+            if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                startScope(flexboxLayoutManager)
+            } else {
+                scope.coroutineContext.cancelChildren()
+                startScope(flexboxLayoutManager)
             }
         }
     }
@@ -376,7 +261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
-        mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
     }
@@ -390,7 +275,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
-        mainLayoutBinding?.keyboardView?.root?.isVisible = true
+        mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
@@ -452,13 +337,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun startScope(
-        keyList: List<Any>, flexboxLayoutManager: FlexboxLayoutManager
+        flexboxLayoutManager: FlexboxLayoutManager
     ) = scope.launch {
         mainLayoutBinding?.let { mainView ->
             launch {
                 _suggestionFlag.asStateFlow().collectLatest {
                     setSuggestionOnView(mainView)
-                    mainView.keyboardView.root.isVisible = true
+                    mainView.keyboardView.isVisible = true
                 }
             }
 
@@ -475,24 +360,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             launch {
-                _currentInputMode.asStateFlow().collectLatest { state ->
-                    updateKeyLayoutByInputMode(keyList, state, mainView)
-                }
-            }
-
-            launch {
-                _currentKeyboardMode.asStateFlow().collectLatest { keyboardMode ->
-                    updateKeyboardMode(mainView, keyboardMode)
-                }
-            }
-
-            launch {
-                _currentModeInKigou.asStateFlow().collectLatest { modeInKigou ->
-                    setTenKeyAndKigouView(modeInKigou)
-                }
-            }
-
-            launch {
                 _inputString.asStateFlow().collectLatest { inputString ->
                     processInputString(inputString)
                 }
@@ -503,7 +370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, flexboxLayoutManager: FlexboxLayoutManager, isVisible: Boolean
     ) {
-        mainView.keyboardView.root.isVisible = isVisible
+        mainView.keyboardView.isVisible = isVisible
         mainView.suggestionVisibility.setImageDrawable(
             ContextCompat.getDrawable(
                 applicationContext,
@@ -553,31 +420,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun updateKeyLayoutByInputMode(
-        keyList: List<Any>, state: InputMode, mainView: MainLayoutBinding
-    ) {
-        setKeyLayoutByInputMode(keyList, state, mainView.keyboardView.keySmallLetter)
-        mainView.keyboardView.keySwitchKeyMode.setInputMode(state)
-        mainView.keyboardView.keySwitchKeyMode.invalidate()
-    }
-
-    private fun updateKeyboardMode(
-        mainView: MainLayoutBinding, keyboardMode: KeyboardMode
-    ) {
-        when (keyboardMode) {
-            is KeyboardMode.ModeTenKeyboard -> {
-                mainView.keyboardView.root.isVisible = true
-                mainView.keyboardKigouView.root.isVisible = false
-            }
-
-            is KeyboardMode.ModeKigouView -> {
-                mainView.keyboardView.root.isVisible = false
-                mainView.keyboardKigouView.root.isVisible = true
-                _currentModeInKigou.update { ModeInKigou.Emoji }
-            }
-        }
-    }
-
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
@@ -614,7 +456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Timber.d("setCurrentInputType: $currentInputType $inputType")
             when (currentInputType) {
                 InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                    _currentInputMode.value = InputMode.ModeJapanese
+                    mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeJapanese
                 }
 
                 InputTypeForIME.TextEditTextInBookingTDBank,
@@ -626,7 +468,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 InputTypeForIME.TextVisiblePassword,
                 InputTypeForIME.TextWebPassword,
                 -> {
-                    _currentInputMode.value = InputMode.ModeEnglish
+                    mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeEnglish
                 }
 
                 InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
@@ -642,7 +484,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 InputTypeForIME.Datetime,
                 InputTypeForIME.Time,
                 -> {
-                    _currentInputMode.value = InputMode.ModeNumber
+                    mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeNumber
                 }
 
             }
@@ -650,62 +492,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun initializeVariables() {
-        bubbleViewActive = mPopupWindowActive.contentView.findViewById(R.id.bubble_layout)
-        popTextActive = mPopupWindowActive.contentView.findViewById(R.id.popup_text)
-
-        bubbleViewTop = mPopupWindowTop.contentView.findViewById(R.id.bubble_layout_top)
-        popTextTop = mPopupWindowTop.contentView.findViewById(R.id.popup_text_top)
-
-        bubbleViewLeft = mPopupWindowLeft.contentView.findViewById(R.id.bubble_layout_left)
-        popTextLeft = mPopupWindowLeft.contentView.findViewById(R.id.popup_text_left)
-
-        bubbleViewBottom = mPopupWindowBottom.contentView.findViewById(R.id.bubble_layout_bottom)
-        popTextBottom = mPopupWindowBottom.contentView.findViewById(R.id.popup_text_bottom)
-
-        bubbleViewRight = mPopupWindowRight.contentView.findViewById(R.id.bubble_layout_right)
-        popTextRight = mPopupWindowRight.contentView.findViewById(R.id.popup_text_right)
-
-        bubbleViewCenter = mPopupWindowCenter.contentView.findViewById(R.id.bubble_layout_center)
-        popTextCenter = mPopupWindowCenter.contentView.findViewById(R.id.popup_text_center)
-
         suggestionAdapter = SuggestionAdapter()
-        emojiKigouAdapter = EmojiKigouAdapter()
-        kigouApdater = KigouAdapter()
-    }
-
-    private fun setTenKeyView(
-        keyList: List<Any>
-    ) {
-        mainLayoutBinding?.let { mainView ->
-            setSpaceKey(mainView.keyboardView.keySpace)
-            setDeleteKey(mainView.keyboardView.keyDelete)
-            setLeftKey(mainView.keyboardView.keySoftLeft)
-            setRightKey(mainView.keyboardView.keyMoveCursorRight)
-            setNextReturnKey(mainView.keyboardView.keyReturn)
-            setSwitchModeKey(mainView.keyboardView.keySwitchKeyMode)
-            setEnterKey(mainView.keyboardView.keyEnter)
-            setLanguageSwitchKey(mainView.keyboardView.keyLanguageSwitch)
-
-            setKeyLayoutByInputMode(
-                keyList, _currentInputMode.value, mainView.keyboardView.keySmallLetter
-            )
-
-            setTouchListenerForMainKeys(
-                keyList,
-                popTextActive,
-                bubbleViewActive,
-                popTextTop,
-                bubbleViewTop,
-                popTextLeft,
-                bubbleViewLeft,
-                popTextBottom,
-                bubbleViewBottom,
-                popTextRight,
-                bubbleViewRight,
-                popTextCenter,
-                bubbleViewCenter
-            )
-        }
     }
 
     private fun setSuggestionRecyclerView(
@@ -719,7 +506,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
-                focusable = View.NOT_FOCUSABLE
                 itemAnimator = null
                 suggestionAdapter?.let { sugAdapter ->
                     adapter = sugAdapter
@@ -759,80 +545,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setKigouView() {
-        mainLayoutBinding?.let { mainView ->
-            mainView.keyboardKigouView.kigouReturnBtn.setOnClickListener {
-                setVibrate()
-                _currentKeyboardMode.value = KeyboardMode.ModeTenKeyboard
-            }
-            mainView.keyboardKigouView.kigouEmojiButton.setOnClickListener {
-                setVibrate()
-                _currentModeInKigou.value = ModeInKigou.Emoji
-            }
-            mainView.keyboardKigouView.kigouKaomojiBtn.setOnClickListener {
-                setVibrate()
-                _currentModeInKigou.value = ModeInKigou.Kaomoji
-            }
-            setDeleteKeyKigou(mainView.keyboardKigouView.kigouDeleteBtn)
-            emojiKigouAdapter?.let { a ->
-                a.emojiList = EMOJI_LIST
-                a.setOnItemClickListener { emoji ->
-                    setVibrate()
-                    commitText(emoji.unicode.convertUnicode(), 1)
-                }
-            }
-            kigouApdater?.let { a ->
-                a.kigouList = KAOMOJI
-                a.setOnItemClickListener { s ->
-                    setVibrate()
-                    commitText(s, 1)
-                }
-            }
-        }
-    }
-
-    private fun setTenKeyAndKigouView(modeInKigou: ModeInKigou) {
-        mainLayoutBinding?.let { mainView ->
-            when (modeInKigou) {
-                is ModeInKigou.Emoji -> {
-                    emojiKigouAdapter?.let { a ->
-                        mainView.keyboardKigouView.kigouRecyclerView.apply {
-                            adapter = a
-                            layoutManager = GridLayoutManager(applicationContext, 6)
-                        }
-                    }
-                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
-                }
-
-                is ModeInKigou.Kaomoji -> {
-                    kigouApdater?.let { a ->
-                        mainView.keyboardKigouView.kigouRecyclerView.apply {
-                            adapter = a
-                            layoutManager = GridLayoutManager(applicationContext, 3)
-                        }
-                    }
-                    mainView.keyboardKigouView.kigouKaomojiBtn.isChecked = true
-                }
-
-                is ModeInKigou.Null -> {
-                    emojiKigouAdapter?.let { a ->
-                        mainView.keyboardKigouView.kigouRecyclerView.apply {
-                            adapter = a
-                            layoutManager = GridLayoutManager(applicationContext, 6)
-                        }
-                    }
-                    mainView.keyboardKigouView.kigouEmojiButton.isChecked = true
-                }
-            }
-        }
-    }
-
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
-        _currentKeyboardMode.update { KeyboardMode.ModeTenKeyboard }
         _inputString.update { EMPTY_STRING }
         _suggestionList.update { emptyList() }
-        _currentInputMode.update { InputMode.ModeJapanese }
+        mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeJapanese
         stringInTail = EMPTY_STRING
         suggestionClickNum = 0
         isHenkan = false
@@ -850,8 +567,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter = null
         }
         suggestionAdapter = null
-        emojiKigouAdapter = null
-        kigouApdater = null
         mainLayoutBinding = null
         closeConnection()
         scope.coroutineContext.cancelChildren()
@@ -1003,24 +718,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setTenkeyIconsEmptyInputString() = withContext(mainDispatcher) {
-        mainLayoutBinding?.let { mainView ->
-            mainView.keyboardView.keySpace.apply {
-                setImageDrawable(drawableSpaceBar)
-            }
-            mainView.keyboardView.keyEnter.apply {
-                setImageDrawable(drawableRightArrow)
-            }
-            when (_currentInputMode.value) {
+        mainLayoutBinding?.keyboardView?.apply {
+            setSideKeyEnterDrawable(drawableRightArrow)
+            setSideKeySpaceDrawable(drawableSpaceBar)
+            when (currentInputMode) {
                 is InputMode.ModeJapanese, is InputMode.ModeEnglish -> {
-                    mainView.keyboardView.keySmallLetter.apply {
-                        setImageDrawable(drawableLanguage)
-                    }
+                    setBackgroundSmallLetterKey(drawableLogo)
                 }
 
                 is InputMode.ModeNumber -> {
-                    mainView.keyboardView.keySmallLetter.apply {
-                        setImageDrawable(drawableNumberSmall)
-                    }
+                    setBackgroundSmallLetterKey(drawableNumberSmall)
                 }
             }
         }
@@ -1028,27 +735,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) =
         withContext(mainDispatcher) {
-            mainView.keyboardView.keyEnter.apply {
-                setImageDrawable(drawableReturn)
-            }
-            when (_currentInputMode.value) {
-                InputMode.ModeJapanese -> {
-                    mainView.keyboardView.keySmallLetter.apply {
-                        setImageDrawable(drawableKanaSmall)
+            mainView.keyboardView.apply {
+                setSideKeyEnterDrawable(drawableReturn)
+                when (currentInputMode) {
+                    InputMode.ModeJapanese -> {
+                        setBackgroundSmallLetterKey(drawableKanaSmall)
+                        setSideKeySpaceDrawable(drawableHenkan)
                     }
-                    mainView.keyboardView.keySpace.apply {
-                        setImageDrawable(drawableHenkan)
-                    }
-                }
 
-                InputMode.ModeEnglish -> {
-                    mainView.keyboardView.keySmallLetter.apply {
-                        setImageDrawable(drawableEnglishSmall)
+                    InputMode.ModeEnglish -> {
+                        setBackgroundSmallLetterKey(drawableEnglishSmall)
                     }
-                }
 
-                InputMode.ModeNumber -> {
-                    /** empty body **/
+                    InputMode.ModeNumber -> {
+                        /** empty body **/
+                    }
                 }
             }
 
@@ -1203,9 +904,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun handleSpaceKeyClick() {
         setVibrate()
         if (_inputString.value.isNotEmpty()) {
-            when (_currentInputMode.value) {
-                InputMode.ModeJapanese -> handleJapaneseModeSpaceKey()
-                else -> setSpaceKeyActionEnglishAndNumberNotEmpty()
+            mainLayoutBinding?.keyboardView?.apply {
+                when (currentInputMode) {
+                    InputMode.ModeJapanese -> handleJapaneseModeSpaceKey()
+                    else -> setSpaceKeyActionEnglishAndNumberNotEmpty()
+                }
             }
         } else {
             setSpaceKeyActionEnglishAndNumberEmpty()
@@ -1216,9 +919,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun handleSpaceKeyLongClick() {
         setVibrate()
         if (_suggestionList.value.isNotEmpty() && _inputString.value.isNotEmpty()) {
-            when (_currentInputMode.value) {
-                InputMode.ModeJapanese -> handleJapaneseModeSpaceKey()
-                else -> commitTextWithSpace()
+            mainLayoutBinding?.keyboardView?.apply {
+                when (currentInputMode) {
+                    InputMode.ModeJapanese -> handleJapaneseModeSpaceKey()
+                    else -> commitTextWithSpace()
+                }
             }
         } else {
             commitTextWithSpace()
@@ -1251,16 +956,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleNonEmptyInputEnterKey() {
-        when (_currentInputMode.value) {
-            InputMode.ModeJapanese -> {
-                if (isHenkan) {
-                    handleHenkanModeEnterKey()
-                } else {
-                    finishInputEnterKey()
+        mainLayoutBinding?.keyboardView?.apply {
+            when (currentInputMode) {
+                InputMode.ModeJapanese -> {
+                    if (isHenkan) {
+                        handleHenkanModeEnterKey()
+                    } else {
+                        finishInputEnterKey()
+                    }
                 }
-            }
 
-            else -> finishInputEnterKey()
+                else -> finishInputEnterKey()
+            }
         }
     }
 
@@ -1292,7 +999,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         focusable = View.NOT_FOCUSABLE
         setOnClickListener {
             setVibrate()
-            _currentKeyboardMode.value = KeyboardMode.ModeKigouView
+            //_currentKeyboardMode.value = KeyboardMode.ModeKigouView
             finishComposingText()
             if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
             _inputString.update { EMPTY_STRING }
@@ -1346,38 +1053,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      *   Japanese -> English -> Numbers -> Japanese
      *
      **/
-    private fun setSwitchModeKey(inputModeSwitch: InputModeSwitch?) = inputModeSwitch?.apply {
-        focusable = View.NOT_FOCUSABLE
-        setOnClickListener {
-            setVibrate()
-            when (getCurrentInputMode()) {
-                is InputMode.ModeJapanese -> {
-                    setInputMode(InputMode.ModeEnglish)
-                    _currentInputMode.value = InputMode.ModeEnglish
-                    finishComposingText()
-                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-                    _inputString.update { EMPTY_STRING }
-                }
-
-                is InputMode.ModeEnglish -> {
-                    setInputMode(InputMode.ModeNumber)
-                    _currentInputMode.value = InputMode.ModeNumber
-                    finishComposingText()
-                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-                    _inputString.update { EMPTY_STRING }
-                }
-
-                is InputMode.ModeNumber -> {
-                    setInputMode(InputMode.ModeJapanese)
-                    _currentInputMode.value = InputMode.ModeJapanese
-                    finishComposingText()
-                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-                    _inputString.update { EMPTY_STRING }
-                }
-            }
-            resetFlagsSwitchMode()
-        }
-    }
+//    private fun setSwitchModeKey(inputModeSwitch: InputModeSwitch?) = inputModeSwitch?.apply {
+//        focusable = View.NOT_FOCUSABLE
+//        setOnClickListener {
+//            setVibrate()
+//            when (getCurrentInputMode()) {
+//                is InputMode.ModeJapanese -> {
+//                    setInputMode(InputMode.ModeEnglish)
+//                    _currentInputMode.value = InputMode.ModeEnglish
+//                    finishComposingText()
+//                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+//                    _inputString.update { EMPTY_STRING }
+//                }
+//
+//                is InputMode.ModeEnglish -> {
+//                    setInputMode(InputMode.ModeNumber)
+//                    _currentInputMode.value = InputMode.ModeNumber
+//                    finishComposingText()
+//                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+//                    _inputString.update { EMPTY_STRING }
+//                }
+//
+//                is InputMode.ModeNumber -> {
+//                    setInputMode(InputMode.ModeJapanese)
+//                    _currentInputMode.value = InputMode.ModeJapanese
+//                    finishComposingText()
+//                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+//                    _inputString.update { EMPTY_STRING }
+//                }
+//            }
+//            resetFlagsSwitchMode()
+//        }
+//    }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setLeftKey(leftKey: AppCompatImageButton) {
@@ -1548,1143 +1255,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         nextReturn.setOnClickListener {
             setVibrate()
-            when (_currentInputMode.value) {
-                is InputMode.ModeNumber -> {
+            mainLayoutBinding?.keyboardView?.let {
+                when (it.currentInputMode) {
+                    is InputMode.ModeNumber -> {
 
-                }
-
-                else -> {
-                    setNextReturnInputCharacter()
-                    _suggestionFlag.update { !it }
-                }
-            }
-        }
-    }
-
-    private fun getCurrentKeyID(x2: Float, y2: Float, keyList: List<Any>) {
-        when (currentTenKeyId) {
-            (keyList[0] as AppCompatButton).id -> {
-                currentTenKeyId = when {
-                    x2 in (keyList[0] as AppCompatButton).x..(keyList[0] as AppCompatButton).x + (keyList[0] as AppCompatButton).width && abs(
-                        y2 - firstYPoint
-                    ) < (keyList[0] as AppCompatButton).height -> (keyList[0] as AppCompatButton).id
-
-                    x2 in (keyList[1] as AppCompatButton).x..(keyList[1] as AppCompatButton).x + (keyList[1] as AppCompatButton).width && abs(
-                        y2 - firstYPoint
-                    ) < (keyList[0] as AppCompatButton).height -> (keyList[1] as AppCompatButton).id
-
-                    x2 in (keyList[2] as AppCompatButton).x..(keyList[2] as AppCompatButton).x + (keyList[2] as AppCompatButton).width && abs(
-                        y2 - firstYPoint
-                    ) < (keyList[0] as AppCompatButton).height -> (keyList[2] as AppCompatButton).id
-
-                    x2 in (keyList[3] as AppCompatButton).x..(keyList[3] as AppCompatButton).x + (keyList[3] as AppCompatButton).width && y2 in 1700.0..1877.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in (keyList[4] as AppCompatButton).x..(keyList[4] as AppCompatButton).x + (keyList[4] as AppCompatButton).width && y2 in 1700.0..1877.99999 -> (keyList[4] as AppCompatButton).id
-                    x2 in (keyList[5] as AppCompatButton).x..(keyList[5] as AppCompatButton).x + (keyList[5] as AppCompatButton).width && y2 in 1700.0..1877.99999 -> (keyList[5] as AppCompatButton).id
-                    x2 in (keyList[6] as AppCompatButton).x..(keyList[6] as AppCompatButton).x + (keyList[6] as AppCompatButton).width && y2 in 1878.0..2055.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in (keyList[7] as AppCompatButton).x..(keyList[7] as AppCompatButton).x + (keyList[7] as AppCompatButton).width && y2 in 1878.0..2055.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in (keyList[8] as AppCompatButton).x..(keyList[8] as AppCompatButton).x + (keyList[8] as AppCompatButton).width && y2 in 1878.0..2055.9999 -> (keyList[8] as AppCompatButton).id
-                    x2 in (keyList[9] as AppCompatButton).x..(keyList[9] as AppCompatButton).x + (keyList[9] as AppCompatButton).width && y2 in 2056.0..2234.0 -> (keyList[9] as AppCompatButton).id
-                    x2 in (keyList[11] as AppCompatButton).x..(keyList[11] as AppCompatButton).x + (keyList[11] as AppCompatButton).width && y2 in 2056.0..2234.0 -> (keyList[11] as AppCompatButton).id
-                    else -> 0
-                }
-            }
-
-            (keyList[1] as AppCompatButton).id -> {
-                currentTenKeyId = when {
-                    x2 in (keyList[0] as AppCompatButton).x..(keyList[0] as AppCompatButton).x + (keyList[0] as AppCompatButton).width && abs(
-                        y2 - firstYPoint
-                    ) < 100 -> (keyList[0] as AppCompatButton).id
-
-                    x2 in 475.0..674.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[1] as AppCompatButton).id
-                    x2 in 675.0..850.0 && abs(y2 - firstYPoint) < 100 -> (keyList[2] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0..1859.99999 -> (keyList[4] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1700.0..1859.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1700.0..1859.99999 -> (keyList[5] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0..2049.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1860.0..2049.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1860.0..2049.9999 -> (keyList[8] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 2050.0..2200.0 -> (keyList[9] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 2050.0..2200.0 -> (keyList[11] as AppCompatButton).id
-                    else -> 0
-                }
-            }
-
-            (keyList[2] as AppCompatButton).id -> {
-                currentTenKeyId = when {
-                    x2 in 200.0..474.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[0] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[1] as AppCompatButton).id
-                    x2 in 675.0..850.0 && abs(y2 - firstYPoint) < 100 -> (keyList[2] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0..1859.99999 -> (keyList[5] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1700.0..1859.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1700.0..1859.99999 -> (keyList[4] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0..2049.9999 -> (keyList[8] as AppCompatButton).id
-                    x2 in 200.0..474.9999 && y2 in 1860.0..2049.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1860.0..2049.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 2050.0..2200.0 -> (keyList[9] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 2050.0..2200.0 -> (keyList[11] as AppCompatButton).id
-                    else -> 0
-                }
-            }
-
-            (keyList[3] as AppCompatButton).id -> {
-                currentTenKeyId = when {
-                    x2 in 200.0..474.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[0] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && abs(y2 - firstYPoint) < 100 -> (keyList[1] as AppCompatButton).id
-                    x2 in 675.0..850.0 && abs(y2 - firstYPoint) < 100 -> (keyList[2] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1700.0..1859.99999 -> (keyList[3] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1700.0..1859.99999 -> (keyList[4] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1700.0..1859.99999 -> (keyList[5] as AppCompatButton).id
-                    abs(x2 - firstXPoint) < 150 && y2 in 1860.0..2049.9999 -> (keyList[6] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 1860.0..2049.9999 -> (keyList[7] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 1860.0..2049.9999 -> (keyList[8] as AppCompatButton).id
-                    x2 in 475.0..674.9999 && y2 in 2050.0..2200.0 -> (keyList[9] as AppCompatButton).id
-                    x2 in 675.0..850.0 && y2 in 2050.0..2200.0 -> (keyList[11] as AppCompatButton).id
-                    else -> 0
-                }
-            }
-
-            else -> {
-                currentTenKeyId = 0
-            }
-        }
-    }
-
-    private var isPointerDown = false
-    private var firstPointerId = 0
-    private var firstFingerUp = false
-
-    private fun addCharToInputString(
-        distanceX: Float,
-        distanceY: Float,
-        insertString: String,
-        sb: StringBuilder,
-        it: AppCompatButton,
-        finalX: Float,
-        finalY: Float,
-    ) {
-        hidePopUpWindowActive()
-        hidePopUpWindowCenter()
-        hidePopUpWindowTop()
-        hidePopUpWindowLeft()
-        hidePopUpWindowBottom()
-        hidePopUpWindowRight()
-
-        if (pressedKeyStatus.keyId !in tenKeyMap.keysJapanese) {
-            return
-        }
-
-
-        val keyInfo = when (_currentInputMode.value) {
-            is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(pressedKeyStatus.keyId)
-            is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(pressedKeyStatus.keyId)
-            is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(pressedKeyStatus.keyId)
-        }
-
-        when {
-            /** Tap **/
-            abs(distanceX) < 100 && abs(distanceY) < 100 -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(
-                    keyInfo.tap, insertString, sb
-                )
-                currentTenKeyId = 0
-                isPointerDown = false
-                _suggestionFlag.update { flag -> !flag }
-                return
-            }
-            /** Flick Right **/
-            abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    keyInfo.flickRight?.let { c ->
-                        sendCharFlick(c, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Left **/
-            abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    if (keyInfo.flickLeft != ' ') {
-                        sendCharFlick(keyInfo.flickLeft, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Bottom **/
-            abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    keyInfo.flickBottom?.let { c ->
-                        sendCharFlick(c, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Top **/
-            abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    if (keyInfo.flickTop != ' ') sendCharFlick(keyInfo.flickTop, insertString, sb)
-                }
-            }
-        }
-
-        lastFlickConvertedNextHiragana = true
-        isContinuousTapInputEnabled = true
-
-        currentTenKeyId = 0
-
-        _suggestionFlag.update { flag -> !flag }
-        isPointerDown = false
-        return
-    }
-
-    private fun buttonTextOriginal(
-        appCompatButton: AppCompatButton
-    ) {
-        when (_currentInputMode.value) {
-            is InputMode.ModeJapanese -> {
-                appCompatButton.setTenKeyTextJapanese(currentTenKeyId)
-            }
-
-            is InputMode.ModeEnglish -> {
-                appCompatButton.setTenKeyTextEnglish(currentTenKeyId)
-            }
-
-            is InputMode.ModeNumber -> {
-                appCompatButton.setTenKeyTextNumber(currentTenKeyId)
-            }
-        }
-        appCompatButton.background = ContextCompat.getDrawable(
-            applicationContext, R.drawable.ten_keys_center_bg
-        )
-        appCompatButton.setTextColor(
-            ContextCompat.getColor(
-                applicationContext, R.color.keyboard_icon_color
-            )
-        )
-    }
-
-    private fun handleInputTwoFingersDown(
-        distanceX: Float,
-        distanceY: Float,
-        insertString: String,
-        sb: StringBuilder,
-        it: AppCompatButton,
-        finalX: Float,
-        finalY: Float,
-        event: MotionEvent,
-        x2: Float,
-        y2: Float,
-        x1: Float,
-        y1: Float,
-        keyList: List<Any>
-    ) {
-        hidePopUpWindowActive()
-        hidePopUpWindowCenter()
-        hidePopUpWindowTop()
-        hidePopUpWindowLeft()
-        hidePopUpWindowBottom()
-        hidePopUpWindowRight()
-
-        if (pressedKeyStatus.keyId !in tenKeyMap.keysJapanese) {
-            return
-        }
-
-        val keyInfo = when (_currentInputMode.value) {
-            is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(
-                pressedKeyStatus.keyId
-            )
-
-            is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(
-                pressedKeyStatus.keyId
-            )
-
-            is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(
-                pressedKeyStatus.keyId
-            )
-        }
-
-        when {
-            /** Tap **/
-            abs(distanceX) < 100 && abs(distanceY) < 100 -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(
-                    keyInfo.tap, insertString, sb
-                )
-                _suggestionFlag.update { flag -> !flag }
-                if (event.getPointerId(event.actionIndex) == 0) {
-                    pressedKeyStatus = pressedKeyStatus.copy(
-                        keyId = it.id,
-                        pointer = 0
-                    )
-                } else if (event.getPointerId(event.actionIndex) == 1) {
-                    getCurrentKeyID(x2, y2, keyList)
-                    pressedKeyStatus = pressedKeyStatus.copy(
-                        keyId = currentTenKeyId,
-                        pointer = 1
-                    )
-                }
-                return
-            }
-            /** Flick Right **/
-            abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    keyInfo.flickRight?.let { c ->
-                        sendCharFlick(c, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Left **/
-            abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    if (keyInfo.flickLeft != ' ') {
-                        sendCharFlick(keyInfo.flickLeft, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Bottom **/
-            abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    keyInfo.flickBottom?.let { c ->
-                        sendCharFlick(c, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Top **/
-            abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    if (keyInfo.flickTop != ' ') sendCharFlick(
-                        keyInfo.flickTop, insertString, sb
-                    )
-                }
-            }
-        }
-        lastFlickConvertedNextHiragana = true
-        isContinuousTapInputEnabled = true
-        buttonTextOriginal(appCompatButton = it)
-        getCurrentKeyID(x2, y2, keyList)
-        _suggestionFlag.update { flag -> !flag }
-        if (event.getPointerId(event.actionIndex) == 0) {
-            pressedKeyStatus = pressedKeyStatus.copy(
-                keyId = it.id,
-                pointer = 0
-            )
-        } else if (event.getPointerId(event.actionIndex) == 1) {
-            pressedKeyStatus = pressedKeyStatus.copy(
-                keyId = currentTenKeyId,
-                pointer = 1
-            )
-        }
-        return
-    }
-
-    private fun handleInputTwoFingersUp(
-        distanceX: Float,
-        distanceY: Float,
-        insertString: String,
-        sb: StringBuilder,
-        it: AppCompatButton,
-        x2: Float,
-        y2: Float,
-    ) {
-        hidePopUpWindowActive()
-        hidePopUpWindowCenter()
-        hidePopUpWindowTop()
-        hidePopUpWindowLeft()
-        hidePopUpWindowBottom()
-        hidePopUpWindowRight()
-
-        if (pressedKeyStatus.keyId !in tenKeyMap.keysJapanese) {
-            return
-        }
-
-        val keyInfo = when (_currentInputMode.value) {
-            is InputMode.ModeJapanese -> tenKeyMap.getTenKeyInfoJapanese(
-                pressedKeyStatus.keyId
-            )
-
-            is InputMode.ModeEnglish -> tenKeyMap.getTenKeyInfoEnglish(
-                pressedKeyStatus.keyId
-            )
-
-            is InputMode.ModeNumber -> tenKeyMap.getTenKeyInfoNumber(
-                pressedKeyStatus.keyId
-            )
-        }
-
-        when {
-            /** Tap **/
-            abs(distanceX) < 100 && abs(distanceY) < 100 -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) sendCharTap(
-                    keyInfo.tap, insertString, sb
-                )
-                _suggestionFlag.update { flag -> !flag }
-                return
-            }
-            /** Flick Right **/
-            abs(distanceX) > abs(distanceY) && secondXPoint < x2 -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    keyInfo.flickRight?.let { c ->
-                        sendCharFlick(c, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Left **/
-            abs(distanceX) > abs(distanceY) && secondXPoint >= x2 -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    if (keyInfo.flickLeft != ' ') {
-                        sendCharFlick(keyInfo.flickLeft, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Bottom **/
-            abs(distanceX) <= abs(distanceY) && secondYPoint < y2 -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    keyInfo.flickBottom?.let { c ->
-                        sendCharFlick(c, insertString, sb)
-                    }
-                }
-            }
-            /** Flick Top **/
-            abs(distanceX) <= abs(distanceY) && secondYPoint >= y2 -> {
-                if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                    if (keyInfo.flickTop != ' ') sendCharFlick(
-                        keyInfo.flickTop, insertString, sb
-                    )
-                }
-            }
-        }
-
-        lastFlickConvertedNextHiragana = true
-        isContinuousTapInputEnabled = true
-        _suggestionFlag.update { flag -> !flag }
-        return
-    }
-
-    private fun handleMove(
-        distanceX: Float,
-        distanceY: Float,
-        it: AppCompatButton,
-        finalX: Float,
-        finalY: Float,
-        event: MotionEvent,
-        bubbleLayoutActive: BubbleLayout,
-    ) {
-        if (event.getPointerId(event.actionIndex) == pressedKeyStatus.pointer){
-            if (it.id != pressedKeyStatus.keyId) return
-            when {
-                /** Tap **/
-                abs(distanceX) < 100 && abs(distanceY) < 100 -> {
-                    when (_currentInputMode.value) {
-                        is InputMode.ModeJapanese -> {
-                            popTextActive.setTextTapJapanese(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeEnglish -> {
-                            popTextActive.setTextTapEnglish(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeNumber -> {
-                            popTextActive.setTextTapNumber(currentTenKeyId)
-                        }
-                    }
-                    if (!tenKeysLongPressed) {
-
-                        hidePopUpWindowActive()
-                        it.setTextColor(
-                            ContextCompat.getColor(
-                                applicationContext, R.color.white
-                            )
-                        )
-                        it.background = ContextCompat.getDrawable(
-                            applicationContext, R.drawable.ten_key_active_bg
-                        )
-                        when (_currentInputMode.value) {
-                            is InputMode.ModeJapanese -> {
-                                it.setTenKeyTextWhenTapJapanese(currentTenKeyId)
-                            }
-
-                            is InputMode.ModeEnglish -> {
-                                it.setTenKeyTextWhenTapEnglish(currentTenKeyId)
-                            }
-
-                            is InputMode.ModeNumber -> {
-                                it.setTenKeyTextWhenTapNumber(currentTenKeyId)
-                            }
-                        }
-                    } else {
-                        mPopupWindowActive.setPopUpWindowCenter(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    }
-                }
-                /** Flick Right **/
-                abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
-                    when (_currentInputMode.value) {
-                        is InputMode.ModeJapanese -> {
-                            popTextActive.setTextFlickRightJapanese(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapJapanese(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeEnglish -> {
-                            popTextActive.setTextFlickRightEnglish(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapEnglish(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeNumber -> {
-                            popTextActive.setTextFlickRightNumber(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapNumber(currentTenKeyId)
-                        }
-                    }
-                    if (mPopupWindowLeft.isShowing) {
-                        mPopupWindowActive.setPopUpWindowRight(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    } else {
-                        mPopupWindowActive.setPopUpWindowFlickRight(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    }
-                }
-                /** Flick Left **/
-                abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
-                    when (_currentInputMode.value) {
-                        is InputMode.ModeJapanese -> {
-                            popTextActive.setTextFlickLeftJapanese(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapJapanese(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeEnglish -> {
-                            popTextActive.setTextFlickLeftEnglish(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapEnglish(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeNumber -> {
-                            popTextActive.setTextFlickLeftNumber(currentTenKeyId)
-                            popTextCenter.setTextTapNumber(currentTenKeyId)
-                        }
-                    }
-                    if (mPopupWindowRight.isShowing) {
-                        mPopupWindowActive.setPopUpWindowLeft(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    } else {
-                        mPopupWindowActive.setPopUpWindowFlickLeft(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    }
-                }
-                /** Flick Bottom **/
-                abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
-                    when (_currentInputMode.value) {
-                        is InputMode.ModeJapanese -> {
-                            popTextActive.setTextFlickBottomJapanese(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapJapanese(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeEnglish -> {
-                            popTextActive.setTextFlickBottomEnglish(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapEnglish(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeNumber -> {
-                            popTextActive.setTextFlickBottomNumber(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapNumber(currentTenKeyId)
-                        }
-                    }
-                    if (mPopupWindowTop.isShowing) {
-                        mPopupWindowActive.setPopUpWindowBottom(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    } else {
-                        mPopupWindowActive.setPopUpWindowFlickBottom(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    }
-                }
-                /** Flick Top **/
-                abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
-                    when (_currentInputMode.value) {
-                        is InputMode.ModeJapanese -> {
-                            popTextActive.setTextFlickTopJapanese(
-                                currentTenKeyId
-                            )
-                            popTextCenter.setTextTapJapanese(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeEnglish -> {
-                            popTextActive.setTextFlickTopEnglish(currentTenKeyId)
-                            popTextCenter.setTextTapEnglish(currentTenKeyId)
-                        }
-
-                        is InputMode.ModeNumber -> {
-                            popTextActive.setTextFlickTopNumber(currentTenKeyId)
-                            popTextCenter.setTextTapNumber(currentTenKeyId)
-                        }
-                    }
-                    if (mPopupWindowTop.isShowing) {
-                        mPopupWindowActive.setPopUpWindowTop(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    } else {
-                        mPopupWindowActive.setPopUpWindowFlickTop(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                    }
-                }
-            }
-            setTouchActionInMoveEnd(it)
-        }else{
-            it.isPressed = false
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setTouchListenerForMainKeys(
-        keyList: List<Any>,
-        popTextActive: MaterialTextView,
-        bubbleLayoutActive: BubbleLayout,
-        popTextTop: MaterialTextView,
-        bubbleLayoutTop: BubbleLayout,
-        popTextLeft: MaterialTextView,
-        bubbleLayoutLeft: BubbleLayout,
-        popTextBottom: MaterialTextView,
-        bubbleLayoutBottom: BubbleLayout,
-        popTextRight: MaterialTextView,
-        bubbleLayoutRight: BubbleLayout,
-        popTextCenter: MaterialTextView,
-        bubbleLayoutCenter: BubbleLayout
-    ) {
-        keyList.forEach {
-            if (it is AppCompatButton) {
-                it.setOnTouchListener { v, event ->
-                    val insertString = _inputString.value
-                    val sb = StringBuilder()
-
-                    when (event.action and MotionEvent.ACTION_MASK) {
-                        MotionEvent.ACTION_DOWN -> {
-                            setVibrate()
-                            firstXPoint = event.rawX
-                            firstYPoint = event.rawY
-                            currentTenKeyId = v.id
-                            isPointerDown = false
-                            firstFingerUp = false
-                            firstPointerId = event.getPointerId(0)
-                            pressedKeyStatus = pressedKeyStatus.copy(
-                                keyId = it.id,
-                                pointer = event.getPointerId(event.actionIndex)
-                            )
-                            return@setOnTouchListener false
-                        }
-
-                        MotionEvent.ACTION_UP -> {
-                            if (tenKeysLongPressed) {
-                                mainLayoutBinding?.keyboardView?.let { a ->
-                                    ImageEffects.removeBlurEffect(a.root)
-                                }
-                                tenKeysLongPressed = false
-                            }
-
-                            setVibrate()
-                            val finalX = event.rawX
-                            val finalY = event.rawY
-
-                            val distanceX = finalX - firstXPoint
-                            val distanceY = (finalY - firstYPoint)
-
-                            println(
-                                "Two single UP ${it.id} ${
-                                    event.getPointerId(
-                                        event.actionIndex
-                                    )
-                                } $pressedKeyStatus"
-                            )
-
-                            if (pressedKeyStatus.pointer == event.getPointerId(event.actionIndex)) {
-                                addCharToInputString(
-                                    distanceX,
-                                    distanceY,
-                                    insertString,
-                                    sb,
-                                    it,
-                                    finalX,
-                                    finalY,
-                                )
-                            }
-
-                            return@setOnTouchListener false
-                        }
-
-                        MotionEvent.ACTION_MOVE -> {
-                            val finalX = event.rawX
-                            val finalY = event.rawY
-                            val distanceX = (finalX - firstXPoint)
-                            val distanceY = (finalY - firstYPoint)
-
-//                            handleMove(
-//                                distanceX, distanceY, it, finalX, finalY, event, bubbleLayoutActive
-//                            )
-                            return@setOnTouchListener false
-                        }
-
-                        MotionEvent.ACTION_POINTER_DOWN -> {
-                            if (event.pointerCount == 2) {
-                                if (tenKeysLongPressed) {
-                                    mainLayoutBinding?.keyboardView?.let { a ->
-                                        ImageEffects.removeBlurEffect(a.root)
-                                    }
-                                    tenKeysLongPressed = false
-                                }
-                                val x1 = event.getRawX(0)
-                                val y1 = event.getRawY(0)
-                                val x2 = event.getRawX(1)
-                                val y2 = event.getRawY(1)
-
-                                println(
-                                    "Two down $currentTenKeyId ${it.id} ${
-                                        event.getPointerId(
-                                            event.actionIndex
-                                        )
-                                    } $pressedKeyStatus"
-                                )
-
-                                setVibrate()
-                                val finalX = event.getRawX(0)
-                                val finalY = event.getRawY(0)
-                                val distanceX = (finalX - firstXPoint)
-                                val distanceY = (finalY - firstYPoint)
-
-                                firstXPoint = x1
-                                firstYPoint = y1
-                                secondXPoint = x2
-                                secondYPoint = y2
-
-                                if (pressedKeyStatus.pointer != event.getPointerId(event.actionIndex)) {
-                                    handleInputTwoFingersDown(
-                                        distanceX,
-                                        distanceY,
-                                        insertString,
-                                        sb,
-                                        it,
-                                        finalX,
-                                        finalY,
-                                        event,
-                                        x2,
-                                        y2,
-                                        x1,
-                                        y1,
-                                        keyList
-                                    )
-                                }
-                            }
-                            return@setOnTouchListener false
-                        }
-
-                        MotionEvent.ACTION_POINTER_UP -> {
-                            if (event.pointerCount == 2) {
-                                val x1 = event.getRawX(0)
-                                val y1 = event.getRawY(0)
-                                val x2 = event.getRawX(1)
-                                val y2 = event.getRawY(1)
-
-                                setVibrate()
-
-                                val distanceX = (x2 - secondXPoint)
-                                val distanceY = (y2 - secondYPoint)
-
-                                println(
-                                    "Two up id: ${it.id} $currentTenKeyId ${
-                                        event.getPointerId(
-                                            event.actionIndex
-                                        )
-                                    } $pressedKeyStatus"
-                                )
-
-                                if (pressedKeyStatus.pointer == event.getPointerId(event.actionIndex)) {
-                                    handleInputTwoFingersUp(
-                                        distanceX, distanceY, insertString, sb, it, x2, y2,
-                                    )
-                                }
-
-                                return@setOnTouchListener false
-
-                            }
-                            return@setOnTouchListener false
-                        }
-
-                        else -> {
-                            isPointerDown = false
-                            return@setOnTouchListener false
-                        }
-                    }
-                }
-
-                it.setOnLongClickListener { v ->
-                    tenKeysLongPressed = true
-                    if (!isPointerDown) {
-                        when (_currentInputMode.value) {
-                            is InputMode.ModeJapanese -> {
-                                popTextTop.setTextFlickTopJapanese(currentTenKeyId)
-                                popTextLeft.setTextFlickLeftJapanese(currentTenKeyId)
-                                popTextBottom.setTextFlickBottomJapanese(currentTenKeyId)
-                                popTextRight.setTextFlickRightJapanese(currentTenKeyId)
-                                popTextCenter.setTextTapJapanese(currentTenKeyId)
-                            }
-
-                            is InputMode.ModeEnglish -> {
-                                popTextTop.setTextFlickTopEnglish(currentTenKeyId)
-                                popTextLeft.setTextFlickLeftEnglish(currentTenKeyId)
-                                popTextBottom.setTextFlickBottomEnglish(currentTenKeyId)
-                                popTextRight.setTextFlickRightEnglish(currentTenKeyId)
-                                popTextCenter.setTextTapEnglish(currentTenKeyId)
-                            }
-
-                            is InputMode.ModeNumber -> {
-                                popTextTop.setTextFlickTopNumber(currentTenKeyId)
-                                popTextLeft.setTextFlickLeftNumber(currentTenKeyId)
-                                popTextBottom.setTextFlickBottomNumber(currentTenKeyId)
-                                popTextRight.setTextFlickRightNumber(currentTenKeyId)
-                                popTextCenter.setTextTapNumber(currentTenKeyId)
-                            }
-                        }
-                        mPopupWindowTop.setPopUpWindowTop(applicationContext, bubbleLayoutTop, v)
-                        mPopupWindowLeft.setPopUpWindowLeft(applicationContext, bubbleLayoutLeft, v)
-                        mPopupWindowBottom.setPopUpWindowBottom(
-                            applicationContext, bubbleLayoutBottom, v
-                        )
-                        mPopupWindowRight.setPopUpWindowRight(
-                            applicationContext, bubbleLayoutRight, v
-                        )
-                        mPopupWindowCenter.setPopUpWindowCenter(
-                            applicationContext, bubbleLayoutCenter, it
-                        )
-                        mPopupWindowActive.setPopUpWindowCenter(
-                            applicationContext, bubbleLayoutActive, it
-                        )
-                        mainLayoutBinding?.keyboardView?.let { a ->
-                            ImageEffects.applyBlurEffect(a.root, 8f)
-                        }
-                    }
-                    false
-                }
-            }
-            if (it is AppCompatImageButton) {
-                it.setOnTouchListener { _, event ->
-                    val insertString = _inputString.value
-                    val sb = StringBuilder()
-                    when (event.action and MotionEvent.ACTION_MASK) {
-                        MotionEvent.ACTION_DOWN -> {
-                            setVibrate()
-                            firstXPoint = event.rawX
-                            firstYPoint = event.rawY
-                            return@setOnTouchListener false
-                        }
-
-                        MotionEvent.ACTION_UP -> {
-                            if (tenKeysLongPressed) {
-                                mainLayoutBinding?.keyboardView?.let { a ->
-                                    ImageEffects.removeBlurEffect(a.root)
-                                }
-                                tenKeysLongPressed = false
-                            }
-                            setVibrate()
-                            val finalX = event.rawX
-                            val finalY = event.rawY
-
-                            val distanceX = (finalX - firstXPoint)
-                            val distanceY = (finalY - firstYPoint)
-
-                            when (_currentInputMode.value) {
-                                is InputMode.ModeJapanese -> {
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100) {
-                                        hidePopUpWindowActive()
-                                        if (insertString.isNotBlank()) {
-                                            dakutenSmallLetter(sb)
-                                        } else {
-                                            _inputString.value = EMPTY_STRING
-                                        }
-                                    }
-                                    _suggestionFlag.update { flag -> !flag }
-                                    return@setOnTouchListener false
-                                }
-
-                                is InputMode.ModeEnglish -> {
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100) {
-                                        hidePopUpWindowActive()
-                                        if (insertString.isNotBlank()) {
-                                            smallBigLetterConversionEnglish(sb)
-                                        } else {
-                                            _inputString.value = EMPTY_STRING
-                                        }
-                                    }
-                                    _suggestionFlag.update { flag -> !flag }
-                                    return@setOnTouchListener false
-                                }
-
-                                is InputMode.ModeNumber -> {
-                                    hidePopUpWindowActive()
-                                    hidePopUpWindowCenter()
-                                    hidePopUpWindowTop()
-                                    hidePopUpWindowLeft()
-                                    hidePopUpWindowBottom()
-                                    hidePopUpWindowRight()
-                                    if (abs(distanceX) < 100 && abs(distanceY) < 100) {
-                                        hidePopUpWindowActive()
-                                        sendCharFlick(NUMBER_KEY10_SYMBOL_CHAR[0], insertString, sb)
-                                        lastFlickConvertedNextHiragana = false
-                                        it.setImageDrawable(drawableNumberSmall)
-                                        it.backgroundTintList = ColorStateList.valueOf(
-                                            ContextCompat.getColor(
-                                                applicationContext, R.color.qwety_key_bg_color
-                                            )
-                                        )
-                                        _suggestionFlag.update { flag -> !flag }
-                                        return@setOnTouchListener false
-                                    }
-                                    if (abs(distanceX) > abs(distanceY)) {
-                                        if (firstXPoint < finalX) {
-                                            sendCharFlick(
-                                                NUMBER_KEY10_SYMBOL_CHAR[3], insertString, sb
-                                            )
-                                        } else {
-                                            sendCharFlick(
-                                                NUMBER_KEY10_SYMBOL_CHAR[1], insertString, sb
-                                            )
-                                        }
-                                    } else {
-                                        if (firstYPoint < finalY) {
-                                            /** empty body **/
-                                        } else {
-                                            sendCharFlick(
-                                                NUMBER_KEY10_SYMBOL_CHAR[2], insertString, sb
-                                            )
-                                        }
-                                    }
-                                    lastFlickConvertedNextHiragana = false
-                                    hidePopUpWindowActive()
-                                    it.setImageDrawable(drawableNumberSmall)
-                                    it.backgroundTintList = ColorStateList.valueOf(
-                                        ContextCompat.getColor(
-                                            applicationContext, R.color.qwety_key_bg_color
-                                        )
-                                    )
-                                    _suggestionFlag.update { flag -> !flag }
-                                    return@setOnTouchListener false
-                                }
-                            }
-                        }
-
-                        MotionEvent.ACTION_MOVE -> {
-                            if (_currentInputMode.value == InputMode.ModeNumber) {
-                                val finalX = event.rawX
-                                val finalY = event.rawY
-                                val distanceX = (finalX - firstXPoint)
-                                val distanceY = (finalY - firstYPoint)
-
-                                when {
-                                    /** Tap **/
-                                    abs(distanceX) < 100 && abs(distanceY) < 100 -> {
-                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (!tenKeysLongPressed) {
-                                            mPopupWindowCenter.setPopUpWindowCenter(
-                                                applicationContext, bubbleLayoutCenter, it
-                                            )
-                                        }
-                                        mPopupWindowActive.setPopUpWindowCenter(
-                                            applicationContext, bubbleLayoutActive, it
-                                        )
-                                        return@setOnTouchListener false
-                                    }
-                                    /** Flick Right **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint < finalX -> {
-                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
-                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowLeft.isShowing) {
-                                            mPopupWindowActive.setPopUpWindowRight(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                            mPopupWindowCenter.setPopUpWindowCenter(
-                                                applicationContext, bubbleLayoutCenter, it
-                                            )
-                                        } else {
-                                            mPopupWindowActive.setPopUpWindowFlickRight(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                        }
-                                    }
-                                    /** Flick Left **/
-                                    abs(distanceX) > abs(distanceY) && firstXPoint >= finalX -> {
-                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
-                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowRight.isShowing) {
-                                            mPopupWindowActive.setPopUpWindowLeft(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                            mPopupWindowCenter.setPopUpWindowCenter(
-                                                applicationContext, bubbleLayoutCenter, it
-                                            )
-                                        } else {
-                                            mPopupWindowActive.setPopUpWindowFlickLeft(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                        }
-                                    }
-                                    /** Flick Bottom **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint < finalY -> {
-                                        popTextActive.text = EMPTY_STRING
-                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowTop.isShowing) {
-                                            mPopupWindowActive.setPopUpWindowBottom(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                            mPopupWindowCenter.setPopUpWindowCenter(
-                                                applicationContext, bubbleLayoutCenter, it
-                                            )
-                                        } else {
-                                            mPopupWindowActive.setPopUpWindowFlickBottom(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                        }
-                                    }
-                                    /** Flick Top **/
-                                    abs(distanceX) <= abs(distanceY) && firstYPoint >= finalY -> {
-                                        popTextActive.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
-                                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-                                        if (mPopupWindowTop.isShowing) {
-                                            mPopupWindowActive.setPopUpWindowTop(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                            mPopupWindowCenter.setPopUpWindowCenter(
-                                                applicationContext, bubbleLayoutCenter, it
-                                            )
-                                        } else {
-                                            mPopupWindowActive.setPopUpWindowFlickTop(
-                                                applicationContext, bubbleLayoutActive, it
-                                            )
-                                        }
-                                    }
-                                }
-                                it.setImageDrawable(null)
-                            }
-                            it.backgroundTintList = ColorStateList.valueOf(
-                                ContextCompat.getColor(
-                                    applicationContext, R.color.qwety_key_bg_color
-                                )
-                            )
-                            return@setOnTouchListener false
-                        }
-
-                        else -> return@setOnTouchListener true
-                    }
-                }
-                it.setOnLongClickListener { v ->
-                    tenKeysLongPressed = true
-                    if (_currentInputMode.value == InputMode.ModeNumber) {
-                        popTextTop.text = NUMBER_KEY10_SYMBOL_CHAR[3].toString()
-                        popTextLeft.text = NUMBER_KEY10_SYMBOL_CHAR[1].toString()
-                        popTextBottom.text = EMPTY_STRING
-                        popTextRight.text = NUMBER_KEY10_SYMBOL_CHAR[2].toString()
-                        popTextCenter.text = NUMBER_KEY10_SYMBOL_CHAR[0].toString()
-
-                        mPopupWindowTop.setPopUpWindowTop(applicationContext, bubbleLayoutTop, v)
-                        mPopupWindowLeft.setPopUpWindowLeft(applicationContext, bubbleLayoutLeft, v)
-                        mPopupWindowBottom.setPopUpWindowBottom(
-                            applicationContext, bubbleLayoutBottom, v
-                        )
-                        mPopupWindowRight.setPopUpWindowRight(
-                            applicationContext, bubbleLayoutRight, v
-                        )
-
-                        mainLayoutBinding?.keyboardView?.let { a ->
-                            ImageEffects.applyBlurEffect(a.root, 8f)
-                        }
-                    }
-                    false
-                }
-            }
-        }
-    }
-
-    /**
-     * キーボードのキーのレイアウトをモードにより変更する
-     * Change keyboard layout by input mode
-     **/
-    private fun setKeyLayoutByInputMode(
-        keys: List<Any>, inputMode: InputMode, keySmallLetter: AppCompatImageButton
-    ) {
-        when (inputMode) {
-            is InputMode.ModeJapanese -> {
-                keys.forEachIndexed { index, button ->
-                    if (button is AppCompatButton) {
-                        button.apply {
-                            focusable = View.NOT_FOCUSABLE
-                            setTenKeyTextJapanese(button.id)
-                        }
-                    }
-                    if (button is AppCompatImageButton) {
-                        when (index) {
-                            10 -> {
-                                keySmallLetter.apply {
-                                    focusable = View.NOT_FOCUSABLE
-                                    setImageDrawable(drawableLanguage)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            is InputMode.ModeEnglish -> {
-
-                keys.forEachIndexed { index, button ->
-                    if (button is AppCompatButton) {
-                        button.apply {
-                            focusable = View.NOT_FOCUSABLE
-                            setTenKeyTextEnglish(button.id)
-                        }
                     }
 
-                    if (button is AppCompatImageButton) {
-                        when (index) {
-                            10 -> {
-                                keySmallLetter.apply {
-                                    focusable = View.NOT_FOCUSABLE
-                                    setImageDrawable(drawableLanguage)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            is InputMode.ModeNumber -> {
-                keys.forEachIndexed { index, button ->
-                    if (button is AppCompatButton) {
-                        button.apply {
-                            focusable = View.NOT_FOCUSABLE
-                            setTenKeyTextNumber(button.id)
-                        }
-                    }
-
-                    if (button is AppCompatImageButton) {
-                        when (index) {
-                            10 -> {
-                                keySmallLetter.apply {
-                                    focusable = View.NOT_FOCUSABLE
-                                    setImageDrawable(drawableNumberSmall)
-                                }
-                            }
-                        }
+                    else -> {
+                        setNextReturnInputCharacter()
+                        _suggestionFlag.update { !it }
                     }
                 }
             }
@@ -2919,10 +1498,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             commitText(" $stringInTail", 1)
             stringInTail = EMPTY_STRING
         } else {
-            if (_currentInputMode.value == InputMode.ModeJapanese) {
-                commitText("　", 1)
-            } else {
-                commitText(" ", 1)
+            mainLayoutBinding?.keyboardView?.apply {
+                if (currentInputMode == InputMode.ModeJapanese) {
+                    commitText("　", 1)
+                } else {
+                    commitText(" ", 1)
+                }
             }
         }
         _inputString.value = EMPTY_STRING
@@ -2986,70 +1567,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         charForReturn, insertForString, sb
                     )
                 }
-            }
-        }
-    }
-
-    private fun setTouchActionInMoveEnd(appCompatButton: AppCompatButton) {
-        appCompatButton.apply {
-            background =
-                ContextCompat.getDrawable(applicationContext, R.drawable.ten_keys_center_bg)
-            if (mPopupWindowTop.isShowing) {
-                setTextColor(
-                    ContextCompat.getColor(
-                        applicationContext, R.color.keyboard_icon_color
-                    )
-                )
-            } else {
-                setTextColor(ContextCompat.getColor(applicationContext, R.color.qwety_key_bg_color))
-            }
-        }
-    }
-
-    private fun hidePopUpWindowActive() {
-        mPopupWindowActive.apply {
-            if (isShowing) {
-                dismiss()
-            }
-        }
-    }
-
-    private fun hidePopUpWindowCenter() {
-        mPopupWindowCenter.apply {
-            if (isShowing) {
-                dismiss()
-            }
-        }
-    }
-
-    private fun hidePopUpWindowTop() {
-        mPopupWindowTop.apply {
-            if (isShowing) {
-                dismiss()
-            }
-        }
-    }
-
-    private fun hidePopUpWindowLeft() {
-        mPopupWindowLeft.apply {
-            if (isShowing) {
-                dismiss()
-            }
-        }
-    }
-
-    private fun hidePopUpWindowBottom() {
-        mPopupWindowBottom.apply {
-            if (isShowing) {
-                dismiss()
-            }
-        }
-    }
-
-    private fun hidePopUpWindowRight() {
-        mPopupWindowRight.apply {
-            if (isShowing) {
-                dismiss()
             }
         }
     }
