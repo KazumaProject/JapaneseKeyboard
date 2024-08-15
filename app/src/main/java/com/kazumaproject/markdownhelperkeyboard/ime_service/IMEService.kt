@@ -482,6 +482,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     scope.launch {
                         while (isActive) {
                             actionInRightKeyPressed()
+                            _suggestionFlag.update { !it }
                             delay(LONG_DELAY_TIME)
                             if (onRightKeyLongPressUp) return@launch
                         }
