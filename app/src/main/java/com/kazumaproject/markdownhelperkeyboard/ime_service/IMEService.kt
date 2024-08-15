@@ -332,6 +332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 sb = sb,
                                 isFlick = false
                             )
+                            _suggestionFlag.update { flag -> !flag }
                         }
 
                         else -> {
@@ -342,6 +343,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 sb = sb,
                                 isFlick = true
                             )
+                            _suggestionFlag.update { flag -> !flag }
                         }
                     }
                 }
@@ -380,8 +382,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyCursorLeft -> {
                 handleLeftKeyPress()
-                _suggestionFlag.update { flag -> !flag }
-                CoroutineScope(imeIoDispatcher).launch {
+                scope.launch {
                     onLeftKeyLongPressUp = true
                     delay(100)
                     onLeftKeyLongPressUp = false
@@ -393,8 +394,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyCursorRight -> {
                 actionInRightKeyPressed()
-                _suggestionFlag.update { flag -> !flag }
-                CoroutineScope(imeIoDispatcher).launch {
+                scope.launch {
                     onRightKeyLongPressUp = true
                     delay(100)
                     onRightKeyLongPressUp = false
@@ -405,6 +405,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 handleDeleteKeyTap()
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
+                _suggestionFlag.update { flag -> !flag }
             }
 
             Key.SideKeyInputMode -> {
@@ -481,7 +482,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     scope.launch {
                         while (isActive) {
                             actionInRightKeyPressed()
-                            _suggestionFlag.update { flag -> !flag }
                             delay(LONG_DELAY_TIME)
                             if (onRightKeyLongPressUp) return@launch
                         }
@@ -594,7 +594,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            _suggestionFlag.update { !it }
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
@@ -610,7 +609,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 resetInputString()
                 setTenkeyIconsEmptyInputString()
             }
-            _suggestionFlag.update { !it }
         }
     }
 
@@ -936,15 +934,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private suspend fun setCandidates(mainView: MainLayoutBinding) {
         updateSuggestionUI(mainView)
-        val candidates = getSuggestionList(ioDispatcher)
+        val candidates = getSuggestionList()
         _suggestionList.update {
             candidates
         }
     }
 
-    private suspend fun getSuggestionList(ioDispatcher: CoroutineDispatcher) = scope.async {
+    private suspend fun getSuggestionList() = CoroutineScope(ioDispatcher).async {
         val queryText = _inputString.value
-        return@async kanaKanjiEngine.getCandidates(queryText, N_BEST, ioDispatcher)
+        return@async kanaKanjiEngine.getCandidates(queryText, N_BEST)
     }.await()
 
     private fun deleteLongPress() = scope.launch {
