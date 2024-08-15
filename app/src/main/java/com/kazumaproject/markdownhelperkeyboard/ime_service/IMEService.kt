@@ -325,23 +325,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         GestureType.Tap -> {
-                            setVibrate()
-                            handleTap(
+                            handleTapAndFlick(
                                 key = key,
                                 char = char,
                                 insertString = insertString,
-                                sb = sb
+                                sb = sb,
+                                isFlick = false
                             )
                         }
 
                         else -> {
-                            char?.let {
-                                sendCharFlick(
-                                    charToSend = it,
-                                    insertString = insertString,
-                                    sb = sb
-                                )
-                            }
+                            handleTapAndFlick(
+                                key = key,
+                                char = char,
+                                insertString = insertString,
+                                sb = sb,
+                                isFlick = true
+                            )
                         }
                     }
                 }
@@ -356,12 +356,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleTap(
+    private fun handleTapAndFlick(
         key: Key,
         char: Char?,
         insertString: String,
-        sb: StringBuilder
+        sb: StringBuilder,
+        isFlick: Boolean
     ) {
+        setVibrate()
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
@@ -379,7 +381,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyCursorLeft -> {
                 handleLeftKeyPress()
                 _suggestionFlag.update { flag -> !flag }
-                scope.launch {
+                CoroutineScope(imeIoDispatcher).launch {
                     onLeftKeyLongPressUp = true
                     delay(100)
                     onLeftKeyLongPressUp = false
@@ -392,7 +394,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyCursorRight -> {
                 actionInRightKeyPressed()
                 _suggestionFlag.update { flag -> !flag }
-                scope.launch {
+                CoroutineScope(imeIoDispatcher).launch {
                     onRightKeyLongPressUp = true
                     delay(100)
                     onRightKeyLongPressUp = false
@@ -436,12 +438,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             else -> {
-                char?.let {
-                    sendCharTap(
-                        charToSend = it,
-                        insertString = insertString,
-                        sb = sb
-                    )
+                if (isFlick){
+                    char?.let {
+                        sendCharFlick(
+                            charToSend = it,
+                            insertString = insertString,
+                            sb = sb
+                        )
+                    }
+                    isContinuousTapInputEnabled = true
+                    lastFlickConvertedNextHiragana = true
+                }else{
+                    char?.let {
+                        sendCharTap(
+                            charToSend = it,
+                            insertString = insertString,
+                            sb = sb
+                        )
+                    }
                 }
             }
         }
@@ -681,11 +695,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setCandidateClick(candidate: Candidate) {
         if (_inputString.value.isNotEmpty()) {
-            scope.launch {
-                commitCandidateText(candidate)
-                _suggestionFlag.update { flag -> !flag }
-                resetFlagsSuggestionClick()
-            }
+            commitCandidateText(candidate)
+            resetFlagsSuggestionClick()
         }
     }
 
