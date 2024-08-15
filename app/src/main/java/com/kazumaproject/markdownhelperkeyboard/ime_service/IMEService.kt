@@ -1,6 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
@@ -18,7 +17,6 @@ import android.text.style.UnderlineSpan
 import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
@@ -30,8 +28,6 @@ import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
-import androidx.appcompat.widget.AppCompatButton
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -160,16 +156,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     private var mainLayoutBinding: MainLayoutBinding? = null
-
+    private lateinit var lifecycleRegistry: LifecycleRegistry
     private var suggestionAdapter: SuggestionAdapter? = null
-
     private val _inputString = MutableStateFlow(EMPTY_STRING)
     private var stringInTail = ""
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionList = MutableStateFlow<List<Candidate>>(emptyList())
     private val _suggestionFlag = MutableStateFlow(false)
     private val _suggestionViewStatus = MutableStateFlow(true)
-
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private var lastFlickConvertedNextHiragana = false
     private var isContinuousTapInputEnabled = false
@@ -178,7 +172,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isHenkan = false
     private var onLeftKeyLongPressUp = false
     private var onRightKeyLongPressUp = false
-
     private var onDeleteLongPressUp = false
     private var deleteKeyLongKeyPressed = false
 
@@ -211,14 +204,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onCreate()
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        println("onCreate called")
     }
 
-    @SuppressLint("InflateParams", "ClickableViewAccessibility")
     override fun onCreateInputView(): View? {
-
-        println("onCreateInputView called ${lifecycle.currentState}")
-
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
@@ -227,20 +215,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 alignItems = AlignItems.STRETCH
             }
             initializeVariables()
-            mainLayoutBinding?.keyboardView?.apply {
-                setOnFlickListener(object : FlickListener {
-                    override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
-                        Timber.d("Flick: $char $key $gestureType")
-                    }
-                })
-                setOnLongPressListener(object : LongPressListener{
-                    override fun onLongPress(key: Key) {
-                        Timber.d("Long Press: $key")
-                    }
-
-                })
-            }
             setSuggestionRecyclerView(flexboxLayoutManager)
+            setTenKeyListeners()
             if (lifecycle.currentState == Lifecycle.State.CREATED) {
                 startScope(flexboxLayoutManager)
             } else {
@@ -336,6 +312,187 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun setTenKeyListeners() {
+        mainLayoutBinding?.keyboardView?.apply {
+            setOnFlickListener(object : FlickListener {
+                override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    Timber.d("Flick: $char $key $gestureType")
+                    val insertString = _inputString.value
+                    val sb = StringBuilder()
+                    when (gestureType) {
+                        GestureType.Null -> {
+
+                        }
+
+                        GestureType.Tap -> {
+                            setVibrate()
+                            handleTap(
+                                key = key,
+                                char = char,
+                                insertString = insertString,
+                                sb = sb
+                            )
+                        }
+
+                        else -> {
+                            char?.let {
+                                sendCharFlick(
+                                    charToSend = it,
+                                    insertString = insertString,
+                                    sb = sb
+                                )
+                            }
+                        }
+                    }
+                }
+            })
+            setOnLongPressListener(object : LongPressListener {
+                override fun onLongPress(key: Key) {
+                    handleLongPress(key)
+                    Timber.d("Long Press: $key")
+                }
+
+            })
+        }
+    }
+
+    private fun handleTap(
+        key: Key,
+        char: Char?,
+        insertString: String,
+        sb: StringBuilder
+    ) {
+        when (key) {
+            Key.NotSelected -> {}
+            Key.SideKeyEnter -> {
+                if (_inputString.value.isNotEmpty()) {
+                    handleNonEmptyInputEnterKey()
+                } else {
+                    handleEmptyInputEnterKey()
+                }
+            }
+
+            Key.KeyDakutenSmall -> {
+                handleDakutenSmallLetterKey(sb)
+            }
+
+            Key.SideKeyCursorLeft -> {
+                handleLeftKeyPress()
+                _suggestionFlag.update { flag -> !flag }
+                scope.launch {
+                    onLeftKeyLongPressUp = true
+                    delay(100)
+                    onLeftKeyLongPressUp = false
+                    if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
+                        _suggestionList.value = emptyList()
+                    }
+                }
+            }
+
+            Key.SideKeyCursorRight -> {
+                actionInRightKeyPressed()
+                _suggestionFlag.update { flag -> !flag }
+                scope.launch {
+                    onRightKeyLongPressUp = true
+                    delay(100)
+                    onRightKeyLongPressUp = false
+                }
+            }
+
+            Key.SideKeyDelete -> {
+                handleDeleteKeyTap()
+                onDeleteLongPressUp = true
+                deleteKeyLongKeyPressed = false
+            }
+
+            Key.SideKeyInputMode -> {
+                finishComposingText()
+                if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
+                _inputString.update { EMPTY_STRING }
+                resetFlagsSwitchMode()
+            }
+
+            Key.SideKeyPreviousChar -> {
+                mainLayoutBinding?.keyboardView?.let {
+                    when (it.currentInputMode) {
+                        is InputMode.ModeNumber -> {
+
+                        }
+
+                        else -> {
+                            setNextReturnInputCharacter()
+                            _suggestionFlag.update { flag -> !flag }
+                        }
+                    }
+                }
+            }
+
+            Key.SideKeySpace -> {
+                handleSpaceKeyClick()
+            }
+
+            Key.SideKeySymbol -> {
+                resetFlagsLanguageModeClick()
+            }
+
+            else -> {
+                char?.let {
+                    sendCharTap(
+                        charToSend = it,
+                        insertString = insertString,
+                        sb = sb
+                    )
+                }
+            }
+        }
+    }
+
+    private fun handleLongPress(
+        key: Key,
+    ) {
+        when (key) {
+            Key.NotSelected -> {}
+            Key.SideKeyEnter -> {}
+            Key.KeyDakutenSmall -> {}
+            Key.SideKeyCursorLeft -> {
+                handleLeftLongPress()
+            }
+
+            Key.SideKeyCursorRight -> {
+                if (!isHenkan) {
+                    onRightKeyLongPressUp = false
+                    suggestionClickNum = 0
+                    lastFlickConvertedNextHiragana = true
+                    isContinuousTapInputEnabled = true
+                    scope.launch {
+                        while (isActive) {
+                            actionInRightKeyPressed()
+                            _suggestionFlag.update { flag -> !flag }
+                            delay(LONG_DELAY_TIME)
+                            if (onRightKeyLongPressUp) return@launch
+                        }
+                    }
+                } else {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                }
+            }
+
+            Key.SideKeyDelete -> {
+                onDeleteLongPressUp = false
+                deleteLongPress()
+                _dakutenPressed.value = false
+                englishSpaceKeyPressed = false
+                deleteKeyLongKeyPressed = true
+            }
+
+            Key.SideKeyInputMode -> {}
+            Key.SideKeyPreviousChar -> {}
+            Key.SideKeySpace -> {}
+            Key.SideKeySymbol -> {}
+            else -> {}
+        }
+    }
+
     private fun startScope(
         flexboxLayoutManager: FlexboxLayoutManager
     ) = scope.launch {
@@ -423,6 +580,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
+            _suggestionFlag.update { !it }
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
@@ -549,7 +707,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { EMPTY_STRING }
         _suggestionList.update { emptyList() }
-        mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeJapanese
+        mainLayoutBinding?.keyboardView?.setInputModeSwitchState(InputMode.ModeJapanese)
         stringInTail = EMPTY_STRING
         suggestionClickNum = 0
         isHenkan = false
@@ -686,7 +844,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
         Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
-
         setComposingText(spannableString, 1)
     }
 
@@ -852,58 +1009,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setDeleteKey(imageButton: AppCompatImageButton) = imageButton.apply {
-        focusable = View.NOT_FOCUSABLE
-        setOnTouchListener { _, event ->
-            when (event.action and MotionEvent.ACTION_MASK) {
-                MotionEvent.ACTION_UP -> {
-                    onDeleteLongPressUp = true
-                    deleteKeyLongKeyPressed = false
-                }
+    private fun handleDeleteKeyTap() {
+        setVibrate()
+        when {
+            _inputString.value.isNotEmpty() -> {
+                deleteStringCommon()
+                resetFlagsDeleteKey()
             }
-            return@setOnTouchListener false
-        }
-        setOnClickListener {
-            setVibrate()
-            when {
-                _inputString.value.isNotEmpty() -> {
-                    deleteStringCommon()
-                    resetFlagsDeleteKey()
-                }
 
-                else -> {
-                    if (stringInTail.isNotEmpty()) return@setOnClickListener
-                    println("delete sendKeyEvent")
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                }
+            else -> {
+                if (stringInTail.isNotEmpty()) return
+                println("delete sendKeyEvent")
+                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
             }
-        }
-
-        setOnLongClickListener {
-            onDeleteLongPressUp = false
-            deleteLongPress()
-            _dakutenPressed.value = false
-            englishSpaceKeyPressed = false
-            deleteKeyLongKeyPressed = true
-            return@setOnLongClickListener true
-        }
-    }
-
-    private fun setSpaceKey(imageButton: AppCompatImageButton) = imageButton.apply {
-        focusable = View.NOT_FOCUSABLE
-        setOnClickListener {
-            handleSpaceKeyClick()
-        }
-        setOnLongClickListener {
-            handleSpaceKeyLongClick()
-            true
         }
     }
 
     private fun handleSpaceKeyClick() {
-        setVibrate()
-        if (_inputString.value.isNotEmpty()) {
+        if (_inputString.value.isNotBlank()) {
             mainLayoutBinding?.keyboardView?.apply {
                 when (currentInputMode) {
                     InputMode.ModeJapanese -> handleJapaneseModeSpaceKey()
@@ -916,43 +1039,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetFlagsKeySpace()
     }
 
-    private fun handleSpaceKeyLongClick() {
-        setVibrate()
-        if (_suggestionList.value.isNotEmpty() && _inputString.value.isNotEmpty()) {
-            mainLayoutBinding?.keyboardView?.apply {
-                when (currentInputMode) {
-                    InputMode.ModeJapanese -> handleJapaneseModeSpaceKey()
-                    else -> commitTextWithSpace()
-                }
-            }
-        } else {
-            commitTextWithSpace()
-        }
-        resetFlagsKeySpace()
-    }
-
     private fun handleJapaneseModeSpaceKey() {
         isHenkan = true
         setConvertLetterInJapaneseFromButton(_suggestionList.value)
         suggestionClickNum += 1
         println("henkan in Japanese: $stringInTail ${_inputString.value}")
-    }
-
-    private fun commitTextWithSpace() {
-        commitText(_inputString.value + " ", 1)
-        _inputString.value = EMPTY_STRING
-    }
-
-    private fun setEnterKey(imageButton: AppCompatImageButton) = imageButton.apply {
-        focusable = View.NOT_FOCUSABLE
-        setOnClickListener {
-            setVibrate()
-            if (_inputString.value.isNotEmpty()) {
-                handleNonEmptyInputEnterKey()
-            } else {
-                handleEmptyInputEnterKey()
-            }
-        }
     }
 
     private fun handleNonEmptyInputEnterKey() {
@@ -993,129 +1084,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         finishComposingText()
         _inputString.update { EMPTY_STRING }
         resetFlagsEnterKeyNotHenkan()
-    }
-
-    private fun setLanguageSwitchKey(appCompatButton: AppCompatButton) = appCompatButton.apply {
-        focusable = View.NOT_FOCUSABLE
-        setOnClickListener {
-            setVibrate()
-            //_currentKeyboardMode.value = KeyboardMode.ModeKigouView
-            finishComposingText()
-            if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-            _inputString.update { EMPTY_STRING }
-            resetFlagsSwitchMode()
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setDeleteKeyKigou(
-        imageButton: AppCompatImageButton?,
-    ) = imageButton?.apply {
-
-        setOnTouchListener { _, event ->
-            when (event.action and MotionEvent.ACTION_MASK) {
-                MotionEvent.ACTION_UP -> {
-                    scope.launch {
-                        onDeleteLongPressUp = true
-                        deleteKeyLongKeyPressed = false
-                    }
-                }
-            }
-            return@setOnTouchListener false
-        }
-
-        setOnClickListener {
-            setVibrate()
-            if (_inputString.value.isNotEmpty()) {
-                deleteStringCommon()
-                resetFlagsDeleteKey()
-                _suggestionFlag.update { flag -> !flag }
-            } else {
-                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-            }
-        }
-
-        setOnLongClickListener {
-            onDeleteLongPressUp = false
-            deleteLongPress()
-            deleteKeyLongKeyPressed = true
-            _dakutenPressed.value = false
-            englishSpaceKeyPressed = false
-            lastFlickConvertedNextHiragana = false
-            true
-        }
-    }
-
-    /**
-     *   日本語入力 -> 英語 -> 数字 -> 日本語
-     *
-     *   Input mode:
-     *   Japanese -> English -> Numbers -> Japanese
-     *
-     **/
-//    private fun setSwitchModeKey(inputModeSwitch: InputModeSwitch?) = inputModeSwitch?.apply {
-//        focusable = View.NOT_FOCUSABLE
-//        setOnClickListener {
-//            setVibrate()
-//            when (getCurrentInputMode()) {
-//                is InputMode.ModeJapanese -> {
-//                    setInputMode(InputMode.ModeEnglish)
-//                    _currentInputMode.value = InputMode.ModeEnglish
-//                    finishComposingText()
-//                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-//                    _inputString.update { EMPTY_STRING }
-//                }
-//
-//                is InputMode.ModeEnglish -> {
-//                    setInputMode(InputMode.ModeNumber)
-//                    _currentInputMode.value = InputMode.ModeNumber
-//                    finishComposingText()
-//                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-//                    _inputString.update { EMPTY_STRING }
-//                }
-//
-//                is InputMode.ModeNumber -> {
-//                    setInputMode(InputMode.ModeJapanese)
-//                    _currentInputMode.value = InputMode.ModeJapanese
-//                    finishComposingText()
-//                    if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-//                    _inputString.update { EMPTY_STRING }
-//                }
-//            }
-//            resetFlagsSwitchMode()
-//        }
-//    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setLeftKey(leftKey: AppCompatImageButton) {
-        leftKey.apply {
-            focusable = View.NOT_FOCUSABLE
-            setOnTouchListener { _, event ->
-                if ((event.action and MotionEvent.ACTION_MASK) == MotionEvent.ACTION_UP) {
-                    scope.launch {
-                        onLeftKeyLongPressUp = true
-                        delay(100)
-                        onLeftKeyLongPressUp = false
-                        if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
-                            _suggestionList.value = emptyList()
-                        }
-                    }
-                }
-                return@setOnTouchListener false
-            }
-
-            setOnClickListener {
-                setVibrate()
-                handleLeftKeyPress()
-                _suggestionFlag.update { flag -> !flag }
-            }
-
-            setOnLongClickListener {
-                setVibrate()
-                handleLeftLongPress()
-                true
-            }
-        }
     }
 
     private fun handleLeftKeyPress() {
@@ -1166,50 +1134,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setRightKey(rightKey: AppCompatImageButton) {
-        rightKey.apply {
-            focusable = View.NOT_FOCUSABLE
-            setOnTouchListener { _, event ->
-                if (event.action and MotionEvent.ACTION_MASK == MotionEvent.ACTION_UP) {
-                    scope.launch {
-                        onRightKeyLongPressUp = true
-                        delay(100)
-                        onRightKeyLongPressUp = false
-                    }
-                }
-                false
-            }
-
-            setOnClickListener {
-                setVibrate()
-                actionInRightKeyPressed()
-                _suggestionFlag.update { flag -> !flag }
-            }
-
-            setOnLongClickListener {
-                setVibrate()
-                if (!isHenkan) {
-                    onRightKeyLongPressUp = false
-                    suggestionClickNum = 0
-                    lastFlickConvertedNextHiragana = true
-                    isContinuousTapInputEnabled = true
-                    scope.launch {
-                        while (isActive) {
-                            actionInRightKeyPressed()
-                            _suggestionFlag.update { flag -> !flag }
-                            delay(LONG_DELAY_TIME)
-                            if (onRightKeyLongPressUp) return@launch
-                        }
-                    }
-                } else {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                }
-                true
-            }
-        }
-    }
-
     private fun actionInRightKeyPressed() {
         when {
             _inputString.value.isEmpty() -> handleEmptyInputString()
@@ -1239,34 +1163,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val dropString = stringInTail.first()
             stringInTail = stringInTail.drop(1)
             _inputString.update { it + dropString }
-        }
-    }
-
-    /**
-     *
-     *  前の文字に戻す　あ -> ぉ -> ぇ
-     *
-     * **/
-    private fun setNextReturnKey(
-        nextReturn: AppCompatImageButton,
-    ) {
-        nextReturn.apply {
-            focusable = View.NOT_FOCUSABLE
-        }
-        nextReturn.setOnClickListener {
-            setVibrate()
-            mainLayoutBinding?.keyboardView?.let {
-                when (it.currentInputMode) {
-                    is InputMode.ModeNumber -> {
-
-                    }
-
-                    else -> {
-                        setNextReturnInputCharacter()
-                        _suggestionFlag.update { !it }
-                    }
-                }
-            }
         }
     }
 
@@ -1446,6 +1342,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun handleDakutenSmallLetterKey(
+        sb: StringBuilder
+    ) {
+        mainLayoutBinding?.keyboardView?.let {
+            when (it.currentInputMode) {
+                InputMode.ModeJapanese -> {
+                    dakutenSmallLetter(sb)
+                }
+
+                InputMode.ModeEnglish -> {
+                    smallBigLetterConversionEnglish(sb)
+                }
+
+                InputMode.ModeNumber -> {}
+            }
+        }
+    }
+
     private fun setKeyTouch(
         key: Char, insertString: String, sb: StringBuilder
     ) {
@@ -1571,7 +1485,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private lateinit var lifecycleRegistry: LifecycleRegistry
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
 

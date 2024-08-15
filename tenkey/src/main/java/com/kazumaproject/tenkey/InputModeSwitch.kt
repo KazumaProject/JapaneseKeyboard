@@ -39,7 +39,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet): androidx.appcompat
         val text = "あa1"
         when(currentInputMode){
             is InputMode.ModeJapanese ->{
-                canvas?.apply {
+                canvas.apply {
                     drawText(
                         text,
                         0,
@@ -58,7 +58,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet): androidx.appcompat
                 }
             }
             is InputMode.ModeEnglish ->{
-                canvas?.apply {
+                canvas.apply {
                     drawText(
                         text,
                         0,
@@ -86,7 +86,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet): androidx.appcompat
                 }
             }
             is InputMode.ModeNumber ->{
-                canvas?.apply {
+                canvas.apply {
                     drawText(
                         text,
                         0,
