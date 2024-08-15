@@ -197,6 +197,7 @@ class KanaKanjiEngine {
         }
 
         val yomiPartOfDeferred = async {
+            if (input.length > 16) return@async emptyList()
             systemYomiTrie.commonPrefixSearch(
                 str = input,
                 rank0Array = systemRank0ArrayLBSYomi,
@@ -205,6 +206,7 @@ class KanaKanjiEngine {
         }
 
         val predictiveSearchDeferred = async {
+            if (input.length >= 8) return@async emptyList()
             systemYomiTrie.predictiveSearch(
                 prefix = input,
                 rank0Array = systemRank0ArrayLBSYomi,
