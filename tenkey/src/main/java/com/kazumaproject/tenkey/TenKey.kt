@@ -360,8 +360,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.pointer != pointer) {
                             val key = pressedKeyByMotionEvent(event, pointer)
                             val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
-                            if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode == InputMode.ModeNumber){
-                                keyDakutenSmall.setImageDrawable(ContextCompat.getDrawable(context,R.drawable.number_small))
+                            if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode == InputMode.ModeNumber) {
+                                keyDakutenSmall.setImageDrawable(
+                                    ContextCompat.getDrawable(
+                                        context,
+                                        R.drawable.number_small
+                                    )
+                                )
                             }
                             val keyInfo =
                                 currentInputMode.next(tenKeyMap = tenKeyMap, key = pressedKey.key)
@@ -815,7 +820,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
             }
             if (it is AppCompatImageButton && currentInputMode == InputMode.ModeNumber && it == keyDakutenSmall) {
-                it.setImageDrawable(ContextCompat.getDrawable(context,R.drawable.open_bracket))
+                it.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.open_bracket))
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 it.isPressed = true
                 if (isLongPressed) {
@@ -1091,11 +1096,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyDakutenSmall.setImageDrawable(drawable)
     }
 
-    fun setSideKeyEnterDrawable(drawable: Drawable?){
+    fun setSideKeyEnterDrawable(drawable: Drawable?) {
         sideKeyEnter.setImageDrawable(drawable)
     }
 
-    fun setSideKeySpaceDrawable(drawable: Drawable?){
+    fun setSideKeySpaceDrawable(drawable: Drawable?) {
         sideKeySpace.setImageDrawable(drawable)
     }
 
@@ -1119,11 +1124,28 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
         currentInputMode = newInputMode
         sideKeyInputModeSwitch.setInputMode(newInputMode)
+    }
 
+    private fun handleCurrentInputModeSwitch() {
+        val inputMode = sideKeyInputModeSwitch.getCurrentInputMode()
+        when (inputMode) {
+            InputMode.ModeJapanese -> {
+                setKeysInJapaneseText()
+            }
+
+            InputMode.ModeEnglish -> {
+                setKeysInEnglishText()
+            }
+
+            InputMode.ModeNumber -> {
+                setKeysInNumberText()
+            }
+        }
     }
 
     fun setInputModeSwitchState(inputMode: InputMode) {
         sideKeyInputModeSwitch.setInputMode(inputMode)
+        handleCurrentInputModeSwitch()
     }
 
     private fun setKeysInJapaneseText() {
