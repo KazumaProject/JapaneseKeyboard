@@ -945,7 +945,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         updateSuggestionUI(mainView)
         val candidates = getSuggestionList()
         _suggestionList.update {
-            candidates
+            if (stringInTail.isNotEmpty()){
+                candidates.filter { it.length.toInt() == _inputString.value.length }
+            }else{
+                candidates
+            }
         }
     }
 
