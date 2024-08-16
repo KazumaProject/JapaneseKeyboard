@@ -627,7 +627,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Timber.d("setCurrentInputType: $currentInputType $inputType")
             when (currentInputType) {
                 InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                    mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeJapanese
+                    mainLayoutBinding?.keyboardView?.apply {
+                        currentInputMode = InputMode.ModeJapanese
+                        setInputModeSwitchState(InputMode.ModeJapanese)
+                    }
                 }
 
                 InputTypeForIME.TextEditTextInBookingTDBank,
@@ -639,7 +642,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 InputTypeForIME.TextVisiblePassword,
                 InputTypeForIME.TextWebPassword,
                 -> {
-                    mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeEnglish
+                    mainLayoutBinding?.keyboardView?.apply {
+                        currentInputMode = InputMode.ModeEnglish
+                        setInputModeSwitchState(InputMode.ModeEnglish)
+                    }
                 }
 
                 InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
@@ -655,7 +661,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 InputTypeForIME.Datetime,
                 InputTypeForIME.Time,
                 -> {
-                    mainLayoutBinding?.keyboardView?.currentInputMode = InputMode.ModeNumber
+                    mainLayoutBinding?.keyboardView?.apply {
+                        currentInputMode = InputMode.ModeNumber
+                        setInputModeSwitchState(InputMode.ModeNumber)
+                    }
                 }
 
             }
@@ -717,7 +726,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { EMPTY_STRING }
         _suggestionList.update { emptyList() }
-        mainLayoutBinding?.keyboardView?.setInputModeSwitchState(InputMode.ModeJapanese)
         stringInTail = EMPTY_STRING
         suggestionClickNum = 0
         isHenkan = false
