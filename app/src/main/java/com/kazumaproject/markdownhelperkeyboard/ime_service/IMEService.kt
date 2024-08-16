@@ -711,7 +711,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun commitCandidateText(candidate: Candidate) {
         println("clicked candidate: $candidate ${_inputString.value}")
         val candidateType = candidate.type.toInt()
-        if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
+        if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = _inputString.value.substring(candidate.length.toInt())
         }
         if (stringInTail.isNotEmpty()) {
@@ -1444,7 +1444,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) = scope.launch {
         val nextSuggestion = listIterator.next()
         val candidateType = nextSuggestion.type.toInt()
-        if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
+        if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
         }
         val spannableString2 =
@@ -1467,7 +1467,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         scope.launch {
             val nextSuggestion = suggestions[0]
             val candidateType = nextSuggestion.type.toInt()
-            if (candidateType == 2 || candidateType == 5 || candidateType == 7 || candidateType == 8) {
+            if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
                 stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
             }
             val spannableString2 =
