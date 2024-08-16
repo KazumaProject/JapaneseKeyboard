@@ -1098,7 +1098,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleLeftKeyPress() {
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
-            getExtractedText(ExtractedTextRequest(), 0).text ?: return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         } else if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
