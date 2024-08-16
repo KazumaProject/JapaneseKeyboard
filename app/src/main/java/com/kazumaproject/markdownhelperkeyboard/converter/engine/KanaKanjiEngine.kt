@@ -139,7 +139,7 @@ class KanaKanjiEngine {
 
         val resultNBestFinalDeferred = async {
             findPath.backwardAStar(graph, input.length, connectionIds, n, input)
-        }
+        }.await()
 
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
@@ -191,7 +191,7 @@ class KanaKanjiEngine {
                 }.distinctBy { it.string }.toList()
             }
 
-            return@coroutineScope (resultNBestFinalDeferred.await() +
+            return@coroutineScope (resultNBestFinalDeferred +
                     hirakanaAndKana +
                     singleKanjiListDeferred.await()).distinctBy { it.string }
         }
@@ -206,7 +206,6 @@ class KanaKanjiEngine {
         }
 
         val predictiveSearchDeferred = async {
-            if (input.length >= 8) return@async emptyList()
             systemYomiTrie.predictiveSearch(
                 prefix = input,
                 rank0Array = systemRank0ArrayLBSYomi,
@@ -370,10 +369,10 @@ class KanaKanjiEngine {
                 }
             }.distinctBy { it.string }.toList()
         }
-        return@coroutineScope (resultNBestFinalDeferred.await() +
+        return@coroutineScope (resultNBestFinalDeferred +
                 predictiveSearchResultDeferred.await() +
                 secondPartDeferred.await().sortedBy { it.score }
-                    .filter { it.score - resultNBestFinalDeferred.await().first().score < 4000 } +
+                    .filter { it.score - resultNBestFinalDeferred.first().score < 4000 } +
                 hirakanaAndKana +
                 yomiPartListDeferred.await() +
                 singleKanjiListDeferred.await()).distinctBy { it.string }

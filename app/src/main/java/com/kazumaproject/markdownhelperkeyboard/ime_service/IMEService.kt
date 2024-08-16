@@ -155,9 +155,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
+    @Inject
+    lateinit var suggestionAdapter: SuggestionAdapter
+
     private var mainLayoutBinding: MainLayoutBinding? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
-    private var suggestionAdapter: SuggestionAdapter? = null
     private val _inputString = MutableStateFlow(EMPTY_STRING)
     private var stringInTail = ""
     private val _dakutenPressed = MutableStateFlow(false)
@@ -214,7 +216,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 flexWrap = FlexWrap.WRAP
                 alignItems = AlignItems.STRETCH
             }
-            initializeVariables()
             setSuggestionRecyclerView(flexboxLayoutManager)
             setTenKeyListeners()
             if (lifecycle.currentState == Lifecycle.State.CREATED) {
@@ -479,6 +480,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     suggestionClickNum = 0
                     lastFlickConvertedNextHiragana = true
                     isContinuousTapInputEnabled = true
+                    val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
+                    val afterText = getTextAfterCursor(extractedText.length, 0) ?: return
+                    if (afterText.isEmpty()) return
                     scope.launch {
                         while (isActive) {
                             actionInRightKeyPressed()
@@ -586,7 +590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
-        suggestionAdapter?.let {
+        suggestionAdapter.let {
             it.suggestions = suggestions
             mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
         }
@@ -671,14 +675,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun initializeVariables() {
-        suggestionAdapter = SuggestionAdapter()
-    }
-
     private fun setSuggestionRecyclerView(
         flexboxLayoutManager: FlexboxLayoutManager
     ) {
-        suggestionAdapter?.apply {
+        suggestionAdapter.apply {
             this.setOnItemClickListener {
                 setVibrate()
                 setCandidateClick(it)
@@ -687,7 +687,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
                 itemAnimator = null
-                suggestionAdapter?.let { sugAdapter ->
+                suggestionAdapter.let { sugAdapter ->
                     adapter = sugAdapter
                     layoutManager = flexboxLayoutManager.apply {
                         flexDirection = FlexDirection.ROW
@@ -742,7 +742,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             layoutManager = null
             adapter = null
         }
-        suggestionAdapter = null
         mainLayoutBinding = null
         closeConnection()
         scope.coroutineContext.cancelChildren()
@@ -1110,6 +1109,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleLeftKeyPress() {
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
+            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
+            val beforeText = getTextBeforeCursor(extractedText.length, 0) ?: return
+            if (beforeText.isEmpty()) return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         } else if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
@@ -1130,6 +1132,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isContinuousTapInputEnabled = true
             onLeftKeyLongPressUp = false
             suggestionClickNum = 0
+            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
+            val beforeText = getTextBeforeCursor(extractedText.length, 0) ?: return
+            if (beforeText.isEmpty()) return
             scope.launch {
                 while (isActive) {
                     if (_inputString.value.isNotEmpty()) {
@@ -1165,7 +1170,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
-            val extractedText = getExtractedText(ExtractedTextRequest(), 0).text ?: return
+            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
             val afterText = getTextAfterCursor(extractedText.length, 0) ?: return
             if (afterText.isEmpty()) return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
@@ -1531,7 +1536,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return currentInputConnection.getCursorCapsMode(p0)
     }
 
-    override fun getExtractedText(p0: ExtractedTextRequest?, p1: Int): ExtractedText {
+    override fun getExtractedText(p0: ExtractedTextRequest?, p1: Int): ExtractedText? {
         println("getExtractedText")
         return currentInputConnection.getExtractedText(p0, p1)
     }
