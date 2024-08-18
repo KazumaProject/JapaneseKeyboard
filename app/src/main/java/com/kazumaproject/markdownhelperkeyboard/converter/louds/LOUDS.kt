@@ -121,7 +121,7 @@ class LOUDS {
 
             currentNodeIndex = LBS.select1Common(LBS.rank0Common(currentNodeIndex, rank0Array), rank1Array)
         }
-        println("Final result before reverse: ${result.toString()}")
+        println("Final result before reverse: $result")
         return result.reverse().toString()
     }
 

@@ -1,8 +1,8 @@
 package com.kazumaproject.viterbi
 
-import com.kazumaproject.Other.BOS
-import com.kazumaproject.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
+import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import java.util.PriorityQueue
