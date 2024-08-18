@@ -2,15 +2,14 @@ package com.kazumaproject.converter.graph
 
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.Other.BOS
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
+import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
+import timber.log.Timber
 import kotlin.time.ExperimentalTime
 
 class GraphBuilder {
-
-    @OptIn(ExperimentalTime::class)
     fun constructGraph(
         str: String,
         yomiTrie: LOUDSWithTermId,
@@ -79,6 +78,8 @@ class GraphBuilder {
                         sPos = i,
                     )
                 }
+
+                Timber.d("common prefix tango:$str $tangoList")
 
                 if (graph[i + yomiStr.length].isEmpty()) {
                     graph[i + yomiStr.length] = mutableListOf()
