@@ -481,8 +481,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     lastFlickConvertedNextHiragana = true
                     isContinuousTapInputEnabled = true
                     val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-                    val afterText = getTextAfterCursor(extractedText.length, 0) ?: return
-                    if (afterText.isEmpty()) return
+                    getTextAfterCursor(extractedText.length, 0) ?: return
                     scope.launch {
                         while (isActive) {
                             actionInRightKeyPressed()
@@ -593,6 +592,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter.let {
             it.suggestions = suggestions
             mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
+            mainView.suggestionRecyclerView.scrollToPosition(0)
         }
     }
 
@@ -1133,8 +1133,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             onLeftKeyLongPressUp = false
             suggestionClickNum = 0
             val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            val beforeText = getTextBeforeCursor(extractedText.length, 0) ?: return
-            if (beforeText.isEmpty()) return
+            getTextBeforeCursor(extractedText.length, 0) ?: return
             scope.launch {
                 while (isActive) {
                     if (_inputString.value.isNotEmpty()) {
@@ -1171,8 +1170,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
             val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            val afterText = getTextAfterCursor(extractedText.length, 0) ?: return
-            if (afterText.isEmpty()) return
+            getTextAfterCursor(extractedText.length, 0) ?: return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
             val dropString = stringInTail.first()
