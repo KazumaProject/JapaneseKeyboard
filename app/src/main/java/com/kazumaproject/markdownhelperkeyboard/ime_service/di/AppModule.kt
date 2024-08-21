@@ -48,11 +48,6 @@ object AppModule {
     @Provides
     fun provideSuggestionAdapter(): SuggestionAdapter = SuggestionAdapter()
 
-    @IoDispatcher
-    @Singleton
-    @Provides
-    fun providesIoDispatcher(): CoroutineDispatcher = Dispatchers.IO
-
     @MainDispatcher
     @Singleton
     @Provides
