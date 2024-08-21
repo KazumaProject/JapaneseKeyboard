@@ -363,10 +363,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 } else {
                     handleEmptyInputEnterKey()
                 }
+                _suggestionFlag.update { !it }
             }
 
             Key.KeyDakutenSmall -> {
                 handleDakutenSmallLetterKey(sb)
+                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyCursorLeft -> {
@@ -375,17 +377,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
                     _suggestionList.value = emptyList()
                 }
+                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyCursorRight -> {
                 actionInRightKeyPressed()
                 onRightKeyLongPressUp = true
+                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyDelete -> {
                 handleDeleteKeyTap()
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
+                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyInputMode -> {
@@ -393,6 +398,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
                 _inputString.update { EMPTY_STRING }
                 resetFlagsSwitchMode()
+                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyPreviousChar -> {
@@ -412,10 +418,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeySpace -> {
                 handleSpaceKeyClick()
+                _suggestionFlag.update { !it }
             }
 
             Key.SideKeySymbol -> {
                 resetFlagsLanguageModeClick()
+                _suggestionFlag.update { !it }
             }
 
             else -> {
@@ -438,6 +446,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         )
                     }
                 }
+                _suggestionFlag.update { !it }
             }
         }
     }
@@ -561,7 +570,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            _suggestionFlag.update { !it }
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
