@@ -52,10 +52,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableOpenBrack
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.InputBackGroundDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.IoDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.SuggestionDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
@@ -101,14 +99,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     @IoDispatcher
     lateinit var ioDispatcher: CoroutineDispatcher
-
-    @Inject
-    @InputBackGroundDispatcher
-    lateinit var imeIoDispatcher: CoroutineDispatcher
-
-    @Inject
-    @SuggestionDispatcher
-    lateinit var suggestionDispatcher: CoroutineDispatcher
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -333,7 +323,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 sb = sb,
                                 isFlick = false
                             )
-                            _suggestionFlag.update { flag -> !flag }
                         }
 
                         else -> {
@@ -344,7 +333,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 sb = sb,
                                 isFlick = true
                             )
-                            _suggestionFlag.update { flag -> !flag }
                         }
                     }
                 }
@@ -383,30 +371,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyCursorLeft -> {
                 handleLeftKeyPress()
-                scope.launch {
-                    onLeftKeyLongPressUp = true
-                    delay(100)
-                    onLeftKeyLongPressUp = false
-                    if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
-                        _suggestionList.value = emptyList()
-                    }
+                onLeftKeyLongPressUp = true
+                if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
+                    _suggestionList.value = emptyList()
                 }
             }
 
             Key.SideKeyCursorRight -> {
                 actionInRightKeyPressed()
-                scope.launch {
-                    onRightKeyLongPressUp = true
-                    delay(100)
-                    onRightKeyLongPressUp = false
-                }
+                onRightKeyLongPressUp = true
             }
 
             Key.SideKeyDelete -> {
                 handleDeleteKeyTap()
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
-                _suggestionFlag.update { flag -> !flag }
             }
 
             Key.SideKeyInputMode -> {
@@ -440,7 +419,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             else -> {
-                if (isFlick){
+                if (isFlick) {
                     char?.let {
                         sendCharFlick(
                             charToSend = it,
@@ -450,7 +429,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                     isContinuousTapInputEnabled = true
                     lastFlickConvertedNextHiragana = true
-                }else{
+                } else {
                     char?.let {
                         sendCharTap(
                             charToSend = it,
@@ -475,24 +454,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeyCursorRight -> {
-                if (!isHenkan) {
-                    onRightKeyLongPressUp = false
-                    suggestionClickNum = 0
-                    lastFlickConvertedNextHiragana = true
-                    isContinuousTapInputEnabled = true
-                    val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-                    getTextAfterCursor(extractedText.length, 0) ?: return
-                    scope.launch {
-                        while (isActive) {
-                            actionInRightKeyPressed()
-                            _suggestionFlag.update { !it }
-                            delay(LONG_DELAY_TIME)
-                            if (onRightKeyLongPressUp) return@launch
-                        }
-                    }
-                } else {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                }
+                handleRightLongPress()
             }
 
             Key.SideKeyDelete -> {
@@ -599,6 +561,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
+            _suggestionFlag.update { !it }
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
@@ -880,7 +843,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setComposingText(spannableString, 1)
     }
 
-    private fun setEnterKeyAction(listIterator: ListIterator<Candidate>) = scope.launch {
+    private fun setEnterKeyAction(listIterator: ListIterator<Candidate>) {
         _suggestionList.update { emptyList() }
         val nextSuggestion = listIterator.next()
         commitText(nextSuggestion.string, 1)
@@ -944,9 +907,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         updateSuggestionUI(mainView)
         val candidates = getSuggestionList()
         _suggestionList.update {
-            if (stringInTail.isNotEmpty()){
+            if (stringInTail.isNotEmpty()) {
                 candidates.filter { it.length.toInt() == _inputString.value.length }
-            }else{
+            } else {
                 candidates
             }
         }
@@ -957,12 +920,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return@async kanaKanjiEngine.getCandidates(queryText, N_BEST)
     }.await()
 
-    private fun deleteLongPress() = scope.launch {
+    private fun deleteLongPress() = CoroutineScope(mainDispatcher).launch {
         while (isActive) {
+            if (_inputString.value.isEmpty() && stringInTail.isNotEmpty()) {
+                enableContinuousTapInput()
+                return@launch
+            }
+            if (onDeleteLongPressUp) {
+                enableContinuousTapInput()
+                return@launch
+            }
             if (_inputString.value.isNotEmpty()) {
                 if (_inputString.value.length == 1) {
                     _inputString.update { EMPTY_STRING }
-                    _suggestionList.update { emptyList() }
                     if (stringInTail.isEmpty()) setComposingText("", 0)
                 } else {
                     _inputString.update { it.dropLast(1) }
@@ -972,17 +942,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 }
             }
-
-            if (_inputString.value.isEmpty() && stringInTail.isNotEmpty()) {
-                enableContinuousTapInput()
-                return@launch
-            }
-            _suggestionFlag.update { flag -> !flag }
             delay(LONG_DELAY_TIME)
-            if (onDeleteLongPressUp) {
-                enableContinuousTapInput()
-                return@launch
-            }
         }
     }
 
@@ -1134,21 +1094,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionClickNum = 0
             val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
             getTextBeforeCursor(extractedText.length, 0) ?: return
-            scope.launch {
-                while (isActive) {
-                    if (_inputString.value.isNotEmpty()) {
-                        updateLeftInputString()
-                    } else {
-                        if (stringInTail.isEmpty()) {
-                            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
-                        }
-                        _suggestionList.update { emptyList() }
-                    }
-                    _suggestionFlag.update { flag -> !flag }
-                    delay(LONG_DELAY_TIME)
-                    if (onLeftKeyLongPressUp) return@launch
+            asyncLeftLongPress()
+        }
+    }
+
+    private fun asyncLeftLongPress() = CoroutineScope(mainDispatcher).launch {
+        while (isActive) {
+            if (onLeftKeyLongPressUp) return@launch
+            if (_inputString.value.isNotEmpty()) {
+                updateLeftInputString()
+            } else {
+                if (stringInTail.isEmpty()) {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
                 }
             }
+            delay(LONG_DELAY_TIME)
+        }
+    }
+
+    private fun handleRightLongPress() {
+        if (!isHenkan) {
+            onRightKeyLongPressUp = false
+            suggestionClickNum = 0
+            lastFlickConvertedNextHiragana = true
+            isContinuousTapInputEnabled = true
+            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
+            getTextAfterCursor(extractedText.length, 0) ?: return
+            asyncRightLongPress()
+        } else {
+            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+        }
+    }
+
+    private fun asyncRightLongPress() = CoroutineScope(mainDispatcher).launch {
+        while (isActive) {
+            if (onRightKeyLongPressUp) return@launch
+            actionInRightKeyPressed()
+            delay(LONG_DELAY_TIME)
         }
     }
 
@@ -1170,7 +1152,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
             val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            getTextAfterCursor(extractedText.length, 0) ?: return
+            val afterText = getTextAfterCursor(extractedText.length, 0) ?: return
+            if (afterText.isEmpty()) return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
             val dropString = stringInTail.first()
@@ -1225,7 +1208,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (stringInTail.isEmpty()) setComposingText("", 0)
             }
         }
-        _suggestionFlag.update { flag -> !flag }
     }
 
     private fun setCurrentInputCharacterContinuous(
@@ -1448,7 +1430,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _inputString.value = EMPTY_STRING
     }
 
-    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) = scope.launch {
+    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) {
         val nextSuggestion = listIterator.next()
         val candidateType = nextSuggestion.type.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
@@ -1467,31 +1449,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             )
         }
         setComposingText(spannableString2, 1)
-        _suggestionFlag.update { flag -> !flag }
     }
 
-    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) =
-        scope.launch {
-            val nextSuggestion = suggestions[0]
-            val candidateType = nextSuggestion.type.toInt()
-            if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
-                stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
-            }
-            val spannableString2 =
-                if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(
-                    nextSuggestion.string + stringInTail
-                )
-            spannableString2.apply {
-                setSpan(
-                    BackgroundColorSpan(getColor(R.color.orange)),
-                    0,
-                    nextSuggestion.string.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-            }
-            setComposingText(spannableString2, 1)
-            _suggestionFlag.update { flag -> !flag }
+    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) {
+        val nextSuggestion = suggestions[0]
+        val candidateType = nextSuggestion.type.toInt()
+        if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
+            stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
         }
+        val spannableString2 =
+            if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(
+                nextSuggestion.string + stringInTail
+            )
+        spannableString2.apply {
+            setSpan(
+                BackgroundColorSpan(getColor(R.color.orange)),
+                0,
+                nextSuggestion.string.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+        setComposingText(spannableString2, 1)
+    }
 
     private fun setNextReturnInputCharacter() {
         _dakutenPressed.value = true

@@ -35,10 +35,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
-import java.util.concurrent.Executors
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -50,11 +48,6 @@ object AppModule {
     @Provides
     fun provideSuggestionAdapter(): SuggestionAdapter = SuggestionAdapter()
 
-    @DefaultDispatcher
-    @Singleton
-    @Provides
-    fun providesDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
-
     @IoDispatcher
     @Singleton
     @Provides
@@ -64,16 +57,6 @@ object AppModule {
     @Singleton
     @Provides
     fun providesMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
-
-    @InputBackGroundDispatcher
-    @Singleton
-    @Provides
-    fun providesInputBackgroundDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
-
-    @SuggestionDispatcher
-    @Singleton
-    @Provides
-    fun providesSuggestionDispatcher(): CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
 
     @Singleton
     @Provides
