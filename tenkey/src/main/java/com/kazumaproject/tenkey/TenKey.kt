@@ -357,65 +357,92 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (event.pointerCount == 2) {
                         isLongPressed = false
                         val pointer = event.getPointerId(event.actionIndex)
-                        if (pressedKey.pointer != pointer) {
-                            val key = pressedKeyByMotionEvent(event, pointer)
-                            val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
-                            if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode == InputMode.ModeNumber) {
-                                keyDakutenSmall.setImageDrawable(
-                                    ContextCompat.getDrawable(
-                                        context,
-                                        R.drawable.number_small
-                                    )
+                        val key = pressedKeyByMotionEvent(event, pointer)
+                        val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
+                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode == InputMode.ModeNumber) {
+                            keyDakutenSmall.setImageDrawable(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.number_small
                                 )
-                            }
-                            val keyInfo =
-                                currentInputMode.next(tenKeyMap = tenKeyMap, key = pressedKey.key)
-                            if (keyInfo == TenKeyInfo.Null) {
-                                flickListener?.onFlick(
-                                    gestureType = gestureType2, key = pressedKey.key, char = null
-                                )
-                            } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
-                                when (gestureType2) {
-                                    GestureType.Null -> {}
-                                    GestureType.Tap -> flickListener?.onFlick(
+                            )
+                        }
+                        val keyInfo =
+                            currentInputMode.next(tenKeyMap = tenKeyMap, key = pressedKey.key)
+                        if (keyInfo == TenKeyInfo.Null) {
+                            flickListener?.onFlick(
+                                gestureType = gestureType2, key = pressedKey.key, char = null
+                            )
+                        } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                            when (gestureType2) {
+                                GestureType.Null -> {}
+                                GestureType.Tap -> {
+                                    flickListener?.onFlick(
                                         gestureType = gestureType2,
                                         key = pressedKey.key,
                                         char = keyInfo.tap,
                                     )
+                                    val button = getButtonFromKey(pressedKey.key)
+                                    button?.let {
+                                        if (it is AppCompatButton) {
+                                            if (it == sideKeySymbol) return false
+                                            when (currentInputMode) {
+                                                InputMode.ModeJapanese -> {
+                                                    it.setTenKeyTextJapanese(it.id)
+                                                }
 
-                                    GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
-                                        setFlickActionPointerDown(keyInfo, gestureType2)
+                                                InputMode.ModeEnglish -> {
+                                                    it.setTenKeyTextEnglish(it.id)
+                                                }
+
+                                                InputMode.ModeNumber -> {
+                                                    it.setTenKeyTextNumber(it.id)
+                                                }
+                                            }
+                                        }
+                                        if (it is AppCompatImageButton && currentInputMode == InputMode.ModeNumber && it == keyDakutenSmall) {
+                                            it.setImageDrawable(
+                                                ContextCompat.getDrawable(
+                                                    context,
+                                                    R.drawable.number_small
+                                                )
+                                            )
+                                        }
                                     }
                                 }
-                            }
-                            Log.d(
-                                "Touch Listener",
-                                "ACTION_POINTER_DOWN sendChar called: $pressedKey $gestureType2"
-                            )
-                            pressedKey = pressedKey.copy(
-                                key = key,
-                                pointer = pointer,
-                                initialX = if (pointer == 0) event.getRawX(0) else event.getRawX(1),
-                                initialY = if (pointer == 0) event.getRawY(0) else event.getRawY(1),
-                            )
-                            setKeyPressed()
-                            longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                                delay(ViewConfiguration.getLongPressTimeout().toLong())
-                                if (pressedKey.key != Key.NotSelected) {
-                                    longPressListener?.onLongPress(pressedKey.key)
-                                    isLongPressed = true
-                                    onLongPressed()
+
+                                GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
+                                    setFlickActionPointerDown(keyInfo, gestureType2)
                                 }
                             }
-                            Log.d(
-                                "Touch Listener",
-                                "ACTION_POINTER_DOWN called: $pressedKey ${
-                                    event.getPointerId(
-                                        event.actionIndex
-                                    )
-                                }"
-                            )
                         }
+                        Log.d(
+                            "Touch Listener",
+                            "ACTION_POINTER_DOWN sendChar called: $pressedKey $gestureType2"
+                        )
+                        pressedKey = pressedKey.copy(
+                            key = key,
+                            pointer = pointer,
+                            initialX = if (pointer == 0) event.getRawX(0) else event.getRawX(1),
+                            initialY = if (pointer == 0) event.getRawY(0) else event.getRawY(1),
+                        )
+                        setKeyPressed()
+                        longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                            delay(ViewConfiguration.getLongPressTimeout().toLong())
+                            if (pressedKey.key != Key.NotSelected) {
+                                longPressListener?.onLongPress(pressedKey.key)
+                                isLongPressed = true
+                                onLongPressed()
+                            }
+                        }
+                        Log.d(
+                            "Touch Listener",
+                            "ACTION_POINTER_DOWN called: $pressedKey ${
+                                event.getPointerId(
+                                    event.actionIndex
+                                )
+                            }"
+                        )
                     }
 
                     return false
@@ -474,6 +501,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             button?.let {
                                 if (it is AppCompatButton) {
                                     if (it == sideKeySymbol) return false
+                                    it.isPressed = false
                                     when (currentInputMode) {
                                         InputMode.ModeJapanese -> {
                                             it.setTenKeyTextJapanese(it.id)
@@ -1156,7 +1184,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyNA.setTenKeyTextJapanese(keyNA.id)
         keyHA.setTenKeyTextJapanese(keyHA.id)
         keyMA.setTenKeyTextJapanese(keyMA.id)
-        keyYA.setTenKeyTextJapanese(keyHA.id)
+        keyYA.setTenKeyTextJapanese(keyA.id)
         keyRA.setTenKeyTextJapanese(keyRA.id)
         keyWA.setTenKeyTextJapanese(keyWA.id)
         keyKutouten.setTenKeyTextJapanese(keyKutouten.id)
@@ -1171,7 +1199,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyNA.setTenKeyTextEnglish(keyNA.id)
         keyHA.setTenKeyTextEnglish(keyHA.id)
         keyMA.setTenKeyTextEnglish(keyMA.id)
-        keyYA.setTenKeyTextEnglish(keyHA.id)
+        keyYA.setTenKeyTextEnglish(keyYA.id)
         keyRA.setTenKeyTextEnglish(keyRA.id)
         keyWA.setTenKeyTextEnglish(keyWA.id)
         keyKutouten.setTenKeyTextEnglish(keyKutouten.id)
@@ -1186,7 +1214,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyNA.setTenKeyTextNumber(keyNA.id)
         keyHA.setTenKeyTextNumber(keyHA.id)
         keyMA.setTenKeyTextNumber(keyMA.id)
-        keyYA.setTenKeyTextNumber(keyHA.id)
+        keyYA.setTenKeyTextNumber(keyYA.id)
         keyRA.setTenKeyTextNumber(keyRA.id)
         keyWA.setTenKeyTextNumber(keyWA.id)
         keyKutouten.setTenKeyTextNumber(keyKutouten.id)
