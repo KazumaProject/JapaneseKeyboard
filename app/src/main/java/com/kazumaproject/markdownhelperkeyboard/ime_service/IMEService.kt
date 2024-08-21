@@ -52,7 +52,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableOpenBrack
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.IoDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
@@ -70,6 +69,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
@@ -79,7 +79,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
@@ -95,10 +94,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     @MainDispatcher
     lateinit var mainDispatcher: CoroutineDispatcher
-
-    @Inject
-    @IoDispatcher
-    lateinit var ioDispatcher: CoroutineDispatcher
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -355,6 +350,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isFlick: Boolean
     ) {
         setVibrate()
+        _suggestionFlag.update { !it }
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
@@ -363,12 +359,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 } else {
                     handleEmptyInputEnterKey()
                 }
-                _suggestionFlag.update { !it }
             }
 
             Key.KeyDakutenSmall -> {
                 handleDakutenSmallLetterKey(sb)
-                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyCursorLeft -> {
@@ -377,20 +371,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
                     _suggestionList.value = emptyList()
                 }
-                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyCursorRight -> {
                 actionInRightKeyPressed()
                 onRightKeyLongPressUp = true
-                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyDelete -> {
                 handleDeleteKeyTap()
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
-                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyInputMode -> {
@@ -398,7 +389,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
                 _inputString.update { EMPTY_STRING }
                 resetFlagsSwitchMode()
-                _suggestionFlag.update { !it }
             }
 
             Key.SideKeyPreviousChar -> {
@@ -410,7 +400,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                         else -> {
                             setNextReturnInputCharacter()
-                            _suggestionFlag.update { flag -> !flag }
                         }
                     }
                 }
@@ -418,12 +407,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeySpace -> {
                 handleSpaceKeyClick()
-                _suggestionFlag.update { !it }
             }
 
             Key.SideKeySymbol -> {
                 resetFlagsLanguageModeClick()
-                _suggestionFlag.update { !it }
             }
 
             else -> {
@@ -446,7 +433,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         )
                     }
                 }
-                _suggestionFlag.update { !it }
             }
         }
     }
@@ -489,7 +475,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             launch {
                 _suggestionFlag.asStateFlow().collectLatest {
                     setSuggestionOnView(mainView)
-                    mainView.keyboardView.isVisible = true
                 }
             }
 
@@ -862,7 +847,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetFlagsEnterKey()
     }
 
-    private suspend fun setTenkeyIconsEmptyInputString() = withContext(mainDispatcher) {
+    private fun setTenkeyIconsEmptyInputString() {
         mainLayoutBinding?.keyboardView?.apply {
             setSideKeyEnterDrawable(drawableRightArrow)
             setSideKeySpaceDrawable(drawableSpaceBar)
@@ -878,33 +863,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun updateSuggestionUI(mainView: MainLayoutBinding) =
-        withContext(mainDispatcher) {
-            mainView.keyboardView.apply {
-                setSideKeyEnterDrawable(drawableReturn)
-                when (currentInputMode) {
-                    InputMode.ModeJapanese -> {
-                        setBackgroundSmallLetterKey(drawableKanaSmall)
-                        setSideKeySpaceDrawable(drawableHenkan)
-                    }
+    private fun updateSuggestionUI(mainView: MainLayoutBinding) {
+        mainView.keyboardView.apply {
+            setSideKeyEnterDrawable(drawableReturn)
+            when (currentInputMode) {
+                InputMode.ModeJapanese -> {
+                    setBackgroundSmallLetterKey(drawableKanaSmall)
+                    setSideKeySpaceDrawable(drawableHenkan)
+                }
 
-                    InputMode.ModeEnglish -> {
-                        setBackgroundSmallLetterKey(drawableEnglishSmall)
-                    }
+                InputMode.ModeEnglish -> {
+                    setBackgroundSmallLetterKey(drawableEnglishSmall)
+                }
 
-                    InputMode.ModeNumber -> {
-                        /** empty body **/
-                    }
+                InputMode.ModeNumber -> {
+                    /** empty body **/
                 }
             }
-
         }
+    }
 
     private suspend fun setSuggestionOnView(
         mainView: MainLayoutBinding,
     ) {
         when {
-            _inputString.value.isNotBlank() -> {
+            _inputString.value.isNotEmpty() -> {
                 if (suggestionClickNum != 0) return
                 setCandidates(mainView)
             }
@@ -912,18 +895,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setCandidates(mainView: MainLayoutBinding) {
-        updateSuggestionUI(mainView)
         val candidates = getSuggestionList()
-        _suggestionList.update {
-            if (stringInTail.isNotEmpty()) {
-                candidates.filter { it.length.toInt() == _inputString.value.length }
-            } else {
-                candidates
-            }
+        val filteredCandidates = if (stringInTail.isNotEmpty()) {
+            candidates.filter { it.length.toInt() == _inputString.value.length }
+        } else {
+            candidates
         }
+        _suggestionList.update {
+            filteredCandidates
+        }
+        updateSuggestionUI(mainView)
     }
 
-    private suspend fun getSuggestionList() = CoroutineScope(ioDispatcher).async {
+    private suspend fun getSuggestionList() = CoroutineScope(Dispatchers.Default).async {
         val queryText = _inputString.value
         return@async kanaKanjiEngine.getCandidates(queryText, N_BEST)
     }.await()
@@ -932,6 +916,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         while (isActive) {
             if (_inputString.value.isEmpty() && stringInTail.isNotEmpty()) {
                 enableContinuousTapInput()
+                _suggestionList.update { emptyList() }
                 return@launch
             }
             if (onDeleteLongPressUp) {
@@ -1023,6 +1008,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
+            if (stringInTail.isNotEmpty()) return
             setSpaceKeyActionEnglishAndNumberEmpty()
         }
         resetFlagsKeySpace()
@@ -1137,6 +1123,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun asyncRightLongPress() = CoroutineScope(mainDispatcher).launch {
         while (isActive) {
             if (onRightKeyLongPressUp) return@launch
+            if (stringInTail.isEmpty() && _inputString.value.isNotEmpty()) return@launch
             actionInRightKeyPressed()
             delay(LONG_DELAY_TIME)
         }
