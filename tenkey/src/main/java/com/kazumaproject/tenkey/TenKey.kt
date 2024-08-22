@@ -1184,7 +1184,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyNA.setTenKeyTextJapanese(keyNA.id)
         keyHA.setTenKeyTextJapanese(keyHA.id)
         keyMA.setTenKeyTextJapanese(keyMA.id)
-        keyYA.setTenKeyTextJapanese(keyA.id)
+        keyYA.setTenKeyTextJapanese(keyYA.id)
         keyRA.setTenKeyTextJapanese(keyRA.id)
         keyWA.setTenKeyTextJapanese(keyWA.id)
         keyKutouten.setTenKeyTextJapanese(keyKutouten.id)

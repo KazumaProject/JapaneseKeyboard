@@ -70,15 +70,17 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
@@ -350,7 +352,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isFlick: Boolean
     ) {
         setVibrate()
-        _suggestionFlag.update { !it }
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
@@ -473,9 +474,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) = scope.launch {
         mainLayoutBinding?.let { mainView ->
             launch {
-                _suggestionFlag.asStateFlow().collectLatest {
-                    setSuggestionOnView(mainView)
-                }
+                _suggestionFlag.asStateFlow()
+                    .buffer()
+                    .collectLatest {
+                        withTimeoutOrNull(500) {
+                            setSuggestionOnView(mainView)
+                        }
+                    }
             }
 
             launch {
@@ -491,9 +496,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             launch {
-                _inputString.asStateFlow().collectLatest { inputString ->
-                    processInputString(inputString)
-                }
+                _inputString.asStateFlow()
+                    .buffer()
+                    .collectLatest { inputString ->
+                        processInputString(inputString)
+                    }
             }
         }
     }
@@ -555,6 +562,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
+            _suggestionFlag.update { !it }
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
@@ -907,10 +915,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         updateSuggestionUI(mainView)
     }
 
-    private suspend fun getSuggestionList() = CoroutineScope(Dispatchers.Default).async {
+    private val suggestionCache = mutableMapOf<String, List<Candidate>>()
+
+    private suspend fun getSuggestionList(): List<Candidate> {
         val queryText = _inputString.value
-        return@async kanaKanjiEngine.getCandidates(queryText, N_BEST)
-    }.await()
+        return suggestionCache.getOrPut(queryText) {
+            withContext(Dispatchers.IO) {
+                kanaKanjiEngine.getCandidates(queryText, N_BEST)
+            }
+        }
+    }
 
     private fun deleteLongPress() = CoroutineScope(mainDispatcher).launch {
         while (isActive) {
@@ -1098,6 +1112,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (_inputString.value.isNotEmpty()) {
                 updateLeftInputString()
             } else {
+                _suggestionList.update { emptyList() }
                 if (stringInTail.isEmpty()) {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
                 }
