@@ -225,8 +225,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
-        mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
+        mainLayoutBinding?.keyboardView?.apply {
+            isVisible = true
+        }
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
     }
 
@@ -477,7 +479,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 _suggestionFlag.asStateFlow()
                     .buffer()
                     .collectLatest {
-                        withTimeoutOrNull(500) {
+                        withTimeoutOrNull(400L){
                             setSuggestionOnView(mainView)
                         }
                     }

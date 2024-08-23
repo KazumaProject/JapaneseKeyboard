@@ -211,7 +211,7 @@ class KanaKanjiEngine {
                 rank0Array = systemRank0ArrayLBSYomi,
                 rank1Array = systemRank1ArrayLBSYomi
             ).filter {
-                if (input.length <= 3) it.length <= input.length + 1 else it.length > input.length
+                if (input.length <= 2) it.length <= input.length + 1 else if (input.length == 3) it.length <= input.length + 2  else it.length > input.length
             }
         }
 
