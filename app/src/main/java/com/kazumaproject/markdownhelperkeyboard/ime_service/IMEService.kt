@@ -1103,12 +1103,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             onLeftKeyLongPressUp = false
             suggestionClickNum = 0
             val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            getTextBeforeCursor(extractedText.length, 0) ?: return
+            val cursorBeforeText = getTextBeforeCursor(extractedText.length, 0) ?: return
+            if (cursorBeforeText.isEmpty()) return
             asyncLeftLongPress()
         }
     }
 
     private fun asyncLeftLongPress() = CoroutineScope(mainDispatcher).launch {
+        println("left long pressed: ")
         while (isActive) {
             if (onLeftKeyLongPressUp) return@launch
             if (_inputString.value.isNotEmpty()) {
