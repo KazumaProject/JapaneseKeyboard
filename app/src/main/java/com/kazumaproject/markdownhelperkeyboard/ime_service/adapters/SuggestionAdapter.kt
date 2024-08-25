@@ -39,8 +39,8 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         set(value) = differ.submitList(value)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionViewHolder {
-        val itemView = LayoutInflater.from(parent.context)
-            .inflate(R.layout.suggestion_item, parent, false)
+        val itemView =
+            LayoutInflater.from(parent.context).inflate(R.layout.suggestion_item, parent, false)
         return SuggestionViewHolder(itemView)
     }
 
@@ -50,10 +50,9 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
-        if (position == 0) holder.text.text = suggestion.string
-            .padStart(suggestion.string.length + 9).plus(" ".repeat(9))
-        else holder.text.text = suggestion.string
-            .padStart(suggestion.string.length + 3).plus(" ".repeat(3))
+        val paddingLength = if (position == 0) 9 else 3
+        holder.text.text = suggestion.string.padStart(suggestion.string.length + paddingLength)
+            .plus(" ".repeat(paddingLength))
         holder.typeText.text = when (suggestion.type) {
             (9).toByte() -> "[予測]"
             (5).toByte() -> "[部分]"
