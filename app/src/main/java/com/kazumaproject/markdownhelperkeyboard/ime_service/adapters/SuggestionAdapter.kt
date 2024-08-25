@@ -10,7 +10,7 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 
-class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>(){
+class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>() {
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
@@ -51,19 +51,14 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
         if (position == 0) holder.text.text = suggestion.string
-            .padStart(suggestion.string.length + 4).plus(" ".repeat(4))
+            .padStart(suggestion.string.length + 9).plus(" ".repeat(9))
         else holder.text.text = suggestion.string
+            .padStart(suggestion.string.length + 3).plus(" ".repeat(3))
         holder.typeText.text = when (suggestion.type) {
-            (1).toByte()-> "   "
-            (2).toByte() -> "   "
-            (8).toByte() -> "   "
             (9).toByte() -> "[予測]"
-            (3).toByte() -> "   "
-            (4).toByte() -> "   "
             (5).toByte() -> "[部分]"
-            (6).toByte() -> "   "
             (7).toByte() -> "[単]"
-            else -> ""
+            else -> " ".repeat(2)
         }
 
         holder.itemView.setOnClickListener {
