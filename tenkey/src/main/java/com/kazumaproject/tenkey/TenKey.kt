@@ -141,6 +141,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         tenKeyMap = TenKeyMap()
         setBackgroundSmallLetterKey()
         this.setOnTouchListener(this)
+        this.focusable = View.NOT_FOCUSABLE
     }
 
     private fun declareKeys() {
