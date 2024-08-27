@@ -8,8 +8,9 @@ import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import com.kazumaproject.viterbi.FindPath
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 
 class KanaKanjiEngine {
 
@@ -119,7 +120,7 @@ class KanaKanjiEngine {
     suspend fun getCandidates(
         input: String,
         n: Int
-    ): List<Candidate> = coroutineScope {
+    ): List<Candidate> = withContext(Dispatchers.Unconfined) {
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -191,7 +192,7 @@ class KanaKanjiEngine {
                 }.distinctBy { it.string }.toList()
             }
 
-            return@coroutineScope (resultNBestFinalDeferred +
+            return@withContext (resultNBestFinalDeferred +
                     hirakanaAndKana +
                     singleKanjiListDeferred.await()).distinctBy { it.string }
         }
@@ -369,7 +370,7 @@ class KanaKanjiEngine {
                 }
             }.distinctBy { it.string }.toList()
         }
-        return@coroutineScope (resultNBestFinalDeferred +
+        return@withContext (resultNBestFinalDeferred +
                 predictiveSearchResultDeferred.await() +
                 secondPartDeferred.await().sortedBy { it.score }
                     .filter { it.score - resultNBestFinalDeferred.first().score < 4000 } +
