@@ -653,6 +653,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
                 itemAnimator = null
+                focusable = View.NOT_FOCUSABLE
                 suggestionAdapter.let { sugAdapter ->
                     adapter = sugAdapter
                     layoutManager = flexboxLayoutManager.apply {
@@ -917,14 +918,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         updateSuggestionUI(mainView)
     }
 
-    private val suggestionCache = mutableMapOf<String, List<Candidate>>()
-
     private suspend fun getSuggestionList(): List<Candidate> {
         val queryText = _inputString.value
-        return suggestionCache.getOrPut(queryText) {
-            withContext(Dispatchers.IO) {
-                kanaKanjiEngine.getCandidates(queryText, N_BEST)
-            }
+        return withContext(Dispatchers.IO) {
+            kanaKanjiEngine.getCandidates(queryText, N_BEST)
         }
     }
 
@@ -963,11 +960,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setEnterKeyPress() {
         setVibrate()
         when (currentInputType) {
-
             InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine -> {
                 commitText("\n", 1)
             }
-
             InputTypeForIME.None, InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextUri, InputTypeForIME.TextPostalAddress, InputTypeForIME.TextEmailAddress, InputTypeForIME.TextWebEmailAddress, InputTypeForIME.TextPassword, InputTypeForIME.TextVisiblePassword, InputTypeForIME.TextWebPassword, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextNotCursorUpdate, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextEditTextInBookingTDBank -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
