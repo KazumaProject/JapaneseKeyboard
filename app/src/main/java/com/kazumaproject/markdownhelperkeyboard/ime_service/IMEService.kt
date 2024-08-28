@@ -69,7 +69,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,7 +78,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
@@ -479,7 +477,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 _suggestionFlag.asStateFlow()
                     .buffer()
                     .collectLatest {
-                        withTimeoutOrNull(400L){
+                        withTimeoutOrNull(400L) {
                             setSuggestionOnView(mainView)
                         }
                     }
@@ -492,7 +490,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             launch {
-                _suggestionList.asStateFlow().collectLatest { suggestions ->
+                _suggestionList.asStateFlow().buffer().collectLatest { suggestions ->
                     updateSuggestionList(mainView, suggestions)
                 }
             }
@@ -920,9 +918,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private suspend fun getSuggestionList(): List<Candidate> {
         val queryText = _inputString.value
-        return withContext(Dispatchers.IO) {
-            kanaKanjiEngine.getCandidates(queryText, N_BEST)
-        }
+        return kanaKanjiEngine.getCandidates(queryText, N_BEST)
     }
 
     private fun deleteLongPress() = CoroutineScope(mainDispatcher).launch {
@@ -963,6 +959,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine -> {
                 commitText("\n", 1)
             }
+
             InputTypeForIME.None, InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextUri, InputTypeForIME.TextPostalAddress, InputTypeForIME.TextEmailAddress, InputTypeForIME.TextWebEmailAddress, InputTypeForIME.TextPassword, InputTypeForIME.TextVisiblePassword, InputTypeForIME.TextWebPassword, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextNotCursorUpdate, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextEditTextInBookingTDBank -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
