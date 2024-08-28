@@ -69,6 +69,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,7 +79,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
@@ -477,9 +477,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 _suggestionFlag.asStateFlow()
                     .buffer()
                     .collectLatest {
-                        withTimeoutOrNull(400L) {
-                            setSuggestionOnView(mainView)
-                        }
+                        setSuggestionOnView(mainView)
                     }
             }
 
@@ -921,7 +919,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return kanaKanjiEngine.getCandidates(queryText, N_BEST)
     }
 
-    private fun deleteLongPress() = CoroutineScope(mainDispatcher).launch {
+    private fun deleteLongPress() = CoroutineScope(Dispatchers.IO).launch {
         while (isActive) {
             if (_inputString.value.isEmpty() && stringInTail.isNotEmpty()) {
                 enableContinuousTapInput()
@@ -1101,7 +1099,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncLeftLongPress() = CoroutineScope(mainDispatcher).launch {
+    private fun asyncLeftLongPress() = CoroutineScope(Dispatchers.IO).launch {
         println("left long pressed: ")
         while (isActive) {
             if (onLeftKeyLongPressUp) return@launch
@@ -1131,7 +1129,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncRightLongPress() = CoroutineScope(mainDispatcher).launch {
+    private fun asyncRightLongPress() = CoroutineScope(Dispatchers.IO).launch {
         while (isActive) {
             if (onRightKeyLongPressUp) return@launch
             if (stringInTail.isEmpty() && _inputString.value.isNotEmpty()) return@launch
