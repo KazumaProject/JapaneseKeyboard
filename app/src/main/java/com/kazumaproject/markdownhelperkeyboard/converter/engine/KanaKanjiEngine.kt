@@ -120,7 +120,7 @@ class KanaKanjiEngine {
     suspend fun getCandidates(
         input: String,
         n: Int
-    ): List<Candidate> = withContext(Dispatchers.Unconfined) {
+    ): List<Candidate> = withContext(Dispatchers.Default) {
 
         val graph = graphBuilder.constructGraph(
             input,
