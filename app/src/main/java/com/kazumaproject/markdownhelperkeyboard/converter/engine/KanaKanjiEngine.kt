@@ -122,7 +122,7 @@ class KanaKanjiEngine {
         n: Int
     ): List<Candidate> = withContext(Dispatchers.Default) {
 
-        // Construct the graph asynchronously
+        // Construct the graph and find the best path concurrently
         val graphDeferred = async {
             graphBuilder.constructGraph(
                 input,
@@ -141,24 +141,22 @@ class KanaKanjiEngine {
             )
         }
 
-        // Find the best path using backwardAStar
-        val resultNBestFinalDeferred = async(Dispatchers.Default) {
+        val resultNBestFinalDeferred = async {
             findPath.backwardAStar(graphDeferred.await(), input.length, connectionIds, n, input)
         }
 
-        // Initial candidates from the input and its hira to kata conversion
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
         )
 
-        // Special case: Handle single character input
+        // Handle single character input
         if (input.length == 1) {
-            val singleKanjiListDeferred = async(Dispatchers.Default) {
+            val singleKanjiListDeferred = async {
                 singleKanjiYomiTrie.commonPrefixSearchShortArray(
-                    str = input,
-                    rank0Array = singleKanjiRank0ArrayLBSYomi,
-                    rank1Array = singleKanjiRank1ArrayLBSYomi
+                    input,
+                    singleKanjiRank0ArrayLBSYomi,
+                    singleKanjiRank1ArrayLBSYomi
                 ).asReversed().asSequence().flatMap { yomi ->
                     val termId = singleKanjiYomiTrie.getTermIdShortArray(
                         singleKanjiYomiTrie.getNodeIndex(
@@ -193,68 +191,64 @@ class KanaKanjiEngine {
                     }
                 }.distinctBy { it.string }.toList()
             }
-            // Combine final results for single-character input
             return@withContext (resultNBestFinalDeferred.await() + hirakanaAndKana + singleKanjiListDeferred.await()).distinctBy { it.string }
         }
 
-        // Async search for common prefixes
+        // Async search for common prefixes and predictive search
         val yomiPartOfDeferred = async {
             if (input.length > 16) emptyList() else systemYomiTrie.commonPrefixSearch(
-                str = input,
-                rank0Array = systemRank0ArrayLBSYomi,
-                rank1Array = systemRank1ArrayLBSYomi
+                input,
+                systemRank0ArrayLBSYomi,
+                systemRank1ArrayLBSYomi
             ).asReversed()
         }
 
-        // Predictive search
         val predictiveSearchResultDeferred = async {
             systemYomiTrie.predictiveSearch(
                 prefix = input,
-                rank0Array = systemRank0ArrayLBSYomi,
-                rank1Array = systemRank1ArrayLBSYomi
+                systemRank0ArrayLBSYomi,
+                systemRank1ArrayLBSYomi
             ).filter {
                 when (input.length) {
                     2 -> it.length <= input.length + 1
                     3 -> it.length <= input.length + 2
                     else -> it.length > input.length
                 }
-            }.sortedBy { it.length }
-                .flatMap { yomi ->
-                    val termId = systemYomiTrie.getTermId(
-                        systemYomiTrie.getNodeIndex(
-                            yomi,
-                            systemRank1ArrayLBSYomi,
-                            systemYomiLBSBooleanArray,
-                            systemYomiLBSPreprocess
-                        ),
-                        systemRank1ArrayIsLeaf
+            }.sortedBy { it.length }.flatMap { yomi ->
+                val termId = systemYomiTrie.getTermId(
+                    systemYomiTrie.getNodeIndex(
+                        yomi,
+                        systemRank1ArrayLBSYomi,
+                        systemYomiLBSBooleanArray,
+                        systemYomiLBSPreprocess
+                    ),
+                    systemRank1ArrayIsLeaf
+                )
+                systemTokenArray.getListDictionaryByYomiTermId(
+                    termId,
+                    systemRank0ArrayTokenArrayBitvector,
+                    systemRank1ArrayTokenArrayBitvector
+                ).sortedBy { it.wordCost }.map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> systemTangoTrie.getLetter(
+                                it.nodeId,
+                                systemRank0ArrayLBSTango,
+                                systemRank1ArrayLBSTango
+                            )
+                        },
+                        type = 9,
+                        length = yomi.length.toUByte(),
+                        score = it.wordCost.toInt(),
+                        leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
-                    systemTokenArray.getListDictionaryByYomiTermId(
-                        termId,
-                        systemRank0ArrayTokenArrayBitvector,
-                        systemRank1ArrayTokenArrayBitvector
-                    ).sortedBy { it.wordCost }.map {
-                        Candidate(
-                            string = when (it.nodeId) {
-                                -2 -> yomi
-                                -1 -> yomi.hiraToKata()
-                                else -> systemTangoTrie.getLetter(
-                                    it.nodeId,
-                                    systemRank0ArrayLBSTango,
-                                    systemRank1ArrayLBSTango
-                                )
-                            },
-                            type = 9,
-                            length = yomi.length.toUByte(),
-                            score = it.wordCost.toInt(),
-                            leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
-                            rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                        )
-                    }.distinctBy { it.string }
-                }.take(8)
+                }.distinctBy { it.string }
+            }.take(8)
         }
 
-        // Process common prefix results
         val yomiPartListDeferred = async {
             yomiPartOfDeferred.await().asSequence().flatMap { yomi ->
                 val termId = systemYomiTrie.getTermId(
@@ -291,7 +285,7 @@ class KanaKanjiEngine {
             }.toList()
         }
 
-        // Final combination of results
+        // Final combination of results, applying distinctBy only once
         return@withContext (resultNBestFinalDeferred.await() + hirakanaAndKana + predictiveSearchResultDeferred.await() + yomiPartListDeferred.await())
             .distinctBy { it.string }
     }
