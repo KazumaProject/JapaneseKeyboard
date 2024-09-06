@@ -138,6 +138,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         View.inflate(context, R.layout.keyboard_layout, this)
         declareKeys()
         declarePopupWindows()
+        initialKeys()
         tenKeyMap = TenKeyMap()
         setBackgroundSmallLetterKey()
         this.setOnTouchListener(this)
@@ -212,6 +213,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         popTextBottom = mPopWindowBottom.contentView.findViewById(R.id.popup_text)
         bubbleViewCenter = mPopWindowCenter.contentView.findViewById(R.id.bubble_layout)
         popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
+    }
+
+    fun initialKeys(){
+        keyKutouten.setTenKeyTextJapanese(keyKutouten.id)
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent?): Boolean {
