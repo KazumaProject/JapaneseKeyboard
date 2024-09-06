@@ -7,9 +7,9 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.tenkey.R
 
-const val KEY_JAPANESE_SIZE = 20f
-const val KEY_ENGLISH_SIZE = 15f
-const val KEY_NUMBER_SIZE = 18f
+const val KEY_JAPANESE_SIZE = 22f
+const val KEY_ENGLISH_SIZE = 16f
+const val KEY_NUMBER_SIZE = 22f
 
 private val JP_KEY_LAYOUT_WITH_SPACE = listOf(
     "    あ    ", "    か    ", "    さ    ", "    た    ", "    な    ",
@@ -33,7 +33,7 @@ fun AppCompatButton.setTenKeyTextJapanese(
         R.id.key_8 -> context.getString(R.string.string_や)
         R.id.key_9 -> context.getString(R.string.string_ら)
         R.id.key_11 -> context.getString(R.string.string_わ)
-        R.id.key_12 -> getSpannableStringForKigouButtonJapanese(context.getString(R.string.string_ten_hatena))
+        R.id.key_12 -> getSpannableStringForKigouButtonJapanese()
         else -> ""
     }
 }
@@ -134,11 +134,16 @@ fun AppCompatButton.setTenKeyTextWhenTapNumber(
     }
 }
 
-private fun getSpannableStringForKigouButtonJapanese(str: String): SpannableString {
-    val spannable = SpannableString(str)
-    spannable.setSpan(RelativeSizeSpan(0.7f), 0, 1, 0)
-    spannable.setSpan(RelativeSizeSpan(0.5f), 1, 2, 0)
-    spannable.setSpan(RelativeSizeSpan(0.8f), 2, str.length, 0)
+// ?\n｡  ,  !\n…
+private fun getSpannableStringForKigouButtonJapanese(): SpannableString {
+    val spannable = SpannableString("？\n。 , !\n…")
+    spannable.setSpan(RelativeSizeSpan(0.6f), 0, 1, 0)
+    spannable.setSpan(RelativeSizeSpan(0.6f), 2, 3, 0)
+    spannable.setSpan(RelativeSizeSpan(0.6f), 4, 5, 0)
+    spannable.setSpan(RelativeSizeSpan(0.6f), 6, 7, 0)
+    spannable.setSpan(RelativeSizeSpan(0.8f), 8, 9, 0)
+    spannable.setSpan(RelativeSizeSpan(0.5f), 1 ,2, 0)
+    spannable.setSpan(CustomLineHeightSpan(15), 7, 8, 0)
     return spannable
 }
 
