@@ -57,7 +57,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (9).toByte() -> "[予測]"
             (5).toByte() -> "[部分]"
             (7).toByte() -> "[単]"
-            //(10).toByte() -> "[${suggestion.leftId} : ${suggestion.rightId} : ${suggestion.score}]"
+            (10).toByte() -> "[最長]"
             else -> " ".repeat(2)
         }
 

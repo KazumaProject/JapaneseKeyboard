@@ -7,7 +7,6 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import timber.log.Timber
-import kotlin.time.ExperimentalTime
 
 class GraphBuilder {
     fun constructGraph(
@@ -70,8 +69,8 @@ class GraphBuilder {
                         f = it.wordCost.toInt(),
                         g = it.wordCost.toInt(),
                         tango = when (it.nodeId) {
-                            -2 -> yomiStr
-                            -1 -> yomiStr.hiraToKata()
+                            -502 -> yomiStr
+                            -501 -> yomiStr.hiraToKata()
                             else -> tangoTrie.getLetter(it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango)
                         },
                         len = yomiStr.length.toShort(),
@@ -90,7 +89,6 @@ class GraphBuilder {
         return graph.toList()
     }
 
-    @OptIn(ExperimentalTime::class)
     fun constructGraphLongest(
         str: String,
         yomiTrie: LOUDSWithTermId,
