@@ -69,8 +69,8 @@ class GraphBuilder {
                         f = it.wordCost.toInt(),
                         g = it.wordCost.toInt(),
                         tango = when (it.nodeId) {
-                            -502 -> yomiStr
-                            -501 -> yomiStr.hiraToKata()
+                            -2 -> yomiStr
+                            -1 -> yomiStr.hiraToKata()
                             else -> tangoTrie.getLetter(it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango)
                         },
                         len = yomiStr.length.toShort(),
