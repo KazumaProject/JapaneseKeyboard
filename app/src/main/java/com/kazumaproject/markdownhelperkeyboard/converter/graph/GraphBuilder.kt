@@ -6,7 +6,6 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
-import timber.log.Timber
 
 class GraphBuilder {
     fun constructGraph(
@@ -50,7 +49,7 @@ class GraphBuilder {
                 if (isEmpty()) add(subStr)
             }
 
-            println("common prefix search: $commonPrefixSearch")
+            //println("common prefix search: $commonPrefixSearch")
 
             for (yomiStr in commonPrefixSearch) {
                 val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray,LBSBooleanArrayPreprocess)
@@ -62,6 +61,7 @@ class GraphBuilder {
                 )
 
                 val tangoList = listToken.map {
+                    //Timber.d("tangoList: ${it.nodeId} $yomiStr $nodeIndex $termId $listToken")
                     Node(
                         l = tokenArray.leftIds[it.posTableIndex.toInt()],
                         r = tokenArray.rightIds[it.posTableIndex.toInt()],
@@ -78,7 +78,7 @@ class GraphBuilder {
                     )
                 }
 
-                Timber.d("common prefix tango:$str $tangoList")
+                //Timber.d("common prefix tango:$str $tangoList $nodeIndex")
 
                 if (graph[i + yomiStr.length].isEmpty()) {
                     graph[i + yomiStr.length] = mutableListOf()
