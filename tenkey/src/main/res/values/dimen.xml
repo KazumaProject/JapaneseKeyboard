@@ -3,7 +3,7 @@
     <dimen name="keyboard_height">280dp</dimen>
     <dimen name="key_height">75dp</dimen>
     <dimen name="keyboard_side_boarder_height">290dp</dimen>
-    <dimen name="key_text_size">20sp</dimen>
+    <dimen name="key_text_size">16sp</dimen>
     <dimen name="key__number_text_size">20sp</dimen>
     <dimen name="key_text_land_size">16sp</dimen>
     <dimen name="key_margin_horizontal_size">1dp</dimen>
