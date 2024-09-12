@@ -27,7 +27,7 @@ class LOUDSWithTermId {
     var labels: CharArray = charArrayOf()
     val labelsTemp: MutableList<Char> = arrayListOf()
     var termIds: MutableList<Int> = arrayListOf()
-    var termIdsDiff: ShortArray = shortArrayOf()
+    var termIdsSaved: IntArray = intArrayOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
 
@@ -52,12 +52,12 @@ class LOUDSWithTermId {
         LBS: BitSet,
         labels: CharArray,
         isLeaf: BitSet,
-        termIdsList: ShortArray,
+        termIdsList: IntArray,
     ){
         this.LBS = LBS
         this.labels = labels
         this.isLeaf = isLeaf
-        this.termIdsDiff = termIdsList
+        this.termIdsSaved = termIdsList
     }
 
     fun convertListToBitSet(){
@@ -108,14 +108,9 @@ class LOUDSWithTermId {
         nodeIndex: Int,
         rank1Array: IntArray
     ): Int {
-        val firstNodeId: Int = isLeaf.rank1Common(nodeIndex,rank1Array) - 1
+        val firstNodeId: Int = isLeaf.rank1Common(nodeIndex, rank1Array) - 1
         if (firstNodeId < 0) return -1
-        val firstTermId: Int = if (termIdsDiff[firstNodeId].toInt() == 0){
-            firstNodeId + 1
-        }else{
-            firstNodeId + termIdsDiff[firstNodeId]
-        }
-        return firstTermId
+        return termIdsSaved[firstNodeId]
     }
 
     fun getTermIdShortArray(
@@ -124,11 +119,7 @@ class LOUDSWithTermId {
     ): Short {
         val firstNodeId: Int = isLeaf.rank1CommonShort(nodeIndex,rank1Array) - 1
         if (firstNodeId < 0) return -1
-        val firstTermId: Int = if (termIdsDiff[firstNodeId].toInt() == 0){
-            firstNodeId + 1
-        }else{
-            firstNodeId + termIdsDiff[firstNodeId]
-        }
+        val firstTermId: Int = termIdsSaved[firstNodeId]
         return firstTermId.toShort()
     }
 
@@ -366,13 +357,13 @@ class LOUDSWithTermId {
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
                 labels = (objectInput.readObject() as CharArray)
-                termIdsDiff = (objectInput.readObject() as ShortArray)
+                termIdsSaved = (objectInput.readObject() as IntArray)
                 close()
             }catch (e: Exception){
                 println(e.stackTraceToString())
             }
         }
-        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsDiff)
+        return LOUDSWithTermId(LBS, labels, isLeaf, termIdsSaved)
     }
 
 }

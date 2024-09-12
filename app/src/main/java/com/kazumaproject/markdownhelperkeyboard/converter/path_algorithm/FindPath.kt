@@ -53,7 +53,7 @@ class FindPath {
                             leftId =  node.first.next?.l,
                             rightId =  node.first.next?.r
                         )
-                        println("candidate: ${candidate.string} $input ${candidate.score}")
+                        //println("candidate: ${candidate.string} $input ${candidate.score}")
                         resultFinal.add(candidate)
                     }
                 } else {
@@ -61,7 +61,7 @@ class FindPath {
                         graph,node.first,node.first.sPos
                     ).flatten()
 
-                    println("prevNodes:  $input ${prevNodes.map { it.tango + " " + it.score }}")
+                    //println("prevNodes:  $input ${prevNodes.map { it.tango + " " + it.score }}")
                     for (prevNode in prevNodes){
                         val edgeScore = getEdgeCost(
                             prevNode.l.toInt(),
@@ -71,7 +71,7 @@ class FindPath {
                         prevNode.g = node.first.g + edgeScore + node.first.score
                         prevNode.next = node.first
                         val result2 = Pair(prevNode,prevNode.g + prevNode.f)
-                        println("result2:  $input $result2")
+                        //println("result2:  $input $result2")
                         pQueue.add(result2)
                     }
                 }
