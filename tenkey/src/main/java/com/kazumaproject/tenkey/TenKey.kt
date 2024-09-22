@@ -139,6 +139,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         declareKeys()
         declarePopupWindows()
         initialKeys()
+        setViewsNotFocusable()
         tenKeyMap = TenKeyMap()
         setBackgroundSmallLetterKey()
         this.setOnTouchListener(this)
@@ -215,7 +216,31 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
     }
 
-    fun initialKeys(){
+    private fun setViewsNotFocusable() {
+        keyA.focusable = View.NOT_FOCUSABLE
+        keyKA.focusable = View.NOT_FOCUSABLE
+        keySA.focusable = View.NOT_FOCUSABLE
+        keyTA.focusable = View.NOT_FOCUSABLE
+        keyNA.focusable = View.NOT_FOCUSABLE
+        keyHA.focusable = View.NOT_FOCUSABLE
+        keyMA.focusable = View.NOT_FOCUSABLE
+        keyYA.focusable = View.NOT_FOCUSABLE
+        keyRA.focusable = View.NOT_FOCUSABLE
+        keyDakutenSmall.focusable = View.NOT_FOCUSABLE
+        keyWA.focusable = View.NOT_FOCUSABLE
+        keyKutouten.focusable = View.NOT_FOCUSABLE
+
+        sideKeyPreviousChar.focusable = View.NOT_FOCUSABLE
+        sideKeyCursorLeft.focusable = View.NOT_FOCUSABLE
+        sideKeyCursorRight.focusable = View.NOT_FOCUSABLE
+        sideKeyEnter.focusable = View.NOT_FOCUSABLE
+        sideKeyDelete.focusable = View.NOT_FOCUSABLE
+        sideKeySpace.focusable = View.NOT_FOCUSABLE
+        sideKeySymbol.focusable = View.NOT_FOCUSABLE
+        sideKeyInputModeSwitch.focusable = View.NOT_FOCUSABLE
+    }
+
+    private fun initialKeys() {
         keyKutouten.setTenKeyTextJapanese(keyKutouten.id)
     }
 

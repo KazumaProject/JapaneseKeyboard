@@ -1069,9 +1069,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleLeftKeyPress() {
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
-            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            val beforeText = getTextBeforeCursor(extractedText.length, 0) ?: return
-            if (beforeText.isEmpty()) return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
         } else if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
@@ -1092,9 +1089,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isContinuousTapInputEnabled = true
             onLeftKeyLongPressUp = false
             suggestionClickNum = 0
-            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            val cursorBeforeText = getTextBeforeCursor(extractedText.length, 0) ?: return
-            if (cursorBeforeText.isEmpty()) return
             asyncLeftLongPress()
         }
     }
@@ -1121,8 +1115,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionClickNum = 0
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
-            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            getTextAfterCursor(extractedText.length, 0) ?: return
             asyncRightLongPress()
         } else {
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
@@ -1155,9 +1147,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
-            val extractedText = getExtractedText(ExtractedTextRequest(), 0)?.text ?: return
-            val afterText = getTextAfterCursor(extractedText.length, 0) ?: return
-            if (afterText.isEmpty()) return
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
         } else {
             val dropString = stringInTail.first()
