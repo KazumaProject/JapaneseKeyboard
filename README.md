@@ -1,3 +1,5 @@
+[![Android Release CI](https://github.com/KazumaProject/JapaneseKeyboard/actions/workflows/android.yml/badge.svg)](https://github.com/KazumaProject/JapaneseKeyboard/actions/workflows/android.yml)
+
 # スミレ - 完全オフラインの日本語キーボードアプリ
 
 <p align="center">
