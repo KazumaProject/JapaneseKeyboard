@@ -1,7 +1,7 @@
 # スミレ - 完全オフラインの日本語キーボードアプリ
 
 <p align="center">
-<img src="images/demo.gif" width="auto" height="500px">
+<img src="images/demo.gif" width="auto" height="512px">
 </p>
 
 ## シンプルで美しいデザイン、使いやすさ抜群！
