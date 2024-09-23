@@ -11,7 +11,7 @@ We currently support the latest version of the スミレ - 完全オフライン
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it by sending an email to [security@kazumaproject.org](mailto:security@kazumaproject.org) with details about the issue, steps to reproduce, and potential risks. We aim to respond within 7 business days.
+If you discover a security vulnerability, please report it by sending an email to [4g.software.dev@gmail.com](mailto:4g.software.dev@gmail.com) with details about the issue, steps to reproduce, and potential risks. We aim to respond within 7 business days.
 
 ## Security Fixes
 
