@@ -23,7 +23,7 @@ jobs:
       uses: actions/setup-java@v3
       with:
         java-version: '17'
-        distribution: 'temurin' # You can also use 'zulu' if preferred
+        distribution: 'temurin'
 
     - name: Download Android SDK
       uses: android-actions/setup-android@v2
@@ -48,6 +48,8 @@ jobs:
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }} # Use the tag name
         release_name: Release ${{ github.ref }}
@@ -59,6 +61,8 @@ jobs:
 
     - name: Upload APK to Release
       uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: app/build/outputs/apk/debug/app-debug.apk
