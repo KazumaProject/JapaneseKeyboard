@@ -1,16 +1,18 @@
-<p align="center">
-<a href="https://play.google.com/store/apps/details?id=com.kazumaproject.markdownhelperkeyboard&pli=1">
-<img src="https://cdn.rawgit.com/steverichey/google-play-badge-svg/master/img/fr_get.svg" width="30%">
-</a>
-</p>
-
 # スミレ - 完全オフラインの日本語キーボードアプリ
 
 <p align="center">
 <img src="images/demo.gif" width="auto" height="500px">
 </p>
 
+
 ## シンプルで美しいデザイン、使いやすさ抜群！
+
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.kazumaproject.markdownhelperkeyboard&pli=1">
+    <img src="https://cdn.rawgit.com/steverichey/google-play-badge-svg/master/img/fr_get.svg" width="25%">
+  </a>
+</p>
+
 
 「スミレ」は、インターネット接続不要の完全オフライン日本語キーボードアプリです。あなたのプライバシーを守りながら、スムーズで快適な入力体験を提供します。
 
@@ -27,10 +29,11 @@
 # Sumire - A Fully Offline Japanese Keyboard App
 
 <p align="center">
-<img src="images/demo.gif" width="auto" height="500px">
+  <a href="https://play.google.com/store/apps/details?id=com.kazumaproject.markdownhelperkeyboard&pli=1">
+    <img src="https://cdn.rawgit.com/steverichey/google-play-badge-svg/master/img/fr_get.svg" width="25%">
+  </a>
 </p>
 
-## Simple, Beautiful Design, and Extremely Easy to Use!
 
 "Sumire" is a fully offline Japanese keyboard app that does not require internet connectivity, offering you a smooth and comfortable typing experience while protecting your privacy.
 
