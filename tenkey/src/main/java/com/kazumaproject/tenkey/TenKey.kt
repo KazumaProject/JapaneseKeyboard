@@ -788,6 +788,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextLeft.setTextFlickLeftJapanese(it.id)
                         popTextBottom.setTextFlickBottomJapanese(it.id)
                         popTextRight.setTextFlickRightJapanese(it.id)
+                        popTextActive.setTextTapJapanese(it.id)
                     }
 
                     InputMode.ModeEnglish -> {
@@ -795,6 +796,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextLeft.setTextFlickLeftEnglish(it.id)
                         popTextBottom.setTextFlickBottomEnglish(it.id)
                         popTextRight.setTextFlickRightEnglish(it.id)
+                        popTextActive.setTextTapEnglish(it.id)
                     }
 
                     InputMode.ModeNumber -> {
@@ -802,6 +804,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextLeft.setTextFlickLeftNumber(it.id)
                         popTextBottom.setTextFlickBottomNumber(it.id)
                         popTextRight.setTextFlickRightNumber(it.id)
+                        popTextActive.setTextTapNumber(it.id)
                     }
                 }
 
