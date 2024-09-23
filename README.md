@@ -4,7 +4,6 @@
 <img src="images/demo.gif" width="auto" height="500px">
 </p>
 
-
 ## シンプルで美しいデザイン、使いやすさ抜群！
 
 <p align="center">
@@ -12,7 +11,6 @@
     <img src="https://cdn.rawgit.com/steverichey/google-play-badge-svg/master/img/fr_get.svg" width="25%">
   </a>
 </p>
-
 
 「スミレ」は、インターネット接続不要の完全オフライン日本語キーボードアプリです。あなたのプライバシーを守りながら、スムーズで快適な入力体験を提供します。
 
@@ -34,7 +32,6 @@
   </a>
 </p>
 
-
 "Sumire" is a fully offline Japanese keyboard app that does not require internet connectivity, offering you a smooth and comfortable typing experience while protecting your privacy.
 
 - Fully Offline: You can use it without internet connectivity, so it's safe to use anywhere.
@@ -44,3 +41,10 @@
 - Multi-functional: Packed with convenient features such as predictive conversion and flick input.
 
 If you're looking for a Japanese keyboard, "Sumire" is perfect for you. It delivers reliable performance even offline, supporting your typing experience. Download now and experience comfortable Japanese typing!
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for more information.
+
