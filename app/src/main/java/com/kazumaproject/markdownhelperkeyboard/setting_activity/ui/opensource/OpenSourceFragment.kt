@@ -1,15 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.os.Bundle
-import android.view.*
-import androidx.fragment.app.Fragment
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.MenuHost
-import androidx.core.view.MenuProvider
-import androidx.lifecycle.Lifecycle
-import com.kazumaproject.markdownhelperkeyboard.R
+import androidx.fragment.app.Fragment
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentOpenSourceBinding
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicense
 import de.psdev.licensesdialog.LicensesDialog
 import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20
 import de.psdev.licensesdialog.licenses.MITLicense
@@ -26,7 +25,7 @@ class OpenSourceFragment : Fragment() {
             "androidx.hilt:hilt-compiler", "androidx.room:room-runtime", "androidx.room:room-compiler",
             "androidx.room:room-ktx", "androidx.navigation:navigation-fragment-ktx",
             "androidx.navigation:navigation-ui-ktx","com.google.code.gson:gson","org.jetbrains.kotlinx:kotlinx-coroutines-core","de.psdev.licensesdialog:licensesdialog",
-            "OpenWnn","com.github.MasayukiSuda:BubbleLayout"
+            "Mozc","com.github.MasayukiSuda:BubbleLayout"
         )
     }
 
@@ -68,17 +67,6 @@ class OpenSourceFragment : Fragment() {
                             .build()
                             .show()
                     }
-                    18 ->{
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright 2008 Google Inc."
-                        val license = ApacheSoftwareLicense20()
-                        val notice = Notice(name,"https://github.com/google/gson",copyright,license)
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("Apache Software License")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
                     19 ->{
                         val name = OPEN_SOURCE_LICENSES[position]
                         val copyright = "Copyright (c) 2018 Wellington Costa"
@@ -91,23 +79,18 @@ class OpenSourceFragment : Fragment() {
                             .show()
                     }
                     20 ->{
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright 2013 Philip Schiffer"
-                        val license = ApacheSoftwareLicense20()
-                        val notice = Notice(name,"https://github.com/PSDev/LicensesDialog",copyright,license)
                         LicensesDialog.Builder(requireContext())
-                            .setTitle("Apache Software License")
-                            .setNotices(notice)
+                            .setIncludeOwnLicense(true)
                             .build()
                             .show()
                     }
                     21 ->{
                         val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = ""
-                        val license = ApacheSoftwareLicense20()
-                        val notice = Notice(name,"https://github.com/MozillaReality/OpenWnn",copyright,license)
+                        val copyright = "Copyright 2010-2018, Google Inc."
+                        val license = MozcLicense()
+                        val notice = Notice(name,"https://github.com/google/mozc",copyright,license)
                         LicensesDialog.Builder(requireContext())
-                            .setTitle("Apache Software License")
+                            .setTitle("Copyright 2010-2018, Google Inc.")
                             .setNotices(notice)
                             .build()
                             .show()
