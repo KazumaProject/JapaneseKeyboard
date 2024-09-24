@@ -273,12 +273,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    if (isLongPressed) {
-                        hideAllPopWindow()
-                        ImageEffects.removeBlurEffect(this)
-                    }
-                    longPressJob?.cancel()
-                    isLongPressed = false
+                    resetLongPressAction()
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         val keyInfo =
@@ -482,7 +477,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_POINTER_UP -> {
                     if (event.pointerCount == 2) {
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
-                            longPressJob?.cancel()
+                            resetLongPressAction()
                             val gestureType =
                                 getGestureType(event, event.getPointerId(event.actionIndex))
                             val keyInfo =
@@ -724,6 +719,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             Key.NotSelected -> {}
         }
+    }
+
+    private fun resetLongPressAction(){
+        if (isLongPressed) {
+            hideAllPopWindow()
+            ImageEffects.removeBlurEffect(this)
+        }
+        longPressJob?.cancel()
+        isLongPressed = false
     }
 
     private fun resetAllKeys() {
