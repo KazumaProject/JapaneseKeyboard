@@ -411,7 +411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySymbol -> {
-                resetFlagsLanguageModeClick()
+                //resetFlagsLanguageModeClick()
             }
 
             else -> {
