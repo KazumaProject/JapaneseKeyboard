@@ -58,6 +58,9 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (5).toByte() -> "[部分]"
             (7).toByte() -> "[単]"
             (10).toByte() -> "[最長]"
+            (11).toByte() -> "[絵文字]"
+            (12).toByte() -> "[顔文字]"
+            (13).toByte() -> "[記号]"
             else -> " ".repeat(2)
         }
 

@@ -47,6 +47,48 @@ class KanaKanjiEngine {
     private lateinit var singleKanjiYomiLBSBooleanArray: BooleanArray
     private lateinit var singleKanjiYomiLBSPreprocess: IntArray
 
+    private lateinit var emojiYomiTrie: LOUDSWithTermId
+    private lateinit var emojiTangoTrie: LOUDS
+    private lateinit var emojiTokenArray: TokenArray
+
+    private lateinit var emojiRank0ArrayLBSYomi: ShortArray
+    private lateinit var emojiRank1ArrayLBSYomi: ShortArray
+    private lateinit var emojiRank1ArrayIsLeaf: ShortArray
+    private lateinit var emojiRank0ArrayTokenArrayBitvector: ShortArray
+    private lateinit var emojiRank1ArrayTokenArrayBitvector: ShortArray
+    private lateinit var emojiRank0ArrayLBSTango: ShortArray
+    private lateinit var emojiRank1ArrayLBSTango: ShortArray
+    private lateinit var emojiYomiLBSBooleanArray: BooleanArray
+    private lateinit var emojiYomiLBSPreprocess: IntArray
+
+    private lateinit var emoticonYomiTrie: LOUDSWithTermId
+    private lateinit var emoticonTangoTrie: LOUDS
+    private lateinit var emoticonTokenArray: TokenArray
+
+    private lateinit var emoticonRank0ArrayLBSYomi: ShortArray
+    private lateinit var emoticonRank1ArrayLBSYomi: ShortArray
+    private lateinit var emoticonRank1ArrayIsLeaf: ShortArray
+    private lateinit var emoticonRank0ArrayTokenArrayBitvector: ShortArray
+    private lateinit var emoticonRank1ArrayTokenArrayBitvector: ShortArray
+    private lateinit var emoticonRank0ArrayLBSTango: ShortArray
+    private lateinit var emoticonRank1ArrayLBSTango: ShortArray
+    private lateinit var emoticonYomiLBSBooleanArray: BooleanArray
+    private lateinit var emoticonYomiLBSPreprocess: IntArray
+
+    private lateinit var symbolYomiTrie: LOUDSWithTermId
+    private lateinit var symbolTangoTrie: LOUDS
+    private lateinit var symbolTokenArray: TokenArray
+
+    private lateinit var symbolRank0ArrayLBSYomi: ShortArray
+    private lateinit var symbolRank1ArrayLBSYomi: ShortArray
+    private lateinit var symbolRank1ArrayIsLeaf: ShortArray
+    private lateinit var symbolRank0ArrayTokenArrayBitvector: ShortArray
+    private lateinit var symbolRank1ArrayTokenArrayBitvector: ShortArray
+    private lateinit var symbolRank0ArrayLBSTango: ShortArray
+    private lateinit var symbolRank1ArrayLBSTango: ShortArray
+    private lateinit var symbolYomiLBSBooleanArray: BooleanArray
+    private lateinit var symbolYomiLBSPreprocess: IntArray
+
 
     fun buildEngine(
         graphBuilder: GraphBuilder,
@@ -63,6 +105,7 @@ class KanaKanjiEngine {
         systemRank0ArrayLBSTango: IntArray,
         systemRank1ArrayLBSTango: IntArray,
         systemYomiLBSBooleanArray: BooleanArray,
+
         singleKanjiTangoTrie: LOUDS,
         singleKanjiYomiTrie: LOUDSWithTermId,
         singleKanjiTokenArray: TokenArray,
@@ -74,12 +117,49 @@ class KanaKanjiEngine {
         singleKanjiRank0ArrayLBSTango: ShortArray,
         singleKanjiRank1ArrayLBSTango: ShortArray,
         singleKanjiYomiLBSBooleanArray: BooleanArray,
+
+        emojiTangoTrie: LOUDS,
+        emojiYomiTrie: LOUDSWithTermId,
+        emojiTokenArray: TokenArray,
+        emojiRank0ArrayLBSYomi: ShortArray,
+        emojiRank1ArrayLBSYomi: ShortArray,
+        emojiRank1ArrayIsLeaf: ShortArray,
+        emojiRank0ArrayTokenArrayBitvector: ShortArray,
+        emojiRank1ArrayTokenArrayBitvector: ShortArray,
+        emojiRank0ArrayLBSTango: ShortArray,
+        emojiRank1ArrayLBSTango: ShortArray,
+        emojiYomiLBSBooleanArray: BooleanArray,
+
+        emoticonTangoTrie: LOUDS,
+        emoticonYomiTrie: LOUDSWithTermId,
+        emoticonTokenArray: TokenArray,
+        emoticonRank0ArrayLBSYomi: ShortArray,
+        emoticonRank1ArrayLBSYomi: ShortArray,
+        emoticonRank1ArrayIsLeaf: ShortArray,
+        emoticonRank0ArrayTokenArrayBitvector: ShortArray,
+        emoticonRank1ArrayTokenArrayBitvector: ShortArray,
+        emoticonRank0ArrayLBSTango: ShortArray,
+        emoticonRank1ArrayLBSTango: ShortArray,
+        emoticonYomiLBSBooleanArray: BooleanArray,
+
+        symbolTangoTrie: LOUDS,
+        symbolYomiTrie: LOUDSWithTermId,
+        symbolTokenArray: TokenArray,
+        symbolRank0ArrayLBSYomi: ShortArray,
+        symbolRank1ArrayLBSYomi: ShortArray,
+        symbolRank1ArrayIsLeaf: ShortArray,
+        symbolRank0ArrayTokenArrayBitvector: ShortArray,
+        symbolRank1ArrayTokenArrayBitvector: ShortArray,
+        symbolRank0ArrayLBSTango: ShortArray,
+        symbolRank1ArrayLBSTango: ShortArray,
+        symbolYomiLBSBooleanArray: BooleanArray,
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
 
         this@KanaKanjiEngine.connectionIds = connectionIdList
 
+        // System
         this@KanaKanjiEngine.systemTangoTrie = systemTangoTrie
         this@KanaKanjiEngine.systemTokenArray = systemTokenArray
         this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
@@ -95,6 +175,8 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.systemRank1ArrayLBSTango = systemRank1ArrayLBSTango
         this@KanaKanjiEngine.systemYomiLBSBooleanArray = systemYomiLBSBooleanArray
 
+
+        // Single Kanji
         this@KanaKanjiEngine.singleKanjiTangoTrie = singleKanjiTangoTrie
         this@KanaKanjiEngine.singleKanjiTokenArray = singleKanjiTokenArray
         this@KanaKanjiEngine.singleKanjiYomiTrie = singleKanjiYomiTrie
@@ -110,16 +192,66 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.singleKanjiRank1ArrayLBSTango = singleKanjiRank1ArrayLBSTango
         this@KanaKanjiEngine.singleKanjiYomiLBSBooleanArray = singleKanjiYomiLBSBooleanArray
 
+
+        // Emoji
+        this@KanaKanjiEngine.emojiTangoTrie = emojiTangoTrie
+        this@KanaKanjiEngine.emojiTokenArray = emojiTokenArray
+        this@KanaKanjiEngine.emojiYomiTrie = emojiYomiTrie
+
+        this@KanaKanjiEngine.emojiRank0ArrayLBSYomi = emojiRank0ArrayLBSYomi
+        this@KanaKanjiEngine.emojiRank1ArrayLBSYomi = emojiRank1ArrayLBSYomi
+        this@KanaKanjiEngine.emojiRank1ArrayIsLeaf = emojiRank1ArrayIsLeaf
+        this@KanaKanjiEngine.emojiRank0ArrayTokenArrayBitvector = emojiRank0ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.emojiRank1ArrayTokenArrayBitvector = emojiRank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.emojiRank0ArrayLBSTango = emojiRank0ArrayLBSTango
+        this@KanaKanjiEngine.emojiRank1ArrayLBSTango = emojiRank1ArrayLBSTango
+        this@KanaKanjiEngine.emojiYomiLBSBooleanArray = emojiYomiLBSBooleanArray
+
+        // Emoticon
+        this@KanaKanjiEngine.emoticonTangoTrie = emoticonTangoTrie
+        this@KanaKanjiEngine.emoticonTokenArray = emoticonTokenArray
+        this@KanaKanjiEngine.emoticonYomiTrie = emoticonYomiTrie
+
+        this@KanaKanjiEngine.emoticonRank0ArrayLBSYomi = emoticonRank0ArrayLBSYomi
+        this@KanaKanjiEngine.emoticonRank1ArrayLBSYomi = emoticonRank1ArrayLBSYomi
+        this@KanaKanjiEngine.emoticonRank1ArrayIsLeaf = emoticonRank1ArrayIsLeaf
+        this@KanaKanjiEngine.emoticonRank0ArrayTokenArrayBitvector = emoticonRank0ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.emoticonRank1ArrayTokenArrayBitvector = emoticonRank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.emoticonRank0ArrayLBSTango = emoticonRank0ArrayLBSTango
+        this@KanaKanjiEngine.emoticonRank1ArrayLBSTango = emoticonRank1ArrayLBSTango
+        this@KanaKanjiEngine.emoticonYomiLBSBooleanArray = emoticonYomiLBSBooleanArray
+
+        // Symbol
+        this@KanaKanjiEngine.symbolTangoTrie = symbolTangoTrie
+        this@KanaKanjiEngine.symbolTokenArray = symbolTokenArray
+        this@KanaKanjiEngine.symbolYomiTrie = symbolYomiTrie
+
+        this@KanaKanjiEngine.symbolRank0ArrayLBSYomi = symbolRank0ArrayLBSYomi
+        this@KanaKanjiEngine.symbolRank1ArrayLBSYomi = symbolRank1ArrayLBSYomi
+        this@KanaKanjiEngine.symbolRank1ArrayIsLeaf = symbolRank1ArrayIsLeaf
+        this@KanaKanjiEngine.symbolRank0ArrayTokenArrayBitvector = symbolRank0ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.symbolRank1ArrayTokenArrayBitvector = symbolRank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.symbolRank0ArrayLBSTango = symbolRank0ArrayLBSTango
+        this@KanaKanjiEngine.symbolRank1ArrayLBSTango = symbolRank1ArrayLBSTango
+        this@KanaKanjiEngine.symbolYomiLBSBooleanArray = symbolYomiLBSBooleanArray
+
+
         this@KanaKanjiEngine.systemYomiLBSPreprocess =
             preprocessLBSInBoolArray(systemYomiLBSBooleanArray)
         this@KanaKanjiEngine.singleKanjiYomiLBSPreprocess =
             preprocessLBSInBoolArray(singleKanjiYomiLBSBooleanArray)
+        this@KanaKanjiEngine.emojiYomiLBSPreprocess =
+            preprocessLBSInBoolArray(emojiYomiLBSBooleanArray)
+        this@KanaKanjiEngine.emoticonYomiLBSPreprocess =
+            preprocessLBSInBoolArray(emoticonYomiLBSBooleanArray)
+
+        this@KanaKanjiEngine.symbolYomiLBSPreprocess =
+            preprocessLBSInBoolArray(symbolYomiLBSBooleanArray)
 
     }
 
     suspend fun getCandidates(
-        input: String,
-        n: Int
+        input: String, n: Int
     ): List<Candidate> = withContext(Dispatchers.Unconfined) {
 
         val graph = graphBuilder.constructGraph(
@@ -164,8 +296,7 @@ class KanaKanjiEngine {
                             singleKanjiRank1ArrayLBSYomi,
                             singleKanjiYomiLBSBooleanArray,
                             singleKanjiYomiLBSPreprocess
-                        ),
-                        singleKanjiRank1ArrayIsLeaf
+                        ), singleKanjiRank1ArrayIsLeaf
                     )
                     singleKanjiTokenArray.getListDictionaryByYomiTermIdShortArray(
                         termId,
@@ -192,9 +323,7 @@ class KanaKanjiEngine {
                 }.distinctBy { it.string }.toList()
             }
 
-            return@withContext (resultNBestFinalDeferred +
-                    hirakanaAndKana +
-                    singleKanjiListDeferred.await()).distinctBy { it.string }
+            return@withContext (resultNBestFinalDeferred + hirakanaAndKana + singleKanjiListDeferred.await()).distinctBy { it.string }
         }
 
         val yomiPartOfDeferred = async(Dispatchers.Default) {
@@ -224,11 +353,33 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
+        val emojiCommonPrefixDeferred = async(Dispatchers.Default) {
+            emojiYomiTrie.commonPrefixSearchShortArray(
+                str = input,
+                rank0Array = emojiRank0ArrayLBSYomi,
+                rank1Array = emojiRank1ArrayLBSYomi
+            ).asReversed()
+        }
+
+        val emoticonCommonPrefixDeferred = async(Dispatchers.Default) {
+            emoticonYomiTrie.commonPrefixSearchShortArray(
+                str = input,
+                rank0Array = emoticonRank0ArrayLBSYomi,
+                rank1Array = emoticonRank1ArrayLBSYomi
+            ).asReversed()
+        }
+
+        val symbolCommonPrefixDeferred = async(Dispatchers.Default) {
+            symbolYomiTrie.commonPrefixSearchShortArray(
+                str = input,
+                rank0Array = symbolRank0ArrayLBSYomi,
+                rank1Array = symbolRank1ArrayLBSYomi
+            ).asReversed()
+        }
+
         val predictiveSearchResultDeferred = async(Dispatchers.Default) {
-            predictiveSearchDeferred.await().asSequence()
-                .sortedBy { it.length }
-                .filterNot { it.length == input.length }
-                .flatMap { yomi ->
+            predictiveSearchDeferred.await().asSequence().sortedBy { it.length }
+                .filterNot { it.length == input.length }.flatMap { yomi ->
                     val nodeIndex = systemYomiTrie.getNodeIndex(
                         yomi,
                         systemRank1ArrayLBSYomi,
@@ -246,9 +397,7 @@ class KanaKanjiEngine {
                                 -2 -> yomi
                                 -1 -> yomi.hiraToKata()
                                 else -> systemTangoTrie.getLetter(
-                                    it.nodeId,
-                                    systemRank0ArrayLBSTango,
-                                    systemRank1ArrayLBSTango
+                                    it.nodeId, systemRank0ArrayLBSTango, systemRank1ArrayLBSTango
                                 )
                             },
                             type = 9,
@@ -257,13 +406,8 @@ class KanaKanjiEngine {
                             leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                             rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
                         )
-                    }.distinctBy { it.string }
-                        .toList()
-                }
-                .distinctBy { it.string }
-                .sortedBy { it.score }
-                .take(8)
-                .toList()
+                    }.distinctBy { it.string }.toList()
+                }.distinctBy { it.string }.sortedBy { it.score }.take(8).toList()
         }
 
         val yomiPartListDeferred = async(Dispatchers.Default) {
@@ -274,22 +418,17 @@ class KanaKanjiEngine {
                         systemRank1ArrayLBSYomi,
                         systemYomiLBSBooleanArray,
                         systemYomiLBSPreprocess
-                    ),
-                    systemRank1ArrayIsLeaf
+                    ), systemRank1ArrayIsLeaf
                 )
                 systemTokenArray.getListDictionaryByYomiTermId(
-                    termId,
-                    systemRank0ArrayTokenArrayBitvector,
-                    systemRank1ArrayTokenArrayBitvector
+                    termId, systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector
                 ).sortedBy { it.wordCost }.asSequence().map {
                     Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> systemTangoTrie.getLetter(
-                                it.nodeId,
-                                systemRank0ArrayLBSTango,
-                                systemRank1ArrayLBSTango
+                                it.nodeId, systemRank0ArrayLBSTango, systemRank1ArrayLBSTango
                             )
                         },
                         type = if (yomi.length == input.length) 2 else 5,
@@ -345,8 +484,7 @@ class KanaKanjiEngine {
                         singleKanjiRank1ArrayLBSYomi,
                         singleKanjiYomiLBSBooleanArray,
                         singleKanjiYomiLBSPreprocess
-                    ),
-                    singleKanjiRank1ArrayIsLeaf
+                    ), singleKanjiRank1ArrayIsLeaf
                 )
                 singleKanjiTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId,
@@ -372,18 +510,119 @@ class KanaKanjiEngine {
                 }
             }.distinctBy { it.string }.toList()
         }
-        return@withContext (resultNBestFinalDeferred +
-                predictiveSearchResultDeferred.await() +
-                secondPartDeferred.await().sortedBy { it.score }
-                    .filter { it.score - resultNBestFinalDeferred.first().score < 4000 } +
-                hirakanaAndKana +
-                yomiPartListDeferred.await() +
-                singleKanjiListDeferred.await()).distinctBy { it.string }
+
+        val emojiListDeferred = async(Dispatchers.Default) {
+            emojiCommonPrefixDeferred.await().asSequence().flatMap { yomi ->
+                val termId = emojiYomiTrie.getTermIdShortArray(
+                    emojiYomiTrie.getNodeIndex(
+                        yomi,
+                        emojiRank1ArrayLBSYomi,
+                        emojiYomiLBSBooleanArray,
+                        emojiYomiLBSPreprocess
+                    ), emojiRank1ArrayIsLeaf
+                )
+                emojiTokenArray.getListDictionaryByYomiTermIdShortArray(
+                    termId,
+                    emojiRank0ArrayTokenArrayBitvector,
+                    emojiRank1ArrayTokenArrayBitvector
+                ).sortedBy { it.wordCost }.asSequence().map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> emojiTangoTrie.getLetterShortArray(
+                                it.nodeId,
+                                emojiRank0ArrayLBSTango,
+                                emojiRank1ArrayLBSTango
+                            )
+                        },
+                        type = 11,
+                        length = yomi.length.toUByte(),
+                        score = it.wordCost.toInt(),
+                        leftId = emojiTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = emojiTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
+            }.distinctBy { it.string }.toList()
+        }
+
+        val emoticonListDeferred = async(Dispatchers.Default) {
+            emoticonCommonPrefixDeferred.await().asSequence().flatMap { yomi ->
+                val termId = emoticonYomiTrie.getTermIdShortArray(
+                    emoticonYomiTrie.getNodeIndex(
+                        yomi,
+                        emoticonRank1ArrayLBSYomi,
+                        emoticonYomiLBSBooleanArray,
+                        emoticonYomiLBSPreprocess
+                    ), emoticonRank1ArrayIsLeaf
+                )
+                emoticonTokenArray.getListDictionaryByYomiTermIdShortArray(
+                    termId,
+                    emoticonRank0ArrayTokenArrayBitvector,
+                    emoticonRank1ArrayTokenArrayBitvector
+                ).sortedBy { it.wordCost }.asSequence().map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> emoticonTangoTrie.getLetterShortArray(
+                                it.nodeId,
+                                emoticonRank0ArrayLBSTango,
+                                emoticonRank1ArrayLBSTango
+                            )
+                        },
+                        type = 12,
+                        length = yomi.length.toUByte(),
+                        score = it.wordCost.toInt(),
+                        leftId = emoticonTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = emoticonTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
+            }.distinctBy { it.string }.toList()
+        }
+
+        val symbolListDeferred = async(Dispatchers.Default) {
+            symbolCommonPrefixDeferred.await().asSequence().flatMap { yomi ->
+                val termId = symbolYomiTrie.getTermIdShortArray(
+                    symbolYomiTrie.getNodeIndex(
+                        yomi,
+                        symbolRank1ArrayLBSYomi,
+                        symbolYomiLBSBooleanArray,
+                        symbolYomiLBSPreprocess
+                    ), symbolRank1ArrayIsLeaf
+                )
+                symbolTokenArray.getListDictionaryByYomiTermIdShortArray(
+                    termId,
+                    symbolRank0ArrayTokenArrayBitvector,
+                    symbolRank1ArrayTokenArrayBitvector
+                ).sortedBy { it.wordCost }.asSequence().map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> symbolTangoTrie.getLetterShortArray(
+                                it.nodeId,
+                                symbolRank0ArrayLBSTango,
+                                symbolRank1ArrayLBSTango
+                            )
+                        },
+                        type = 13,
+                        length = yomi.length.toUByte(),
+                        score = it.wordCost.toInt(),
+                        leftId = symbolTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = symbolTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
+            }.distinctBy { it.string }.toList()
+        }
+
+        return@withContext (resultNBestFinalDeferred + predictiveSearchResultDeferred.await() + secondPartDeferred.await()
+            .sortedBy { it.score }
+            .filter { it.score - resultNBestFinalDeferred.first().score < 4000 } + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
     }
 
     suspend fun nBestPath(
-        input: String,
-        n: Int
+        input: String, n: Int
     ): List<Candidate> {
         val graph = graphBuilder.constructGraph(
             input,
@@ -427,8 +666,7 @@ class KanaKanjiEngine {
     }
 
     private fun nBestPathForLongest(
-        input: String,
-        n: Int
+        input: String, n: Int
     ): List<CandidateTemp> {
         val graph = graphBuilder.constructGraphLongest(
             input,
