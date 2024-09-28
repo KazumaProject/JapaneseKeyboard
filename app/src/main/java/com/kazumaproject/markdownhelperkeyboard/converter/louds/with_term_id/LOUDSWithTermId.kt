@@ -37,12 +37,12 @@ class LOUDSWithTermId {
             add(false)
         }
         labelsTemp.apply {
-            add(0,' ')
-            add(1,' ')
+            add(0, ' ')
+            add(1, ' ')
         }
         isLeafTemp.apply {
-            add(0,false)
-            add(1,false)
+            add(0, false)
+            add(1, false)
         }
     }
 
@@ -53,14 +53,14 @@ class LOUDSWithTermId {
         labels: CharArray,
         isLeaf: BitSet,
         termIdsList: IntArray,
-    ){
+    ) {
         this.LBS = LBS
         this.labels = labels
         this.isLeaf = isLeaf
         this.termIdsSaved = termIdsList
     }
 
-    fun convertListToBitSet(){
+    fun convertListToBitSet() {
         LBS = LBSTemp.toBitSet()
         LBSTemp.clear()
         isLeaf = isLeafTemp.toBitSet()
@@ -73,7 +73,7 @@ class LOUDSWithTermId {
         val firstChar = labels[firstNodeId]
         list.add(firstChar)
         var parentNodeIndex = LBS.select1(LBS.rank0(nodeIndex))
-        while (parentNodeIndex != 0){
+        while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1(parentNodeIndex)
             val pair = labels[parentNodeId]
             list.add(pair)
@@ -86,7 +86,7 @@ class LOUDSWithTermId {
     fun getLetterByNodeId(nodeId: Int): String {
         val list = mutableListOf<Char>()
         var parentNodeIndex = LBS.select1(nodeId)
-        while (parentNodeIndex != 0){
+        while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1(parentNodeIndex)
             val pair = labels[parentNodeId]
             list.add(pair)
@@ -96,12 +96,29 @@ class LOUDSWithTermId {
     }
 
 
-    fun getNodeIndex(s: String, rank1Array: IntArray,LBSInBoolArray: BooleanArray, LBSInBoolArrayPreprocess: IntArray): Int{
-        return search(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray, LBSInBoolArrayPreprocess)
+    fun getNodeIndex(
+        s: String,
+        rank1Array: IntArray,
+        LBSInBoolArray: BooleanArray,
+        LBSInBoolArrayPreprocess: IntArray
+    ): Int {
+        return search(2, s.toCharArray(), 0, rank1Array, LBSInBoolArray, LBSInBoolArrayPreprocess)
     }
 
-    fun getNodeIndex(s: String, rank1Array: ShortArray, LBSInBoolArray: BooleanArray, LBSInBoolArrayPreprocess: IntArray): Int{
-        return searchShortArray(2, s.toCharArray(), 0, rank1Array,LBSInBoolArray, LBSInBoolArrayPreprocess)
+    fun getNodeIndex(
+        s: String,
+        rank1Array: ShortArray,
+        LBSInBoolArray: BooleanArray,
+        LBSInBoolArrayPreprocess: IntArray
+    ): Int {
+        return searchShortArray(
+            2,
+            s.toCharArray(),
+            0,
+            rank1Array,
+            LBSInBoolArray,
+            LBSInBoolArrayPreprocess
+        )
     }
 
     fun getTermId(
@@ -117,7 +134,7 @@ class LOUDSWithTermId {
         nodeIndex: Int,
         rank1Array: ShortArray
     ): Short {
-        val firstNodeId: Int = isLeaf.rank1CommonShort(nodeIndex,rank1Array) - 1
+        val firstNodeId: Int = isLeaf.rank1CommonShort(nodeIndex, rank1Array) - 1
         if (firstNodeId < 0) return -1
         val firstTermId: Int = termIdsSaved[firstNodeId]
         return firstTermId.toShort()
@@ -129,7 +146,7 @@ class LOUDSWithTermId {
         rank0Array: ShortArray,
         rank1Array: ShortArray
     ): Int {
-        val y = LBS.select0CommonShort(LBS.rank1CommonShort(pos,rank1Array),rank0Array) + 1
+        val y = LBS.select0CommonShort(LBS.rank1CommonShort(pos, rank1Array), rank0Array) + 1
         return if (!LBS[y]) -1 else y
     }
 
@@ -139,10 +156,10 @@ class LOUDSWithTermId {
         rank0Array: ShortArray,
         rank1Array: ShortArray
     ): Int {
-        var childPos = firstChildShortArray(pos,rank0Array, rank1Array)
+        var childPos = firstChildShortArray(pos, rank0Array, rank1Array)
         if (childPos < 0) return -1
-        while (LBS[childPos]){
-            if (c == labels[LBS.rank1CommonShort(childPos,rank1Array).toInt()]) {
+        while (LBS[childPos]) {
+            if (c == labels[LBS.rank1CommonShort(childPos, rank1Array).toInt()]) {
                 return childPos
             }
             childPos += 1
@@ -190,7 +207,13 @@ class LOUDSWithTermId {
         return result
     }
 
-    private fun collectWords(pos: Int, prefix: StringBuilder, rank0Array: IntArray, rank1Array: IntArray, result: MutableList<String>) {
+    private fun collectWords(
+        pos: Int,
+        prefix: StringBuilder,
+        rank0Array: IntArray,
+        rank1Array: IntArray,
+        result: MutableList<String>
+    ) {
         if (isLeaf[pos]) {
             result.add(prefix.toString())
         }
@@ -199,6 +222,27 @@ class LOUDSWithTermId {
             val index = LBS.rank1Common(childPos, rank1Array)
             if (index >= labels.size) break
             prefix.append(labels[index])
+            collectWords(childPos, prefix, rank0Array, rank1Array, result)
+            prefix.deleteCharAt(prefix.length - 1)
+            childPos++
+        }
+    }
+
+    private fun collectWords(
+        pos: Int,
+        prefix: StringBuilder,
+        rank0Array: ShortArray,
+        rank1Array: ShortArray,
+        result: MutableList<String>
+    ) {
+        if (isLeaf[pos]) {
+            result.add(prefix.toString())
+        }
+        var childPos = firstChildShortArray(pos, rank0Array, rank1Array)
+        while (childPos >= 0 && LBS[childPos]) {
+            val index = LBS.rank1CommonShort(childPos, rank1Array)
+            if (index >= labels.size) break
+            prefix.append(labels[index.toInt()])
             collectWords(childPos, prefix, rank0Array, rank1Array, result)
             prefix.deleteCharAt(prefix.length - 1)
             childPos++
@@ -215,6 +259,26 @@ class LOUDSWithTermId {
             val index = LBS.rank1Common(n, rank1Array)
             if (index >= labels.size) return result
             resultTemp.append(labels[index])
+        }
+        // Collect all words starting from the last matched node
+        collectWords(n, resultTemp, rank0Array, rank1Array, result)
+        return result
+    }
+
+    fun predictiveSearch(
+        prefix: String,
+        rank0Array: ShortArray,
+        rank1Array: ShortArray
+    ): List<String> {
+        val result = mutableListOf<String>()
+        val resultTemp = StringBuilder()
+        var n = 0
+        for (c in prefix) {
+            n = traverseShortArray(n, c, rank0Array, rank1Array)
+            if (n < 0) return result // No match found
+            val index = LBS.rank1CommonShort(n, rank1Array)
+            if (index >= labels.size) return result
+            resultTemp.append(labels[index.toInt()])
         }
         // Collect all words starting from the last matched node
         collectWords(n, resultTemp, rank0Array, rank1Array, result)
@@ -265,7 +329,14 @@ class LOUDSWithTermId {
                     return if (isLeaf[currentIndex]) currentIndex else currentIndex
                 }
                 val nextIndex = indexOfLabel(charIndex, LBSInBoolArrayPreprocess)
-                return search(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray,LBSInBoolArrayPreprocess)
+                return search(
+                    nextIndex,
+                    chars,
+                    wordOffset + 1,
+                    rank1Array,
+                    LBSInBoolArray,
+                    LBSInBoolArrayPreprocess
+                )
             }
             currentIndex++
             charIndex++
@@ -309,14 +380,22 @@ class LOUDSWithTermId {
                     return if (isLeaf[currentIndex]) currentIndex else currentIndex
                 }
                 val nextIndex = indexOfLabel(charIndex.toInt(), LBSInBoolArrayPreprocess)
-                return searchShortArray(nextIndex, chars, wordOffset + 1, rank1Array, LBSInBoolArray,LBSInBoolArrayPreprocess)
+                return searchShortArray(
+                    nextIndex,
+                    chars,
+                    wordOffset + 1,
+                    rank1Array,
+                    LBSInBoolArray,
+                    LBSInBoolArrayPreprocess
+                )
             }
             currentIndex++
             charIndex++
         }
         return -1
     }
-    fun writeExternal(out: ObjectOutput){
+
+    fun writeExternal(out: ObjectOutput) {
         try {
             out.apply {
                 writeInt(labels.toList().toByteArrayFromListChar().size)
@@ -329,7 +408,7 @@ class LOUDSWithTermId {
                 flush()
                 close()
             }
-        }catch (e: IOException){
+        } catch (e: IOException) {
             println(e.stackTraceToString())
         }
     }
@@ -341,10 +420,12 @@ class LOUDSWithTermId {
                 val termIdSize = objectInput.readInt()
                 LBS = objectInput.readObject() as BitSet
                 isLeaf = objectInput.readObject() as BitSet
-                labels = (objectInput.readObject() as ByteArray).inflate(labelsSize).toListChar().toCharArray()
-                termIds = (objectInput.readObject() as ByteArray).inflate(termIdSize).toListInt().toMutableList()
+                labels = (objectInput.readObject() as ByteArray).inflate(labelsSize).toListChar()
+                    .toCharArray()
+                termIds = (objectInput.readObject() as ByteArray).inflate(termIdSize).toListInt()
+                    .toMutableList()
                 it.close()
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 println(e.stackTraceToString())
             }
         }
@@ -359,7 +440,7 @@ class LOUDSWithTermId {
                 labels = (objectInput.readObject() as CharArray)
                 termIdsSaved = (objectInput.readObject() as IntArray)
                 close()
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 println(e.stackTraceToString())
             }
         }
