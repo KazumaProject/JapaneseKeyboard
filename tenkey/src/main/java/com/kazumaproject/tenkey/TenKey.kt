@@ -21,6 +21,7 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.tenkey.extensions.hide
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
+import com.kazumaproject.tenkey.extensions.setIconColor
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
 import com.kazumaproject.tenkey.extensions.setPopUpWindowCenter
 import com.kazumaproject.tenkey.extensions.setPopUpWindowFlickBottom
@@ -1170,6 +1171,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         sideKeySpace.setImageDrawable(drawable)
     }
 
+    fun setSideKeyPreviousState(state: Boolean) {
+        sideKeyPreviousChar.isEnabled = state
+        val colorResId = if (state){
+            R.color.keyboard_icon_color
+        }else{
+            R.color.keyboard_icon_disable_color
+        }
+        sideKeyPreviousChar.setIconColor(colorResId)
+    }
+
     private fun handleClickInputModeSwitch() {
         val inputMode = sideKeyInputModeSwitch.getCurrentInputMode()
         val newInputMode = when (inputMode) {
@@ -1226,7 +1237,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyRA.setTenKeyTextJapanese(keyRA.id)
         keyWA.setTenKeyTextJapanese(keyWA.id)
         keyKutouten.setTenKeyTextJapanese(keyKutouten.id)
-        keyDakutenSmall.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.logo_key))
+        //keyDakutenSmall.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.logo_key))
     }
 
     private fun setKeysInEnglishText() {
@@ -1241,7 +1252,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyRA.setTenKeyTextEnglish(keyRA.id)
         keyWA.setTenKeyTextEnglish(keyWA.id)
         keyKutouten.setTenKeyTextEnglish(keyKutouten.id)
-        keyDakutenSmall.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.logo_key))
+        //keyDakutenSmall.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.logo_key))
     }
 
     private fun setKeysInNumberText() {
@@ -1256,12 +1267,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyRA.setTenKeyTextNumber(keyRA.id)
         keyWA.setTenKeyTextNumber(keyWA.id)
         keyKutouten.setTenKeyTextNumber(keyKutouten.id)
-        keyDakutenSmall.setImageDrawable(
-            ContextCompat.getDrawable(
-                context,
-                R.drawable.number_small
-            )
-        )
+//        keyDakutenSmall.setImageDrawable(
+//            ContextCompat.getDrawable(
+//                context,
+//                R.drawable.number_small
+//            )
+//        )
     }
 
 }

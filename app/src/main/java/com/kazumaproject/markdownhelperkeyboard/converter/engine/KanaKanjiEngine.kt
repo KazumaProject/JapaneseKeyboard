@@ -383,9 +383,7 @@ class KanaKanjiEngine {
                                 -2 -> yomi
                                 -1 -> yomi.hiraToKata()
                                 else -> emojiTangoTrie.getLetterShortArray(
-                                    it.nodeId,
-                                    emojiRank0ArrayLBSTango,
-                                    emojiRank1ArrayLBSTango
+                                    it.nodeId, emojiRank0ArrayLBSTango, emojiRank1ArrayLBSTango
                                 )
                             },
                             type = 11,
@@ -453,9 +451,7 @@ class KanaKanjiEngine {
                                 -2 -> yomi
                                 -1 -> yomi.hiraToKata()
                                 else -> symbolTangoTrie.getLetterShortArray(
-                                    it.nodeId,
-                                    symbolRank0ArrayLBSTango,
-                                    symbolRank1ArrayLBSTango
+                                    it.nodeId, symbolRank0ArrayLBSTango, symbolRank1ArrayLBSTango
                                 )
                             },
                             type = 13,
@@ -470,7 +466,7 @@ class KanaKanjiEngine {
 
             val longest = yomiPartOfDeferred.await().firstOrNull() ?: input
 
-            val longestListDeferred =  async(Dispatchers.Default) {
+            val longestListDeferred = async(Dispatchers.Default) {
                 val tempFirstStrConversionList = nBestPathForLongest(longest, n * 4)
                 return@async tempFirstStrConversionList.map {
                     Candidate(
@@ -484,7 +480,7 @@ class KanaKanjiEngine {
                 }
             }
 
-            return@withContext (resultNBestFinalDeferred + longestListDeferred.await() + hirakanaAndKana  + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+            return@withContext (resultNBestFinalDeferred + longestListDeferred.await() + hirakanaAndKana + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
         }
 
         val yomiPartOfDeferred = async(Dispatchers.Default) {
@@ -683,23 +679,19 @@ class KanaKanjiEngine {
                     ), emojiRank1ArrayIsLeaf
                 )
                 emojiTokenArray.getListDictionaryByYomiTermIdShortArray(
-                    termId,
-                    emojiRank0ArrayTokenArrayBitvector,
-                    emojiRank1ArrayTokenArrayBitvector
+                    termId, emojiRank0ArrayTokenArrayBitvector, emojiRank1ArrayTokenArrayBitvector
                 ).sortedBy { it.wordCost }.asSequence().map {
                     Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> emojiTangoTrie.getLetterShortArray(
-                                it.nodeId,
-                                emojiRank0ArrayLBSTango,
-                                emojiRank1ArrayLBSTango
+                                it.nodeId, emojiRank0ArrayLBSTango, emojiRank1ArrayLBSTango
                             )
                         },
                         type = 11,
                         length = yomi.length.toUByte(),
-                        score = it.wordCost.toInt(),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1000 * (yomi.length - input.length),
                         leftId = emojiTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = emojiTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
@@ -727,14 +719,12 @@ class KanaKanjiEngine {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> emoticonTangoTrie.getLetterShortArray(
-                                it.nodeId,
-                                emoticonRank0ArrayLBSTango,
-                                emoticonRank1ArrayLBSTango
+                                it.nodeId, emoticonRank0ArrayLBSTango, emoticonRank1ArrayLBSTango
                             )
                         },
                         type = 12,
                         length = yomi.length.toUByte(),
-                        score = it.wordCost.toInt(),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1000 * (yomi.length - input.length),
                         leftId = emoticonTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = emoticonTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
@@ -753,23 +743,19 @@ class KanaKanjiEngine {
                     ), symbolRank1ArrayIsLeaf
                 )
                 symbolTokenArray.getListDictionaryByYomiTermIdShortArray(
-                    termId,
-                    symbolRank0ArrayTokenArrayBitvector,
-                    symbolRank1ArrayTokenArrayBitvector
+                    termId, symbolRank0ArrayTokenArrayBitvector, symbolRank1ArrayTokenArrayBitvector
                 ).sortedBy { it.wordCost }.asSequence().map {
                     Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> symbolTangoTrie.getLetterShortArray(
-                                it.nodeId,
-                                symbolRank0ArrayLBSTango,
-                                symbolRank1ArrayLBSTango
+                                it.nodeId, symbolRank0ArrayLBSTango, symbolRank1ArrayLBSTango
                             )
                         },
                         type = 13,
                         length = yomi.length.toUByte(),
-                        score = it.wordCost.toInt(),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1000 * (yomi.length - input.length),
                         leftId = symbolTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = symbolTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
@@ -783,33 +769,47 @@ class KanaKanjiEngine {
                     val today = Calendar.getInstance()
                     createCandidatesForDate(today, input)
                 }
+
                 "きのう" -> {
                     val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
                     createCandidatesForDate(yesterday, input)
                 }
+
                 "あした" -> {
                     val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
                     createCandidatesForDate(tomorrow, input)
                 }
+
                 else -> emptyList()
             }
         }
 
+        val secondPartList = secondPartDeferred.await().sortedBy { it.score }.filter { it.score - resultNBestFinalDeferred.first().score < 2000 }
 
-        return@withContext (resultNBestFinalDeferred + predictiveSearchResultDeferred.await() + secondPartDeferred.await()
-            .sortedBy { it.score }
-            .filter { it.score - resultNBestFinalDeferred.first().score <= 2000 } + listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+        val secondPartFinalList = if (secondPartList.size >= 5) {
+            secondPartList.subList(0,4)
+        } else {
+            secondPartList
+        }
+
+        return@withContext (resultNBestFinalDeferred + predictiveSearchResultDeferred.await() + secondPartFinalList + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
     }
 
     private fun createCandidatesForDate(
-        calendar: Calendar,
-        input: String
+        calendar: Calendar, input: String
     ): List<Candidate> {
         val formatter1 = SimpleDateFormat("M/d", Locale.getDefault())
         val formatter2 = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
         val formatter3 = SimpleDateFormat("M月d日(EEE)", Locale.getDefault())
-        val formatterReiwa = "令和${calendar.get(Calendar.YEAR) - 2018}年${calendar.get(Calendar.MONTH) + 1}月${calendar.get(Calendar.DAY_OF_MONTH)}日"
-        val formatterR06 = "R${calendar.get(Calendar.YEAR) - 2018}/${String.format("%02d", calendar.get(Calendar.MONTH) + 1)}/${String.format("%02d", calendar.get(Calendar.DAY_OF_MONTH))}"
+        val formatterReiwa =
+            "令和${calendar.get(Calendar.YEAR) - 2018}年${calendar.get(Calendar.MONTH) + 1}月${
+                calendar.get(Calendar.DAY_OF_MONTH)
+            }日"
+        val formatterR06 = "R${calendar.get(Calendar.YEAR) - 2018}/${
+            String.format(
+                "%02d", calendar.get(Calendar.MONTH) + 1
+            )
+        }/${String.format("%02d", calendar.get(Calendar.DAY_OF_MONTH))}"
         val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(calendar.time)
 
         return listOf(
@@ -820,40 +820,35 @@ class KanaKanjiEngine {
                 score = 4000,
                 leftId = 1851,
                 rightId = 1851
-            ),
-            Candidate(
+            ), Candidate(
                 string = formatter2.format(calendar.time),  // yyyy/MM/dd format
                 type = 14,
                 length = input.length.toUByte(),
                 score = 4000,
                 leftId = 1851,
                 rightId = 1851
-            ),
-            Candidate(
+            ), Candidate(
                 string = formatter3.format(calendar.time),  // M月d日(曜日) format
                 type = 14,
                 length = input.length.toUByte(),
                 score = 4000,
                 leftId = 1851,
                 rightId = 1851
-            ),
-            Candidate(
+            ), Candidate(
                 string = formatterReiwa,  // 令和 format
                 type = 14,
                 length = input.length.toUByte(),
                 score = 4000,
                 leftId = 1851,
                 rightId = 1851
-            ),
-            Candidate(
+            ), Candidate(
                 string = formatterR06,  // Rxx/MM/dd format
                 type = 14,
                 length = input.length.toUByte(),
                 score = 4000,
                 leftId = 1851,
                 rightId = 1851
-            ),
-            Candidate(
+            ), Candidate(
                 string = dayOfWeek,  // 曜日 format
                 type = 14,
                 length = input.length.toUByte(),

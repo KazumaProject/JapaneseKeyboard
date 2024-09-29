@@ -242,11 +242,11 @@ fun Char.getNextReturnInputChar(): Char?{
         '…' -> '！'
         '・' -> '…'
 
-        '@' -> 'ろ'
-        '#' -> 'ら'
-        '&' -> 'り'
-        '_' -> 'る'
-        '1' -> 'れ'
+        '@' -> '1'
+        '#' -> '@'
+        '&' -> '#'
+        '_' -> '&'
+        '1' -> '_'
 
         'a' -> '2'
         'b' -> 'a'
@@ -515,4 +515,12 @@ fun Char.getCharPopUpText(): Char?{
         '〜' -> 'わ'
         else -> null
     }
+}
+
+fun Char.isHiragana(): Boolean {
+    return this in '\u3040'..'\u309F'
+}
+
+fun Char.isLatinAlphabet(): Boolean {
+    return this in 'A'..'Z' || this in 'a'..'z'
 }
