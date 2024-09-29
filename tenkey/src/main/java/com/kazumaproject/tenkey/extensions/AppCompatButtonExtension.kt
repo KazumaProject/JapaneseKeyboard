@@ -1,5 +1,6 @@
 package com.kazumaproject.tenkey.extensions
 
+import android.graphics.PorterDuff
 import android.text.SpannableString
 import android.text.style.RelativeSizeSpan
 import androidx.appcompat.widget.AppCompatButton
@@ -176,4 +177,8 @@ fun AppCompatImageButton.layoutYPosition(): Int{
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[1]
+}
+
+fun AppCompatImageButton.setIconColor(colorResId: Int) {
+    this.setColorFilter(ContextCompat.getColor(this.context, colorResId), PorterDuff.Mode.SRC_IN)
 }

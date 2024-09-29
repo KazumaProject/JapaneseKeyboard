@@ -13,7 +13,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:padding="10dp"
         android:scaleType="fitCenter"
-        android:src="@drawable/baseline_turn_left_24"
+        android:src="@drawable/undo_24px"
         app:layout_constraintBottom_toTopOf="@id/key_soft_left"
         app:layout_constraintEnd_toStartOf="@id/key_1"
         app:layout_constraintHorizontal_chainStyle="spread"

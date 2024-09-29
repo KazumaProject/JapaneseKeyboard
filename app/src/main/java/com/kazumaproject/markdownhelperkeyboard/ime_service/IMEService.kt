@@ -58,6 +58,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurren
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextReturnInputChar
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isHiragana
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isLatinAlphabet
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.listener.FlickListener
@@ -318,7 +320,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 char = char,
                                 insertString = insertString,
                                 sb = sb,
-                                isFlick = false
+                                isFlick = false,
+                                gestureType = gestureType
                             )
                         }
 
@@ -328,7 +331,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 char = char,
                                 insertString = insertString,
                                 sb = sb,
-                                isFlick = true
+                                isFlick = true,
+                                gestureType = gestureType
                             )
                         }
                     }
@@ -349,7 +353,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         char: Char?,
         insertString: String,
         sb: StringBuilder,
-        isFlick: Boolean
+        isFlick: Boolean,
+        gestureType: GestureType,
     ) {
         setVibrate()
         when (key) {
@@ -363,19 +368,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.KeyDakutenSmall -> {
-                handleDakutenSmallLetterKey(sb)
+                handleDakutenSmallLetterKey(
+                    sb = sb, isFlick = isFlick, char = char, insertString = insertString
+                )
             }
 
             Key.SideKeyCursorLeft -> {
-                handleLeftKeyPress()
-                onLeftKeyLongPressUp = true
-                if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
-                    _suggestionList.value = emptyList()
-                }
+                handleLeftCursor(gestureType)
             }
 
             Key.SideKeyCursorRight -> {
-                actionInRightKeyPressed()
+                actionInRightKeyPressed(gestureType)
                 onRightKeyLongPressUp = true
             }
 
@@ -386,10 +389,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeyInputMode -> {
-                finishComposingText()
-                if (stringInTail.isNotEmpty()) stringInTail = EMPTY_STRING
-                _inputString.update { EMPTY_STRING }
-                resetFlagsSwitchMode()
+                setTenkeyIconsInHenkan()
             }
 
             Key.SideKeyPreviousChar -> {
@@ -398,7 +398,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         is InputMode.ModeNumber -> {
 
                         }
-
                         else -> {
                             setNextReturnInputCharacter()
                         }
@@ -407,20 +406,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySpace -> {
-                handleSpaceKeyClick()
+                if (!isSpaceKeyLongPressed){
+                    handleSpaceKeyClick()
+                }
+                isSpaceKeyLongPressed = false
             }
 
             Key.SideKeySymbol -> {
-                //resetFlagsLanguageModeClick()
+
             }
 
             else -> {
                 if (isFlick) {
                     char?.let {
                         sendCharFlick(
-                            charToSend = it,
-                            insertString = insertString,
-                            sb = sb
+                            charToSend = it, insertString = insertString, sb = sb
                         )
                     }
                     isContinuousTapInputEnabled = true
@@ -428,9 +428,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 } else {
                     char?.let {
                         sendCharTap(
-                            charToSend = it,
-                            insertString = insertString,
-                            sb = sb
+                            charToSend = it, insertString = insertString, sb = sb
                         )
                     }
                 }
@@ -463,9 +461,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
-            Key.SideKeySpace -> {}
+            Key.SideKeySpace -> {
+                if (_inputString.value.isEmpty() && stringInTail.isEmpty()){
+                    isSpaceKeyLongPressed = true
+                    showKeyboardPicker()
+                }
+            }
             Key.SideKeySymbol -> {}
             else -> {}
+        }
+    }
+
+    private var isSpaceKeyLongPressed = false
+
+    private fun showKeyboardPicker() {
+        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        inputMethodManager.showInputMethodPicker()
+    }
+
+    private fun handleLeftCursor(gestureType: GestureType) {
+        handleLeftKeyPress(gestureType)
+        onLeftKeyLongPressUp = true
+        if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
+            _suggestionList.value = emptyList()
         }
     }
 
@@ -474,11 +492,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) = scope.launch {
         mainLayoutBinding?.let { mainView ->
             launch {
-                _suggestionFlag.asStateFlow()
-                    .buffer()
-                    .collectLatest {
-                        setSuggestionOnView(mainView)
-                    }
+                _suggestionFlag.asStateFlow().buffer().collectLatest {
+                    setSuggestionOnView(mainView)
+                }
             }
 
             launch {
@@ -494,11 +510,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             launch {
-                _inputString.asStateFlow()
-                    .buffer()
-                    .collectLatest { inputString ->
-                        processInputString(inputString)
-                    }
+                _inputString.asStateFlow().buffer().collectLatest { inputString ->
+                    processInputString(inputString)
+                }
             }
         }
     }
@@ -572,9 +586,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             if (stringInTail.isNotEmpty()) {
                 setComposingText(stringInTail, 0)
+                onLeftKeyLongPressUp = true
+                onDeleteLongPressUp = true
             } else {
                 resetInputString()
                 setTenkeyIconsEmptyInputString()
+                onLeftKeyLongPressUp = true
+                onRightKeyLongPressUp = true
+                onDeleteLongPressUp = true
             }
         }
     }
@@ -698,6 +717,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         englishSpaceKeyPressed = false
         lastFlickConvertedNextHiragana = false
         onDeleteLongPressUp = false
+        isSpaceKeyLongPressed = false
     }
 
     private fun actionInDestroy() {
@@ -709,17 +729,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         closeConnection()
         scope.coroutineContext.cancelChildren()
     }
-
-    private fun resetFlagsSwitchMode() {
-        isHenkan = false
-        suggestionClickNum = 0
-        englishSpaceKeyPressed = false
-        onDeleteLongPressUp = false
-        _dakutenPressed.value = false
-        lastFlickConvertedNextHiragana = true
-        isContinuousTapInputEnabled = true
-    }
-
     private fun resetFlagsSuggestionClick() {
         isHenkan = false
         suggestionClickNum = 0
@@ -730,18 +739,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled = true
         _suggestionViewStatus.update { true }
     }
-
-    private fun resetFlagsLanguageModeClick() {
-        isHenkan = false
-        suggestionClickNum = 0
-        englishSpaceKeyPressed = false
-        onDeleteLongPressUp = false
-        _dakutenPressed.value = false
-        lastFlickConvertedNextHiragana = true
-        isContinuousTapInputEnabled = true
-        _inputString.update { EMPTY_STRING }
-    }
-
     private fun resetFlagsEnterKey() {
         println("enter key reset is called")
         isHenkan = false
@@ -870,21 +867,72 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun updateSuggestionUI(mainView: MainLayoutBinding) {
+    private fun setTenkeyIconsInHenkan() {
+        mainLayoutBinding?.keyboardView?.apply {
+            when (currentInputMode) {
+                is InputMode.ModeJapanese -> {
+                    setSideKeySpaceDrawable(drawableSpaceBar)
+                    setSideKeyPreviousState(true)
+                    if (_inputString.value.isNotEmpty()) {
+                        if (_inputString.value.last().isLatinAlphabet()) {
+                            setBackgroundSmallLetterKey(drawableEnglishSmall)
+                        } else {
+                            setBackgroundSmallLetterKey(drawableLogo)
+                        }
+                    } else {
+                        setBackgroundSmallLetterKey(drawableLogo)
+                    }
+                }
+
+                is InputMode.ModeEnglish -> {
+                    setSideKeySpaceDrawable(drawableSpaceBar)
+                    setBackgroundSmallLetterKey(drawableNumberSmall)
+                    setSideKeyPreviousState(false)
+                }
+
+                is InputMode.ModeNumber -> {
+                    setSideKeyPreviousState(true)
+                    if (_inputString.value.isNotEmpty()) {
+                        setSideKeySpaceDrawable(drawableHenkan)
+                        if (_inputString.value.last().isHiragana()) {
+                            setBackgroundSmallLetterKey(drawableKanaSmall)
+                        } else {
+                            setBackgroundSmallLetterKey(drawableLogo)
+                        }
+                    } else {
+                        setSideKeySpaceDrawable(drawableSpaceBar)
+                        setBackgroundSmallLetterKey(drawableLogo)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateUIinHenkan(mainView: MainLayoutBinding) {
         mainView.keyboardView.apply {
             setSideKeyEnterDrawable(drawableReturn)
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
-                    setBackgroundSmallLetterKey(drawableKanaSmall)
+                    if (_inputString.value.last().isHiragana()) {
+                        setBackgroundSmallLetterKey(drawableKanaSmall)
+                    } else {
+                        setBackgroundSmallLetterKey(drawableLogo)
+                    }
                     setSideKeySpaceDrawable(drawableHenkan)
                 }
 
                 InputMode.ModeEnglish -> {
-                    setBackgroundSmallLetterKey(drawableEnglishSmall)
+                    if (_inputString.value.last().isLatinAlphabet()) {
+                        setBackgroundSmallLetterKey(drawableEnglishSmall)
+                    } else {
+                        setBackgroundSmallLetterKey(drawableLogo)
+                    }
+                    setSideKeySpaceDrawable(drawableSpaceBar)
                 }
 
                 InputMode.ModeNumber -> {
-                    /** empty body **/
+                    setBackgroundSmallLetterKey(drawableNumberSmall)
+                    setSideKeySpaceDrawable(drawableSpaceBar)
                 }
             }
         }
@@ -911,7 +959,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _suggestionList.update {
             filteredCandidates
         }
-        updateSuggestionUI(mainView)
+        updateUIinHenkan(mainView)
     }
 
     private suspend fun getSuggestionList(): List<Candidate> {
@@ -1067,9 +1115,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetFlagsEnterKeyNotHenkan()
     }
 
-    private fun handleLeftKeyPress() {
+    private fun handleLeftKeyPress(gestureType: GestureType) {
         if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
-            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+            when (gestureType) {
+                GestureType.FlickRight -> {
+                    if (!isCursorAtBeginning()) sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                        )
+                    )
+                }
+
+                GestureType.FlickTop -> {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP))
+                }
+
+                GestureType.FlickLeft -> {
+                    if (!isCursorAtBeginning()) sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                        )
+                    )
+                }
+
+                GestureType.FlickBottom -> {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN))
+                }
+
+                GestureType.Null -> {}
+                GestureType.Tap -> {
+                    if (!isCursorAtBeginning()) sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                        )
+                    )
+                }
+            }
         } else if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
@@ -1094,15 +1175,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun asyncLeftLongPress() = CoroutineScope(Dispatchers.IO).launch {
-        println("left long pressed: ")
         while (isActive) {
             if (onLeftKeyLongPressUp) return@launch
+            if (stringInTail.isNotEmpty() && _inputString.value.isEmpty()) return@launch
             if (_inputString.value.isNotEmpty()) {
                 updateLeftInputString()
             } else {
                 _suggestionList.update { emptyList() }
                 if (stringInTail.isEmpty()) {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                    if (!isCursorAtBeginning()) sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                        )
+                    )
                 }
             }
             delay(LONG_DELAY_TIME)
@@ -1138,6 +1223,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun actionInRightKeyPressed(gestureType: GestureType) {
+        when {
+            _inputString.value.isEmpty() -> handleEmptyInputString(gestureType)
+            !isHenkan -> handleNonHenkan()
+        }
+    }
+
     private fun actionInRightKeyPressed() {
         when {
             _inputString.value.isEmpty() -> handleEmptyInputString()
@@ -1145,9 +1237,75 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun handleEmptyInputString(gestureType: GestureType) {
+        if (stringInTail.isEmpty()) {
+            when (gestureType) {
+                GestureType.FlickRight -> {
+                    if (!isCursorAtEnd()) sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                        )
+                    )
+                }
+
+                GestureType.FlickTop -> {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP))
+                }
+
+                GestureType.FlickLeft -> {
+                    if (!isCursorAtEnd()) sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                        )
+                    )
+                }
+
+                GestureType.FlickBottom -> {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN))
+                }
+
+                GestureType.Null -> {}
+                GestureType.Tap -> {
+                    if (!isCursorAtEnd()) sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                        )
+                    )
+                }
+            }
+        } else {
+            val dropString = stringInTail.first()
+            stringInTail = stringInTail.drop(1)
+            _inputString.update { dropString.toString() }
+        }
+    }
+
+    fun isCursorAtBeginning(): Boolean {
+        val extractedText = currentInputConnection.getExtractedText(ExtractedTextRequest(), 0)
+        return extractedText?.selectionStart == 0
+    }
+
+    private fun isCursorAtEnd(): Boolean {
+        if (currentInputConnection != null) {
+            val extractedText = currentInputConnection.getExtractedText(ExtractedTextRequest(), 0)
+            extractedText?.let {
+                val textLength = it.text.length
+                val cursorPosition = it.selectionEnd
+                return cursorPosition == textLength
+            }
+        }
+        return false
+    }
+
     private fun handleEmptyInputString() {
         if (stringInTail.isEmpty()) {
-            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+            if (!isCursorAtEnd()) {
+                sendKeyEvent(
+                    KeyEvent(
+                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                    )
+                )
+            }
         } else {
             val dropString = stringInTail.first()
             stringInTail = stringInTail.drop(1)
@@ -1318,8 +1476,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (_inputString.value.isNotEmpty()) {
             val insertPosition = _inputString.value.last()
             insertPosition.let { c ->
-                c.getDakutenSmallChar()?.let { dakutenChar ->
-                    setStringBuilderForConvertStringInHiragana(dakutenChar, sb)
+                if (c.isHiragana()) {
+                    c.getDakutenSmallChar()?.let { dakutenChar ->
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb)
+                    }
                 }
             }
         }
@@ -1334,8 +1494,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (_inputString.value.isNotEmpty()) {
             val insertPosition = _inputString.value.last()
             insertPosition.let { c ->
-                c.getDakutenSmallChar()?.let { dakutenChar ->
-                    setStringBuilderForConvertStringInHiragana(dakutenChar, sb)
+                if (!c.isHiragana()) {
+                    c.getDakutenSmallChar()?.let { dakutenChar ->
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb)
+                    }
                 }
             }
 
@@ -1343,7 +1505,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleDakutenSmallLetterKey(
-        sb: StringBuilder
+        sb: StringBuilder, isFlick: Boolean, char: Char?, insertString: String
     ) {
         mainLayoutBinding?.keyboardView?.let {
             when (it.currentInputMode) {
@@ -1355,7 +1517,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     smallBigLetterConversionEnglish(sb)
                 }
 
-                InputMode.ModeNumber -> {}
+                InputMode.ModeNumber -> {
+                    if (isFlick) {
+                        char?.let { c ->
+                            sendCharFlick(
+                                charToSend = c, insertString = insertString, sb = sb
+                            )
+                        }
+                        isContinuousTapInputEnabled = true
+                        lastFlickConvertedNextHiragana = true
+                    } else {
+                        char?.let { c ->
+                            sendCharTap(
+                                charToSend = c, insertString = insertString, sb = sb
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -1445,6 +1623,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) {
+        stringInTail = EMPTY_STRING
         val nextSuggestion = suggestions[0]
         val candidateType = nextSuggestion.type.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
