@@ -8,9 +8,13 @@ import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import com.kazumaproject.viterbi.FindPath
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class KanaKanjiEngine {
 
@@ -275,7 +279,7 @@ class KanaKanjiEngine {
         )
 
         val resultNBestFinalDeferred = async(Dispatchers.Default) {
-            findPath.backwardAStar(graph, input.length, connectionIds, n, input)
+            findPath.backwardAStar(graph, input.length, connectionIds, n)
         }.await()
 
         val hirakanaAndKana = listOf(
@@ -773,9 +777,91 @@ class KanaKanjiEngine {
             }.distinctBy { it.string }.toList()
         }
 
+        val listOfDictionaryToday: Deferred<List<Candidate>> = async(Dispatchers.Default) {
+            return@async when (input) {
+                "きょう" -> {
+                    val today = Calendar.getInstance()
+                    createCandidatesForDate(today, input)
+                }
+                "きのう" -> {
+                    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+                    createCandidatesForDate(yesterday, input)
+                }
+                "あした" -> {
+                    val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                    createCandidatesForDate(tomorrow, input)
+                }
+                else -> emptyList()
+            }
+        }
+
+
         return@withContext (resultNBestFinalDeferred + predictiveSearchResultDeferred.await() + secondPartDeferred.await()
             .sortedBy { it.score }
-            .filter { it.score - resultNBestFinalDeferred.first().score < 4000 } + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+            .filter { it.score - resultNBestFinalDeferred.first().score <= 2000 } + listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+    }
+
+    private fun createCandidatesForDate(
+        calendar: Calendar,
+        input: String
+    ): List<Candidate> {
+        val formatter1 = SimpleDateFormat("M/d", Locale.getDefault())
+        val formatter2 = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+        val formatter3 = SimpleDateFormat("M月d日(EEE)", Locale.getDefault())
+        val formatterReiwa = "令和${calendar.get(Calendar.YEAR) - 2018}年${calendar.get(Calendar.MONTH) + 1}月${calendar.get(Calendar.DAY_OF_MONTH)}日"
+        val formatterR06 = "R${calendar.get(Calendar.YEAR) - 2018}/${String.format("%02d", calendar.get(Calendar.MONTH) + 1)}/${String.format("%02d", calendar.get(Calendar.DAY_OF_MONTH))}"
+        val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(calendar.time)
+
+        return listOf(
+            Candidate(
+                string = formatter1.format(calendar.time),  // M/d format
+                type = 14,
+                length = input.length.toUByte(),
+                score = 4000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = formatter2.format(calendar.time),  // yyyy/MM/dd format
+                type = 14,
+                length = input.length.toUByte(),
+                score = 4000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = formatter3.format(calendar.time),  // M月d日(曜日) format
+                type = 14,
+                length = input.length.toUByte(),
+                score = 4000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = formatterReiwa,  // 令和 format
+                type = 14,
+                length = input.length.toUByte(),
+                score = 4000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = formatterR06,  // Rxx/MM/dd format
+                type = 14,
+                length = input.length.toUByte(),
+                score = 4000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = dayOfWeek,  // 曜日 format
+                type = 14,
+                length = input.length.toUByte(),
+                score = 4000,
+                leftId = 1851,
+                rightId = 1851
+            )
+        )
     }
 
     suspend fun nBestPath(
@@ -796,7 +882,7 @@ class KanaKanjiEngine {
             LBSBooleanArray = systemYomiLBSBooleanArray,
             LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
         )
-        val result = findPath.backwardAStar(graph, input.length, connectionIds, n, input)
+        val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
         result.apply {
             if (!this.map { it.string }.contains(input)) {
                 add(

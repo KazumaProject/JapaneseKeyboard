@@ -31,7 +31,6 @@ class FindPath {
         length: Int,
         connectionIds: ShortArray,
         n: Int,
-        input: String
     ): MutableList<Candidate> {
         forwardDp(graph, length, connectionIds)
         val resultFinal: MutableList<Candidate> = mutableListOf()
@@ -61,7 +60,7 @@ class FindPath {
                         graph,node.first,node.first.sPos
                     ).flatten()
 
-                    //println("prevNodes:  $input ${prevNodes.map { it.tango + " " + it.score }}")
+//                    println("prevNodes: ${prevNodes.map { it.tango + " " + it.score + it.l + " " + it.r}}")
                     for (prevNode in prevNodes){
                         val edgeScore = getEdgeCost(
                             prevNode.l.toInt(),
