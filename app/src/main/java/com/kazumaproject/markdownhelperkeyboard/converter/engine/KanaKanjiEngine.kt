@@ -93,11 +93,26 @@ class KanaKanjiEngine {
     private lateinit var symbolYomiLBSBooleanArray: BooleanArray
     private lateinit var symbolYomiLBSPreprocess: IntArray
 
+    private lateinit var readingCorrectionYomiTrie: LOUDSWithTermId
+    private lateinit var readingCorrectionTangoTrie: LOUDS
+    private lateinit var readingCorrectionTokenArray: TokenArray
+
+    private lateinit var readingCorrectionRank0ArrayLBSYomi: ShortArray
+    private lateinit var readingCorrectionRank1ArrayLBSYomi: ShortArray
+    private lateinit var readingCorrectionRank1ArrayIsLeaf: ShortArray
+    private lateinit var readingCorrectionRank0ArrayTokenArrayBitvector: ShortArray
+    private lateinit var readingCorrectionRank1ArrayTokenArrayBitvector: ShortArray
+    private lateinit var readingCorrectionRank0ArrayLBSTango: ShortArray
+    private lateinit var readingCorrectionRank1ArrayLBSTango: ShortArray
+    private lateinit var readingCorrectionYomiLBSBooleanArray: BooleanArray
+    private lateinit var readingCorrectionYomiLBSPreprocess: IntArray
+
 
     fun buildEngine(
         graphBuilder: GraphBuilder,
         findPath: FindPath,
         connectionIdList: ShortArray,
+
         systemTangoTrie: LOUDS,
         systemYomiTrie: LOUDSWithTermId,
         systemTokenArray: TokenArray,
@@ -157,6 +172,18 @@ class KanaKanjiEngine {
         symbolRank0ArrayLBSTango: ShortArray,
         symbolRank1ArrayLBSTango: ShortArray,
         symbolYomiLBSBooleanArray: BooleanArray,
+
+        readingCorrectionTangoTrie: LOUDS,
+        readingCorrectionYomiTrie: LOUDSWithTermId,
+        readingCorrectionTokenArray: TokenArray,
+        readingCorrectionRank0ArrayLBSYomi: ShortArray,
+        readingCorrectionRank1ArrayLBSYomi: ShortArray,
+        readingCorrectionRank1ArrayIsLeaf: ShortArray,
+        readingCorrectionRank0ArrayTokenArrayBitvector: ShortArray,
+        readingCorrectionRank1ArrayTokenArrayBitvector: ShortArray,
+        readingCorrectionRank0ArrayLBSTango: ShortArray,
+        readingCorrectionRank1ArrayLBSTango: ShortArray,
+        readingCorrectionYomiLBSBooleanArray: BooleanArray,
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -243,6 +270,24 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.symbolRank1ArrayLBSTango = symbolRank1ArrayLBSTango
         this@KanaKanjiEngine.symbolYomiLBSBooleanArray = symbolYomiLBSBooleanArray
 
+        // Reading Correction
+        this@KanaKanjiEngine.readingCorrectionTangoTrie = readingCorrectionTangoTrie
+        this@KanaKanjiEngine.readingCorrectionTokenArray = readingCorrectionTokenArray
+        this@KanaKanjiEngine.readingCorrectionYomiTrie = readingCorrectionYomiTrie
+
+        this@KanaKanjiEngine.readingCorrectionRank0ArrayLBSYomi = readingCorrectionRank0ArrayLBSYomi
+        this@KanaKanjiEngine.readingCorrectionRank1ArrayLBSYomi = readingCorrectionRank1ArrayLBSYomi
+        this@KanaKanjiEngine.readingCorrectionRank1ArrayIsLeaf = readingCorrectionRank1ArrayIsLeaf
+        this@KanaKanjiEngine.readingCorrectionRank0ArrayTokenArrayBitvector =
+            readingCorrectionRank0ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.readingCorrectionRank1ArrayTokenArrayBitvector =
+            readingCorrectionRank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.readingCorrectionRank0ArrayLBSTango =
+            readingCorrectionRank0ArrayLBSTango
+        this@KanaKanjiEngine.readingCorrectionRank1ArrayLBSTango =
+            readingCorrectionRank1ArrayLBSTango
+        this@KanaKanjiEngine.readingCorrectionYomiLBSBooleanArray =
+            readingCorrectionYomiLBSBooleanArray
 
         this@KanaKanjiEngine.systemYomiLBSPreprocess =
             preprocessLBSInBoolArray(systemYomiLBSBooleanArray)
@@ -252,9 +297,10 @@ class KanaKanjiEngine {
             preprocessLBSInBoolArray(emojiYomiLBSBooleanArray)
         this@KanaKanjiEngine.emoticonYomiLBSPreprocess =
             preprocessLBSInBoolArray(emoticonYomiLBSBooleanArray)
-
         this@KanaKanjiEngine.symbolYomiLBSPreprocess =
             preprocessLBSInBoolArray(symbolYomiLBSBooleanArray)
+        this@KanaKanjiEngine.readingCorrectionYomiLBSPreprocess =
+            preprocessLBSInBoolArray(readingCorrectionYomiLBSBooleanArray)
 
     }
 
@@ -534,6 +580,22 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
+        val readingCorrectionCommonPrefixDeferred = async(Dispatchers.Default) {
+            readingCorrectionYomiTrie.predictiveSearch(
+                prefix = input,
+                rank0Array = readingCorrectionRank0ArrayLBSYomi,
+                rank1Array = readingCorrectionRank1ArrayLBSYomi
+            ).asReversed().filter {
+                if (input.length <= 2) {
+                    it.length <= input.length + 1
+                } else if (input.length in 3..6) {
+                    it.length <= input.length + 2
+                } else {
+                    it.length > input.length
+                }
+            }
+        }
+
         val predictiveSearchResultDeferred = async(Dispatchers.Default) {
             predictiveSearchDeferred.await().asSequence().sortedBy { it.length }
                 .filterNot { it.length == input.length }.flatMap { yomi ->
@@ -763,6 +825,41 @@ class KanaKanjiEngine {
             }.distinctBy { it.string }.toList()
         }
 
+        val readingCorrectionListDeferred = async(Dispatchers.Default) {
+            readingCorrectionCommonPrefixDeferred.await().asSequence().flatMap { yomi ->
+                val termId = readingCorrectionYomiTrie.getTermIdShortArray(
+                    readingCorrectionYomiTrie.getNodeIndex(
+                        yomi,
+                        readingCorrectionRank1ArrayLBSYomi,
+                        readingCorrectionYomiLBSBooleanArray,
+                        readingCorrectionYomiLBSPreprocess
+                    ), readingCorrectionRank1ArrayIsLeaf
+                )
+                readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
+                    termId,
+                    readingCorrectionRank0ArrayTokenArrayBitvector,
+                    readingCorrectionRank1ArrayTokenArrayBitvector
+                ).sortedBy { it.wordCost }.asSequence().map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> readingCorrectionTangoTrie.getLetterShortArray(
+                                it.nodeId,
+                                readingCorrectionRank0ArrayLBSTango,
+                                readingCorrectionRank1ArrayLBSTango
+                            )
+                        },
+                        type = 15,
+                        length = yomi.length.toUByte(),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1000 * (yomi.length - input.length),
+                        leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
+            }.distinctBy { it.string }.toList()
+        }
+
         val listOfDictionaryToday: Deferred<List<Candidate>> = async(Dispatchers.Default) {
             return@async when (input) {
                 "きょう" -> {
@@ -784,15 +881,16 @@ class KanaKanjiEngine {
             }
         }
 
-        val secondPartList = secondPartDeferred.await().sortedBy { it.score }.filter { it.score - resultNBestFinalDeferred.first().score < 2000 }
+        val secondPartList = secondPartDeferred.await().sortedBy { it.score }
+            .filter { it.score - resultNBestFinalDeferred.first().score < 2000 }
 
         val secondPartFinalList = if (secondPartList.size >= 5) {
-            secondPartList.subList(0,4)
+            secondPartList.subList(0, 4)
         } else {
             secondPartList
         }
 
-        return@withContext (resultNBestFinalDeferred + predictiveSearchResultDeferred.await() + secondPartFinalList + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+        return@withContext (resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
     }
 
     private fun createCandidatesForDate(

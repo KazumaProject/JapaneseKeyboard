@@ -518,7 +518,13 @@ fun Char.getCharPopUpText(): Char?{
 }
 
 fun Char.isHiragana(): Boolean {
-    return this in '\u3040'..'\u309F'
+    val excludedHiragana = listOf(
+        'な', 'に', 'ぬ', 'ね', 'の',
+        'ま', 'み', 'む', 'め', 'も',
+        'ら', 'り', 'る', 'れ', 'ろ',
+        'を', 'ん'
+    )
+    return this in '\u3040'..'\u309F' && this !in excludedHiragana
 }
 
 fun Char.isLatinAlphabet(): Boolean {
