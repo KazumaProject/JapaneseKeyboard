@@ -500,6 +500,87 @@ object AppModule {
         tangoTrie.LBS.rank1GetShortArray()
 
 
+    @ReadingCorrectionTangoTrie
+    @Singleton
+    @Provides
+    fun provideReadingCorrectionTangoTrie(@ApplicationContext context: Context): LOUDS {
+        val objectInputTango =
+            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/tango_reading_correction.dat")))
+        return LOUDS().readExternalNotCompress(objectInputTango)
+    }
+
+    @ReadingCorrectionYomiTrie
+    @Singleton
+    @Provides
+    fun provideReadingCorrectionYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
+        val objectInputYomi =
+            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/yomi_reading_correction.dat")))
+        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    }
+
+    @ReadingCorrectionTokenArray
+    @Singleton
+    @Provides
+    fun providesReadingCorrectionTokenArray(@ApplicationContext context: Context): TokenArray {
+        val objectInputTokenArray =
+            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/token_reading_correction.dat")))
+        val objectInputReadPOSTable =
+            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+        val tokenArray = TokenArray()
+        tokenArray.readExternal(objectInputTokenArray)
+        tokenArray.readPOSTable(objectInputReadPOSTable)
+        return tokenArray
+    }
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionRank0ArrayLBSYomi
+    fun provideReadingCorrectionRank0ArrayLBSYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
+        yomiTrie.LBS.rank0GetShortArray()
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionRank1ArrayLBSYomi
+    fun provideReadingCorrectionRank1ArrayLBSYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
+        yomiTrie.LBS.rank1GetShortArray()
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionRank1ArrayIsLeafYomi
+    fun provideReadingCorrectionRank1ArrayIsLeaf(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
+        yomiTrie.isLeaf.rank1GetShortArray()
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionYomiLBSBooleanArray
+    fun providesReadingCorrectionYomiLBSBooleanArray(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
+        yomiTrie.LBS.toBooleanArray()
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionRank0ArrayTokenArrayBitvector
+    fun provideReadingCorrectionRank0ArrayTokenArrayBitvector(@ReadingCorrectionTokenArray tokenArray: TokenArray): ShortArray =
+        tokenArray.bitvector.rank0GetShortArray()
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionRank1ArrayTokenArrayBitvector
+    fun provideReadingCorrectionRank1ArrayTokenArrayBitvector(@ReadingCorrectionTokenArray tokenArray: TokenArray): ShortArray =
+        tokenArray.bitvector.rank1GetShortArray()
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionRank0ArrayTangoLBS
+    fun provideReadingCorrectionRank0ArrayLBSTango(@ReadingCorrectionTangoTrie tangoTrie: LOUDS): ShortArray =
+        tangoTrie.LBS.rank0GetShortArray()
+
+    @Singleton
+    @Provides
+    @ReadingCorrectionRank1ArrayTangoLBS
+    fun provideReadingCorrectionRank1ArrayLBSTango(@ReadingCorrectionTangoTrie tangoTrie: LOUDS): ShortArray =
+        tangoTrie.LBS.rank1GetShortArray()
+
+
     @Singleton
     @Provides
     fun provideKanaKanjiHenkanEngine(
@@ -565,6 +646,18 @@ object AppModule {
         @SymbolRank0ArrayTangoLBS symbolRank0ArrayTangoLBS: ShortArray,
         @SymbolRank1ArrayTangoLBS symbolRank1ArrayTangoLBS: ShortArray,
         @SymbolYomiLBSBooleanArray symbolYomiLBSBooleanArray: BooleanArray,
+
+        @ReadingCorrectionTangoTrie readingCorrectionTangoTrie: LOUDS,
+        @ReadingCorrectionYomiTrie readingCorrectionYomiTrie: LOUDSWithTermId,
+        @ReadingCorrectionTokenArray readingCorrectionTokenArray: TokenArray,
+        @ReadingCorrectionRank0ArrayLBSYomi readingCorrectionRank0ArrayLBSYomi: ShortArray,
+        @ReadingCorrectionRank1ArrayLBSYomi readingCorrectionRank1ArrayLBSYomi: ShortArray,
+        @ReadingCorrectionRank1ArrayIsLeafYomi readingCorrectionRank1ArrayIsLeaf: ShortArray,
+        @ReadingCorrectionRank0ArrayTokenArrayBitvector readingCorrectionRank0ArrayTokenArrayBitvector: ShortArray,
+        @ReadingCorrectionRank1ArrayTokenArrayBitvector readingCorrectionRank1ArrayTokenArrayBitvector: ShortArray,
+        @ReadingCorrectionRank0ArrayTangoLBS readingCorrectionRank0ArrayTangoLBS: ShortArray,
+        @ReadingCorrectionRank1ArrayTangoLBS readingCorrectionRank1ArrayTangoLBS: ShortArray,
+        @ReadingCorrectionYomiLBSBooleanArray readingCorrectionYomiLBSBooleanArray: BooleanArray,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
 
@@ -572,6 +665,7 @@ object AppModule {
             graphBuilder = graphBuilder,
             findPath = findPath,
             connectionIdList = connectionIds,
+
             systemTangoTrie = systemTangoTrie,
             systemYomiTrie = systemYomiTrie,
             systemTokenArray = systemTokenArray,
@@ -631,6 +725,18 @@ object AppModule {
             symbolRank0ArrayLBSTango = symbolRank0ArrayTangoLBS,
             symbolRank1ArrayLBSTango = symbolRank1ArrayTangoLBS,
             symbolYomiLBSBooleanArray = symbolYomiLBSBooleanArray,
+
+            readingCorrectionTangoTrie = readingCorrectionTangoTrie,
+            readingCorrectionYomiTrie = readingCorrectionYomiTrie,
+            readingCorrectionTokenArray = readingCorrectionTokenArray,
+            readingCorrectionRank0ArrayLBSYomi = readingCorrectionRank0ArrayLBSYomi,
+            readingCorrectionRank1ArrayLBSYomi = readingCorrectionRank1ArrayLBSYomi,
+            readingCorrectionRank1ArrayIsLeaf = readingCorrectionRank1ArrayIsLeaf,
+            readingCorrectionRank0ArrayTokenArrayBitvector = readingCorrectionRank0ArrayTokenArrayBitvector,
+            readingCorrectionRank1ArrayTokenArrayBitvector = readingCorrectionRank1ArrayTokenArrayBitvector,
+            readingCorrectionRank0ArrayLBSTango = readingCorrectionRank0ArrayTangoLBS,
+            readingCorrectionRank1ArrayLBSTango = readingCorrectionRank1ArrayTangoLBS,
+            readingCorrectionYomiLBSBooleanArray = readingCorrectionYomiLBSBooleanArray,
         )
 
         return kanaKanjiEngine

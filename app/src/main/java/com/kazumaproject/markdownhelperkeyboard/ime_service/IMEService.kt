@@ -874,7 +874,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     setSideKeySpaceDrawable(drawableSpaceBar)
                     setSideKeyPreviousState(true)
                     if (_inputString.value.isNotEmpty()) {
-                        if (_inputString.value.last().isLatinAlphabet()) {
+                        if (_inputString.value.isNotEmpty() && _inputString.value.last().isLatinAlphabet()) {
                             setBackgroundSmallLetterKey(drawableEnglishSmall)
                         } else {
                             setBackgroundSmallLetterKey(drawableLogo)
@@ -913,7 +913,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setSideKeyEnterDrawable(drawableReturn)
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
-                    if (_inputString.value.last().isHiragana()) {
+                    if (_inputString.value.isNotEmpty() && _inputString.value.last().isHiragana()) {
                         setBackgroundSmallLetterKey(drawableKanaSmall)
                     } else {
                         setBackgroundSmallLetterKey(drawableLogo)
@@ -922,7 +922,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 InputMode.ModeEnglish -> {
-                    if (_inputString.value.last().isLatinAlphabet()) {
+
+                    if (_inputString.value.isNotEmpty() && _inputString.value.last().isLatinAlphabet()) {
                         setBackgroundSmallLetterKey(drawableEnglishSmall)
                     } else {
                         setBackgroundSmallLetterKey(drawableLogo)

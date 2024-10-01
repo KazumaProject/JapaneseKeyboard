@@ -226,4 +226,47 @@ annotation class SymbolRank1ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class SymbolYomiLBSBooleanArray
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionYomiTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionTangoTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionTokenArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionRank0ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionRank1ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionRank1ArrayIsLeafYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionRank0ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionRank1ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionRank0ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionRank1ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionYomiLBSBooleanArray
 
