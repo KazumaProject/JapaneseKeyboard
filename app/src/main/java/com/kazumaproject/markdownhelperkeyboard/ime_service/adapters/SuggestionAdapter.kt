@@ -50,20 +50,22 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
-        val paddingLength = if (position == 0) 4 else if (suggestion.length.toInt() >= 2) 0 else 1
+        val paddingLength = if (position == 0) 5 else if (suggestion.length.toInt() >= 2) 1 else 2
         holder.text.text = suggestion.string.padStart(suggestion.string.length + paddingLength)
             .plus(" ".repeat(paddingLength))
         holder.typeText.text = when (suggestion.type) {
 //            (1).toByte() -> "${suggestion.score}"
-            (9).toByte() -> "[予測]"
-            (5).toByte() -> "[部分]"
+            // 予測
+            (9).toByte() -> ""
+            (5).toByte() -> "[部]"
             (7).toByte() -> "[単]"
             (10).toByte() -> ""
             (11).toByte() -> "　　"
             (12).toByte() -> "　　"
             (13).toByte() -> "　　"
             (14).toByte() -> "[日付]"
-            (15).toByte() -> "[修正]"
+            // 修正
+            (15).toByte() -> ""
             else -> ""
         }
 

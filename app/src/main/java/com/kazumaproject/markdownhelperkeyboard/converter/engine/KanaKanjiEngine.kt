@@ -108,6 +108,11 @@ class KanaKanjiEngine {
     private lateinit var readingCorrectionYomiLBSPreprocess: IntArray
 
 
+    companion object {
+        const val SCORE_OFFSET = 6500
+        const val SCORE_OFFSET_SMALL = 5000
+    }
+
     fun buildEngine(
         graphBuilder: GraphBuilder,
         findPath: FindPath,
@@ -621,7 +626,7 @@ class KanaKanjiEngine {
                             },
                             type = 9,
                             length = yomi.length.toUByte(),
-                            score = it.wordCost.toInt(),
+                            score = if (yomi.length == input.length) it.wordCost.toInt() else if (input.length <= 5) it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length) else it.wordCost.toInt() + SCORE_OFFSET_SMALL,
                             leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
                             rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
                         )
@@ -852,7 +857,7 @@ class KanaKanjiEngine {
                         },
                         type = 15,
                         length = yomi.length.toUByte(),
-                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1000 * (yomi.length - input.length),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length),
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
@@ -890,7 +895,7 @@ class KanaKanjiEngine {
             secondPartList
         }
 
-        return@withContext (resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+        return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList ).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
     }
 
     private fun createCandidatesForDate(
