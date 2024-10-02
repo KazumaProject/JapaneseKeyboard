@@ -680,7 +680,7 @@ class KanaKanjiEngine {
                         string = combinedString,
                         type = 6,
                         length = (longest.length + tempSecondStr.length).toUByte(),
-                        score = combinedScore
+                        score = combinedScore + 2500
                     )
                 }
             }
