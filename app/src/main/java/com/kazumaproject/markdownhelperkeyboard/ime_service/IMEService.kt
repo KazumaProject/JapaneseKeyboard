@@ -398,6 +398,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         is InputMode.ModeNumber -> {
 
                         }
+
                         else -> {
                             setNextReturnInputCharacter()
                         }
@@ -406,7 +407,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySpace -> {
-                if (!isSpaceKeyLongPressed){
+                if (!isSpaceKeyLongPressed) {
                     handleSpaceKeyClick()
                 }
                 isSpaceKeyLongPressed = false
@@ -462,11 +463,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
-                if (_inputString.value.isEmpty() && stringInTail.isEmpty()){
+                if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
                     isSpaceKeyLongPressed = true
                     showKeyboardPicker()
                 }
             }
+
             Key.SideKeySymbol -> {}
             else -> {}
         }
@@ -475,7 +477,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isSpaceKeyLongPressed = false
 
     private fun showKeyboardPicker() {
-        val inputMethodManager = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val inputMethodManager =
+            getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.showInputMethodPicker()
     }
 
@@ -729,6 +732,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         closeConnection()
         scope.coroutineContext.cancelChildren()
     }
+
     private fun resetFlagsSuggestionClick() {
         isHenkan = false
         suggestionClickNum = 0
@@ -739,6 +743,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled = true
         _suggestionViewStatus.update { true }
     }
+
     private fun resetFlagsEnterKey() {
         println("enter key reset is called")
         isHenkan = false
@@ -874,7 +879,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     setSideKeySpaceDrawable(drawableSpaceBar)
                     setSideKeyPreviousState(true)
                     if (_inputString.value.isNotEmpty()) {
-                        if (_inputString.value.isNotEmpty() && _inputString.value.last().isLatinAlphabet()) {
+                        if (_inputString.value.isNotEmpty() && _inputString.value.last()
+                                .isLatinAlphabet()
+                        ) {
                             setBackgroundSmallLetterKey(drawableEnglishSmall)
                         } else {
                             setBackgroundSmallLetterKey(drawableLogo)
@@ -923,7 +930,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 InputMode.ModeEnglish -> {
 
-                    if (_inputString.value.isNotEmpty() && _inputString.value.last().isLatinAlphabet()) {
+                    if (_inputString.value.isNotEmpty() && _inputString.value.last()
+                            .isLatinAlphabet()
+                    ) {
                         setBackgroundSmallLetterKey(drawableEnglishSmall)
                     } else {
                         setBackgroundSmallLetterKey(drawableLogo)
@@ -983,6 +992,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (_inputString.value.length == 1) {
                     _inputString.update { EMPTY_STRING }
                     if (stringInTail.isEmpty()) setComposingText("", 0)
+                    _suggestionList.update { emptyList() }
                 } else {
                     _inputString.update { it.dropLast(1) }
                 }
@@ -1218,9 +1228,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun updateLeftInputString() {
         if (_inputString.value.isNotEmpty()) {
-            stringInTail =
-                StringBuilder(stringInTail).insert(0, _inputString.value.last()).toString()
-            _inputString.update { it.dropLast(1) }
+            if (_inputString.value.length == 1) {
+                stringInTail =
+                    StringBuilder(stringInTail).insert(0, _inputString.value).toString()
+                _inputString.update { EMPTY_STRING }
+                _suggestionList.update { emptyList() }
+            } else {
+                stringInTail =
+                    StringBuilder(stringInTail).insert(0, _inputString.value.last()).toString()
+                _inputString.update { it.dropLast(1) }
+            }
         }
     }
 
