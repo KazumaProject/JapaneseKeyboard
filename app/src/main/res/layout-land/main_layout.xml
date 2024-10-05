@@ -9,20 +9,18 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/suggestionView_parent"
         android:layout_width="match_parent"
-        android:layout_height="52dp"
+        android:layout_height="54dp"
         android:layout_marginBottom="@dimen/keyboard_height_land"
         android:background="@color/keyboard_bg">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="bottom"
-            android:layout_marginBottom="@dimen/keyboard_height_land"
-            android:layout_marginEnd="40dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
             android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/suggestion_visibility"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"/>
 
@@ -38,8 +36,7 @@
             android:visibility="visible"
             android:layout_marginTop="8dp"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            />
+            app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -49,6 +46,6 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/keyboard_height_land"
         android:clickable="true"
-        android:focusable="true"/>
+        android:focusable="true" />
 
 </FrameLayout>
