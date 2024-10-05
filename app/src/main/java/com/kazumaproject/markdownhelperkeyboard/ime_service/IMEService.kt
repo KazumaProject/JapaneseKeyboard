@@ -225,9 +225,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
-        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        mainLayoutBinding?.keyboardView?.apply {
-            isVisible = true
+        mainLayoutBinding?.apply {
+            suggestionRecyclerView.isVisible = true
+            keyboardView.apply {
+                isVisible = true
+            }
         }
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
     }
@@ -566,11 +568,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun updateSuggestionList(mainView: MainLayoutBinding, suggestions: List<Candidate>) {
-        suggestionAdapter.let {
-            it.suggestions = suggestions
-            mainView.suggestionVisibility.isVisible = suggestions.isNotEmpty()
-            mainView.suggestionRecyclerView.scrollToPosition(0)
+    private fun updateSuggestionList(
+        mainView: MainLayoutBinding,
+        suggestions: List<Candidate>,
+    ) {
+        suggestionAdapter.suggestions = suggestions
+        mainView.apply {
+            suggestionVisibility.isVisible = suggestions.isNotEmpty()
+            suggestionRecyclerView.scrollToPosition(0)
+            suggestionRecyclerView.requestLayout()
         }
     }
 
@@ -618,6 +624,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     mainLayoutBinding?.keyboardView?.apply {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
+                        setSideKeyPreviousState(true)
                     }
                 }
 
@@ -633,6 +640,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     mainLayoutBinding?.keyboardView?.apply {
                         currentInputMode = InputMode.ModeEnglish
                         setInputModeSwitchState(InputMode.ModeEnglish)
+                        setSideKeyPreviousState(true)
                     }
                 }
 
@@ -652,6 +660,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     mainLayoutBinding?.keyboardView?.apply {
                         currentInputMode = InputMode.ModeNumber
                         setInputModeSwitchState(InputMode.ModeNumber)
+                        setSideKeyPreviousState(false)
                     }
                 }
 
@@ -977,7 +986,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return kanaKanjiEngine.getCandidates(queryText, N_BEST)
     }
 
-    private fun deleteLongPress() = CoroutineScope(Dispatchers.IO).launch {
+    private fun deleteLongPress() = scope.launch {
         while (isActive) {
             if (_inputString.value.isEmpty() && stringInTail.isNotEmpty()) {
                 enableContinuousTapInput()
@@ -990,9 +999,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             if (_inputString.value.isNotEmpty()) {
                 if (_inputString.value.length == 1) {
+                    _suggestionList.update { emptyList() }
                     _inputString.update { EMPTY_STRING }
                     if (stringInTail.isEmpty()) setComposingText("", 0)
-                    _suggestionList.update { emptyList() }
                 } else {
                     _inputString.update { it.dropLast(1) }
                 }
@@ -1217,7 +1226,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncRightLongPress() = CoroutineScope(Dispatchers.IO).launch {
+    private fun asyncRightLongPress() = scope.launch {
         while (isActive) {
             if (onRightKeyLongPressUp) return@launch
             if (stringInTail.isEmpty() && _inputString.value.isNotEmpty()) return@launch
@@ -1298,7 +1307,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    fun isCursorAtBeginning(): Boolean {
+    private fun isCursorAtBeginning(): Boolean {
         val extractedText = currentInputConnection.getExtractedText(ExtractedTextRequest(), 0)
         return extractedText?.selectionStart == 0
     }

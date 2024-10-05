@@ -34,190 +34,48 @@ import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
-import androidx.core.view.ViewCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSmoothScroller;
 import androidx.recyclerview.widget.OrientationHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
-/**
- * LayoutManager for the {@link RecyclerView}. This class is intended to be used within a
- * {@link RecyclerView} and offers the same capabilities of measure/layout its children
- * as the {@link FlexboxLayout}.
- */
 public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements FlexContainer,
         RecyclerView.SmoothScroller.ScrollVectorProvider {
-
     private static final String TAG = "FlexboxLayoutManager";
-
-    /**
-     * Temporary Rect instance to be passed to
-     * {@link RecyclerView.LayoutManager#calculateItemDecorationsForChild}
-     * to avoid creating a Rect instance every time.
-     */
     private static final Rect TEMP_RECT = new Rect();
-
     private static final boolean DEBUG = false;
-
-    /**
-     * The current value of the {@link FlexDirection}, the default value is {@link
-     * FlexDirection#ROW}.
-     *
-     * @see FlexContainer#getFlexDirection()
-     */
     private int mFlexDirection;
-
-    /**
-     * The current value of the {@link FlexWrap}, the default value is {@link FlexWrap#WRAP}.
-     *
-     * @see FlexContainer#getFlexWrap()
-     */
     private int mFlexWrap;
-
-    /**
-     * The current value of the {@link JustifyContent}, the default value is
-     * {@link JustifyContent#FLEX_START}.
-     *
-     * @see FlexContainer#getJustifyContent()
-     */
     private int mJustifyContent;
-
-    /**
-     * The current value of the {@link AlignItems}, the default value is
-     * {@link AlignItems#STRETCH}.
-     *
-     * @see FlexContainer#getAlignItems()
-     */
     private int mAlignItems;
-
     private int mMaxLine = NOT_SET;
-
-    /**
-     * True if the layout direction is right to left, false otherwise.
-     */
     private boolean mIsRtl;
-
-    /**
-     * True if the layout direction is bottom to top, false otherwise.
-     */
     private boolean mFromBottomToTop;
-
     private List<FlexLine> mFlexLines = new ArrayList<>();
-
     private final FlexboxHelper mFlexboxHelper = new FlexboxHelper(this);
-
-    /**
-     * A snapshot of the {@link RecyclerView.Recycler} instance at a given moment.
-     * It's not guaranteed that this instance has a reference to the latest Recycler.
-     * When you want to use the latest Recycler, use the one passed as an method argument
-     * (such as the one in {@link #onLayoutChildren(RecyclerView.Recycler, RecyclerView.State)})
-     */
     private RecyclerView.Recycler mRecycler;
-
-    /**
-     * A snapshot of the {@link RecyclerView.State} instance at a given moment.
-     * It's not guaranteed that this instance has a reference to the latest State.
-     * When you want to use the latest State, use the one passed as an method argument
-     * (such as the one in {@link #onLayoutChildren(RecyclerView.Recycler, RecyclerView.State)})
-     */
     private RecyclerView.State mState;
-
     private LayoutState mLayoutState;
-
-    private AnchorInfo mAnchorInfo = new AnchorInfo();
-
-    /**
-     * {@link OrientationHelper} along cross axis, which will be the primary scrolling direction.
-     * e.g. If the flex direction is set to {@link FlexDirection#ROW} and flex wrap is set to
-     * {@link FlexWrap#WRAP}, the RecyclerView scrolls vertically (along the cross axis).
-     */
+    private final AnchorInfo mAnchorInfo = new AnchorInfo();
     private OrientationHelper mOrientationHelper;
-
-    /**
-     * {@link OrientationHelper} along the main axis, which will be the secondary scrolling
-     * direction if the size of the main size is larger than the parent of the RecyclerView.
-     */
     private OrientationHelper mSubOrientationHelper;
-
     private SavedState mPendingSavedState;
-
-    /**
-     * The position to which the next layout should start from this adapter position.
-     * This value is set either from the {@link #mPendingSavedState} when a configuration change
-     * happens or programmatically such as when the {@link #scrollToPosition(int)} is called.
-     */
     private int mPendingScrollPosition = NO_POSITION;
-
-    /**
-     * The offset by which the next layout should be offset.
-     */
     private int mPendingScrollPositionOffset = INVALID_OFFSET;
-
-    /**
-     * The width value used in the last {@link #onLayoutChildren} method.
-     */
     private int mLastWidth = Integer.MIN_VALUE;
-
-    /**
-     * The height value used in the last {@link #onLayoutChildren} method.
-     */
     private int mLastHeight = Integer.MIN_VALUE;
-
-    /**
-     * If set to {@code true}, this LayoutManager tries to recycle the children when detached from
-     * the RecyclerView so that recycled views can be reused using RecycledViewPool.
-     */
     private boolean mRecycleChildrenOnDetach;
-
-    /**
-     * View cache within this LayoutManager. This is used to avoid the same ViewHolder is created
-     * multiple times in the same layout pass (onLayoutChildren or scrollHorizontally or
-     * scrollVertically).
-     * The keys and values in this cache needs to be cleared at the end of each layout pass.
-     */
-    private SparseArray<View> mViewCache = new SparseArray<>();
-
+    private final SparseArray<View> mViewCache = new SparseArray<>();
     private final Context mContext;
-
-    /** The reference to the parent of the RecyclerView */
     private View mParent;
-
-    /**
-     * Indicates the position that the view position that the flex line which has the view having
-     * this position needs to be recomputed before the next layout.
-     * For example, this is updated when a new View is inserted into the position before the
-     * first visible position.
-     */
     private int mDirtyPosition = NO_POSITION;
-
-    /**
-     * Used for storing the results of calculation of flex lines to avoid creating a new instance
-     * every time the calculation happens.
-     */
-    private FlexboxHelper.FlexLinesResult mFlexLinesResult = new FlexboxHelper.FlexLinesResult();
-
-    /**
-     * Creates a default FlexboxLayoutManager.
-     */
+    private final FlexboxHelper.FlexLinesResult mFlexLinesResult = new FlexboxHelper.FlexLinesResult();
     public FlexboxLayoutManager(Context context) {
         this(context, FlexDirection.ROW, FlexWrap.WRAP);
     }
-
-    /**
-     * Creates a FlexboxLayoutManager with the flexDirection specified.
-     *
-     * @param flexDirection the flex direction attribute
-     */
     public FlexboxLayoutManager(Context context, @FlexDirection int flexDirection) {
         this(context, flexDirection, FlexWrap.WRAP);
     }
-
-    /**
-     * Creates a FlexboxLayoutManager with the flexDirection and flexWrap attributes specified.
-     *
-     * @param flexDirection the flex direction attribute
-     * @param flexWrap      the flex wrap attribute
-     */
     public FlexboxLayoutManager(Context context, @FlexDirection int flexDirection,
             @FlexWrap int flexWrap) {
         setFlexDirection(flexDirection);
@@ -225,21 +83,6 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         setAlignItems(AlignItems.STRETCH);
         mContext = context;
     }
-
-    /**
-     * Constructor used when layout manager is set in XML by RecyclerView attribute
-     * "layoutManager". No corresponding attributes for the {@code orientation},
-     * {@code reverseLayout} and {@code stackFromEnd} exist in Flexbox, thus map the similar
-     * attributes from Flexbox that behave similarly for each of them.
-     *
-     * {@code android:orientation} maps to the {@link FlexDirection},
-     * HORIZONTAL -> {@link FlexDirection#ROW}, VERTICAL -> {@link FlexDirection#COLUMN}.
-     *
-     * {@code android.support.v7.recyclerview:reverseLayout} reverses the direction of the
-     * {@link FlexDirection}, i.e. if reverseLayout is {@code true}, {@link FlexDirection#ROW} is
-     * changed to {@link FlexDirection#ROW_REVERSE}. Similarly {@link FlexDirection#COLUMN} is
-     * changed to {@link FlexDirection#COLUMN_REVERSE}.
-     */
     public FlexboxLayoutManager(Context context, AttributeSet attrs, int defStyleAttr,
             int defStyleRes) {
         Properties properties = getProperties(context, attrs, defStyleAttr, defStyleRes);
@@ -263,25 +106,18 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         setAlignItems(AlignItems.STRETCH);
         mContext = context;
     }
-
     @Override
     public boolean isAutoMeasureEnabled() {
         return true;
     }
-
-    // From here, methods from FlexContainer
     @FlexDirection
     @Override
     public int getFlexDirection() {
         return mFlexDirection;
     }
-
     @Override
     public void setFlexDirection(@FlexDirection int flexDirection) {
         if (mFlexDirection != flexDirection) {
-            // Remove the existing views even if the direction changes from
-            // row -> row_reverse or column -> column_reverse to make the item decorations dirty
-            // state
             removeAllViews();
             mFlexDirection = flexDirection;
             mOrientationHelper = null;
@@ -290,13 +126,11 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
             requestLayout();
         }
     }
-
     @Override
     @FlexWrap
     public int getFlexWrap() {
         return mFlexWrap;
     }
-
     @Override
     public void setFlexWrap(@FlexWrap int flexWrap) {
         if (flexWrap == FlexWrap.WRAP_REVERSE) {
@@ -421,35 +255,11 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
             flexLine.mDividerLengthInMainSize += decorationHeight;
         }
     }
-
-    /**
-     * @return the number of flex items contained in the flex container.
-     * This method doesn't always reflect the latest state of the adapter.
-     * If you want to access the latest state of the adapter, use the {@link RecyclerView.State}
-     * instance passed as an argument for some methods (such as
-     * {@link #onLayoutChildren(RecyclerView.Recycler, RecyclerView.State)})
-     *
-     * This method is used to avoid the implementation of the similar method.
-     * i.e. {@link FlexboxLayoutManager#getChildCount()} returns the child count, but it doesn't
-     * include the children that are detached or scrapped.
-     */
     @Override
     public int getFlexItemCount() {
         return mState.getItemCount();
     }
 
-    /**
-     * @return the flex item as a view specified as the index.
-     * This method doesn't always return the latest state of the view in the adapter.
-     * If you want to access the latest state, use the {@link RecyclerView.Recycler}
-     * instance passed as an argument for some methods (such as
-     * {@link #onLayoutChildren(RecyclerView.Recycler, RecyclerView.State)})
-     *
-     * This method is used to avoid the implementation of the similar method.
-     * i.e. {@link FlexboxLayoutManager#getChildAt(int)} returns a view for the given index,
-     * but the index is based on the layout position, not based on the adapter position, which
-     * isn't desired given the usage of this method.
-     */
     @Override
     public View getFlexItemAt(int index) {
         // Look up the cache within the LayoutManager first, since it's the most light operation.
@@ -459,20 +269,6 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         }
         return mRecycler.getViewForPosition(index);
     }
-
-    /**
-     * Returns a View for the given index.
-     * The order attribute ({@link FlexItem#getOrder()}) is not supported by this class since
-     * otherwise all view holders need to be inflated at least once even though only the visible
-     * part of the layout is needed.
-     * Implementing this method just to make this class conform to the
-     * {@link FlexContainer} interface.
-     *
-     * @param index the index of the view
-     * @return the view for the given index.
-     * If the index is negative or out of bounds of the number of contained views,
-     * returns {@code null}.
-     */
     @Override
     public View getReorderedFlexItemAt(int index) {
         return getFlexItemAt(index);
@@ -497,7 +293,7 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
 
     @Override
     public int getLargestMainSize() {
-        if (mFlexLines.size() == 0) {
+        if (mFlexLines.isEmpty()) {
             return 0;
         }
         int largestSize = Integer.MIN_VALUE;
@@ -513,7 +309,6 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         int sum = 0;
         for (int i = 0, size = mFlexLines.size(); i < size; i++) {
             FlexLine flexLine = mFlexLines.get(i);
-            // TODO: Consider adding decorator between flex lines.
             sum += flexLine.mCrossSize;
         }
         return sum;
@@ -945,7 +740,7 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
 
             mFlexLinesResult.reset();
             if (isMainAxisDirectionHorizontal()) {
-                if (mFlexLines.size() > 0) {
+                if (!mFlexLines.isEmpty()) {
                     // Remove the already calculated flex lines from the fromIndex (either of
                     // anchor position or the position marked as dirty (last time the item was
                     // changed) and calculate beyond the available amount
@@ -962,7 +757,7 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
                                     needsToFill, 0, mFlexLines);
                 }
             } else {
-                if (mFlexLines.size() > 0) {
+                if (!mFlexLines.isEmpty()) {
                     // Remove the already calculated flex lines from the fromIndex (either of
                     // anchor position or the position marked as dirty (last time the item was
                     // changed) and calculate beyond the available amount
@@ -1015,22 +810,22 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         int layoutDirection = getLayoutDirection();
         switch (mFlexDirection) {
             case FlexDirection.ROW:
-                mIsRtl = layoutDirection == ViewCompat.LAYOUT_DIRECTION_RTL;
+                mIsRtl = layoutDirection == View.LAYOUT_DIRECTION_RTL;
                 mFromBottomToTop = mFlexWrap == FlexWrap.WRAP_REVERSE;
                 break;
             case FlexDirection.ROW_REVERSE:
-                mIsRtl = layoutDirection != ViewCompat.LAYOUT_DIRECTION_RTL;
+                mIsRtl = layoutDirection != View.LAYOUT_DIRECTION_RTL;
                 mFromBottomToTop = mFlexWrap == FlexWrap.WRAP_REVERSE;
                 break;
             case FlexDirection.COLUMN:
-                mIsRtl = layoutDirection == ViewCompat.LAYOUT_DIRECTION_RTL;
+                mIsRtl = layoutDirection == View.LAYOUT_DIRECTION_RTL;
                 if (mFlexWrap == FlexWrap.WRAP_REVERSE) {
                     mIsRtl = !mIsRtl;
                 }
                 mFromBottomToTop = false;
                 break;
             case FlexDirection.COLUMN_REVERSE:
-                mIsRtl = layoutDirection == ViewCompat.LAYOUT_DIRECTION_RTL;
+                mIsRtl = layoutDirection == View.LAYOUT_DIRECTION_RTL;
                 if (mFlexWrap == FlexWrap.WRAP_REVERSE) {
                     mIsRtl = !mIsRtl;
                 }
@@ -1678,23 +1473,23 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
             int rightWithDecoration = childRight - getRightDecorationWidth(view);
             if (mIsRtl) {
                 if (mFromBottomToTop) {
-                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, mIsRtl,
+                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, true,
                             rightWithDecoration - view.getMeasuredWidth(),
                             Math.round(childBottom) - view.getMeasuredHeight(),
                             rightWithDecoration, Math.round(childBottom));
                 } else {
-                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, mIsRtl,
+                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, true,
                             rightWithDecoration - view.getMeasuredWidth(),
                             Math.round(childTop), rightWithDecoration,
                             Math.round(childTop) + view.getMeasuredHeight());
                 }
             } else {
                 if (mFromBottomToTop) {
-                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, mIsRtl,
+                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, false,
                             leftWithDecoration, Math.round(childBottom) - view.getMeasuredHeight(),
                             leftWithDecoration + view.getMeasuredWidth(), Math.round(childBottom));
                 } else {
-                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, mIsRtl,
+                    mFlexboxHelper.layoutSingleChildVertical(view, flexLine, false,
                             leftWithDecoration, Math.round(childTop),
                             leftWithDecoration + view.getMeasuredWidth(),
                             Math.round(childTop) + view.getMeasuredHeight());
@@ -2033,7 +1828,7 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         int parentLength = isMainAxisHorizontal ? mParent.getWidth() : mParent.getHeight();
         int mainAxisLength = isMainAxisHorizontal ? getWidth() : getHeight();
 
-        boolean layoutRtl = getLayoutDirection() == ViewCompat.LAYOUT_DIRECTION_RTL;
+        boolean layoutRtl = getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
         if (layoutRtl) {
             int absDelta = Math.abs(delta);
             if (delta < 0) {
@@ -2365,39 +2160,26 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         return (int) ((float) laidOutArea / laidOutRange * state.getItemCount());
     }
 
-    /**
-     * Copied from {@link RecyclerView.LayoutManager#shouldMeasureChild
-     * (View,
-     * int, int, RecyclerView.LayoutParams)}}
-     */
     private boolean shouldMeasureChild(View child, int widthSpec, int heightSpec,
             RecyclerView.LayoutParams lp) {
         return child.isLayoutRequested()
                 || !isMeasurementCacheEnabled()
-                || !isMeasurementUpToDate(child.getWidth(), widthSpec, lp.width)
-                || !isMeasurementUpToDate(child.getHeight(), heightSpec, lp.height);
+                || isMeasurementUpToDate(child.getWidth(), widthSpec, lp.width)
+                || isMeasurementUpToDate(child.getHeight(), heightSpec, lp.height);
     }
 
-    /**
-     * Copied from
-     * {@link RecyclerView.LayoutManager#isMeasurementUpToDate(int, int,
-     * int)}
-     */
     private static boolean isMeasurementUpToDate(int childSize, int spec, int dimension) {
         final int specMode = View.MeasureSpec.getMode(spec);
         final int specSize = View.MeasureSpec.getSize(spec);
         if (dimension > 0 && childSize != dimension) {
-            return false;
+            return true;
         }
-        switch (specMode) {
-            case View.MeasureSpec.UNSPECIFIED:
-                return true;
-            case View.MeasureSpec.AT_MOST:
-                return specSize >= childSize;
-            case View.MeasureSpec.EXACTLY:
-                return specSize == childSize;
-        }
-        return false;
+        return !switch (specMode) {
+            case View.MeasureSpec.UNSPECIFIED -> true;
+            case View.MeasureSpec.AT_MOST -> specSize >= childSize;
+            case View.MeasureSpec.EXACTLY -> specSize == childSize;
+            default -> false;
+        };
     }
 
     private void clearFlexLines() {
@@ -2476,7 +2258,6 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
     /**
      * Returns the adapter position of the first visible view. This position does not include
      * adapter changes that were dispatched after the last layout pass.
-     *
      * If RecyclerView has item decorators, they will be considered in calculations as well.
      * LayoutManager may pre-cache some views that are not necessarily visible. Those views
      * are ignored in this method.
@@ -2510,7 +2291,6 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
     /**
      * Returns the adapter position of the last visible view. This position does not include
      * adapter changes that were dispatched after the last layout pass.
-     *
      * If RecyclerView has item decorators, they will be considered in calculations as well.
      * LayoutManager may pre-cache some views that are not necessarily visible. Those views
      * are ignored in this method.
@@ -2577,7 +2357,6 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
     /**
      * LayoutParams used by the {@link FlexboxLayoutManager}, which stores per-child information
      * required for the Flexbox.
-     *
      * Note that some parent fields (which are not primitive nor a class implements
      * {@link Parcelable}) are not included as the stored/restored fields after this class
      * is serialized/de-serialized as an {@link Parcelable}.

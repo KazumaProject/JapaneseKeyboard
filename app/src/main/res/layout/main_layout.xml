@@ -1,51 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
     android:background="@color/keyboard_bg">
 
+    <!-- Container for Suggestion List and Visibility Icon -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/suggestionView_parent"
         android:layout_width="match_parent"
-        android:layout_height="54dp"
+        android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/keyboard_height"
-        android:background="@color/keyboard_bg"
-        android:visibility="visible">
+        android:background="@color/keyboard_bg">
 
+        <!-- RecyclerView for Suggestions -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_gravity="bottom"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
             android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/suggestion_visibility"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <!-- Visibility Toggle Button -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/suggestion_visibility"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@color/keyboard_bg"
+            android:layout_marginEnd="8dp"
+            android:layout_marginTop="8dp"
             android:scaleType="center"
             android:src="@drawable/outline_arrow_drop_down_24"
             android:tint="@color/keyboard_icon_color"
-            android:visibility="visible"
-            android:layout_marginTop="8dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <!-- Custom Keyboard View -->
     <com.kazumaproject.tenkey.TenKey
         android:id="@+id/keyboard_view"
-        android:layout_gravity="bottom"
         android:layout_width="match_parent"
         android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
         android:clickable="true"
-        android:focusable="true"/>
-
+        android:focusable="true"
+        android:importantForAccessibility="yes" />
 </FrameLayout>

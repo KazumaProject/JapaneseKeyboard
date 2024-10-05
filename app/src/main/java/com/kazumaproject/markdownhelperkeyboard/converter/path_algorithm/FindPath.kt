@@ -44,11 +44,12 @@ class FindPath {
             node?.let {
                 if (node.first.tango == "BOS") {
                     if (!resultFinal.map { it.string }.contains(getStringFromNode(node.first))){
+                        val tango = getStringFromNode(node.first)
                         val candidate = Candidate(
-                            string = getStringFromNode(node.first),
+                            string = tango,
                             type = (1).toByte(),
                             length = length.toUByte(),
-                            score = node.second,
+                            score = if (Regex("\\d").containsMatchIn(tango)) node.second + 2000 else node.second,
                             leftId =  node.first.next?.l,
                             rightId =  node.first.next?.r
                         )

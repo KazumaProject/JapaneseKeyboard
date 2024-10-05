@@ -18,11 +18,11 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem == newItem
+            return oldItem.string == newItem.string && oldItem.type == newItem.type && oldItem.length == newItem.length
         }
 
         override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem.string == newItem.string
+            return oldItem == newItem
         }
     }
 
@@ -50,12 +50,12 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
-        val paddingLength = if (position == 0) 6 else if (suggestion.length.toInt() == 1) 3 else if (suggestion.length.toInt() == 2) 2 else 0
+        val paddingLength =
+            if (position == 0) 5 else if (suggestion.length.toInt() == 1) 4 else 1
         holder.text.text = suggestion.string.padStart(suggestion.string.length + paddingLength)
             .plus(" ".repeat(paddingLength))
         holder.typeText.text = when (suggestion.type) {
 //            (1).toByte() -> "${suggestion.score} ${suggestion.leftId} ${suggestion.rightId}"
-            (1).toByte() -> ""
             // 予測
             (9).toByte() -> ""
             (5).toByte() -> "[部]"
