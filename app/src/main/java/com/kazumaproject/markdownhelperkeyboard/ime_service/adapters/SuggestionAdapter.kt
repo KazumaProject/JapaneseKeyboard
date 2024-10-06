@@ -55,7 +55,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         holder.text.text = suggestion.string.padStart(suggestion.string.length + paddingLength)
             .plus(" ".repeat(paddingLength))
         holder.typeText.text = when (suggestion.type) {
-//            (1).toByte() -> "${suggestion.score}"
+            (1).toByte() -> ""
             /** 予測 **/
             (9).toByte() -> ""
             (5).toByte() -> "[部]"
