@@ -33,9 +33,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import com.kazumaproject.android.flexbox.AlignItems
 import com.kazumaproject.android.flexbox.FlexDirection
-import com.kazumaproject.android.flexbox.FlexWrap
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -163,6 +161,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var onRightKeyLongPressUp = false
     private var onDeleteLongPressUp = false
     private var deleteKeyLongKeyPressed = false
+    private var rightCursorKeyLongKeyPressed = false
+    private var leftCursorKeyLongKeyPressed = false
 
     private val vibratorManager: VibratorManager by lazy {
         getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -200,8 +200,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
             val flexboxLayoutManager = FlexboxLayoutManager(applicationContext).apply {
-                flexWrap = FlexWrap.WRAP
-                alignItems = AlignItems.STRETCH
+                flexDirection = FlexDirection.ROW
+                justifyContent = JustifyContent.FLEX_START
             }
             setSuggestionRecyclerView(flexboxLayoutManager)
             setTenKeyListeners()
@@ -376,16 +376,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeyCursorLeft -> {
-                handleLeftCursor(gestureType)
+                if (!leftCursorKeyLongKeyPressed){
+                    handleLeftCursor(gestureType)
+                }
+                onLeftKeyLongPressUp = true
+                leftCursorKeyLongKeyPressed = false
             }
 
             Key.SideKeyCursorRight -> {
-                actionInRightKeyPressed(gestureType)
+                if (!rightCursorKeyLongKeyPressed){
+                    actionInRightKeyPressed(gestureType)
+                }
                 onRightKeyLongPressUp = true
+                rightCursorKeyLongKeyPressed = false
             }
 
             Key.SideKeyDelete -> {
-                handleDeleteKeyTap()
+                if (!deleteKeyLongKeyPressed){
+                    handleDeleteKeyTap()
+                }
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
             }
@@ -448,10 +457,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.KeyDakutenSmall -> {}
             Key.SideKeyCursorLeft -> {
                 handleLeftLongPress()
+                leftCursorKeyLongKeyPressed = true
             }
 
             Key.SideKeyCursorRight -> {
                 handleRightLongPress()
+                rightCursorKeyLongKeyPressed = true
             }
 
             Key.SideKeyDelete -> {
@@ -576,7 +587,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView.apply {
             suggestionVisibility.isVisible = suggestions.isNotEmpty()
             suggestionRecyclerView.scrollToPosition(0)
-            suggestionRecyclerView.requestLayout()
         }
     }
 
@@ -681,13 +691,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.suggestionRecyclerView.apply {
                 itemAnimator = null
                 focusable = View.NOT_FOCUSABLE
-                suggestionAdapter.let { sugAdapter ->
-                    adapter = sugAdapter
-                    layoutManager = flexboxLayoutManager.apply {
-                        flexDirection = FlexDirection.ROW
-                        justifyContent = JustifyContent.FLEX_START
-                    }
-                }
+            }
+            suggestionAdapter.apply {
+                mainView.suggestionRecyclerView.adapter = this
+                mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManager
             }
             mainView.suggestionVisibility.setOnClickListener {
                 _suggestionViewStatus.update { !it }
@@ -725,6 +732,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isHenkan = false
         isContinuousTapInputEnabled = false
         deleteKeyLongKeyPressed = false
+        leftCursorKeyLongKeyPressed = false
+        rightCursorKeyLongKeyPressed = false
         _dakutenPressed.value = false
         englishSpaceKeyPressed = false
         lastFlickConvertedNextHiragana = false

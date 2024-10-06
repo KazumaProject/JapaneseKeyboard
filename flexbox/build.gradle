@@ -16,7 +16,6 @@
 
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply from: 'maven-puglisher-plugin.gradle'
 
 android {
     compileSdk 35

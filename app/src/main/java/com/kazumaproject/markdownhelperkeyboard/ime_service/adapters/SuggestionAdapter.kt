@@ -18,11 +18,11 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem.string == newItem.string && oldItem.type == newItem.type && oldItem.length == newItem.length
+            return false
         }
 
         override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem == newItem
+            return false
         }
     }
 
@@ -51,23 +51,25 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
         val paddingLength =
-            if (position == 0) 5 else if (suggestion.length.toInt() == 1) 4 else 1
+            if (position == 0) 4 else if (suggestion.length.toInt() == 1) 4 else 0
         holder.text.text = suggestion.string.padStart(suggestion.string.length + paddingLength)
             .plus(" ".repeat(paddingLength))
         holder.typeText.text = when (suggestion.type) {
-//            (1).toByte() -> "${suggestion.score} ${suggestion.leftId} ${suggestion.rightId}"
-            // 予測
+//            (1).toByte() -> "${suggestion.score}"
+            /** 予測 **/
             (9).toByte() -> ""
             (5).toByte() -> "[部]"
             (7).toByte() -> "[単]"
-            // 最長
+            /** 最長 **/
             (10).toByte() -> ""
-            (11).toByte() -> " "
-            (12).toByte() -> " "
-            (13).toByte() -> " "
+            (11).toByte() -> "  "
+            (12).toByte() -> "  "
+            (13).toByte() -> "  "
             (14).toByte() -> "[日付]"
-            // 修正
+            /** 修正 **/
             (15).toByte() -> ""
+            /** ことわざ **/
+            (16).toByte() -> ""
             else -> ""
         }
 
