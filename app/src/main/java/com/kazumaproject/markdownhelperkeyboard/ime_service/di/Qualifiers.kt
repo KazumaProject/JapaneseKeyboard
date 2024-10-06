@@ -269,4 +269,47 @@ annotation class ReadingCorrectionRank1ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class ReadingCorrectionYomiLBSBooleanArray
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaYomiTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaTangoTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaTokenArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaRank0ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaRank1ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaRank1ArrayIsLeafYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaRank0ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaRank1ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaRank0ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaRank1ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaYomiLBSBooleanArray
 

@@ -580,6 +580,88 @@ object AppModule {
     fun provideReadingCorrectionRank1ArrayLBSTango(@ReadingCorrectionTangoTrie tangoTrie: LOUDS): ShortArray =
         tangoTrie.LBS.rank1GetShortArray()
 
+    @KotowazaTangoTrie
+    @Singleton
+    @Provides
+    fun provideKotowazaTangoTrie(@ApplicationContext context: Context): LOUDS {
+        val objectInputTango =
+            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/tango_kotowaza.dat")))
+        return LOUDS().readExternalNotCompress(objectInputTango)
+    }
+
+    @KotowazaYomiTrie
+    @Singleton
+    @Provides
+    fun provideKotowazaYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
+        val objectInputYomi =
+            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/yomi_kotowaza.dat")))
+        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    }
+
+    @KotowazaTokenArray
+    @Singleton
+    @Provides
+    fun providesKotowazaTokenArray(@ApplicationContext context: Context): TokenArray {
+        val objectInputTokenArray =
+            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/token_kotowaza.dat")))
+        val objectInputReadPOSTable =
+            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+        val tokenArray = TokenArray()
+        tokenArray.readExternal(objectInputTokenArray)
+        tokenArray.readPOSTable(objectInputReadPOSTable)
+        return tokenArray
+    }
+
+    @Singleton
+    @Provides
+    @KotowazaRank0ArrayLBSYomi
+    fun provideKotowazaRank0ArrayLBSYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
+        yomiTrie.LBS.rank0GetShortArray()
+
+    @Singleton
+    @Provides
+    @KotowazaRank1ArrayLBSYomi
+    fun provideKotowazaRank1ArrayLBSYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
+        yomiTrie.LBS.rank1GetShortArray()
+
+    @Singleton
+    @Provides
+    @KotowazaRank1ArrayIsLeafYomi
+    fun provideKotowazaRank1ArrayIsLeaf(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
+        yomiTrie.isLeaf.rank1GetShortArray()
+
+    @Singleton
+    @Provides
+    @KotowazaYomiLBSBooleanArray
+    fun providesKotowazaYomiLBSBooleanArray(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
+        yomiTrie.LBS.toBooleanArray()
+
+    @Singleton
+    @Provides
+    @KotowazaRank0ArrayTokenArrayBitvector
+    fun provideKotowazaRank0ArrayTokenArrayBitvector(@KotowazaTokenArray tokenArray: TokenArray): ShortArray =
+        tokenArray.bitvector.rank0GetShortArray()
+
+    @Singleton
+    @Provides
+    @KotowazaRank1ArrayTokenArrayBitvector
+    fun provideKotowazaRank1ArrayTokenArrayBitvector(@KotowazaTokenArray tokenArray: TokenArray): ShortArray =
+        tokenArray.bitvector.rank1GetShortArray()
+
+    @Singleton
+    @Provides
+    @KotowazaRank0ArrayTangoLBS
+    fun provideKotowazaRank0ArrayLBSTango(@KotowazaTangoTrie tangoTrie: LOUDS): ShortArray =
+        tangoTrie.LBS.rank0GetShortArray()
+
+    @Singleton
+    @Provides
+    @KotowazaRank1ArrayTangoLBS
+    fun provideKotowazaRank1ArrayLBSTango(@KotowazaTangoTrie tangoTrie: LOUDS): ShortArray =
+        tangoTrie.LBS.rank1GetShortArray()
+
+
+
 
     @Singleton
     @Provides
@@ -658,6 +740,18 @@ object AppModule {
         @ReadingCorrectionRank0ArrayTangoLBS readingCorrectionRank0ArrayTangoLBS: ShortArray,
         @ReadingCorrectionRank1ArrayTangoLBS readingCorrectionRank1ArrayTangoLBS: ShortArray,
         @ReadingCorrectionYomiLBSBooleanArray readingCorrectionYomiLBSBooleanArray: BooleanArray,
+
+        @KotowazaTangoTrie kotowazaTangoTrie: LOUDS,
+        @KotowazaYomiTrie kotowazaYomiTrie: LOUDSWithTermId,
+        @KotowazaTokenArray kotowazaTokenArray: TokenArray,
+        @KotowazaRank0ArrayLBSYomi kotowazaRank0ArrayLBSYomi: ShortArray,
+        @KotowazaRank1ArrayLBSYomi kotowazaRank1ArrayLBSYomi: ShortArray,
+        @KotowazaRank1ArrayIsLeafYomi kotowazaRank1ArrayIsLeaf: ShortArray,
+        @KotowazaRank0ArrayTokenArrayBitvector kotowazaRank0ArrayTokenArrayBitvector: ShortArray,
+        @KotowazaRank1ArrayTokenArrayBitvector kotowazaRank1ArrayTokenArrayBitvector: ShortArray,
+        @KotowazaRank0ArrayTangoLBS kotowazaRank0ArrayTangoLBS: ShortArray,
+        @KotowazaRank1ArrayTangoLBS kotowazaRank1ArrayTangoLBS: ShortArray,
+        @KotowazaYomiLBSBooleanArray kotowazaYomiLBSBooleanArray: BooleanArray,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
 
@@ -737,6 +831,18 @@ object AppModule {
             readingCorrectionRank0ArrayLBSTango = readingCorrectionRank0ArrayTangoLBS,
             readingCorrectionRank1ArrayLBSTango = readingCorrectionRank1ArrayTangoLBS,
             readingCorrectionYomiLBSBooleanArray = readingCorrectionYomiLBSBooleanArray,
+
+            kotowazaTangoTrie = kotowazaTangoTrie,
+            kotowazaYomiTrie = kotowazaYomiTrie,
+            kotowazaTokenArray = kotowazaTokenArray,
+            kotowazaRank0ArrayLBSYomi = kotowazaRank0ArrayLBSYomi,
+            kotowazaRank1ArrayLBSYomi = kotowazaRank1ArrayLBSYomi,
+            kotowazaRank1ArrayIsLeaf = kotowazaRank1ArrayIsLeaf,
+            kotowazaRank0ArrayTokenArrayBitvector = kotowazaRank0ArrayTokenArrayBitvector,
+            kotowazaRank1ArrayTokenArrayBitvector = kotowazaRank1ArrayTokenArrayBitvector,
+            kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayTangoLBS,
+            kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayTangoLBS,
+            kotowazaYomiLBSBooleanArray = kotowazaYomiLBSBooleanArray,
         )
 
         return kanaKanjiEngine
