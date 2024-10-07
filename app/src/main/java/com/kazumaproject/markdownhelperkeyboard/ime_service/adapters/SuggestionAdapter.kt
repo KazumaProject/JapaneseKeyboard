@@ -16,6 +16,8 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
+    var highlightedPosition: Int = RecyclerView.NO_POSITION
+
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
             return false
@@ -72,10 +74,19 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (16).toByte() -> ""
             else -> ""
         }
-
+        holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion)
         }
     }
 
+    fun updateHighlightPosition(newPosition: Int) {
+        val previousPosition = highlightedPosition
+        highlightedPosition = newPosition
+        // Notify adapter to update old and new positions
+        if (previousPosition != RecyclerView.NO_POSITION) {
+            notifyItemChanged(previousPosition)
+        }
+        notifyItemChanged(highlightedPosition)
+    }
 }
