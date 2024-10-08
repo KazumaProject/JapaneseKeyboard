@@ -732,8 +732,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 addOnItemTouchListener(SwipeGestureListener(
                     context = this@IMEService,
                     onSwipeDown = {
-                        if (_suggestionViewStatus.value) {
-                            _suggestionViewStatus.update { !it }
+                        if (_suggestionList.value.isNotEmpty()) {
+                            if (_suggestionViewStatus.value) {
+                                _suggestionViewStatus.update { !it }
+                            }
                         }
                     },
                     onSwipeUp = {
