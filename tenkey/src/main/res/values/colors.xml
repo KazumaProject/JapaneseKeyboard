@@ -49,6 +49,7 @@
     <color name="qwety_suggestion_bg_color">#B8BFC9</color>
     <color name="qwety_cap_on_bg_color">#B8BFC9</color>
 
-    <color name="enter_key_bg">#C9E7FD</color>
-    <color name="enter_key_press">#A3D0F5</color>
+    <color name="enter_key_bg">#9CCDEE</color>
+    <color name="enter_key_press">#C9E7FD</color>
+    <color name="mode_key_bg">#C9E7FD</color>
 </resources>

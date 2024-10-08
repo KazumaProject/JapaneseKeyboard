@@ -59,6 +59,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextIn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextReturnInputChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isHiragana
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isLatinAlphabet
+import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.listener.FlickListener
@@ -571,12 +572,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding, flexboxLayoutManager: FlexboxLayoutManager, isVisible: Boolean
     ) {
         mainView.keyboardView.isVisible = isVisible
-        mainView.suggestionVisibility.setImageDrawable(
-            ContextCompat.getDrawable(
-                applicationContext,
-                if (isVisible) R.drawable.outline_arrow_drop_down_24 else R.drawable.outline_arrow_drop_up_24
+        mainView.suggestionVisibility.apply {
+            this.isVisible = !isVisible
+            setImageDrawable(
+                ContextCompat.getDrawable(
+                    applicationContext,
+                    if (isVisible) R.drawable.outline_arrow_drop_down_24 else R.drawable.outline_arrow_drop_up_24
+                )
             )
-        )
+        }
         mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManager.apply {
             flexDirection = if (isVisible) FlexDirection.COLUMN else FlexDirection.ROW
             justifyContent =
@@ -619,7 +623,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         suggestionAdapter.suggestions = suggestions
         mainView.apply {
-            suggestionVisibility.isVisible = suggestions.isNotEmpty()
             suggestionRecyclerView.scrollToPosition(0)
         }
     }
@@ -726,6 +729,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.suggestionRecyclerView.apply {
                 itemAnimator = null
                 focusable = View.NOT_FOCUSABLE
+                addOnItemTouchListener(SwipeGestureListener(
+                    context = this@IMEService,
+                    onSwipeDown = {
+                        if (_suggestionViewStatus.value) {
+                            _suggestionViewStatus.update { !it }
+                        }
+                    },
+                    onSwipeUp = {
+                        //_suggestionViewStatus.update { !it }
+                    }
+                ))
             }
             suggestionAdapter.apply {
                 mainView.suggestionRecyclerView.adapter = this

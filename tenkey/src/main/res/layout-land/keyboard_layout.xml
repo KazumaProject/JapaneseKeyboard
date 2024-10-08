@@ -70,7 +70,7 @@
         android:layout_marginVertical="@dimen/key_margin_vertical_size"
         android:layout_marginStart="@dimen/key_margin_start_size"
         android:layout_marginEnd="@dimen/key_margin_horizontal_size"
-        android:background="@drawable/enter_key_bg"
+        android:background="@drawable/mode_key_bg"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/key_1"
