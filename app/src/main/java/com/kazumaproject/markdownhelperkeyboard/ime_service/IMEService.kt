@@ -344,8 +344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
-                    val insertString = _inputString.value
-                    handleLongPress(key, insertString)
+                    handleLongPress(key)
                     Timber.d("Long Press: $key")
                 }
 
@@ -453,28 +452,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleLongPress(
-        key: Key, insertString: String
+        key: Key
     ) {
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
             Key.KeyDakutenSmall -> {}
             Key.SideKeyCursorLeft -> {
-                handleLeftLongPress(insertString)
+                handleLeftLongPress()
                 leftCursorKeyLongKeyPressed = true
             }
 
             Key.SideKeyCursorRight -> {
-                handleRightLongPress(insertString)
+                handleRightLongPress()
                 rightCursorKeyLongKeyPressed = true
             }
 
             Key.SideKeyDelete -> {
                 if (isHenkan) {
-                    cancelHenkanByLongPressDeleteKey(insertString)
+                    cancelHenkanByLongPressDeleteKey()
                 } else {
                     onDeleteLongPressUp = false
-                    deleteLongPress(insertString)
+                    deleteLongPress()
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed = false
                     deleteKeyLongKeyPressed = true
@@ -484,6 +483,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
+                val insertString = _inputString.value
                 if (insertString.isEmpty() && stringInTail.isEmpty()) {
                     isSpaceKeyLongPressed = true
                     showKeyboardPicker()
@@ -511,9 +511,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun cancelHenkanByLongPressDeleteKey(
-        insertString: String
-    ) {
+    private fun cancelHenkanByLongPressDeleteKey() {
+        val insertString = _inputString.value
         val selectedSuggestion = suggestionAdapter.suggestions[suggestionClickNum]
         deleteKeyLongKeyPressed = true
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
@@ -1035,8 +1034,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return kanaKanjiEngine.getCandidates(insertString, N_BEST)
     }
 
-    private fun deleteLongPress(insertString: String) = scope.launch {
+    private fun deleteLongPress() = scope.launch {
         while (isActive) {
+            val insertString = _inputString.value
             if (insertString.isEmpty() && stringInTail.isNotEmpty()) {
                 enableContinuousTapInput()
                 _suggestionList.update { emptyList() }
@@ -1270,18 +1270,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleLeftLongPress(insertString: String) {
+    private fun handleLeftLongPress() {
         if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
             onLeftKeyLongPressUp = false
             suggestionClickNum = 0
-            asyncLeftLongPress(insertString)
+            asyncLeftLongPress()
         }
     }
 
-    private fun asyncLeftLongPress(insertString: String) = scope.launch {
+    private fun asyncLeftLongPress() = scope.launch {
         while (isActive) {
+            val insertString = _inputString.value
             if (onLeftKeyLongPressUp) return@launch
             if (stringInTail.isNotEmpty() && insertString.isEmpty()) return@launch
             if (insertString.isNotEmpty()) {
@@ -1300,20 +1301,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleRightLongPress(insertString: String) {
+    private fun handleRightLongPress() {
         if (!isHenkan) {
             onRightKeyLongPressUp = false
             suggestionClickNum = 0
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
-            asyncRightLongPress(insertString)
+            asyncRightLongPress()
         } else {
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
         }
     }
 
-    private fun asyncRightLongPress(insertString: String) = scope.launch {
+    private fun asyncRightLongPress() = scope.launch {
         while (isActive) {
+            val insertString = _inputString.value
             if (onRightKeyLongPressUp) return@launch
             if (stringInTail.isEmpty() && insertString.isNotEmpty()) return@launch
             actionInRightKeyPressed(insertString)
