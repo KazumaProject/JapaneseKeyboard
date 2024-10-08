@@ -10,13 +10,14 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 
-class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>() {
+class SuggestionAdapter() : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>() {
+
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
-    var highlightedPosition: Int = RecyclerView.NO_POSITION
+    private var highlightedPosition: Int = RecyclerView.NO_POSITION
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
@@ -52,8 +53,13 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
-        val paddingLength =
-            if (position == 0) 4 else if (suggestion.length.toInt() == 1) 4 else 0
+        val paddingLength = when {
+            position == 0 -> 4
+            suggestion.string.length == 1 -> 4
+            suggestion.string.length == 2 -> 2
+            else -> 0
+        }
+
         holder.text.text = suggestion.string.padStart(suggestion.string.length + paddingLength)
             .plus(" ".repeat(paddingLength))
         holder.typeText.text = when (suggestion.type) {
@@ -83,7 +89,6 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
     fun updateHighlightPosition(newPosition: Int) {
         val previousPosition = highlightedPosition
         highlightedPosition = newPosition
-        // Notify adapter to update old and new positions
         if (previousPosition != RecyclerView.NO_POSITION) {
             notifyItemChanged(previousPosition)
         }

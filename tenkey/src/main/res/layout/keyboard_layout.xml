@@ -74,7 +74,7 @@
         android:layout_marginVertical="@dimen/key_margin_vertical_size"
         android:layout_marginStart="@dimen/key_margin_start_size"
         android:layout_marginEnd="@dimen/key_margin_horizontal_size"
-        android:background="@drawable/enter_key_bg"
+        android:background="@drawable/mode_key_bg"
         android:contentDescription="@string/key_switch"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"

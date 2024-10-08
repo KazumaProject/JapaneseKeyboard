@@ -46,7 +46,8 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideSuggestionAdapter(): SuggestionAdapter = SuggestionAdapter()
+    fun provideSuggestionAdapter(): SuggestionAdapter =
+        SuggestionAdapter()
 
     @MainDispatcher
     @Singleton
@@ -659,8 +660,6 @@ object AppModule {
     @KotowazaRank1ArrayTangoLBS
     fun provideKotowazaRank1ArrayLBSTango(@KotowazaTangoTrie tangoTrie: LOUDS): ShortArray =
         tangoTrie.LBS.rank1GetShortArray()
-
-
 
 
     @Singleton
