@@ -513,23 +513,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun cancelHenkanByLongPressDeleteKey() {
         val insertString = _inputString.value
-        val selectedSuggestion = suggestionAdapter.suggestions[suggestionClickNum]
+        val selectedSuggestion = suggestionAdapter.suggestions.getOrNull(suggestionClickNum)
+
         deleteKeyLongKeyPressed = true
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionClickNum = 0
         isFirstClickHasStringTail = false
-        val spannableString = if (insertString.length == selectedSuggestion.length.toInt()) {
+        isContinuousTapInputEnabled = true
+        lastFlickConvertedNextHiragana = true
+        isHenkan = false
+
+        val spannableString = if (insertString.length == selectedSuggestion?.length?.toInt()) {
             SpannableString(insertString + stringInTail)
         } else {
             stringInTail = EMPTY_STRING
             SpannableString(insertString)
         }
         setComposingTextAfterEdit(insertString, spannableString)
-        isContinuousTapInputEnabled = true
-        lastFlickConvertedNextHiragana = true
-        isHenkan = false
         mainLayoutBinding?.suggestionRecyclerView?.apply {
-            post { scrollToPosition(0) }
+            post {
+                scrollToPosition(0)
+            }
         }
     }
 
@@ -938,9 +942,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     setSideKeySpaceDrawable(drawableSpaceBar)
                     setSideKeyPreviousState(true)
                     if (insertString.isNotEmpty()) {
-                        if (insertString.isNotEmpty() && insertString.last()
-                                .isLatinAlphabet()
-                        ) {
+                        if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
                             setBackgroundSmallLetterKey(drawableEnglishSmall)
                         } else {
                             setBackgroundSmallLetterKey(drawableLogo)
@@ -989,9 +991,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 InputMode.ModeEnglish -> {
 
-                    if (insertString.isNotEmpty() && insertString.last()
-                            .isLatinAlphabet()
-                    ) {
+                    if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
                         setBackgroundSmallLetterKey(drawableEnglishSmall)
                     } else {
                         setBackgroundSmallLetterKey(drawableLogo)
@@ -1263,8 +1263,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             englishSpaceKeyPressed = false
             suggestionClickNum = 0
             if (insertString.isNotEmpty()) {
-                stringInTail =
-                    StringBuilder(stringInTail).insert(0, insertString.last()).toString()
+                stringInTail = StringBuilder(stringInTail).insert(0, insertString.last()).toString()
                 _inputString.update { it.dropLast(1) }
             }
         }
@@ -1288,13 +1287,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (insertString.isNotEmpty()) {
                 updateLeftInputString(insertString)
             } else {
-                _suggestionList.update { emptyList() }
-                if (stringInTail.isEmpty()) {
-                    if (!isCursorAtBeginning()) sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
-                        )
-                    )
+                if (_suggestionList.value.isNotEmpty()) {
+                    _suggestionList.update { emptyList() }
+                }
+                if (stringInTail.isEmpty() && !isCursorAtBeginning()) {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
                 }
             }
             delay(LONG_DELAY_TIME)
@@ -1316,8 +1313,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun asyncRightLongPress() = scope.launch {
         while (isActive) {
             val insertString = _inputString.value
-            if (onRightKeyLongPressUp) return@launch
-            if (stringInTail.isEmpty() && insertString.isNotEmpty()) return@launch
+            if (onRightKeyLongPressUp || (stringInTail.isEmpty() && insertString.isNotEmpty())) return@launch
             actionInRightKeyPressed(insertString)
             delay(LONG_DELAY_TIME)
         }
@@ -1330,8 +1326,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 _inputString.update { EMPTY_STRING }
                 _suggestionList.update { emptyList() }
             } else {
-                stringInTail =
-                    StringBuilder(stringInTail).insert(0, insertString.last()).toString()
+                stringInTail = StringBuilder(stringInTail).insert(0, insertString.last()).toString()
                 _inputString.update { it.dropLast(1) }
             }
         }
@@ -1340,14 +1335,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun actionInRightKeyPressed(gestureType: GestureType, insertString: String) {
         when {
             insertString.isEmpty() -> handleEmptyInputString(gestureType)
-            !isHenkan -> handleNonHenkan()
+            !isHenkan -> handleNonHenkan(insertString)
         }
     }
 
     private fun actionInRightKeyPressed(insertString: String) {
         when {
             insertString.isEmpty() -> handleEmptyInputString()
-            !isHenkan -> handleNonHenkan()
+            !isHenkan -> handleNonHenkan(insertString)
         }
     }
 
@@ -1427,15 +1422,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleNonHenkan() {
+    private fun handleNonHenkan(insertString: String) {
         englishSpaceKeyPressed = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
         suggestionClickNum = 0
         if (stringInTail.isNotEmpty()) {
-            val dropString = stringInTail.first()
+            _inputString.update { insertString + stringInTail.first() }
             stringInTail = stringInTail.drop(1)
-            _inputString.update { it + dropString }
         }
     }
 
