@@ -70,7 +70,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -293,7 +292,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
-        println("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd ${_inputString.value} $stringInTail")
         if (candidatesStart == -1 && candidatesEnd == -1) {
             if (stringInTail.isNotEmpty()) {
                 _inputString.update { stringInTail }
@@ -312,6 +310,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     Timber.d("Flick: $char $key $gestureType")
                     val insertString = _inputString.value
                     val sb = StringBuilder()
+                    val suggestionList = _suggestionList.value
                     when (gestureType) {
                         GestureType.Null -> {
 
@@ -324,7 +323,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 insertString = insertString,
                                 sb = sb,
                                 isFlick = false,
-                                gestureType = gestureType
+                                gestureType = gestureType,
+                                suggestions = suggestionList
                             )
                         }
 
@@ -335,7 +335,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 insertString = insertString,
                                 sb = sb,
                                 isFlick = true,
-                                gestureType = gestureType
+                                gestureType = gestureType,
+                                suggestions = suggestionList
                             )
                         }
                     }
@@ -343,7 +344,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
-                    handleLongPress(key)
+                    val insertString = _inputString.value
+                    handleLongPress(key, insertString)
                     Timber.d("Long Press: $key")
                 }
 
@@ -358,13 +360,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         sb: StringBuilder,
         isFlick: Boolean,
         gestureType: GestureType,
+        suggestions: List<Candidate>
     ) {
         setVibrate()
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
-                if (_inputString.value.isNotEmpty()) {
-                    handleNonEmptyInputEnterKey()
+                if (insertString.isNotEmpty()) {
+                    handleNonEmptyInputEnterKey(suggestions)
                 } else {
                     handleEmptyInputEnterKey()
                 }
@@ -378,7 +381,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyCursorLeft -> {
                 if (!leftCursorKeyLongKeyPressed) {
-                    handleLeftCursor(gestureType)
+                    handleLeftCursor(gestureType, insertString)
                 }
                 onLeftKeyLongPressUp = true
                 leftCursorKeyLongKeyPressed = false
@@ -386,7 +389,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyCursorRight -> {
                 if (!rightCursorKeyLongKeyPressed) {
-                    actionInRightKeyPressed(gestureType)
+                    actionInRightKeyPressed(gestureType, insertString)
                 }
                 onRightKeyLongPressUp = true
                 rightCursorKeyLongKeyPressed = false
@@ -394,14 +397,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyDelete -> {
                 if (!deleteKeyLongKeyPressed) {
-                    handleDeleteKeyTap()
+                    handleDeleteKeyTap(insertString, suggestions)
                 }
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
             }
 
             Key.SideKeyInputMode -> {
-                setTenkeyIconsInHenkan()
+                setTenkeyIconsInHenkan(insertString)
             }
 
             Key.SideKeyPreviousChar -> {
@@ -412,7 +415,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         else -> {
-                            setNextReturnInputCharacter()
+                            setNextReturnInputCharacter(insertString)
                         }
                     }
                 }
@@ -420,7 +423,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeySpace -> {
                 if (!isSpaceKeyLongPressed) {
-                    handleSpaceKeyClick()
+                    handleSpaceKeyClick(isFlick, insertString, suggestions)
                 }
                 isSpaceKeyLongPressed = false
             }
@@ -450,28 +453,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleLongPress(
-        key: Key,
+        key: Key, insertString: String
     ) {
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
             Key.KeyDakutenSmall -> {}
             Key.SideKeyCursorLeft -> {
-                handleLeftLongPress()
+                handleLeftLongPress(insertString)
                 leftCursorKeyLongKeyPressed = true
             }
 
             Key.SideKeyCursorRight -> {
-                handleRightLongPress()
+                handleRightLongPress(insertString)
                 rightCursorKeyLongKeyPressed = true
             }
 
             Key.SideKeyDelete -> {
                 if (isHenkan) {
-                    cancelHenkanByLongPressDeleteKey()
+                    cancelHenkanByLongPressDeleteKey(insertString)
                 } else {
                     onDeleteLongPressUp = false
-                    deleteLongPress()
+                    deleteLongPress(insertString)
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed = false
                     deleteKeyLongKeyPressed = true
@@ -481,7 +484,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
-                if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
+                if (insertString.isEmpty() && stringInTail.isEmpty()) {
                     isSpaceKeyLongPressed = true
                     showKeyboardPicker()
                 }
@@ -500,26 +503,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         inputMethodManager.showInputMethodPicker()
     }
 
-    private fun handleLeftCursor(gestureType: GestureType) {
-        handleLeftKeyPress(gestureType)
+    private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
+        handleLeftKeyPress(gestureType, insertString)
         onLeftKeyLongPressUp = true
-        if (_inputString.value.isBlank() || _inputString.value.isEmpty()) {
+        if (insertString.isBlank() || insertString.isEmpty()) {
             _suggestionList.value = emptyList()
         }
     }
 
-    private fun cancelHenkanByLongPressDeleteKey() {
+    private fun cancelHenkanByLongPressDeleteKey(
+        insertString: String
+    ) {
         val selectedSuggestion = suggestionAdapter.suggestions[suggestionClickNum]
         deleteKeyLongKeyPressed = true
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionClickNum = 0
-        val spannableString = if (_inputString.value.length == selectedSuggestion.length.toInt()) {
-            SpannableString(_inputString.value + stringInTail)
+        isFirstClickHasStringTail = false
+        val spannableString = if (insertString.length == selectedSuggestion.length.toInt()) {
+            SpannableString(insertString + stringInTail)
         } else {
             stringInTail = EMPTY_STRING
-            SpannableString(_inputString.value)
+            SpannableString(insertString)
         }
-        setComposingTextAfterEdit(_inputString.value, spannableString)
+        setComposingTextAfterEdit(insertString, spannableString)
         isContinuousTapInputEnabled = true
         lastFlickConvertedNextHiragana = true
         isHenkan = false
@@ -708,8 +714,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         suggestionAdapter.apply {
             this.setOnItemClickListener {
+                val insertString = _inputString.value
                 setVibrate()
-                setCandidateClick(it)
+                setCandidateClick(it, insertString)
             }
         }
         mainLayoutBinding?.let { mainView ->
@@ -727,18 +734,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setCandidateClick(candidate: Candidate) {
-        if (_inputString.value.isNotEmpty()) {
-            commitCandidateText(candidate)
+    private fun setCandidateClick(candidate: Candidate, insertString: String) {
+        if (insertString.isNotEmpty()) {
+            commitCandidateText(candidate, insertString)
             resetFlagsSuggestionClick()
         }
     }
 
-    private fun commitCandidateText(candidate: Candidate) {
-        println("clicked candidate: $candidate ${_inputString.value}")
+    private fun commitCandidateText(candidate: Candidate, insertString: String) {
         val candidateType = candidate.type.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
-            stringInTail = _inputString.value.substring(candidate.length.toInt())
+            stringInTail = insertString.substring(candidate.length.toInt())
         }
         if (stringInTail.isNotEmpty()) {
             commitText(candidate.string, 1)
@@ -765,6 +771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         onDeleteLongPressUp = false
         isSpaceKeyLongPressed = false
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        isFirstClickHasStringTail = false
     }
 
     private fun actionInDestroy() {
@@ -787,6 +794,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled = true
         _suggestionViewStatus.update { true }
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        isFirstClickHasStringTail = false
     }
 
     private fun resetFlagsEnterKey() {
@@ -799,6 +807,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        isFirstClickHasStringTail = false
     }
 
     private fun resetFlagsEnterKeyNotHenkan() {
@@ -812,6 +821,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _inputString.update { EMPTY_STRING }
         stringInTail = EMPTY_STRING
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        isFirstClickHasStringTail = false
     }
 
     private fun resetFlagsKeySpace() {
@@ -831,6 +841,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        isFirstClickHasStringTail = false
     }
 
     private fun setComposingTextPreEdit(
@@ -893,10 +904,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setComposingText(spannableString, 1)
     }
 
-    private fun setEnterKeyAction(listIterator: ListIterator<Candidate>) {
-        _suggestionList.update { emptyList() }
-        val nextSuggestion = listIterator.next()
+    private fun setEnterKeyAction(suggestions: List<Candidate>) {
+        val index = if (suggestionClickNum - 1 < 0) 0 else suggestionClickNum - 1
+        val nextSuggestion = suggestions[index]
         commitText(nextSuggestion.string, 1)
+        _suggestionList.update { emptyList() }
         println("enter key pressed: $stringInTail")
         if (stringInTail.isEmpty()) {
             _inputString.update { EMPTY_STRING }
@@ -920,14 +932,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setTenkeyIconsInHenkan() {
+    private fun setTenkeyIconsInHenkan(insertString: String) {
         mainLayoutBinding?.keyboardView?.apply {
             when (currentInputMode) {
                 is InputMode.ModeJapanese -> {
                     setSideKeySpaceDrawable(drawableSpaceBar)
                     setSideKeyPreviousState(true)
-                    if (_inputString.value.isNotEmpty()) {
-                        if (_inputString.value.isNotEmpty() && _inputString.value.last()
+                    if (insertString.isNotEmpty()) {
+                        if (insertString.isNotEmpty() && insertString.last()
                                 .isLatinAlphabet()
                         ) {
                             setBackgroundSmallLetterKey(drawableEnglishSmall)
@@ -947,9 +959,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 is InputMode.ModeNumber -> {
                     setSideKeyPreviousState(true)
-                    if (_inputString.value.isNotEmpty()) {
+                    if (insertString.isNotEmpty()) {
                         setSideKeySpaceDrawable(drawableHenkan)
-                        if (_inputString.value.last().isHiragana()) {
+                        if (insertString.last().isHiragana()) {
                             setBackgroundSmallLetterKey(drawableKanaSmall)
                         } else {
                             setBackgroundSmallLetterKey(drawableLogo)
@@ -963,12 +975,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun updateUIinHenkan(mainView: MainLayoutBinding) {
+    private fun updateUIinHenkan(mainView: MainLayoutBinding, insertString: String) {
         mainView.keyboardView.apply {
             setSideKeyEnterDrawable(drawableReturn)
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
-                    if (_inputString.value.isNotEmpty() && _inputString.value.last().isHiragana()) {
+                    if (insertString.isNotEmpty() && insertString.last().isHiragana()) {
                         setBackgroundSmallLetterKey(drawableKanaSmall)
                     } else {
                         setBackgroundSmallLetterKey(drawableLogo)
@@ -978,7 +990,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 InputMode.ModeEnglish -> {
 
-                    if (_inputString.value.isNotEmpty() && _inputString.value.last()
+                    if (insertString.isNotEmpty() && insertString.last()
                             .isLatinAlphabet()
                     ) {
                         setBackgroundSmallLetterKey(drawableEnglishSmall)
@@ -999,35 +1011,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun setSuggestionOnView(
         mainView: MainLayoutBinding,
     ) {
-        when {
-            _inputString.value.isNotEmpty() -> {
-                if (suggestionClickNum != 0) return
-                setCandidates(mainView)
-            }
+        val insertString = _inputString.value
+        if (insertString.isNotEmpty()) {
+            if (suggestionClickNum != 0) return
+            setCandidates(mainView, insertString)
         }
     }
 
-    private suspend fun setCandidates(mainView: MainLayoutBinding) {
-        val candidates = getSuggestionList()
+    private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) {
+        val candidates = getSuggestionList(insertString)
         val filteredCandidates = if (stringInTail.isNotEmpty()) {
-            candidates.filter { it.length.toInt() == _inputString.value.length }
+            candidates.filter { it.length.toInt() == insertString.length }
         } else {
             candidates
         }
         _suggestionList.update {
             filteredCandidates
         }
-        updateUIinHenkan(mainView)
+        updateUIinHenkan(mainView, insertString)
     }
 
-    private suspend fun getSuggestionList(): List<Candidate> {
-        val queryText = _inputString.value
-        return kanaKanjiEngine.getCandidates(queryText, N_BEST)
+    private suspend fun getSuggestionList(insertString: String): List<Candidate> {
+        return kanaKanjiEngine.getCandidates(insertString, N_BEST)
     }
 
-    private fun deleteLongPress() = scope.launch {
+    private fun deleteLongPress(insertString: String) = scope.launch {
         while (isActive) {
-            if (_inputString.value.isEmpty() && stringInTail.isNotEmpty()) {
+            if (insertString.isEmpty() && stringInTail.isNotEmpty()) {
                 enableContinuousTapInput()
                 _suggestionList.update { emptyList() }
                 return@launch
@@ -1036,8 +1046,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 enableContinuousTapInput()
                 return@launch
             }
-            if (_inputString.value.isNotEmpty()) {
-                if (_inputString.value.length == 1) {
+            if (insertString.isNotEmpty()) {
+                if (insertString.length == 1) {
                     _suggestionList.update { emptyList() }
                     _inputString.update { EMPTY_STRING }
                     if (stringInTail.isEmpty()) setComposingText("", 0)
@@ -1096,20 +1106,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleDeleteKeyTap() {
+    private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
         setVibrate()
         when {
-            _inputString.value.isNotEmpty() -> {
+            insertString.isNotEmpty() -> {
                 if (isHenkan) {
-                    if (suggestionClickNum == 0) suggestionClickNum = _suggestionList.value.size
-                    suggestionClickNum -= 1
-                    setConvertLetterInJapaneseFromButton(_suggestionList.value)
-                    mainLayoutBinding?.suggestionRecyclerView?.apply {
-                        smoothScrollToPosition(suggestionClickNum)
-                        suggestionAdapter.updateHighlightPosition(suggestionClickNum)
-                    }
+                    handleDeleteKeyInHenkan(suggestions, insertString)
                 } else {
-                    deleteStringCommon()
+                    deleteStringCommon(insertString)
                     resetFlagsDeleteKey()
                 }
             }
@@ -1121,39 +1125,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleSpaceKeyClick() {
-        if (_inputString.value.isNotBlank()) {
+    private fun handleSpaceKeyClick(
+        isFlick: Boolean, insertString: String, suggestions: List<Candidate>
+    ) {
+        if (insertString.isNotBlank()) {
             mainLayoutBinding?.apply {
                 keyboardView.let { tenkey ->
                     when (tenkey.currentInputMode) {
-                        InputMode.ModeJapanese -> handleJapaneseModeSpaceKey(this)
-                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty()
+                        InputMode.ModeJapanese -> handleJapaneseModeSpaceKey(
+                            this, suggestions, insertString
+                        )
+
+                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
                     }
                 }
             }
         } else {
             if (stringInTail.isNotEmpty()) return
-            setSpaceKeyActionEnglishAndNumberEmpty()
+            setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
         }
         resetFlagsKeySpace()
     }
 
-    private fun handleJapaneseModeSpaceKey(mainView: MainLayoutBinding) {
+    private fun handleJapaneseModeSpaceKey(
+        mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
+    ) {
         isHenkan = true
-        setConvertLetterInJapaneseFromButton(_suggestionList.value)
-        mainView.suggestionRecyclerView.apply {
-            smoothScrollToPosition(suggestionClickNum)
-            suggestionAdapter.updateHighlightPosition(suggestionClickNum)
-        }
         suggestionClickNum += 1
+        suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
+        mainView.suggestionRecyclerView.apply {
+            smoothScrollToPosition((suggestionClickNum - 1).coerceAtLeast(0))
+            suggestionAdapter.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
+        }
+        setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
 
-    private fun handleNonEmptyInputEnterKey() {
+    private fun handleNonEmptyInputEnterKey(suggestions: List<Candidate>) {
         mainLayoutBinding?.keyboardView?.apply {
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
                     if (isHenkan) {
-                        handleHenkanModeEnterKey()
+                        handleHenkanModeEnterKey(suggestions)
                     } else {
                         finishInputEnterKey()
                     }
@@ -1164,11 +1176,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleHenkanModeEnterKey() {
-        if (suggestionClickNum > _suggestionList.value.size) suggestionClickNum = 0
-        val listIterator =
-            _suggestionList.value.listIterator(suggestionClickNum.coerceAtLeast(1) - 1)
-        setEnterKeyAction(listIterator)
+    private fun handleDeleteKeyInHenkan(suggestions: List<Candidate>, insertString: String) {
+        suggestionClickNum -= 1
+        mainLayoutBinding?.let { mainView ->
+            mainView.suggestionRecyclerView.apply {
+                smoothScrollToPosition(
+                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
+                        0
+                    )
+                )
+                suggestionAdapter.updateHighlightPosition(
+                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
+                        0
+                    )
+                )
+            }
+            setConvertLetterInJapaneseFromButton(suggestions, false, mainView, insertString)
+        }
+    }
+
+    private fun handleHenkanModeEnterKey(suggestions: List<Candidate>) {
+        if (suggestionClickNum !in suggestions.indices) {
+            suggestionClickNum = 0
+        }
+        setEnterKeyAction(suggestions)
     }
 
     private fun handleEmptyInputEnterKey() {
@@ -1180,6 +1211,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isHenkan = false
             suggestionClickNum = 0
             suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+            isFirstClickHasStringTail = false
         }
     }
 
@@ -1189,8 +1221,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetFlagsEnterKeyNotHenkan()
     }
 
-    private fun handleLeftKeyPress(gestureType: GestureType) {
-        if (_inputString.value.isEmpty() && stringInTail.isEmpty()) {
+    private fun handleLeftKeyPress(gestureType: GestureType, insertString: String) {
+        if (insertString.isEmpty() && stringInTail.isEmpty()) {
             when (gestureType) {
                 GestureType.FlickRight -> {
                     if (!isCursorAtBeginning()) sendKeyEvent(
@@ -1230,30 +1262,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isContinuousTapInputEnabled = true
             englishSpaceKeyPressed = false
             suggestionClickNum = 0
-            if (_inputString.value.isNotEmpty()) {
+            if (insertString.isNotEmpty()) {
                 stringInTail =
-                    StringBuilder(stringInTail).insert(0, _inputString.value.last()).toString()
+                    StringBuilder(stringInTail).insert(0, insertString.last()).toString()
                 _inputString.update { it.dropLast(1) }
             }
         }
     }
 
-    private fun handleLeftLongPress() {
+    private fun handleLeftLongPress(insertString: String) {
         if (!isHenkan) {
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
             onLeftKeyLongPressUp = false
             suggestionClickNum = 0
-            asyncLeftLongPress()
+            asyncLeftLongPress(insertString)
         }
     }
 
-    private fun asyncLeftLongPress() = CoroutineScope(Dispatchers.IO).launch {
+    private fun asyncLeftLongPress(insertString: String) = scope.launch {
         while (isActive) {
             if (onLeftKeyLongPressUp) return@launch
-            if (stringInTail.isNotEmpty() && _inputString.value.isEmpty()) return@launch
-            if (_inputString.value.isNotEmpty()) {
-                updateLeftInputString()
+            if (stringInTail.isNotEmpty() && insertString.isEmpty()) return@launch
+            if (insertString.isNotEmpty()) {
+                updateLeftInputString(insertString)
             } else {
                 _suggestionList.update { emptyList() }
                 if (stringInTail.isEmpty()) {
@@ -1268,51 +1300,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleRightLongPress() {
+    private fun handleRightLongPress(insertString: String) {
         if (!isHenkan) {
             onRightKeyLongPressUp = false
             suggestionClickNum = 0
             lastFlickConvertedNextHiragana = true
             isContinuousTapInputEnabled = true
-            asyncRightLongPress()
+            asyncRightLongPress(insertString)
         } else {
             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
         }
     }
 
-    private fun asyncRightLongPress() = scope.launch {
+    private fun asyncRightLongPress(insertString: String) = scope.launch {
         while (isActive) {
             if (onRightKeyLongPressUp) return@launch
-            if (stringInTail.isEmpty() && _inputString.value.isNotEmpty()) return@launch
-            actionInRightKeyPressed()
+            if (stringInTail.isEmpty() && insertString.isNotEmpty()) return@launch
+            actionInRightKeyPressed(insertString)
             delay(LONG_DELAY_TIME)
         }
     }
 
-    private fun updateLeftInputString() {
-        if (_inputString.value.isNotEmpty()) {
-            if (_inputString.value.length == 1) {
-                stringInTail = StringBuilder(stringInTail).insert(0, _inputString.value).toString()
+    private fun updateLeftInputString(insertString: String) {
+        if (insertString.isNotEmpty()) {
+            if (insertString.length == 1) {
+                stringInTail = StringBuilder(stringInTail).insert(0, insertString).toString()
                 _inputString.update { EMPTY_STRING }
                 _suggestionList.update { emptyList() }
             } else {
                 stringInTail =
-                    StringBuilder(stringInTail).insert(0, _inputString.value.last()).toString()
+                    StringBuilder(stringInTail).insert(0, insertString.last()).toString()
                 _inputString.update { it.dropLast(1) }
             }
         }
     }
 
-    private fun actionInRightKeyPressed(gestureType: GestureType) {
+    private fun actionInRightKeyPressed(gestureType: GestureType, insertString: String) {
         when {
-            _inputString.value.isEmpty() -> handleEmptyInputString(gestureType)
+            insertString.isEmpty() -> handleEmptyInputString(gestureType)
             !isHenkan -> handleNonHenkan()
         }
     }
 
-    private fun actionInRightKeyPressed() {
+    private fun actionInRightKeyPressed(insertString: String) {
         when {
-            _inputString.value.isEmpty() -> handleEmptyInputString()
+            insertString.isEmpty() -> handleEmptyInputString()
             !isHenkan -> handleNonHenkan()
         }
     }
@@ -1410,7 +1442,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         if (insertString.length == 1) {
             stringBuilder.append(char)
-            _inputString.value = stringBuilder.toString()
+            _inputString.update { stringBuilder.toString() }
         } else {
             try {
                 stringBuilder.append(insertString).deleteCharAt(insertString.lastIndex).append(char)
@@ -1423,11 +1455,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun deleteStringCommon() {
-        val length = _inputString.value.length
+    private fun deleteStringCommon(insertString: String) {
+        val length = insertString.length
         when {
             length > 1 -> {
-                println("deleteStringCommon: ${_inputString.value}")
                 _inputString.update {
                     it.dropLast(1)
                 }
@@ -1468,7 +1499,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val nextChar = hiraganaAtInsertPosition.getNextInputChar(char)
 
             if (nextChar == null) {
-                _inputString.value = sb.append(inputForInsert).append(char).toString()
+                _inputString.update {
+                    sb.append(inputForInsert).append(char).toString()
+                }
             } else {
                 appendCharToStringBuilder(nextChar, inputForInsert, sb)
             }
@@ -1537,28 +1570,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setStringBuilderForConvertStringInHiragana(
-        inputChar: Char, sb: StringBuilder
+        inputChar: Char, sb: StringBuilder, insertString: String
     ) {
-        if (_inputString.value.length == 1) {
+        if (insertString.length == 1) {
             sb.append(inputChar)
-            _inputString.value = sb.toString()
+            _inputString.update {
+                sb.toString()
+            }
         } else {
-            sb.append(_inputString.value).deleteAt(_inputString.value.length - 1).append(inputChar)
-            _inputString.value = sb.toString()
+            sb.append(insertString).deleteAt(insertString.length - 1).append(inputChar)
+            _inputString.update {
+                sb.toString()
+            }
         }
     }
 
     private fun dakutenSmallLetter(
-        sb: StringBuilder
+        sb: StringBuilder, insertString: String
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed = false
-        if (_inputString.value.isNotEmpty()) {
-            val insertPosition = _inputString.value.last()
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
             insertPosition.let { c ->
                 if (c.isHiragana()) {
                     c.getDakutenSmallChar()?.let { dakutenChar ->
-                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb)
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
                     }
                 }
             }
@@ -1566,17 +1603,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun smallBigLetterConversionEnglish(
-        sb: StringBuilder
+        sb: StringBuilder, insertString: String
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed = false
 
-        if (_inputString.value.isNotEmpty()) {
-            val insertPosition = _inputString.value.last()
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
             insertPosition.let { c ->
                 if (!c.isHiragana()) {
                     c.getDakutenSmallChar()?.let { dakutenChar ->
-                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb)
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
                     }
                 }
             }
@@ -1590,11 +1627,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding?.keyboardView?.let {
             when (it.currentInputMode) {
                 InputMode.ModeJapanese -> {
-                    dakutenSmallLetter(sb)
+                    dakutenSmallLetter(sb, insertString)
                 }
 
                 InputMode.ModeEnglish -> {
-                    smallBigLetterConversionEnglish(sb)
+                    smallBigLetterConversionEnglish(sb, insertString)
                 }
 
                 InputMode.ModeNumber -> {
@@ -1629,9 +1666,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled = false
         if (isHenkan) {
             finishComposingText()
-            _inputString.value = key.toString()
+            _inputString.update {
+                key.toString()
+            }
             isHenkan = false
             suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+            isFirstClickHasStringTail = false
         } else {
             setCurrentInputCharacter(
                 key, insertString, sb
@@ -1641,61 +1681,87 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setConvertLetterInJapaneseFromButton(
         suggestions: List<Candidate>,
+        isSpaceKey: Boolean,
+        mainView: MainLayoutBinding,
+        insertString: String
     ) {
         if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
-        val listIterator = suggestions.listIterator(suggestionClickNum)
-        println("setConvertLetterInJapaneseFromButton $suggestionClickNum")
+        val listIterator = suggestions.listIterator((suggestionClickNum - 1).coerceAtLeast(0))
         when {
-            listIterator.hasNext() -> {
-                setSuggestionComposingText(listIterator)
+            !listIterator.hasPrevious() && isSpaceKey -> {
+                setSuggestionComposingText(suggestions, insertString)
+                mainView.suggestionRecyclerView.smoothScrollToPosition(0)
+                suggestionAdapter.updateHighlightPosition(0)
+                println("setConvertLetterInJapaneseFromButton space hasPrevious $suggestionClickNum ${suggestions.size}")
             }
 
-            !listIterator.hasNext() -> {
-                setSuggestionComposingTextIteratorLast(suggestions)
-                suggestionClickNum = 0
+            !listIterator.hasPrevious() && !isSpaceKey -> {
+                setSuggestionComposingText(suggestions, insertString)
+                mainView.suggestionRecyclerView.smoothScrollToPosition(0)
+                suggestionAdapter.updateHighlightPosition(0)
+                println("setConvertLetterInJapaneseFromButton delete hasPrevious $suggestionClickNum ${suggestions.size}")
+            }
+
+            listIterator.hasNext() && isSpaceKey -> {
+                if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
+                setSuggestionComposingText(suggestions, insertString)
+                println("setConvertLetterInJapaneseFromButton space hasNext $suggestionClickNum ${suggestions.size}")
+            }
+
+            listIterator.hasNext() && !isSpaceKey -> {
+                if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
+                setSuggestionComposingText(suggestions, insertString)
+                println("setConvertLetterInJapaneseFromButton delete hasNext $suggestionClickNum ${suggestions.size}")
             }
         }
     }
 
-    private fun setSpaceKeyActionEnglishAndNumberNotEmpty() {
+    private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String) {
         if (stringInTail.isNotEmpty()) {
-            commitText(_inputString.value + " " + stringInTail, 1)
+            commitText("$insertString $stringInTail", 1)
             stringInTail = EMPTY_STRING
         } else {
-            commitText(_inputString.value + " ", 1)
+            commitText("$insertString ", 1)
         }
-        _inputString.value = EMPTY_STRING
+        _inputString.update {
+            EMPTY_STRING
+        }
     }
 
-    private fun setSpaceKeyActionEnglishAndNumberEmpty() {
+    private fun setSpaceKeyActionEnglishAndNumberEmpty(isFlick: Boolean) {
         if (stringInTail.isNotEmpty()) {
             commitText(" $stringInTail", 1)
             stringInTail = EMPTY_STRING
         } else {
             mainLayoutBinding?.keyboardView?.apply {
                 if (currentInputMode == InputMode.ModeJapanese) {
-                    commitText("　", 1)
+                    if (isFlick) {
+                        commitText(" ", 1)
+                    } else {
+                        commitText("　", 1)
+                    }
                 } else {
                     commitText(" ", 1)
                 }
             }
         }
-        _inputString.value = EMPTY_STRING
+        _inputString.update { EMPTY_STRING }
     }
 
-    private fun setSuggestionComposingText(listIterator: ListIterator<Candidate>) {
-        val nextSuggestion = listIterator.next()
+    private var isFirstClickHasStringTail = false
+
+    private fun setSuggestionComposingText(suggestions: List<Candidate>, insertString: String) {
+        if (suggestionClickNum == 1 && stringInTail.isNotEmpty()) isFirstClickHasStringTail = true
+        val index = (suggestionClickNum - 1).coerceAtLeast(0)
+        if (suggestionClickNum <= 0) suggestionClickNum = 1
+        val nextSuggestion = suggestions[index]
         val candidateType = nextSuggestion.type.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             val suggestionLength = nextSuggestion.length.toInt()
-            val inputString = _inputString.value
-            if (stringInTail.isNotEmpty()) {
-                if (inputString.length != suggestionLength) {
-                    stringInTail = inputString.substring(suggestionLength)
-                }
-            } else {
-                stringInTail = inputString.substring(suggestionLength)
-            }
+            val tail = insertString.substring(suggestionLength)
+            if (!isFirstClickHasStringTail) stringInTail = tail
+        } else {
+            if (!isFirstClickHasStringTail) stringInTail = EMPTY_STRING
         }
         val spannableString2 =
             if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(
@@ -1712,41 +1778,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setComposingText(spannableString2, 1)
     }
 
-    private fun setSuggestionComposingTextIteratorLast(suggestions: List<Candidate>) {
-        val currentSuggestion = suggestions.last()
-        val nextSuggestion = suggestions.first()
-        if (nextSuggestion.length > currentSuggestion.length) stringInTail = EMPTY_STRING
-
-        val candidateType = nextSuggestion.type.toInt()
-        if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
-            stringInTail = _inputString.value.substring(nextSuggestion.length.toInt())
-        }
-        val spannableString2 =
-            if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(
-                nextSuggestion.string + stringInTail
-            )
-        spannableString2.apply {
-            setSpan(
-                BackgroundColorSpan(getColor(R.color.orange)),
-                0,
-                nextSuggestion.string.length,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-        setComposingText(spannableString2, 1)
-    }
-
-    private fun setNextReturnInputCharacter() {
+    private fun setNextReturnInputCharacter(insertString: String) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed = false
-        val insertForString = _inputString.value
         val sb = StringBuilder()
-        if (insertForString.isNotEmpty()) {
-            val insertPosition = _inputString.value.last()
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
             insertPosition.let { c ->
                 c.getNextReturnInputChar()?.let { charForReturn ->
                     appendCharToStringBuilder(
-                        charForReturn, insertForString, sb
+                        charForReturn, insertString, sb
                     )
                 }
             }
