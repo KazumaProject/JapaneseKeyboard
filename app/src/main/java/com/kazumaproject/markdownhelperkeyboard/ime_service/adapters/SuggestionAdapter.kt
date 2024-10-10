@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 
 class SuggestionAdapter() : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>() {
 
@@ -60,8 +64,14 @@ class SuggestionAdapter() : RecyclerView.Adapter<SuggestionAdapter.SuggestionVie
             else -> 0
         }
 
-        holder.text.text = suggestion.string.padStart(suggestion.string.length + paddingLength)
-            .plus(" ".repeat(paddingLength))
+        val readingCorrectionString = if (suggestion.type == (15).toByte()) suggestion.string.correctReading()  else Pair("","")
+        holder.text.text = if (suggestion.type == (15).toByte()) {
+            readingCorrectionString.first.padStart(readingCorrectionString.first.length + paddingLength)
+                .plus(" ".repeat(paddingLength))
+        } else {
+            suggestion.string.padStart(suggestion.string.length + paddingLength)
+                .plus(" ".repeat(paddingLength))
+        }
         holder.typeText.text = when (suggestion.type) {
             (1).toByte() -> ""
             /** 予測 **/
@@ -75,7 +85,16 @@ class SuggestionAdapter() : RecyclerView.Adapter<SuggestionAdapter.SuggestionVie
             (13).toByte() -> "  "
             (14).toByte() -> "[日付]"
             /** 修正 **/
-            (15).toByte() -> ""
+            (15).toByte() -> {
+                val spannable = SpannableString("[読] ${readingCorrectionString.second}")
+                spannable.setSpan(
+                    RelativeSizeSpan(1.25f),
+                    4,
+                    spannable.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                spannable
+            }
             /** ことわざ **/
             (16).toByte() -> ""
             else -> ""
