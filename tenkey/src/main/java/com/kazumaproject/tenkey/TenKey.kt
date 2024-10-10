@@ -90,7 +90,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private lateinit var sideKeyPreviousChar: AppCompatImageButton
     private lateinit var sideKeyCursorLeft: AppCompatImageButton
     private lateinit var sideKeyCursorRight: AppCompatImageButton
-    private lateinit var sideKeySymbol: AppCompatButton
+    private lateinit var sideKeySymbol: AppCompatImageButton
     private lateinit var sideKeyInputModeSwitch: InputModeSwitch
     private lateinit var sideKeyDelete: AppCompatImageButton
     private lateinit var sideKeySpace: AppCompatImageButton

@@ -41,7 +41,7 @@
         app:layout_constraintTop_toBottomOf="@+id/key_return"
         app:tint="@color/keyboard_icon_color" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/sideKey_symbol"
         style="?android:attr/borderlessButtonStyle"
         android:layout_width="0dp"
@@ -50,13 +50,9 @@
         android:layout_marginStart="@dimen/key_margin_start_size"
         android:layout_marginEnd="@dimen/key_margin_horizontal_size"
         android:background="@drawable/ten_keys_side_bg"
-        android:drawableStart="@drawable/baseline_emoji_emotions_24"
-        android:drawableTint="@color/keyboard_icon_color"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/md"
-        android:textColor="@color/keyboard_icon_color"
-        android:textSize="@dimen/key_text_size_land"
+        android:padding="8dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/symbol"
         app:layout_constraintBottom_toTopOf="@id/key_switch_key_mode"
         app:layout_constraintEnd_toStartOf="@id/key_1"
         app:layout_constraintStart_toStartOf="parent"

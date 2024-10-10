@@ -53,6 +53,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArro
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
@@ -396,8 +397,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeyDelete -> {
-                if (!deleteKeyLongKeyPressed) {
-                    handleDeleteKeyTap(insertString, suggestions)
+                if (!isFlick) {
+                    if (!deleteKeyLongKeyPressed) {
+                        handleDeleteKeyTap(insertString, suggestions)
+                    }
                 }
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
@@ -762,8 +765,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun commitCandidateText(candidate: Candidate, insertString: String) {
         val candidateType = candidate.type.toInt()
+
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = insertString.substring(candidate.length.toInt())
+        } else if (candidateType == 15) {
+            val readingCorrection = candidate.string.correctReading()
+            if (stringInTail.isNotEmpty()) {
+                commitText(readingCorrection.first, 1)
+            } else {
+                commitText(readingCorrection.first, 1)
+                _inputString.update { EMPTY_STRING }
+            }
+            return
         }
         if (stringInTail.isNotEmpty()) {
             commitText(candidate.string, 1)
@@ -926,7 +939,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setEnterKeyAction(suggestions: List<Candidate>) {
         val index = if (suggestionClickNum - 1 < 0) 0 else suggestionClickNum - 1
         val nextSuggestion = suggestions[index]
-        commitText(nextSuggestion.string, 1)
+        if (nextSuggestion.type == (15).toByte()) {
+            val readingCorrection = nextSuggestion.string.correctReading()
+            commitText(readingCorrection.first, 1)
+        } else {
+            commitText(nextSuggestion.string, 1)
+        }
         _suggestionList.update { emptyList() }
         println("enter key pressed: $stringInTail")
         if (stringInTail.isEmpty()) {
@@ -1763,31 +1781,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isFirstClickHasStringTail = false
 
     private fun setSuggestionComposingText(suggestions: List<Candidate>, insertString: String) {
-        if (suggestionClickNum == 1 && stringInTail.isNotEmpty()) isFirstClickHasStringTail = true
+        if (suggestionClickNum == 1 && stringInTail.isNotEmpty()) {
+            isFirstClickHasStringTail = true
+        }
+
         val index = (suggestionClickNum - 1).coerceAtLeast(0)
         if (suggestionClickNum <= 0) suggestionClickNum = 1
+
         val nextSuggestion = suggestions[index]
         val candidateType = nextSuggestion.type.toInt()
+        val suggestionText = nextSuggestion.string
+        val suggestionLength = nextSuggestion.length.toInt()
+
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
-            val suggestionLength = nextSuggestion.length.toInt()
             val tail = insertString.substring(suggestionLength)
             if (!isFirstClickHasStringTail) stringInTail = tail
+        } else if (candidateType == 15) {
+            val (correctedReading) = nextSuggestion.string.correctReading()
+            val fullText = correctedReading + stringInTail
+            applyComposingText(fullText, correctedReading.length)
+            return
         } else {
             if (!isFirstClickHasStringTail) stringInTail = EMPTY_STRING
         }
-        val spannableString2 =
-            if (stringInTail.isEmpty()) SpannableString(nextSuggestion.string) else SpannableString(
-                nextSuggestion.string + stringInTail
-            )
-        spannableString2.apply {
-            setSpan(
-                BackgroundColorSpan(getColor(R.color.orange)),
-                0,
-                nextSuggestion.string.length,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-        }
-        setComposingText(spannableString2, 1)
+        val fullText = suggestionText + stringInTail
+        applyComposingText(fullText, suggestionText.length)
+    }
+
+    private fun applyComposingText(text: String, highlightLength: Int) {
+        val spannableString = SpannableString(text)
+        spannableString.setSpan(
+            BackgroundColorSpan(getColor(R.color.orange)),
+            0,
+            highlightLength,
+            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+        )
+        setComposingText(spannableString, 1)
     }
 
     private fun setNextReturnInputCharacter(insertString: String) {
