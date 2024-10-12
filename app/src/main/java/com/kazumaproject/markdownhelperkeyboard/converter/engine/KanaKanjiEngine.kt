@@ -910,7 +910,7 @@ class KanaKanjiEngine {
                         },
                         type = 15,
                         length = yomi.length.toUByte(),
-                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() + 4000 else it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length),
                         leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
