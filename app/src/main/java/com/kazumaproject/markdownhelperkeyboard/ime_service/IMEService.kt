@@ -72,6 +72,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -390,6 +391,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
                 onLeftKeyLongPressUp = true
                 leftCursorKeyLongKeyPressed = false
+                asyncLeftLongPress().cancel()
             }
 
             Key.SideKeyCursorRight -> {
@@ -398,6 +400,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
                 onRightKeyLongPressUp = true
                 rightCursorKeyLongKeyPressed = false
+                asyncRightLongPress().cancel()
             }
 
             Key.SideKeyDelete -> {
@@ -408,6 +411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
                 onDeleteLongPressUp = true
                 deleteKeyLongKeyPressed = false
+                deleteLongPress().cancel()
             }
 
             Key.SideKeyInputMode -> {
@@ -1072,17 +1076,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return kanaKanjiEngine.getCandidates(insertString, N_BEST)
     }
 
-    private fun deleteLongPress() = scope.launch {
+    private fun deleteLongPress() = CoroutineScope(Dispatchers.IO).launch {
         while (isActive) {
             val insertString = _inputString.value
             if (insertString.isEmpty() && stringInTail.isNotEmpty()) {
                 enableContinuousTapInput()
                 _suggestionList.value = emptyList()
-                return@launch
+                break
             }
-            if (onDeleteLongPressUp) {
+            if (onDeleteLongPressUp || !deleteKeyLongKeyPressed) {
                 enableContinuousTapInput()
-                return@launch
+                break
             }
             if (insertString.isNotEmpty()) {
                 if (insertString.length == 1) {
@@ -1316,11 +1320,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncLeftLongPress() = scope.launch {
+    private fun asyncLeftLongPress() = CoroutineScope(Dispatchers.IO).launch {
         while (isActive) {
             val insertString = _inputString.value
-            if (onLeftKeyLongPressUp) return@launch
-            if (stringInTail.isNotEmpty() && insertString.isEmpty()) return@launch
+            if (onLeftKeyLongPressUp || !leftCursorKeyLongKeyPressed) break
+            if (stringInTail.isNotEmpty() && insertString.isEmpty()) break
             if (insertString.isNotEmpty()) {
                 updateLeftInputString(insertString)
             } else {
@@ -1347,10 +1351,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncRightLongPress() = scope.launch {
+    private fun asyncRightLongPress() = CoroutineScope(Dispatchers.IO).launch {
         while (isActive) {
             val insertString = _inputString.value
-            if (onRightKeyLongPressUp || (stringInTail.isEmpty() && insertString.isNotEmpty())) return@launch
+            if (onRightKeyLongPressUp || !rightCursorKeyLongKeyPressed) break
             actionInRightKeyPressed(insertString)
             delay(LONG_DELAY_TIME)
         }
