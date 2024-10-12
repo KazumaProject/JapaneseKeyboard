@@ -254,6 +254,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
+                    flickListener?.onFlick(
+                        GestureType.Down,
+                        key,
+                        null
+                    )
                     pressedKey = PressedKey(
                         key = key,
                         pointer = 0,
@@ -289,6 +294,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
                             when (gestureType) {
                                 GestureType.Null -> {}
+                                GestureType.Down -> {}
                                 GestureType.Tap -> flickListener?.onFlick(
                                     gestureType = gestureType,
                                     key = pressedKey.key,
@@ -363,6 +369,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                     when (gestureType) {
                         GestureType.Null -> {}
+                        GestureType.Down -> {}
                         GestureType.Tap -> {
                             setTapInActionMove()
                         }
@@ -403,6 +410,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
                             when (gestureType2) {
                                 GestureType.Null -> {}
+                                GestureType.Down -> {}
                                 GestureType.Tap -> {
                                     flickListener?.onFlick(
                                         gestureType = gestureType2,
@@ -493,6 +501,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
                                 when (gestureType) {
                                     GestureType.Null -> {}
+                                    GestureType.Down -> {}
                                     GestureType.Tap -> flickListener?.onFlick(
                                         gestureType = gestureType,
                                         key = pressedKey.key,
@@ -722,7 +731,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
-    private fun resetLongPressAction(){
+    private fun resetLongPressAction() {
         if (isLongPressed) {
             hideAllPopWindow()
             ImageEffects.removeBlurEffect(this)
@@ -1125,6 +1134,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 GestureType.FlickTop -> keyInfo.flickTop
                 GestureType.FlickRight -> keyInfo.flickRight
                 GestureType.FlickBottom -> keyInfo.flickBottom
+                GestureType.Down -> null
                 GestureType.Null -> null
             }
             flickListener?.onFlick(
@@ -1173,9 +1183,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setSideKeyPreviousState(state: Boolean) {
         sideKeyPreviousChar.isEnabled = state
-        val colorResId = if (state){
+        val colorResId = if (state) {
             R.color.keyboard_icon_color
-        }else{
+        } else {
             R.color.keyboard_icon_disable_color
         }
         sideKeyPreviousChar.setIconColor(colorResId)

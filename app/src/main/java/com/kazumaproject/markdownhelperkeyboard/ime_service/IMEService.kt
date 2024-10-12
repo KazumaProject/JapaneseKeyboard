@@ -171,7 +171,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private val shortVibrationEffect: VibrationEffect by lazy {
-        VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+        VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
     }
 
     private val shortCombinedVibration: CombinedVibration by lazy {
@@ -318,6 +318,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                         }
 
+                        GestureType.Down -> {
+                            setVibrate()
+                        }
+
                         GestureType.Tap -> {
                             handleTapAndFlick(
                                 key = key,
@@ -418,7 +422,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         else -> {
-                            setNextReturnInputCharacter(insertString)
+                            if (!isFlick) setNextReturnInputCharacter(insertString)
                         }
                     }
                 }
@@ -1073,7 +1077,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val insertString = _inputString.value
             if (insertString.isEmpty() && stringInTail.isNotEmpty()) {
                 enableContinuousTapInput()
-                _suggestionList.update { emptyList() }
+                _suggestionList.value = emptyList()
                 return@launch
             }
             if (onDeleteLongPressUp) {
@@ -1082,9 +1086,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             if (insertString.isNotEmpty()) {
                 if (insertString.length == 1) {
-                    _suggestionList.update { emptyList() }
-                    _inputString.update { EMPTY_STRING }
                     if (stringInTail.isEmpty()) setComposingText("", 0)
+                    _suggestionList.value = emptyList()
+                    _inputString.value = EMPTY_STRING
                 } else {
                     _inputString.update { it.dropLast(1) }
                 }
@@ -1103,7 +1107,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setEnterKeyPress() {
-        setVibrate()
         when (currentInputType) {
             InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine -> {
                 commitText("\n", 1)
@@ -1141,7 +1144,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
-        setVibrate()
         when {
             insertString.isNotEmpty() -> {
                 if (isHenkan) {
@@ -1283,6 +1285,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 GestureType.Null -> {}
+                GestureType.Down -> {}
                 GestureType.Tap -> {
                     if (!isCursorAtBeginning()) sendKeyEvent(
                         KeyEvent(
@@ -1322,7 +1325,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 updateLeftInputString(insertString)
             } else {
                 if (_suggestionList.value.isNotEmpty()) {
-                    _suggestionList.update { emptyList() }
+                    _suggestionList.value = emptyList()
                 }
                 if (stringInTail.isEmpty() && !isCursorAtBeginning()) {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
@@ -1357,8 +1360,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (insertString.isNotEmpty()) {
             if (insertString.length == 1) {
                 stringInTail = StringBuilder(stringInTail).insert(0, insertString).toString()
-                _inputString.update { EMPTY_STRING }
-                _suggestionList.update { emptyList() }
+                _inputString.value = EMPTY_STRING
+                _suggestionList.value = emptyList()
             } else {
                 stringInTail = StringBuilder(stringInTail).insert(0, insertString.last()).toString()
                 _inputString.update { it.dropLast(1) }
@@ -1408,6 +1411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 GestureType.Null -> {}
+                GestureType.Down -> {}
                 GestureType.Tap -> {
                     if (!isCursorAtEnd()) sendKeyEvent(
                         KeyEvent(
