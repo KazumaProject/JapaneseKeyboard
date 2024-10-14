@@ -18,7 +18,7 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="52dp"
             android:clipToPadding="false"
             android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -29,17 +29,16 @@
         <!-- Visibility Toggle Button -->
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/suggestion_visibility"
-            android:layout_width="76dp"
-            android:layout_height="58dp"
-            android:layout_marginEnd="4dp"
-            android:layout_marginBottom="16dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/recyclerview_size_button_bg"
             android:scaleType="center"
-            android:visibility="gone"
             android:src="@drawable/outline_arrow_drop_down_24"
             android:tint="@color/recycler_view_size_change_button_tint"
-            android:background="@drawable/recyclerview_size_button_bg"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Custom Keyboard View -->
@@ -51,4 +50,11 @@
         android:clickable="true"
         android:focusable="true"
         android:importantForAccessibility="yes" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/candidates_row_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:visibility="gone"
+        android:layout_gravity="bottom"/>
 </FrameLayout>

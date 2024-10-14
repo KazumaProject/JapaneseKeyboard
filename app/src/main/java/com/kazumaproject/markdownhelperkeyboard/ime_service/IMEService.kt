@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import android.animation.Animator
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
@@ -18,6 +21,7 @@ import android.view.ContextThemeWrapper
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
 import android.view.inputmethod.EditorInfo
@@ -26,7 +30,6 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -52,7 +55,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertDp2Px
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
@@ -172,7 +174,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private val shortVibrationEffect: VibrationEffect by lazy {
-        VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+        VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
     }
 
     private val shortCombinedVibration: CombinedVibration by lazy {
@@ -202,17 +204,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
-            val flexboxLayoutManager = FlexboxLayoutManager(applicationContext).apply {
+            val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
+                flexDirection = FlexDirection.COLUMN
+                justifyContent = JustifyContent.SPACE_AROUND
+            }
+            val flexboxLayoutManagerRow = FlexboxLayoutManager(applicationContext).apply {
                 flexDirection = FlexDirection.ROW
                 justifyContent = JustifyContent.FLEX_START
             }
-            setSuggestionRecyclerView(flexboxLayoutManager)
-            setTenKeyListeners()
-            if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                startScope(flexboxLayoutManager)
-            } else {
-                scope.coroutineContext.cancelChildren()
-                startScope(flexboxLayoutManager)
+            mainLayoutBinding?.let { mainView ->
+                setSuggestionRecyclerView(
+                    mainView,
+                    flexboxLayoutManagerColumn,
+                    flexboxLayoutManagerRow
+                )
+                setTenKeyListeners(mainView)
+                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                    startScope(mainView)
+                } else {
+                    scope.coroutineContext.cancelChildren()
+                    startScope(mainView)
+                }
             }
         }
     }
@@ -306,8 +318,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setTenKeyListeners() {
-        mainLayoutBinding?.keyboardView?.apply {
+    private fun setTenKeyListeners(mainView: MainLayoutBinding) {
+        mainView.keyboardView.apply {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
@@ -549,42 +561,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun startScope(
-        flexboxLayoutManager: FlexboxLayoutManager
-    ) = scope.launch {
-        mainLayoutBinding?.let { mainView ->
-            launch {
-                _suggestionFlag.asStateFlow().buffer().collectLatest {
-                    setSuggestionOnView(mainView)
-                }
+    private fun startScope(mainView: MainLayoutBinding) = scope.launch {
+        launch {
+            _suggestionFlag.asStateFlow().buffer().collectLatest {
+                setSuggestionOnView(mainView)
             }
+        }
 
-            launch {
-                _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
-                    updateSuggestionViewVisibility(mainView, flexboxLayoutManager, isVisible)
-                }
+        launch {
+            _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
+                updateSuggestionViewVisibility(mainView, isVisible)
             }
+        }
 
-            launch {
-                _suggestionList.asStateFlow().buffer().collectLatest { suggestions ->
-                    updateSuggestionList(mainView, suggestions)
-                }
+        launch {
+            _suggestionList.asStateFlow().buffer().collectLatest { suggestions ->
+                updateSuggestionList(mainView, suggestions)
             }
+        }
 
-            launch {
-                _inputString.asStateFlow().buffer().collectLatest { inputString ->
-                    processInputString(inputString)
-                }
+        launch {
+            _inputString.asStateFlow().buffer().collectLatest { inputString ->
+                processInputString(inputString)
             }
         }
     }
 
     private fun updateSuggestionViewVisibility(
-        mainView: MainLayoutBinding, flexboxLayoutManager: FlexboxLayoutManager, isVisible: Boolean
+        mainView: MainLayoutBinding, isVisible: Boolean
     ) {
-        mainView.keyboardView.isVisible = isVisible
+        animateViewVisibility(mainView.keyboardView, isVisible)
+        animateViewVisibility(mainView.candidatesRowView, !isVisible)
+        if (mainView.candidatesRowView.isVisible) {
+            mainView.candidatesRowView.scrollToPosition(0)
+        }
         mainView.suggestionVisibility.apply {
-            this.isVisible = !isVisible
             setImageDrawable(
                 ContextCompat.getDrawable(
                     applicationContext,
@@ -592,39 +603,76 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             )
         }
-        mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManager.apply {
-            flexDirection = if (isVisible) FlexDirection.COLUMN else FlexDirection.ROW
-            justifyContent =
-                if (isVisible) JustifyContent.SPACE_AROUND else JustifyContent.FLEX_START
-        }
-
-        val marginsSuggestionView =
-            (mainView.suggestionViewParent.layoutParams as FrameLayout.LayoutParams).apply {
-                leftMargin = 0
-                topMargin = 0
-                bottomMargin = calculateBottomMargin(isVisible)
-                height = calculateHeight(isVisible)
-            }
-        mainView.suggestionViewParent.layoutParams = marginsSuggestionView
     }
 
-    private fun calculateBottomMargin(isVisible: Boolean): Int {
-        return if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            if (isVisible) 200f.convertDp2Px(applicationContext) else 0
+    private fun animateViewVisibility(mainView: View, isVisible: Boolean) {
+        if (isVisible) {
+            mainView.visibility = View.VISIBLE
+            val slideUp =
+                ObjectAnimator.ofFloat(mainView, "translationY", mainView.height.toFloat(), 0f)
+            slideUp.duration = 150
+            slideUp.interpolator = AccelerateDecelerateInterpolator()
+            slideUp.start()
         } else {
-            if (isVisible) 280f.convertDp2Px(applicationContext) else 0
+            val slideDown =
+                ObjectAnimator.ofFloat(mainView, "translationY", 0f, mainView.height.toFloat())
+            slideDown.duration = 200
+            slideDown.interpolator = AccelerateDecelerateInterpolator()
+            slideDown.start()
+            slideDown.addListener(object : Animator.AnimatorListener {
+                override fun onAnimationStart(animation: Animator) {}
+
+                override fun onAnimationEnd(animation: Animator) {
+                    mainView.visibility = View.GONE
+                }
+
+                override fun onAnimationCancel(animation: Animator) {}
+
+                override fun onAnimationRepeat(animation: Animator) {}
+            })
         }
     }
 
-    private fun calculateHeight(isVisible: Boolean): Int {
-        return if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            if (isVisible) 52f.convertDp2Px(applicationContext) else 252f.convertDp2Px(
-                applicationContext
-            )
-        } else {
-            if (isVisible) 54f.convertDp2Px(applicationContext) else 336f.convertDp2Px(
-                applicationContext
-            )
+    private fun animateSuggestionVisibility(mainView: View, isVisible: Boolean) {
+        if (isVisible && mainView.visibility != View.VISIBLE) {
+            mainView.visibility = View.VISIBLE
+            mainView.scaleX = 0f
+            mainView.scaleY = 0f
+            mainView.alpha = 0f
+
+            val scaleX = ObjectAnimator.ofFloat(mainView, "scaleX", 0f, 1f)
+            val scaleY = ObjectAnimator.ofFloat(mainView, "scaleY", 0f, 1f)
+            val alpha = ObjectAnimator.ofFloat(mainView, "alpha", 0f, 1f)
+
+            val animatorSet = AnimatorSet()
+            animatorSet.playTogether(scaleX, scaleY, alpha)
+            animatorSet.duration = 300 // Duration in milliseconds
+            animatorSet.interpolator = AccelerateDecelerateInterpolator()
+            animatorSet.start()
+        } else if (!isVisible && mainView.visibility == View.VISIBLE) {
+            // Disappearing animation: from big to small
+            val scaleX = ObjectAnimator.ofFloat(mainView, "scaleX", 1f, 0f)
+            val scaleY = ObjectAnimator.ofFloat(mainView, "scaleY", 1f, 0f)
+            val alpha = ObjectAnimator.ofFloat(mainView, "alpha", 1f, 0f)
+
+            val animatorSet = AnimatorSet()
+            animatorSet.playTogether(scaleX, scaleY, alpha)
+            animatorSet.duration = 300 // Duration in milliseconds
+            animatorSet.interpolator = AccelerateDecelerateInterpolator()
+
+            animatorSet.addListener(object : Animator.AnimatorListener {
+                override fun onAnimationStart(animation: Animator) {}
+
+                override fun onAnimationEnd(animation: Animator) {
+                    mainView.visibility = View.GONE
+                }
+
+                override fun onAnimationCancel(animation: Animator) {}
+
+                override fun onAnimationRepeat(animation: Animator) {}
+            })
+
+            animatorSet.start()
         }
     }
 
@@ -636,6 +684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView.apply {
             suggestionRecyclerView.scrollToPosition(0)
         }
+        animateSuggestionVisibility(mainView.suggestionVisibility, suggestions.isNotEmpty())
     }
 
     private suspend fun processInputString(inputString: String) {
@@ -727,7 +776,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setSuggestionRecyclerView(
-        flexboxLayoutManager: FlexboxLayoutManager
+        mainView: MainLayoutBinding,
+        flexboxLayoutManagerColumn: FlexboxLayoutManager,
+        flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
         suggestionAdapter.apply {
             this.setOnItemClickListener {
@@ -736,31 +787,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setCandidateClick(it, insertString)
             }
         }
-        mainLayoutBinding?.let { mainView ->
-            mainView.suggestionRecyclerView.apply {
-                itemAnimator = null
-                focusable = View.NOT_FOCUSABLE
-                addOnItemTouchListener(SwipeGestureListener(
-                    context = this@IMEService,
-                    onSwipeDown = {
-                        if (_suggestionList.value.isNotEmpty()) {
-                            if (_suggestionViewStatus.value) {
-                                _suggestionViewStatus.update { !it }
-                            }
+        mainView.suggestionRecyclerView.apply {
+            itemAnimator = null
+            focusable = View.NOT_FOCUSABLE
+            addOnItemTouchListener(SwipeGestureListener(
+                context = this@IMEService,
+                onSwipeDown = {
+                    if (_suggestionList.value.isNotEmpty()) {
+                        if (_suggestionViewStatus.value) {
+                            _suggestionViewStatus.update { !it }
                         }
-                    },
-                    onSwipeUp = {
-                        //_suggestionViewStatus.update { !it }
                     }
-                ))
-            }
-            suggestionAdapter.apply {
-                mainView.suggestionRecyclerView.adapter = this
-                mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManager
-            }
-            mainView.suggestionVisibility.setOnClickListener {
-                _suggestionViewStatus.update { !it }
-            }
+                },
+                onSwipeUp = {}
+            ))
+        }
+
+        mainView.candidatesRowView.apply {
+            itemAnimator = null
+            focusable = View.NOT_FOCUSABLE
+        }
+
+        suggestionAdapter.apply {
+            mainView.suggestionRecyclerView.adapter = this
+            mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManagerColumn
+
+            mainView.candidatesRowView.adapter = this
+            mainView.candidatesRowView.layoutManager = flexboxLayoutManagerRow
+        }
+        mainView.suggestionVisibility.setOnClickListener {
+            _suggestionViewStatus.update { !it }
         }
     }
 
@@ -1076,7 +1132,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return kanaKanjiEngine.getCandidates(insertString, N_BEST)
     }
 
-    private fun deleteLongPress() = CoroutineScope(Dispatchers.IO).launch {
+    private fun deleteLongPress() = CoroutineScope(Dispatchers.Default).launch {
         while (isActive) {
             val insertString = _inputString.value
             if (insertString.isEmpty() && stringInTail.isNotEmpty()) {
@@ -1320,7 +1376,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncLeftLongPress() = CoroutineScope(Dispatchers.IO).launch {
+    private fun asyncLeftLongPress() = CoroutineScope(Dispatchers.Default).launch {
         while (isActive) {
             val insertString = _inputString.value
             if (onLeftKeyLongPressUp || !leftCursorKeyLongKeyPressed) break
@@ -1351,7 +1407,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncRightLongPress() = CoroutineScope(Dispatchers.IO).launch {
+    private fun asyncRightLongPress() = CoroutineScope(Dispatchers.Default).launch {
         while (isActive) {
             val insertString = _inputString.value
             if (onRightKeyLongPressUp || !rightCursorKeyLongKeyPressed) break
