@@ -2,6 +2,7 @@ package com.kazumaproject.tenkey
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
@@ -571,6 +572,34 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
         }
         return false
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration?) {
+        super.onConfigurationChanged(newConfig)
+        newConfig?.apply {
+            initializeButtonTextOrientationChange(orientation)
+        }
+    }
+
+    private fun initializeButtonTextOrientationChange(orientation: Int) {
+        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+            setTextToAllButtons()
+        } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            setTextToAllButtons()
+        }
+    }
+
+    private fun setTextToAllButtons() {
+        keyA.setTenKeyTextJapanese(keyA.id)
+        keyKA.setTenKeyTextJapanese(keyKA.id)
+        keySA.setTenKeyTextJapanese(keySA.id)
+        keyTA.setTenKeyTextJapanese(keyTA.id)
+        keyNA.setTenKeyTextJapanese(keyNA.id)
+        keyHA.setTenKeyTextJapanese(keyHA.id)
+        keyMA.setTenKeyTextJapanese(keyMA.id)
+        keyYA.setTenKeyTextJapanese(keyYA.id)
+        keyRA.setTenKeyTextJapanese(keyRA.id)
+        keyWA.setTenKeyTextJapanese(keyWA.id)
     }
 
     private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {

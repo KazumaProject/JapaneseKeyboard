@@ -1,51 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_gravity="bottom"
     android:background="@color/keyboard_bg">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/suggestionView_parent"
         android:layout_width="match_parent"
-        android:layout_height="54dp"
+        android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/keyboard_height_land"
         android:background="@color/keyboard_bg">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="54dp"
             android:clipToPadding="false"
             android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
+            app:layout_constraintTop_toTopOf="parent" />
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/suggestion_visibility"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:background="@color/keyboard_bg"
-            android:src="@drawable/recyclerview_size_button_bg"
+            android:background="@drawable/recyclerview_size_button_bg"
             android:scaleType="center"
+            android:src="@drawable/outline_arrow_drop_down_24"
             android:tint="@color/recycler_view_size_change_button_tint"
-            android:layout_gravity="end"
             android:visibility="gone"
-            android:layout_marginBottom="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.kazumaproject.tenkey.TenKey
         android:id="@+id/keyboard_view"
-        android:layout_gravity="bottom"
         android:layout_width="match_parent"
         android:layout_height="@dimen/keyboard_height_land"
+        android:layout_gravity="bottom"
         android:clickable="true"
         android:focusable="true" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/candidates_row_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height_land"
+        android:layout_gravity="bottom"
+        android:visibility="gone" />
 
 </FrameLayout>
