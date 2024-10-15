@@ -7,6 +7,11 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanjiNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
 import com.kazumaproject.viterbi.FindPath
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -293,7 +298,7 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.symbolRank1ArrayLBSTango = symbolRank1ArrayLBSTango
         this@KanaKanjiEngine.symbolYomiLBSBooleanArray = symbolYomiLBSBooleanArray
 
-         /** Reading Correction **/
+        /** Reading Correction **/
         this@KanaKanjiEngine.readingCorrectionTangoTrie = readingCorrectionTangoTrie
         this@KanaKanjiEngine.readingCorrectionTokenArray = readingCorrectionTokenArray
         this@KanaKanjiEngine.readingCorrectionYomiTrie = readingCorrectionYomiTrie
@@ -974,6 +979,114 @@ class KanaKanjiEngine {
             }
         }
 
+        val numbersDeferred = async(Dispatchers.Default) {
+
+            val numbersList = input.toNumber()
+            val numberExponent = input.toNumberExponent()
+            val numberInKanji = input.toKanjiNumber()
+            if (numbersList != null && numberExponent != null) {
+                return@async listOf(
+                    Candidate(
+                        string = numbersList.first.toLong().convertToKanjiNotation(),
+                        type = 17,
+                        length = input.length.toUByte(),
+                        score = 8000,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                ) + numbersList.toList().map {
+                    Candidate(
+                        string = numbersList.first.addCommasToNumber(),
+                        type = 19,
+                        length = input.length.toUByte(),
+                        score = 8001,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                } + numbersList.toList().map {
+                    Candidate(
+                        string = it,
+                        type = 18,
+                        length = input.length.toUByte(),
+                        score = 8002,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                } + numbersList.toList().map {
+                    Candidate(
+                        string = numberExponent.first,
+                        type = 20,
+                        length = input.length.toUByte(),
+                        score = 8003,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                }
+            } else if (numbersList != null) {
+                if (numberInKanji != null){
+                    return@async listOf(
+                        Candidate(
+                            string = numberInKanji,
+                            type = 21,
+                            length = input.length.toUByte(),
+                            score = 8000,
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    ) + numbersList.toList().map {
+                        Candidate(
+                            string = numbersList.first.addCommasToNumber(),
+                            type = 19,
+                            length = input.length.toUByte(),
+                            score = 8001,
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    } + numbersList.toList().map {
+                        Candidate(
+                            string = it,
+                            type = 18,
+                            length = input.length.toUByte(),
+                            score = 8002,
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    }
+                }else{
+                    return@async listOf(
+                        Candidate(
+                            string = numbersList.first.toLong().convertToKanjiNotation(),
+                            type = 17,
+                            length = input.length.toUByte(),
+                            score = 1000,
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    ) + numbersList.toList().map {
+                        Candidate(
+                            string = numbersList.first.addCommasToNumber(),
+                            type = 19,
+                            length = input.length.toUByte(),
+                            score = 1001,
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    } + numbersList.toList().map {
+                        Candidate(
+                            string = it,
+                            type = 18,
+                            length = input.length.toUByte(),
+                            score = 1002,
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    }
+                }
+            } else {
+                return@async emptyList()
+            }
+        }
+
         val secondPartList = secondPartDeferred.await().sortedBy { it.score }
             .filter { it.score - resultNBestFinalDeferred.first().score < 2000 }
 
@@ -983,7 +1096,7 @@ class KanaKanjiEngine {
             secondPartList
         }
 
-        return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + kotowazaListDeferred.await() ).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+        return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + kotowazaListDeferred.await() + numbersDeferred.await()).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
     }
 
     private fun createCandidatesForDate(

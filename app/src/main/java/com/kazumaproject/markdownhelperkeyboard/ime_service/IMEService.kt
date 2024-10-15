@@ -45,6 +45,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableArrowTab
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableCheck
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableEnglishSmall
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableHenkan
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableKanaSmall
@@ -53,6 +55,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableNumberSma
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableOpenBracket
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSearch
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -111,6 +114,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var drawableReturn: Drawable
 
     @Inject
+    @DrawableArrowTab
+    lateinit var drawableArrowTab: Drawable
+
+    @Inject
     @DrawableKanaSmall
     lateinit var drawableKanaSmall: Drawable
 
@@ -129,6 +136,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     @DrawableRightArrow
     lateinit var drawableRightArrow: Drawable
+
+    @Inject
+    @DrawableSearch
+    lateinit var drawableSearch: Drawable
+
+    @Inject
+    @DrawableCheck
+    lateinit var drawableCheck: Drawable
 
     @Inject
     @DrawableLanguage
@@ -214,9 +229,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             mainLayoutBinding?.let { mainView ->
                 setSuggestionRecyclerView(
-                    mainView,
-                    flexboxLayoutManagerColumn,
-                    flexboxLayoutManagerRow
+                    mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
                 setTenKeyListeners(mainView)
                 if (lifecycle.currentState == Lifecycle.State.CREATED) {
@@ -343,7 +356,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 sb = sb,
                                 isFlick = false,
                                 gestureType = gestureType,
-                                suggestions = suggestionList
+                                suggestions = suggestionList,
+                                mainView = mainView
                             )
                         }
 
@@ -355,7 +369,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 sb = sb,
                                 isFlick = true,
                                 gestureType = gestureType,
-                                suggestions = suggestionList
+                                suggestions = suggestionList,
+                                mainView = mainView
                             )
                         }
                     }
@@ -378,22 +393,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         sb: StringBuilder,
         isFlick: Boolean,
         gestureType: GestureType,
-        suggestions: List<Candidate>
+        suggestions: List<Candidate>,
+        mainView: MainLayoutBinding
     ) {
         setVibrate()
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
                 if (insertString.isNotEmpty()) {
-                    handleNonEmptyInputEnterKey(suggestions)
+                    handleNonEmptyInputEnterKey(suggestions, mainView)
                 } else {
-                    handleEmptyInputEnterKey()
+                    handleEmptyInputEnterKey(mainView)
                 }
             }
 
             Key.KeyDakutenSmall -> {
                 handleDakutenSmallLetterKey(
-                    sb = sb, isFlick = isFlick, char = char, insertString = insertString
+                    sb = sb,
+                    isFlick = isFlick,
+                    char = char,
+                    insertString = insertString,
+                    mainView = mainView
                 )
             }
 
@@ -427,11 +447,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeyInputMode -> {
-                setTenkeyIconsInHenkan(insertString)
+                setTenkeyIconsInHenkan(insertString, mainView)
             }
 
             Key.SideKeyPreviousChar -> {
-                mainLayoutBinding?.keyboardView?.let {
+                mainView.keyboardView.let {
                     when (it.currentInputMode) {
                         is InputMode.ModeNumber -> {
 
@@ -446,7 +466,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeySpace -> {
                 if (!isSpaceKeyLongPressed) {
-                    handleSpaceKeyClick(isFlick, insertString, suggestions)
+                    handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
                 }
                 isSpaceKeyLongPressed = false
             }
@@ -582,7 +602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         launch {
             _inputString.asStateFlow().buffer().collectLatest { inputString ->
-                processInputString(inputString)
+                processInputString(inputString, mainView)
             }
         }
     }
@@ -646,7 +666,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             val animatorSet = AnimatorSet()
             animatorSet.playTogether(scaleX, scaleY, alpha)
-            animatorSet.duration = 300 // Duration in milliseconds
+            animatorSet.duration = 200 // Duration in milliseconds
             animatorSet.interpolator = AccelerateDecelerateInterpolator()
             animatorSet.start()
         } else if (!isVisible && mainView.visibility == View.VISIBLE) {
@@ -657,7 +677,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             val animatorSet = AnimatorSet()
             animatorSet.playTogether(scaleX, scaleY, alpha)
-            animatorSet.duration = 300 // Duration in milliseconds
+            animatorSet.duration = 200 // Duration in milliseconds
             animatorSet.interpolator = AccelerateDecelerateInterpolator()
 
             animatorSet.addListener(object : Animator.AnimatorListener {
@@ -687,7 +707,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         animateSuggestionVisibility(mainView.suggestionVisibility, suggestions.isNotEmpty())
     }
 
-    private suspend fun processInputString(inputString: String) {
+    private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
             _suggestionFlag.update { !it }
@@ -706,11 +726,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 onDeleteLongPressUp = true
             } else {
                 resetInputString()
-                setTenkeyIconsEmptyInputString()
+                setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
                 onLeftKeyLongPressUp = true
                 onRightKeyLongPressUp = true
                 onDeleteLongPressUp = true
             }
+            mainView.keyboardView.setSideKeySpaceDrawable(drawableSpaceBar)
         }
     }
 
@@ -724,53 +745,101 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
-            currentInputType = getCurrentInputTypeForIME(inputType)
+            currentInputType = getCurrentInputTypeForIME(this)
             Timber.d("setCurrentInputType: $currentInputType $inputType")
-            when (currentInputType) {
-                InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                    mainLayoutBinding?.keyboardView?.apply {
+            mainLayoutBinding?.keyboardView?.apply {
+                when (currentInputType) {
+                    InputTypeForIME.Text,
+                    InputTypeForIME.TextAutoComplete,
+                    InputTypeForIME.TextAutoCorrect,
+                    InputTypeForIME.TextCapCharacters,
+                    InputTypeForIME.TextCapSentences,
+                    InputTypeForIME.TextCapWords,
+                    InputTypeForIME.TextFilter,
+                    InputTypeForIME.TextNoSuggestion,
+                    InputTypeForIME.TextPersonName,
+                    InputTypeForIME.TextPhonetic,
+                    InputTypeForIME.TextWebEditText,
+                    -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
+                        this.setSideKeyEnterDrawable(drawableRightArrow)
                     }
-                }
 
-                InputTypeForIME.TextEditTextInBookingTDBank,
-                InputTypeForIME.TextUri,
-                InputTypeForIME.TextPostalAddress,
-                InputTypeForIME.TextEmailAddress,
-                InputTypeForIME.TextWebEmailAddress,
-                InputTypeForIME.TextPassword,
-                InputTypeForIME.TextVisiblePassword,
-                InputTypeForIME.TextWebPassword,
-                -> {
-                    mainLayoutBinding?.keyboardView?.apply {
+                    InputTypeForIME.TextMultiLine,
+                    InputTypeForIME.TextImeMultiLine,
+                    InputTypeForIME.TextShortMessage,
+                    InputTypeForIME.TextLongMessage,
+                    -> {
+                        currentInputMode = InputMode.ModeJapanese
+                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setSideKeyPreviousState(true)
+                        this.setSideKeyEnterDrawable(drawableReturn)
+                    }
+
+                    InputTypeForIME.TextEmailAddress,
+                    InputTypeForIME.TextEmailSubject,
+                    InputTypeForIME.TextNextLine -> {
+                        currentInputMode = InputMode.ModeJapanese
+                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setSideKeyPreviousState(true)
+                        this.setSideKeyEnterDrawable(drawableArrowTab)
+                    }
+
+                    InputTypeForIME.TextDone -> {
+                        currentInputMode = InputMode.ModeJapanese
+                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setSideKeyPreviousState(true)
+                        this.setSideKeyEnterDrawable(drawableCheck)
+                    }
+
+                    InputTypeForIME.TextWebSearchView,
+                    InputTypeForIME.TextWebSearchViewFireFox,
+                    InputTypeForIME.TextSearchView -> {
+                        currentInputMode = InputMode.ModeJapanese
+                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setSideKeyPreviousState(true)
+                        this.setSideKeyEnterDrawable(drawableSearch)
+                    }
+
+                    InputTypeForIME.TextEditTextInBookingTDBank,
+                    InputTypeForIME.TextUri,
+                    InputTypeForIME.TextPostalAddress,
+                    InputTypeForIME.TextWebEmailAddress,
+                    InputTypeForIME.TextPassword,
+                    InputTypeForIME.TextVisiblePassword,
+                    InputTypeForIME.TextWebPassword,
+                    -> {
                         currentInputMode = InputMode.ModeEnglish
                         setInputModeSwitchState(InputMode.ModeEnglish)
                         setSideKeyPreviousState(true)
+                        this.setSideKeyEnterDrawable(drawableRightArrow)
                     }
-                }
 
-                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                    InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                        currentInputMode = InputMode.ModeJapanese
+                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setSideKeyPreviousState(true)
+                        this.setSideKeyEnterDrawable(drawableRightArrow)
+                    }
 
-                }
-
-                InputTypeForIME.Number,
-                InputTypeForIME.NumberDecimal,
-                InputTypeForIME.NumberPassword,
-                InputTypeForIME.NumberSigned,
-                InputTypeForIME.Phone,
-                InputTypeForIME.Date,
-                InputTypeForIME.Datetime,
-                InputTypeForIME.Time,
-                -> {
-                    mainLayoutBinding?.keyboardView?.apply {
+                    InputTypeForIME.Number,
+                    InputTypeForIME.NumberDecimal,
+                    InputTypeForIME.NumberPassword,
+                    InputTypeForIME.NumberSigned,
+                    InputTypeForIME.Phone,
+                    InputTypeForIME.Date,
+                    InputTypeForIME.Datetime,
+                    InputTypeForIME.Time,
+                    -> {
                         currentInputMode = InputMode.ModeNumber
                         setInputModeSwitchState(InputMode.ModeNumber)
                         setSideKeyPreviousState(false)
+                        this.setSideKeyEnterDrawable(drawableRightArrow)
                     }
-                }
 
+                }
             }
         }
     }
@@ -790,17 +859,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView.suggestionRecyclerView.apply {
             itemAnimator = null
             focusable = View.NOT_FOCUSABLE
-            addOnItemTouchListener(SwipeGestureListener(
-                context = this@IMEService,
-                onSwipeDown = {
-                    if (_suggestionList.value.isNotEmpty()) {
-                        if (_suggestionViewStatus.value) {
-                            _suggestionViewStatus.update { !it }
-                        }
+            addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
+                if (_suggestionList.value.isNotEmpty()) {
+                    if (_suggestionViewStatus.value) {
+                        _suggestionViewStatus.update { !it }
                     }
-                },
-                onSwipeUp = {}
-            ))
+                }
+            }, onSwipeUp = {}))
         }
 
         mainView.candidatesRowView.apply {
@@ -1017,24 +1082,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetFlagsEnterKey()
     }
 
-    private fun setTenkeyIconsEmptyInputString() {
-        mainLayoutBinding?.keyboardView?.apply {
-            setSideKeyEnterDrawable(drawableRightArrow)
-            setSideKeySpaceDrawable(drawableSpaceBar)
-            when (currentInputMode) {
-                is InputMode.ModeJapanese, is InputMode.ModeEnglish -> {
-                    setBackgroundSmallLetterKey(drawableLogo)
-                }
-
-                is InputMode.ModeNumber -> {
-                    setBackgroundSmallLetterKey(drawableNumberSmall)
-                }
-            }
-        }
-    }
-
-    private fun setTenkeyIconsInHenkan(insertString: String) {
-        mainLayoutBinding?.keyboardView?.apply {
+    private fun setTenkeyIconsInHenkan(insertString: String, mainView: MainLayoutBinding) {
+        mainView.keyboardView.apply {
             when (currentInputMode) {
                 is InputMode.ModeJapanese -> {
                     setSideKeySpaceDrawable(drawableSpaceBar)
@@ -1168,17 +1217,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setEnterKeyPress() {
         when (currentInputType) {
-            InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine -> {
+            InputTypeForIME.TextMultiLine,
+            InputTypeForIME.TextImeMultiLine,
+            InputTypeForIME.TextShortMessage,
+            InputTypeForIME.TextLongMessage,
+            -> {
                 commitText("\n", 1)
             }
 
-            InputTypeForIME.None, InputTypeForIME.Text, InputTypeForIME.TextAutoComplete, InputTypeForIME.TextAutoCorrect, InputTypeForIME.TextCapCharacters, InputTypeForIME.TextCapSentences, InputTypeForIME.TextCapWords, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextFilter, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage, InputTypeForIME.TextNoSuggestion, InputTypeForIME.TextPersonName, InputTypeForIME.TextPhonetic, InputTypeForIME.TextWebEditText, InputTypeForIME.TextUri, InputTypeForIME.TextPostalAddress, InputTypeForIME.TextEmailAddress, InputTypeForIME.TextWebEmailAddress, InputTypeForIME.TextPassword, InputTypeForIME.TextVisiblePassword, InputTypeForIME.TextWebPassword, InputTypeForIME.TextWebSearchView, InputTypeForIME.TextNotCursorUpdate, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextEditTextInBookingTDBank -> {
+            InputTypeForIME.None,
+            InputTypeForIME.Text,
+            InputTypeForIME.TextAutoComplete,
+            InputTypeForIME.TextAutoCorrect,
+            InputTypeForIME.TextCapCharacters,
+            InputTypeForIME.TextCapSentences,
+            InputTypeForIME.TextCapWords,
+            InputTypeForIME.TextEmailSubject,
+            InputTypeForIME.TextFilter,
+            InputTypeForIME.TextNoSuggestion,
+            InputTypeForIME.TextPersonName,
+            InputTypeForIME.TextPhonetic,
+            InputTypeForIME.TextWebEditText,
+            InputTypeForIME.TextUri,
+            InputTypeForIME.TextPostalAddress,
+            InputTypeForIME.TextEmailAddress,
+            InputTypeForIME.TextWebEmailAddress,
+            InputTypeForIME.TextPassword,
+            InputTypeForIME.TextVisiblePassword,
+            InputTypeForIME.TextWebPassword,
+            InputTypeForIME.TextNotCursorUpdate,
+            InputTypeForIME.TextEditTextInBookingTDBank,
+            -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
                     KeyEvent(
                         KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
                     )
                 )
+            }
+
+            InputTypeForIME.TextNextLine -> {
+                performEditorAction(EditorInfo.IME_ACTION_NEXT)
+            }
+
+            InputTypeForIME.TextDone -> {
+                performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
             InputTypeForIME.Number,
@@ -1193,6 +1276,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
+            InputTypeForIME.TextWebSearchView,
+            InputTypeForIME.TextWebSearchViewFireFox,
             InputTypeForIME.TextSearchView -> {
                 Timber.d(
                     "enter key search: ${EditorInfo.IME_ACTION_SEARCH}" + "\n${currentInputEditorInfo.inputType}" + "\n${currentInputEditorInfo.imeOptions}" + "\n${currentInputEditorInfo.actionId}" + "\n${currentInputEditorInfo.privateImeOptions}"
@@ -1222,10 +1307,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleSpaceKeyClick(
-        isFlick: Boolean, insertString: String, suggestions: List<Candidate>
+        isFlick: Boolean,
+        insertString: String,
+        suggestions: List<Candidate>,
+        mainView: MainLayoutBinding
     ) {
         if (insertString.isNotBlank()) {
-            mainLayoutBinding?.apply {
+            mainView.apply {
                 keyboardView.let { tenkey ->
                     when (tenkey.currentInputMode) {
                         InputMode.ModeJapanese -> handleJapaneseModeSpaceKey(
@@ -1256,8 +1344,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
 
-    private fun handleNonEmptyInputEnterKey(suggestions: List<Candidate>) {
-        mainLayoutBinding?.keyboardView?.apply {
+    private fun handleNonEmptyInputEnterKey(
+        suggestions: List<Candidate>,
+        mainView: MainLayoutBinding
+    ) {
+        mainView.keyboardView.apply {
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
                     if (isHenkan) {
@@ -1298,7 +1389,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setEnterKeyAction(suggestions)
     }
 
-    private fun handleEmptyInputEnterKey() {
+    private fun handleEmptyInputEnterKey(mainView: MainLayoutBinding) {
         if (stringInTail.isNotEmpty()) {
             finishComposingText()
             stringInTail = EMPTY_STRING
@@ -1308,6 +1399,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionClickNum = 0
             suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
+        }
+        setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
+    }
+
+    private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
+        mainView.keyboardView.apply {
+            when (currentInputType) {
+                InputTypeForIME.TextWebSearchView,
+                InputTypeForIME.TextWebSearchViewFireFox,
+                InputTypeForIME.TextSearchView -> {
+                    setSideKeyEnterDrawable(drawableSearch)
+                }
+
+                InputTypeForIME.TextMultiLine,
+                InputTypeForIME.TextImeMultiLine,
+                InputTypeForIME.TextShortMessage,
+                InputTypeForIME.TextLongMessage,
+                -> {
+                    setSideKeyEnterDrawable(drawableReturn)
+                }
+
+                InputTypeForIME.TextEmailAddress,
+                InputTypeForIME.TextEmailSubject,
+                InputTypeForIME.TextNextLine -> {
+                    setSideKeyEnterDrawable(drawableArrowTab)
+                }
+
+                InputTypeForIME.TextDone -> {
+                    setSideKeyEnterDrawable(drawableCheck)
+                }
+
+                else -> {
+                    setSideKeyEnterDrawable(drawableRightArrow)
+                }
+            }
         }
     }
 
@@ -1360,8 +1486,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             englishSpaceKeyPressed = false
             suggestionClickNum = 0
             if (insertString.isNotEmpty()) {
-                stringInTail = StringBuilder(stringInTail).insert(0, insertString.last()).toString()
-                _inputString.update { it.dropLast(1) }
+                if (insertString.length == 1) {
+                    stringInTail =
+                        StringBuilder(stringInTail).insert(0, insertString.last()).toString()
+                    _inputString.value = EMPTY_STRING
+                    _suggestionList.value = emptyList()
+                } else {
+                    stringInTail =
+                        StringBuilder(stringInTail).insert(0, insertString.last()).toString()
+                    _inputString.update { it.dropLast(1) }
+                }
             }
         }
     }
@@ -1716,9 +1850,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleDakutenSmallLetterKey(
-        sb: StringBuilder, isFlick: Boolean, char: Char?, insertString: String
+        sb: StringBuilder,
+        isFlick: Boolean,
+        char: Char?,
+        insertString: String,
+        mainView: MainLayoutBinding
     ) {
-        mainLayoutBinding?.keyboardView?.let {
+        mainView.keyboardView.let {
             when (it.currentInputMode) {
                 InputMode.ModeJapanese -> {
                     dakutenSmallLetter(sb, insertString)

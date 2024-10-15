@@ -97,6 +97,10 @@ class SuggestionAdapter() : RecyclerView.Adapter<SuggestionAdapter.SuggestionVie
             }
             /** ことわざ **/
             (16).toByte() -> ""
+            /** 数 漢字混じり **/
+            (17).toByte() -> ""
+            /** 数 **/
+            (18).toByte() -> ""
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition

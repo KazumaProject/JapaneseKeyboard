@@ -9,6 +9,10 @@ sealed class InputTypeForIME{
     object TextAutoCorrect: InputTypeForIME()
     object TextAutoComplete: InputTypeForIME()
     object TextMultiLine: InputTypeForIME()
+
+    object TextNextLine: InputTypeForIME()
+
+    object TextDone: InputTypeForIME()
     object TextImeMultiLine: InputTypeForIME()
     object TextNoSuggestion: InputTypeForIME()
     object TextUri: InputTypeForIME()
