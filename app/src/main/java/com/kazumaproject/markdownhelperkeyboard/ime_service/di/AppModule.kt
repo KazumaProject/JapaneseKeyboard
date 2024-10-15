@@ -904,6 +904,30 @@ object AppModule {
             R.drawable.baseline_arrow_right_alt_24
         )!!
 
+    @DrawableSearch
+    @Provides
+    fun providesDrawableSearch(@ApplicationContext context: Context): Drawable =
+        ContextCompat.getDrawable(
+            context,
+            R.drawable.baseline_search_24
+        )!!
+
+    @DrawableArrowTab
+    @Provides
+    fun providesDrawableArrowTab(@ApplicationContext context: Context): Drawable =
+        ContextCompat.getDrawable(
+            context,
+            R.drawable.keyboard_tab_24px
+        )!!
+
+    @DrawableCheck
+    @Provides
+    fun providesDrawableCheck(@ApplicationContext context: Context): Drawable =
+        ContextCompat.getDrawable(
+            context,
+            R.drawable.baseline_check_24
+        )!!
+
     @DrawableLanguage
     @Provides
     fun providesDrawableLanguage(@ApplicationContext context: Context): Drawable =

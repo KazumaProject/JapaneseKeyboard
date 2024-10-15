@@ -40,12 +40,12 @@ annotation class DrawableOpenBracket
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class DrawableCapEnable
+annotation class DrawableSearch
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class DrawableCapBackGround
+annotation class DrawableArrowTab
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class DrawableCapBackGroundEnabled
+annotation class DrawableCheck
