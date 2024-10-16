@@ -731,7 +731,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 onRightKeyLongPressUp = true
                 onDeleteLongPressUp = true
             }
-            mainView.keyboardView.setSideKeySpaceDrawable(drawableSpaceBar)
+            mainView.keyboardView.apply {
+                setSideKeySpaceDrawable(drawableSpaceBar)
+                setBackgroundSmallLetterKey(drawableLogo)
+            }
         }
     }
 
@@ -803,7 +806,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         this.setSideKeyEnterDrawable(drawableSearch)
                     }
 
-                    InputTypeForIME.TextEditTextInBookingTDBank,
+                    InputTypeForIME.TextEditTextInWebView,
                     InputTypeForIME.TextUri,
                     InputTypeForIME.TextPostalAddress,
                     InputTypeForIME.TextWebEmailAddress,
@@ -1246,7 +1249,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextVisiblePassword,
             InputTypeForIME.TextWebPassword,
             InputTypeForIME.TextNotCursorUpdate,
-            InputTypeForIME.TextEditTextInBookingTDBank,
+            InputTypeForIME.TextEditTextInWebView,
             -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(

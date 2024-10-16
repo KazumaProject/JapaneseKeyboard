@@ -32,7 +32,7 @@ sealed class InputTypeForIME{
     object TextWebSearchView: InputTypeForIME()
 
     object TextSearchView: InputTypeForIME()
-    object TextEditTextInBookingTDBank: InputTypeForIME()
+    object TextEditTextInWebView: InputTypeForIME()
     object TextWebSearchViewFireFox: InputTypeForIME()
     object TextNotCursorUpdate: InputTypeForIME()
     object Number: InputTypeForIME()

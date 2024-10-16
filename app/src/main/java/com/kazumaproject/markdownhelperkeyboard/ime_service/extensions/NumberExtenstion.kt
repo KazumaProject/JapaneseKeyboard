@@ -119,6 +119,8 @@ fun String.toNumber(): Pair<String, String>? {
         }
     }
 
+    if (total <= 0) return null
+
     val fullWidth = total.toString().map { it.toFullWidthChar() }.joinToString("")
     val halfWidth = total.toString()
 
