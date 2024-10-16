@@ -50,9 +50,12 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                 InputType.TYPE_TEXT_VARIATION_PHONETIC -> InputTypeForIME.TextPhonetic
                 InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> InputTypeForIME.TextWebEmailAddress
                 InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD -> InputTypeForIME.TextWebPassword
-                /** TD Bank Book First, Last Name and Phone Number **/
+                /**
+                 * TD Bank Book First, Last Name and Phone Number
+                 * EditTexts in WebView in Chrome
+                 * **/
                 49313 -> {
-                    InputTypeForIME.TextEditTextInBookingTDBank
+                    InputTypeForIME.TextEditTextInWebView
                 }
 
                 524305 -> InputTypeForIME.TextWebSearchView
