@@ -26,12 +26,6 @@ fun String.toNumber(): Pair<String, String>? {
         "まん" to 10_000L,
         "おく" to 100_000_000L,
         "ちょう" to 1_000_000_000_000L,
-        "けい" to 10_000_000_000_000L,
-        "がい" to 100_000_000_000_000L,
-        "じょ" to 1_000_000_000_000_000L,
-        "じょう" to 10_000_000_000_000_000L,
-        "こう" to 100_000_000_000_000_000L,
-        "かん" to 1_000_000_000_000_000_000L
     )
 
     val patterns = (digits.keys + units.keys + bigUnits.keys).sortedByDescending { it.length }
@@ -273,12 +267,6 @@ fun Long.convertToKanjiNotation(): String {
     if (this == 0L) return "0"
 
     val units = listOf(
-        Pair(1_000_000_000_000_000_000L, "澗"),
-        Pair(100_000_000_000_000_000L, "溝"),
-        Pair(10_000_000_000_000_000L, "穣"),
-        Pair(1_000_000_000_000_000L, "\uD855\uDF71"),
-        Pair(100_000_000_000_000L, "垓"),
-        Pair(10_000_000_000_000L, "京"),  // 10^16
         Pair(1_000_000_000_000L, "兆"),      // 10^12
         Pair(100_000_000L, "億"),           // 10^8
         Pair(10_000L, "万")                 // 10^4
@@ -342,12 +330,6 @@ fun String.toKanjiNumber(): String? {
         "まん" to "万",
         "おく" to "億",
         "ちょう" to "兆",
-        "けい" to "京",
-        "がい" to "垓",
-        "じょ" to "𥝱",
-        "じょう" to "穣",
-        "こう" to "溝",
-        "かん" to "澗"
     )
 
     // Check if input contains any big units
