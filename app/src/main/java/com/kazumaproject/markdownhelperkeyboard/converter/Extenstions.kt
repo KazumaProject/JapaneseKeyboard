@@ -9,7 +9,7 @@ fun List<Boolean>.toBitSet(): BitSet {
     val bitSet = BitSet(this.size)
     this.forEachIndexed { index, value ->
         if (value) {
-            bitSet.set(index,true)
+            bitSet.set(index, true)
         }
     }
     return bitSet
@@ -17,13 +17,15 @@ fun List<Boolean>.toBitSet(): BitSet {
 
 fun String.hiraToKata() =
     this.map {
-        if (it.code in 0x3041..0x3093 || it == 'ゔ') {
-            if (it == 'ゔ') 'ヴ' else it + 0x60
-        } else {
-            it
+        when (it) {
+            'ゔ' -> 'ヴ'
+            'づ' -> 'ヅ'  // づ is handled here
+            'ゐ' -> 'ヰ'
+            'ゑ' -> 'ヱ'
+            in 'ぁ'..'ん' -> (it.code + 0x60).toChar()  // 通常のひらがなは0x60を加算してカタカナに変換
+            else -> it  // その他の文字はそのまま
         }
     }.joinToString("")
-
 
 
 fun List<Char>.toByteArrayFromListChar(): ByteArray {
@@ -73,7 +75,7 @@ fun ByteArray.byteArrayToShortList(): List<Short> {
     return shortList
 }
 
-fun  BitSet.toBooleanList():List<Boolean>{
+fun BitSet.toBooleanList(): List<Boolean> {
     return (0 until this.size()).map { this[it] }
 }
 
@@ -82,6 +84,7 @@ fun List<Int>.toBitSetExtension(): BitSet {
     this.forEach { bitSet.set(it) }
     return bitSet
 }
+
 fun BooleanArray.boolArrayToBitSet(): BitSet {
     val bitSet = BitSet(this.size)
     this.forEachIndexed { index, value ->
@@ -110,7 +113,7 @@ fun List<String>.addingCommonPrefixList(): List<String> {
     val modifiedStrings = mutableListOf<String>()
     for (s in this) {
         modifiedStrings.add(s)
-        when{
+        when {
             s.contains('た') -> modifiedStrings.add(s.replace('た', 'だ'))
             s.contains('つ') -> modifiedStrings.add(s.replace('つ', 'っ'))
             s.contains('や') -> modifiedStrings.add(s.replace('や', 'ゃ'))
@@ -132,7 +135,7 @@ fun List<String>.addingStringToListForCommonPrefix(): List<String> {
             val charArray = CharArray(length)
             for (j in 0 until length) {
                 charArray[j] = if ((i shr j) and 1 == 1) {
-                    when(str[j]){
+                    when (str[j]) {
 
                         'か' -> 'が'
                         'き' -> 'ぎ'
