@@ -30,7 +30,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
             InputMode.ModeNumber -> setImageDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    R.drawable.input_mode_number_selected
+                    R.drawable.input_mode_number_select
                 )
             )
         }

@@ -733,7 +733,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             mainView.keyboardView.apply {
                 setSideKeySpaceDrawable(drawableSpaceBar)
-                setBackgroundSmallLetterKey(drawableLogo)
+                if (currentInputMode == InputMode.ModeNumber){
+                    setBackgroundSmallLetterKey(drawableNumberSmall)
+                }else{
+                    setBackgroundSmallLetterKey(drawableLogo)
+                }
             }
         }
     }
