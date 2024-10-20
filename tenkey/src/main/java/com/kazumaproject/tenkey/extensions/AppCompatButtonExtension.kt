@@ -8,7 +8,7 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.tenkey.R
 
-const val KEY_JAPANESE_SIZE = 18f
+const val KEY_JAPANESE_SIZE = 21f
 const val KEY_ENGLISH_SIZE = 15f
 const val KEY_NUMBER_SIZE = 18f
 
@@ -144,7 +144,7 @@ private fun getSpannableStringForKigouButtonJapanese(): SpannableString {
     spannable.setSpan(RelativeSizeSpan(0.6f), 6, 7, 0)
     spannable.setSpan(RelativeSizeSpan(0.8f), 8, 9, 0)
     spannable.setSpan(RelativeSizeSpan(0.5f), 1 ,2, 0)
-    spannable.setSpan(CustomLineHeightSpan(15), 7, 8, 0)
+    spannable.setSpan(CustomLineHeightSpan(15,0), 7, 8, 0)
     return spannable
 }
 

@@ -13,14 +13,7 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
         <item name="android:splitMotionEvents">false</item>
-        <item name="android:fontFamily">sans-serif</item>
-    </style>
-
-    <style name="KeyboardLeftColumn">
-        <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">match_parent</item>
-        <item name="android:orientation">vertical</item>
-        <item name="android:weightSum">4</item>
+        <item name="android:fontFamily">@font/noto_sans_jp</item>
     </style>
 
     <style name="Key">

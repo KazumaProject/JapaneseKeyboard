@@ -893,7 +893,7 @@ object AppModule {
     fun providesDrawableSpaceBar(@ApplicationContext context: Context): Drawable =
         ContextCompat.getDrawable(
             context,
-            R.drawable.baseline_space_bar_24
+            R.drawable.space_bar
         )!!
 
     @DrawableRightArrow
