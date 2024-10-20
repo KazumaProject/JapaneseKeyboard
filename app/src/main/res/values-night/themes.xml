@@ -13,6 +13,5 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
         <item name="android:splitMotionEvents">false</item>
-        <item name="android:fontFamily">@font/noto_sans_jp</item>
     </style>
 </resources>
