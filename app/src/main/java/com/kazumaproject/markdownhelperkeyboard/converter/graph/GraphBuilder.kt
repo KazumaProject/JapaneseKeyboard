@@ -22,37 +22,39 @@ class GraphBuilder {
         rank1ArrayLBSTango: IntArray,
         LBSBooleanArray: BooleanArray,
         LBSBooleanArrayPreprocess: IntArray
-    ): List<MutableList<MutableList<Node>>> {
-        val graph: MutableList<MutableList<MutableList<Node>>> = MutableList(str.length + 2) { mutableListOf() }
-        graph[0].add(mutableListOf(BOS))
-        graph[str.length + 1].add(
-            mutableListOf(
-                Node(
-                    l = 0,
-                    r = 0,
-                    score = 0,
-                    f = 0,
-                    g = 0,
-                    tango = "EOS",
-                    len = 0,
-                    sPos = str.length + 1,
-                )
+    ): MutableMap<Int, MutableList<Node>> {
+        val graph: MutableMap<Int, MutableList<Node>> = mutableMapOf()
+        graph[0] = mutableListOf(BOS)
+        graph[str.length + 1] = mutableListOf(
+            Node(
+                l = 0,
+                r = 0,
+                score = 0,
+                f = 0,
+                g = 0,
+                tango = "EOS",
+                len = 0,
+                sPos = str.length + 1,
             )
         )
+
         for (i in str.indices) {
             val subStr = str.substring(i)
             val commonPrefixSearch: MutableList<String> = yomiTrie.commonPrefixSearch(
                 str = subStr,
                 rank0Array = rank0ArrayLBSYomi,
-                rank1Array = rank1ArrayLBSYomi,
+                rank1Array = rank1ArrayLBSYomi
             ).toMutableList().apply {
                 if (isEmpty()) add(subStr)
             }
 
-            //println("common prefix search: $commonPrefixSearch")
-
             for (yomiStr in commonPrefixSearch) {
-                val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray,LBSBooleanArrayPreprocess)
+                val nodeIndex = yomiTrie.getNodeIndex(
+                    yomiStr,
+                    rank1ArrayLBSYomi,
+                    LBSBooleanArray,
+                    LBSBooleanArrayPreprocess
+                )
                 val termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
                 val listToken = tokenArray.getListDictionaryByYomiTermId(
                     termId,
@@ -61,7 +63,6 @@ class GraphBuilder {
                 )
 
                 val tangoList = listToken.map {
-                    //Timber.d("tangoList: ${it.nodeId} $yomiStr $nodeIndex $termId $listToken")
                     Node(
                         l = tokenArray.leftIds[it.posTableIndex.toInt()],
                         r = tokenArray.rightIds[it.posTableIndex.toInt()],
@@ -71,22 +72,23 @@ class GraphBuilder {
                         tango = when (it.nodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
-                            else -> tangoTrie.getLetter(it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango)
+                            else -> tangoTrie.getLetter(
+                                it.nodeId,
+                                rank0ArrayLBSTango,
+                                rank1ArrayLBSTango
+                            )
                         },
                         len = yomiStr.length.toShort(),
                         sPos = i,
                     )
                 }
 
-                //Timber.d("common prefix tango:$str $tangoList $nodeIndex")
-
-                if (graph[i + yomiStr.length].isEmpty()) {
-                    graph[i + yomiStr.length] = mutableListOf()
-                }
-                graph[i + yomiStr.length].add(tangoList.toMutableList())
+                // Update the graph map using the index based on the length of yomiStr
+                val endIndex = i + yomiStr.length
+                graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
             }
         }
-        return graph.toList()
+        return graph
     }
 
     fun constructGraphLongest(
@@ -103,21 +105,23 @@ class GraphBuilder {
         rank1ArrayLBSTango: IntArray,
         LBSBooleanArray: BooleanArray,
         LBSBooleanArrayPreprocess: IntArray
-    ): List<MutableList<MutableList<Node>>> {
-        val graph: MutableList<MutableList<MutableList<Node>>> = MutableList(str.length + 2) { mutableListOf() }
-        graph[0].add(mutableListOf(BOS))
-        graph[str.length + 1].add(
-            mutableListOf(
-                Node(
-                    l = 0,
-                    r = 0,
-                    score = 0,
-                    f = 0,
-                    g = 0,
-                    tango = "EOS",
-                    len = 0,
-                    sPos = str.length + 1,
-                )
+    ): MutableMap<Int, MutableList<Node>> {
+        val graph: MutableMap<Int, MutableList<Node>> = mutableMapOf()
+
+        // Add the BOS (Beginning of Sentence) node
+        graph[0] = mutableListOf(BOS)
+
+        // Add the EOS (End of Sentence) node at the end of the string
+        graph[str.length + 1] = mutableListOf(
+            Node(
+                l = 0,
+                r = 0,
+                score = 0,
+                f = 0,
+                g = 0,
+                tango = "EOS",
+                len = 0,
+                sPos = str.length + 1
             )
         )
 
@@ -126,13 +130,18 @@ class GraphBuilder {
             val commonPrefixSearch = yomiTrie.commonPrefixSearch(
                 str = subStr,
                 rank0Array = rank0ArrayLBSYomi,
-                rank1Array = rank1ArrayLBSYomi,
+                rank1Array = rank1ArrayLBSYomi
             ).toMutableList().apply {
                 if (isEmpty()) add(subStr)
             }
 
             for (yomiStr in commonPrefixSearch) {
-                val nodeIndex = yomiTrie.getNodeIndex(yomiStr, rank1ArrayLBSYomi, LBSBooleanArray,LBSBooleanArrayPreprocess)
+                val nodeIndex = yomiTrie.getNodeIndex(
+                    yomiStr,
+                    rank1ArrayLBSYomi,
+                    LBSBooleanArray,
+                    LBSBooleanArrayPreprocess
+                )
                 val termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
                 val listToken = tokenArray.getListDictionaryByYomiTermId(
                     termId,
@@ -149,23 +158,24 @@ class GraphBuilder {
                         tango = when (it.nodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
-                            else -> tangoTrie.getLetter(it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango)
+                            else -> tangoTrie.getLetter(
+                                it.nodeId,
+                                rank0ArrayLBSTango,
+                                rank1ArrayLBSTango
+                            )
                         },
                         len = yomiStr.length.toShort(),
-                        sPos = i,
+                        sPos = i
                     )
                 }
 
-                if (graph[i + yomiStr.length].isEmpty()) {
-                    graph[i + yomiStr.length] = mutableListOf()
-                }
-                graph[i + yomiStr.length].add(tangoList.toMutableList())
+                // Add tangoList to the corresponding graph index
+                val endIndex = i + yomiStr.length
+                graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
             }
         }
 
-//        println("time of construct graph longest: $time $str")
-//        println("graph longest: $graph")
-        return graph.toList()
+        // Return the final graph
+        return graph
     }
-
 }
