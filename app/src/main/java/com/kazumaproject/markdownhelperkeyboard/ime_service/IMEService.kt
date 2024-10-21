@@ -87,6 +87,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Named
@@ -601,7 +602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
-            _inputString.asStateFlow().buffer().collectLatest { inputString ->
+            _inputString.asStateFlow().collectLatest { inputString ->
                 processInputString(inputString, mainView)
             }
         }
@@ -610,11 +611,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
+        if (mainView.keyboardView.visibility == (if (isVisible) View.VISIBLE else View.GONE)) return
+
         animateViewVisibility(mainView.keyboardView, isVisible)
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
+
         if (mainView.candidatesRowView.isVisible) {
             mainView.candidatesRowView.scrollToPosition(0)
         }
+
         mainView.suggestionVisibility.apply {
             setImageDrawable(
                 ContextCompat.getDrawable(
@@ -625,31 +630,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun animateViewVisibility(mainView: View, isVisible: Boolean) {
+    private fun animateViewVisibility(
+        mainView: View,
+        isVisible: Boolean,
+        withAnimation: Boolean = true
+    ) {
         if (isVisible) {
             mainView.visibility = View.VISIBLE
-            val slideUp =
-                ObjectAnimator.ofFloat(mainView, "translationY", mainView.height.toFloat(), 0f)
-            slideUp.duration = 150
-            slideUp.interpolator = AccelerateDecelerateInterpolator()
-            slideUp.start()
+            if (withAnimation) {
+                val slideUp =
+                    ObjectAnimator.ofFloat(mainView, "translationY", mainView.height.toFloat(), 0f)
+                slideUp.duration = 150
+                slideUp.interpolator = AccelerateDecelerateInterpolator()
+                slideUp.start()
+            }
         } else {
-            val slideDown =
-                ObjectAnimator.ofFloat(mainView, "translationY", 0f, mainView.height.toFloat())
-            slideDown.duration = 200
-            slideDown.interpolator = AccelerateDecelerateInterpolator()
-            slideDown.start()
-            slideDown.addListener(object : Animator.AnimatorListener {
-                override fun onAnimationStart(animation: Animator) {}
+            if (withAnimation) {
+                val slideDown =
+                    ObjectAnimator.ofFloat(mainView, "translationY", 0f, mainView.height.toFloat())
+                slideDown.duration = 200
+                slideDown.interpolator = AccelerateDecelerateInterpolator()
+                slideDown.start()
+                slideDown.addListener(object : Animator.AnimatorListener {
+                    override fun onAnimationStart(animation: Animator) {}
+                    override fun onAnimationEnd(animation: Animator) {
+                        mainView.visibility = View.GONE
+                    }
 
-                override fun onAnimationEnd(animation: Animator) {
-                    mainView.visibility = View.GONE
-                }
-
-                override fun onAnimationCancel(animation: Animator) {}
-
-                override fun onAnimationRepeat(animation: Animator) {}
-            })
+                    override fun onAnimationCancel(animation: Animator) {}
+                    override fun onAnimationRepeat(animation: Animator) {}
+                })
+            } else {
+                mainView.visibility = View.GONE
+            }
         }
     }
 
@@ -733,9 +746,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             mainView.keyboardView.apply {
                 setSideKeySpaceDrawable(drawableSpaceBar)
-                if (currentInputMode == InputMode.ModeNumber){
+                if (currentInputMode == InputMode.ModeNumber) {
                     setBackgroundSmallLetterKey(drawableNumberSmall)
-                }else{
+                } else {
                     setBackgroundSmallLetterKey(drawableLogo)
                 }
             }
@@ -1161,28 +1174,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun setSuggestionOnView(
-        mainView: MainLayoutBinding,
-    ) {
+    private suspend fun setSuggestionOnView(mainView: MainLayoutBinding) {
         val insertString = _inputString.value
-        if (insertString.isNotEmpty()) {
-            if (suggestionClickNum != 0) return
+        if (insertString.isNotEmpty() && suggestionClickNum == 0) {
             setCandidates(mainView, insertString)
         }
     }
 
-    private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) {
-        val candidates = getSuggestionList(insertString)
-        val filteredCandidates = if (stringInTail.isNotEmpty()) {
-            candidates.filter { it.length.toInt() == insertString.length }
-        } else {
-            candidates
+    private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) =
+        withContext(Dispatchers.Default) {
+            val candidates = getSuggestionList(insertString)
+            val filteredCandidates = if (stringInTail.isNotEmpty()) {
+                candidates.filter { it.length.toInt() == insertString.length }
+            } else {
+                candidates
+            }
+            _suggestionList.update {
+                filteredCandidates
+            }
+            withContext(Dispatchers.Main) {
+                updateUIinHenkan(mainView, insertString)
+            }
         }
-        _suggestionList.update {
-            filteredCandidates
-        }
-        updateUIinHenkan(mainView, insertString)
-    }
 
     private suspend fun getSuggestionList(insertString: String): List<Candidate> {
         return kanaKanjiEngine.getCandidates(insertString, N_BEST)
@@ -1411,37 +1424,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
-        mainView.keyboardView.apply {
-            when (currentInputType) {
-                InputTypeForIME.TextWebSearchView,
-                InputTypeForIME.TextWebSearchViewFireFox,
-                InputTypeForIME.TextSearchView -> {
-                    setSideKeyEnterDrawable(drawableSearch)
-                }
+        val currentDrawable = when (currentInputType) {
+            InputTypeForIME.TextWebSearchView,
+            InputTypeForIME.TextWebSearchViewFireFox,
+            InputTypeForIME.TextSearchView -> drawableSearch
 
-                InputTypeForIME.TextMultiLine,
-                InputTypeForIME.TextImeMultiLine,
-                InputTypeForIME.TextShortMessage,
-                InputTypeForIME.TextLongMessage,
-                -> {
-                    setSideKeyEnterDrawable(drawableReturn)
-                }
+            InputTypeForIME.TextMultiLine,
+            InputTypeForIME.TextImeMultiLine,
+            InputTypeForIME.TextShortMessage,
+            InputTypeForIME.TextLongMessage -> drawableReturn
 
-                InputTypeForIME.TextEmailAddress,
-                InputTypeForIME.TextEmailSubject,
-                InputTypeForIME.TextNextLine -> {
-                    setSideKeyEnterDrawable(drawableArrowTab)
-                }
+            InputTypeForIME.TextEmailAddress,
+            InputTypeForIME.TextEmailSubject,
+            InputTypeForIME.TextNextLine -> drawableArrowTab
 
-                InputTypeForIME.TextDone -> {
-                    setSideKeyEnterDrawable(drawableCheck)
-                }
-
-                else -> {
-                    setSideKeyEnterDrawable(drawableRightArrow)
-                }
-            }
+            InputTypeForIME.TextDone -> drawableCheck
+            else -> drawableRightArrow
         }
+        mainView.keyboardView.setSideKeyEnterDrawable(currentDrawable)
     }
 
     private fun finishInputEnterKey() {
@@ -1552,20 +1552,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         while (isActive) {
             val insertString = _inputString.value
             if (onRightKeyLongPressUp || !rightCursorKeyLongKeyPressed) break
+            if (stringInTail.isEmpty() && _inputString.value.isNotEmpty()) break
             actionInRightKeyPressed(insertString)
             delay(LONG_DELAY_TIME)
         }
     }
 
-    private fun updateLeftInputString(insertString: String) {
+    private suspend fun updateLeftInputString(insertString: String) {
         if (insertString.isNotEmpty()) {
-            if (insertString.length == 1) {
-                stringInTail = StringBuilder(stringInTail).insert(0, insertString).toString()
-                _inputString.value = EMPTY_STRING
-                _suggestionList.value = emptyList()
-            } else {
-                stringInTail = StringBuilder(stringInTail).insert(0, insertString.last()).toString()
-                _inputString.update { it.dropLast(1) }
+            withContext(Dispatchers.Default) {
+                if (insertString.length == 1) {
+                    stringInTail = StringBuilder(stringInTail).insert(0, insertString).toString()
+                    _inputString.value = EMPTY_STRING
+                    _suggestionList.value = emptyList()
+                } else {
+                    stringInTail =
+                        StringBuilder(stringInTail).insert(0, insertString.last()).toString()
+                    _inputString.update { it.dropLast(1) }
+                }
             }
         }
     }
@@ -1573,11 +1577,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun actionInRightKeyPressed(gestureType: GestureType, insertString: String) {
         when {
             insertString.isEmpty() -> handleEmptyInputString(gestureType)
-            !isHenkan -> handleNonHenkan(insertString)
+            !isHenkan -> handleNonHenkanTap(insertString)
         }
     }
 
-    private fun actionInRightKeyPressed(insertString: String) {
+    private suspend fun actionInRightKeyPressed(insertString: String) {
         when {
             insertString.isEmpty() -> handleEmptyInputString()
             !isHenkan -> handleNonHenkan(insertString)
@@ -1661,7 +1665,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun handleNonHenkan(insertString: String) {
+    private fun handleNonHenkanTap(insertString: String) {
         englishSpaceKeyPressed = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
@@ -1669,6 +1673,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (stringInTail.isNotEmpty()) {
             _inputString.update { insertString + stringInTail.first() }
             stringInTail = stringInTail.drop(1)
+        }
+    }
+
+    private suspend fun handleNonHenkan(insertString: String) {
+        englishSpaceKeyPressed = false
+        lastFlickConvertedNextHiragana = true
+        isContinuousTapInputEnabled = true
+        suggestionClickNum = 0
+        if (stringInTail.isNotEmpty()) {
+            withContext(Dispatchers.Default) {
+                _inputString.update { insertString + stringInTail.first() }
+                stringInTail = stringInTail.drop(1)
+            }
         }
     }
 

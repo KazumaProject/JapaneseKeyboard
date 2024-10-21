@@ -1228,27 +1228,6 @@ class KanaKanjiEngine {
         return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
     }
 
-    suspend fun viterbiAlgorithm(
-        input: String
-    ): String {
-        val graph = graphBuilder.constructGraph(
-            input,
-            systemYomiTrie,
-            systemTangoTrie,
-            systemTokenArray,
-            systemRank0ArrayLBSYomi,
-            systemRank1ArrayLBSYomi,
-            systemRank1ArrayIsLeaf,
-            systemRank0ArrayTokenArrayBitvector,
-            systemRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
-            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-            LBSBooleanArray = systemYomiLBSBooleanArray,
-            LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
-        )
-        return findPath.viterbi(graph, input.length, connectionIds)
-    }
-
     private fun preprocessLBSInBoolArray(LBSInBoolArray: BooleanArray): IntArray {
         val prefixSum = IntArray(LBSInBoolArray.size + 1)
         for (i in LBSInBoolArray.indices) {

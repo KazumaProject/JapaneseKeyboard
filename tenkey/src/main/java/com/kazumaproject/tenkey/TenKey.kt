@@ -1206,6 +1206,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         sideKeyEnter.setImageDrawable(drawable)
     }
 
+    fun getCurrentEnterKeyDrawable(): Drawable? {
+        return sideKeyEnter.drawable
+    }
+
     fun setSideKeySpaceDrawable(drawable: Drawable?) {
         sideKeySpace.setImageDrawable(drawable)
     }
