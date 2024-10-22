@@ -82,7 +82,6 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -254,12 +253,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
-        mainLayoutBinding?.apply {
-            suggestionRecyclerView.isVisible = true
-            keyboardView.apply {
-                isVisible = true
-            }
-        }
+        resetKeyboard()
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
     }
 
@@ -548,6 +542,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         inputMethodManager.showInputMethodPicker()
     }
 
+    private fun resetKeyboard() {
+        mainLayoutBinding?.apply {
+            println("reset keyboard called")
+            animateViewVisibility(this.keyboardView, true)
+            animateViewVisibility(this.candidatesRowView, false)
+            suggestionRecyclerView.isVisible = true
+            keyboardView.apply {
+                if (currentInputMode == InputMode.ModeNumber) {
+                    setBackgroundSmallLetterKey(drawableNumberSmall)
+                } else {
+                    setBackgroundSmallLetterKey(drawableLogo)
+                }
+            }
+        }
+    }
+
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
         handleLeftKeyPress(gestureType, insertString)
         onLeftKeyLongPressUp = true
@@ -584,7 +594,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
-            _suggestionFlag.asStateFlow().buffer().collectLatest {
+            _suggestionFlag.asStateFlow().collectLatest {
                 setSuggestionOnView(mainView)
             }
         }
@@ -596,7 +606,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
-            _suggestionList.asStateFlow().buffer().collectLatest { suggestions ->
+            _suggestionList.asStateFlow().collectLatest { suggestions ->
                 updateSuggestionList(mainView, suggestions)
             }
         }
@@ -953,6 +963,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isSpaceKeyLongPressed = false
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
+        resetKeyboard()
     }
 
     private fun actionInDestroy() {
@@ -1175,8 +1186,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSuggestionOnView(mainView: MainLayoutBinding) {
-        val insertString = _inputString.value
-        if (insertString.isNotEmpty() && suggestionClickNum == 0) {
+        if (_inputString.value.isNotEmpty() && suggestionClickNum == 0) {
+            val insertString = _inputString.value
             setCandidates(mainView, insertString)
         }
     }
@@ -1581,7 +1592,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun actionInRightKeyPressed(insertString: String) {
+    private fun actionInRightKeyPressed(insertString: String) {
         when {
             insertString.isEmpty() -> handleEmptyInputString()
             !isHenkan -> handleNonHenkan(insertString)
@@ -1676,16 +1687,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun handleNonHenkan(insertString: String) {
+    private fun handleNonHenkan(insertString: String) {
         englishSpaceKeyPressed = false
         lastFlickConvertedNextHiragana = true
         isContinuousTapInputEnabled = true
         suggestionClickNum = 0
         if (stringInTail.isNotEmpty()) {
-            withContext(Dispatchers.Default) {
-                _inputString.update { insertString + stringInTail.first() }
-                stringInTail = stringInTail.drop(1)
-            }
+            _inputString.update { insertString + stringInTail.first() }
+            stringInTail = stringInTail.drop(1)
         }
     }
 
