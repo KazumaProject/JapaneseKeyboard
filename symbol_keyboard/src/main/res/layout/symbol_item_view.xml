@@ -5,6 +5,7 @@
     android:layout_height="64dp"
     android:layout_margin="4dp"
     android:gravity="center"
+    android:textStyle="bold"
     android:layout_gravity="center"
     android:textAlignment="center"
     android:textColor="@color/symbol_text_color"
