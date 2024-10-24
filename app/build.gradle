@@ -13,7 +13,7 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 35
-        versionCode 172
+        versionCode 173
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -65,6 +65,8 @@ dependencies {
     implementation project(':flexbox')
     implementation project(':tenkey')
     implementation project(':bl')
+    implementation 'androidx.test.ext:junit-ktx:1.2.1'
+    implementation project(':symbol_keyboard')
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'

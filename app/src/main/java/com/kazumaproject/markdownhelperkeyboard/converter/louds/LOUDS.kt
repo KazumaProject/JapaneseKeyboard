@@ -33,12 +33,12 @@ class LOUDS {
             add(false)
         }
         labelsTemp.apply {
-            add(0,' ')
-            add(1,' ')
+            add(0, ' ')
+            add(1, ' ')
         }
         isLeafTemp.apply {
-            add(0,false)
-            add(1,false)
+            add(0, false)
+            add(1, false)
         }
     }
 
@@ -48,7 +48,7 @@ class LOUDS {
         LBS: BitSet,
         labels: CharArray,
         isLeaf: BitSet,
-    ){
+    ) {
         this.LBS = LBS
         this.labels = labels
         this.isLeaf = isLeaf
@@ -64,7 +64,7 @@ class LOUDS {
     private fun traverse(pos: Int, c: Char): Int {
         var childPos = firstChild(pos)
         if (childPos == -1) return -1
-        while (LBS[childPos]){
+        while (LBS[childPos]) {
             if (c == labels[LBS.rank1(childPos)]) {
                 return childPos
             }
@@ -83,12 +83,12 @@ class LOUDS {
             if (n == -1) return@forEachIndexed
             if (index >= labels.size) return result
             resultTemp.add(labels[index])
-            if (isLeaf[n]){
+            if (isLeaf[n]) {
                 val tempStr = resultTemp.joinToString("")
-                if (result.size >= 1){
+                if (result.size >= 1) {
                     val resultStr = result[0] + tempStr
                     result.add(resultStr)
-                }else {
+                } else {
                     result.add(tempStr)
                     resultTemp.clear()
                 }
@@ -97,6 +97,9 @@ class LOUDS {
         return result
     }
 
+    fun getAllLabels(): CharArray {
+        return labels
+    }
 
     fun getLetter(
         nodeIndex: Int,
@@ -119,7 +122,8 @@ class LOUDS {
 
             if (currentNodeId == 0) break
 
-            currentNodeIndex = LBS.select1Common(LBS.rank0Common(currentNodeIndex, rank0Array), rank1Array)
+            currentNodeIndex =
+                LBS.select1Common(LBS.rank0Common(currentNodeIndex, rank0Array), rank1Array)
         }
         println("Final result before reverse: $result")
         return result.reverse().toString()
@@ -131,15 +135,21 @@ class LOUDS {
         rank1Array: ShortArray,
     ): String {
         val list = mutableListOf<Char>()
-        val firstNodeId = LBS.rank1CommonShort(nodeIndex,rank1Array)
+        val firstNodeId = LBS.rank1CommonShort(nodeIndex, rank1Array)
         val firstChar = labels[firstNodeId.toInt()]
         list.add(firstChar)
-        var parentNodeIndex = LBS.select1CommonShort(LBS.rank0CommonShort(nodeIndex.toShort(),rank0Array),rank1Array).toInt()
-        while (parentNodeIndex != 0){
-            val parentNodeId = LBS.rank1CommonShort(parentNodeIndex,rank1Array)
+        var parentNodeIndex = LBS.select1CommonShort(
+            LBS.rank0CommonShort(nodeIndex.toShort(), rank0Array),
+            rank1Array
+        ).toInt()
+        while (parentNodeIndex != 0) {
+            val parentNodeId = LBS.rank1CommonShort(parentNodeIndex, rank1Array)
             val pair = labels[parentNodeId.toInt()]
             list.add(pair)
-            parentNodeIndex = LBS.select1CommonShort(LBS.rank0CommonShort(parentNodeIndex.toShort(),rank0Array),rank1Array).toInt()
+            parentNodeIndex = LBS.select1CommonShort(
+                LBS.rank0CommonShort(parentNodeIndex.toShort(), rank0Array),
+                rank1Array
+            ).toInt()
             if (parentNodeId == (0).toShort()) return ""
         }
         return list.toList().asReversed().joinToString("")
@@ -148,7 +158,7 @@ class LOUDS {
     fun getLetterByNodeId(nodeId: Int): String {
         val list = mutableListOf<Char>()
         var parentNodeIndex = LBS.select1(nodeId)
-        while (parentNodeIndex != 0){
+        while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1(parentNodeIndex)
             val pair = labels[parentNodeId]
             list.add(pair)
@@ -157,7 +167,7 @@ class LOUDS {
         return list.toList().asReversed().joinToString("")
     }
 
-    fun getNodeIndex(s: String): Int{
+    fun getNodeIndex(s: String): Int {
         return search(2, s.toCharArray(), 0)
     }
 
@@ -180,6 +190,7 @@ class LOUDS {
         }
         return -1
     }
+
     private fun indexOfLabel(label: Int): Int {
         var count = 0
         var i = 0
@@ -196,7 +207,7 @@ class LOUDS {
     }
 
 
-    fun writeExternal(out: ObjectOutput){
+    fun writeExternal(out: ObjectOutput) {
         try {
             out.apply {
                 writeInt(labelsTemp.toByteArrayFromListChar().size)
@@ -206,7 +217,7 @@ class LOUDS {
                 flush()
                 close()
             }
-        }catch (e: IOException){
+        } catch (e: IOException) {
             println(e.stackTraceToString())
         }
     }
@@ -216,9 +227,10 @@ class LOUDS {
             try {
                 val labelSize = it.readInt()
                 LBS = it.readObject() as BitSet
-                labels = (it.readObject() as ByteArray).inflate(labelSize).toListChar().toCharArray()
+                labels =
+                    (it.readObject() as ByteArray).inflate(labelSize).toListChar().toCharArray()
                 isLeaf = it.readObject() as BitSet
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 println(e.stackTraceToString())
             }
         }
@@ -232,7 +244,7 @@ class LOUDS {
                 isLeaf = objectInput.readObject() as BitSet
                 labels = (objectInput.readObject() as CharArray)
                 close()
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 println(e.stackTraceToString())
             }
         }

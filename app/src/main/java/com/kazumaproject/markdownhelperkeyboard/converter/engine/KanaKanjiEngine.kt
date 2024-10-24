@@ -9,6 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByFaceEmojiFirst
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanjiNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
@@ -1023,7 +1024,7 @@ class KanaKanjiEngine {
                     )
                 }
             } else if (numbersList != null) {
-                if (numberInKanji != null){
+                if (numberInKanji != null) {
                     return@async listOf(
                         Candidate(
                             string = numberInKanji,
@@ -1052,7 +1053,7 @@ class KanaKanjiEngine {
                             rightId = 2040
                         )
                     }
-                }else{
+                } else {
                     return@async listOf(
                         Candidate(
                             string = numbersList.first.toLong().convertToKanjiNotation(),
@@ -1098,6 +1099,33 @@ class KanaKanjiEngine {
 
         return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + kotowazaListDeferred.await() + numbersDeferred.await()).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
     }
+
+    fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {
+        emojiTangoTrie.getLetterShortArray(
+            it,
+            emojiRank0ArrayLBSTango,
+            emojiRank1ArrayLBSTango
+        )
+    }.distinct().sortByFaceEmojiFirst()
+
+    fun getSymbolEmoticonCandidates(): List<String> = emoticonTokenArray.getNodeIds().map {
+        emoticonTangoTrie.getLetterShortArray(
+            it,
+            emoticonRank0ArrayLBSTango,
+            emoticonRank1ArrayLBSTango
+        )
+    }.distinct()
+
+    fun getSymbolCandidates():
+            List<String> = symbolTokenArray.getNodeIds().map {
+        if (it >= 0) {
+            symbolTangoTrie.getLetterShortArray(
+                it, symbolRank0ArrayLBSTango, symbolRank1ArrayLBSTango
+            )
+        } else {
+            ""
+        }
+    }.filterNot { it.isBlank() }
 
     private fun createCandidatesForDate(
         calendar: Calendar, input: String

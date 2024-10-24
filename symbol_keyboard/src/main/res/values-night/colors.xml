@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="background">#F5F5F5</color>
+    <color name="black2">#16161C</color>
+    <color name="dark_gray">#5C5D5A</color>
+    <color name="gray">#A9B4BE</color>
+    <color name="dark_green">#06572A</color>
+    <color name="green">#279F70</color>
+    <color name="light_green">#CAEF45</color>
+    <color name="light_blue">#B7C6DE</color>
+    <color name="light">#EEF6FF</color>
+    <color name="light_2">#F2F3F7</color>
+    <color name="brown">#40492D</color>
+    <color name="orange">#FDEFA8</color>
+
+    <color name="textField">#F2F3F7</color>
+    <color name="blue">#8E97FD</color>
+
+    <color name="light_3">#A9B4BE</color>
+
+    <color name="keyboard_bg">#1C1F23</color>
+    <color name="keyboard_key_bg">#212529</color>
+    <color name="suggestion_view_bg">#1C1F23</color>
+    <color name="enter_key_bg">#9CCDEE</color>
+    <color name="selectedTabColor">#C9E7FD</color>
+    <color name="tab_selected">#ff1C1C1C</color>
+    <color name="tab_unselected">#B8B8B8</color>
+    <color name="button_color">#2D3134</color>
+</resources>

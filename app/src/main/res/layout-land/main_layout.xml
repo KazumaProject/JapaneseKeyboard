@@ -54,4 +54,11 @@
         android:layout_gravity="bottom"
         android:visibility="gone" />
 
+    <com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
+        android:id="@+id/keyboard_symbol_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_gravity="bottom"/>
+
 </FrameLayout>
