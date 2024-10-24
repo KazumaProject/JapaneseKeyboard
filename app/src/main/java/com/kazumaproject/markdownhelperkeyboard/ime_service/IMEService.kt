@@ -344,7 +344,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             } else {
                 _inputString.update { EMPTY_STRING }
             }
-            _suggestionFlag.update { !it }
         }
     }
 
@@ -994,7 +993,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 override fun onClick(symbol: String) {
                     setVibrate()
                     commitText(symbol, 1)
-                    Timber.d("symbol: $symbol")
                 }
             })
         }
@@ -1018,7 +1016,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun commitCandidateText(candidate: Candidate, insertString: String) {
         val candidateType = candidate.type.toInt()
-
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail = insertString.substring(candidate.length.toInt())
         } else if (candidateType == 15) {
