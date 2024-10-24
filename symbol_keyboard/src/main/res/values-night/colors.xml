@@ -34,4 +34,5 @@
     <color name="tab_selected">#ff1C1C1C</color>
     <color name="tab_unselected">#B8B8B8</color>
     <color name="button_color">#2D3134</color>
+    <color name="symbol_text_color">#B8B8B8</color>
 </resources>
