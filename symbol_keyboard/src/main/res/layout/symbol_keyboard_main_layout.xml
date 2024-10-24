@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/symbol_candidate_view_height">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/symbol_candidate_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="274dp"
+        app:layout_constraintBottom_toTopOf="@+id/linearLayout" />
+
+    <LinearLayout
+        android:id="@+id/linearLayout"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:orientation="horizontal"
+        android:weightSum="5"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/return_jp_keyboard_button"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:scaleType="center"
+            android:src="@drawable/language_japanese_kana_24px"
+            android:tint="@color/tab_unselected"
+            android:background="@drawable/symbol_keyboard_buttons_bg"/>
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/bottom_tab_layout"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="3"
+            app:tabGravity="fill"
+            app:tabIndicatorHeight="0dp"
+            app:tabMode="fixed"
+            android:backgroundTint="@color/suggestion_view_bg"/>
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/symbol_keyboard_delete_key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:scaleType="center"
+            android:src="@drawable/backspace_24px"
+            android:tint="@color/tab_unselected"
+            android:background="@drawable/symbol_keyboard_buttons_bg"/>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

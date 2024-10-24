@@ -30,6 +30,10 @@ class TokenArray {
     var leftIds: List<Short> = listOf()
     var rightIds: List<Short> = listOf()
 
+    fun getNodeIds(): IntArray{
+        return nodeIdList
+    }
+
     fun getListDictionaryByYomiTermId(
         nodeId: Int,
         rank0ArrayTokenArrayBitvector: IntArray,

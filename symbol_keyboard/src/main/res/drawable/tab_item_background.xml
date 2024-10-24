@@ -1,0 +1,15 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="oval">
+            <solid android:color="@color/selectedTabColor" />
+
+        </shape>
+    </item>
+
+    <item android:state_selected="false">
+        <shape android:shape="oval">
+            <solid android:color="@color/keyboard_bg" />
+            <padding android:bottom="10dp" android:left="10dp" android:right="10dp" android:top="10dp" />
+        </shape>
+    </item>
+</selector>

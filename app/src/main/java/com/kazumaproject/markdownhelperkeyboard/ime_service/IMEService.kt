@@ -15,6 +15,7 @@ import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.text.Spannable
 import android.text.SpannableString
+import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.ContextThemeWrapper
@@ -40,6 +41,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
+import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
+import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
+import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
+import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -57,7 +62,10 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSearch
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.EmojiList
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.EmoticonList
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
+import com.kazumaproject.markdownhelperkeyboard.ime_service.di.SymbolList
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
@@ -163,6 +171,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var suggestionAdapter: SuggestionAdapter
 
+    @Inject
+    @EmojiList
+    lateinit var emojiList: List<String>
+
+    @Inject
+    @EmoticonList
+    lateinit var emoticonList: List<String>
+
+    @Inject
+    @SymbolList
+    lateinit var symbolList: List<String>
+
     private var mainLayoutBinding: MainLayoutBinding? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
     private val _inputString = MutableStateFlow(EMPTY_STRING)
@@ -171,6 +191,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _suggestionList = MutableStateFlow<List<Candidate>>(emptyList())
     private val _suggestionFlag = MutableStateFlow(false)
     private val _suggestionViewStatus = MutableStateFlow(true)
+    private val _keyboardSymbolViewState = MutableStateFlow(false)
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private var lastFlickConvertedNextHiragana = false
     private var isContinuousTapInputEnabled = false
@@ -231,6 +252,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setSuggestionRecyclerView(
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
+                setSymbolKeyboard(mainView)
                 setTenKeyListeners(mainView)
                 if (lifecycle.currentState == Lifecycle.State.CREATED) {
                     startScope(mainView)
@@ -467,7 +489,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySymbol -> {
-
+                setVibrate()
+                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                finishComposingText()
+                mainView.keyboardSymbolView.setTabPosition(0)
             }
 
             else -> {
@@ -593,6 +618,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
+        withContext(Dispatchers.IO) {
+            setSymbols(mainView)
+        }
         launch {
             _suggestionFlag.asStateFlow().collectLatest {
                 setSuggestionOnView(mainView)
@@ -608,6 +636,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         launch {
             _suggestionList.asStateFlow().collectLatest { suggestions ->
                 updateSuggestionList(mainView, suggestions)
+            }
+        }
+
+        launch {
+            _keyboardSymbolViewState.asStateFlow().collectLatest { isSymbolKeyboardShow ->
+                mainView.apply {
+                    if (isSymbolKeyboardShow) {
+                        animateViewVisibility(keyboardView, false)
+                        animateViewVisibility(keyboardSymbolView, true)
+                        suggestionRecyclerView.isVisible = false
+                    } else {
+                        animateViewVisibility(keyboardView, true)
+                        animateViewVisibility(keyboardSymbolView, false)
+                        suggestionRecyclerView.isVisible = true
+                    }
+                }
             }
         }
 
@@ -733,7 +777,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            _suggestionFlag.update { !it }
+            if (mainView.suggestionRecyclerView.isVisible) _suggestionFlag.update { !it }
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
@@ -915,6 +959,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun setSymbolKeyboard(mainView: MainLayoutBinding) {
+        mainView.keyboardSymbolView.apply {
+            setLifecycleOwner(this@IMEService)
+            setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
+                override fun onClick() {
+                    setVibrate()
+                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                    finishComposingText()
+                }
+            })
+            setOnDeleteButtonSymbolViewClickListener(object : DeleteButtonSymbolViewClickListener {
+                override fun onClick() {
+                    if (!deleteKeyLongKeyPressed) {
+                        setVibrate()
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    }
+                    onDeleteLongPressUp = true
+                    deleteKeyLongKeyPressed = false
+                    deleteLongPress().cancel()
+                }
+            })
+            setOnDeleteButtonSymbolViewLongClickListener(object :
+                DeleteButtonSymbolViewLongClickListener {
+                override fun onLongClickListener() {
+                    onDeleteLongPressUp = false
+                    deleteLongPress()
+                    _dakutenPressed.value = false
+                    englishSpaceKeyPressed = false
+                    deleteKeyLongKeyPressed = true
+                }
+            })
+            setOnSymbolRecyclerViewItemClickListener(object : SymbolRecyclerViewItemClickListener {
+                override fun onClick(symbol: String) {
+                    setVibrate()
+                    commitText(symbol, 1)
+                    Timber.d("symbol: $symbol")
+                }
+            })
+        }
+    }
+
+    private fun setSymbols(mainView: MainLayoutBinding) {
+        mainView.keyboardSymbolView.setSymbolLists(
+            emojiList,
+            emoticonList,
+            symbolList,
+            0
+        )
+    }
+
     private fun setCandidateClick(candidate: Candidate, insertString: String) {
         if (insertString.isNotEmpty()) {
             commitCandidateText(candidate, insertString)
@@ -964,6 +1058,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         resetKeyboard()
+        _keyboardSymbolViewState.value = false
     }
 
     private fun actionInDestroy() {
@@ -1037,45 +1132,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setComposingTextPreEdit(
-        inputString: String, spannableString: SpannableString
+        inputString: String,
+        spannableString: SpannableString
     ) {
+        val inputLength = inputString.length
+        val tailLength = stringInTail.length
+
         if (isContinuousTapInputEnabled && lastFlickConvertedNextHiragana) {
             spannableString.apply {
                 setSpan(
                     BackgroundColorSpan(getColor(R.color.green)),
                     0,
-                    inputString.length,
+                    inputLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 setSpan(
                     UnderlineSpan(),
                     0,
-                    inputString.length + stringInTail.length,
+                    inputLength + tailLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
         } else {
+            // Use TextUtils.getOffsetBefore to handle surrogate pairs
+            val lastCharStart = TextUtils.getOffsetBefore(inputString, inputLength)
+
             spannableString.apply {
                 setSpan(
                     BackgroundColorSpan(getColor(R.color.green)),
                     0,
-                    inputString.length - 1,
+                    lastCharStart,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 setSpan(
                     BackgroundColorSpan(getColor(R.color.char_in_edit_color)),
-                    inputString.length - 1,
-                    inputString.length,
+                    lastCharStart,
+                    inputLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 setSpan(
                     UnderlineSpan(),
                     0,
-                    inputString.length + stringInTail.length,
+                    inputLength + tailLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
         }
+
         Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
         setComposingText(spannableString, 1)
     }
