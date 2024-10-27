@@ -736,26 +736,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: View,
         isVisible: Boolean
     ) {
-        if (isVisible) {
-            mainView.post {
+        mainView.post {
+            if (isVisible) {
+                mainView.visibility = View.VISIBLE
                 mainView.pivotX = mainView.width / 2f
                 mainView.pivotY = mainView.height / 2f
+
                 val scaleX = ObjectAnimator.ofFloat(mainView, "scaleX", 0f, 1f)
                 val scaleY = ObjectAnimator.ofFloat(mainView, "scaleY", 0f, 1f)
+
                 val animatorSet = AnimatorSet()
                 animatorSet.playTogether(scaleX, scaleY)
                 animatorSet.duration = 200
                 animatorSet.interpolator = AccelerateDecelerateInterpolator()
                 animatorSet.start()
-            }
+            } else {
+                mainView.visibility = View.VISIBLE
+                mainView.pivotX = mainView.width / 2f
+                mainView.pivotY = mainView.height / 2f
 
+                val scaleX = ObjectAnimator.ofFloat(mainView, "scaleX", 1f, 0f)
+                val scaleY = ObjectAnimator.ofFloat(mainView, "scaleY", 1f, 0f)
+
+                val animatorSet = AnimatorSet()
+                animatorSet.playTogether(scaleX, scaleY)
+                animatorSet.duration = 200
+                animatorSet.interpolator = AccelerateDecelerateInterpolator()
+                animatorSet.addListener(object : Animator.AnimatorListener {
+                    override fun onAnimationStart(animation: Animator) {}
+
+                    override fun onAnimationEnd(animation: Animator) {
+                        mainView.scaleX = 1f
+                        mainView.scaleY = 1f
+                        mainView.visibility = View.GONE
+                    }
+
+                    override fun onAnimationCancel(animation: Animator) {}
+
+                    override fun onAnimationRepeat(animation: Animator) {}
+                })
+                animatorSet.start()
+            }
         }
     }
 
     private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            mainView.suggestionVisibility.isVisible = true
             _suggestionFlag.apply {
                 emit(CandidateShowFlag.Updating)
             }
@@ -778,7 +805,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 onRightKeyLongPressUp = true
                 onDeleteLongPressUp = true
             }
-            mainView.suggestionVisibility.isVisible = false
             resetInputString()
             mainView.keyboardView.apply {
                 setSideKeySpaceDrawable(drawableSpaceBar)
