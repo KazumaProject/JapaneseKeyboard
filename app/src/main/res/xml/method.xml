@@ -5,5 +5,5 @@
     <subtype
         android:label="@string/app_name"
         android:imeSubtypeLocale="jp_JP"
-        android:imeSubtypeMode="keyboard"/>
+        android:imeSubtypeMode="keyboard" />
 </input-method >

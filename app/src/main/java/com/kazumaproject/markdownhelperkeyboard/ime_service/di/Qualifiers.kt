@@ -52,6 +52,10 @@ annotation class SystemYomiLBSBooleanArray
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
+annotation class SystemYomiLBSBooleanArrayPreprocess
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
 annotation class SingleKanjiYomiTrie
 
 @Retention(AnnotationRetention.RUNTIME)
@@ -93,6 +97,10 @@ annotation class SingleKanjiRank1ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class SingleKanjiYomiLBSBooleanArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class SingleKanjiYomiLBSBooleanArrayPreprocess
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
@@ -138,6 +146,9 @@ annotation class EmojiRank1ArrayTangoLBS
 @Qualifier
 annotation class EmojiYomiLBSBooleanArray
 
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EmojiYomiLBSBooleanArrayPreprocess
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
@@ -185,6 +196,10 @@ annotation class EmoticonYomiLBSBooleanArray
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
+annotation class EmoticonYomiLBSBooleanArrayPreprocess
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
 annotation class SymbolYomiTrie
 
 @Retention(AnnotationRetention.RUNTIME)
@@ -226,6 +241,10 @@ annotation class SymbolRank1ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class SymbolYomiLBSBooleanArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class SymbolYomiLBSBooleanArrayPreprocess
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class ReadingCorrectionYomiTrie
@@ -269,6 +288,10 @@ annotation class ReadingCorrectionRank1ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class ReadingCorrectionYomiLBSBooleanArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class ReadingCorrectionYomiLBSBooleanArrayPrerpcess
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class KotowazaYomiTrie
@@ -312,4 +335,8 @@ annotation class KotowazaRank1ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class KotowazaYomiLBSBooleanArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class KotowazaYomiLBSBooleanArrayPreprocess
 

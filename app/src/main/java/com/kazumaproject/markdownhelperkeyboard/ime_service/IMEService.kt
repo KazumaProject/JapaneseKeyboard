@@ -624,7 +624,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isSuggestionVisible = false
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Main) {
             setSymbols(mainView)
         }
         launch {

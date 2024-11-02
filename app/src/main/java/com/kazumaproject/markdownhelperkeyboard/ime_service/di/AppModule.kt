@@ -23,6 +23,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.preprocessLBSIntoBooleanArray
 import com.kazumaproject.toBooleanArray
 import com.kazumaproject.viterbi.FindPath
 import dagger.Module
@@ -155,6 +156,12 @@ object AppModule {
 
     @Singleton
     @Provides
+    @SystemYomiLBSBooleanArrayPreprocess
+    fun providesYomiLBSBooleanArrayPreprocess(@SystemYomiLBSBooleanArray booleanArray: BooleanArray) =
+        booleanArray.preprocessLBSIntoBooleanArray()
+
+    @Singleton
+    @Provides
     @SystemRank0ArrayTokenArrayBitvector
     fun provideRank0ArrayTokenArrayBitvector(@SystemTokenArray tokenArray: TokenArray): IntArray =
         tokenArray.bitvector.rank0GetIntArray()
@@ -233,6 +240,12 @@ object AppModule {
     @SingleKanjiYomiLBSBooleanArray
     fun providesSingleKanjiYomiLBSBooleanArray(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
         yomiTrie.LBS.toBooleanArray()
+
+    @Singleton
+    @Provides
+    @SingleKanjiYomiLBSBooleanArrayPreprocess
+    fun providesSingleKanjiYomiLBSBooleanArrayPreprocess(@SingleKanjiYomiLBSBooleanArray booleanArray: BooleanArray) =
+        booleanArray.preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -317,6 +330,12 @@ object AppModule {
 
     @Singleton
     @Provides
+    @EmojiYomiLBSBooleanArrayPreprocess
+    fun providesEmojiYomiLBSBooleanArrayPreprocess(@EmojiYomiLBSBooleanArray booleanArray: BooleanArray) =
+        booleanArray.preprocessLBSIntoBooleanArray()
+
+    @Singleton
+    @Provides
     @EmojiRank0ArrayTokenArrayBitvector
     fun provideEmojiRank0ArrayTokenArrayBitvector(@EmojiTokenArray tokenArray: TokenArray): ShortArray =
         tokenArray.bitvector.rank0GetShortArray()
@@ -394,6 +413,12 @@ object AppModule {
     @EmoticonYomiLBSBooleanArray
     fun providesEmoticonYomiLBSBooleanArray(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
         yomiTrie.LBS.toBooleanArray()
+
+    @Singleton
+    @Provides
+    @EmoticonYomiLBSBooleanArrayPreprocess
+    fun providesEmoticonYomiLBSBooleanArrayPreprocess(@EmoticonYomiLBSBooleanArray booleanArray: BooleanArray) =
+        booleanArray.preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -478,6 +503,12 @@ object AppModule {
 
     @Singleton
     @Provides
+    @SymbolYomiLBSBooleanArrayPreprocess
+    fun providesSymbolYomiLBSBooleanArrayPreprocess(@SymbolYomiLBSBooleanArray booleanArray: BooleanArray) =
+        booleanArray.preprocessLBSIntoBooleanArray()
+
+    @Singleton
+    @Provides
     @SymbolRank0ArrayTokenArrayBitvector
     fun provideSymbolRank0ArrayTokenArrayBitvector(@SymbolTokenArray tokenArray: TokenArray): ShortArray =
         tokenArray.bitvector.rank0GetShortArray()
@@ -559,6 +590,12 @@ object AppModule {
 
     @Singleton
     @Provides
+    @ReadingCorrectionYomiLBSBooleanArrayPrerpcess
+    fun providesReadingCorrectionYomiLBSBooleanArrayPreprocess(@ReadingCorrectionYomiLBSBooleanArray booleanArray: BooleanArray) =
+        booleanArray.preprocessLBSIntoBooleanArray()
+
+    @Singleton
+    @Provides
     @ReadingCorrectionRank0ArrayTokenArrayBitvector
     fun provideReadingCorrectionRank0ArrayTokenArrayBitvector(@ReadingCorrectionTokenArray tokenArray: TokenArray): ShortArray =
         tokenArray.bitvector.rank0GetShortArray()
@@ -636,6 +673,12 @@ object AppModule {
     @KotowazaYomiLBSBooleanArray
     fun providesKotowazaYomiLBSBooleanArray(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
         yomiTrie.LBS.toBooleanArray()
+
+    @Singleton
+    @Provides
+    @KotowazaYomiLBSBooleanArrayPreprocess
+    fun providesKotowazaYomiLBSBooleanArrayPreprocess(@KotowazaYomiLBSBooleanArray booleanArray: BooleanArray) =
+        booleanArray.preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -750,6 +793,14 @@ object AppModule {
         @KotowazaRank0ArrayTangoLBS kotowazaRank0ArrayTangoLBS: ShortArray,
         @KotowazaRank1ArrayTangoLBS kotowazaRank1ArrayTangoLBS: ShortArray,
         @KotowazaYomiLBSBooleanArray kotowazaYomiLBSBooleanArray: BooleanArray,
+
+        @SystemYomiLBSBooleanArrayPreprocess systemYomiLBSBooleanArrayPreprocess: IntArray,
+        @SingleKanjiYomiLBSBooleanArrayPreprocess singleKanjiYomiLBSBooleanArrayPreprocess: IntArray,
+        @EmojiYomiLBSBooleanArrayPreprocess emojiYomiLBSBooleanArrayPreprocess: IntArray,
+        @EmoticonYomiLBSBooleanArrayPreprocess emoticonYomiLBSBooleanArrayPreprocess: IntArray,
+        @SymbolYomiLBSBooleanArrayPreprocess symbolYomiLBSBooleanArrayPreprocess: IntArray,
+        @ReadingCorrectionYomiLBSBooleanArrayPrerpcess readingCorrectionYomiLBSBooleanArrayPreprocess: IntArray,
+        @KotowazaYomiLBSBooleanArrayPreprocess kotowazaYomiLBSBooleanArrayPreprocess: IntArray,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
 
@@ -841,6 +892,14 @@ object AppModule {
             kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayTangoLBS,
             kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayTangoLBS,
             kotowazaYomiLBSBooleanArray = kotowazaYomiLBSBooleanArray,
+
+            systemYomiLBSPreprocess = systemYomiLBSBooleanArrayPreprocess,
+            singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSBooleanArrayPreprocess,
+            emojiYomiLBSPreprocess = emojiYomiLBSBooleanArrayPreprocess,
+            emoticonYomiLBSPreprocess = emoticonYomiLBSBooleanArrayPreprocess,
+            symbolYomiLBSPreprocess = symbolYomiLBSBooleanArrayPreprocess,
+            readingCorrectionYomiLBSPreprocess = readingCorrectionYomiLBSBooleanArrayPreprocess,
+            kotowazaYomiLBSPreprocess = kotowazaYomiLBSBooleanArrayPreprocess
         )
 
         return kanaKanjiEngine
@@ -954,12 +1013,14 @@ object AppModule {
     @Singleton
     @Provides
     @EmojiList
-    fun provideEmojiList(kanaKanjiEngine: KanaKanjiEngine) = kanaKanjiEngine.getSymbolEmojiCandidates()
+    fun provideEmojiList(kanaKanjiEngine: KanaKanjiEngine) =
+        kanaKanjiEngine.getSymbolEmojiCandidates()
 
     @Singleton
     @Provides
     @EmoticonList
-    fun provideEmoticonList(kanaKanjiEngine: KanaKanjiEngine) = kanaKanjiEngine.getSymbolEmoticonCandidates()
+    fun provideEmoticonList(kanaKanjiEngine: KanaKanjiEngine) =
+        kanaKanjiEngine.getSymbolEmoticonCandidates()
 
     @Singleton
     @Provides

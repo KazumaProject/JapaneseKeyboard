@@ -177,3 +177,11 @@ fun List<String>.addingStringToListForCommonPrefix(): List<String> {
     }
     return result
 }
+
+fun BooleanArray.preprocessLBSIntoBooleanArray(): IntArray{
+    val prefixSum = IntArray(this.size + 1)
+    for (i in this.indices) {
+        prefixSum[i + 1] = prefixSum[i] + if (this[i]) 0 else 1
+    }
+    return prefixSum
+}
