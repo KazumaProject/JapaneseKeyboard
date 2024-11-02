@@ -9,7 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByFaceEmojiFirst
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByEmojiCategory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanjiNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
@@ -219,6 +219,14 @@ class KanaKanjiEngine {
         kotowazaRank0ArrayLBSTango: ShortArray,
         kotowazaRank1ArrayLBSTango: ShortArray,
         kotowazaYomiLBSBooleanArray: BooleanArray,
+
+        systemYomiLBSPreprocess: IntArray,
+        singleKanjiYomiLBSPreprocess: IntArray,
+        emojiYomiLBSPreprocess: IntArray,
+        emoticonYomiLBSPreprocess: IntArray,
+        symbolYomiLBSPreprocess: IntArray,
+        readingCorrectionYomiLBSPreprocess: IntArray,
+        kotowazaYomiLBSPreprocess: IntArray
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -335,21 +343,13 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.kotowazaYomiLBSBooleanArray =
             kotowazaYomiLBSBooleanArray
 
-        this@KanaKanjiEngine.systemYomiLBSPreprocess =
-            preprocessLBSInBoolArray(systemYomiLBSBooleanArray)
-        this@KanaKanjiEngine.singleKanjiYomiLBSPreprocess =
-            preprocessLBSInBoolArray(singleKanjiYomiLBSBooleanArray)
-        this@KanaKanjiEngine.emojiYomiLBSPreprocess =
-            preprocessLBSInBoolArray(emojiYomiLBSBooleanArray)
-        this@KanaKanjiEngine.emoticonYomiLBSPreprocess =
-            preprocessLBSInBoolArray(emoticonYomiLBSBooleanArray)
-        this@KanaKanjiEngine.symbolYomiLBSPreprocess =
-            preprocessLBSInBoolArray(symbolYomiLBSBooleanArray)
-        this@KanaKanjiEngine.readingCorrectionYomiLBSPreprocess =
-            preprocessLBSInBoolArray(readingCorrectionYomiLBSBooleanArray)
-        this@KanaKanjiEngine.kotowazaYomiLBSPreprocess =
-            preprocessLBSInBoolArray(kotowazaYomiLBSBooleanArray)
-
+        this@KanaKanjiEngine.systemYomiLBSPreprocess = systemYomiLBSPreprocess
+        this@KanaKanjiEngine.singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSPreprocess
+        this@KanaKanjiEngine.emojiYomiLBSPreprocess = emojiYomiLBSPreprocess
+        this@KanaKanjiEngine.emoticonYomiLBSPreprocess = emoticonYomiLBSPreprocess
+        this@KanaKanjiEngine.symbolYomiLBSPreprocess = symbolYomiLBSPreprocess
+        this@KanaKanjiEngine.readingCorrectionYomiLBSPreprocess =readingCorrectionYomiLBSPreprocess
+        this@KanaKanjiEngine.kotowazaYomiLBSPreprocess =kotowazaYomiLBSPreprocess
     }
 
     suspend fun getCandidates(
@@ -1106,7 +1106,7 @@ class KanaKanjiEngine {
             emojiRank0ArrayLBSTango,
             emojiRank1ArrayLBSTango
         )
-    }.distinct().sortByFaceEmojiFirst()
+    }.distinct().sortByEmojiCategory().distinct()
 
     fun getSymbolEmoticonCandidates(): List<String> = emoticonTokenArray.getNodeIds().map {
         emoticonTangoTrie.getLetterShortArray(
@@ -1254,14 +1254,6 @@ class KanaKanjiEngine {
             LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
         )
         return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
-    }
-
-    private fun preprocessLBSInBoolArray(LBSInBoolArray: BooleanArray): IntArray {
-        val prefixSum = IntArray(LBSInBoolArray.size + 1)
-        for (i in LBSInBoolArray.indices) {
-            prefixSum[i + 1] = prefixSum[i] + if (LBSInBoolArray[i]) 0 else 1
-        }
-        return prefixSum
     }
 
 }
