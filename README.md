@@ -19,8 +19,25 @@
   </a>
 </p>
 
-# スミレ - オフライン日本語キーボードアプリ
+# 謝礼
+このアプリは以下の書籍、論文、記事を参考にして作成しました。
 
+- [日本語入力を支える技術　～変わり続けるコンピュータと言葉の世界 (WEB+DB PRESS plus)](https://www.amazon.co.jp/%E6%97%A5%E6%9C%AC%E8%AA%9E%E5%85%A5%E5%8A%9B%E3%82%92%E6%94%AF%E3%81%88%E3%82%8B%E6%8A%80%E8%A1%93-%EF%BD%9E%E5%A4%89%E3%82%8F%E3%82%8A%E7%B6%9A%E3%81%91%E3%82%8B%E3%82%B3%E3%83%B3%E3%83%94%E3%83%A5%E3%83%BC%E3%82%BF%E3%81%A8%E8%A8%80%E8%91%89%E3%81%AE%E4%B8%96%E7%95%8C-WEB-DB-PRESS-plus/dp/4774149934)
+
+- [辞書と言語モデルの効率のよい圧縮とかな漢字変換への応用](https://www.anlp.jp/proceedings/annual_meeting/2011/pdf_dir/C4-2.pdf)
+
+- [アスペ日記 簡潔データ構造 LOUDS の解説](https://takeda25.hatenablog.jp/entry/20120421/1335019644)
+
+- [Trie木の純粋な実装とLOUDSのサイズ比較(Java)](https://zenn.dev/pakio/articles/eb864b89416637fe43fe)
+
+- [Trie4J - various trie implementation for Java.](https://github.com/takawitter/trie4j)
+
+- [AndroidX時代のIME作成 (1: 簡単なキーボードの作成)](https://qiita.com/Dooteeen/items/d32446be401096c75712)
+
+### 辞書
+- [mozc](https://github.com/google/mozc)
+
+# スミレ - オフライン日本語キーボードアプリ
 「スミレ」は、完全オフラインで使用でき、ネットワークの権限を一切必要としない日本語キーボードアプリです。プライバシーを守りながら、軽快かつ直感的な入力体験を提供します。
 
 さらに、「スミレ」では、高品質な日本語入力を実現するために **mozc** の辞書を使用しています。mozcは、信頼性の高い辞書データを提供しており、豊富な語彙と正確な変換をサポートします。詳しくは[こちら](https://github.com/google/mozc)をご覧ください。
