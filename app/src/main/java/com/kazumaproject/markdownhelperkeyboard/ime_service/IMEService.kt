@@ -501,13 +501,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             else -> {
                 if (isFlick) {
-                    char?.let {
-                        sendCharFlick(
-                            charToSend = it, insertString = insertString, sb = sb
-                        )
+                    if (isHenkan) {
+                        finishComposingText()
+                        isHenkan = false
+                    } else {
+                        char?.let {
+                            sendCharFlick(
+                                charToSend = it, insertString = insertString, sb = sb
+                            )
+                        }
+                        isContinuousTapInputEnabled = true
+                        lastFlickConvertedNextHiragana = true
                     }
-                    isContinuousTapInputEnabled = true
-                    lastFlickConvertedNextHiragana = true
                 } else {
                     char?.let {
                         sendCharTap(
