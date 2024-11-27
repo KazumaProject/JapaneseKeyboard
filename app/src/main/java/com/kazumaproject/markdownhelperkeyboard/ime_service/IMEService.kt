@@ -504,6 +504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     if (isHenkan) {
                         finishComposingText()
                         isHenkan = false
+                        suggestionAdapter.updateHighlightPosition(-1)
                     } else {
                         char?.let {
                             sendCharFlick(
