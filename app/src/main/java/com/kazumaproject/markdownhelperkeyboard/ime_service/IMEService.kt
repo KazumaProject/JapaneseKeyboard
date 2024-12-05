@@ -1,8 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
-import android.animation.Animator
-import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
@@ -558,7 +555,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
     }
-    private suspend fun onComposingTextFinished(callback: () -> Unit) {
+
+    private fun onComposingTextFinished(callback: () -> Unit) {
         callback()
     }
 
@@ -744,36 +742,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isVisible: Boolean,
         withAnimation: Boolean = true
     ) {
+        // Cancel any ongoing animation on the view
+        mainView.animate().cancel()
+
         if (isVisible) {
             mainView.visibility = View.VISIBLE
+
             if (withAnimation) {
-                val slideUp =
-                    ObjectAnimator.ofFloat(mainView, "translationY", mainView.height.toFloat(), 0f)
-                slideUp.duration = 150
-                slideUp.interpolator = AccelerateDecelerateInterpolator()
-                slideUp.start()
+                mainView.translationY = mainView.height.toFloat() // Start from hidden position
+                mainView.animate()
+                    .translationY(0f) // Animate to visible position
+                    .setDuration(150)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .start()
             } else {
                 mainView.translationY = 0f
             }
         } else {
             if (withAnimation) {
-                val slideDown =
-                    ObjectAnimator.ofFloat(mainView, "translationY", 0f, mainView.height.toFloat())
-                slideDown.duration = 200
-                slideDown.interpolator = AccelerateDecelerateInterpolator()
-                slideDown.addListener(object : Animator.AnimatorListener {
-                    override fun onAnimationStart(animation: Animator) {}
-                    override fun onAnimationEnd(animation: Animator) {
-                        mainView.visibility = View.GONE
+                mainView.translationY = 0f // Start from visible position
+                mainView.animate()
+                    .translationY(mainView.height.toFloat()) // Animate to hidden position
+                    .setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction {
+                        mainView.visibility = View.GONE // Set visibility after animation ends
                     }
-
-                    override fun onAnimationCancel(animation: Animator) {
-                        mainView.visibility = View.GONE
-                    }
-
-                    override fun onAnimationRepeat(animation: Animator) {}
-                })
-                slideDown.start()
+                    .start()
             } else {
                 mainView.visibility = View.GONE
             }
@@ -785,45 +780,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isVisible: Boolean
     ) {
         mainView.post {
+            mainView.animate().cancel()
+            mainView.pivotX = mainView.width / 2f
+            mainView.pivotY = mainView.height / 2f
+
             if (isVisible) {
                 mainView.visibility = View.VISIBLE
-                mainView.pivotX = mainView.width / 2f
-                mainView.pivotY = mainView.height / 2f
+                mainView.scaleX = 0f
+                mainView.scaleY = 0f
 
-                val scaleX = ObjectAnimator.ofFloat(mainView, "scaleX", 0f, 1f)
-                val scaleY = ObjectAnimator.ofFloat(mainView, "scaleY", 0f, 1f)
-
-                val animatorSet = AnimatorSet()
-                animatorSet.playTogether(scaleX, scaleY)
-                animatorSet.duration = 200
-                animatorSet.interpolator = AccelerateDecelerateInterpolator()
-                animatorSet.start()
-            } else {
-                mainView.visibility = View.VISIBLE
-                mainView.pivotX = mainView.width / 2f
-                mainView.pivotY = mainView.height / 2f
-
-                val scaleX = ObjectAnimator.ofFloat(mainView, "scaleX", 1f, 0f)
-                val scaleY = ObjectAnimator.ofFloat(mainView, "scaleY", 1f, 0f)
-
-                val animatorSet = AnimatorSet()
-                animatorSet.playTogether(scaleX, scaleY)
-                animatorSet.duration = 200
-                animatorSet.interpolator = AccelerateDecelerateInterpolator()
-                animatorSet.addListener(object : Animator.AnimatorListener {
-                    override fun onAnimationStart(animation: Animator) {}
-
-                    override fun onAnimationEnd(animation: Animator) {
+                mainView.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction {
                         mainView.scaleX = 1f
                         mainView.scaleY = 1f
-                        mainView.visibility = View.GONE
                     }
+                    .start()
+            } else {
+                mainView.visibility = View.VISIBLE
+                mainView.scaleX = 1f
+                mainView.scaleY = 1f
 
-                    override fun onAnimationCancel(animation: Animator) {}
-
-                    override fun onAnimationRepeat(animation: Animator) {}
-                })
-                animatorSet.start()
+                mainView.animate()
+                    .scaleX(0f)
+                    .scaleY(0f)
+                    .setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .withEndAction {
+                        mainView.visibility = View.GONE
+                        mainView.scaleX = 1f
+                        mainView.scaleY = 1f
+                    }
+                    .start()
             }
         }
     }
@@ -870,7 +861,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun resetInputString() {
-        if (!isHenkan){
+        if (!isHenkan) {
             _suggestionFlag.apply {
                 emit(CandidateShowFlag.Idle)
             }
