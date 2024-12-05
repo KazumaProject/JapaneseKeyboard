@@ -501,28 +501,65 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             else -> {
                 if (isFlick) {
-                    if (isHenkan) {
-                        finishComposingText()
-                        isHenkan = false
-                        suggestionAdapter.updateHighlightPosition(-1)
-                    } else {
-                        char?.let {
-                            sendCharFlick(
-                                charToSend = it, insertString = insertString, sb = sb
-                            )
-                        }
-                        isContinuousTapInputEnabled = true
-                        lastFlickConvertedNextHiragana = true
-                    }
+                    handleFlick(char, insertString, sb)
                 } else {
+                    handleTap(char, insertString, sb)
+                }
+            }
+        }
+    }
+
+    private fun handleFlick(char: Char?, insertString: String, sb: StringBuilder) {
+        if (isHenkan) {
+            suggestionAdapter.updateHighlightPosition(-1)
+            finishComposingText()
+            CoroutineScope(Dispatchers.IO).launch {
+                delay(64L)
+                isHenkan = false
+                char?.let {
+                    sendCharFlick(
+                        charToSend = it, insertString = "", sb = sb
+                    )
+                }
+                isContinuousTapInputEnabled = true
+                lastFlickConvertedNextHiragana = true
+            }
+        } else {
+            char?.let {
+                sendCharFlick(
+                    charToSend = it, insertString = insertString, sb = sb
+                )
+            }
+            isContinuousTapInputEnabled = true
+            lastFlickConvertedNextHiragana = true
+        }
+    }
+
+    private fun handleTap(char: Char?, insertString: String, sb: StringBuilder) {
+        if (isHenkan) {
+            suggestionAdapter.updateHighlightPosition(-1)
+            finishComposingText()
+            CoroutineScope(Dispatchers.IO).launch {
+                delay(64)
+                onComposingTextFinished {
+                    isHenkan = false
                     char?.let {
                         sendCharTap(
-                            charToSend = it, insertString = insertString, sb = sb
+                            charToSend = it, insertString = "", sb = sb
                         )
                     }
                 }
             }
+        } else {
+            char?.let {
+                sendCharTap(
+                    charToSend = it, insertString = insertString, sb = sb
+                )
+            }
         }
+    }
+    private suspend fun onComposingTextFinished(callback: () -> Unit) {
+        callback()
     }
 
     private fun handleLongPress(
@@ -715,6 +752,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 slideUp.duration = 150
                 slideUp.interpolator = AccelerateDecelerateInterpolator()
                 slideUp.start()
+            } else {
+                mainView.translationY = 0f
             }
         } else {
             if (withAnimation) {
@@ -722,16 +761,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     ObjectAnimator.ofFloat(mainView, "translationY", 0f, mainView.height.toFloat())
                 slideDown.duration = 200
                 slideDown.interpolator = AccelerateDecelerateInterpolator()
-                slideDown.start()
                 slideDown.addListener(object : Animator.AnimatorListener {
                     override fun onAnimationStart(animation: Animator) {}
                     override fun onAnimationEnd(animation: Animator) {
                         mainView.visibility = View.GONE
                     }
 
-                    override fun onAnimationCancel(animation: Animator) {}
+                    override fun onAnimationCancel(animation: Animator) {
+                        mainView.visibility = View.GONE
+                    }
+
                     override fun onAnimationRepeat(animation: Animator) {}
                 })
+                slideDown.start()
             } else {
                 mainView.visibility = View.GONE
             }
@@ -828,8 +870,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun resetInputString() {
-        _suggestionFlag.apply {
-            emit(CandidateShowFlag.Idle)
+        if (!isHenkan){
+            _suggestionFlag.apply {
+                emit(CandidateShowFlag.Idle)
+            }
         }
     }
 

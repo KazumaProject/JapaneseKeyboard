@@ -4,7 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
-    android:background="@color/keyboard_bg">
+    android:background="@color/keyboard_bg"
+    android:fitsSystemWindows="true">
 
     <!-- Container for Suggestion List and Visibility Icon -->
     <androidx.constraintlayout.widget.ConstraintLayout
