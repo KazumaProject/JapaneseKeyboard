@@ -1080,12 +1080,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             return
         }
-        if (stringInTail.isNotEmpty()) {
-            commitText(candidate.string, 1)
-        } else {
-            commitText(candidate.string, 1)
-            _inputString.update { EMPTY_STRING }
-        }
+        commitText(candidate.string, 1)
+        _inputString.update { EMPTY_STRING }
     }
 
     private fun resetAllFlags() {
@@ -1257,10 +1253,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             commitText(nextSuggestion.string, 1)
         }
-        println("enter key pressed: $stringInTail")
-        if (stringInTail.isEmpty()) {
-            _inputString.update { EMPTY_STRING }
-        }
+        _inputString.update { EMPTY_STRING }
         resetFlagsEnterKey()
     }
 
@@ -1546,7 +1539,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         finishInputEnterKey()
                     }
                 }
-
                 else -> finishInputEnterKey()
             }
         }
