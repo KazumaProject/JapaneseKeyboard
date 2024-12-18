@@ -67,9 +67,6 @@ dependencies {
     implementation project(':bl')
     implementation 'androidx.test.ext:junit-ktx:1.2.1'
     implementation project(':symbol_keyboard')
-    testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 
     implementation 'androidx.fragment:fragment-ktx:1.8.2'
 
@@ -91,4 +88,18 @@ dependencies {
     // Kotlin Extensions and Coroutines support for Room
     implementation "androidx.room:room-ktx:2.6.1"
 
+    // Room testing
+    testImplementation "androidx.room:room-testing:2.6.1"
+
+    // AndroidX Test dependencies
+    androidTestImplementation "androidx.test.ext:junit:1.1.5"
+    androidTestImplementation "androidx.test:core:1.5.0"
+    androidTestImplementation "androidx.test:runner:1.5.2"
+    androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
+
+    // Kotlin Coroutines test
+    testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3"
+
+    // JUnit
+    testImplementation "junit:junit:4.13.2"
 }
