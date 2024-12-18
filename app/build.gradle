@@ -102,4 +102,10 @@ dependencies {
 
     // JUnit
     testImplementation "junit:junit:4.13.2"
+
+    // Mockito for mocking objects
+    testImplementation "org.mockito:mockito-core:5.5.0"
+
+    // Mockito-Kotlin for better Kotlin support
+    testImplementation "org.mockito.kotlin:mockito-kotlin:5.0.0"
 }
