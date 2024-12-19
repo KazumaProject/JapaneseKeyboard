@@ -49,6 +49,8 @@ class LearnDaoTest {
         assertEquals(2, results.size)
         assertEquals("output", results[0])
         assertEquals("output2", results[1])
+
+        println(results)
     }
 
     @Test
