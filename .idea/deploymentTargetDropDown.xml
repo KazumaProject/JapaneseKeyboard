@@ -2,7 +2,10 @@
 <project version="4">
   <component name="deploymentTargetDropDown">
     <value>
-      <entry key="LearnDaoTest">
+      <entry key="LearnRepositoryTest">
+        <State />
+      </entry>
+      <entry key="all_returnsInitialEntities()">
         <State />
       </entry>
       <entry key="app">
@@ -21,9 +24,6 @@
           <timeTargetWasSelectedWithDropDown value="2024-11-02T23:52:51.720798Z" />
         </State>
       </entry>
-      <entry key="insertAndRetrieveOutByInput()">
-        <State />
-      </entry>
       <entry key="tenkey">
         <State>
           <targetSelectedWithDropDown>
@@ -39,6 +39,9 @@
           </targetSelectedWithDropDown>
           <timeTargetWasSelectedWithDropDown value="2024-09-23T07:23:23.250736Z" />
         </State>
+      </entry>
+      <entry key="upsertLearnedData_callsInsertOrUpdateCorrectly()">
+        <State />
       </entry>
     </value>
   </component>

@@ -43,7 +43,7 @@ class LearnDaoTest {
         dao.insert(learnEntity3)
 
         // Act: Retrieve `out` by `input`
-        val results = dao.getByInput("example")
+        val results = dao.findByInput("example")
 
         // Assert: Verify the results
         assertEquals(2, results.size)
@@ -63,8 +63,8 @@ class LearnDaoTest {
         dao.insert(learnEntity2)
 
         // Act: Retrieve `out` by `input`
-        val result1 = dao.getByInput("example1")
-        val result2 = dao.getByInput("example2")
+        val result1 = dao.findByInput("example1")
+        val result2 = dao.findByInput("example2")
 
         // Assert: Verify that each input maps to the correct output
         assertEquals(1, result1.size)
