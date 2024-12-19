@@ -1,27 +1,31 @@
 package com.kazumaproject.markdownhelperkeyboard.learning.database
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LearnDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(learnEntity: LearnEntity)
+    suspend fun insert(learnData: LearnEntity)
 
     @Query("SELECT out FROM learn_table WHERE input = :input")
-    suspend fun getByInput(input: String): List<String>
+    suspend fun findByInput(input: String): List<String>
 
-    @Query("SELECT COUNT(*) FROM learn_table WHERE input = :input AND out = :out")
-    suspend fun exists(input: String, out: String): Int
+    @Query("SELECT * FROM learn_table WHERE input = :input AND out = :output LIMIT 1")
+    suspend fun findByInputAndOutput(input: String, output: String): LearnEntity?
 
-    @Query("SELECT id FROM learn_table WHERE input = :input ORDER BY id LIMIT 1")
-    suspend fun getFirstId(input: String): Int?
+    @Query("SELECT * FROM learn_table")
+    fun all(): Flow<List<LearnEntity>>
 
-    @Query("UPDATE learn_table SET id = id - 1 WHERE input = :input AND out = :out")
-    suspend fun moveOutToPrevious(input: String, out: String)
+    @Update
+    suspend fun updateLearnedData(learnData: LearnEntity)
 
-    @Query("DELETE FROM learn_table WHERE id < 0") // Clean up invalid IDs
-    suspend fun cleanUpInvalidIds()
+    @Delete
+    suspend fun delete(learnData: LearnEntity)
+
 }
