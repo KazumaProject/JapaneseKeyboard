@@ -19,7 +19,7 @@ interface LearnDao {
     @Query("SELECT * FROM learn_table WHERE input = :input AND out = :output LIMIT 1")
     suspend fun findByInputAndOutput(input: String, output: String): LearnEntity?
 
-    @Query("SELECT * FROM learn_table")
+    @Query("SELECT * FROM learn_table ORDER BY score ASC")
     fun all(): Flow<List<LearnEntity>>
 
     @Update
