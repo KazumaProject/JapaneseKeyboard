@@ -43,7 +43,7 @@
     <string name="string_key12_number">"   .,-/   "</string>
     <string name="md">記</string>
     <string name="title_activity_main">スミレ 日本語キーボード</string>
-    <string name="title_home">辞書</string>
+    <string name="title_learn_dictionary">学習</string>
     <string name="title_dashboard">設定</string>
     <string name="title_notifications">Notifications</string>
     <string name="kigou_return">戻る</string>
