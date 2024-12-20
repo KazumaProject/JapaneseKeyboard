@@ -11,6 +11,7 @@ import androidx.room.PrimaryKey
 data class LearnEntity(
     val input: String,
     val out: String,
+    val score: Short = 30000,
     @PrimaryKey(autoGenerate = true)
     val id: Int? = null
 )

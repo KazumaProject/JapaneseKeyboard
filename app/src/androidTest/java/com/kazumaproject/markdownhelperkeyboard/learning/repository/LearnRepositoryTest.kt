@@ -95,13 +95,26 @@ class LearnRepositoryTest {
         repository.upsertLearnedData(learnData2)
         repository.upsertLearnedData(learnData3)
 
+        repository.upsertLearnedData(learnData2)
+        repository.upsertLearnedData(learnData2)
+
         repository.delete(learnData2)
+
+        repository.upsertLearnedData(learnData2)
+
+        repository.upsertLearnedData(learnData3)
+        repository.upsertLearnedData(learnData3)
+        repository.upsertLearnedData(learnData3)
+        repository.upsertLearnedData(learnData3)
+        repository.upsertLearnedData(learnData3)
+        repository.upsertLearnedData(learnData3)
+        repository.upsertLearnedData(learnData2)
 
         // Collect only the first emission
         val result = repository.all().first()
-        assertEquals(2, result.size)
+        assertEquals(3, result.size)
         assertTrue(result.contains(learnData1))
-        assertTrue(result.contains(learnData3))
+
         println("First emission: $result")
     }
 

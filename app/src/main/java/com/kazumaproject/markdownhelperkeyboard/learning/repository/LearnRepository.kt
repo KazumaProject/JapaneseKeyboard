@@ -20,7 +20,15 @@ class LearnRepository @Inject constructor(
         if (existingData == null) {
             learnDao.insert(learnData)
         } else {
-            learnDao.updateLearnedData(learnData)
+            val score = if (existingData.score > 0) (existingData.score - 1).toShort() else (0).toShort()
+            learnDao.updateLearnedData(
+                learnData.copy(
+                    input = learnData.input,
+                    out = learnData.out,
+                    score = score,
+                    id = learnData.id
+                )
+            )
         }
     }
 
