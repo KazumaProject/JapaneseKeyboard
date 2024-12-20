@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
 import androidx.core.content.ContextCompat
+import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.bitset.rank0GetIntArray
@@ -22,6 +23,8 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDatabase
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.preprocessLBSIntoBooleanArray
 import com.kazumaproject.toBooleanArray
@@ -44,6 +47,16 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
+
+    @Singleton
+    @Provides
+    fun providesLearnDatabase(
+        @ApplicationContext context: Context
+    ) = Room.databaseBuilder(context, LearnDatabase::class.java, "learn_database").build()
+
+    @Singleton
+    @Provides
+    fun providesLearnDao(db: LearnDatabase): LearnDao = db.learnDao()
 
     @Singleton
     @Provides
@@ -1026,5 +1039,6 @@ object AppModule {
     @Provides
     @SymbolList
     fun provideSymbolList(kanaKanjiEngine: KanaKanjiEngine) = kanaKanjiEngine.getSymbolCandidates()
+
 
 }
