@@ -1429,16 +1429,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             // Exit conditions
             if (onDeleteLongPressUp.get() || !deleteKeyLongKeyPressed.get()) {
                 enableContinuousTapInput()
-                if (_inputString.value.isEmpty()) suggestionAdapter.suggestions = emptyList()
+                if (insertString.isEmpty()) _suggestionFlag.emit(CandidateShowFlag.Idle)
                 break
             }
 
             if (insertString.isEmpty()) {
                 if (tailIsEmpty) {
-                    // Both insertString and stringInTail are empty
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 } else {
-                    // insertString is empty but stringInTail is not
                     enableContinuousTapInput()
                     break
                 }
@@ -1449,12 +1447,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     if (tailIsEmpty) {
                         setComposingText("", 0)
                     }
-                    _inputString.value = EMPTY_STRING
+                    _inputString.update { EMPTY_STRING }
                 } else {
-                    _inputString.value = insertString.substring(0, newLength)
+                    _inputString.update { insertString.substring(0, newLength) }
                 }
             }
-
             delay(LONG_DELAY_TIME)
         }
     }
@@ -1750,7 +1747,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         while (isActive) {
             val insertString = _inputString.value
             if (onLeftKeyLongPressUp.get() || !leftCursorKeyLongKeyPressed.get()) {
-                if (_inputString.value.isEmpty()) suggestionAdapter.suggestions = emptyList()
+                if (insertString.isEmpty()) _suggestionFlag.emit(CandidateShowFlag.Idle)
                 break
             }
             if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) break
@@ -1780,7 +1777,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun asyncRightLongPress() = scope.launch {
         while (isActive) {
             val insertString = _inputString.value
-            if (onRightKeyLongPressUp.get() || !rightCursorKeyLongKeyPressed.get()) break
+            if (onRightKeyLongPressUp.get() || !rightCursorKeyLongKeyPressed.get()) {
+                if (insertString.isNotEmpty()) _suggestionFlag.emit(CandidateShowFlag.Updating)
+                break
+            }
             if (stringInTail.get().isEmpty() && _inputString.value.isNotEmpty()) break
             actionInRightKeyPressed(insertString)
             delay(LONG_DELAY_TIME)
