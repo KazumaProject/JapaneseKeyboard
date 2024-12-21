@@ -31,8 +31,8 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
         val appBarConfiguration = AppBarConfiguration(
             setOf(
-                //R.id.navigation_home,
-                R.id.navigation_setting
+                R.id.navigation_setting,
+                R.id.navigation_learn_dictionary,
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
@@ -40,13 +40,15 @@ class MainActivity : AppCompatActivity() {
 
         val extra = intent.getStringExtra("openSettingActivity")
         extra?.let { request ->
-            when(request){
-//                "dictionary_fragment_request" ->{
-//                    navController.navigate(R.id.navigation_home)
-//                }
-                "setting_fragment_request" ->{
+            when (request) {
+                "setting_fragment_request" -> {
                     navController.popBackStack()
                     navController.navigate(R.id.navigation_setting)
+                }
+
+                "dictionary_fragment_request" -> {
+                    println("clicked")
+                    navController.navigate(R.id.navigation_learn_dictionary)
                 }
             }
         }

@@ -13,11 +13,18 @@
         <action
             android:id="@+id/action_navigation_dashboard_to_openSourceFragment"
             app:destination="@id/openSourceFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_dictionaryLearnFragment"
+            app:destination="@id/navigation_learn_dictionary" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource.OpenSourceFragment"
         android:label="オープンソースライブラリ"
         tools:layout="@layout/fragment_open_source" />
+    <fragment
+        android:id="@+id/navigation_learn_dictionary"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_learn.DictionaryLearnFragment"
+        android:label="学習辞書" />
 
 </navigation>
