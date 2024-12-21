@@ -29,4 +29,7 @@ interface LearnDao {
     @Delete
     suspend fun delete(learnData: LearnEntity)
 
+    @Query("DELETE FROM learn_table")
+    suspend fun deleteAll()
+
 }
