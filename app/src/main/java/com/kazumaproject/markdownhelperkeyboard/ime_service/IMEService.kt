@@ -1375,7 +1375,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun getSuggestionList(insertString: String): List<Candidate> {
-        return kanaKanjiEngine.getCandidates(insertString, N_BEST)
+        val resultFromEngine = kanaKanjiEngine.getCandidates(insertString, N_BEST)
+        val resultFromLearnDatabase = learnRepository.findLearnDataByInput(insertString)?.map {
+            Candidate(
+                string = it.out,
+                type = (19).toByte(),
+                length = (insertString.length).toUByte(),
+                score = it.score,
+            )
+        } ?: emptyList()
+        println("get candidate from learn: $resultFromLearnDatabase")
+        val result = resultFromLearnDatabase + resultFromEngine
+        return result.distinctBy { it.string }
     }
 
     private fun deleteLongPress() = scope.launch {

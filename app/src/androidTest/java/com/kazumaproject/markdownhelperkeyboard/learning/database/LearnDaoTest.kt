@@ -46,9 +46,9 @@ class LearnDaoTest {
         val results = dao.findByInput("example")
 
         // Assert: Verify the results
-        assertEquals(2, results.size)
-        assertEquals("output", results[0])
-        assertEquals("output2", results[1])
+        assertEquals(2, results?.size)
+        assertEquals("output", results?.get(0))
+        assertEquals("output2", results?.get(1))
 
         println(results)
     }
@@ -67,10 +67,10 @@ class LearnDaoTest {
         val result2 = dao.findByInput("example2")
 
         // Assert: Verify that each input maps to the correct output
-        assertEquals(1, result1.size)
-        assertEquals("output1", result1[0])
+        assertEquals(1, result1?.size)
+        assertEquals("output1", result1?.get(0))
 
-        assertEquals(1, result2.size)
-        assertEquals("output2", result2[0])
+        assertEquals(1, result2?.size)
+        assertEquals("output2", result2?.get(0))
     }
 }
