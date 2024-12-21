@@ -1287,12 +1287,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val index = if (suggestionClickNum - 1 < 0) 0 else suggestionClickNum - 1
         val nextSuggestion = suggestions[index]
         if (nextSuggestion.type == (15).toByte()) {
-            val readingCorrection = nextSuggestion.string.correctReading()
-            commitText(readingCorrection.first, 1)
+            CoroutineScope(Dispatchers.IO).launch {
+                val readingCorrection = nextSuggestion.string.correctReading()
+                val learnData = LearnEntity(
+                    input = _inputString.value,
+                    out = readingCorrection.first
+                )
+                learnRepository.upsertLearnedData(learnData)
+                commitText(readingCorrection.first, 1)
+                _inputString.value = EMPTY_STRING
+            }
         } else {
-            commitText(nextSuggestion.string, 1)
+            CoroutineScope(Dispatchers.IO).launch {
+                val learnData = LearnEntity(
+                    input = _inputString.value,
+                    out = nextSuggestion.string
+                )
+                learnRepository.upsertLearnedData(learnData)
+                commitText(nextSuggestion.string, 1)
+                _inputString.value = EMPTY_STRING
+            }
         }
-        _inputString.value = EMPTY_STRING
         resetFlagsEnterKey()
     }
 
@@ -1400,6 +1415,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             )
         } ?: emptyList()
         println("get candidate from learn: $resultFromLearnDatabase")
+        println("get candidate from engine: $resultFromEngine")
         val result = resultFromLearnDatabase + resultFromEngine
         return result.distinctBy { it.string }
     }
@@ -1413,6 +1429,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             // Exit conditions
             if (onDeleteLongPressUp.get() || !deleteKeyLongKeyPressed.get()) {
                 enableContinuousTapInput()
+                if (_inputString.value.isEmpty()) suggestionAdapter.suggestions = emptyList()
                 break
             }
 
@@ -1732,7 +1749,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun asyncLeftLongPress() = scope.launch {
         while (isActive) {
             val insertString = _inputString.value
-            if (onLeftKeyLongPressUp.get() || !leftCursorKeyLongKeyPressed.get()) break
+            if (onLeftKeyLongPressUp.get() || !leftCursorKeyLongKeyPressed.get()) {
+                if (_inputString.value.isEmpty()) suggestionAdapter.suggestions = emptyList()
+                break
+            }
             if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) break
             if (insertString.isNotEmpty()) {
                 updateLeftInputString(insertString)
