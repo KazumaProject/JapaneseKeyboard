@@ -55,10 +55,14 @@ class LearnDictionaryAdapter :
 
     override fun onBindViewHolder(holder: LearnDictionaryViewHolder, position: Int) {
         val adapter = LearnDataOutputAdapter()
-        holder.tvInput.text = learnDataList[position].first
-        holder.rvOutput.layoutManager =
-            LinearLayoutManager(holder.rvOutput.context, LinearLayoutManager.HORIZONTAL, false)
-        holder.rvOutput.adapter = adapter
+        holder.tvInput.apply {
+            text = learnDataList[position].first
+        }
+        holder.rvOutput.apply {
+            layoutManager =
+                LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+            holder.rvOutput.adapter = adapter
+        }
         adapter.learnDataOutputList = learnDataList[position].second
     }
 

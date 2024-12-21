@@ -114,4 +114,5 @@
     <string name="and"><![CDATA[&]]></string>
     <string name="at_mark">\@</string>
     <string name="ten_ten">\"</string>
+    <string name="reset_learn_dictionary">学習辞書をリセットする</string>
 </resources>
