@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.learning.repository
 
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -10,7 +11,8 @@ class LearnRepository @Inject constructor(
 ) {
     suspend fun insertLearnedData(learnData: LearnEntity) = learnDao.insert(learnData)
 
-    suspend fun findLearnDataByInput(input: String): List<String> = learnDao.findByInput(input)
+    suspend fun findLearnDataByInput(input: String): List<LearnResult>? =
+        learnDao.findByInput(input)?.sortedBy { it.score }
 
     suspend fun findLearnDataByInputAndOutput(input: String, output: String): LearnEntity? =
         learnDao.findByInputAndOutput(input, output)

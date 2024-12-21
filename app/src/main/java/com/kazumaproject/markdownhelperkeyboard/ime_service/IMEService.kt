@@ -980,8 +980,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter.apply {
             this.setOnItemClickListener {
                 val insertString = _inputString.value
+                val currentInputMode = mainView.keyboardView.currentInputMode
                 setVibrate()
-                setCandidateClick(it, insertString)
+                setCandidateClick(it, insertString, currentInputMode)
             }
         }
         mainView.suggestionRecyclerView.apply {
@@ -1062,14 +1063,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         )
     }
 
-    private fun setCandidateClick(candidate: Candidate, insertString: String) {
+    private fun setCandidateClick(
+        candidate: Candidate,
+        insertString: String,
+        currentInputMode: InputMode
+    ) {
         if (insertString.isNotEmpty()) {
-            commitCandidateText(candidate, insertString)
+            commitCandidateText(candidate, insertString, currentInputMode)
             resetFlagsSuggestionClick()
         }
     }
 
-    private fun commitCandidateText(candidate: Candidate, insertString: String) {
+    private fun commitCandidateText(
+        candidate: Candidate,
+        insertString: String,
+        currentInputMode: InputMode
+    ) {
         val candidateType = candidate.type.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail.set(insertString.substring(candidate.length.toInt()))
@@ -1077,20 +1086,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val readingCorrection = candidate.string.correctReading()
             if (stringInTail.get().isNotEmpty()) {
                 CoroutineScope(Dispatchers.IO).launch {
-                    val learnData = LearnEntity(
-                        input = _inputString.value,
-                        out = readingCorrection.first
-                    )
-                    learnRepository.upsertLearnedData(learnData)
+                    if (currentInputMode == InputMode.ModeJapanese) {
+                        val learnData = LearnEntity(
+                            input = _inputString.value,
+                            out = readingCorrection.first
+                        )
+                        learnRepository.upsertLearnedData(learnData)
+                    }
                     commitText(readingCorrection.first, 1)
                 }
             } else {
                 CoroutineScope(Dispatchers.IO).launch {
-                    val learnData = LearnEntity(
-                        input = _inputString.value,
-                        out = readingCorrection.first
-                    )
-                    learnRepository.upsertLearnedData(learnData)
+                    if (currentInputMode == InputMode.ModeJapanese) {
+                        val learnData = LearnEntity(
+                            input = _inputString.value,
+                            out = readingCorrection.first
+                        )
+                        learnRepository.upsertLearnedData(learnData)
+                    }
                     commitText(readingCorrection.first, 1)
                     _inputString.value = EMPTY_STRING
                 }
@@ -1098,11 +1111,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             return
         }
         CoroutineScope(Dispatchers.IO).launch {
-            val learnData = LearnEntity(
-                input = _inputString.value,
-                out = candidate.string
-            )
-            learnRepository.upsertLearnedData(learnData)
+            if (currentInputMode == InputMode.ModeJapanese) {
+                val learnData = LearnEntity(
+                    input = _inputString.value,
+                    out = candidate.string
+                )
+                learnRepository.upsertLearnedData(learnData)
+            }
             commitText(candidate.string, 1)
             _inputString.value = EMPTY_STRING
         }
@@ -1375,7 +1390,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun getSuggestionList(insertString: String): List<Candidate> {
-        return kanaKanjiEngine.getCandidates(insertString, N_BEST)
+        val resultFromEngine = kanaKanjiEngine.getCandidates(insertString, N_BEST)
+        val resultFromLearnDatabase = learnRepository.findLearnDataByInput(insertString)?.map {
+            Candidate(
+                string = it.out,
+                type = (19).toByte(),
+                length = (insertString.length).toUByte(),
+                score = it.score,
+            )
+        } ?: emptyList()
+        println("get candidate from learn: $resultFromLearnDatabase")
+        val result = resultFromLearnDatabase + resultFromEngine
+        return result.distinctBy { it.string }
     }
 
     private fun deleteLongPress() = scope.launch {
