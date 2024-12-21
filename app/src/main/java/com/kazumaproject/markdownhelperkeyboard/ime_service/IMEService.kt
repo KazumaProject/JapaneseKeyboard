@@ -72,6 +72,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isHiragan
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isLatinAlphabet
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.listener.FlickListener
 import com.kazumaproject.tenkey.listener.LongPressListener
@@ -187,6 +189,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     @SymbolList
     lateinit var symbolList: List<String>
+
+    @Inject
+    lateinit var learnRepository: LearnRepository
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
@@ -883,7 +888,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextPersonName,
                     InputTypeForIME.TextPhonetic,
                     InputTypeForIME.TextWebEditText,
-                    -> {
+                        -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
@@ -894,7 +899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextImeMultiLine,
                     InputTypeForIME.TextShortMessage,
                     InputTypeForIME.TextLongMessage,
-                    -> {
+                        -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
@@ -933,7 +938,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextPassword,
                     InputTypeForIME.TextVisiblePassword,
                     InputTypeForIME.TextWebPassword,
-                    -> {
+                        -> {
                         currentInputMode = InputMode.ModeEnglish
                         setInputModeSwitchState(InputMode.ModeEnglish)
                         setSideKeyPreviousState(true)
@@ -955,7 +960,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.Date,
                     InputTypeForIME.Datetime,
                     InputTypeForIME.Time,
-                    -> {
+                        -> {
                         currentInputMode = InputMode.ModeNumber
                         setInputModeSwitchState(InputMode.ModeNumber)
                         setSideKeyPreviousState(false)
@@ -1071,15 +1076,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else if (candidateType == 15) {
             val readingCorrection = candidate.string.correctReading()
             if (stringInTail.get().isNotEmpty()) {
-                commitText(readingCorrection.first, 1)
+                CoroutineScope(Dispatchers.IO).launch {
+                    val learnData = LearnEntity(
+                        input = _inputString.value,
+                        out = readingCorrection.first
+                    )
+                    learnRepository.upsertLearnedData(learnData)
+                    commitText(readingCorrection.first, 1)
+                }
             } else {
-                commitText(readingCorrection.first, 1)
-                _inputString.value = EMPTY_STRING
+                CoroutineScope(Dispatchers.IO).launch {
+                    val learnData = LearnEntity(
+                        input = _inputString.value,
+                        out = readingCorrection.first
+                    )
+                    learnRepository.upsertLearnedData(learnData)
+                    commitText(readingCorrection.first, 1)
+                    _inputString.value = EMPTY_STRING
+                }
             }
             return
         }
-        commitText(candidate.string, 1)
-        _inputString.value = EMPTY_STRING
+        CoroutineScope(Dispatchers.IO).launch {
+            val learnData = LearnEntity(
+                input = _inputString.value,
+                out = candidate.string
+            )
+            learnRepository.upsertLearnedData(learnData)
+            commitText(candidate.string, 1)
+            _inputString.value = EMPTY_STRING
+        }
     }
 
     private fun resetAllFlags() {
@@ -1401,7 +1427,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextImeMultiLine,
             InputTypeForIME.TextShortMessage,
             InputTypeForIME.TextLongMessage,
-            -> {
+                -> {
                 commitText("\n", 1)
             }
 
@@ -1427,7 +1453,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextWebPassword,
             InputTypeForIME.TextNotCursorUpdate,
             InputTypeForIME.TextEditTextInWebView,
-            -> {
+                -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
                     KeyEvent(
@@ -1452,7 +1478,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
@@ -1928,7 +1954,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 sendKeyChar(charToSend)
             }
 
@@ -1960,7 +1986,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 sendKeyChar(charToSend)
             }
 
