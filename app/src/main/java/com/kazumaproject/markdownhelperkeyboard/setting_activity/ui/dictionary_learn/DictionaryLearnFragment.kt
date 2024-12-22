@@ -1,6 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_learn
 
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -56,9 +59,23 @@ class DictionaryLearnFragment : Fragment() {
         }
         learnDictionaryAdapter.setOnItemLongClickListener {
             println("clicked $it")
+            val spannableMessage = SpannableStringBuilder()
+                .append("よみ：")
+                .append(
+                    it,
+                    ForegroundColorSpan(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.enter_key_bg
+                        )
+                    ),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                .append("を削除します。\n本当に辞書から削除しますか？")
+
             val dialog = AlertDialog.Builder(requireContext())
                 .setTitle("削除の確認")
-                .setMessage("よみ：${it}を削除します。\n本当に辞書から削除しますか？")
+                .setMessage(spannableMessage)
                 .setPositiveButton("はい") { _, _ ->
                     CoroutineScope(Dispatchers.IO).launch {
                         learnRepository.deleteByInput(it)
