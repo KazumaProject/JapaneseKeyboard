@@ -956,11 +956,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
         suggestionAdapter.apply {
-            this.setOnItemClickListener {
+            this.setOnItemClickListener { candidate, position ->
                 val insertString = _inputString.value
                 val currentInputMode = mainView.keyboardView.currentInputMode
                 setVibrate()
-                setCandidateClick(it, insertString, currentInputMode)
+                setCandidateClick(candidate, insertString, currentInputMode, position)
             }
         }
         mainView.suggestionRecyclerView.apply {
@@ -1039,16 +1039,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setCandidateClick(
-        candidate: Candidate, insertString: String, currentInputMode: InputMode
+        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         if (insertString.isNotEmpty()) {
-            commitCandidateText(candidate, insertString, currentInputMode)
+            commitCandidateText(candidate, insertString, currentInputMode, position)
             resetFlagsSuggestionClick()
         }
     }
 
     private fun commitCandidateText(
-        candidate: Candidate, insertString: String, currentInputMode: InputMode
+        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         val candidateType = candidate.type.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
@@ -1074,13 +1074,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             } else {
                 appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
                     if (enabledLearnDictionary) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val learnData = LearnEntity(
-                                input = _inputString.value, out = candidate.string
-                            )
-                            learnRepository.upsertLearnedData(learnData)
+                        if (position == 0) {
                             commitText(candidate.string, 1)
                             _inputString.value = EMPTY_STRING
+                        } else {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val learnData = LearnEntity(
+                                    input = _inputString.value, out = candidate.string
+                                )
+                                learnRepository.upsertLearnedData(learnData)
+                                commitText(candidate.string, 1)
+                                _inputString.value = EMPTY_STRING
+                            }
                         }
                     } else {
                         commitText(candidate.string, 1)
@@ -1272,13 +1277,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 } else {
                     appPreference.learn_dictionary_preference?.let { enableLearnDictionary ->
                         if (enableLearnDictionary) {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val learnData = LearnEntity(
-                                    input = _inputString.value, out = nextSuggestion.string
-                                )
-                                learnRepository.upsertLearnedData(learnData)
+                            if (index == 0) {
                                 commitText(nextSuggestion.string, 1)
                                 _inputString.value = EMPTY_STRING
+                            } else {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    val learnData = LearnEntity(
+                                        input = _inputString.value, out = nextSuggestion.string
+                                    )
+                                    learnRepository.upsertLearnedData(learnData)
+                                    commitText(nextSuggestion.string, 1)
+                                    _inputString.value = EMPTY_STRING
+                                }
                             }
                         } else {
                             commitText(nextSuggestion.string, 1)

@@ -33,9 +33,9 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         }
     }
 
-    private var onItemClickListener: ((Candidate) -> Unit)? = null
+    private var onItemClickListener: ((Candidate, Int) -> Unit)? = null
 
-    fun setOnItemClickListener(onItemClick: (Candidate) -> Unit) {
+    fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
     }
 
@@ -64,7 +64,11 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             else -> 0
         }
 
-        val readingCorrectionString = if (suggestion.type == (15).toByte()) suggestion.string.correctReading()  else Pair("","")
+        val readingCorrectionString =
+            if (suggestion.type == (15).toByte()) suggestion.string.correctReading() else Pair(
+                "",
+                ""
+            )
         holder.text.text = if (suggestion.type == (15).toByte()) {
             readingCorrectionString.first.padStart(readingCorrectionString.first.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
@@ -107,7 +111,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         }
         holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {
-            onItemClickListener?.invoke(suggestion)
+            onItemClickListener?.invoke(suggestion, position)
         }
     }
 
