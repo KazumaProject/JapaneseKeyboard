@@ -1067,14 +1067,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             return
         }
         if (currentInputMode == InputMode.ModeJapanese) {
-            CoroutineScope(Dispatchers.IO).launch {
-                val learnData = LearnEntity(
-                    input = _inputString.value, out = candidate.string
-                )
-                learnRepository.upsertLearnedData(learnData)
+            val isEnable = appPreference.learn_dictionary_preference
+            if (isEnable == null) {
                 commitText(candidate.string, 1)
                 _inputString.value = EMPTY_STRING
+            } else {
+                appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
+                    if (enabledLearnDictionary) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val learnData = LearnEntity(
+                                input = _inputString.value, out = candidate.string
+                            )
+                            learnRepository.upsertLearnedData(learnData)
+                            commitText(candidate.string, 1)
+                            _inputString.value = EMPTY_STRING
+                        }
+                    } else {
+                        commitText(candidate.string, 1)
+                        _inputString.value = EMPTY_STRING
+                    }
+                }
             }
+
         } else {
             commitText(candidate.string, 1)
             _inputString.value = EMPTY_STRING
@@ -1237,22 +1251,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setEnterKeyAction(suggestions: List<Candidate>) {
         val index = if (suggestionClickNum - 1 < 0) 0 else suggestionClickNum - 1
         val nextSuggestion = suggestions[index]
-        if (nextSuggestion.type == (15).toByte()) {
-            val readingCorrection = nextSuggestion.string.correctReading()
-            commitText(readingCorrection.first, 1)
-            _inputString.value = EMPTY_STRING
-        } else if (nextSuggestion.type == (5).toByte() || nextSuggestion.type == (7).toByte() || nextSuggestion.type == (8).toByte()) {
-            stringInTail.set(_inputString.value.substring(nextSuggestion.length.toInt()))
-            commitText(nextSuggestion.string, 1)
-            _inputString.value = EMPTY_STRING
-        } else {
-            CoroutineScope(Dispatchers.IO).launch {
-                val learnData = LearnEntity(
-                    input = _inputString.value, out = nextSuggestion.string
-                )
-                learnRepository.upsertLearnedData(learnData)
+        when (nextSuggestion.type) {
+            (15).toByte() -> {
+                val readingCorrection = nextSuggestion.string.correctReading()
+                commitText(readingCorrection.first, 1)
+                _inputString.value = EMPTY_STRING
+            }
+
+            (5).toByte(), (7).toByte(), (8).toByte() -> {
+                stringInTail.set(_inputString.value.substring(nextSuggestion.length.toInt()))
                 commitText(nextSuggestion.string, 1)
                 _inputString.value = EMPTY_STRING
+            }
+
+            else -> {
+                val isEnable = appPreference.learn_dictionary_preference
+                if (isEnable == null) {
+                    commitText(nextSuggestion.string, 1)
+                    _inputString.value = EMPTY_STRING
+                } else {
+                    appPreference.learn_dictionary_preference?.let { enableLearnDictionary ->
+                        if (enableLearnDictionary) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val learnData = LearnEntity(
+                                    input = _inputString.value, out = nextSuggestion.string
+                                )
+                                learnRepository.upsertLearnedData(learnData)
+                                commitText(nextSuggestion.string, 1)
+                                _inputString.value = EMPTY_STRING
+                            }
+                        } else {
+                            commitText(nextSuggestion.string, 1)
+                            _inputString.value = EMPTY_STRING
+                        }
+                    }
+                }
             }
         }
         resetFlagsEnterKey()
@@ -1364,8 +1397,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             score = it.score,
                         )
                     } ?: emptyList()
-                println("get candidate from learn: $resultFromLearnDatabase")
-                println("get candidate from engine: $resultFromEngine")
                 val result = resultFromLearnDatabase + resultFromEngine
                 return result.distinctBy { it.string }
             }

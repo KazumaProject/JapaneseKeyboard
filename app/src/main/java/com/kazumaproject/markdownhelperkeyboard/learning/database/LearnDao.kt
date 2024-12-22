@@ -35,4 +35,7 @@ interface LearnDao {
     @Query("DELETE FROM learn_table WHERE input = :input")
     suspend fun deleteByInput(input: String): Int
 
+    @Query("DELETE FROM learn_table WHERE input = :input AND out = :output")
+    suspend fun deleteByInputAndOutput(input: String, output: String): Int
+
 }
