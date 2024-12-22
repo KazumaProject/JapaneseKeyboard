@@ -42,4 +42,6 @@ class LearnRepository @Inject constructor(
     suspend fun delete(learnData: LearnEntity) = learnDao.delete(learnData)
 
     suspend fun deleteAll() = learnDao.deleteAll()
+
+    suspend fun deleteByInput(input: String) = learnDao.deleteByInput(input)
 }

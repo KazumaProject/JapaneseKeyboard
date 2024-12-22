@@ -54,6 +54,25 @@ class DictionaryLearnFragment : Fragment() {
             layoutManager = LinearLayoutManager(context)
             adapter = learnDictionaryAdapter
         }
+        learnDictionaryAdapter.setOnItemLongClickListener {
+            println("clicked $it")
+            val dialog = AlertDialog.Builder(requireContext())
+                .setTitle("削除の確認")
+                .setMessage("よみ：${it}を削除します。\n本当に辞書から削除しますか？")
+                .setPositiveButton("はい") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        learnRepository.deleteByInput(it)
+                    }
+                }
+                .setNegativeButton("いいえ", null)
+                .show()
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+        }
+
         binding.resetLearnDictionaryButton.setOnClickListener {
             val dialog = AlertDialog.Builder(requireContext())
                 .setTitle("削除の確認")
@@ -66,8 +85,10 @@ class DictionaryLearnFragment : Fragment() {
                 .setNegativeButton("いいえ", null)
                 .show()
 
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
         }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {

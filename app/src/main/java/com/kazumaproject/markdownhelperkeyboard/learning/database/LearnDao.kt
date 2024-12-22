@@ -32,4 +32,7 @@ interface LearnDao {
     @Query("DELETE FROM learn_table")
     suspend fun deleteAll()
 
+    @Query("DELETE FROM learn_table WHERE input = :input")
+    suspend fun deleteByInput(input: String): Int
+
 }
