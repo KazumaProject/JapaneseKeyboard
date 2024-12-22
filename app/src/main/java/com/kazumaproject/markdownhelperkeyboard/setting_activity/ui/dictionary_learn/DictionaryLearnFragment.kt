@@ -90,6 +90,41 @@ class DictionaryLearnFragment : Fragment() {
                 .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
         }
 
+        learnDictionaryAdapter.setOnItemChildrenLongClickListener { s, s2 ->
+            val spannableMessage = SpannableStringBuilder()
+                .append("単語：")
+                .append(
+                    s2,
+                    ForegroundColorSpan(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.enter_key_bg
+                        )
+                    ),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                .append("を削除します。\n本当に辞書から削除しますか？")
+
+            val dialog = AlertDialog.Builder(requireContext())
+                .setTitle("削除の確認")
+                .setMessage(spannableMessage)
+                .setPositiveButton("はい") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        learnRepository.deleteByInputAndOutput(
+                            input = s,
+                            output = s2
+                        )
+                    }
+                }
+                .setNegativeButton("いいえ", null)
+                .show()
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+        }
+
         binding.resetLearnDictionaryButton.setOnClickListener {
             val dialog = AlertDialog.Builder(requireContext())
                 .setTitle("削除の確認")

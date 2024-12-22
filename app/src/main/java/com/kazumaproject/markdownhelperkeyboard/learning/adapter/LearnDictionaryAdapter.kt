@@ -49,6 +49,12 @@ class LearnDictionaryAdapter :
         this.onItemLongClickListener = listener
     }
 
+    private var onItemChildrenLongClickListener: ((String, String) -> Unit)? = null
+
+    fun setOnItemChildrenLongClickListener(listener: (String, String) -> Unit) {
+        this.onItemChildrenLongClickListener = listener
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LearnDictionaryViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.learn_dictionary_item, parent, false)
@@ -60,12 +66,19 @@ class LearnDictionaryAdapter :
     override fun onBindViewHolder(holder: LearnDictionaryViewHolder, position: Int) {
         val item = learnDataList[position]
 
-        holder.tvInput.text = item.first
-        holder.tvInput.setOnLongClickListener {
-            onItemLongClickListener?.invoke(item.first)
-            true // Consume the event
+        holder.tvInput.apply {
+            text = item.first
+            setOnLongClickListener {
+                onItemLongClickListener?.invoke(item.first)
+                true
+            }
         }
 
-        holder.outputAdapter.learnDataOutputList = item.second
+        holder.outputAdapter.apply {
+            learnDataOutputList = item.second
+            this.setOnItemLongClickListener { child ->
+                onItemChildrenLongClickListener?.invoke(item.first, child)
+            }
+        }
     }
 }
