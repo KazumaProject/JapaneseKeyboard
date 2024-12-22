@@ -12,25 +12,29 @@ import com.kazumaproject.markdownhelperkeyboard.R
 
 class LearnDictionaryAdapter :
     RecyclerView.Adapter<LearnDictionaryAdapter.LearnDictionaryViewHolder>() {
+
     inner class LearnDictionaryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val tvInput: MaterialTextView = itemView.findViewById(R.id.tvInput)
         val rvOutput: RecyclerView = itemView.findViewById(R.id.rvOutput)
+        val outputAdapter = LearnDataOutputAdapter()
+
+        init {
+            rvOutput.layoutManager =
+                LinearLayoutManager(itemView.context, LinearLayoutManager.HORIZONTAL, false)
+            rvOutput.adapter = outputAdapter
+        }
     }
 
     private val diffCallback = object : DiffUtil.ItemCallback<Pair<String, List<String>>>() {
         override fun areItemsTheSame(
             oldItem: Pair<String, List<String>>,
             newItem: Pair<String, List<String>>
-        ): Boolean {
-            return oldItem.first == newItem.first && oldItem.second == newItem.second
-        }
+        ): Boolean = oldItem.first == newItem.first
 
         override fun areContentsTheSame(
             oldItem: Pair<String, List<String>>,
             newItem: Pair<String, List<String>>
-        ): Boolean {
-            return oldItem.hashCode() == newItem.hashCode()
-        }
+        ): Boolean = oldItem == newItem
     }
 
     private val differ = AsyncListDiffer(this, diffCallback)
@@ -39,27 +43,42 @@ class LearnDictionaryAdapter :
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LearnDictionaryViewHolder {
-        return LearnDictionaryViewHolder(
-            LayoutInflater.from(parent.context).inflate(
-                R.layout.learn_dictionary_item,
-                parent,
-                false
-            )
-        )
+    private var onItemLongClickListener: ((String) -> Unit)? = null
+
+    fun setOnItemLongClickListener(listener: (String) -> Unit) {
+        this.onItemLongClickListener = listener
     }
 
-    override fun getItemCount(): Int {
-        return learnDataList.size
+    private var onItemChildrenLongClickListener: ((String, String) -> Unit)? = null
+
+    fun setOnItemChildrenLongClickListener(listener: (String, String) -> Unit) {
+        this.onItemChildrenLongClickListener = listener
     }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LearnDictionaryViewHolder {
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.learn_dictionary_item, parent, false)
+        return LearnDictionaryViewHolder(view)
+    }
+
+    override fun getItemCount(): Int = learnDataList.size
 
     override fun onBindViewHolder(holder: LearnDictionaryViewHolder, position: Int) {
-        val adapter = LearnDataOutputAdapter()
-        holder.tvInput.text = learnDataList[position].first
-        holder.rvOutput.layoutManager =
-            LinearLayoutManager(holder.rvOutput.context, LinearLayoutManager.HORIZONTAL, false)
-        holder.rvOutput.adapter = adapter
-        adapter.learnDataOutputList = learnDataList[position].second
-    }
+        val item = learnDataList[position]
 
+        holder.tvInput.apply {
+            text = item.first
+            setOnLongClickListener {
+                onItemLongClickListener?.invoke(item.first)
+                true
+            }
+        }
+
+        holder.outputAdapter.apply {
+            learnDataOutputList = item.second
+            this.setOnItemLongClickListener { child ->
+                onItemChildrenLongClickListener?.invoke(item.first, child)
+            }
+        }
+    }
 }

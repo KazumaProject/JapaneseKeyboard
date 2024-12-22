@@ -40,4 +40,11 @@ class LearnRepository @Inject constructor(
     fun all(): Flow<List<LearnEntity>> = learnDao.all()
 
     suspend fun delete(learnData: LearnEntity) = learnDao.delete(learnData)
+
+    suspend fun deleteAll() = learnDao.deleteAll()
+
+    suspend fun deleteByInput(input: String) = learnDao.deleteByInput(input)
+
+    suspend fun deleteByInputAndOutput(input: String, output: String) =
+        learnDao.deleteByInputAndOutput(input, output)
 }

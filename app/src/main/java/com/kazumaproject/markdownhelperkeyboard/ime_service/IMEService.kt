@@ -745,9 +745,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun animateViewVisibility(
-        mainView: View,
-        isVisible: Boolean,
-        withAnimation: Boolean = true
+        mainView: View, isVisible: Boolean, withAnimation: Boolean = true
     ) {
         // Cancel any ongoing animation on the view
         mainView.animate().cancel()
@@ -757,11 +755,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             if (withAnimation) {
                 mainView.translationY = mainView.height.toFloat() // Start from hidden position
-                mainView.animate()
-                    .translationY(0f) // Animate to visible position
-                    .setDuration(150)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .start()
+                mainView.animate().translationY(0f) // Animate to visible position
+                    .setDuration(150).setInterpolator(AccelerateDecelerateInterpolator()).start()
             } else {
                 mainView.translationY = 0f
             }
@@ -770,12 +765,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 mainView.translationY = 0f // Start from visible position
                 mainView.animate()
                     .translationY(mainView.height.toFloat()) // Animate to hidden position
-                    .setDuration(200)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .setDuration(200).setInterpolator(AccelerateDecelerateInterpolator())
                     .withEndAction {
                         mainView.visibility = View.GONE // Set visibility after animation ends
-                    }
-                    .start()
+                    }.start()
             } else {
                 mainView.visibility = View.GONE
             }
@@ -783,8 +776,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun animateSuggestionImageViewVisibility(
-        mainView: View,
-        isVisible: Boolean
+        mainView: View, isVisible: Boolean
     ) {
         mainView.post {
             mainView.animate().cancel()
@@ -796,32 +788,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 mainView.scaleX = 0f
                 mainView.scaleY = 0f
 
-                mainView.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(200)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .withEndAction {
+                mainView.animate().scaleX(1f).scaleY(1f).setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
                         mainView.scaleX = 1f
                         mainView.scaleY = 1f
-                    }
-                    .start()
+                    }.start()
             } else {
                 mainView.visibility = View.VISIBLE
                 mainView.scaleX = 1f
                 mainView.scaleY = 1f
 
-                mainView.animate()
-                    .scaleX(0f)
-                    .scaleY(0f)
-                    .setDuration(200)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .withEndAction {
+                mainView.animate().scaleX(0f).scaleY(0f).setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
                         mainView.visibility = View.GONE
                         mainView.scaleX = 1f
                         mainView.scaleY = 1f
-                    }
-                    .start()
+                    }.start()
             }
         }
     }
@@ -906,9 +888,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         this.setSideKeyEnterDrawable(drawableReturn)
                     }
 
-                    InputTypeForIME.TextEmailAddress,
-                    InputTypeForIME.TextEmailSubject,
-                    InputTypeForIME.TextNextLine -> {
+                    InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
@@ -922,9 +902,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         this.setSideKeyEnterDrawable(drawableCheck)
                     }
 
-                    InputTypeForIME.TextWebSearchView,
-                    InputTypeForIME.TextWebSearchViewFireFox,
-                    InputTypeForIME.TextSearchView -> {
+                    InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
@@ -1056,17 +1034,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setSymbols(mainView: MainLayoutBinding) {
         mainView.keyboardSymbolView.setSymbolLists(
-            emojiList,
-            emoticonList,
-            symbolList,
-            0
+            emojiList, emoticonList, symbolList, 0
         )
     }
 
     private fun setCandidateClick(
-        candidate: Candidate,
-        insertString: String,
-        currentInputMode: InputMode
+        candidate: Candidate, insertString: String, currentInputMode: InputMode
     ) {
         if (insertString.isNotEmpty()) {
             commitCandidateText(candidate, insertString, currentInputMode)
@@ -1075,49 +1048,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun commitCandidateText(
-        candidate: Candidate,
-        insertString: String,
-        currentInputMode: InputMode
+        candidate: Candidate, insertString: String, currentInputMode: InputMode
     ) {
         val candidateType = candidate.type.toInt()
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             stringInTail.set(insertString.substring(candidate.length.toInt()))
+            commitText(candidate.string, 1)
+            _inputString.value = EMPTY_STRING
+            return
         } else if (candidateType == 15) {
             val readingCorrection = candidate.string.correctReading()
             if (stringInTail.get().isNotEmpty()) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    if (currentInputMode == InputMode.ModeJapanese) {
-                        val learnData = LearnEntity(
-                            input = _inputString.value,
-                            out = readingCorrection.first
-                        )
-                        learnRepository.upsertLearnedData(learnData)
-                    }
-                    commitText(readingCorrection.first, 1)
-                }
+                commitText(readingCorrection.first, 1)
             } else {
-                CoroutineScope(Dispatchers.IO).launch {
-                    if (currentInputMode == InputMode.ModeJapanese) {
-                        val learnData = LearnEntity(
-                            input = _inputString.value,
-                            out = readingCorrection.first
-                        )
-                        learnRepository.upsertLearnedData(learnData)
-                    }
-                    commitText(readingCorrection.first, 1)
-                    _inputString.value = EMPTY_STRING
-                }
+                commitText(readingCorrection.first, 1)
+                _inputString.value = EMPTY_STRING
             }
             return
         }
-        CoroutineScope(Dispatchers.IO).launch {
-            if (currentInputMode == InputMode.ModeJapanese) {
-                val learnData = LearnEntity(
-                    input = _inputString.value,
-                    out = candidate.string
-                )
-                learnRepository.upsertLearnedData(learnData)
+        if (currentInputMode == InputMode.ModeJapanese) {
+            val isEnable = appPreference.learn_dictionary_preference
+            if (isEnable == null) {
+                commitText(candidate.string, 1)
+                _inputString.value = EMPTY_STRING
+            } else {
+                appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
+                    if (enabledLearnDictionary) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val learnData = LearnEntity(
+                                input = _inputString.value, out = candidate.string
+                            )
+                            learnRepository.upsertLearnedData(learnData)
+                            commitText(candidate.string, 1)
+                            _inputString.value = EMPTY_STRING
+                        }
+                    } else {
+                        commitText(candidate.string, 1)
+                        _inputString.value = EMPTY_STRING
+                    }
+                }
             }
+
+        } else {
             commitText(candidate.string, 1)
             _inputString.value = EMPTY_STRING
         }
@@ -1216,8 +1188,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setComposingTextPreEdit(
-        inputString: String,
-        spannableString: SpannableString
+        inputString: String, spannableString: SpannableString
     ) {
         val inputLength = inputString.length
         val tailLength = stringInTail.get().length
@@ -1231,10 +1202,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 setSpan(
-                    UnderlineSpan(),
-                    0,
-                    inputLength + tailLength,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    UnderlineSpan(), 0, inputLength + tailLength, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
         } else {
@@ -1255,10 +1223,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 setSpan(
-                    UnderlineSpan(),
-                    0,
-                    inputLength + tailLength,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    UnderlineSpan(), 0, inputLength + tailLength, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
             }
         }
@@ -1286,13 +1251,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setEnterKeyAction(suggestions: List<Candidate>) {
         val index = if (suggestionClickNum - 1 < 0) 0 else suggestionClickNum - 1
         val nextSuggestion = suggestions[index]
-        if (nextSuggestion.type == (15).toByte()) {
-            val readingCorrection = nextSuggestion.string.correctReading()
-            commitText(readingCorrection.first, 1)
-        } else {
-            commitText(nextSuggestion.string, 1)
+        when (nextSuggestion.type) {
+            (15).toByte() -> {
+                val readingCorrection = nextSuggestion.string.correctReading()
+                commitText(readingCorrection.first, 1)
+                _inputString.value = EMPTY_STRING
+            }
+
+            (5).toByte(), (7).toByte(), (8).toByte() -> {
+                stringInTail.set(_inputString.value.substring(nextSuggestion.length.toInt()))
+                commitText(nextSuggestion.string, 1)
+                _inputString.value = EMPTY_STRING
+            }
+
+            else -> {
+                val isEnable = appPreference.learn_dictionary_preference
+                if (isEnable == null) {
+                    commitText(nextSuggestion.string, 1)
+                    _inputString.value = EMPTY_STRING
+                } else {
+                    appPreference.learn_dictionary_preference?.let { enableLearnDictionary ->
+                        if (enableLearnDictionary) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val learnData = LearnEntity(
+                                    input = _inputString.value, out = nextSuggestion.string
+                                )
+                                learnRepository.upsertLearnedData(learnData)
+                                commitText(nextSuggestion.string, 1)
+                                _inputString.value = EMPTY_STRING
+                            }
+                        } else {
+                            commitText(nextSuggestion.string, 1)
+                            _inputString.value = EMPTY_STRING
+                        }
+                    }
+                }
+            }
         }
-        _inputString.value = EMPTY_STRING
         resetFlagsEnterKey()
     }
 
@@ -1390,18 +1385,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun getSuggestionList(insertString: String): List<Candidate> {
-        val resultFromEngine = kanaKanjiEngine.getCandidates(insertString, N_BEST)
-        val resultFromLearnDatabase = learnRepository.findLearnDataByInput(insertString)?.map {
-            Candidate(
-                string = it.out,
-                type = (19).toByte(),
-                length = (insertString.length).toUByte(),
-                score = it.score,
-            )
-        } ?: emptyList()
-        println("get candidate from learn: $resultFromLearnDatabase")
-        val result = resultFromLearnDatabase + resultFromEngine
-        return result.distinctBy { it.string }
+        appPreference.learn_dictionary_preference?.let { isLearnDictionaryEnable ->
+            if (isLearnDictionaryEnable) {
+                val resultFromEngine = kanaKanjiEngine.getCandidates(insertString, N_BEST)
+                val resultFromLearnDatabase =
+                    learnRepository.findLearnDataByInput(insertString)?.map {
+                        Candidate(
+                            string = it.out,
+                            type = (19).toByte(),
+                            length = (insertString.length).toUByte(),
+                            score = it.score,
+                        )
+                    } ?: emptyList()
+                val result = resultFromLearnDatabase + resultFromEngine
+                return result.distinctBy { it.string }
+            }
+        }
+        return kanaKanjiEngine.getCandidates(insertString, N_BEST)
     }
 
     private fun deleteLongPress() = scope.launch {
@@ -1413,16 +1413,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             // Exit conditions
             if (onDeleteLongPressUp.get() || !deleteKeyLongKeyPressed.get()) {
                 enableContinuousTapInput()
+                if (insertString.isEmpty()) {
+                    _suggestionFlag.emit(CandidateShowFlag.Idle)
+                } else {
+                    _suggestionFlag.emit(CandidateShowFlag.Updating)
+                }
                 break
             }
 
             if (insertString.isEmpty()) {
                 if (tailIsEmpty) {
-                    // Both insertString and stringInTail are empty
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 } else {
-                    // insertString is empty but stringInTail is not
                     enableContinuousTapInput()
+                    _suggestionFlag.emit(CandidateShowFlag.Idle)
                     break
                 }
             } else {
@@ -1432,12 +1436,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     if (tailIsEmpty) {
                         setComposingText("", 0)
                     }
-                    _inputString.value = EMPTY_STRING
+                    _inputString.update { EMPTY_STRING }
                 } else {
-                    _inputString.value = insertString.substring(0, newLength)
+                    _inputString.update { insertString.substring(0, newLength) }
                 }
             }
-
             delay(LONG_DELAY_TIME)
         }
     }
@@ -1508,9 +1511,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
-            InputTypeForIME.TextWebSearchView,
-            InputTypeForIME.TextWebSearchViewFireFox,
-            InputTypeForIME.TextSearchView -> {
+            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                 Timber.d(
                     "enter key search: ${EditorInfo.IME_ACTION_SEARCH}" + "\n${currentInputEditorInfo.inputType}" + "\n${currentInputEditorInfo.imeOptions}" + "\n${currentInputEditorInfo.actionId}" + "\n${currentInputEditorInfo.privateImeOptions}"
                 )
@@ -1577,8 +1578,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleNonEmptyInputEnterKey(
-        suggestions: List<Candidate>,
-        mainView: MainLayoutBinding
+        suggestions: List<Candidate>, mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.apply {
             when (currentInputMode) {
@@ -1637,18 +1637,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
         val currentDrawable = when (currentInputType) {
-            InputTypeForIME.TextWebSearchView,
-            InputTypeForIME.TextWebSearchViewFireFox,
-            InputTypeForIME.TextSearchView -> drawableSearch
+            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> drawableSearch
 
-            InputTypeForIME.TextMultiLine,
-            InputTypeForIME.TextImeMultiLine,
-            InputTypeForIME.TextShortMessage,
-            InputTypeForIME.TextLongMessage -> drawableReturn
+            InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage -> drawableReturn
 
-            InputTypeForIME.TextEmailAddress,
-            InputTypeForIME.TextEmailSubject,
-            InputTypeForIME.TextNextLine -> drawableArrowTab
+            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> drawableArrowTab
 
             InputTypeForIME.TextDone -> drawableCheck
             else -> drawableRightArrow
@@ -1732,8 +1725,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun asyncLeftLongPress() = scope.launch {
         while (isActive) {
             val insertString = _inputString.value
-            if (onLeftKeyLongPressUp.get() || !leftCursorKeyLongKeyPressed.get()) break
-            if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) break
+            if (onLeftKeyLongPressUp.get() || !leftCursorKeyLongKeyPressed.get()) {
+                if (insertString.isEmpty()) {
+                    _suggestionFlag.emit(CandidateShowFlag.Idle)
+                } else {
+                    _suggestionFlag.emit(CandidateShowFlag.Updating)
+                }
+                break
+            }
+            if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
+                _suggestionFlag.emit(CandidateShowFlag.Idle)
+                break
+            }
             if (insertString.isNotEmpty()) {
                 updateLeftInputString(insertString)
             } else {
@@ -1760,8 +1763,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun asyncRightLongPress() = scope.launch {
         while (isActive) {
             val insertString = _inputString.value
-            if (onRightKeyLongPressUp.get() || !rightCursorKeyLongKeyPressed.get()) break
-            if (stringInTail.get().isEmpty() && _inputString.value.isNotEmpty()) break
+            if (onRightKeyLongPressUp.get() || !rightCursorKeyLongKeyPressed.get()) {
+                if (insertString.isNotEmpty()) {
+                    _suggestionFlag.emit(CandidateShowFlag.Updating)
+                } else {
+                    _suggestionFlag.emit(CandidateShowFlag.Idle)
+                }
+                break
+            }
+            if (stringInTail.get().isEmpty() && _inputString.value.isNotEmpty()) {
+                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                break
+            }
             actionInRightKeyPressed(insertString)
             delay(LONG_DELAY_TIME)
         }

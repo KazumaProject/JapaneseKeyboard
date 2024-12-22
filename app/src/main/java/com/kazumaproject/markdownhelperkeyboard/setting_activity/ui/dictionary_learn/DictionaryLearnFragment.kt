@@ -1,18 +1,27 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_learn
 
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentLearnDictionaryBinding
 import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionaryAdapter
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -48,12 +57,99 @@ class DictionaryLearnFragment : Fragment() {
             layoutManager = LinearLayoutManager(context)
             adapter = learnDictionaryAdapter
         }
+        learnDictionaryAdapter.setOnItemLongClickListener {
+            println("clicked $it")
+            val spannableMessage = SpannableStringBuilder()
+                .append("よみ：")
+                .append(
+                    it,
+                    ForegroundColorSpan(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.enter_key_bg
+                        )
+                    ),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                .append("を削除します。\n本当に辞書から削除しますか？")
+
+            val dialog = AlertDialog.Builder(requireContext())
+                .setTitle("削除の確認")
+                .setMessage(spannableMessage)
+                .setPositiveButton("はい") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        learnRepository.deleteByInput(it)
+                    }
+                }
+                .setNegativeButton("いいえ", null)
+                .show()
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+        }
+
+        learnDictionaryAdapter.setOnItemChildrenLongClickListener { s, s2 ->
+            val spannableMessage = SpannableStringBuilder()
+                .append("単語：")
+                .append(
+                    s2,
+                    ForegroundColorSpan(
+                        ContextCompat.getColor(
+                            requireContext(),
+                            R.color.enter_key_bg
+                        )
+                    ),
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                .append("を削除します。\n本当に辞書から削除しますか？")
+
+            val dialog = AlertDialog.Builder(requireContext())
+                .setTitle("削除の確認")
+                .setMessage(spannableMessage)
+                .setPositiveButton("はい") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        learnRepository.deleteByInputAndOutput(
+                            input = s,
+                            output = s2
+                        )
+                    }
+                }
+                .setNegativeButton("いいえ", null)
+                .show()
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+        }
+
+        binding.resetLearnDictionaryButton.setOnClickListener {
+            val dialog = AlertDialog.Builder(requireContext())
+                .setTitle("削除の確認")
+                .setMessage("学習辞書を削除します。\n本当に全て削除しますか？")
+                .setPositiveButton("はい") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        learnRepository.deleteAll()
+                    }
+                }
+                .setNegativeButton("いいえ", null)
+                .show()
+
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 learnRepository.all().collectLatest { data ->
+                    binding.resetLearnDictionaryButton.isVisible = data.isNotEmpty()
                     println("Dictionary data: $data")
                     val transformedData = data
                         .groupBy { it.input }
+                        .toSortedMap(compareBy { it })
                         .map { (key, value) ->
                             key to value.map { it.out }
                         }
