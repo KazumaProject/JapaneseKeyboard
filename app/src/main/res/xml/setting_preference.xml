@@ -1,21 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <PreferenceCategory
-        android:title="操作">
+    <PreferenceCategory android:title="操作">
         <SwitchPreference
+            android:defaultValue="true"
             android:key="vibration_preference"
-            android:title="バイブレーション"
             android:summary="キーをタップした際のバイブレーションの有無"
-            android:defaultValue="false"/>
+            android:title="バイブレーション" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory
-        android:title="アプリについて">
+    <PreferenceCategory android:title="辞書">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="learn_dictionary_preference"
+            android:summary="学習辞書を有効、無効にします。\n有効にすると変換候補に過去にタップした候補が表示されます。"
+            android:title="学習辞書" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="アプリについて">
         <Preference
             android:key="preference_open_source"
-            android:title="使用した Open Source のライブラリ"/>
+            android:title="使用した Open Source のライブラリ" />
     </PreferenceCategory>
 
 </PreferenceScreen>
