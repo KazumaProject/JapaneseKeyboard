@@ -31,6 +31,12 @@ class LearnDataOutputAdapter :
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
+    private var onItemLongClickListener: ((String) -> Unit)? = null
+
+    fun setOnItemLongClickListener(listener: (String) -> Unit) {
+        this.onItemLongClickListener = listener
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LearnDataOutputViewHolder {
         return LearnDataOutputViewHolder(
             LayoutInflater.from(parent.context).inflate(
@@ -46,7 +52,14 @@ class LearnDataOutputAdapter :
     }
 
     override fun onBindViewHolder(holder: LearnDataOutputViewHolder, position: Int) {
-        holder.tvOutput.text = learnDataOutputList[position]
+        holder.tvOutput.apply {
+            text = learnDataOutputList[position]
+            setOnLongClickListener {
+                onItemLongClickListener?.invoke(learnDataOutputList[position])
+                true
+            }
+        }
+
     }
 
 }
