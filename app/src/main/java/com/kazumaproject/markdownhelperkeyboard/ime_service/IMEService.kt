@@ -961,11 +961,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
         suggestionAdapter.apply {
-            this.setOnItemClickListener { candidate ->
+            this.setOnItemClickListener { candidate, position ->
                 val insertString = _inputString.value
                 val currentInputMode = mainView.keyboardView.currentInputMode
                 setVibrate()
-                setCandidateClick(candidate, insertString, currentInputMode)
+                setCandidateClick(
+                    candidate = candidate,
+                    insertString = insertString,
+                    currentInputMode = currentInputMode,
+                    position = position
+                )
             }
         }
         mainView.suggestionRecyclerView.apply {
@@ -1044,10 +1049,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setCandidateClick(
-        candidate: Candidate, insertString: String, currentInputMode: InputMode
+        candidate: Candidate,
+        insertString: String,
+        currentInputMode: InputMode,
+        position: Int
     ) {
         if (insertString.isNotEmpty()) {
-            commitCandidateText(candidate, insertString, currentInputMode)
+            commitCandidateText(
+                candidate = candidate,
+                insertString = insertString,
+                currentInputMode = currentInputMode,
+                position = position
+            )
             resetFlagsSuggestionClick()
         }
     }
@@ -1055,16 +1068,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun commitCandidateText(
         candidate: Candidate,
         insertString: String,
-        currentInputMode: InputMode
+        currentInputMode: InputMode,
+        position: Int
     ) {
-        processCandidate(candidate, insertString, currentInputMode)
+        processCandidate(
+            candidate = candidate,
+            insertString = insertString,
+            currentInputMode = currentInputMode,
+            position = position
+        )
     }
 
     private fun handleExactLengthMatch(
         insertString: String,
         candidateString: String,
         candidate: Candidate,
-        currentInputMode: InputMode
+        currentInputMode: InputMode,
+        position: Int
     ) {
         if (!learnMultiple.enabled()) {
             learnMultiple.start()
@@ -1073,7 +1093,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             upsertLearnDictionaryWhenTapCandidate(
                 currentInputMode = currentInputMode,
                 insertString = insertString,
-                candidate = candidate
+                candidate = candidate,
+                position = position
             )
         } else {
             learnMultiple.setInput(learnMultiple.getInput() + insertString)
@@ -1110,7 +1131,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun processCandidate(
         candidate: Candidate,
         insertString: String,
-        currentInputMode: InputMode
+        currentInputMode: InputMode,
+        position: Int
     ) {
         when (candidate.type.toInt()) {
             15 -> {
@@ -1126,23 +1148,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 upsertLearnDictionaryWhenTapCandidate(
                     currentInputMode = currentInputMode,
                     insertString = insertString,
-                    candidate = candidate
+                    candidate = candidate,
+                    position = position
                 )
             }
 
             else -> {
                 if (insertString.length == candidate.length.toInt()) {
                     handleExactLengthMatch(
-                        insertString,
-                        candidate.string,
-                        candidate,
-                        currentInputMode
+                        insertString = insertString,
+                        candidateString = candidate.string,
+                        candidate = candidate,
+                        currentInputMode = currentInputMode,
+                        position = position
                     )
                 } else {
                     handlePartialOrExcessLength(
-                        insertString,
-                        candidate.string,
-                        candidate.length.toInt()
+                        insertString = insertString,
+                        candidateString = candidate.string,
+                        candidateLength = candidate.length.toInt()
                     )
                 }
             }
@@ -1150,7 +1174,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun upsertLearnDictionaryWhenTapCandidate(
-        currentInputMode: InputMode, insertString: String, candidate: Candidate
+        currentInputMode: InputMode,
+        insertString: String,
+        candidate: Candidate,
+        position: Int
     ) {
         if (currentInputMode == InputMode.ModeJapanese) {
             val isEnable = appPreference.learn_dictionary_preference
@@ -1160,13 +1187,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             } else {
                 appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
                     if (enabledLearnDictionary) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val learnData = LearnEntity(
-                                input = insertString, out = candidate.string
-                            )
-                            learnRepository.upsertLearnedData(learnData)
+                        if (position == 0) {
                             commitText(candidate.string, 1)
                             _inputString.value = EMPTY_STRING
+                        } else {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val learnData = LearnEntity(
+                                    input = insertString, out = candidate.string
+                                )
+                                learnRepository.upsertLearnedData(learnData)
+                                commitText(candidate.string, 1)
+                                _inputString.value = EMPTY_STRING
+                            }
                         }
                     } else {
                         commitText(candidate.string, 1)
@@ -1382,7 +1414,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         val index = (suggestionClickNum - 1).coerceAtLeast(0)
         val nextSuggestion = suggestions[index]
-        processCandidate(nextSuggestion, insertString, currentInputMode)
+        processCandidate(
+            candidate = nextSuggestion,
+            insertString = insertString,
+            currentInputMode = currentInputMode,
+            position = index
+        )
         resetFlagsEnterKey()
     }
 
