@@ -73,6 +73,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isLatinAl
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.listener.FlickListener
@@ -106,9 +107,12 @@ import javax.inject.Named
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     sealed class CandidateShowFlag {
-        object Idle : CandidateShowFlag()
-        object Updating : CandidateShowFlag()
+        data object Idle : CandidateShowFlag()
+        data object Updating : CandidateShowFlag()
     }
+
+    @Inject
+    lateinit var learnMultiple: LearnMultiple
 
     @Inject
     @Named("main_ime_scope")
@@ -426,7 +430,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
                 if (insertString.isNotEmpty()) {
-                    handleNonEmptyInputEnterKey(suggestions, mainView)
+                    handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
                 } else {
                     handleEmptyInputEnterKey(mainView)
                 }
@@ -823,6 +827,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setComposingTextAfterEdit(inputString, spannableString)
             }
         } else {
+            println("input is empty now!!")
             if (stringInTail.get().isNotEmpty()) {
                 setComposingText(stringInTail.get(), 0)
                 onLeftKeyLongPressUp.set(true)
@@ -956,11 +961,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
         suggestionAdapter.apply {
-            this.setOnItemClickListener { candidate, position ->
+            this.setOnItemClickListener { candidate ->
                 val insertString = _inputString.value
                 val currentInputMode = mainView.keyboardView.currentInputMode
                 setVibrate()
-                setCandidateClick(candidate, insertString, currentInputMode, position)
+                setCandidateClick(candidate, insertString, currentInputMode)
             }
         }
         mainView.suggestionRecyclerView.apply {
@@ -1039,59 +1044,113 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setCandidateClick(
-        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
+        candidate: Candidate, insertString: String, currentInputMode: InputMode
     ) {
         if (insertString.isNotEmpty()) {
-            commitCandidateText(candidate, insertString, currentInputMode, position)
+            commitCandidateText(candidate, insertString, currentInputMode)
             resetFlagsSuggestionClick()
         }
     }
 
     private fun commitCandidateText(
-        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
+        candidate: Candidate,
+        insertString: String,
+        currentInputMode: InputMode
     ) {
-        val candidateType = candidate.type.toInt()
-        when (candidateType) {
-            5, 8 -> {
-                stringInTail.set(insertString.substring(candidate.length.toInt()))
-                commitText(candidate.string, 1)
-                _inputString.value = EMPTY_STRING
-                return
-            }
+        processCandidate(candidate, insertString, currentInputMode)
+    }
 
-            7 -> {
-                if (insertString.length == candidate.length.toInt()) {
-                    upsertLearnDictionaryWhenTapCandidate(
-                        currentInputMode, candidate, position
-                    )
-                } else {
-                    stringInTail.set(insertString.substring(candidate.length.toInt()))
-                    commitText(candidate.string, 1)
-                    _inputString.value = EMPTY_STRING
-                }
-                return
-            }
+    private fun handleExactLengthMatch(
+        insertString: String,
+        candidateString: String,
+        candidate: Candidate,
+        currentInputMode: InputMode
+    ) {
+        if (!learnMultiple.enabled()) {
+            learnMultiple.start()
+            learnMultiple.setInput(insertString)
+            learnMultiple.setWordToStringBuilder(candidateString)
+            upsertLearnDictionaryWhenTapCandidate(
+                currentInputMode = currentInputMode,
+                insertString = insertString,
+                candidate = candidate
+            )
+        } else {
+            learnMultiple.setInput(learnMultiple.getInput() + insertString)
+            learnMultiple.setWordToStringBuilder(candidateString)
+            upsertLearnDictionaryMultipleTapCandidate(
+                currentInputMode = currentInputMode,
+                input = learnMultiple.getInput(),
+                output = learnMultiple.getInputAndStringBuilder().second,
+                candidate = candidate,
+                insertString = insertString
+            )
+        }
+        if (stringInTail.get().isNullOrEmpty()) {
+            learnMultiple.stop()
+        }
+    }
 
+    private fun commitAndClearInput(candidateString: String) {
+        commitText(candidateString, 1)
+        _inputString.value = EMPTY_STRING
+    }
+
+    private fun handlePartialOrExcessLength(
+        insertString: String,
+        candidateString: String,
+        candidateLength: Int
+    ) {
+        if (insertString.length > candidateLength) {
+            stringInTail.set(insertString.substring(candidateLength))
+        }
+        commitAndClearInput(candidateString)
+    }
+
+    private fun processCandidate(
+        candidate: Candidate,
+        insertString: String,
+        currentInputMode: InputMode
+    ) {
+        when (candidate.type.toInt()) {
             15 -> {
                 val readingCorrection = candidate.string.correctReading()
-                if (stringInTail.get().isNotEmpty()) {
-                    commitText(readingCorrection.first, 1)
+                commitAndClearInput(readingCorrection.first)
+            }
+
+            14 -> {
+                commitAndClearInput(candidate.string)
+            }
+
+            9, 11, 12, 13 -> {
+                upsertLearnDictionaryWhenTapCandidate(
+                    currentInputMode = currentInputMode,
+                    insertString = insertString,
+                    candidate = candidate
+                )
+            }
+
+            else -> {
+                if (insertString.length == candidate.length.toInt()) {
+                    handleExactLengthMatch(
+                        insertString,
+                        candidate.string,
+                        candidate,
+                        currentInputMode
+                    )
                 } else {
-                    commitText(readingCorrection.first, 1)
-                    _inputString.value = EMPTY_STRING
+                    handlePartialOrExcessLength(
+                        insertString,
+                        candidate.string,
+                        candidate.length.toInt()
+                    )
                 }
-                return
             }
         }
-        upsertLearnDictionaryWhenTapCandidate(
-            currentInputMode, candidate, position
-        )
     }
 
     private fun upsertLearnDictionaryWhenTapCandidate(
-        currentInputMode: InputMode,
-        candidate: Candidate,
-        position: Int
+        currentInputMode: InputMode, insertString: String, candidate: Candidate
     ) {
         if (currentInputMode == InputMode.ModeJapanese) {
             val isEnable = appPreference.learn_dictionary_preference
@@ -1101,18 +1160,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             } else {
                 appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
                     if (enabledLearnDictionary) {
-                        if (position == 0) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val learnData = LearnEntity(
+                                input = insertString, out = candidate.string
+                            )
+                            learnRepository.upsertLearnedData(learnData)
                             commitText(candidate.string, 1)
                             _inputString.value = EMPTY_STRING
-                        } else {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val learnData = LearnEntity(
-                                    input = _inputString.value, out = candidate.string
-                                )
-                                learnRepository.upsertLearnedData(learnData)
-                                commitText(candidate.string, 1)
-                                _inputString.value = EMPTY_STRING
+                        }
+                    } else {
+                        commitText(candidate.string, 1)
+                        _inputString.value = EMPTY_STRING
+                    }
+                }
+            }
+
+        } else {
+            commitText(candidate.string, 1)
+            _inputString.value = EMPTY_STRING
+        }
+    }
+
+    private fun upsertLearnDictionaryMultipleTapCandidate(
+        currentInputMode: InputMode,
+        input: String,
+        output: String,
+        candidate: Candidate,
+        insertString: String
+    ) {
+        if (currentInputMode == InputMode.ModeJapanese) {
+            val isEnable = appPreference.learn_dictionary_preference
+            if (isEnable == null) {
+                commitText(candidate.string, 1)
+                _inputString.value = EMPTY_STRING
+            } else {
+                appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
+                    if (enabledLearnDictionary) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val learnData = LearnEntity(
+                                input = input, out = output
+                            )
+                            val learnData2 = LearnEntity(
+                                input = insertString, out = candidate.string
+                            )
+                            learnRepository.apply {
+                                upsertLearnedData(learnData)
+                                upsertLearnedData(learnData2)
                             }
+                            commitText(candidate.string, 1)
+                            _inputString.value = EMPTY_STRING
                         }
                     } else {
                         commitText(candidate.string, 1)
@@ -1147,6 +1243,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isFirstClickHasStringTail = false
         resetKeyboard()
         _keyboardSymbolViewState.value = false
+        learnMultiple.stop()
     }
 
     private fun actionInDestroy() {
@@ -1281,83 +1378,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setEnterKeyAction(
-        suggestions: List<Candidate>,
-        currentInputMode: InputMode
+        suggestions: List<Candidate>, currentInputMode: InputMode, insertString: String
     ) {
-        val index = if (suggestionClickNum - 1 < 0) 0 else suggestionClickNum - 1
+        val index = (suggestionClickNum - 1).coerceAtLeast(0)
         val nextSuggestion = suggestions[index]
-        when (nextSuggestion.type) {
-            (15).toByte() -> {
-                val readingCorrection = nextSuggestion.string.correctReading()
-                commitText(readingCorrection.first, 1)
-                _inputString.value = EMPTY_STRING
-            }
-
-            (5).toByte(), (8).toByte() -> {
-                stringInTail.set(_inputString.value.substring(nextSuggestion.length.toInt()))
-                commitText(nextSuggestion.string, 1)
-                _inputString.value = EMPTY_STRING
-            }
-
-            (7).toByte() -> {
-                if (_inputString.value.isNotEmpty()) {
-                    if (_inputString.value.length == nextSuggestion.length.toInt()) {
-                        upsertLearnDictionaryEnterKey(
-                            currentInputMode, nextSuggestion, index
-                        )
-                    } else {
-                        stringInTail.set(_inputString.value.substring(nextSuggestion.length.toInt()))
-                        commitText(nextSuggestion.string, 1)
-                        _inputString.value = EMPTY_STRING
-                    }
-                }
-            }
-
-            else -> {
-                upsertLearnDictionaryEnterKey(
-                    currentInputMode, nextSuggestion, index
-                )
-            }
-        }
+        processCandidate(nextSuggestion, insertString, currentInputMode)
         resetFlagsEnterKey()
-    }
-
-    private fun upsertLearnDictionaryEnterKey(
-        currentInputMode: InputMode,
-        nextSuggestion: Candidate,
-        index: Int
-    ) {
-        if (currentInputMode == InputMode.ModeJapanese) {
-            val isEnable = appPreference.learn_dictionary_preference
-            if (isEnable == null) {
-                commitText(nextSuggestion.string, 1)
-                _inputString.value = EMPTY_STRING
-            } else {
-                appPreference.learn_dictionary_preference?.let { enableLearnDictionary ->
-                    if (enableLearnDictionary) {
-                        if (index == 0) {
-                            commitText(nextSuggestion.string, 1)
-                            _inputString.value = EMPTY_STRING
-                        } else {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val learnData = LearnEntity(
-                                    input = _inputString.value, out = nextSuggestion.string
-                                )
-                                learnRepository.upsertLearnedData(learnData)
-                                commitText(nextSuggestion.string, 1)
-                                _inputString.value = EMPTY_STRING
-                            }
-                        }
-                    } else {
-                        commitText(nextSuggestion.string, 1)
-                        _inputString.value = EMPTY_STRING
-                    }
-                }
-            }
-        } else {
-            commitText(nextSuggestion.string, 1)
-            _inputString.value = EMPTY_STRING
-        }
     }
 
     private fun setTenkeyIconsInHenkan(insertString: String, mainView: MainLayoutBinding) {
@@ -1647,13 +1673,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleNonEmptyInputEnterKey(
-        suggestions: List<Candidate>, mainView: MainLayoutBinding
+        suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String
     ) {
         mainView.keyboardView.apply {
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
                     if (isHenkan.get()) {
-                        handleHenkanModeEnterKey(suggestions, currentInputMode)
+                        handleHenkanModeEnterKey(suggestions, currentInputMode, insertString)
                     } else {
                         finishInputEnterKey()
                     }
@@ -1684,13 +1710,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleHenkanModeEnterKey(
-        suggestions: List<Candidate>,
-        currentInputMode: InputMode
+        suggestions: List<Candidate>, currentInputMode: InputMode, insertString: String
     ) {
         if (suggestionClickNum !in suggestions.indices) {
             suggestionClickNum = 0
         }
-        setEnterKeyAction(suggestions, currentInputMode)
+        setEnterKeyAction(suggestions, currentInputMode, insertString)
     }
 
     private fun handleEmptyInputEnterKey(mainView: MainLayoutBinding) {

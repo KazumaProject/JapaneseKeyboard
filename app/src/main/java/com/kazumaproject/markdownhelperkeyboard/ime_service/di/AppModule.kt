@@ -23,10 +23,10 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
-import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDataOutputAdapter
 import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionaryAdapter
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDatabase
+import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.preprocessLBSIntoBooleanArray
 import com.kazumaproject.toBooleanArray
@@ -68,6 +68,10 @@ object AppModule {
     @Singleton
     @Provides
     fun providesLearnDictionaryAdapter(): LearnDictionaryAdapter = LearnDictionaryAdapter()
+
+    @Singleton
+    @Provides
+    fun providesLearnMultiple(): LearnMultiple = LearnMultiple()
 
     @MainDispatcher
     @Singleton
@@ -1045,6 +1049,5 @@ object AppModule {
     @Provides
     @SymbolList
     fun provideSymbolList(kanaKanjiEngine: KanaKanjiEngine) = kanaKanjiEngine.getSymbolCandidates()
-
 
 }

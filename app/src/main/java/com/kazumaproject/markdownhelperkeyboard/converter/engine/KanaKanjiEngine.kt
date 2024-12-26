@@ -1191,49 +1191,6 @@ class KanaKanjiEngine {
         )
     }
 
-    suspend fun nBestPath(
-        input: String, n: Int
-    ): List<Candidate> {
-        val graph = graphBuilder.constructGraph(
-            input,
-            systemYomiTrie,
-            systemTangoTrie,
-            systemTokenArray,
-            systemRank0ArrayLBSYomi,
-            systemRank1ArrayLBSYomi,
-            systemRank1ArrayIsLeaf,
-            systemRank0ArrayTokenArrayBitvector,
-            systemRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
-            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
-            LBSBooleanArray = systemYomiLBSBooleanArray,
-            LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
-        )
-        val result = findPath.backwardAStar(graph, input.length, connectionIds, n)
-        result.apply {
-            if (!this.map { it.string }.contains(input)) {
-                add(
-                    Candidate(
-                        string = input,
-                        type = (3).toByte(),
-                        length = (input.length).toUByte(),
-                        score = (input.length) * 2000
-                    )
-                )
-            }
-            if (!this.map { it.string }.contains(input.hiraToKata())) {
-                add(
-                    Candidate(
-                        string = input.hiraToKata(),
-                        type = (3).toByte(),
-                        length = (input.length).toUByte(),
-                        score = (input.length) * 2000
-                    )
-                )
-            }
-        }
-        return result
-    }
 
     private fun nBestPathForLongest(
         input: String, n: Int

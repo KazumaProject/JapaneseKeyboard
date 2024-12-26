@@ -33,9 +33,9 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         }
     }
 
-    private var onItemClickListener: ((Candidate, Int) -> Unit)? = null
+    private var onItemClickListener: ((Candidate) -> Unit)? = null
 
-    fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
+    fun setOnItemClickListener(onItemClick: (Candidate) -> Unit) {
         this.onItemClickListener = onItemClick
     }
 
@@ -111,7 +111,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         }
         holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {
-            onItemClickListener?.invoke(suggestion, position)
+            onItemClickListener?.invoke(suggestion)
         }
     }
 
