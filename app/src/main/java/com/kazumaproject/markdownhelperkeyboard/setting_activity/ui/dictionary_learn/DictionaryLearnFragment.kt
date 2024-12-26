@@ -24,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -38,10 +39,6 @@ class DictionaryLearnFragment : Fragment() {
     @Inject
     lateinit var learnDictionaryAdapter: LearnDictionaryAdapter
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -53,111 +50,107 @@ class DictionaryLearnFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupRecyclerView()
+        setupResetButton()
+        observeDictionaryData()
+    }
+
+    private fun setupRecyclerView() {
         binding.learnDictionaryRecyclerView.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = learnDictionaryAdapter
         }
-        learnDictionaryAdapter.setOnItemLongClickListener {
-            println("clicked $it")
-            val spannableMessage = SpannableStringBuilder()
-                .append("よみ：")
-                .append(
-                    it,
-                    ForegroundColorSpan(
-                        ContextCompat.getColor(
-                            requireContext(),
-                            R.color.enter_key_bg
-                        )
-                    ),
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                .append("を削除します。\n本当に辞書から削除しますか？")
 
-            val dialog = AlertDialog.Builder(requireContext())
-                .setTitle("削除の確認")
-                .setMessage(spannableMessage)
-                .setPositiveButton("はい") { _, _ ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        learnRepository.deleteByInput(it)
-                    }
-                }
-                .setNegativeButton("いいえ", null)
-                .show()
-
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
-                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+        learnDictionaryAdapter.setOnItemLongClickListener { input ->
+            showConfirmationDialog(
+                message = buildSpannableMessage("よみ：", input),
+                positiveAction = { deleteByInput(input) }
+            )
         }
 
-        learnDictionaryAdapter.setOnItemChildrenLongClickListener { s, s2 ->
-            val spannableMessage = SpannableStringBuilder()
-                .append("単語：")
-                .append(
-                    s2,
-                    ForegroundColorSpan(
-                        ContextCompat.getColor(
-                            requireContext(),
-                            R.color.enter_key_bg
-                        )
-                    ),
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                .append("を削除します。\n本当に辞書から削除しますか？")
-
-            val dialog = AlertDialog.Builder(requireContext())
-                .setTitle("削除の確認")
-                .setMessage(spannableMessage)
-                .setPositiveButton("はい") { _, _ ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        learnRepository.deleteByInputAndOutput(
-                            input = s,
-                            output = s2
-                        )
-                    }
-                }
-                .setNegativeButton("いいえ", null)
-                .show()
-
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
-                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+        learnDictionaryAdapter.setOnItemChildrenLongClickListener { input, output ->
+            showConfirmationDialog(
+                message = buildSpannableMessage("単語：", output),
+                positiveAction = { deleteByInputAndOutput(input, output) }
+            )
         }
+    }
 
+    private fun setupResetButton() {
         binding.resetLearnDictionaryButton.setOnClickListener {
-            val dialog = AlertDialog.Builder(requireContext())
-                .setTitle("削除の確認")
-                .setMessage("学習辞書を削除します。\n本当に全て削除しますか？")
-                .setPositiveButton("はい") { _, _ ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        learnRepository.deleteAll()
-                    }
-                }
-                .setNegativeButton("いいえ", null)
-                .show()
-
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
-                .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+            showConfirmationDialog(
+                message = "学習辞書を削除します。\n本当に全て削除しますか？",
+                positiveAction = { deleteAll() }
+            )
         }
+    }
+
+    private fun observeDictionaryData() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 learnRepository.all().collectLatest { data ->
                     binding.resetLearnDictionaryButton.isVisible = data.isNotEmpty()
                     println("Dictionary data: $data")
-                    val transformedData = data
-                        .groupBy { it.input }
+                    val transformedData = data.groupBy { it.input }
                         .toSortedMap(compareBy { it })
-                        .map { (key, value) ->
-                            key to value.map { it.out }
-                        }
+                        .map { (key, value) -> key to value.map { it.out } }
                     println("Dictionary data transformed: $transformedData")
                     learnDictionaryAdapter.learnDataList = transformedData
                 }
             }
         }
+    }
+
+    private fun showConfirmationDialog(
+        message: CharSequence,
+        positiveAction: suspend () -> Unit
+    ) {
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle("削除の確認")
+            .setMessage(message)
+            .setPositiveButton("はい") { _, _ ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    withContext(Dispatchers.Main) {
+                        binding.progressBarLearnDictionaryFragment.isVisible = true
+                    }
+                    positiveAction()
+                    withContext(Dispatchers.Main) {
+                        binding.progressBarLearnDictionaryFragment.isVisible = false
+                    }
+                }
+            }
+            .setNegativeButton("いいえ", null)
+            .show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+            .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+    }
+
+    private fun buildSpannableMessage(prefix: String, content: String): SpannableStringBuilder {
+        return SpannableStringBuilder()
+            .append(prefix)
+            .append(
+                content,
+                ForegroundColorSpan(
+                    ContextCompat.getColor(requireContext(), R.color.enter_key_bg)
+                ),
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            .append("を削除します。\n本当に辞書から削除しますか？")
+    }
+
+    private suspend fun deleteByInput(input: String) {
+        learnRepository.deleteByInput(input)
+    }
+
+    private suspend fun deleteByInputAndOutput(input: String, output: String) {
+        learnRepository.deleteByInputAndOutput(input = input, output = output)
+    }
+
+    private suspend fun deleteAll() {
+        learnRepository.deleteAll()
     }
 
 }
