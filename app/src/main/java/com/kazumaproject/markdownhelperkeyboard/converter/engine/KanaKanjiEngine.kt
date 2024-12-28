@@ -348,8 +348,8 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.emojiYomiLBSPreprocess = emojiYomiLBSPreprocess
         this@KanaKanjiEngine.emoticonYomiLBSPreprocess = emoticonYomiLBSPreprocess
         this@KanaKanjiEngine.symbolYomiLBSPreprocess = symbolYomiLBSPreprocess
-        this@KanaKanjiEngine.readingCorrectionYomiLBSPreprocess =readingCorrectionYomiLBSPreprocess
-        this@KanaKanjiEngine.kotowazaYomiLBSPreprocess =kotowazaYomiLBSPreprocess
+        this@KanaKanjiEngine.readingCorrectionYomiLBSPreprocess = readingCorrectionYomiLBSPreprocess
+        this@KanaKanjiEngine.kotowazaYomiLBSPreprocess = kotowazaYomiLBSPreprocess
     }
 
     suspend fun getCandidates(
@@ -981,7 +981,6 @@ class KanaKanjiEngine {
         }
 
         val numbersDeferred = async(Dispatchers.Default) {
-
             val numbersList = input.toNumber()
             val numberExponent = input.toNumberExponent()
             val numberInKanji = input.toKanjiNumber()
@@ -1059,7 +1058,7 @@ class KanaKanjiEngine {
                             string = numbersList.first.toLong().convertToKanjiNotation(),
                             type = 17,
                             length = input.length.toUByte(),
-                            score = 1000,
+                            score = 8000,
                             leftId = 2040,
                             rightId = 2040
                         )
@@ -1068,7 +1067,7 @@ class KanaKanjiEngine {
                             string = numbersList.first.addCommasToNumber(),
                             type = 19,
                             length = input.length.toUByte(),
-                            score = 1001,
+                            score = 8001,
                             leftId = 2040,
                             rightId = 2040
                         )
@@ -1077,7 +1076,7 @@ class KanaKanjiEngine {
                             string = it,
                             type = 18,
                             length = input.length.toUByte(),
-                            score = 1002,
+                            score = 8002,
                             leftId = 2040,
                             rightId = 2040
                         )
@@ -1139,9 +1138,9 @@ class KanaKanjiEngine {
             }日"
         val formatterR06 = "R${calendar.get(Calendar.YEAR) - 2018}/${
             String.format(
-                "%02d", calendar.get(Calendar.MONTH) + 1
+                Locale.getDefault(), "%02d", calendar.get(Calendar.MONTH) + 1
             )
-        }/${String.format("%02d", calendar.get(Calendar.DAY_OF_MONTH))}"
+        }/${String.format(Locale.getDefault(), "%02d", calendar.get(Calendar.DAY_OF_MONTH))}"
         val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(calendar.time)
 
         return listOf(
