@@ -2,7 +2,13 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
 
 import java.text.DecimalFormat
 
+fun detectMultipleSen(input: String): Boolean {
+    val regex = """^(せん){2,}$""".toRegex()
+    return regex.matches(input)
+}
+
 fun String.toNumber(): Pair<String, String>? {
+    if (this == "ちょうせん" || detectMultipleSen(this) || this == "おくせん") return null
     val digits = mapOf(
         "ぜろ" to 0L, "れい" to 0L,
         "いち" to 1L, "いっ" to 1L,

@@ -1524,7 +1524,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     learnRepository.findLearnDataByInput(insertString)?.map {
                         Candidate(
                             string = it.out,
-                            type = (19).toByte(),
+                            type = (20).toByte(),
                             length = (insertString.length).toUByte(),
                             score = it.score,
                         )
