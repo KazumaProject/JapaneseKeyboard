@@ -503,6 +503,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeySymbol -> {
                 setVibrate()
                 _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                stringInTail.set(EMPTY_STRING)
                 finishComposingText()
                 mainView.keyboardSymbolView.setTabPosition(0)
             }
@@ -1703,7 +1704,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionClickNum += 1
         suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
         mainView.suggestionRecyclerView.apply {
-            smoothScrollToPosition((suggestionClickNum - 1 + 2).coerceAtLeast(0).coerceAtMost(suggestions.size -1))
+            smoothScrollToPosition(
+                (suggestionClickNum - 1 + 2).coerceAtLeast(0).coerceAtMost(suggestions.size - 1)
+            )
             suggestionAdapter.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
         }
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
