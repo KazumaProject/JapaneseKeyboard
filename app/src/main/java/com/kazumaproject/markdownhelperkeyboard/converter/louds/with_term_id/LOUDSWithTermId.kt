@@ -95,6 +95,25 @@ class LOUDSWithTermId {
         return list.toList().asReversed().joinToString("")
     }
 
+    fun contains(
+        str: String,
+        rank1Array: IntArray,
+        rank0Array: IntArray
+    ): Boolean {
+        var currentNodeIndex = 0
+
+        for (char in str) {
+            currentNodeIndex = traverse(
+                currentNodeIndex,
+                char,
+                rank0Array = rank0Array,
+                rank1Array = rank1Array
+            )
+            if (currentNodeIndex == -1) return false
+        }
+        return isLeaf[currentNodeIndex]
+    }
+
 
     fun getNodeIndex(
         s: String,

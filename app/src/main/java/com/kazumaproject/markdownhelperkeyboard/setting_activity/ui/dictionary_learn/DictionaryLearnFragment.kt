@@ -40,9 +40,7 @@ class DictionaryLearnFragment : Fragment() {
     lateinit var learnDictionaryAdapter: LearnDictionaryAdapter
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         _binding = FragmentLearnDictionaryBinding.inflate(inflater, container, false)
         return binding.root
@@ -62,26 +60,20 @@ class DictionaryLearnFragment : Fragment() {
         }
 
         learnDictionaryAdapter.setOnItemLongClickListener { input ->
-            showConfirmationDialog(
-                message = buildSpannableMessage("よみ：", input),
-                positiveAction = { deleteByInput(input) }
-            )
+            showConfirmationDialog(message = buildSpannableMessage("よみ：", input),
+                positiveAction = { deleteByInput(input) })
         }
 
         learnDictionaryAdapter.setOnItemChildrenLongClickListener { input, output ->
-            showConfirmationDialog(
-                message = buildSpannableMessage("単語：", output),
-                positiveAction = { deleteByInputAndOutput(input, output) }
-            )
+            showConfirmationDialog(message = buildSpannableMessage("単語：", output),
+                positiveAction = { deleteByInputAndOutput(input, output) })
         }
     }
 
     private fun setupResetButton() {
         binding.resetLearnDictionaryButton.setOnClickListener {
-            showConfirmationDialog(
-                message = "学習辞書を削除します。\n本当に全て削除しますか？",
-                positiveAction = { deleteAll() }
-            )
+            showConfirmationDialog(message = "学習辞書を削除します。\n本当に全て削除しますか？",
+                positiveAction = { deleteAll() })
         }
     }
 
@@ -91,8 +83,7 @@ class DictionaryLearnFragment : Fragment() {
                 learnRepository.all().collectLatest { data ->
                     binding.resetLearnDictionaryButton.isVisible = data.isNotEmpty()
                     println("Dictionary data: $data")
-                    val transformedData = data.groupBy { it.input }
-                        .toSortedMap(compareBy { it })
+                    val transformedData = data.groupBy { it.input }.toSortedMap(compareBy { it })
                         .map { (key, value) -> key to value.map { it.out } }
                     println("Dictionary data transformed: $transformedData")
                     learnDictionaryAdapter.learnDataList = transformedData
@@ -102,25 +93,21 @@ class DictionaryLearnFragment : Fragment() {
     }
 
     private fun showConfirmationDialog(
-        message: CharSequence,
-        positiveAction: suspend () -> Unit
+        message: CharSequence, positiveAction: suspend () -> Unit
     ) {
-        val dialog = AlertDialog.Builder(requireContext())
-            .setTitle("削除の確認")
-            .setMessage(message)
-            .setPositiveButton("はい") { _, _ ->
-                CoroutineScope(Dispatchers.IO).launch {
-                    withContext(Dispatchers.Main) {
-                        binding.progressBarLearnDictionaryFragment.isVisible = true
+        val dialog =
+            AlertDialog.Builder(requireContext()).setTitle("削除の確認").setMessage(message)
+                .setPositiveButton("はい") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        withContext(Dispatchers.Main) {
+                            binding.progressBarLearnDictionaryFragment.isVisible = true
+                        }
+                        positiveAction()
+                        withContext(Dispatchers.Main) {
+                            binding.progressBarLearnDictionaryFragment.isVisible = false
+                        }
                     }
-                    positiveAction()
-                    withContext(Dispatchers.Main) {
-                        binding.progressBarLearnDictionaryFragment.isVisible = false
-                    }
-                }
-            }
-            .setNegativeButton("いいえ", null)
-            .show()
+                }.setNegativeButton("いいえ", null).show()
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)
             .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
@@ -129,16 +116,11 @@ class DictionaryLearnFragment : Fragment() {
     }
 
     private fun buildSpannableMessage(prefix: String, content: String): SpannableStringBuilder {
-        return SpannableStringBuilder()
-            .append(prefix)
-            .append(
-                content,
-                ForegroundColorSpan(
+        return SpannableStringBuilder().append(prefix).append(
+                content, ForegroundColorSpan(
                     ContextCompat.getColor(requireContext(), R.color.enter_key_bg)
-                ),
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-            )
-            .append("を削除します。\n本当に辞書から削除しますか？")
+                ), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            ).append("を削除します。\n本当に辞書から削除しますか？")
     }
 
     private suspend fun deleteByInput(input: String) {

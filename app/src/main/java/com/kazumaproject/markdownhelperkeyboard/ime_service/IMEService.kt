@@ -1050,10 +1050,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setCandidateClick(
-        candidate: Candidate,
-        insertString: String,
-        currentInputMode: InputMode,
-        position: Int
+        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         if (insertString.isNotEmpty()) {
             commitCandidateText(
@@ -1067,10 +1064,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun commitCandidateText(
-        candidate: Candidate,
-        insertString: String,
-        currentInputMode: InputMode,
-        position: Int
+        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         processCandidate(
             candidate = candidate,
@@ -1119,9 +1113,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handlePartialOrExcessLength(
-        insertString: String,
-        candidateString: String,
-        candidateLength: Int
+        insertString: String, candidateString: String, candidateLength: Int
     ) {
         if (insertString.length > candidateLength) {
             stringInTail.set(insertString.substring(candidateLength))
@@ -1130,10 +1122,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun processCandidate(
-        candidate: Candidate,
-        insertString: String,
-        currentInputMode: InputMode,
-        position: Int
+        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         when (candidate.type.toInt()) {
             15 -> {
@@ -1175,10 +1164,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun upsertLearnDictionaryWhenTapCandidate(
-        currentInputMode: InputMode,
-        insertString: String,
-        candidate: Candidate,
-        position: Int
+        currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         if (currentInputMode == InputMode.ModeJapanese) {
             val isEnable = appPreference.learn_dictionary_preference
@@ -1520,7 +1506,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun getSuggestionList(insertString: String): List<Candidate> {
         appPreference.learn_dictionary_preference?.let { isLearnDictionaryEnable ->
             if (isLearnDictionaryEnable) {
-                val resultFromEngine = kanaKanjiEngine.getCandidates(insertString, N_BEST)
+                val resultFromEngine = kanaKanjiEngine.getCandidates(
+                    insertString, appPreference.n_best_preference ?: N_BEST
+                )
                 val resultFromLearnDatabase =
                     learnRepository.findLearnDataByInput(insertString)?.map {
                         Candidate(
@@ -1534,7 +1522,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 return result.distinctBy { it.string }
             }
         }
-        return kanaKanjiEngine.getCandidates(insertString, N_BEST)
+        return kanaKanjiEngine.getCandidates(
+            insertString, appPreference.n_best_preference ?: N_BEST
+        )
     }
 
     private fun deleteLongPress() = scope.launch {
