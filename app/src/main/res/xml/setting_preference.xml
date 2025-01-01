@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="操作">
         <SwitchPreference
@@ -16,6 +17,17 @@
             android:key="learn_dictionary_preference"
             android:summary="学習辞書を有効、無効にします。\n有効にすると変換候補に過去にタップした候補が表示されます。"
             android:title="学習辞書" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="変換候補">
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:key="n_best_preference"
+            android:max="16"
+            android:summary="表示する変換候補の最大数を設定します。"
+            android:title="N-Best"
+            app:min="4"
+            app:showSeekBarValue="true"/>
     </PreferenceCategory>
 
     <PreferenceCategory android:title="アプリについて">

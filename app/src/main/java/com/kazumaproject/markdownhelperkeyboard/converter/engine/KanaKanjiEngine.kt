@@ -336,12 +336,9 @@ class KanaKanjiEngine {
             kotowazaRank0ArrayTokenArrayBitvector
         this@KanaKanjiEngine.kotowazaRank1ArrayTokenArrayBitvector =
             kotowazaRank1ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.kotowazaRank0ArrayLBSTango =
-            kotowazaRank0ArrayLBSTango
-        this@KanaKanjiEngine.kotowazaRank1ArrayLBSTango =
-            kotowazaRank1ArrayLBSTango
-        this@KanaKanjiEngine.kotowazaYomiLBSBooleanArray =
-            kotowazaYomiLBSBooleanArray
+        this@KanaKanjiEngine.kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayLBSTango
+        this@KanaKanjiEngine.kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayLBSTango
+        this@KanaKanjiEngine.kotowazaYomiLBSBooleanArray = kotowazaYomiLBSBooleanArray
 
         this@KanaKanjiEngine.systemYomiLBSPreprocess = systemYomiLBSPreprocess
         this@KanaKanjiEngine.singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSPreprocess
@@ -944,9 +941,7 @@ class KanaKanjiEngine {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> kotowazaTangoTrie.getLetterShortArray(
-                                it.nodeId,
-                                kotowazaRank0ArrayLBSTango,
-                                kotowazaRank1ArrayLBSTango
+                                it.nodeId, kotowazaRank0ArrayLBSTango, kotowazaRank1ArrayLBSTango
                             )
                         },
                         type = 16,
@@ -1101,22 +1096,17 @@ class KanaKanjiEngine {
 
     fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {
         emojiTangoTrie.getLetterShortArray(
-            it,
-            emojiRank0ArrayLBSTango,
-            emojiRank1ArrayLBSTango
+            it, emojiRank0ArrayLBSTango, emojiRank1ArrayLBSTango
         )
     }.distinct().sortByEmojiCategory().distinct()
 
     fun getSymbolEmoticonCandidates(): List<String> = emoticonTokenArray.getNodeIds().map {
         emoticonTangoTrie.getLetterShortArray(
-            it,
-            emoticonRank0ArrayLBSTango,
-            emoticonRank1ArrayLBSTango
+            it, emoticonRank0ArrayLBSTango, emoticonRank1ArrayLBSTango
         )
     }.distinct()
 
-    fun getSymbolCandidates():
-            List<String> = symbolTokenArray.getNodeIds().map {
+    fun getSymbolCandidates(): List<String> = symbolTokenArray.getNodeIds().map {
         if (it >= 0) {
             symbolTangoTrie.getLetterShortArray(
                 it, symbolRank0ArrayLBSTango, symbolRank1ArrayLBSTango
@@ -1210,6 +1200,19 @@ class KanaKanjiEngine {
             LBSBooleanArrayPreprocess = systemYomiLBSPreprocess,
         )
         return findPath.backwardAStarForLongest(graph, input.length, connectionIds, n)
+    }
+
+    fun containsYomi(input: String): Boolean {
+        println("yomi contains: $input ${systemYomiTrie.contains(
+            input,
+            rank0Array = systemRank0ArrayLBSYomi,
+            rank1Array = systemRank1ArrayLBSYomi
+        )}")
+        return systemYomiTrie.contains(
+            input,
+            rank0Array = systemRank0ArrayLBSYomi,
+            rank1Array = systemRank1ArrayLBSYomi
+        )
     }
 
 }
