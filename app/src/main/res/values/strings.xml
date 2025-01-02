@@ -114,4 +114,10 @@
     <string name="and"><![CDATA[&]]></string>
     <string name="at_mark">\@</string>
     <string name="ten_ten">\"</string>
+    <string name="btn1">登録</string>
+    <string name="name">Name</string>
+    <string name="id">ID</string>
+    <string name="password">PassWord</string>
+    <string name="btn23">戻る</string>
+
 </resources>

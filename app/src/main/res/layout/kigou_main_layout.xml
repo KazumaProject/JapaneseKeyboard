@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/keyboard_height"
+    android:background="@color/keyboard_bg"
+    android:layout_gravity="bottom"
+    android:baselineAligned="false">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/kigou_recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="visible"
+        app:layout_constraintBottom_toTopOf="@+id/kigou_return_btn"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="spread"
+        app:layout_constraintVertical_weight="8"/>
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/kigou_return_btn"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_gravity="center"
+        android:text="@string/kigou_return"
+        android:textColor="@color/keyboard_icon_color"
+        android:textSize="12sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/kigou_recyclerView"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintVertical_weight="2"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintEnd_toStartOf="@id/kigou_radio_group"
+        app:layout_constraintHorizontal_weight="1"
+        />
+
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/kigou_delete_btn"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scaleType="center"
+        android:src="@drawable/baseline_backspace_24"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/keyboard_icon_color"
+        app:layout_constraintTop_toBottomOf="@id/kigou_recyclerView"
+        app:layout_constraintStart_toEndOf="@id/kigou_radio_group"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_weight="1"/>
+
+    <RadioGroup
+        android:id="@+id/kigou_radio_group"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="center_horizontal"
+        android:orientation="horizontal"
+        android:checkedButton="@id/kigou_emoji_button"
+        app:layout_constraintEnd_toStartOf="@+id/kigou_delete_btn"
+        app:layout_constraintStart_toEndOf="@+id/kigou_return_btn"
+        app:layout_constraintTop_toBottomOf="@id/kigou_recyclerView"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_weight="3">
+
+        <RadioButton
+            android:id="@+id/kigou_emoji_button"
+            android:layout_width="60dp"
+            android:layout_height="match_parent"
+            android:background="@drawable/radio_flat_selector"
+            android:button="@android:color/transparent"
+            android:text="@string/string_emoji"
+            android:textAlignment="center"
+            android:textSize="10sp"
+            tools:ignore="SmallSp" />
+
+        <RadioButton
+            android:id="@+id/kigou_kaomoji_btn"
+            android:layout_width="60dp"
+            android:layout_height="match_parent"
+            android:background="@drawable/radio_flat_selector"
+            android:button="@android:color/transparent"
+            android:text="@string/string_kaomoji"
+            android:textAlignment="center"
+            android:textSize="10sp"
+            android:textColor="@color/main_text_color"
+            android:layout_marginStart="16dp"
+            tools:ignore="SmallSp" />
+
+    </RadioGroup>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.daasuu.bl.BubbleLayout
+    android:id="@+id/bubble_layout_top"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@null"
+    app:bl_arrowHeight="0dp"
+    app:bl_arrowPosition="16dp"
+    app:bl_arrowWidth="0dp"
+    app:bl_cornersRadius="12dp"
+    app:bl_bubbleColor="@color/qwety_key_bg_color"
+    android:elevation="4dp"
+    app:bl_strokeWidth="1dp"
+    app:bl_strokeColor="@color/qwety_key_bg_color_2">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/popup_text_top"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAlignment="center"
+        android:layout_gravity="center"
+        android:textSize="@dimen/pop_view_size"
+        android:ems="4"
+        android:textColor="@color/keyboard_icon_color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</com.daasuu.bl.BubbleLayout>
