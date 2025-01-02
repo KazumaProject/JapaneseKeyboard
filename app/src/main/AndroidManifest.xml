@@ -4,7 +4,6 @@
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-
     <application
         android:name=".setting_activity.Application"
         android:allowBackup="true"
@@ -15,9 +14,62 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.MarkdownKeyboard"
         android:usesCleartextTraffic="true"
-        tools:targetApi="35"
-        android:largeHeap="true"
-        android:hardwareAccelerated="true">
+        tools:targetApi="34">
+
+        <activity
+            android:name=".setting_activity.DeleteActivity4"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.DeleteActivity3"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.DeleteActivity2"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.DeleteActivity1"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.AddActivity3"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.AddActivity2"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.AddActivity1"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.WelcomeActivity"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.NewActivity3"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.NewActivity2"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.NewActivity1"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.ResetActivity4"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.ResetActivity3"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.ResetActivity2"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.ResetActivity1"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.DatabaseActivity"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.MyOpenHelper"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.Setting"
+            android:exported="false" />
 
         <activity
             android:name=".setting_activity.MainActivity"
@@ -37,10 +89,6 @@
             <meta-data
                 android:name="android.view.im"
                 android:resource="@xml/method" />
-
-            <meta-data
-                android:name="android:screenOrientation"
-                android:value="portrait" />
 
             <intent-filter>
                 <action android:name="android.view.InputMethod" />

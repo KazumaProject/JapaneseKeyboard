@@ -1,54 +1,44 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
-import android.os.Bundle
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.navigation.ui.setupWithNavController
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import android.os.Bundle
+import android.widget.Button
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
-
-    @Inject
-    lateinit var kanaKanjiEngine: KanaKanjiEngine
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        // viewの取得
+        val btnStart :Button = findViewById(R.id.btnStart)//パスワード入力の所
+        //ボタンを押したら次の画面へ
+        btnStart.setOnClickListener {
+            val intent = Intent(this,WelcomeActivity::class.java)
+            startActivity(intent)
+            finish()
+        }
 
-        val navView: BottomNavigationView = binding.navView
-        val navController = findNavController(R.id.nav_host_fragment_activity_main)
-        val appBarConfiguration = AppBarConfiguration(
-            setOf(
-                //R.id.navigation_home,
-                R.id.navigation_setting
-            )
-        )
-        setupActionBarWithNavController(navController, appBarConfiguration)
-        navView.setupWithNavController(navController)
+        // viewの取得
+        val btnReset :Button = findViewById(R.id.btnReset)//忘れた方はこちらボタン
 
-        val extra = intent.getStringExtra("openSettingActivity")
-        extra?.let { request ->
-            when(request){
-//                "dictionary_fragment_request" ->{
-//                    navController.navigate(R.id.navigation_home)
-//                }
-                "setting_fragment_request" ->{
-                    navController.popBackStack()
-                    navController.navigate(R.id.navigation_setting)
-                }
-            }
+        //ボタンを押したら次の画面へ
+        btnReset.setOnClickListener {
+            val intent = Intent(this, ResetActivity1::class.java)
+            startActivity(intent)
+            finish()
+        }
+
+        // viewの取得
+        val btnNewset :Button = findViewById(R.id.btnNewset)//パスワード入力の所
+
+        //ボタンを押したら次の画面へ
+        btnNewset.setOnClickListener {
+            val intent = Intent(this,NewActivity1::class.java)
+            startActivity(intent)
         }
     }
 }
