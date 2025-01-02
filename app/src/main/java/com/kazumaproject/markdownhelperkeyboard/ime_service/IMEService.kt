@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.CombinedVibration
 import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import android.text.Spannable
@@ -28,6 +29,7 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -206,6 +208,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var deleteKeyLongKeyPressed = false
     private var rightCursorKeyLongKeyPressed = false
     private var leftCursorKeyLongKeyPressed = false
+    private var NGword = "登別"
 
     private val vibratorManager: VibratorManager by lazy {
         getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -1398,6 +1401,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setEnterKeyPress() {
+
+        var text = currentInputConnection.getExtractedText(ExtractedTextRequest(),0).text
+        println("setEnterKeyPress: $text")
         when (currentInputType) {
             InputTypeForIME.TextMultiLine,
             InputTypeForIME.TextImeMultiLine,
@@ -1430,12 +1436,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextNotCursorUpdate,
             InputTypeForIME.TextEditTextInWebView,
             -> {
-                Timber.d("Enter key: called 3\n")
-                sendKeyEvent(
-                    KeyEvent(
-                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
-                    )
-                )
+                currentInputConnection?.apply {
+                    Timber.d("Enter key: called 3 $text\n")
+                    if (text == NGword)
+                    {
+                        val msg = "【$text】は禁止ワードです"
+                        Timber.d(msg)
+                        val myhandler = Handler(Looper.getMainLooper())
+                        myhandler.post( Thread{
+                            val msg = "【$text】は禁止ワードです(SEARCH)"
+                            val toast = Toast.makeText(this@IMEService, msg, Toast.LENGTH_LONG)
+                            toast.show()
+                        }
+                        )
+                        currentInputConnection.deleteSurroundingText(text.length,0)
+                    } else {
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
+                            )
+                        )
+                    }
+                }
             }
 
             InputTypeForIME.TextNextLine -> {
@@ -1461,10 +1483,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextWebSearchView,
             InputTypeForIME.TextWebSearchViewFireFox,
             InputTypeForIME.TextSearchView -> {
-                Timber.d(
-                    "enter key search: ${EditorInfo.IME_ACTION_SEARCH}" + "\n${currentInputEditorInfo.inputType}" + "\n${currentInputEditorInfo.imeOptions}" + "\n${currentInputEditorInfo.actionId}" + "\n${currentInputEditorInfo.privateImeOptions}"
-                )
-                performEditorAction(EditorInfo.IME_ACTION_SEARCH)
+                currentInputConnection?.apply {
+                    if (text == NGword) {
+                        Timber.d(
+                            "enter key search $text : ${EditorInfo.IME_ACTION_SEARCH}" + "\n${currentInputEditorInfo.inputType}" + "\n${currentInputEditorInfo.imeOptions}" + "\n${currentInputEditorInfo.actionId}" + "\n${currentInputEditorInfo.privateImeOptions}"
+                        )
+                        val myhandler = Handler(Looper.getMainLooper())
+                        myhandler.post( Thread{
+                                val msg = "【$text】は禁止ワードです(SEARCH)"
+                                val toast = Toast.makeText(this@IMEService, msg, Toast.LENGTH_LONG)
+                                toast.show()
+                            }
+                        )
+
+                        currentInputConnection.deleteSurroundingText(text.length, 0)
+                    } else {
+                        performEditorAction(EditorInfo.IME_ACTION_SEARCH)
+                    }
+                }
             }
 
         }
