@@ -11,8 +11,13 @@ import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -21,15 +26,46 @@ class SettingFragment : PreferenceFragmentCompat() {
     @Inject
     lateinit var appPreference: AppPreference
 
+    @Inject
+    lateinit var learnRepository: LearnRepository
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        CoroutineScope(Dispatchers.IO).launch {
+            learnRepository.apply {
+                if (findLearnDataByInput("びゃんびゃんめん")
+                        .isNullOrEmpty()
+                ) {
+                    insertLearnedData(
+                        LearnEntity(
+                            input = "びゃんびゃんめん",
+                            out = "\uD883\uDEDE\uD883\uDEDE麺"
+                        )
+                    )
+                }
+                if (findLearnDataByInput("びゃん")
+                        .isNullOrEmpty()
+                ) {
+                    insertLearnedData(
+                        LearnEntity(
+                            input = "びゃん",
+                            out = "\uD883\uDEDE"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        object : OnBackPressedCallback(true){
+        object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 requireActivity().finish()
             }
         }
         isKeyboardBoardEnabled()?.let { enabled ->
-            if (!enabled){
+            if (!enabled) {
                 goToKeyboardSettingScreen()
             }
         }
@@ -38,7 +74,7 @@ class SettingFragment : PreferenceFragmentCompat() {
     override fun onResume() {
         super.onResume()
         isKeyboardBoardEnabled()?.let { enabled ->
-            if (!enabled){
+            if (!enabled) {
                 goToKeyboardSettingScreen()
             }
         }
@@ -59,11 +95,11 @@ class SettingFragment : PreferenceFragmentCompat() {
     }
 
     private fun isKeyboardBoardEnabled(): Boolean? {
-        val imm = getSystemService(requireContext(),InputMethodManager::class.java)
+        val imm = getSystemService(requireContext(), InputMethodManager::class.java)
         return imm?.enabledInputMethodList?.any { it.packageName == requireContext().packageName }
     }
 
-    private fun goToKeyboardSettingScreen(){
+    private fun goToKeyboardSettingScreen() {
         val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         requireActivity().startActivity(intent)

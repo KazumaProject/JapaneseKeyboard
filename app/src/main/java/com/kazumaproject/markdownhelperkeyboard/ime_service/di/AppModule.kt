@@ -54,7 +54,11 @@ object AppModule {
     @Provides
     fun providesLearnDatabase(
         @ApplicationContext context: Context
-    ) = Room.databaseBuilder(context, LearnDatabase::class.java, "learn_database").build()
+    ) = Room
+        .databaseBuilder(context,
+            LearnDatabase::class.java,
+            "learn_database")
+        .build()
 
     @Singleton
     @Provides
