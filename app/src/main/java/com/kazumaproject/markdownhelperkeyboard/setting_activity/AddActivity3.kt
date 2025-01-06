@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.setting_activity
+/*package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
@@ -25,8 +25,9 @@ class AddActivity3 : AppCompatActivity() {
 
         //ボタンを押したら次の画面へ
         toDB.setOnClickListener {
-            val intent = Intent(this, DatabaseActivity::class.java)
+            //val intent = Intent(this, DatabaseActivity::class.java)
+            val intent = Intent(this, TangoDictionary::class.java)
             startActivity(intent)
         }
     }
-}
+}*/

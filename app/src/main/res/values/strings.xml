@@ -120,4 +120,7 @@
     <string name="password">PassWord</string>
     <string name="btn23">戻る</string>
 
+    <string name="tango">単語</string>
+    <string name="kana">かな</string>
+
 </resources>

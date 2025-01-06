@@ -1,4 +1,4 @@
-/*package com.kazumaproject.markdownhelperkeyboard.setting_activity;
+package com.kazumaproject.markdownhelperkeyboard.setting_activity;
 
 import android.content.Intent;
 import android.database.Cursor;
@@ -14,7 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.kazumaproject.markdownhelperkeyboard.R;
 
-public class DatabaseActivity extends AppCompatActivity {
+public class TangoDictionary extends AppCompatActivity {
 
     ListView myListView;
 
@@ -28,15 +28,15 @@ public class DatabaseActivity extends AppCompatActivity {
         myListView = findViewById(R.id.listView);
 
         //db
-        MyOpenHelper myOpenHelper = new MyOpenHelper(this);
-        SQLiteDatabase db = myOpenHelper.getWritableDatabase();
+        TangoSQL tSQL = new TangoSQL(this);
+        SQLiteDatabase db = tSQL.getWritableDatabase();
 
         //select
         Cursor c = db.rawQuery("select * from myPasstb" , null);
 
         //adapterの準備
         //表示するカラム名
-        String[] from = {"_id","name"};
+        String[] from = {"_id","tango"};
 
         //バインドするViewリソース
         int[] to = {android.R.id.text1,android.R.id.text2};
@@ -56,7 +56,7 @@ public class DatabaseActivity extends AppCompatActivity {
                 //String s2 = ((TextView)view.findViewById(android.R.id.text2)).getText().toString();
 
                 //参照・更新へ
-                Intent intent = new Intent(getApplication(),Setting.class);
+                Intent intent = new Intent(getApplication(),TangoMaster.class);
 
                 //モード指定 _idを渡す
                 intent.putExtra("KBN",s1);
@@ -78,7 +78,7 @@ public class DatabaseActivity extends AppCompatActivity {
 
     //登録ボタンを押したときは新規登録へ画面を遷移
     public void Register(View view) {
-        Intent intent = new Intent(getApplication(),Setting.class);
+        Intent intent = new Intent(getApplication(),TangoMaster.class);
 
         //モード指定　空は新規
         intent.putExtra("KBN","");
@@ -97,4 +97,4 @@ public class DatabaseActivity extends AppCompatActivity {
         startActivity(intent);
 
     }
-}*/
+}
