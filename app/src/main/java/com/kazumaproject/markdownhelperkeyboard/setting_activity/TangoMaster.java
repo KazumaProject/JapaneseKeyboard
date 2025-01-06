@@ -27,6 +27,9 @@ public class TangoMaster extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        System.out.println("単語マスター");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.setting);
 

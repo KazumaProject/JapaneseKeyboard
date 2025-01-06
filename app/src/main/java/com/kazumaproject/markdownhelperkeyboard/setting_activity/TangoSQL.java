@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class TangoSQL extends SQLiteOpenHelper {
 
+
     private static final int DATABASE_VERSION = 1;
 
     private static final String DATABASE_NAME = "TangoDicDB.db";
@@ -30,8 +31,11 @@ public class TangoSQL extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(
+
                 SQL_CREATE_ENTRIES
         );
+
+        System.out.println("単語SQL");
     }
 
     @Override

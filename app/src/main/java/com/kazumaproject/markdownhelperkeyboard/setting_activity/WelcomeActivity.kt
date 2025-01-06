@@ -16,8 +16,8 @@ class WelcomeActivity : AppCompatActivity() {
 
         //ボタンを押したら次の画面へ
         toAddActivity1.setOnClickListener {
-            //val intent = Intent(this,AddActivity1::class.java)
-            val intent = Intent(this,TangoMaster::class.java)
+            val intent = Intent(this,AddActivity1::class.java)
+            //val intent = Intent(this,TangoMaster::class.java)
             startActivity(intent)
             finish()
         }

@@ -1,4 +1,4 @@
-/*package com.kazumaproject.markdownhelperkeyboard.setting_activity
+package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
@@ -9,6 +9,9 @@ import com.kazumaproject.markdownhelperkeyboard.R
 
 class AddActivity2 : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        println("あど2");
+
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add2)
 
@@ -35,4 +38,4 @@ class AddActivity2 : AppCompatActivity() {
             startActivity(intent)
         }
     }
-}*/
+}

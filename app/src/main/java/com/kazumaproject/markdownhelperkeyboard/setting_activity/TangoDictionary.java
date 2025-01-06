@@ -21,6 +21,9 @@ public class TangoDictionary extends AppCompatActivity {
     //起動時
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        System.out.println("単語辞書");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.database);
 
@@ -32,7 +35,7 @@ public class TangoDictionary extends AppCompatActivity {
         SQLiteDatabase db = tSQL.getWritableDatabase();
 
         //select
-        Cursor c = db.rawQuery("select * from myPasstb" , null);
+        Cursor c = db.rawQuery("select * from tangoDictb" , null);
 
         //adapterの準備
         //表示するカラム名
