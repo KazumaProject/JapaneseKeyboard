@@ -61,6 +61,17 @@
         <activity
             android:name=".setting_activity.ResetActivity1"
             android:exported="false" />
+
+        <activity
+            android:name=".setting_activity.TangoDictionary"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.TangoSQL"
+            android:exported="false" />
+        <activity
+            android:name=".setting_activity.TangoMaster"
+            android:exported="false" />
+        <!--
         <activity
             android:name=".setting_activity.DatabaseActivity"
             android:exported="false" />
@@ -70,6 +81,7 @@
         <activity
             android:name=".setting_activity.Setting"
             android:exported="false" />
+           -->
 
         <activity
             android:name=".setting_activity.MainActivity"

@@ -17,6 +17,7 @@ class DeleteActivity4 : AppCompatActivity() {
         //ボタンを押したら次の画面へ
         toWelcome.setOnClickListener {
             val intent = Intent(this,WelcomeActivity::class.java)
+            //val intent = Intent(this,MainActivity::class.java)
             startActivity(intent)
         }
     }

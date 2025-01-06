@@ -18,6 +18,7 @@ class MainActivity : AppCompatActivity() {
         //ボタンを押したら次の画面へ
         btnStart.setOnClickListener {
             val intent = Intent(this,WelcomeActivity::class.java)
+            //val intent = Intent(this,TangoDictionary::class.java)
             startActivity(intent)
             finish()
         }

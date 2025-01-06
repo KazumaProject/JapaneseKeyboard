@@ -25,7 +25,8 @@ class AddActivity3 : AppCompatActivity() {
 
         //ボタンを押したら次の画面へ
         toDB.setOnClickListener {
-            val intent = Intent(this, DatabaseActivity::class.java)
+            //val intent = Intent(this, DatabaseActivity::class.java)
+            val intent = Intent(this, TangoDictionary::class.java)
             startActivity(intent)
         }
     }

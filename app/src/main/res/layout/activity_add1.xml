@@ -33,13 +33,13 @@
         android:id="@+id/editTextText8"
         android:layout_width="245dp"
         android:layout_height="59dp"
-        android:layout_marginBottom="444dp"
+        android:layout_marginBottom="352dp"
         android:ems="10"
         android:hint="カタカナ読み"
         android:inputType="text"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.493"
+        app:layout_constraintHorizontal_bias="0.506"
         app:layout_constraintStart_toStartOf="parent" />
 
     <EditText

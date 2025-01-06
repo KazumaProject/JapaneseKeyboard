@@ -1,4 +1,4 @@
-/*package com.kazumaproject.markdownhelperkeyboard.setting_activity;
+package com.kazumaproject.markdownhelperkeyboard.setting_activity;
 
 import android.content.ContentValues;
 import android.content.Intent;
@@ -16,9 +16,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.kazumaproject.markdownhelperkeyboard.R;
 
-public class Setting extends AppCompatActivity {
+public class TangoMaster extends AppCompatActivity {
 
-    private MyOpenHelper helper;
+    private TangoSQL tSQL;
     String kbn = "";
     String toastMessage = "登録しました。「戻る」を押して下さい";
     String toastMessage2 = "登録するものがありません";
@@ -27,11 +27,14 @@ public class Setting extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        System.out.println("単語マスター");
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.setting);
 
         //DB作成
-        helper = new MyOpenHelper(getApplicationContext());
+        tSQL = new TangoSQL(getApplicationContext());
 
         //データを受け取る
         Intent intent = getIntent();
@@ -67,15 +70,15 @@ public class Setting extends AppCompatActivity {
     //データを参照する
     public void readDate(String read)
     {
-        SQLiteDatabase db = helper.getReadableDatabase();
+        SQLiteDatabase db = tSQL.getReadableDatabase();
 
         EditText text1 = findViewById(R.id.editText);
         EditText text2 = findViewById(R.id.editText2);
         //EditText text3 = findViewById(R.id.editText3);
 
         Cursor cursor = db.query(
-                "myPasstb" ,
-                new String[]{"name","ID","pass"},
+                "tangoDictb" ,
+                new String[]{"tango","kana"},
                 "_ID = ?",
                 new String[]{read},
                 null,null,null
@@ -96,35 +99,35 @@ public class Setting extends AppCompatActivity {
 
     //データを保存する
     public void saveData(View view) {
-        SQLiteDatabase db = helper.getWritableDatabase();
+        SQLiteDatabase db = tSQL.getWritableDatabase();
 
         EditText txt1 = findViewById(R.id.editText);
         EditText txt2 = findViewById(R.id.editText2);
         //EditText txt3 = findViewById(R.id.editText3);
 
-        String name = txt1.getText().toString();
-        String ID = txt2.getText().toString();
+        String tango = txt1.getText().toString();
+        String kana = txt2.getText().toString();
         //String PS = txt3.getText().toString();
 
         ContentValues values = new ContentValues();
-        values.put("name",name);
-        values.put("ID",ID);
+        values.put("tango",tango);
+        values.put("kana",kana);
         //values.put("pass",PS);
 
         //ボタンが登録の場合
         if(kbn=="登録"){
-            if(name.length()!=0) {
+            if(tango.length()!=0) {
 
-                db.insert("myPasstb",null,values);
+                db.insert("tangoDictb",null,values);
 
                 toastMake(toastMessage,0,+350);
             }else{
 
                 toastMake(toastMessage2,0,+350);
             }
-        //ボタンが更新の場合
+            //ボタンが更新の場合
         }else{
-            if(name.length() !=0) {
+            if(tango.length() !=0) {
                 //更新
                 UPDate(kbn);
                 //トースト表示
@@ -140,22 +143,22 @@ public class Setting extends AppCompatActivity {
 
     //データ更新
     public void UPDate(String read){
-        SQLiteDatabase db = helper.getReadableDatabase();
+        SQLiteDatabase db = tSQL.getReadableDatabase();
 
         EditText txt1 = findViewById(R.id.editText);
         EditText txt2 = findViewById(R.id.editText2);
-       // EditText txt3 = findViewById(R.id.editText3);
+        //EditText txt3 = findViewById(R.id.editText3);
 
-        String name = txt1.getText().toString();
-        String ID = txt2.getText().toString();
+        String tango = txt1.getText().toString();
+        String kana = txt2.getText().toString();
         //String PS = txt3.getText().toString();
 
         ContentValues upvalue = new ContentValues();
-        upvalue.put("name",name);
-        upvalue.put("ID",ID);
+        upvalue.put("tango",tango);
+        upvalue.put("kana",kana);
         //upvalue.put("pass",PS);
 
-        db.update("myPasstb",upvalue,"_id=?",new String[]{read});
+        db.update("tangoDictb",upvalue,"_id=?",new String[]{read});
 
     }
 
@@ -168,4 +171,4 @@ public class Setting extends AppCompatActivity {
     public void onClose(View view) {
         finish(); //画面を閉じる
     }
-}*/
+}
