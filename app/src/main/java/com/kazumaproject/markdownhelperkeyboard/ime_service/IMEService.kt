@@ -1313,6 +1313,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         stringInTail.set(EMPTY_STRING)
         suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
+        learnMultiple.stop()
     }
 
     private fun resetFlagsKeySpace() {
@@ -2212,7 +2213,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
-
         }
     }
 
