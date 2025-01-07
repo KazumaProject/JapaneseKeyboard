@@ -37,10 +37,10 @@ class LearnMultiple {
     }
 
     private fun clearInput() {
-        input = null
+        this.input = null
     }
 
     private fun clearStringBuilder() {
-        stringBuilder.clear()
+        this.stringBuilder.clear()
     }
 }
