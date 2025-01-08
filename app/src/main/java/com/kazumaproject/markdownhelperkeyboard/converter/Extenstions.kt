@@ -2,6 +2,7 @@ package com.kazumaproject
 
 import java.io.InputStream
 import java.nio.ByteBuffer
+import java.text.Normalizer
 import java.util.BitSet
 
 
@@ -184,4 +185,8 @@ fun BooleanArray.preprocessLBSIntoBooleanArray(): IntArray{
         prefixSum[i + 1] = prefixSum[i] + if (this[i]) 0 else 1
     }
     return prefixSum
+}
+
+fun String.convertFullWidthToHalfWidth(): String {
+    return Normalizer.normalize(this, Normalizer.Form.NFKC)
 }
