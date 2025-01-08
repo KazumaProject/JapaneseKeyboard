@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.convertFullWidthToHalfWidth
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
@@ -419,6 +420,14 @@ class KanaKanjiEngine {
                 ).asReversed()
             }
 
+            val symbolCommonPrefixDeferredHalfWidth = async(Dispatchers.Default) {
+                symbolYomiTrie.commonPrefixSearchShortArray(
+                    str = input.convertFullWidthToHalfWidth(),
+                    rank0Array = symbolRank0ArrayLBSYomi,
+                    rank1Array = symbolRank1ArrayLBSYomi
+                ).asReversed()
+            }
+
             val singleKanjiListDeferred = async(Dispatchers.Default) {
                 singleKanjiCommonPrefixDeferred.await().asSequence().flatMap { yomi ->
                     val termId = singleKanjiYomiTrie.getTermIdShortArray(
@@ -555,6 +564,39 @@ class KanaKanjiEngine {
                 }.distinctBy { it.string }.toList()
             }
 
+            val symbolHalfWidthListDeferred = async(Dispatchers.Default) {
+                symbolCommonPrefixDeferredHalfWidth.await().asSequence().flatMap { yomi ->
+                    val termId = symbolYomiTrie.getTermIdShortArray(
+                        symbolYomiTrie.getNodeIndex(
+                            yomi,
+                            symbolRank1ArrayLBSYomi,
+                            symbolYomiLBSBooleanArray,
+                            symbolYomiLBSPreprocess
+                        ), symbolRank1ArrayIsLeaf
+                    )
+                    symbolTokenArray.getListDictionaryByYomiTermIdShortArray(
+                        termId,
+                        symbolRank0ArrayTokenArrayBitvector,
+                        symbolRank1ArrayTokenArrayBitvector
+                    ).sortedBy { it.wordCost }.asSequence().map {
+                        Candidate(
+                            string = when (it.nodeId) {
+                                -2 -> yomi
+                                -1 -> yomi.hiraToKata()
+                                else -> symbolTangoTrie.getLetterShortArray(
+                                    it.nodeId, symbolRank0ArrayLBSTango, symbolRank1ArrayLBSTango
+                                )
+                            },
+                            type = 21,
+                            length = yomi.length.toUByte(),
+                            score = it.wordCost.toInt(),
+                            leftId = symbolTokenArray.leftIds[it.posTableIndex.toInt()],
+                            rightId = symbolTokenArray.rightIds[it.posTableIndex.toInt()]
+                        )
+                    }
+                }.distinctBy { it.string }.toList()
+            }
+
             val longest = yomiPartOfDeferred.await().firstOrNull() ?: input
 
             val longestListDeferred = async(Dispatchers.Default) {
@@ -571,7 +613,7 @@ class KanaKanjiEngine {
                 }
             }
 
-            return@withContext (resultNBestFinalDeferred + longestListDeferred.await() + hirakanaAndKana + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+            return@withContext (resultNBestFinalDeferred + longestListDeferred.await() + hirakanaAndKana + emojiListDeferred.await() + emoticonListDeferred.await() + symbolListDeferred.await() + symbolHalfWidthListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
         }
 
         val yomiPartOfDeferred = async(Dispatchers.Default) {
@@ -620,6 +662,14 @@ class KanaKanjiEngine {
         val symbolCommonPrefixDeferred = async(Dispatchers.Default) {
             symbolYomiTrie.predictiveSearch(
                 prefix = input,
+                rank0Array = symbolRank0ArrayLBSYomi,
+                rank1Array = symbolRank1ArrayLBSYomi
+            ).asReversed()
+        }
+
+        val symbolHalfWidthCommonPrefixDeferred = async(Dispatchers.Default) {
+            symbolYomiTrie.predictiveSearch(
+                prefix = input.convertFullWidthToHalfWidth(),
                 rank0Array = symbolRank0ArrayLBSYomi,
                 rank1Array = symbolRank1ArrayLBSYomi
             ).asReversed()
@@ -886,6 +936,37 @@ class KanaKanjiEngine {
             }.distinctBy { it.string }.toList()
         }
 
+        val symbolHalfWidthListDeferred = async(Dispatchers.Default) {
+            symbolHalfWidthCommonPrefixDeferred.await().asSequence().flatMap { yomi ->
+                val termId = symbolYomiTrie.getTermIdShortArray(
+                    symbolYomiTrie.getNodeIndex(
+                        yomi,
+                        symbolRank1ArrayLBSYomi,
+                        symbolYomiLBSBooleanArray,
+                        symbolYomiLBSPreprocess
+                    ), symbolRank1ArrayIsLeaf
+                )
+                symbolTokenArray.getListDictionaryByYomiTermIdShortArray(
+                    termId, symbolRank0ArrayTokenArrayBitvector, symbolRank1ArrayTokenArrayBitvector
+                ).sortedBy { it.wordCost }.asSequence().map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> symbolTangoTrie.getLetterShortArray(
+                                it.nodeId, symbolRank0ArrayLBSTango, symbolRank1ArrayLBSTango
+                            )
+                        },
+                        type = 13,
+                        length = yomi.length.toUByte(),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1000 * (yomi.length - input.length),
+                        leftId = symbolTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = symbolTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
+            }.distinctBy { it.string }.toList()
+        }
+
         val readingCorrectionListDeferred = async(Dispatchers.Default) {
             readingCorrectionCommonPrefixDeferred.await().asSequence().flatMap { yomi ->
                 val termId = readingCorrectionYomiTrie.getTermIdShortArray(
@@ -1091,7 +1172,7 @@ class KanaKanjiEngine {
             secondPartList
         }
 
-        return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + kotowazaListDeferred.await() + numbersDeferred.await()).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+        return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + kotowazaListDeferred.await() + numbersDeferred.await()).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + symbolHalfWidthListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
     }
 
     fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {

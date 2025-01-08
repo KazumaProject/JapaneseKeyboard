@@ -109,6 +109,8 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (19).toByte() -> ""
             /** 学習 **/
             (20).toByte() -> ""
+            /** 記号半角 **/
+            (21).toByte() -> ""
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition
