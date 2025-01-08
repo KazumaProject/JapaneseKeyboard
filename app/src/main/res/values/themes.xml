@@ -10,7 +10,7 @@
         <item name="colorSecondaryVariant">@color/main_text_color</item>
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">@color/purple_200</item><!-- 時間の色 -->
+        <item name="android:statusBarColor">@color/title_pink</item><!-- 時間の色 -->
         <!-- Customize your theme here. -->
         <item name="android:splitMotionEvents">false</item>
         <item name="android:fontFamily">@font/roboto</item>

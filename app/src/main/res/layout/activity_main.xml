@@ -34,12 +34,13 @@
         app:layout_constraintTop_toBottomOf="@+id/imageView"
         app:layout_constraintVertical_bias="0.713" />
 -->
+
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="311dp"
         android:layout_height="348dp"
-        android:layout_marginEnd="48dp"
-        android:src="@drawable/mimamoriko_chan"
+        android:layout_marginEnd="28dp"
+        android:src="@drawable/mimamoriko_chan2"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -49,7 +50,7 @@
         android:id="@+id/btnStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:backgroundTint="#98DFD9"
+        android:backgroundTint="@color/title_blue"
         android:text="禁止ワード登録"
         android:textColor="#000000"
         android:textColorLink="#000000"
@@ -65,7 +66,7 @@
         android:id="@+id/btnReset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:backgroundTint="#98DFD9"
+        android:backgroundTint="@color/title_blue"
         android:text="パスワードを忘れた方はこちら"
         android:textColor="#000000"
         app:layout_constraintBottom_toTopOf="@+id/btnNewset"
@@ -77,7 +78,7 @@
         android:id="@+id/btnNewset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:backgroundTint="#98DFD9"
+        android:backgroundTint="@color/title_blue"
         android:text="新規登録"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

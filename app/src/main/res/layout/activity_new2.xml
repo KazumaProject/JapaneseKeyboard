@@ -44,7 +44,7 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="56dp"
         android:layout_marginBottom="292dp"
-        android:backgroundTint="#98DFD9"
+        android:backgroundTint="@color/title_blue"
         android:text="はい"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -55,7 +55,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="56dp"
         android:layout_marginBottom="292dp"
-        android:backgroundTint="#98DFD9"
+        android:backgroundTint="@color/title_blue"
         android:text="いいえ"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/toNewActivity3"

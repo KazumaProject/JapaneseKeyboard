@@ -51,8 +51,8 @@
     <color name="enter_key_press">#C9E7FD</color>
     <color name="mode_key_bg">#C9E7FD</color>
 
-    <color name="title_pink">#fdc0ae</color>
-    <color name="title_blue">#98dfd9</color>
+    <color name="title_pink">#e6ceaf</color>
+    <color name="title_blue">#fecebf</color>
 
     <color name="recycler_view_size_change_button_tint">#1C1C1C</color>
 </resources>

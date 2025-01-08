@@ -64,7 +64,7 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <androidx.appcompat.widget.AppCompatButton
+        f<androidx.appcompat.widget.AppCompatButton
             android:id="@+id/tango_register_button"
             android:layout_width="0dp"
             android:layout_height="match_parent"
