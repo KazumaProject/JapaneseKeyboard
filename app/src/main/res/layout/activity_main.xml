@@ -7,10 +7,12 @@
     tools:context=".setting_activity.MainActivity">
 
 
+    <!--
     <TextView
         android:id="@+id/textView3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:backgroundTint="#000000"
         android:text="見守りアプリ"
         android:textSize="34sp"
         app:layout_constraintBottom_toTopOf="@+id/btnStart"
@@ -29,25 +31,43 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.496"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textView3"
+        app:layout_constraintTop_toBottomOf="@+id/imageView"
         app:layout_constraintVertical_bias="0.713" />
+-->
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="311dp"
+        android:layout_height="348dp"
+        android:layout_marginEnd="48dp"
+        android:src="@drawable/mimamoriko_chan"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0" />
 
     <Button
         android:id="@+id/btnStart"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="スタート"
+        android:backgroundTint="#98DFD9"
+        android:text="禁止ワード登録"
+        android:textColor="#000000"
+        android:textColorLink="#000000"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageView"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.499" />
+        app:layout_constraintVertical_bias="0.600"
+        app:rippleColor="#000000" />
 
     <Button
         android:id="@+id/btnReset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="忘れた方はこちら"
+        android:backgroundTint="#98DFD9"
+        android:text="パスワードを忘れた方はこちら"
+        android:textColor="#000000"
         app:layout_constraintBottom_toTopOf="@+id/btnNewset"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -57,6 +77,7 @@
         android:id="@+id/btnNewset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:backgroundTint="#98DFD9"
         android:text="新規登録"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

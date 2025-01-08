@@ -10,6 +10,7 @@
         android:id="@+id/button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:backgroundTint="#98DFD9"
         android:onClick="Register"
         android:text="登録"
         app:layout_constraintBottom_toBottomOf="parent"

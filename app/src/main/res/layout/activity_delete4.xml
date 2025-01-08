@@ -21,6 +21,7 @@
         android:id="@+id/toWelcome"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:backgroundTint="#98DFD9"
         android:text="設定画面へ"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

@@ -2,18 +2,23 @@
     <!-- Base application theme. -->
     <style name="Theme.MarkdownKeyboard" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/blue_primary_color</item>
+        <item name="colorPrimary">@color/title_blue</item><!-- みまもりこちゃんの色 -->
         <item name="colorPrimaryVariant">@color/blue_primary_color</item>
-        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorOnPrimary">@color/black</item>
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/main_text_color</item>
         <item name="colorSecondaryVariant">@color/main_text_color</item>
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:statusBarColor">@color/purple_200</item><!-- 時間の色 -->
         <!-- Customize your theme here. -->
         <item name="android:splitMotionEvents">false</item>
         <item name="android:fontFamily">@font/roboto</item>
+        <item name="android:backgroundTint">@color/title_pink</item><!-- 時間、背景、ボタン、戻るの色 -->
+        <item name="android:textColor">@color/black</item>
+          <!-- アクションバー非表示 -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
     </style>
 
     <style name="Key">
