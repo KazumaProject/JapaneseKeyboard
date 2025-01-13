@@ -44,7 +44,8 @@ class OpenSourceFragment : Fragment() {
             "mozc",
             "com.github.MasayukiSuda:BubbleLayout",
             "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
-            "mecab-ipadic-neologd"
+            "mecab-ipadic-neologd",
+            "merge-ut-dictionaries"
         )
     }
 
@@ -177,6 +178,23 @@ class OpenSourceFragment : Fragment() {
                         )
                         LicensesDialog.Builder(requireContext())
                             .setTitle("mecab-ipadic-neologd")
+                            .setNotices(notice)
+                            .build()
+                            .show()
+                    }
+
+                    25 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright = ""
+                        val license = ApacheSoftwareLicense20()
+                        val notice = Notice(
+                            name,
+                            "https://github.com/utuhiro78/merge-ut-dictionaries/blob/main/LICENSE",
+                            copyright,
+                            license
+                        )
+                        LicensesDialog.Builder(requireContext())
+                            .setTitle("merge-ut-dictionaries")
                             .setNotices(notice)
                             .build()
                             .show()
