@@ -9,7 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentOpenSourceBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicense
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NotoSansJPLicense
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NeologdLicense
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiLicense
 import de.psdev.licensesdialog.LicensesDialog
 import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20
 import de.psdev.licensesdialog.licenses.MITLicense
@@ -42,7 +43,8 @@ class OpenSourceFragment : Fragment() {
             "de.psdev.licensesdialog:licensesdialog",
             "mozc",
             "com.github.MasayukiSuda:BubbleLayout",
-            "Noto Sans Japanese"
+            "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
+            "mecab-ipadic-neologd"
         )
     }
 
@@ -147,20 +149,39 @@ class OpenSourceFragment : Fragment() {
                     23 -> {
                         val name = OPEN_SOURCE_LICENSES[position]
                         val copyright =
-                            "Copyright 2022 The Noto Project Authors"
-                        val license = NotoSansJPLicense()
+                            "Wikipedia CC BY-SA"
+                        val license = WikiLicense()
                         val notice = Notice(
                             name,
-                            "https://github.com/notofonts/latin-greek-cyrillic",
+                            "https://ja.wikipedia.org/wiki/Wikipedia:%E3%82%A6%E3%82%A3%E3%82%AD%E3%83%9A%E3%83%87%E3%82%A3%E3%82%A2%E3%82%92%E4%BA%8C%E6%AC%A1%E5%88%A9%E7%94%A8%E3%81%99%E3%82%8B",
                             copyright,
                             license
                         )
                         LicensesDialog.Builder(requireContext())
-                            .setTitle("Copyright 2022 The Noto Project Authors")
+                            .setTitle("jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA")
                             .setNotices(notice)
                             .build()
                             .show()
                     }
+
+                    24 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright =
+                            "2015-2019 Toshinori Sato (@overlast)"
+                        val license = NeologdLicense()
+                        val notice = Notice(
+                            name,
+                            "https://github.com/neologd/mecab-ipadic-neologd/blob/master/COPYING",
+                            copyright,
+                            license
+                        )
+                        LicensesDialog.Builder(requireContext())
+                            .setTitle("mecab-ipadic-neologd")
+                            .setNotices(notice)
+                            .build()
+                            .show()
+                    }
+
                 }
             }
         }

@@ -624,14 +624,13 @@ class KanaKanjiEngine {
                 rank1Array = systemRank1ArrayLBSYomi
             ).asReversed()
         }
-
         val predictiveSearchDeferred = async(Dispatchers.Default) {
             systemYomiTrie.predictiveSearch(
                 prefix = input,
                 rank0Array = systemRank0ArrayLBSYomi,
                 rank1Array = systemRank1ArrayLBSYomi
             ).filter {
-                if (input.length <= 2) it.length <= input.length + 1 else if (input.length == 3) it.length <= input.length + 2 else it.length > input.length
+                if (input.length <= 2) it.length <= input.length + 1 else if (input.length in 3..4) it.length <= input.length + 2 else if (input.length in 5..6) it.length <= input.length + 3 else it.length > input.length
             }
         }
 
@@ -768,7 +767,7 @@ class KanaKanjiEngine {
                         rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }.distinctBy { it.string }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val longest = yomiPartOfDeferred.await().firstOrNull() ?: input
@@ -838,7 +837,7 @@ class KanaKanjiEngine {
                         rightId = singleKanjiTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val emojiListDeferred = async(Dispatchers.Default) {
@@ -869,7 +868,7 @@ class KanaKanjiEngine {
                         rightId = emojiTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val emoticonListDeferred = async(Dispatchers.Default) {
@@ -902,7 +901,7 @@ class KanaKanjiEngine {
                         rightId = emoticonTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val symbolListDeferred = async(Dispatchers.Default) {
@@ -933,7 +932,7 @@ class KanaKanjiEngine {
                         rightId = symbolTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val symbolHalfWidthListDeferred = async(Dispatchers.Default) {
@@ -964,7 +963,7 @@ class KanaKanjiEngine {
                         rightId = symbolTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val readingCorrectionListDeferred = async(Dispatchers.Default) {
@@ -999,7 +998,7 @@ class KanaKanjiEngine {
                         rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val kotowazaListDeferred = async(Dispatchers.Default) {
@@ -1032,7 +1031,7 @@ class KanaKanjiEngine {
                         rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
                     )
                 }
-            }.distinctBy { it.string }.toList()
+            }.toList()
         }
 
         val listOfDictionaryToday: Deferred<List<Candidate>> = async(Dispatchers.Default) {
@@ -1172,7 +1171,7 @@ class KanaKanjiEngine {
             secondPartList
         }
 
-        return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + kotowazaListDeferred.await() + numbersDeferred.await()).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + symbolHalfWidthListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await()).distinctBy { it.string }
+        return@withContext ((resultNBestFinalDeferred + readingCorrectionListDeferred.await() + predictiveSearchResultDeferred.await() + secondPartFinalList + kotowazaListDeferred.await() + numbersDeferred.await()).sortedBy { it.score } + (listOfDictionaryToday.await() + emojiListDeferred.await() + emoticonListDeferred.await()).sortedBy { it.score } + symbolListDeferred.await() + symbolHalfWidthListDeferred.await() + hirakanaAndKana + yomiPartListDeferred.await() + singleKanjiListDeferred.await())
     }
 
     fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {
@@ -1284,11 +1283,15 @@ class KanaKanjiEngine {
     }
 
     fun containsYomi(input: String): Boolean {
-        println("yomi contains: $input ${systemYomiTrie.contains(
-            input,
-            rank0Array = systemRank0ArrayLBSYomi,
-            rank1Array = systemRank1ArrayLBSYomi
-        )}")
+        println(
+            "yomi contains: $input ${
+                systemYomiTrie.contains(
+                    input,
+                    rank0Array = systemRank0ArrayLBSYomi,
+                    rank1Array = systemRank1ArrayLBSYomi
+                )
+            }"
+        )
         return systemYomiTrie.contains(
             input,
             rank0Array = systemRank0ArrayLBSYomi,
