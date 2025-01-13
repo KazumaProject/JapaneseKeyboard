@@ -43,6 +43,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
+import java.util.zip.ZipInputStream
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -55,9 +56,11 @@ object AppModule {
     fun providesLearnDatabase(
         @ApplicationContext context: Context
     ) = Room
-        .databaseBuilder(context,
+        .databaseBuilder(
+            context,
             LearnDatabase::class.java,
-            "learn_database")
+            "learn_database"
+        )
         .build()
 
     @Singleton
@@ -121,39 +124,68 @@ object AppModule {
     @Provides
     @ConnectionIds
     fun provideConnectionIds(@ApplicationContext context: Context): ShortArray {
-        val input = BufferedInputStream(context.assets.open("connectionId.dat"))
-        return ConnectionIdBuilder().readShortArrayFromBytes(input)
+        ZipInputStream(context.assets.open("connectionId.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "connectionId.dat") {
+                    BufferedInputStream(zipStream).use { inputStream ->
+                        return ConnectionIdBuilder().readShortArrayFromBytes(inputStream)
+                    }
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+        throw IllegalArgumentException("connectionId.dat not found in connectionId.zip")
     }
 
     @SystemTangoTrie
     @Singleton
     @Provides
     fun provideTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("system/tango.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+        val zipInputStream = ZipInputStream(context.assets.open("system/tango.dat.zip"))
+        zipInputStream.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
+            return LOUDS().readExternalNotCompress(it)
+        }
     }
 
     @SystemYomiTrie
     @Singleton
     @Provides
     fun provideYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("system/yomi.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+        val zipInputStream = ZipInputStream(context.assets.open("system/yomi.dat.zip"))
+        zipInputStream.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
+            return LOUDSWithTermId().readExternalNotCompress(it)
+        }
     }
 
     @SystemTokenArray
     @Singleton
     @Provides
     fun providesTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("system/token.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
         val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
+
+        // Extract and read `token.dat` from `token.dat.zip`
+        ZipInputStream(context.assets.open("system/token.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "token.dat") { // Ensure we are processing the correct file inside the zip
+                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
+                        tokenArray.readExternal(objectInput) // Load `token.dat` into TokenArray
+                    }
+                    break
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+
+        context.assets.open("pos_table.dat").use { inputStream ->
+            ObjectInputStream(BufferedInputStream(inputStream)).use { objectInput ->
+                tokenArray.readPOSTable(objectInput)
+            }
+        }
+
         return tokenArray
     }
 

@@ -26,7 +26,7 @@
             android:max="16"
             android:summary="表示する変換候補の最大数を設定します。"
             android:title="N-Best"
-            app:min="4"
+            app:min="2"
             app:showSeekBarValue="true"/>
     </PreferenceCategory>
 
