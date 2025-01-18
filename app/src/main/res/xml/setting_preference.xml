@@ -21,7 +21,7 @@
 
     <PreferenceCategory android:title="変換候補">
         <SeekBarPreference
-            android:defaultValue="4"
+            android:defaultValue="8"
             android:key="n_best_preference"
             android:max="16"
             android:summary="表示する変換候補の最大数を設定します。"

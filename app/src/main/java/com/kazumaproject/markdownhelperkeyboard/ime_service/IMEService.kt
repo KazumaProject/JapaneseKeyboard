@@ -92,6 +92,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -290,6 +291,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        suggestionCache = mutableMapOf()
     }
 
     override fun onFinishInput() {
@@ -643,9 +645,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
         handleLeftKeyPress(gestureType, insertString)
         onLeftKeyLongPressUp.set(true)
-        if (insertString.isBlank() || insertString.isEmpty()) {
-            suggestionAdapter.suggestions = emptyList()
-        }
     }
 
     private fun cancelHenkanByLongPressDeleteKey() {
@@ -681,18 +680,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setSymbols(mainView)
         }
         launch {
-            _suggestionFlag.collect {
-                if (it == CandidateShowFlag.Idle) {
-                    suggestionAdapter.suggestions = emptyList()
-                    if (isSuggestionVisible) {
-                        animateSuggestionImageViewVisibility(mainView.suggestionVisibility, false)
-                        isSuggestionVisible = false
+            _suggestionFlag.conflate().collect {
+                when (it) {
+                    CandidateShowFlag.Idle -> {
+                        suggestionAdapter.suggestions = emptyList()
+                        if (isSuggestionVisible) {
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility,
+                                false
+                            )
+                            isSuggestionVisible = false
+                        }
                     }
-                } else {
-                    setSuggestionOnView(mainView)
-                    if (!isSuggestionVisible) {
-                        animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
-                        isSuggestionVisible = true
+
+                    CandidateShowFlag.Updating -> {
+                        setSuggestionOnView(mainView)
+                        if (!isSuggestionVisible) {
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility,
+                                true
+                            )
+                            isSuggestionVisible = true
+                        }
                     }
                 }
             }
@@ -816,9 +825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            _suggestionFlag.apply {
-                emit(CandidateShowFlag.Updating)
-            }
+            _suggestionFlag.emit(CandidateShowFlag.Updating)
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(DELAY_TIME)
@@ -1491,82 +1498,98 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) {
-        val candidates = getSuggestionList(insertString)
-        val filteredCandidates = if (stringInTail.get().isNotEmpty()) {
-            candidates.filter { it.length.toInt() == insertString.length }
-        } else {
-            candidates
+        val candidates = withContext(Dispatchers.Default) {
+            getSuggestionList(insertString)
         }
-        suggestionAdapter.suggestions = filteredCandidates
-        mainView.apply {
-            suggestionRecyclerView.scrollToPosition(0)
-        }
-        updateUIinHenkan(mainView, insertString)
-    }
-
-    private suspend fun getSuggestionList(insertString: String): List<Candidate> {
-        appPreference.learn_dictionary_preference?.let { isLearnDictionaryEnable ->
-            if (isLearnDictionaryEnable) {
-                val resultFromEngine = kanaKanjiEngine.getCandidates(
-                    insertString, appPreference.n_best_preference ?: N_BEST
-                )
-                val resultFromLearnDatabase =
-                    learnRepository.findLearnDataByInput(insertString)?.map {
-                        Candidate(
-                            string = it.out,
-                            type = (20).toByte(),
-                            length = (insertString.length).toUByte(),
-                            score = it.score,
-                        )
-                    } ?: emptyList()
-                val result = resultFromLearnDatabase + resultFromEngine
-                return result.distinctBy { it.string }
+        // Filter in the background if the list could be large
+        val filteredCandidates = withContext(Dispatchers.Default) {
+            if (stringInTail.get().isNotEmpty()) {
+                candidates.filter { it.length.toInt() == insertString.length }
+            } else {
+                candidates
             }
         }
-        return kanaKanjiEngine.getCandidates(
-            insertString, appPreference.n_best_preference ?: N_BEST
-        )
+        // Now update UI on main
+        withContext(Dispatchers.Main) {
+            suggestionAdapter.suggestions = filteredCandidates
+            mainView.suggestionRecyclerView.scrollToPosition(0)
+            updateUIinHenkan(mainView, insertString)
+        }
+    }
+
+    private lateinit var suggestionCache: MutableMap<String, List<Candidate>>
+
+    private suspend fun getSuggestionList(insertString: String): List<Candidate> {
+        val resultFromLearnDatabase =
+            learnRepository.findLearnDataByInput(insertString)?.map {
+                Candidate(
+                    string = it.out,
+                    type = (20).toByte(),
+                    length = (insertString.length).toUByte(),
+                    score = it.score,
+                )
+            } ?: emptyList()
+        suggestionCache[insertString]?.let { cachedResult ->
+            return resultFromLearnDatabase + cachedResult
+        }
+        val result = if (appPreference.learn_dictionary_preference == true) {
+            val resultFromEngine = kanaKanjiEngine.getCandidates(
+                insertString, appPreference.n_best_preference ?: N_BEST
+            )
+            resultFromLearnDatabase + resultFromEngine
+        } else {
+            kanaKanjiEngine.getCandidates(insertString, appPreference.n_best_preference ?: N_BEST)
+        }
+        val distinct = result.distinctBy { it.string }
+        suggestionCache[insertString] = distinct
+        return distinct
     }
 
     private fun deleteLongPress() = scope.launch {
-        while (isActive) {
-            // Cache frequently accessed properties
+        while (
+            isActive &&
+            deleteKeyLongKeyPressed.get() &&
+            !onDeleteLongPressUp.get()
+        ) {
             val insertString = _inputString.value
             val tailIsEmpty = stringInTail.get().isEmpty()
 
-            // Exit conditions
-            if (onDeleteLongPressUp.get() || !deleteKeyLongKeyPressed.get()) {
-                enableContinuousTapInput()
-                if (insertString.isEmpty()) {
-                    _suggestionFlag.emit(CandidateShowFlag.Idle)
-                } else {
-                    _suggestionFlag.emit(CandidateShowFlag.Updating)
-                }
-                break
-            }
-
             if (insertString.isEmpty()) {
+                // If there's no composing text, try sending a DEL key event
+                // Otherwise, exit the loop because there's nothing to delete
                 if (tailIsEmpty) {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 } else {
-                    enableContinuousTapInput()
-                    _suggestionFlag.emit(CandidateShowFlag.Idle)
+                    // Nothing left to delete in the composing text, break out
                     break
                 }
             } else {
-                // insertString is not empty
-                val newLength = insertString.length - 1
-                if (newLength == 0) {
-                    if (tailIsEmpty) {
-                        setComposingText("", 0)
-                    }
-                    _inputString.update { EMPTY_STRING }
-                } else {
-                    _inputString.update { insertString.substring(0, newLength) }
+                // Remove the last character from the composing text
+                val newString = insertString.dropLast(1)
+                _inputString.value = newString
+
+                // If it becomes empty, we may need to clear any tail text
+                if (newString.isEmpty() && tailIsEmpty) {
+                    setComposingText("", 0)
                 }
             }
+
+            // Add a small delay before the next deletion
             delay(LONG_DELAY_TIME)
         }
+
+        // Once the loop finishes (for any reason),
+        // re-enable normal tap input
+        enableContinuousTapInput()
+
+        // Update the suggestion flag based on the new composing text
+        val finalInsertString = _inputString.value
+        val candidateFlag = if (finalInsertString.isEmpty()) {
+            CandidateShowFlag.Idle
+        } else {
+            CandidateShowFlag.Updating
+        }
+        _suggestionFlag.emit(candidateFlag)
     }
 
     private fun enableContinuousTapInput() {
@@ -1673,7 +1696,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.apply {
                 keyboardView.let { tenkey ->
                     when (tenkey.currentInputMode) {
-                        InputMode.ModeJapanese -> handleJapaneseModeSpaceKey(
+                        InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
                             this, suggestions, insertString
                         )
 
@@ -1850,32 +1873,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncLeftLongPress() = scope.launch {
-        while (isActive) {
-            val insertString = _inputString.value
-            if (onLeftKeyLongPressUp.get() || !leftCursorKeyLongKeyPressed.get()) {
-                if (insertString.isEmpty()) {
-                    _suggestionFlag.emit(CandidateShowFlag.Idle)
-                } else {
-                    _suggestionFlag.emit(CandidateShowFlag.Updating)
-                }
-                break
-            }
-            if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
-                _suggestionFlag.emit(CandidateShowFlag.Idle)
-                break
-            }
-            if (insertString.isNotEmpty()) {
-                updateLeftInputString(insertString)
-            } else {
-                if (stringInTail.get().isEmpty() && !isCursorAtBeginning()) {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
-                }
-            }
-            delay(LONG_DELAY_TIME)
-        }
-    }
-
     private fun handleRightLongPress() {
         if (!isHenkan.get()) {
             onRightKeyLongPressUp.set(false)
@@ -1888,25 +1885,90 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncRightLongPress() = scope.launch {
-        while (isActive) {
+    private fun asyncLeftLongPress() = scope.launch {
+        // We'll store a "reason" if we need to emit a specific suggestion flag
+        var finalSuggestionFlag: CandidateShowFlag? = null
+
+        while (
+            isActive &&
+            leftCursorKeyLongKeyPressed.get() &&
+            !onLeftKeyLongPressUp.get()
+        ) {
             val insertString = _inputString.value
-            if (onRightKeyLongPressUp.get() || !rightCursorKeyLongKeyPressed.get()) {
-                if (insertString.isNotEmpty()) {
-                    _suggestionFlag.emit(CandidateShowFlag.Updating)
-                } else {
-                    _suggestionFlag.emit(CandidateShowFlag.Idle)
+
+            // If tail is not empty but there’s no composing text, we stop and emit Idle
+            if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
+                finalSuggestionFlag = CandidateShowFlag.Idle
+                break
+            }
+
+            if (insertString.isNotEmpty()) {
+                // Move a character from the composing text to the "tail" or handle it
+                updateLeftInputString(insertString)
+            } else {
+                // If there's really nothing in either the composing text or the tail,
+                // we can move the cursor left using a DPAD event (if we’re not already at the start)
+                if (stringInTail.get().isEmpty() && !isCursorAtBeginning()) {
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
                 }
-                break
             }
-            if (stringInTail.get().isEmpty() && _inputString.value.isNotEmpty()) {
-                _suggestionFlag.emit(CandidateShowFlag.Updating)
-                break
-            }
-            actionInRightKeyPressed(insertString)
+
             delay(LONG_DELAY_TIME)
         }
+
+        // If we left the loop "normally", figure out which suggestion flag to emit
+        if (finalSuggestionFlag != null) {
+            _suggestionFlag.emit(finalSuggestionFlag)
+        } else {
+            // We broke because user released the key, or the coroutine was canceled
+            // Use the updated _inputString to decide on Idle vs Updating
+            val insertString = _inputString.value
+            if (insertString.isEmpty()) {
+                _suggestionFlag.emit(CandidateShowFlag.Idle)
+            } else {
+                _suggestionFlag.emit(CandidateShowFlag.Updating)
+            }
+        }
     }
+
+    private fun asyncRightLongPress() = scope.launch {
+        // Same pattern: we store a reason for break if needed
+        var finalSuggestionFlag: CandidateShowFlag? = null
+
+        while (
+            isActive &&
+            rightCursorKeyLongKeyPressed.get() &&
+            !onRightKeyLongPressUp.get()
+        ) {
+            val insertString = _inputString.value
+
+            // If there's composing text but no "tail," we emit "Updating" and stop.
+            // (Mimics original logic: break out if stringInTail is empty + inputString is not empty.)
+            if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
+                finalSuggestionFlag = CandidateShowFlag.Updating
+                break
+            }
+
+            // Perform actual "right key pressed" logic
+            actionInRightKeyPressed(insertString)
+
+            delay(LONG_DELAY_TIME)
+        }
+
+        // Decide on final suggestion once we exit the loop
+        if (finalSuggestionFlag != null) {
+            _suggestionFlag.emit(finalSuggestionFlag)
+        } else {
+            // If we broke because user released the key or the coroutine ended
+            val insertString = _inputString.value
+            if (insertString.isNotEmpty()) {
+                _suggestionFlag.emit(CandidateShowFlag.Updating)
+            } else {
+                _suggestionFlag.emit(CandidateShowFlag.Idle)
+            }
+        }
+    }
+
 
     private fun updateLeftInputString(insertString: String) {
         if (insertString.isNotEmpty()) {

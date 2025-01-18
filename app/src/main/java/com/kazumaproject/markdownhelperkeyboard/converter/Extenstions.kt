@@ -190,3 +190,12 @@ fun BooleanArray.preprocessLBSIntoBooleanArray(): IntArray{
 fun String.convertFullWidthToHalfWidth(): String {
     return Normalizer.normalize(this, Normalizer.Form.NFKC)
 }
+
+fun String.toFullWidthDigitsEfficient(): String {
+    val sb = StringBuilder()
+    for (ch in this) {
+        sb.append(if (ch in '0'..'9') '０' + (ch - '0') else ch)
+    }
+    return sb.toString()
+}
+
