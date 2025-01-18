@@ -10,7 +10,7 @@ object AppPreference {
 
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
-    private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
+    private val N_BEST_PREFERENCE = Pair("n_best_preference", 8)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)

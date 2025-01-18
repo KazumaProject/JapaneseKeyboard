@@ -50,13 +50,13 @@ class FindPath {
             node?.let {
                 if (node.first.tango == "BOS") {
                     // If the BOS node is reached, create a Candidate
-                    if (!resultFinal.map { it.string }.contains(getStringFromNode(node.first))) {
-                        val tango = getStringFromNode(node.first)
+                    val stringFromNode = getStringFromNode(node.first)
+                    if (!resultFinal.map { it.string }.contains(stringFromNode)) {
                         val candidate = Candidate(
-                            string = tango,
+                            string = stringFromNode,
                             type = (1).toByte(),
                             length = length.toUByte(),
-                            score = if (Regex("\\d").containsMatchIn(tango)) node.second + 2000 else node.second,
+                            score = if (Regex("\\d").containsMatchIn(stringFromNode)) node.second + 2000 else node.second,
                             leftId = node.first.next?.l,
                             rightId = node.first.next?.r
                         )
@@ -107,11 +107,11 @@ class FindPath {
 
             node?.let {
                 if (node.first.tango == "BOS") {
-                    // If BOS node is reached, add it to the result
-                    if (!resultFinal.map { it.string }.contains(getStringFromNode(node.first))) {
+                    val stringFromNode = getStringFromNode(node.first)
+                    if (!resultFinal.map { it.string }.contains(stringFromNode)) {
                         resultFinal.add(
                             CandidateTemp(
-                                getStringFromNode(node.first),
+                                stringFromNode,
                                 node.second,
                                 node.first.next?.l,
                                 node.first.next?.r
