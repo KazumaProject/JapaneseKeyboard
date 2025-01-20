@@ -218,6 +218,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val deleteKeyLongKeyPressed = AtomicBoolean(false)
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
+    private var suggestionCache: MutableMap<String, List<Candidate>> = mutableMapOf()
 
     private val vibratorManager: VibratorManager by lazy {
         getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -291,7 +292,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
-        suggestionCache = mutableMapOf()
     }
 
     override fun onFinishInput() {
@@ -1517,8 +1517,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private lateinit var suggestionCache: MutableMap<String, List<Candidate>>
-
     private suspend fun getSuggestionList(insertString: String): List<Candidate> {
         val resultFromLearnDatabase =
             learnRepository.findLearnDataByInput(insertString)?.map {
@@ -1530,7 +1528,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             } ?: emptyList()
         suggestionCache[insertString]?.let { cachedResult ->
-            return resultFromLearnDatabase + cachedResult
+            return (resultFromLearnDatabase + cachedResult).distinctBy { it.string }
         }
         val result = if (appPreference.learn_dictionary_preference == true) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
