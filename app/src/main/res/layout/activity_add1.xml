@@ -60,26 +60,24 @@
         android:id="@+id/toAddActivity2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="268dp"
         android:layout_marginBottom="156dp"
+        android:backgroundTint="@color/title_blue"
         android:text="次へ"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.758"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintVertical_bias="0.003" />
+        app:layout_constraintStart_toStartOf="parent" />
 
     <Button
         android:id="@+id/backWelcome"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="64dp"
-        android:layout_marginTop="216dp"
         android:layout_marginBottom="156dp"
+        android:backgroundTint="@color/title_blue"
         android:text="戻る"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/toAddActivity2"
         app:layout_constraintHorizontal_bias="0.053"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintVertical_bias="0.166" />
+        app:layout_constraintStart_toStartOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>
