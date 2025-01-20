@@ -11,6 +11,7 @@ object AppPreference {
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 8)
+    private val CANDIDATE_CACHE = Pair("candidates_cache", false)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -42,5 +43,11 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(N_BEST_PREFERENCE.first, value ?: 4)
+        }
+
+    var candidate_cache_preference: Boolean?
+        get() = preferences.getBoolean(CANDIDATE_CACHE.first, CANDIDATE_CACHE.second)
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_CACHE.first, value ?: false)
         }
 }

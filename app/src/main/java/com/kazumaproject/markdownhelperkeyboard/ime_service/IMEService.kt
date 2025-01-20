@@ -317,6 +317,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
         actionInDestroy()
+        suggestionCache.clear()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
     }
 
@@ -1527,8 +1528,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     score = it.score,
                 )
             } ?: emptyList()
-        suggestionCache[insertString]?.let { cachedResult ->
-            return (resultFromLearnDatabase + cachedResult).distinctBy { it.string }
+
+        appPreference.candidate_cache_preference?.let {
+            if (it) {
+                suggestionCache[insertString]?.let { cachedResult ->
+                    return (resultFromLearnDatabase + cachedResult).distinctBy { it.string }
+                }
+            }
         }
         val result = if (appPreference.learn_dictionary_preference == true) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
@@ -1539,7 +1545,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             kanaKanjiEngine.getCandidates(insertString, appPreference.n_best_preference ?: N_BEST)
         }
         val distinct = result.distinctBy { it.string }
-        suggestionCache[insertString] = distinct
+        appPreference.candidate_cache_preference?.let {
+            if (it) {
+                suggestionCache[insertString] = distinct
+            }
+        }
         return distinct
     }
 

@@ -6,7 +6,8 @@
         <SwitchPreference
             android:defaultValue="true"
             android:key="vibration_preference"
-            android:summary="キーをタップした際のバイブレーションの有無"
+            android:summaryOff="キーをタップしても振動しません"
+            android:summaryOn="キーをタップすると振動します"
             android:title="バイブレーション" />
 
     </PreferenceCategory>
@@ -15,8 +16,10 @@
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="learn_dictionary_preference"
-            android:summary="学習辞書を有効、無効にします。\n有効にすると変換候補に過去にタップした候補が表示されます。"
+            android:summaryOff="学習辞書を無効化\n学習した変換候補を表示しません"
+            android:summaryOn="学習辞書を有効化\n学習した変換候補を表示します"
             android:title="学習辞書" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="変換候補">
@@ -27,7 +30,15 @@
             android:summary="表示する変換候補の最大数を設定します。"
             android:title="N-Best"
             app:min="2"
-            app:showSeekBarValue="true"/>
+            app:showSeekBarValue="true" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="candidates_cache"
+            android:summaryOff="変換候補のキャッシュを使用しない"
+            android:summaryOn="変換候補のキャッシュを使用する\n１度変換した候補を取得する速度が上昇しますがメモリの使用量が増えます"
+            android:title="キャッシュ" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="アプリについて">
