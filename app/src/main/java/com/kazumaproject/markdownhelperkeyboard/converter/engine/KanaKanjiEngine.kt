@@ -126,8 +126,8 @@ class KanaKanjiEngine {
 
 
     companion object {
-        const val SCORE_OFFSET = 6500
-        const val SCORE_OFFSET_SMALL = 5000
+        const val SCORE_OFFSET = 15000
+        const val SCORE_OFFSET_SMALL = 12000
     }
 
     fun buildEngine(
@@ -372,7 +372,9 @@ class KanaKanjiEngine {
             if (input.length == 1) {
                 findPath.backwardAStar(graph, input.length, connectionIds, n * 10)
             } else {
-                findPath.backwardAStar(graph, input.length, connectionIds, n)
+                val backAStar = findPath.backwardAStar(graph, input.length, connectionIds, n)
+                val threshold = backAStar.first().score + 1036
+                backAStar.filter { it.score <= threshold }
             }
         }
 
