@@ -418,14 +418,6 @@ class KanaKanjiEngine {
             rank1ArrayLBSYomi = symbolRank1ArrayLBSYomi
         )
 
-        val singleKanjiCommonPrefixDeferred = commonPrefixSymbols(
-            input = input,
-            yomiTrie = singleKanjiYomiTrie,
-            rank0ArrayLBSYomi = singleKanjiRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = singleKanjiRank1ArrayLBSYomi
-        )
-
-
         val emojiListDeferred = deferredFromDictionarySymbols(
             input = input,
             commonPrefixListString = emojiCommonPrefixDeferred,
@@ -477,9 +469,8 @@ class KanaKanjiEngine {
             type = 13
         )
 
-        val singleKanjiListDeferred = deferredFromDictionary(
+        val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
             input = input,
-            commonPrefixListString = singleKanjiCommonPrefixDeferred,
             yomiTrie = singleKanjiYomiTrie,
             tokenArray = singleKanjiTokenArray,
             tangoTrie = singleKanjiTangoTrie,
@@ -494,29 +485,28 @@ class KanaKanjiEngine {
             type = 7
         )
 
-        val symbolCommonPrefixDeferredHalfWidth = commonPrefixSymbols(
-            input = input.convertFullWidthToHalfWidth(),
-            yomiTrie = symbolYomiTrie,
-            rank0ArrayLBSYomi = symbolRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = symbolRank1ArrayLBSYomi
-        )
+        val symbolCommonPrefixDeferredHalfWidth =
+            if (input.all { !it.isLetterOrDigit() && !it.isWhitespace() })
+                listOf(input.convertFullWidthToHalfWidth())
+            else
+                emptyList()
 
-        val symbolHalfWidthListDeferred = deferredFromDictionary(
-            input = input,
-            commonPrefixListString = symbolCommonPrefixDeferredHalfWidth,
-            yomiTrie = symbolYomiTrie,
-            tokenArray = symbolTokenArray,
-            tangoTrie = symbolTangoTrie,
-            yomiRank1ArrayLBS = symbolRank1ArrayLBSYomi,
-            yomiLBSBooleanArray = symbolYomiLBSBooleanArray,
-            yomiLBSPreprocess = symbolYomiLBSPreprocess,
-            rank1ArrayIsLeaf = symbolRank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector = symbolRank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector = symbolRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = symbolRank0ArrayLBSTango,
-            rank1ArrayLBSTango = symbolRank1ArrayLBSTango,
-            type = 21
-        )
+        val symbolHalfWidthListDeferred =
+            if (symbolCommonPrefixDeferredHalfWidth.isEmpty()) emptyList() else deferredFromDictionary(
+                commonPrefixListString = symbolCommonPrefixDeferredHalfWidth,
+                yomiTrie = symbolYomiTrie,
+                tokenArray = symbolTokenArray,
+                tangoTrie = symbolTangoTrie,
+                yomiRank1ArrayLBS = symbolRank1ArrayLBSYomi,
+                yomiLBSBooleanArray = symbolYomiLBSBooleanArray,
+                yomiLBSPreprocess = symbolYomiLBSPreprocess,
+                rank1ArrayIsLeaf = symbolRank1ArrayIsLeaf,
+                rank0ArrayTokenArrayBitvector = symbolRank0ArrayTokenArrayBitvector,
+                rank1ArrayTokenArrayBitvector = symbolRank1ArrayTokenArrayBitvector,
+                rank0ArrayLBSTango = symbolRank0ArrayLBSTango,
+                rank1ArrayLBSTango = symbolRank1ArrayLBSTango,
+                type = 21
+            )
 
         if (input.length == 1) return resultNBestFinalDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
@@ -591,7 +581,8 @@ class KanaKanjiEngine {
                         rightId = systemTokenArray.rightIds[token.posTableIndex.toInt()]
                     )
                 }
-            }.sortedBy { it.score }.take(n * 2)
+            }.filter { it.score <= resultNBestFinalDeferred.first().score + 3000 }
+                .sortedBy { it.score }.take(n * 2)
         }
 
         val yomiPartListDeferred: List<Candidate> = withContext(Dispatchers.Default) {
@@ -790,7 +781,11 @@ class KanaKanjiEngine {
             }
         }
 
-        return ((resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResultDeferred + kotowazaListDeferred + numbersDeferred).sortedBy { it.score } + symbolHalfWidthListDeferred + (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred)
+        return (
+                (resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResultDeferred + kotowazaListDeferred + numbersDeferred).sortedBy { it.score } +
+                        symbolHalfWidthListDeferred +
+                        (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } +
+                        symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred)
     }
 
     fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {
@@ -924,7 +919,6 @@ class KanaKanjiEngine {
     }
 
     private suspend fun deferredFromDictionary(
-        input: String,
         commonPrefixListString: List<String>,
         yomiTrie: LOUDSWithTermId,
         tokenArray: TokenArray,
@@ -940,7 +934,6 @@ class KanaKanjiEngine {
         type: Byte
     ) = withContext(Dispatchers.Default) {
         commonPrefixListString.flatMap { yomi ->
-            if (input.length > yomi.length) return@withContext emptyList()
             val termId = yomiTrie.getTermIdShortArray(
                 yomiTrie.getNodeIndex(
                     yomi, yomiRank1ArrayLBS, yomiLBSBooleanArray, yomiLBSPreprocess
@@ -965,6 +958,47 @@ class KanaKanjiEngine {
                 )
             }
         }
+    }
+
+    private suspend fun deferredFromDictionarySingleKanji(
+        input: String,
+        yomiTrie: LOUDSWithTermId,
+        tokenArray: TokenArray,
+        tangoTrie: LOUDS,
+        yomiRank1ArrayLBS: ShortArray,
+        yomiLBSBooleanArray: BooleanArray,
+        yomiLBSPreprocess: IntArray,
+        rank1ArrayIsLeaf: ShortArray,
+        rank0ArrayTokenArrayBitvector: ShortArray,
+        rank1ArrayTokenArrayBitvector: ShortArray,
+        rank0ArrayLBSTango: ShortArray,
+        rank1ArrayLBSTango: ShortArray,
+        type: Byte
+    ) = withContext(Dispatchers.Default) {
+        val termId = yomiTrie.getTermIdShortArray(
+            yomiTrie.getNodeIndex(
+                input, yomiRank1ArrayLBS, yomiLBSBooleanArray, yomiLBSPreprocess
+            ), rank1ArrayIsLeaf
+        )
+        tokenArray.getListDictionaryByYomiTermIdShortArray(
+            termId, rank0ArrayTokenArrayBitvector, rank1ArrayTokenArrayBitvector
+        ).map {
+            Candidate(
+                string = when (it.nodeId) {
+                    -2 -> input
+                    -1 -> input.hiraToKata()
+                    else -> tangoTrie.getLetterShortArray(
+                        it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango
+                    )
+                },
+                type = type,
+                length = input.length.toUByte(),
+                score = it.wordCost.toInt(),
+                leftId = emojiTokenArray.leftIds[it.posTableIndex.toInt()],
+                rightId = emojiTokenArray.rightIds[it.posTableIndex.toInt()]
+            )
+        }
+
     }
 
     private fun deferredPrediction(

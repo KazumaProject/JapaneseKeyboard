@@ -1532,7 +1532,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         appPreference.candidate_cache_preference?.let {
             if (it) {
                 suggestionCache[insertString]?.let { cachedResult ->
-                    return (resultFromLearnDatabase + cachedResult).distinctBy { it.string }
+                    return (resultFromLearnDatabase + cachedResult).distinctBy { candidate -> candidate.string }
                 }
             }
         }
