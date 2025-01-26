@@ -74,6 +74,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         this.lifecycleOwner = owner
     }
 
+    fun getTabPosition(): Int {
+        return tabLayout.selectedTabPosition
+    }
+
     fun setTabPosition(tabPosition: Int) {
         tabLayout.getTabAt(tabPosition).apply {
             tabLayout.selectTab(this)

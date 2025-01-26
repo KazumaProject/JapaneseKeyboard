@@ -3,7 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter
 import com.kazumaproject.graph.Node
 
 object Other {
-    const val NUM_OF_CONNECTION_ID = 2669
+    const val NUM_OF_CONNECTION_ID = 2670
     val BOS = Node(
         l = 0,
         r = 0,
