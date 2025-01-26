@@ -59,10 +59,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSearch
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.EmojiList
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.EmoticonList
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.SymbolList
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
@@ -184,19 +181,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var suggestionAdapter: SuggestionAdapter
 
     @Inject
-    @EmojiList
-    lateinit var emojiList: List<String>
-
-    @Inject
-    @EmoticonList
-    lateinit var emoticonList: List<String>
-
-    @Inject
-    @SymbolList
-    lateinit var symbolList: List<String>
-
-    @Inject
     lateinit var learnRepository: LearnRepository
+
+    private var emojiList: List<String> = emptyList()
+
+    private var emoticonList: List<String> = emptyList()
+
+    private var symbolList: List<String> = emptyList()
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
@@ -284,6 +275,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onStartInput called $restarting")
         resetAllFlags()
         setCurrentInputType(attribute)
+        suggestionCache.clear()
         _suggestionViewStatus.update { true }
     }
 
@@ -677,9 +669,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isSuggestionVisible = false
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
-        withContext(Dispatchers.Main) {
-            setSymbols(mainView)
-        }
         launch {
             _suggestionFlag.conflate().collect {
                 when (it) {
@@ -721,10 +710,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         animateViewVisibility(keyboardView, false)
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
+                        setSymbols(mainView)
                     } else {
                         animateViewVisibility(keyboardView, true)
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
+                        clearSymbols()
                     }
                 }
             }
@@ -1051,10 +1042,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setSymbols(mainView: MainLayoutBinding) {
-        mainView.keyboardSymbolView.setSymbolLists(
-            emojiList, emoticonList, symbolList, 0
-        )
+    private suspend fun setSymbols(mainView: MainLayoutBinding) {
+
+        emojiList = withContext(Dispatchers.Default) {
+            kanaKanjiEngine.getSymbolEmojiCandidates()
+        }
+        emoticonList = withContext(Dispatchers.Default) {
+            kanaKanjiEngine.getSymbolEmoticonCandidates()
+        }
+        symbolList = withContext(Dispatchers.Default) {
+            kanaKanjiEngine.getSymbolCandidates()
+        }
+
+        withContext(Dispatchers.Main) {
+            mainView.keyboardSymbolView.setSymbolLists(
+                emojiList, emoticonList, symbolList, mainView.keyboardSymbolView.getTabPosition()
+            )
+        }
+    }
+
+    private suspend fun clearSymbols() {
+        emojiList = withContext(Dispatchers.Default) {
+            emptyList()
+        }
+        emoticonList = withContext(Dispatchers.Default) {
+            emptyList()
+        }
+        symbolList = withContext(Dispatchers.Default) {
+            emptyList()
+        }
     }
 
     private fun setCandidateClick(

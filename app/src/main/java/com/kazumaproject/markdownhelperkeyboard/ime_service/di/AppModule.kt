@@ -1069,21 +1069,4 @@ object AppModule {
             R.drawable.open_bracket
         )!!
 
-    @Singleton
-    @Provides
-    @EmojiList
-    fun provideEmojiList(kanaKanjiEngine: KanaKanjiEngine) =
-        kanaKanjiEngine.getSymbolEmojiCandidates()
-
-    @Singleton
-    @Provides
-    @EmoticonList
-    fun provideEmoticonList(kanaKanjiEngine: KanaKanjiEngine) =
-        kanaKanjiEngine.getSymbolEmoticonCandidates()
-
-    @Singleton
-    @Provides
-    @SymbolList
-    fun provideSymbolList(kanaKanjiEngine: KanaKanjiEngine) = kanaKanjiEngine.getSymbolCandidates()
-
 }

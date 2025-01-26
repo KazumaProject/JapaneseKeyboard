@@ -126,8 +126,8 @@ class KanaKanjiEngine {
 
 
     companion object {
-        const val SCORE_OFFSET = 15000
-        const val SCORE_OFFSET_SMALL = 12000
+        const val SCORE_OFFSET = 8000
+        const val SCORE_OFFSET_SMALL = 6000
     }
 
     fun buildEngine(
@@ -369,13 +369,7 @@ class KanaKanjiEngine {
         )
 
         val resultNBestFinalDeferred: List<Candidate> = withContext(Dispatchers.Default) {
-            if (input.length == 1) {
-                findPath.backwardAStar(graph, input.length, connectionIds, n * 10)
-            } else {
-                val backAStar = findPath.backwardAStar(graph, input.length, connectionIds, n)
-                val threshold = backAStar.first().score + 1036
-                backAStar.filter { it.score <= threshold }
-            }
+            findPath.backwardAStar(graph, input.length, connectionIds, n)
         }
 
         if (input.isDigitsOnly()) {
@@ -581,8 +575,7 @@ class KanaKanjiEngine {
                         rightId = systemTokenArray.rightIds[token.posTableIndex.toInt()]
                     )
                 }
-            }.filter { it.score <= resultNBestFinalDeferred.first().score + 3000 }
-                .sortedBy { it.score }.take(n * 2)
+            }.sortedBy { it.score }.take(n)
         }
 
         val yomiPartListDeferred: List<Candidate> = withContext(Dispatchers.Default) {
@@ -1008,12 +1001,12 @@ class KanaKanjiEngine {
         rank1ArrayLBSYomi: IntArray
     ): List<String> {
         if (input.length > 16) return emptyList()
-        if (input.length in 2..3) return emptyList()
+        if (input.length <= 2) return emptyList()
         return yomiTrie.predictiveSearch(
             prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
         ).filter {
             when (input.length) {
-                4 -> it.length <= input.length + 2
+                in 3..4 -> it.length <= input.length + 2
                 in 5..6 -> it.length <= input.length + 3
                 else -> it.length > input.length
             }

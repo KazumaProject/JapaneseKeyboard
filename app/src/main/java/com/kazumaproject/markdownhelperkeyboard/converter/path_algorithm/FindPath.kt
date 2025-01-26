@@ -4,7 +4,6 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
-import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateTemp
 import java.util.PriorityQueue
 
 class FindPath {
@@ -85,63 +84,6 @@ class FindPath {
                 }
             }
         }
-        return resultFinal
-    }
-
-    fun backwardAStarForLongest(
-        graph: MutableMap<Int, MutableList<Node>>, // Adjusted graph type to MutableMap
-        length: Int,
-        connectionIds: ShortArray,
-        n: Int
-    ): MutableList<CandidateTemp> {
-        forwardDp(graph, length, connectionIds) // Assuming forwardDp works with the updated graph
-        val resultFinal: MutableList<CandidateTemp> = mutableListOf()
-        val pQueue: PriorityQueue<Pair<Node, Int>> = PriorityQueue(compareBy { it.second })
-
-        // EOS (End of Sentence) node is accessed from the graph using the key length + 1
-        val eos = Pair(graph[length + 1]?.get(0) ?: return resultFinal, 0)
-        pQueue.add(eos)
-
-        while (pQueue.isNotEmpty()) {
-            val node: Pair<Node, Int>? = pQueue.poll()
-
-            node?.let {
-                if (node.first.tango == "BOS") {
-                    val stringFromNode = getStringFromNode(node.first)
-                    if (!resultFinal.map { it.string }.contains(stringFromNode)) {
-                        resultFinal.add(
-                            CandidateTemp(
-                                stringFromNode,
-                                node.second,
-                                node.first.next?.l,
-                                node.first.next?.r
-                            )
-                        )
-                    }
-                } else {
-                    // Get the previous nodes from the graph
-                    val prevNodes = getPrevNodes2(graph, node.first, node.first.sPos).flatten()
-
-                    for (prevNode in prevNodes) {
-                        val edgeScore = getEdgeCost(
-                            prevNode.l.toInt(),
-                            node.first.r.toInt(),
-                            connectionIds
-                        )
-                        prevNode.g = node.first.g + edgeScore + node.first.score
-                        prevNode.next = node.first
-                        val result2 = Pair(prevNode, prevNode.g + prevNode.f)
-                        pQueue.add(result2)
-                    }
-                }
-
-                // Stop when we have enough candidates
-                if (resultFinal.size >= n) {
-                    return resultFinal
-                }
-            }
-        }
-
         return resultFinal
     }
 
