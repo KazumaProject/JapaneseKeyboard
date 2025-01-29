@@ -12,6 +12,9 @@ object AppPreference {
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 8)
     private val CANDIDATE_CACHE = Pair("candidates_cache", false)
+    private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
+    private val MOZCUT_PLACES = Pair("mozc_ut_places_preference", false)
+    private val MOZCUT_WIKI = Pair("mozc_ut_wiki_preference", false)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -49,5 +52,23 @@ object AppPreference {
         get() = preferences.getBoolean(CANDIDATE_CACHE.first, CANDIDATE_CACHE.second)
         set(value) = preferences.edit {
             it.putBoolean(CANDIDATE_CACHE.first, value ?: false)
+        }
+
+    var mozc_ut_person_names_preference: Boolean?
+        get() = preferences.getBoolean(MOZCUT_PERSON_NAME.first, MOZCUT_PERSON_NAME.second)
+        set(value) = preferences.edit {
+            it.putBoolean(MOZCUT_PERSON_NAME.first, value ?: false)
+        }
+
+    var mozc_ut_places_preference: Boolean?
+        get() = preferences.getBoolean(MOZCUT_PLACES.first, MOZCUT_PLACES.second)
+        set(value) = preferences.edit {
+            it.putBoolean(MOZCUT_PLACES.first, value ?: false)
+        }
+
+    var mozc_ut_wiki_preference: Boolean?
+        get() = preferences.getBoolean(MOZCUT_WIKI.first, MOZCUT_WIKI.second)
+        set(value) = preferences.edit {
+            it.putBoolean(MOZCUT_WIKI.first, value ?: false)
         }
 }
