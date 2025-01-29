@@ -1,8 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
+import android.content.Context
 import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.bitset.rank0GetIntArray
+import com.kazumaproject.bitset.rank1GetIntArray
 import com.kazumaproject.convertFullWidthToHalfWidth
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
@@ -13,13 +16,19 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertTo
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByEmojiCategory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.preprocessLBSIntoBooleanArray
+import com.kazumaproject.toBooleanArray
 import com.kazumaproject.toFullWidthDigitsEfficient
 import com.kazumaproject.viterbi.FindPath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.BufferedInputStream
+import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import java.util.zip.ZipInputStream
 
 class KanaKanjiEngine {
 
@@ -124,6 +133,47 @@ class KanaKanjiEngine {
     private lateinit var kotowazaYomiLBSBooleanArray: BooleanArray
     private lateinit var kotowazaYomiLBSPreprocess: IntArray
 
+    private var personYomiTrie: LOUDSWithTermId? = null
+    private var personTangoTrie: LOUDS? = null
+    private var personTokenArray: TokenArray? = null
+
+    private var personRank0ArrayLBSYomi: IntArray? = null
+    private var personRank1ArrayLBSYomi: IntArray? = null
+    private var personRank1ArrayIsLeaf: IntArray? = null
+    private var personRank0ArrayTokenArrayBitvector: IntArray? = null
+    private var personRank1ArrayTokenArrayBitvector: IntArray? = null
+    private var personRank0ArrayLBSTango: IntArray? = null
+    private var personRank1ArrayLBSTango: IntArray? = null
+    private var personYomiLBSBooleanArray: BooleanArray? = null
+    private var personYomiLBSPreprocess: IntArray? = null
+
+    private var placesYomiTrie: LOUDSWithTermId? = null
+    private var placesTangoTrie: LOUDS? = null
+    private var placesTokenArray: TokenArray? = null
+
+    private var placesRank0ArrayLBSYomi: IntArray? = null
+    private var placesRank1ArrayLBSYomi: IntArray? = null
+    private var placesRank1ArrayIsLeaf: IntArray? = null
+    private var placesRank0ArrayTokenArrayBitvector: IntArray? = null
+    private var placesRank1ArrayTokenArrayBitvector: IntArray? = null
+    private var placesRank0ArrayLBSTango: IntArray? = null
+    private var placesRank1ArrayLBSTango: IntArray? = null
+    private var placesYomiLBSBooleanArray: BooleanArray? = null
+    private var placesYomiLBSPreprocess: IntArray? = null
+
+    private var wikiYomiTrie: LOUDSWithTermId? = null
+    private var wikiTangoTrie: LOUDS? = null
+    private var wikiTokenArray: TokenArray? = null
+
+    private var wikiRank0ArrayLBSYomi: IntArray? = null
+    private var wikiRank1ArrayLBSYomi: IntArray? = null
+    private var wikiRank1ArrayIsLeaf: IntArray? = null
+    private var wikiRank0ArrayTokenArrayBitvector: IntArray? = null
+    private var wikiRank1ArrayTokenArrayBitvector: IntArray? = null
+    private var wikiRank0ArrayLBSTango: IntArray? = null
+    private var wikiRank1ArrayLBSTango: IntArray? = null
+    private var wikiYomiLBSBooleanArray: BooleanArray? = null
+    private var wikiYomiLBSPreprocess: IntArray? = null
 
     companion object {
         const val SCORE_OFFSET = 8000
@@ -346,10 +396,184 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.symbolYomiLBSPreprocess = symbolYomiLBSPreprocess
         this@KanaKanjiEngine.readingCorrectionYomiLBSPreprocess = readingCorrectionYomiLBSPreprocess
         this@KanaKanjiEngine.kotowazaYomiLBSPreprocess = kotowazaYomiLBSPreprocess
+
+    }
+
+    fun buildPersonNamesDictionary(context: Context) {
+        val objectInputTango =
+            ObjectInputStream(BufferedInputStream(context.assets.open("person_name/tango_person_names.dat")))
+        val objectInputYomi =
+            ObjectInputStream(BufferedInputStream(context.assets.open("person_name/yomi_person_names.dat")))
+        val objectInputTokenArray =
+            ObjectInputStream(BufferedInputStream(context.assets.open("person_name/token_person_names.dat")))
+        val objectInputReadPOSTable =
+            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+
+        this.personTangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
+        this.personYomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+
+        this.personTokenArray = TokenArray()
+        this.personTokenArray?.readExternal(objectInputTokenArray)
+        this.personTokenArray?.readPOSTable(objectInputReadPOSTable)
+
+        this.personRank0ArrayLBSYomi = personYomiTrie?.LBS?.rank0GetIntArray()
+        this.personRank1ArrayLBSYomi = personYomiTrie?.LBS?.rank1GetIntArray()
+        this.personRank1ArrayIsLeaf = personYomiTrie?.isLeaf?.rank1GetIntArray()
+        this.personYomiLBSBooleanArray = personYomiTrie?.LBS?.toBooleanArray()
+        this.personYomiLBSPreprocess =
+            this.personYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
+        this.personRank0ArrayTokenArrayBitvector = personTokenArray?.bitvector?.rank0GetIntArray()
+        this.personRank1ArrayTokenArrayBitvector = personTokenArray?.bitvector?.rank1GetIntArray()
+        this.personRank0ArrayLBSTango = personTangoTrie?.LBS?.rank0GetIntArray()
+        this.personRank1ArrayLBSTango = personTangoTrie?.LBS?.rank1GetIntArray()
+    }
+
+    fun buildPlaceDictionary(context: Context) {
+        val zipInputStreamTango = ZipInputStream(context.assets.open("places/tango_places.dat.zip"))
+        zipInputStreamTango.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
+            this.placesTangoTrie = LOUDS().readExternalNotCompress(it)
+        }
+        val zipInputStreamYomi = ZipInputStream(context.assets.open("places/yomi_places.dat.zip"))
+        zipInputStreamYomi.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
+            this.placesYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
+        }
+
+        this.placesTokenArray = TokenArray()
+
+        ZipInputStream(context.assets.open("places/token_places.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "token_places.dat") {
+                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
+                        this.placesTokenArray?.readExternal(objectInput)
+                    }
+                    break
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+
+        val objectInputReadPOSTable =
+            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+
+        this.placesTokenArray?.readPOSTable(objectInputReadPOSTable)
+
+        this.placesRank0ArrayLBSYomi = placesYomiTrie?.LBS?.rank0GetIntArray()
+        this.placesRank1ArrayLBSYomi = placesYomiTrie?.LBS?.rank1GetIntArray()
+        this.placesRank1ArrayIsLeaf = placesYomiTrie?.isLeaf?.rank1GetIntArray()
+        this.placesYomiLBSBooleanArray = placesYomiTrie?.LBS?.toBooleanArray()
+        this.placesYomiLBSPreprocess =
+            this.placesYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
+        this.placesRank0ArrayTokenArrayBitvector = placesTokenArray?.bitvector?.rank0GetIntArray()
+        this.placesRank1ArrayTokenArrayBitvector = placesTokenArray?.bitvector?.rank1GetIntArray()
+        this.placesRank0ArrayLBSTango = placesTangoTrie?.LBS?.rank0GetIntArray()
+        this.placesRank1ArrayLBSTango = placesTangoTrie?.LBS?.rank1GetIntArray()
+    }
+
+    fun buildWikiDictionary(context: Context) {
+        val zipInputStreamTango = ZipInputStream(context.assets.open("wiki/tango_wiki.dat.zip"))
+        zipInputStreamTango.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
+            this.wikiTangoTrie = LOUDS().readExternalNotCompress(it)
+        }
+        val zipInputStreamYomi = ZipInputStream(context.assets.open("wiki/yomi_wiki.dat.zip"))
+        zipInputStreamYomi.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
+            this.wikiYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
+        }
+
+        this.wikiTokenArray = TokenArray()
+
+        ZipInputStream(context.assets.open("wiki/token_wiki.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "token_wiki.dat") {
+                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
+                        this.wikiTokenArray?.readExternal(objectInput)
+                    }
+                    break
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+
+        val objectInputReadPOSTable =
+            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+
+        this.wikiTokenArray?.readPOSTable(objectInputReadPOSTable)
+
+        this.wikiRank0ArrayLBSYomi = wikiYomiTrie?.LBS?.rank0GetIntArray()
+        this.wikiRank1ArrayLBSYomi = wikiYomiTrie?.LBS?.rank1GetIntArray()
+        this.wikiRank1ArrayIsLeaf = wikiYomiTrie?.isLeaf?.rank1GetIntArray()
+        this.wikiYomiLBSBooleanArray = wikiYomiTrie?.LBS?.toBooleanArray()
+        this.wikiYomiLBSPreprocess = this.wikiYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
+        this.wikiRank0ArrayTokenArrayBitvector = wikiTokenArray?.bitvector?.rank0GetIntArray()
+        this.wikiRank1ArrayTokenArrayBitvector = wikiTokenArray?.bitvector?.rank1GetIntArray()
+        this.wikiRank0ArrayLBSTango = wikiTangoTrie?.LBS?.rank0GetIntArray()
+        this.wikiRank1ArrayLBSTango = wikiTangoTrie?.LBS?.rank1GetIntArray()
+    }
+
+    fun releasePersonNamesDictionary() {
+        this.personTangoTrie = null
+        this.personYomiTrie = null
+        this.personTokenArray = null
+        this.personRank0ArrayLBSYomi = null
+        this.personRank1ArrayLBSYomi = null
+        this.personRank1ArrayIsLeaf = null
+        this.personYomiLBSBooleanArray = null
+        this.personYomiLBSPreprocess = null
+        this.personRank0ArrayTokenArrayBitvector = null
+        this.personRank1ArrayTokenArrayBitvector = null
+        this.personRank0ArrayLBSTango = null
+        this.personRank1ArrayLBSTango = null
+    }
+
+    fun releasePlacesDictionary() {
+        this.placesTangoTrie = null
+        this.placesYomiTrie = null
+        this.placesTokenArray = null
+        this.placesRank0ArrayLBSYomi = null
+        this.placesRank1ArrayLBSYomi = null
+        this.placesRank1ArrayIsLeaf = null
+        this.placesYomiLBSBooleanArray = null
+        this.placesYomiLBSPreprocess = null
+        this.placesRank0ArrayTokenArrayBitvector = null
+        this.placesRank1ArrayTokenArrayBitvector = null
+        this.placesRank0ArrayLBSTango = null
+        this.placesRank1ArrayLBSTango = null
+    }
+
+    fun releaseWikiDictionary() {
+        this.wikiTangoTrie = null
+        this.wikiYomiTrie = null
+        this.wikiTokenArray = null
+        this.wikiRank0ArrayLBSYomi = null
+        this.wikiRank1ArrayLBSYomi = null
+        this.wikiRank1ArrayIsLeaf = null
+        this.wikiYomiLBSBooleanArray = null
+        this.wikiYomiLBSPreprocess = null
+        this.wikiRank0ArrayTokenArrayBitvector = null
+        this.wikiRank1ArrayTokenArrayBitvector = null
+        this.wikiRank0ArrayLBSTango = null
+        this.wikiRank1ArrayLBSTango = null
+    }
+
+    fun isMozcUTPersonDictionariesInitialized(): Boolean {
+        return !(this.personYomiTrie == null || this.personTangoTrie == null || this.personTokenArray == null)
+    }
+
+    fun isMozcUTPlacesDictionariesInitialized(): Boolean {
+        return !(this.placesYomiTrie == null || this.placesTangoTrie == null || this.placesTokenArray == null)
+    }
+
+    fun isMozcUTWikiDictionariesInitialized(): Boolean {
+        return !(this.wikiYomiTrie == null || this.wikiTangoTrie == null || this.wikiTokenArray == null)
     }
 
     suspend fun getCandidates(
-        input: String, n: Int
+        input: String, n: Int, appPreference: AppPreference
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -480,10 +704,8 @@ class KanaKanjiEngine {
         )
 
         val symbolCommonPrefixDeferredHalfWidth =
-            if (input.all { !it.isLetterOrDigit() && !it.isWhitespace() })
-                listOf(input.convertFullWidthToHalfWidth())
-            else
-                emptyList()
+            if (input.all { !it.isLetterOrDigit() && !it.isWhitespace() }) listOf(input.convertFullWidthToHalfWidth())
+            else emptyList()
 
         val symbolHalfWidthListDeferred =
             if (symbolCommonPrefixDeferredHalfWidth.isEmpty()) emptyList() else deferredFromDictionary(
@@ -548,9 +770,7 @@ class KanaKanjiEngine {
                 val termId = systemYomiTrie.getTermId(nodeIndex, systemRank1ArrayIsLeaf)
 
                 systemTokenArray.getListDictionaryByYomiTermId(
-                    termId,
-                    systemRank0ArrayTokenArrayBitvector,
-                    systemRank1ArrayTokenArrayBitvector
+                    termId, systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector
                 ).map { token ->
                     val baseCost = token.wordCost.toInt()
                     val score = when {
@@ -563,9 +783,7 @@ class KanaKanjiEngine {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> systemTangoTrie.getLetter(
-                                token.nodeId,
-                                systemRank0ArrayLBSTango,
-                                systemRank1ArrayLBSTango
+                                token.nodeId, systemRank0ArrayLBSTango, systemRank1ArrayLBSTango
                             )
                         },
                         type = 9,
@@ -774,11 +992,34 @@ class KanaKanjiEngine {
             }
         }
 
-        return (
-                (resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResultDeferred + kotowazaListDeferred + numbersDeferred).sortedBy { it.score } +
-                        symbolHalfWidthListDeferred +
-                        (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } +
-                        symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred)
+        appPreference.apply {
+            val mozcUTPersonName = mozc_ut_person_names_preference ?: false
+            val mozcUTPlaces = mozc_ut_places_preference ?: false
+            val mozcUTWiki = mozc_ut_wiki_preference ?: false
+
+            val mozcUTPersonNames =
+                if (mozcUTPersonName) getMozcUTPersonNames(input) else emptyList()
+            val mozcUTPlacesList = if (mozcUTPlaces) getMozcUTPlace(input) else emptyList()
+            val mozcUTWikiList = if (mozcUTWiki) getMozcUTWiki(input) else emptyList()
+
+            val resultList = resultNBestFinalDeferred +
+                    readingCorrectionListDeferred +
+                    predictiveSearchResultDeferred +
+                    kotowazaListDeferred +
+                    mozcUTPersonNames +
+                    mozcUTPlacesList +
+                    mozcUTWikiList
+
+            return (resultList.sortedBy { it.score } +
+                    numbersDeferred +
+                    symbolHalfWidthListDeferred +
+                    (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } +
+                    symbolListDeferred +
+                    hirakanaAndKana +
+                    yomiPartListDeferred +
+                    singleKanjiListDeferred)
+        }
+
     }
 
     fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {
@@ -904,11 +1145,56 @@ class KanaKanjiEngine {
                     type = type,
                     length = yomi.length.toUByte(),
                     score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1000 * (yomi.length - input.length),
-                    leftId = emojiTokenArray.leftIds[it.posTableIndex.toInt()],
-                    rightId = emojiTokenArray.rightIds[it.posTableIndex.toInt()]
+                    leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
+                    rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
                 )
             }
         }
+    }
+
+    private suspend fun deferredFromMozcUTDictionary(
+        input: String,
+        commonPrefixListString: List<String>,
+        yomiTrie: LOUDSWithTermId,
+        tokenArray: TokenArray,
+        tangoTrie: LOUDS,
+        yomiRank1ArrayLBS: IntArray,
+        yomiLBSBooleanArray: BooleanArray,
+        yomiLBSPreprocess: IntArray,
+        rank1ArrayIsLeaf: IntArray,
+        rank0ArrayTokenArrayBitvector: IntArray,
+        rank1ArrayTokenArrayBitvector: IntArray,
+        rank0ArrayLBSTango: IntArray,
+        rank1ArrayLBSTango: IntArray,
+        type: Byte,
+        n: Int
+    ) = withContext(Dispatchers.Default) {
+        commonPrefixListString.flatMap { yomi ->
+            if (input.length > yomi.length) return@withContext emptyList()
+            val termId = yomiTrie.getTermId(
+                yomiTrie.getNodeIndex(
+                    yomi, yomiRank1ArrayLBS, yomiLBSBooleanArray, yomiLBSPreprocess
+                ), rank1ArrayIsLeaf
+            )
+            tokenArray.getListDictionaryByYomiTermId(
+                termId, rank0ArrayTokenArrayBitvector, rank1ArrayTokenArrayBitvector
+            ).map {
+                Candidate(
+                    string = when (it.nodeId) {
+                        -2 -> yomi
+                        -1 -> yomi.hiraToKata()
+                        else -> tangoTrie.getLetter(
+                            it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango
+                        )
+                    },
+                    type = type,
+                    length = yomi.length.toUByte(),
+                    score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + 1500 * (yomi.length - input.length),
+                    leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
+                    rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
+                )
+            }
+        }.sortedBy { it.score }.take(n)
     }
 
     private suspend fun deferredFromDictionary(
@@ -946,8 +1232,8 @@ class KanaKanjiEngine {
                     type = type,
                     length = yomi.length.toUByte(),
                     score = it.wordCost.toInt(),
-                    leftId = emojiTokenArray.leftIds[it.posTableIndex.toInt()],
-                    rightId = emojiTokenArray.rightIds[it.posTableIndex.toInt()]
+                    leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
+                    rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
                 )
             }
         }
@@ -987,8 +1273,8 @@ class KanaKanjiEngine {
                 type = type,
                 length = input.length.toUByte(),
                 score = it.wordCost.toInt(),
-                leftId = emojiTokenArray.leftIds[it.posTableIndex.toInt()],
-                rightId = emojiTokenArray.rightIds[it.posTableIndex.toInt()]
+                leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
+                rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
             )
         }
 
@@ -1052,15 +1338,129 @@ class KanaKanjiEngine {
         }
     }
 
-    private fun commonPrefixSymbols(
+    private fun commonPrefixMozcUT(
         input: String,
         yomiTrie: LOUDSWithTermId,
-        rank0ArrayLBSYomi: ShortArray,
-        rank1ArrayLBSYomi: ShortArray
+        rank0ArrayLBSYomi: IntArray,
+        rank1ArrayLBSYomi: IntArray
     ): List<String> {
-        return yomiTrie.commonPrefixSearchShortArray(
-            str = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
-        ).asReversed()
+        if (input.length > 16) return emptyList()
+        if (input.length in 0..3) return emptyList()
+        return yomiTrie.predictiveSearch(
+            prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
+        ).filter {
+            when (input.length) {
+                in 3..4 -> it.length <= input.length + 2
+                in 5..6 -> it.length <= input.length + 3
+                else -> it.length > input.length || it.length == input.length
+            }
+        }.asReversed()
+    }
+
+    private fun commonPrefixMozcUTWiki(
+        input: String,
+        yomiTrie: LOUDSWithTermId,
+        rank0ArrayLBSYomi: IntArray,
+        rank1ArrayLBSYomi: IntArray
+    ): List<String> {
+        if (input.length > 16) return emptyList()
+        if (input.length in 0..2) return emptyList()
+        return yomiTrie.predictiveSearch(
+            prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
+        ).filter {
+            when (input.length) {
+                in 3..4 -> it.length <= input.length + 2
+                in 5..6 -> it.length <= input.length + 3
+                else -> it.length > input.length || it.length == input.length
+            }
+        }.asReversed()
+    }
+
+    suspend fun getMozcUTPersonNames(
+        input: String
+    ): List<Candidate> {
+        val commonPrefix = commonPrefixMozcUT(
+            input = input,
+            yomiTrie = personYomiTrie!!,
+            rank0ArrayLBSYomi = personRank0ArrayLBSYomi!!,
+            rank1ArrayLBSYomi = personRank1ArrayLBSYomi!!
+        )
+        val listDeferred = deferredFromMozcUTDictionary(
+            input = input,
+            commonPrefixListString = commonPrefix,
+            yomiTrie = personYomiTrie!!,
+            tokenArray = personTokenArray!!,
+            tangoTrie = personTangoTrie!!,
+            yomiRank1ArrayLBS = personRank1ArrayLBSYomi!!,
+            yomiLBSBooleanArray = personYomiLBSBooleanArray!!,
+            yomiLBSPreprocess = personYomiLBSPreprocess!!,
+            rank1ArrayIsLeaf = personRank1ArrayIsLeaf!!,
+            rank0ArrayTokenArrayBitvector = personRank0ArrayTokenArrayBitvector!!,
+            rank1ArrayTokenArrayBitvector = personRank1ArrayTokenArrayBitvector!!,
+            rank0ArrayLBSTango = personRank0ArrayLBSTango!!,
+            rank1ArrayLBSTango = personRank1ArrayLBSTango!!,
+            type = 23,
+            4
+        )
+        return listDeferred
+    }
+
+    suspend fun getMozcUTPlace(
+        input: String
+    ): List<Candidate> {
+        val commonPrefix = commonPrefixMozcUT(
+            input = input,
+            yomiTrie = placesYomiTrie!!,
+            rank0ArrayLBSYomi = placesRank0ArrayLBSYomi!!,
+            rank1ArrayLBSYomi = placesRank1ArrayLBSYomi!!
+        )
+        val listDeferred = deferredFromMozcUTDictionary(
+            input = input,
+            commonPrefixListString = commonPrefix,
+            yomiTrie = placesYomiTrie!!,
+            tokenArray = placesTokenArray!!,
+            tangoTrie = placesTangoTrie!!,
+            yomiRank1ArrayLBS = placesRank1ArrayLBSYomi!!,
+            yomiLBSBooleanArray = placesYomiLBSBooleanArray!!,
+            yomiLBSPreprocess = placesYomiLBSPreprocess!!,
+            rank1ArrayIsLeaf = placesRank1ArrayIsLeaf!!,
+            rank0ArrayTokenArrayBitvector = placesRank0ArrayTokenArrayBitvector!!,
+            rank1ArrayTokenArrayBitvector = placesRank1ArrayTokenArrayBitvector!!,
+            rank0ArrayLBSTango = placesRank0ArrayLBSTango!!,
+            rank1ArrayLBSTango = placesRank1ArrayLBSTango!!,
+            type = 24,
+            4
+        )
+        return listDeferred
+    }
+
+    private suspend fun getMozcUTWiki(
+        input: String
+    ): List<Candidate> {
+        val commonPrefix = commonPrefixMozcUTWiki(
+            input = input,
+            yomiTrie = wikiYomiTrie!!,
+            rank0ArrayLBSYomi = wikiRank0ArrayLBSYomi!!,
+            rank1ArrayLBSYomi = wikiRank1ArrayLBSYomi!!
+        )
+        val listDeferred = deferredFromMozcUTDictionary(
+            input = input,
+            commonPrefixListString = commonPrefix,
+            yomiTrie = wikiYomiTrie!!,
+            tokenArray = wikiTokenArray!!,
+            tangoTrie = wikiTangoTrie!!,
+            yomiRank1ArrayLBS = wikiRank1ArrayLBSYomi!!,
+            yomiLBSBooleanArray = wikiYomiLBSBooleanArray!!,
+            yomiLBSPreprocess = wikiYomiLBSPreprocess!!,
+            rank1ArrayIsLeaf = wikiRank1ArrayIsLeaf!!,
+            rank0ArrayTokenArrayBitvector = wikiRank0ArrayTokenArrayBitvector!!,
+            rank1ArrayTokenArrayBitvector = wikiRank1ArrayTokenArrayBitvector!!,
+            rank0ArrayLBSTango = wikiRank0ArrayLBSTango!!,
+            rank1ArrayLBSTango = wikiRank1ArrayLBSTango!!,
+            type = 25,
+            4
+        )
+        return listDeferred
     }
 
 }

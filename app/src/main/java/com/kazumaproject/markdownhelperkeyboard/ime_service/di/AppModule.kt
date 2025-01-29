@@ -769,6 +769,7 @@ object AppModule {
         graphBuilder: GraphBuilder,
         findPath: FindPath,
         @ConnectionIds connectionIds: ShortArray,
+
         @SystemTangoTrie systemTangoTrie: LOUDS,
         @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
         @SystemTokenArray systemTokenArray: TokenArray,

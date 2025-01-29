@@ -20,6 +20,34 @@
             android:summaryOn="学習辞書を有効化\n学習した変換候補を表示します"
             android:title="学習辞書" />
 
+        <PreferenceCategory android:title="Mozc UT 辞書">
+
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="mozc_ut_person_name_preference"
+                android:summaryOff="無効"
+                android:summaryOn="人名辞書を追加します"
+                android:title="人名"
+                />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="mozc_ut_places_preference"
+                android:summaryOff="無効"
+                android:summaryOn="住所辞書を追加します"
+                android:title="住所"
+                />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="mozc_ut_wiki_preference"
+                android:summaryOff="無効"
+                android:summaryOn="最新の WikiPedia から作成した辞書を追加します"
+                android:title="Wiki"
+                />
+
+        </PreferenceCategory>
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="変換候補">

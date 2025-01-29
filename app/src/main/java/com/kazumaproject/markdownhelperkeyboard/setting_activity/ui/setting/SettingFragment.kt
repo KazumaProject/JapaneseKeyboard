@@ -10,7 +10,9 @@ import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -28,6 +30,9 @@ class SettingFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var learnRepository: LearnRepository
+
+    @Inject
+    lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,6 +95,43 @@ class SettingFragment : PreferenceFragmentCompat() {
                 R.id.action_navigation_dashboard_to_openSourceFragment
             )
             true
+        }
+
+        val mozcUTPersonName =
+            findPreference<SwitchPreferenceCompat>("mozc_ut_person_name_preference")
+        mozcUTPersonName?.apply {
+            this.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue as Boolean) {
+                    kanaKanjiEngine.buildPersonNamesDictionary(requireContext())
+                } else {
+                    kanaKanjiEngine.releasePersonNamesDictionary()
+                }
+                true
+            }
+        }
+
+        val mozcUTPlaces = findPreference<SwitchPreferenceCompat>("mozc_ut_places_preference")
+        mozcUTPlaces?.apply {
+            this.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue as Boolean) {
+                    kanaKanjiEngine.buildPlaceDictionary(requireContext())
+                } else {
+                    kanaKanjiEngine.releasePlacesDictionary()
+                }
+                true
+            }
+        }
+
+        val mozcUTWiki = findPreference<SwitchPreferenceCompat>("mozc_ut_wiki_preference")
+        mozcUTWiki?.apply {
+            this.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue as Boolean) {
+                    kanaKanjiEngine.buildWikiDictionary(requireContext())
+                } else {
+                    kanaKanjiEngine.releaseWikiDictionary()
+                }
+                true
+            }
         }
 
     }

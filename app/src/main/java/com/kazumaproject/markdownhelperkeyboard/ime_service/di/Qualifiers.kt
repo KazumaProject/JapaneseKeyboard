@@ -340,3 +340,98 @@ annotation class KotowazaYomiLBSBooleanArray
 @Qualifier
 annotation class KotowazaYomiLBSBooleanArrayPreprocess
 
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameYomiTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameTangoTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameTokenArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameRank0ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameRank1ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameRank1ArrayIsLeafYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameRank0ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameRank1ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameRank0ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameRank1ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameYomiLBSBooleanArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PersonNameYomiLBSBooleanArrayPreprocess
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceYomiTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceTangoTrie
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceTokenArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceRank0ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceRank1ArrayLBSYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceRank1ArrayIsLeafYomi
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceRank0ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceRank1ArrayTokenArrayBitvector
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceRank0ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceRank1ArrayTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceYomiLBSBooleanArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class PlaceYomiLBSBooleanArrayPreprocess

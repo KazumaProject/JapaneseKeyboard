@@ -165,7 +165,10 @@ class LOUDSWithTermId {
         rank0Array: ShortArray,
         rank1Array: ShortArray
     ): Int {
-        val y = LBS.select0CommonShort(LBS.rank1CommonShort(pos, rank1Array), rank0Array) + 1
+        val rank1Value = LBS.rank1CommonShort(pos, rank1Array)
+        val select0 = LBS.select0CommonShort(rank1Value, rank0Array)
+        val y = select0 + 1
+        println("DEBUG: pos=$pos, rank1Value=$rank1Value, select0=$select0, y=$y")
         return if (!LBS[y]) -1 else y
     }
 
@@ -315,7 +318,6 @@ class LOUDSWithTermId {
         for (c in str) {
             n = traverseShortArray(n, c, rank0Array, rank1Array)
             val index = LBS.rank1CommonShort(n, rank1Array)
-            //println("$c $n $index")
             if (n < 0 || index >= labels.size) break
 
             resultTemp.append(labels[index.toInt()])
@@ -323,7 +325,6 @@ class LOUDSWithTermId {
                 result.add(resultTemp.toString())
             }
         }
-        //println("common prefix result: $result")
         return result
     }
 

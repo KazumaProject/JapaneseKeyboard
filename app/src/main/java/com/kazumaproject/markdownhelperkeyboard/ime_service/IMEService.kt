@@ -209,7 +209,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val deleteKeyLongKeyPressed = AtomicBoolean(false)
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
-    private var suggestionCache: MutableMap<String, List<Candidate>> = mutableMapOf()
+    private var suggestionCache: MutableMap<String, List<Candidate>>? = null
 
     private val vibratorManager: VibratorManager by lazy {
         getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -275,8 +275,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onStartInput called $restarting")
         resetAllFlags()
         setCurrentInputType(attribute)
-        suggestionCache.clear()
+        if (suggestionCache == null) {
+            suggestionCache = mutableMapOf()
+        }
         _suggestionViewStatus.update { true }
+        appPreference.apply {
+            val mozcUTPersonName = mozc_ut_person_names_preference ?: false
+            val mozcUTPlaces = mozc_ut_places_preference ?: false
+            val mozcUTWiki = mozc_ut_wiki_preference ?: false
+            if (mozcUTPersonName) {
+                if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
+                    kanaKanjiEngine.buildPersonNamesDictionary(
+                        applicationContext
+                    )
+                }
+            }
+            if (mozcUTPlaces) {
+                if (!kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
+                    kanaKanjiEngine.buildPlaceDictionary(
+                        applicationContext
+                    )
+                }
+            }
+            if (mozcUTWiki) {
+                if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
+                    kanaKanjiEngine.buildWikiDictionary(
+                        applicationContext
+                    )
+                }
+            }
+        }
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -303,14 +331,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onWindowHidden() {
         super.onWindowHidden()
         resetAllFlags()
+        suggestionCache = null
     }
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
         actionInDestroy()
-        suggestionCache.clear()
+        suggestionCache = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
+        appPreference.apply {
+            val mozcUTPersonNames = mozc_ut_person_names_preference ?: false
+            val mozcUTPlaces = mozc_ut_places_preference ?: false
+            val mozcUTWiki = mozc_ut_wiki_preference ?: false
+            if (mozcUTPersonNames) kanaKanjiEngine.releasePersonNamesDictionary()
+            if (mozcUTPlaces) kanaKanjiEngine.releasePlacesDictionary()
+            if (mozcUTWiki) kanaKanjiEngine.releaseWikiDictionary()
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -1547,23 +1584,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         appPreference.candidate_cache_preference?.let {
             if (it) {
-                suggestionCache[insertString]?.let { cachedResult ->
-                    return (resultFromLearnDatabase + cachedResult).distinctBy { candidate -> candidate.string }
+                suggestionCache?.let { cache ->
+                    cache[insertString]?.let { cachedResult ->
+                        return (resultFromLearnDatabase + cachedResult).distinctBy { candidate -> candidate.string }
+                    }
                 }
             }
         }
         val result = if (appPreference.learn_dictionary_preference == true) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
-                insertString, appPreference.n_best_preference ?: N_BEST
+                insertString,
+                appPreference.n_best_preference ?: N_BEST,
+                appPreference
             )
             resultFromLearnDatabase + resultFromEngine
         } else {
-            kanaKanjiEngine.getCandidates(insertString, appPreference.n_best_preference ?: N_BEST)
+            kanaKanjiEngine.getCandidates(
+                insertString,
+                appPreference.n_best_preference ?: N_BEST, appPreference
+            )
         }
         val distinct = result.distinctBy { it.string }
         appPreference.candidate_cache_preference?.let {
             if (it) {
-                suggestionCache[insertString] = distinct
+                suggestionCache?.let { cache ->
+                    cache[insertString] = distinct
+                }
             }
         }
         return distinct

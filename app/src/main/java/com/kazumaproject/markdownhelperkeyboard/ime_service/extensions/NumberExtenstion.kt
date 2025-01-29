@@ -103,6 +103,12 @@ fun String.toNumber(): Pair<String, String>? {
             if (text.contains(bigUnit)) {
                 val index = text.indexOf(bigUnit)
                 val leftText = text.substring(0, index)
+
+                // Ensure the leftText is a valid numeric sequence
+                if (leftText.isEmpty() || leftText.any { it !in digits.keys.joinToString("") }) {
+                    return null  // Reject cases like "まんご"
+                }
+
                 val sectionValue = parseSection(leftText)
                     ?: return null // Invalid section
                 total += sectionValue * bigUnitValue
