@@ -5,7 +5,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
-import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.Ra
 
 class AddActivity1 : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
