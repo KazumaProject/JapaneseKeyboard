@@ -113,6 +113,12 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (21).toByte() -> ""
             /** 全角数字 **/
             (22).toByte() -> "[全]"
+            /** Mozc UT Names **/
+            (23).toByte() -> ""
+            /** Mozc UT Places **/
+            (24).toByte() -> ""
+            /** Mozc UT Wiki **/
+            (25).toByte() -> ""
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition

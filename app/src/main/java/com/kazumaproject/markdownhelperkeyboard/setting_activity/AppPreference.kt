@@ -15,6 +15,8 @@ object AppPreference {
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
     private val MOZCUT_PLACES = Pair("mozc_ut_places_preference", false)
     private val MOZCUT_WIKI = Pair("mozc_ut_wiki_preference", false)
+    private val MOZCUT_NEOLOGD = Pair("mozc_ut_neologd_preference", false)
+    private val MOZCUT_WEB = Pair("mozc_ut_web_preference", false)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -70,5 +72,17 @@ object AppPreference {
         get() = preferences.getBoolean(MOZCUT_WIKI.first, MOZCUT_WIKI.second)
         set(value) = preferences.edit {
             it.putBoolean(MOZCUT_WIKI.first, value ?: false)
+        }
+
+    var mozc_ut_neologd_preference: Boolean?
+        get() = preferences.getBoolean(MOZCUT_NEOLOGD.first, MOZCUT_NEOLOGD.second)
+        set(value) = preferences.edit {
+            it.putBoolean(MOZCUT_NEOLOGD.first, value ?: false)
+        }
+
+    var mozc_ut_web_preference: Boolean?
+        get() = preferences.getBoolean(MOZCUT_WEB.first, MOZCUT_WEB.second)
+        set(value) = preferences.edit {
+            it.putBoolean(MOZCUT_WEB.first, value ?: false)
         }
 }

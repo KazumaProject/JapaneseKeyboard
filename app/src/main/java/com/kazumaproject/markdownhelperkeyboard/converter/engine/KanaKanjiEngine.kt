@@ -175,6 +175,34 @@ class KanaKanjiEngine {
     private var wikiYomiLBSBooleanArray: BooleanArray? = null
     private var wikiYomiLBSPreprocess: IntArray? = null
 
+    private var neologdYomiTrie: LOUDSWithTermId? = null
+    private var neologdTangoTrie: LOUDS? = null
+    private var neologdTokenArray: TokenArray? = null
+
+    private var neologdRank0ArrayLBSYomi: IntArray? = null
+    private var neologdRank1ArrayLBSYomi: IntArray? = null
+    private var neologdRank1ArrayIsLeaf: IntArray? = null
+    private var neologdRank0ArrayTokenArrayBitvector: IntArray? = null
+    private var neologdRank1ArrayTokenArrayBitvector: IntArray? = null
+    private var neologdRank0ArrayLBSTango: IntArray? = null
+    private var neologdRank1ArrayLBSTango: IntArray? = null
+    private var neologdYomiLBSBooleanArray: BooleanArray? = null
+    private var neologdYomiLBSPreprocess: IntArray? = null
+
+    private var webYomiTrie: LOUDSWithTermId? = null
+    private var webTangoTrie: LOUDS? = null
+    private var webTokenArray: TokenArray? = null
+
+    private var webRank0ArrayLBSYomi: IntArray? = null
+    private var webRank1ArrayLBSYomi: IntArray? = null
+    private var webRank1ArrayIsLeaf: IntArray? = null
+    private var webRank0ArrayTokenArrayBitvector: IntArray? = null
+    private var webRank1ArrayTokenArrayBitvector: IntArray? = null
+    private var webRank0ArrayLBSTango: IntArray? = null
+    private var webRank1ArrayLBSTango: IntArray? = null
+    private var webYomiLBSBooleanArray: BooleanArray? = null
+    private var webYomiLBSPreprocess: IntArray? = null
+
     companion object {
         const val SCORE_OFFSET = 8000
         const val SCORE_OFFSET_SMALL = 6000
@@ -515,6 +543,96 @@ class KanaKanjiEngine {
         this.wikiRank1ArrayLBSTango = wikiTangoTrie?.LBS?.rank1GetIntArray()
     }
 
+    fun buildNeologdDictionary(context: Context) {
+        val zipInputStreamTango =
+            ZipInputStream(context.assets.open("neologd/tango_neologd.dat.zip"))
+        zipInputStreamTango.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
+            this.neologdTangoTrie = LOUDS().readExternalNotCompress(it)
+        }
+        val zipInputStreamYomi = ZipInputStream(context.assets.open("neologd/yomi_neologd.dat.zip"))
+        zipInputStreamYomi.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
+            this.neologdYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
+        }
+
+        this.neologdTokenArray = TokenArray()
+
+        ZipInputStream(context.assets.open("neologd/token_neologd.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "token_neologd.dat") {
+                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
+                        this.neologdTokenArray?.readExternal(objectInput)
+                    }
+                    break
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+
+        val objectInputReadPOSTable =
+            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+
+        this.neologdTokenArray?.readPOSTable(objectInputReadPOSTable)
+
+        this.neologdRank0ArrayLBSYomi = neologdYomiTrie?.LBS?.rank0GetIntArray()
+        this.neologdRank1ArrayLBSYomi = neologdYomiTrie?.LBS?.rank1GetIntArray()
+        this.neologdRank1ArrayIsLeaf = neologdYomiTrie?.isLeaf?.rank1GetIntArray()
+        this.neologdYomiLBSBooleanArray = neologdYomiTrie?.LBS?.toBooleanArray()
+        this.neologdYomiLBSPreprocess =
+            this.neologdYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
+        this.neologdRank0ArrayTokenArrayBitvector = neologdTokenArray?.bitvector?.rank0GetIntArray()
+        this.neologdRank1ArrayTokenArrayBitvector = neologdTokenArray?.bitvector?.rank1GetIntArray()
+        this.neologdRank0ArrayLBSTango = neologdTangoTrie?.LBS?.rank0GetIntArray()
+        this.neologdRank1ArrayLBSTango = neologdTangoTrie?.LBS?.rank1GetIntArray()
+    }
+
+    fun buildWebDictionary(context: Context) {
+        val zipInputStreamTango =
+            ZipInputStream(context.assets.open("web/tango_web.dat.zip"))
+        zipInputStreamTango.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
+            this.webTangoTrie = LOUDS().readExternalNotCompress(it)
+        }
+        val zipInputStreamYomi = ZipInputStream(context.assets.open("web/yomi_web.dat.zip"))
+        zipInputStreamYomi.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
+            this.webYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
+        }
+
+        this.webTokenArray = TokenArray()
+
+        ZipInputStream(context.assets.open("web/token_web.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "token_web.dat") {
+                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
+                        this.webTokenArray?.readExternal(objectInput)
+                    }
+                    break
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+
+        val objectInputReadPOSTable =
+            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
+
+        this.webTokenArray?.readPOSTable(objectInputReadPOSTable)
+
+        this.webRank0ArrayLBSYomi = webYomiTrie?.LBS?.rank0GetIntArray()
+        this.webRank1ArrayLBSYomi = webYomiTrie?.LBS?.rank1GetIntArray()
+        this.webRank1ArrayIsLeaf = webYomiTrie?.isLeaf?.rank1GetIntArray()
+        this.webYomiLBSBooleanArray = webYomiTrie?.LBS?.toBooleanArray()
+        this.webYomiLBSPreprocess =
+            this.webYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
+        this.webRank0ArrayTokenArrayBitvector = webTokenArray?.bitvector?.rank0GetIntArray()
+        this.webRank1ArrayTokenArrayBitvector = webTokenArray?.bitvector?.rank1GetIntArray()
+        this.webRank0ArrayLBSTango = webTangoTrie?.LBS?.rank0GetIntArray()
+        this.webRank1ArrayLBSTango = webTangoTrie?.LBS?.rank1GetIntArray()
+    }
+
     fun releasePersonNamesDictionary() {
         this.personTangoTrie = null
         this.personYomiTrie = null
@@ -560,6 +678,36 @@ class KanaKanjiEngine {
         this.wikiRank1ArrayLBSTango = null
     }
 
+    fun releaseNeologdDictionary() {
+        this.neologdTangoTrie = null
+        this.neologdYomiTrie = null
+        this.neologdTokenArray = null
+        this.neologdRank0ArrayLBSYomi = null
+        this.neologdRank1ArrayLBSYomi = null
+        this.neologdRank1ArrayIsLeaf = null
+        this.neologdYomiLBSBooleanArray = null
+        this.neologdYomiLBSPreprocess = null
+        this.neologdRank0ArrayTokenArrayBitvector = null
+        this.neologdRank1ArrayTokenArrayBitvector = null
+        this.neologdRank0ArrayLBSTango = null
+        this.neologdRank1ArrayLBSTango = null
+    }
+
+    fun releaseWebDictionary() {
+        this.webTangoTrie = null
+        this.webYomiTrie = null
+        this.webTokenArray = null
+        this.webRank0ArrayLBSYomi = null
+        this.webRank1ArrayLBSYomi = null
+        this.webRank1ArrayIsLeaf = null
+        this.webYomiLBSBooleanArray = null
+        this.webYomiLBSPreprocess = null
+        this.webRank0ArrayTokenArrayBitvector = null
+        this.webRank1ArrayTokenArrayBitvector = null
+        this.webRank0ArrayLBSTango = null
+        this.webRank1ArrayLBSTango = null
+    }
+
     fun isMozcUTPersonDictionariesInitialized(): Boolean {
         return !(this.personYomiTrie == null || this.personTangoTrie == null || this.personTokenArray == null)
     }
@@ -570,6 +718,14 @@ class KanaKanjiEngine {
 
     fun isMozcUTWikiDictionariesInitialized(): Boolean {
         return !(this.wikiYomiTrie == null || this.wikiTangoTrie == null || this.wikiTokenArray == null)
+    }
+
+    fun isMozcUTNeologdDictionariesInitialized(): Boolean {
+        return !(this.neologdYomiTrie == null || this.neologdTangoTrie == null || this.neologdTokenArray == null)
+    }
+
+    fun isMozcUTWebDictionariesInitialized(): Boolean {
+        return !(this.webYomiTrie == null || this.webTangoTrie == null || this.webTokenArray == null)
     }
 
     suspend fun getCandidates(
@@ -996,11 +1152,15 @@ class KanaKanjiEngine {
             val mozcUTPersonName = mozc_ut_person_names_preference ?: false
             val mozcUTPlaces = mozc_ut_places_preference ?: false
             val mozcUTWiki = mozc_ut_wiki_preference ?: false
+            val mozcUTNeologd = mozc_ut_neologd_preference ?: false
+            val mozcUTWeb = mozc_ut_web_preference ?: false
 
             val mozcUTPersonNames =
                 if (mozcUTPersonName) getMozcUTPersonNames(input) else emptyList()
             val mozcUTPlacesList = if (mozcUTPlaces) getMozcUTPlace(input) else emptyList()
             val mozcUTWikiList = if (mozcUTWiki) getMozcUTWiki(input) else emptyList()
+            val mozcUTNeologdList = if (mozcUTNeologd) getMozcUTNeologd(input) else emptyList()
+            val mozcUTWebList = if (mozcUTWeb) getMozcUTWeb(input) else emptyList()
 
             val resultList = resultNBestFinalDeferred +
                     readingCorrectionListDeferred +
@@ -1008,7 +1168,9 @@ class KanaKanjiEngine {
                     kotowazaListDeferred +
                     mozcUTPersonNames +
                     mozcUTPlacesList +
-                    mozcUTWikiList
+                    mozcUTWikiList +
+                    mozcUTNeologdList +
+                    mozcUTWebList
 
             return (resultList.sortedBy { it.score } +
                     numbersDeferred +
@@ -1357,7 +1519,7 @@ class KanaKanjiEngine {
         }.asReversed()
     }
 
-    private fun commonPrefixMozcUTWiki(
+    private fun commonPrefixMozcUTWeb(
         input: String,
         yomiTrie: LOUDSWithTermId,
         rank0ArrayLBSYomi: IntArray,
@@ -1437,7 +1599,7 @@ class KanaKanjiEngine {
     private suspend fun getMozcUTWiki(
         input: String
     ): List<Candidate> {
-        val commonPrefix = commonPrefixMozcUTWiki(
+        val commonPrefix = commonPrefixMozcUTWeb(
             input = input,
             yomiTrie = wikiYomiTrie!!,
             rank0ArrayLBSYomi = wikiRank0ArrayLBSYomi!!,
@@ -1458,6 +1620,64 @@ class KanaKanjiEngine {
             rank0ArrayLBSTango = wikiRank0ArrayLBSTango!!,
             rank1ArrayLBSTango = wikiRank1ArrayLBSTango!!,
             type = 25,
+            4
+        )
+        return listDeferred
+    }
+
+    private suspend fun getMozcUTNeologd(
+        input: String
+    ): List<Candidate> {
+        val commonPrefix = commonPrefixMozcUTWeb(
+            input = input,
+            yomiTrie = neologdYomiTrie!!,
+            rank0ArrayLBSYomi = neologdRank0ArrayLBSYomi!!,
+            rank1ArrayLBSYomi = neologdRank1ArrayLBSYomi!!
+        )
+        val listDeferred = deferredFromMozcUTDictionary(
+            input = input,
+            commonPrefixListString = commonPrefix,
+            yomiTrie = neologdYomiTrie!!,
+            tokenArray = neologdTokenArray!!,
+            tangoTrie = neologdTangoTrie!!,
+            yomiRank1ArrayLBS = neologdRank1ArrayLBSYomi!!,
+            yomiLBSBooleanArray = neologdYomiLBSBooleanArray!!,
+            yomiLBSPreprocess = neologdYomiLBSPreprocess!!,
+            rank1ArrayIsLeaf = neologdRank1ArrayIsLeaf!!,
+            rank0ArrayTokenArrayBitvector = neologdRank0ArrayTokenArrayBitvector!!,
+            rank1ArrayTokenArrayBitvector = neologdRank1ArrayTokenArrayBitvector!!,
+            rank0ArrayLBSTango = neologdRank0ArrayLBSTango!!,
+            rank1ArrayLBSTango = neologdRank1ArrayLBSTango!!,
+            type = 26,
+            4
+        )
+        return listDeferred
+    }
+
+    private suspend fun getMozcUTWeb(
+        input: String
+    ): List<Candidate> {
+        val commonPrefix = commonPrefixMozcUTWeb(
+            input = input,
+            yomiTrie = webYomiTrie!!,
+            rank0ArrayLBSYomi = webRank0ArrayLBSYomi!!,
+            rank1ArrayLBSYomi = webRank1ArrayLBSYomi!!
+        )
+        val listDeferred = deferredFromMozcUTDictionary(
+            input = input,
+            commonPrefixListString = commonPrefix,
+            yomiTrie = webYomiTrie!!,
+            tokenArray = webTokenArray!!,
+            tangoTrie = webTangoTrie!!,
+            yomiRank1ArrayLBS = webRank1ArrayLBSYomi!!,
+            yomiLBSBooleanArray = webYomiLBSBooleanArray!!,
+            yomiLBSPreprocess = webYomiLBSPreprocess!!,
+            rank1ArrayIsLeaf = webRank1ArrayIsLeaf!!,
+            rank0ArrayTokenArrayBitvector = webRank0ArrayTokenArrayBitvector!!,
+            rank1ArrayTokenArrayBitvector = webRank1ArrayTokenArrayBitvector!!,
+            rank0ArrayLBSTango = webRank0ArrayLBSTango!!,
+            rank1ArrayLBSTango = webRank1ArrayLBSTango!!,
+            type = 27,
             4
         )
         return listDeferred

@@ -134,6 +134,30 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val mozcUTNeologd = findPreference<SwitchPreferenceCompat>("mozc_ut_neologd_preference")
+        mozcUTNeologd?.apply {
+            this.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue as Boolean) {
+                    kanaKanjiEngine.buildNeologdDictionary(requireContext())
+                } else {
+                    kanaKanjiEngine.releaseNeologdDictionary()
+                }
+                true
+            }
+        }
+
+        val mozcUTWeb = findPreference<SwitchPreferenceCompat>("mozc_ut_web_preference")
+        mozcUTWeb?.apply {
+            this.setOnPreferenceChangeListener { _, newValue ->
+                if (newValue as Boolean) {
+                    kanaKanjiEngine.buildWebDictionary(requireContext())
+                } else {
+                    kanaKanjiEngine.releaseWebDictionary()
+                }
+                true
+            }
+        }
+
     }
 
     private fun isKeyboardBoardEnabled(): Boolean? {
