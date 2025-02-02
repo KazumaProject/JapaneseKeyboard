@@ -283,6 +283,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val mozcUTPersonName = mozc_ut_person_names_preference ?: false
             val mozcUTPlaces = mozc_ut_places_preference ?: false
             val mozcUTWiki = mozc_ut_wiki_preference ?: false
+            val mozcUTNeologd = mozc_ut_neologd_preference ?: false
+            val mozcUTWeb = mozc_ut_web_preference ?: false
             if (mozcUTPersonName) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -300,6 +302,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (mozcUTWiki) {
                 if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
                     kanaKanjiEngine.buildWikiDictionary(
+                        applicationContext
+                    )
+                }
+            }
+            if (mozcUTNeologd) {
+                if (!kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
+                    kanaKanjiEngine.buildNeologdDictionary(
+                        applicationContext
+                    )
+                }
+            }
+            if (mozcUTWeb) {
+                if (!kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
+                    kanaKanjiEngine.buildWebDictionary(
                         applicationContext
                     )
                 }
@@ -344,9 +360,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val mozcUTPersonNames = mozc_ut_person_names_preference ?: false
             val mozcUTPlaces = mozc_ut_places_preference ?: false
             val mozcUTWiki = mozc_ut_wiki_preference ?: false
+            val mozcUTNeologd = mozc_ut_neologd_preference ?: false
+            val mozcUTWeb = mozc_ut_web_preference ?: false
             if (mozcUTPersonNames) kanaKanjiEngine.releasePersonNamesDictionary()
             if (mozcUTPlaces) kanaKanjiEngine.releasePlacesDictionary()
             if (mozcUTWiki) kanaKanjiEngine.releaseWikiDictionary()
+            if (mozcUTNeologd) kanaKanjiEngine.releaseNeologdDictionary()
+            if (mozcUTWeb) kanaKanjiEngine.releaseWebDictionary()
         }
     }
 

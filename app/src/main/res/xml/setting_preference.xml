@@ -19,35 +19,43 @@
             android:summaryOff="学習辞書を無効化\n学習した変換候補を表示しません"
             android:summaryOn="学習辞書を有効化\n学習した変換候補を表示します"
             android:title="学習辞書" />
+    </PreferenceCategory>
 
-        <PreferenceCategory android:title="Mozc UT 辞書">
+    <PreferenceCategory>
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_person_name_preference"
+            android:summaryOff="無効"
+            android:summaryOn="人名辞書を追加します"
+            android:title="人名" />
 
-            <SwitchPreferenceCompat
-                android:defaultValue="false"
-                android:key="mozc_ut_person_name_preference"
-                android:summaryOff="無効"
-                android:summaryOn="人名辞書を追加します"
-                android:title="人名"
-                />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_places_preference"
+            android:summaryOff="無効"
+            android:summaryOn="住所辞書を追加します"
+            android:title="住所" />
 
-            <SwitchPreferenceCompat
-                android:defaultValue="false"
-                android:key="mozc_ut_places_preference"
-                android:summaryOff="無効"
-                android:summaryOn="住所辞書を追加します"
-                android:title="住所"
-                />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_web_preference"
+            android:summaryOff="無効"
+            android:summaryOn="最新の WikiPedia と Neologd に収録されている単語のうち、両方に共通して含まれる単語を抽出して作成した辞書を追加します"
+            android:title="Web" />
 
-            <SwitchPreferenceCompat
-                android:defaultValue="false"
-                android:key="mozc_ut_wiki_preference"
-                android:summaryOff="無効"
-                android:summaryOn="最新の WikiPedia から作成した辞書を追加します"
-                android:title="Wiki"
-                />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_wiki_preference"
+            android:summaryOff="無効"
+            android:summaryOn="最新の WikiPedia にのみ収録されている単語を摘出して作成された辞書を追加します"
+            android:title="Wiki" />
 
-        </PreferenceCategory>
-
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_neologd_preference"
+            android:summaryOff="無効"
+            android:summaryOn="Neologd にのみ収録されている単語を摘出して作成された辞書を追加します"
+            android:title="Neologd" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="変換候補">
