@@ -12,7 +12,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
-import androidx.annotation.RequiresApi
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -70,7 +69,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-@RequiresApi(Build.VERSION_CODES.S)
 @SuppressLint("ClickableViewAccessibility")
 class TenKey(context: Context, attributeSet: AttributeSet) :
     ConstraintLayout(context, attributeSet), View.OnTouchListener {
@@ -145,7 +143,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         tenKeyMap = TenKeyMap()
         setBackgroundSmallLetterKey()
         this.setOnTouchListener(this)
-        this.focusable = View.NOT_FOCUSABLE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            this.focusable = View.NOT_FOCUSABLE
+        } else {
+            this.isFocusable = false
+        }
     }
 
     private fun declareKeys() {
@@ -219,27 +221,52 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun setViewsNotFocusable() {
-        keyA.focusable = View.NOT_FOCUSABLE
-        keyKA.focusable = View.NOT_FOCUSABLE
-        keySA.focusable = View.NOT_FOCUSABLE
-        keyTA.focusable = View.NOT_FOCUSABLE
-        keyNA.focusable = View.NOT_FOCUSABLE
-        keyHA.focusable = View.NOT_FOCUSABLE
-        keyMA.focusable = View.NOT_FOCUSABLE
-        keyYA.focusable = View.NOT_FOCUSABLE
-        keyRA.focusable = View.NOT_FOCUSABLE
-        keyDakutenSmall.focusable = View.NOT_FOCUSABLE
-        keyWA.focusable = View.NOT_FOCUSABLE
-        keyKutouten.focusable = View.NOT_FOCUSABLE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            keyA.focusable = View.NOT_FOCUSABLE
+            keyKA.focusable = View.NOT_FOCUSABLE
+            keySA.focusable = View.NOT_FOCUSABLE
+            keyTA.focusable = View.NOT_FOCUSABLE
+            keyNA.focusable = View.NOT_FOCUSABLE
+            keyHA.focusable = View.NOT_FOCUSABLE
+            keyMA.focusable = View.NOT_FOCUSABLE
+            keyYA.focusable = View.NOT_FOCUSABLE
+            keyRA.focusable = View.NOT_FOCUSABLE
+            keyDakutenSmall.focusable = View.NOT_FOCUSABLE
+            keyWA.focusable = View.NOT_FOCUSABLE
+            keyKutouten.focusable = View.NOT_FOCUSABLE
 
-        sideKeyPreviousChar.focusable = View.NOT_FOCUSABLE
-        sideKeyCursorLeft.focusable = View.NOT_FOCUSABLE
-        sideKeyCursorRight.focusable = View.NOT_FOCUSABLE
-        sideKeyEnter.focusable = View.NOT_FOCUSABLE
-        sideKeyDelete.focusable = View.NOT_FOCUSABLE
-        sideKeySpace.focusable = View.NOT_FOCUSABLE
-        sideKeySymbol.focusable = View.NOT_FOCUSABLE
-        sideKeyInputModeSwitch.focusable = View.NOT_FOCUSABLE
+            sideKeyPreviousChar.focusable = View.NOT_FOCUSABLE
+            sideKeyCursorLeft.focusable = View.NOT_FOCUSABLE
+            sideKeyCursorRight.focusable = View.NOT_FOCUSABLE
+            sideKeyEnter.focusable = View.NOT_FOCUSABLE
+            sideKeyDelete.focusable = View.NOT_FOCUSABLE
+            sideKeySpace.focusable = View.NOT_FOCUSABLE
+            sideKeySymbol.focusable = View.NOT_FOCUSABLE
+            sideKeyInputModeSwitch.focusable = View.NOT_FOCUSABLE
+        } else {
+            keyA.isFocusable = false
+            keyKA.isFocusable = false
+            keySA.isFocusable = false
+            keyTA.isFocusable = false
+            keyNA.isFocusable = false
+            keyHA.isFocusable = false
+            keyMA.isFocusable = false
+            keyYA.isFocusable = false
+            keyRA.isFocusable = false
+            keyDakutenSmall.isFocusable = false
+            keyWA.isFocusable = false
+            keyKutouten.isFocusable = false
+
+            sideKeyPreviousChar.isFocusable = false
+            sideKeyCursorLeft.isFocusable = false
+            sideKeyCursorRight.isFocusable = false
+            sideKeyEnter.isFocusable = false
+            sideKeyDelete.isFocusable = false
+            sideKeySpace.isFocusable = false
+            sideKeySymbol.isFocusable = false
+            sideKeyInputModeSwitch.isFocusable = false
+        }
+
     }
 
     private fun initialKeys() {
@@ -260,12 +287,21 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         key,
                         null
                     )
-                    pressedKey = PressedKey(
-                        key = key,
-                        pointer = 0,
-                        initialX = event.getRawX(event.actionIndex),
-                        initialY = event.getRawY(event.actionIndex),
-                    )
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        pressedKey = PressedKey(
+                            key = key,
+                            pointer = 0,
+                            initialX = event.getRawX(event.actionIndex),
+                            initialY = event.getRawY(event.actionIndex),
+                        )
+                    } else {
+                        pressedKey = PressedKey(
+                            key = key,
+                            pointer = 0,
+                            initialX = event.getX(event.actionIndex),
+                            initialY = event.getY(event.actionIndex),
+                        )
+                    }
                     setKeyPressed()
                     Log.d("Touch Listener", "ACTION_DOWN called: $pressedKey")
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
@@ -459,8 +495,24 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         pressedKey = pressedKey.copy(
                             key = key,
                             pointer = pointer,
-                            initialX = if (pointer == 0) event.getRawX(0) else event.getRawX(1),
-                            initialY = if (pointer == 0) event.getRawY(0) else event.getRawY(1),
+                            initialX = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawX(0)
+                            } else {
+                                event.getX(0)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawX(1)
+                            } else {
+                                event.getX(1)
+                            },
+                            initialY = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawY(0)
+                            } else {
+                                event.getY(0)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawY(1)
+                            } else {
+                                event.getY(1)
+                            },
                         )
                         setKeyPressed()
                         longPressJob = CoroutineScope(Dispatchers.Main).launch {
@@ -603,8 +655,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {
-        val x = event.getRawX(pointer)
-        val y = event.getRawY(pointer)
+        val x = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawX(pointer)
+        } else {
+            event.getX(pointer)
+        }
+        val y = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawY(pointer)
+        } else {
+            event.getY(pointer)
+        }
         val keyWidth = keyA.width
         val keyHeight = keyA.height
         println("aaaa: x: $x y:$y")
@@ -640,8 +700,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
-        val finalX = event.getRawX(pointer)
-        val finalY = event.getRawY(pointer)
+        val finalX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawX(pointer)
+        } else {
+            event.getX(pointer)
+        }
+        val finalY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawY(pointer)
+        } else {
+            event.getY(pointer)
+        }
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when {
