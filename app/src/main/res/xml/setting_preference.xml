@@ -21,7 +21,7 @@
             android:title="学習辞書" />
     </PreferenceCategory>
 
-    <PreferenceCategory>
+    <PreferenceCategory android:title="Mozc UT">
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="mozc_ut_person_name_preference"
