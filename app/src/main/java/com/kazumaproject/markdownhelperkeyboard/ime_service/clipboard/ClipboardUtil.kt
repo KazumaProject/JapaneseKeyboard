@@ -39,7 +39,7 @@ class ClipboardUtil(private val context: Context) {
         return texts.map {
             Candidate(
                 string = it,
-                type = (27).toByte(),
+                type = (28).toByte(),
                 it.length.toUByte(),
                 0
             )
