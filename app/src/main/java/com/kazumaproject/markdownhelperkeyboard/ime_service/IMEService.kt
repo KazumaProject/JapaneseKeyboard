@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
@@ -47,6 +48,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableArrowTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableCheck
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableEnglishSmall
@@ -183,6 +185,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var learnRepository: LearnRepository
 
+    @Inject
+    lateinit var clipboardUtil: ClipboardUtil
+
     private var emojiList: List<String> = emptyList()
 
     private var emoticonList: List<String> = emptyList()
@@ -267,6 +272,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     startScope(mainView)
                 }
             }
+            setClipBoardTextToCandidate()
         }
     }
 
@@ -328,6 +334,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
         lifecycleRegistry.currentState = Lifecycle.State.STARTED
+        if (!clipboardUtil.isClipboardEmpty()) {
+            suggestionAdapter.suggestions = clipboardUtil.getAllClipboardTexts()
+        }
     }
 
     override fun onFinishInput() {
@@ -738,6 +747,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             )
                             isSuggestionVisible = false
                         }
+                        if (!clipboardUtil.isClipboardEmpty()) {
+                            suggestionAdapter.suggestions = clipboardUtil.getAllClipboardTexts()
+                        }
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -1029,6 +1041,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     position = position
                 )
             }
+            this.setOnItemLongClickListener { candidate, _ ->
+                val insertString = _inputString.value
+                setCandidateClipboardLongClick(candidate, insertString)
+            }
         }
         mainView.suggestionRecyclerView.apply {
             itemAnimator = null
@@ -1140,14 +1156,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 currentInputMode = currentInputMode,
                 position = position
             )
-            resetFlagsSuggestionClick()
+        } else {
+            commitClipboardText(
+                candidate = candidate,
+                insertString = insertString,
+                currentInputMode = currentInputMode,
+                position = position
+            )
         }
+        resetFlagsSuggestionClick()
+    }
+
+    private fun setCandidateClipboardLongClick(
+        candidate: Candidate, insertString: String,
+    ) {
+        if (insertString.isEmpty() && candidate.type.toInt() == 26) {
+            clipboardUtil.clearClipboard()
+            suggestionAdapter.suggestions = emptyList()
+        }
+        resetFlagsSuggestionClick()
     }
 
     private fun commitCandidateText(
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         processCandidate(
+            candidate = candidate,
+            insertString = insertString,
+            currentInputMode = currentInputMode,
+            position = position
+        )
+    }
+
+    private fun commitClipboardText(
+        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
+    ) {
+        processClipboardCandidate(
             candidate = candidate,
             insertString = insertString,
             currentInputMode = currentInputMode,
@@ -1241,6 +1285,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     )
                 }
             }
+        }
+    }
+
+    private fun processClipboardCandidate(
+        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
+    ) {
+        if (candidate.type.toInt() == 26) {
+            handlePartialOrExcessLength(
+                insertString = insertString,
+                candidateString = candidate.string,
+                candidateLength = candidate.length.toInt()
+            )
+//            clipboardUtil.clearClipboard()
+//            suggestionAdapter.suggestions = emptyList()
         }
     }
 
@@ -2477,6 +2535,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _inputString.update {
             EMPTY_STRING
         }
+        if (isHenkan.get()) {
+            suggestionAdapter.suggestions = emptyList()
+            isHenkan.set(false)
+            suggestionClickNum = 0
+            suggestionAdapter.updateHighlightPosition(-1)
+        }
     }
 
     private fun setSpaceKeyActionEnglishAndNumberEmpty(isFlick: Boolean) {
@@ -2497,6 +2561,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
         _inputString.update { EMPTY_STRING }
+        if (isHenkan.get()) {
+            suggestionAdapter.suggestions = emptyList()
+            isHenkan.set(false)
+            suggestionClickNum = 0
+            suggestionAdapter.updateHighlightPosition(-1)
+        }
     }
 
     private var isFirstClickHasStringTail = false
@@ -2552,6 +2622,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         charForReturn, insertString, sb
                     )
                 }
+            }
+        }
+    }
+
+    private fun setClipBoardTextToCandidate() {
+        val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboardManager.addPrimaryClipChangedListener {
+            val latestClipboardText = clipboardUtil.getAllClipboardTexts()
+            if (latestClipboardText.isNotEmpty()) {
+                suggestionAdapter.suggestions = latestClipboardText
             }
         }
     }
