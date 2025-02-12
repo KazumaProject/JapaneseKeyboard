@@ -1160,8 +1160,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             commitClipboardText(
                 candidate = candidate,
                 insertString = insertString,
-                currentInputMode = currentInputMode,
-                position = position
             )
         }
         resetFlagsSuggestionClick()
@@ -1170,7 +1168,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setCandidateClipboardLongClick(
         candidate: Candidate, insertString: String,
     ) {
-        if (insertString.isEmpty() && candidate.type.toInt() == 26) {
+        if (insertString.isEmpty() && candidate.type.toInt() == 28) {
             clipboardUtil.clearClipboard()
             suggestionAdapter.suggestions = emptyList()
         }
@@ -1189,13 +1187,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun commitClipboardText(
-        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
+        candidate: Candidate, insertString: String,
     ) {
         processClipboardCandidate(
             candidate = candidate,
             insertString = insertString,
-            currentInputMode = currentInputMode,
-            position = position
         )
     }
 
@@ -1289,16 +1285,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun processClipboardCandidate(
-        candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
+        candidate: Candidate, insertString: String,
     ) {
-        if (candidate.type.toInt() == 26) {
+        if (candidate.type.toInt() == 28) {
             handlePartialOrExcessLength(
                 insertString = insertString,
                 candidateString = candidate.string,
                 candidateLength = candidate.length.toInt()
             )
-//            clipboardUtil.clearClipboard()
-//            suggestionAdapter.suggestions = emptyList()
         }
     }
 
