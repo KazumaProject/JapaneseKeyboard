@@ -125,8 +125,12 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (24).toByte() -> ""
             /** Mozc UT Wiki **/
             (25).toByte() -> ""
+            /** Mozc UT Neologd **/
+            (26).toByte() -> ""
+            /** Mozc UT Web **/
+            (27).toByte() -> ""
             /** クリップボード **/
-            (26).toByte() -> "[タップでペースト] [長押しで削除]"
+            (28).toByte() -> "[タップでペースト] [長押しで削除]"
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition
