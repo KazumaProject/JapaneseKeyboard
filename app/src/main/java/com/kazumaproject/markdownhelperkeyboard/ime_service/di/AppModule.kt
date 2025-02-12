@@ -22,6 +22,7 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionaryAdapter
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
@@ -71,6 +72,11 @@ object AppModule {
     @Provides
     fun provideSuggestionAdapter(): SuggestionAdapter =
         SuggestionAdapter()
+
+    @Singleton
+    @Provides
+    fun providesClipBoardUtil(@ApplicationContext context: Context): ClipboardUtil =
+        ClipboardUtil(context)
 
     @Singleton
     @Provides

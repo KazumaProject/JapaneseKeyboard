@@ -39,6 +39,12 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
         this.onItemClickListener = onItemClick
     }
 
+    private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
+
+    fun setOnItemLongClickListener(onItemLongClick: (Candidate, Int) -> Unit) {
+        this.onItemLongClickListener = onItemLongClick
+    }
+
     private val differ = AsyncListDiffer(this, diffCallback)
 
     var suggestions: List<Candidate>
@@ -119,11 +125,17 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (24).toByte() -> ""
             /** Mozc UT Wiki **/
             (25).toByte() -> ""
+            /** クリップボード **/
+            (26).toByte() -> "[タップでペースト] [長押しで削除]"
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition
         holder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion, position)
+        }
+        holder.itemView.setOnLongClickListener {
+            onItemLongClickListener?.invoke(suggestion, position)
+            true
         }
     }
 
