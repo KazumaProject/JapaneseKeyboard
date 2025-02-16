@@ -435,7 +435,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         GestureType.Down -> {
-                            setVibrate()
+                            if (appPreference.vibration_timing_preference == null) {
+                                setVibrate()
+                            } else {
+                                when (appPreference.vibration_timing_preference) {
+                                    "both" -> {
+                                        setVibrate()
+                                    }
+
+                                    "press" -> {
+                                        setVibrate()
+                                    }
+
+                                    "release" -> {
+
+                                    }
+                                }
+                            }
                         }
 
                         GestureType.Tap -> {
@@ -486,7 +502,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
-        setVibrate()
+        if (appPreference.vibration_timing_preference == null) {
+            setVibrate()
+        } else {
+            when (appPreference.vibration_timing_preference) {
+                "both" -> {
+                    setVibrate()
+                }
+
+                "press" -> {
+
+                }
+
+                "release" -> {
+                    setVibrate()
+                }
+            }
+        }
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
@@ -889,7 +921,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _suggestionFlag.emit(CandidateShowFlag.Updating)
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
-            delay(DELAY_TIME)
+            delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
             if (!isHenkan.get() && inputString.isNotEmpty() && !onDeleteLongPressUp.get() && !englishSpaceKeyPressed.get() && !deleteKeyLongKeyPressed.get()) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
