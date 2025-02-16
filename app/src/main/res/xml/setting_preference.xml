@@ -3,13 +3,35 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="操作">
-        <SwitchPreference
+
+        <SeekBarPreference
+            android:defaultValue="1000"
+            android:key="time_same_pronounce_typing_preference"
+            android:max="1000"
+            app:min="1"
+            android:summary="単位: [ ms ]"
+            android:title="同じ韻をタイピングできる時間"
+            app:showSeekBarValue="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="バイブレーション">
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="vibration_preference"
             android:summaryOff="キーをタップしても振動しません"
             android:summaryOn="キーをタップすると振動します"
-            android:title="バイブレーション" />
+            android:title="バイブレーションの有無" />
 
+        <ListPreference
+            android:defaultValue="@string/vibration_default"
+            android:dependency="vibration_preference"
+            android:dialogTitle="選択してください"
+            android:entries="@array/vibration_options"
+            android:entryValues="@array/vibration_values"
+            android:key="vibration_timing"
+            android:summary="バイブレーションを発生させるタイミングを選択"
+            android:title="バイブレーションのタイミング" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="辞書">

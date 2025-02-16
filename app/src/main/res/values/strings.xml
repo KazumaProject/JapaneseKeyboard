@@ -115,4 +115,5 @@
     <string name="at_mark">\@</string>
     <string name="ten_ten">\"</string>
     <string name="reset_learn_dictionary">学習辞書をリセットする</string>
+    <string name="vibration_default">both</string>
 </resources>

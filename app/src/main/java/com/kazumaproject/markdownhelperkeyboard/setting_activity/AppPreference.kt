@@ -8,7 +8,9 @@ object AppPreference {
 
     private lateinit var preferences: SharedPreferences
 
+    private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
+    private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 8)
     private val CANDIDATE_CACHE = Pair("candidates_cache", false)
@@ -34,12 +36,13 @@ object AppPreference {
             it.putBoolean(VIBRATION_PREFERENCE.first, value ?: true)
         }
 
-    var learn_dictionary_preference: Boolean?
-        get() = preferences.getBoolean(
-            LEARN_DICTIONARY_PREFERENCE.first, LEARN_DICTIONARY_PREFERENCE.second
+    var vibration_timing_preference: String?
+        get() = preferences.getString(
+            VIBRATION_TIMING_PREFERENCE.first,
+            VIBRATION_TIMING_PREFERENCE.second
         )
         set(value) = preferences.edit {
-            it.putBoolean(LEARN_DICTIONARY_PREFERENCE.first, value ?: true)
+            it.putString(VIBRATION_TIMING_PREFERENCE.first, value ?: "both")
         }
 
     var n_best_preference: Int?
@@ -48,6 +51,22 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(N_BEST_PREFERENCE.first, value ?: 4)
+        }
+
+    var learn_dictionary_preference: Boolean?
+        get() = preferences.getBoolean(
+            LEARN_DICTIONARY_PREFERENCE.first, LEARN_DICTIONARY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(LEARN_DICTIONARY_PREFERENCE.first, value ?: true)
+        }
+
+    var time_same_pronounce_typing_preference: Int?
+        get() = preferences.getInt(
+            TIME_SAME_PRONOUNCE_TYPING.first, TIME_SAME_PRONOUNCE_TYPING.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(TIME_SAME_PRONOUNCE_TYPING.first, value ?: 1000)
         }
 
     var candidate_cache_preference: Boolean?
