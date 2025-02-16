@@ -1293,6 +1293,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 candidateString = candidate.string,
                 candidateLength = candidate.length.toInt()
             )
+            clipboardUtil.clearClipboard()
+            suggestionAdapter.suggestions = emptyList()
         }
     }
 
