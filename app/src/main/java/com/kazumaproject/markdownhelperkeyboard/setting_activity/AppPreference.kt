@@ -20,6 +20,10 @@ object AppPreference {
     private val MOZCUT_NEOLOGD = Pair("mozc_ut_neologd_preference", false)
     private val MOZCUT_WEB = Pair("mozc_ut_web_preference", false)
 
+    private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 280)
+    private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
+    private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -103,5 +107,27 @@ object AppPreference {
         get() = preferences.getBoolean(MOZCUT_WEB.first, MOZCUT_WEB.second)
         set(value) = preferences.edit {
             it.putBoolean(MOZCUT_WEB.first, value ?: false)
+        }
+
+    var keyboard_height: Int?
+        get() = preferences.getInt(
+            KEYBOARD_HEIGHT.first, KEYBOARD_HEIGHT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_HEIGHT.first, value ?: 280)
+        }
+
+    var keyboard_width: Int?
+        get() = preferences.getInt(
+            KEYBOARD_WIDTH.first, KEYBOARD_WIDTH.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_WIDTH.first, value ?: 100)
+        }
+
+    var keyboard_position: Boolean?
+        get() = preferences.getBoolean(KEYBOARD_POSITION.first, KEYBOARD_POSITION.second)
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_POSITION.first, value ?: true)
         }
 }

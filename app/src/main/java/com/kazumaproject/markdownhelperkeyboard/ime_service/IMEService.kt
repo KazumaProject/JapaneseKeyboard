@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -17,9 +18,11 @@ import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.ContextThemeWrapper
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
@@ -29,6 +32,7 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
@@ -337,6 +341,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!clipboardUtil.isClipboardEmpty()) {
             suggestionAdapter.suggestions = clipboardUtil.getAllClipboardTexts()
         }
+        setKeyboardSize()
     }
 
     override fun onFinishInput() {
@@ -2661,6 +2666,94 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (latestClipboardText.isNotEmpty()) {
                 suggestionAdapter.suggestions = latestClipboardText
             }
+        }
+    }
+
+    private fun setKeyboardSize() {
+        val heightFromPreference = appPreference.keyboard_height ?: 280
+        val widthFromPreference = appPreference.keyboard_width ?: 100
+        val keyboardPositionPreference = appPreference.keyboard_position ?: true
+        val density = resources.displayMetrics.density
+        val screenWidth = Resources.getSystem().displayMetrics.widthPixels
+        val heightInPx = (heightFromPreference * density).toInt()
+
+        mainLayoutBinding?.apply {
+            println("heightFromPreference: $heightFromPreference")
+            when (heightFromPreference) {
+                in 250..280 -> keyboardSymbolView.updateSpanCount(4)
+                in 210..249 -> keyboardSymbolView.updateSpanCount(3)
+                else -> keyboardSymbolView.updateSpanCount(2)
+            }
+            keyboardView.apply {
+                val params = layoutParams as FrameLayout.LayoutParams
+                params.apply {
+                    height = heightInPx
+
+                    gravity = if (keyboardPositionPreference) {
+                        Gravity.BOTTOM or Gravity.END
+                    } else {
+                        Gravity.BOTTOM or Gravity.START
+                    }
+                }
+                layoutParams = params
+            }
+            candidatesRowView.apply {
+                val params = layoutParams as FrameLayout.LayoutParams
+                params.apply {
+                    height = heightInPx
+
+                    gravity = if (keyboardPositionPreference) {
+                        Gravity.BOTTOM or Gravity.END
+                    } else {
+                        Gravity.BOTTOM or Gravity.START
+                    }
+                }
+                layoutParams = params
+            }
+
+            keyboardSymbolView.apply {
+                val params = layoutParams as FrameLayout.LayoutParams
+                params.apply {
+                    height = heightInPx
+
+                    gravity = if (keyboardPositionPreference) {
+                        Gravity.BOTTOM or Gravity.END
+                    } else {
+                        Gravity.BOTTOM or Gravity.START
+                    }
+                }
+                layoutParams = params
+            }
+            suggestionViewParent.apply {
+                val params = suggestionViewParent.layoutParams as FrameLayout.LayoutParams
+                params.apply {
+                    bottomMargin = heightInPx
+                    gravity = if (keyboardPositionPreference) {
+                        Gravity.BOTTOM or Gravity.END
+                    } else {
+                        Gravity.BOTTOM or Gravity.START
+                    }
+                }
+                layoutParams = params
+            }
+
+            root.apply {
+                val params = root.layoutParams as FrameLayout.LayoutParams
+                params.apply {
+                    width = if (widthFromPreference == 100) {
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    } else {
+                        (screenWidth * (widthFromPreference / 100f)).toInt()
+                    }
+                    gravity = if (keyboardPositionPreference) {
+                        Gravity.BOTTOM or Gravity.END
+                    } else {
+                        Gravity.BOTTOM or Gravity.START
+                    }
+                }
+                layoutParams = params
+            }
+
         }
     }
 
