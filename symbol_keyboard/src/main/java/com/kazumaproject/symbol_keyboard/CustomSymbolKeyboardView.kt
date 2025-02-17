@@ -242,4 +242,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             deleteButtonSymbolViewClickListener?.onClick()
         }
     }
+
+    fun updateSpanCount(newSpanCount: Int) {
+        if (::gridLayoutManager.isInitialized) {
+            gridLayoutManager.spanCount = newSpanCount
+            gridLayoutManager.requestLayout()
+            symbolRecyclerView.requestLayout()
+        }
+    }
 }

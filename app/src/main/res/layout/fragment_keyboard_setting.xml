@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".keyboard_setting.KeyboardSettingFragment">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/keyboard_height_setting_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginTop="16dp"
+        android:text="キーボードの縦幅"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <SeekBar
+        android:id="@+id/keyboard_height_seekbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:max="100"
+        android:progress="100"
+        app:layout_constraintTop_toBottomOf="@+id/keyboard_height_setting_title" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/keyboard_width_setting_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="キーボードの横幅"
+        app:layout_constraintStart_toStartOf="@+id/keyboard_height_setting_title"
+        app:layout_constraintTop_toBottomOf="@+id/keyboard_height_seekbar" />
+
+    <SeekBar
+        android:id="@+id/keyboard_width_seekbar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:max="30"
+        android:progress="30"
+        app:layout_constraintTop_toBottomOf="@+id/keyboard_width_setting_title" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/materialTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="キーボードの配置"
+        app:layout_constraintStart_toStartOf="@+id/keyboard_width_setting_title"
+        app:layout_constraintTop_toBottomOf="@+id/keyboard_width_seekbar" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/keyboard_position_button"
+        android:layout_width="wrap_content"
+        android:layout_height="64dp"
+        android:layout_marginTop="16dp"
+        app:layout_constraintEnd_toEndOf="@+id/keyboard_width_seekbar"
+        app:layout_constraintStart_toStartOf="@+id/materialTextView"
+        app:layout_constraintTop_toBottomOf="@+id/materialTextView" />
+
+    <com.kazumaproject.tenkey.TenKey
+        android:id="@+id/keyboard_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:clickable="true"
+        android:focusable="true"
+        android:importantForAccessibility="yes"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

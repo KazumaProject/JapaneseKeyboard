@@ -2,17 +2,22 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="操作">
+    <PreferenceCategory android:title="キーボード">
+        <Preference
+            android:key="keyboard_screen_preference"
+            android:summary="キーボードのサイズの設定を変更できます"
+            android:title="サイズの設定" />
+    </PreferenceCategory>
 
+    <PreferenceCategory android:title="操作">
         <SeekBarPreference
             android:defaultValue="1000"
             android:key="time_same_pronounce_typing_preference"
             android:max="1000"
-            app:min="1"
             android:summary="単位: [ ms ]"
             android:title="同じ韻をタイピングできる時間"
+            app:min="1"
             app:showSeekBarValue="true" />
-
     </PreferenceCategory>
 
     <PreferenceCategory android:title="バイブレーション">
