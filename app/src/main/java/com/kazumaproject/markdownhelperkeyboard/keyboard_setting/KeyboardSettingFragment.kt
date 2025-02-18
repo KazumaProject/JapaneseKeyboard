@@ -75,6 +75,20 @@ class KeyboardSettingFragment : Fragment() {
                         val layoutParams = binding.keyboardView.layoutParams
                         layoutParams.height = heightInPx
                         binding.keyboardView.layoutParams = layoutParams
+
+                        val padding = when {
+                            actualProgress in 210..280 -> {
+                                val startPadding = 12 * density
+                                val endPadding = 21 * density
+                                val normalizedProgress =
+                                    (actualProgress - 210) / 70f
+                                startPadding + (endPadding - startPadding) * normalizedProgress
+                            }
+
+                            actualProgress < 210 -> 12 * density
+                            else -> 21 * density
+                        }
+                        binding.keyboardView.setPaddingToSideKeySymbol(padding.toInt())
                     }
 
                     override fun onStartTrackingTouch(seekBar: SeekBar?) {}
