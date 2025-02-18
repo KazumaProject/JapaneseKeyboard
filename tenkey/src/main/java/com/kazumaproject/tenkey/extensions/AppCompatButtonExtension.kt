@@ -8,9 +8,9 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.tenkey.R
 
-const val KEY_JAPANESE_SIZE = 17f
-const val KEY_ENGLISH_SIZE = 14f
-const val KEY_NUMBER_SIZE = 18f
+var KEY_JAPANESE_SIZE = 17f
+var KEY_ENGLISH_SIZE = 14f
+var KEY_NUMBER_SIZE = 18f
 
 private val JP_KEY_LAYOUT_WITH_SPACE = listOf(
     "    あ    ", "    か    ", "    さ    ", "    た    ", "    な    ",
@@ -143,8 +143,8 @@ private fun getSpannableStringForKigouButtonJapanese(): SpannableString {
     spannable.setSpan(RelativeSizeSpan(0.6f), 4, 5, 0)
     spannable.setSpan(RelativeSizeSpan(0.6f), 6, 7, 0)
     spannable.setSpan(RelativeSizeSpan(0.8f), 8, 9, 0)
-    spannable.setSpan(RelativeSizeSpan(0.5f), 1 ,2, 0)
-    spannable.setSpan(CustomLineHeightSpan(15,0), 7, 8, 0)
+    spannable.setSpan(RelativeSizeSpan(0.5f), 1, 2, 0)
+    spannable.setSpan(CustomLineHeightSpan(15, 0), 7, 8, 0)
     return spannable
 }
 
@@ -155,25 +155,25 @@ private fun getSpannableStringForNumberButton(str: String): SpannableString {
     return spannable
 }
 
-fun AppCompatButton.layoutXPosition(): Int{
+fun AppCompatButton.layoutXPosition(): Int {
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[0]
 }
 
-fun AppCompatButton.layoutYPosition(): Int{
+fun AppCompatButton.layoutYPosition(): Int {
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[1]
 }
 
-fun AppCompatImageButton.layoutXPosition(): Int{
+fun AppCompatImageButton.layoutXPosition(): Int {
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[0]
 }
 
-fun AppCompatImageButton.layoutYPosition(): Int{
+fun AppCompatImageButton.layoutYPosition(): Int {
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[1]

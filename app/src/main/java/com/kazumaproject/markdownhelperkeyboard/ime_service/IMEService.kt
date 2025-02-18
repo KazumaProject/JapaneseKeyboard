@@ -79,6 +79,9 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.tenkey.extensions.KEY_ENGLISH_SIZE
+import com.kazumaproject.tenkey.extensions.KEY_JAPANESE_SIZE
+import com.kazumaproject.tenkey.extensions.KEY_NUMBER_SIZE
 import com.kazumaproject.tenkey.listener.FlickListener
 import com.kazumaproject.tenkey.listener.LongPressListener
 import com.kazumaproject.tenkey.state.GestureType
@@ -105,6 +108,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Named
+import kotlin.math.roundToInt
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
@@ -2675,20 +2679,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val keyboardPositionPreference = appPreference.keyboard_position ?: true
         val density = resources.displayMetrics.density
         val screenWidth = Resources.getSystem().displayMetrics.widthPixels
-        val heightInPx = (heightFromPreference * density).toInt()
+        val orientation = resources.configuration.orientation
+
+        val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val maxLandscapeHeight = 200
+        val clampedHeight = if (isPortrait) {
+            heightFromPreference.coerceIn(210, 280)
+        } else {
+            heightFromPreference.coerceAtMost(maxLandscapeHeight)
+        }
+
+        val heightInPx = (clampedHeight * density).toInt()
+
+        val widthInPx = if (isPortrait) {
+            if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT
+            else (screenWidth * (widthFromPreference / 100f)).toInt()
+        } else {
+            (screenWidth * 0.8).toInt()
+        }
 
         mainLayoutBinding?.apply {
-            println("heightFromPreference: $heightFromPreference")
-            when (heightFromPreference) {
-                in 250..280 -> keyboardSymbolView.updateSpanCount(4)
-                in 210..249 -> keyboardSymbolView.updateSpanCount(3)
-                else -> keyboardSymbolView.updateSpanCount(2)
-            }
+            val normalizedProgress = (clampedHeight - 210) / 70f
+            val easedProgress = easeInOutQuad(normalizedProgress)
+
+            val spanCount = if (isPortrait) lerp(2f, 4f, easedProgress).roundToInt() else lerp(
+                4f,
+                5f,
+                easedProgress
+            ).roundToInt()
+            val padding =
+                if (isPortrait) lerp(12f * density, 21f * density, easedProgress).toInt() else lerp(8f * density, 12f * density, easedProgress).toInt()
+
+            val letterSizeJP = lerp(14f, 17f, easedProgress)
+            val letterSizeEN = lerp(11f, 14f, easedProgress)
+            val letterSizeNUMBER = lerp(15f, 18f, easedProgress)
+
+            keyboardSymbolView.updateSpanCount(spanCount)
+            keyboardView.setPaddingToSideKeySymbol(padding)
+            KEY_JAPANESE_SIZE = letterSizeJP
+            KEY_ENGLISH_SIZE = letterSizeEN
+            KEY_NUMBER_SIZE = letterSizeNUMBER
+
             keyboardView.apply {
                 val params = layoutParams as FrameLayout.LayoutParams
                 params.apply {
                     height = heightInPx
-
                     gravity = if (keyboardPositionPreference) {
                         Gravity.BOTTOM or Gravity.END
                     } else {
@@ -2701,7 +2737,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 val params = layoutParams as FrameLayout.LayoutParams
                 params.apply {
                     height = heightInPx
-
                     gravity = if (keyboardPositionPreference) {
                         Gravity.BOTTOM or Gravity.END
                     } else {
@@ -2710,12 +2745,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
                 layoutParams = params
             }
-
             keyboardSymbolView.apply {
                 val params = layoutParams as FrameLayout.LayoutParams
                 params.apply {
                     height = heightInPx
-
                     gravity = if (keyboardPositionPreference) {
                         Gravity.BOTTOM or Gravity.END
                     } else {
@@ -2740,11 +2773,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             root.apply {
                 val params = root.layoutParams as FrameLayout.LayoutParams
                 params.apply {
-                    width = if (widthFromPreference == 100) {
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    } else {
-                        (screenWidth * (widthFromPreference / 100f)).toInt()
-                    }
+                    width = widthInPx
                     gravity = if (keyboardPositionPreference) {
                         Gravity.BOTTOM or Gravity.END
                     } else {
@@ -2753,9 +2782,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
                 layoutParams = params
             }
-
         }
     }
+
+    private fun lerp(start: Float, end: Float, fraction: Float): Float {
+        return start + (end - start) * fraction
+    }
+
+    private fun easeInOutQuad(t: Float): Float = if (t < 0.5) 2 * t * t else -1 + (4 - 2 * t) * t
 
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry

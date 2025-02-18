@@ -16,6 +16,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.view.setPadding
 import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.tenkey.extensions.hide
@@ -132,6 +133,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setOnLongPressListener(longPressListener: LongPressListener) {
         this.longPressListener = longPressListener
+    }
+
+    fun setPaddingToSideKeySymbol(paddingSize: Int) {
+        sideKeySymbol.setPadding(paddingSize)
     }
 
     init {
