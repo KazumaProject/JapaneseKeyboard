@@ -1271,7 +1271,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun commitAndClearInput(candidateString: String) {
         commitText(candidateString, 1)
-        _inputString.value = EMPTY_STRING
+        _inputString.update { EMPTY_STRING }
     }
 
     private fun handlePartialOrExcessLength(
@@ -1346,13 +1346,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val isEnable = appPreference.learn_dictionary_preference
             if (isEnable == null) {
                 commitText(candidate.string, 1)
-                _inputString.value = EMPTY_STRING
+                _inputString.update { EMPTY_STRING }
             } else {
                 appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
                     if (enabledLearnDictionary) {
                         if (position == 0) {
                             commitText(candidate.string, 1)
-                            _inputString.value = EMPTY_STRING
+                            _inputString.update { EMPTY_STRING }
                         } else {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val learnData = LearnEntity(
@@ -1360,19 +1360,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 )
                                 learnRepository.upsertLearnedData(learnData)
                                 commitText(candidate.string, 1)
-                                _inputString.value = EMPTY_STRING
+                                _inputString.update { EMPTY_STRING }
                             }
                         }
                     } else {
                         commitText(candidate.string, 1)
-                        _inputString.value = EMPTY_STRING
+                        _inputString.update { EMPTY_STRING }
                     }
                 }
             }
 
         } else {
             commitText(candidate.string, 1)
-            _inputString.value = EMPTY_STRING
+            _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -1387,7 +1387,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val isEnable = appPreference.learn_dictionary_preference
             if (isEnable == null) {
                 commitText(candidate.string, 1)
-                _inputString.value = EMPTY_STRING
+                _inputString.update { EMPTY_STRING }
             } else {
                 appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
                     if (enabledLearnDictionary) {
@@ -1403,18 +1403,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 upsertLearnedData(learnData2)
                             }
                             commitText(candidate.string, 1)
-                            _inputString.value = EMPTY_STRING
+                            _inputString.update { EMPTY_STRING }
                         }
                     } else {
                         commitText(candidate.string, 1)
-                        _inputString.value = EMPTY_STRING
+                        _inputString.update { EMPTY_STRING }
                     }
                 }
             }
 
         } else {
             commitText(candidate.string, 1)
-            _inputString.value = EMPTY_STRING
+            _inputString.update { EMPTY_STRING }
         }
     }
 
@@ -1751,7 +1751,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             } else {
                 // Remove the last character from the composing text
                 val newString = insertString.dropLast(1)
-                _inputString.value = newString
+                _inputString.update { newString }
 
                 // If it becomes empty, we may need to clear any tail text
                 if (newString.isEmpty() && tailIsEmpty) {
@@ -2038,7 +2038,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 val stringBuilder = StringBuilder(tail)
                 if (insertString.length == 1) {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
-                    _inputString.value = EMPTY_STRING
+                    _inputString.update { EMPTY_STRING }
                     suggestionAdapter.suggestions = emptyList()
                 } else {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
@@ -2159,7 +2159,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (insertString.isNotEmpty()) {
             if (insertString.length == 1) {
                 stringInTail.set(insertString + stringInTail.get())
-                _inputString.value = EMPTY_STRING
+                _inputString.update { EMPTY_STRING }
                 suggestionAdapter.suggestions = emptyList()
             } else {
                 stringInTail.set(insertString.last() + stringInTail.get())
@@ -2709,7 +2709,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 easedProgress
             ).roundToInt()
             val padding =
-                if (isPortrait) lerp(12f * density, 21f * density, easedProgress).toInt() else lerp(8f * density, 12f * density, easedProgress).toInt()
+                if (isPortrait) lerp(12f * density, 21f * density, easedProgress).toInt() else lerp(
+                    8f * density,
+                    12f * density,
+                    easedProgress
+                ).toInt()
 
             val letterSizeJP = lerp(14f, 17f, easedProgress)
             val letterSizeEN = lerp(11f, 14f, easedProgress)
