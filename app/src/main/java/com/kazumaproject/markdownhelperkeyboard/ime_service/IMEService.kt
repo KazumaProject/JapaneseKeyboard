@@ -1340,40 +1340,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun upsertLearnDictionaryWhenTapCandidate(
-        currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
+        currentInputMode: InputMode,
+        insertString: String,
+        candidate: Candidate,
+        position: Int
     ) {
-        if (currentInputMode == InputMode.ModeJapanese) {
-            val isEnable = appPreference.learn_dictionary_preference
-            if (isEnable == null) {
-                commitText(candidate.string, 1)
-                _inputString.update { EMPTY_STRING }
-            } else {
-                appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
-                    if (enabledLearnDictionary) {
-                        if (position == 0) {
-                            commitText(candidate.string, 1)
-                            _inputString.update { EMPTY_STRING }
-                        } else {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val learnData = LearnEntity(
-                                    input = insertString, out = candidate.string
-                                )
-                                learnRepository.upsertLearnedData(learnData)
-                                commitText(candidate.string, 1)
-                                _inputString.update { EMPTY_STRING }
-                            }
-                        }
-                    } else {
-                        commitText(candidate.string, 1)
-                        _inputString.update { EMPTY_STRING }
-                    }
-                }
-            }
-
-        } else {
+        if (currentInputMode != InputMode.ModeJapanese) {
             commitText(candidate.string, 1)
             _inputString.update { EMPTY_STRING }
+            return
         }
+        val isEnable = appPreference.learn_dictionary_preference
+
+        if (isEnable == null || !isEnable) {
+            commitText(candidate.string, 1)
+            _inputString.update { EMPTY_STRING }
+            return
+        }
+        if (position != 0) {
+            CoroutineScope(Dispatchers.IO).launch {
+                val learnData = LearnEntity(input = insertString, out = candidate.string)
+                learnRepository.upsertLearnedData(learnData)
+            }
+        }
+        commitText(candidate.string, 1)
+        _inputString.update { EMPTY_STRING }
     }
 
     private fun upsertLearnDictionaryMultipleTapCandidate(
