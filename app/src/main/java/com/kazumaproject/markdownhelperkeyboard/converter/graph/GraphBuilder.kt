@@ -1,7 +1,9 @@
 package com.kazumaproject.converter.graph
 
+import android.util.SparseArray
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.computeIfAbsent
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
@@ -22,8 +24,8 @@ class GraphBuilder {
         rank1ArrayLBSTango: IntArray,
         LBSBooleanArray: BooleanArray,
         LBSBooleanArrayPreprocess: IntArray
-    ): MutableMap<Int, MutableList<Node>> {
-        val graph: MutableMap<Int, MutableList<Node>> = mutableMapOf()
+    ): SparseArray<MutableList<Node>> {
+        val graph: SparseArray<MutableList<Node>> = SparseArray<MutableList<Node>>()
         graph[0] = mutableListOf(BOS)
         graph[str.length + 1] = mutableListOf(
             Node(
@@ -83,7 +85,6 @@ class GraphBuilder {
                     )
                 }
 
-                // Update the graph map using the index based on the length of yomiStr
                 val endIndex = i + yomiStr.length
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
             }
