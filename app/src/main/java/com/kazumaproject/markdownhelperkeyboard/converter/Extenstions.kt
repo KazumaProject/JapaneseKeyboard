@@ -1,5 +1,8 @@
 package com.kazumaproject
 
+import android.util.SparseArray
+import androidx.core.util.isEmpty
+import androidx.core.util.size
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.text.Normalizer
@@ -179,7 +182,7 @@ fun List<String>.addingStringToListForCommonPrefix(): List<String> {
     return result
 }
 
-fun BooleanArray.preprocessLBSIntoBooleanArray(): IntArray{
+fun BooleanArray.preprocessLBSIntoBooleanArray(): IntArray {
     val prefixSum = IntArray(this.size + 1)
     for (i in this.indices) {
         prefixSum[i + 1] = prefixSum[i] + if (this[i]) 0 else 1
@@ -199,3 +202,27 @@ fun String.toFullWidthDigitsEfficient(): String {
     return sb.toString()
 }
 
+inline fun <T> SparseArray<T>.computeIfAbsent(
+    key: Int,
+    defaultValue: () -> T
+): T {
+    val current = get(key)
+    return if (current == null) {
+        val newValue = defaultValue()
+        put(key, newValue)
+        newValue
+    } else {
+        current
+    }
+}
+
+/** Returns the maximum key in a SparseArray, or null if empty. */
+fun SparseArray<*>.maxKeyOrNull(): Int? {
+    if (isEmpty()) return null
+    var maxKey = keyAt(0)
+    for (i in 1 until size) {
+        val key = keyAt(i)
+        if (key > maxKey) maxKey = key
+    }
+    return maxKey
+}
