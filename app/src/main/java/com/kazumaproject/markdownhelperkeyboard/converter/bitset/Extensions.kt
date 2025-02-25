@@ -1,5 +1,6 @@
 package com.kazumaproject.bitset
 
+import java.nio.IntBuffer
 import java.util.BitSet
 
 fun BitSet.rank0(index: Int): Int {
@@ -110,6 +111,23 @@ fun BitSet.select1Common(j: Int, rank1: IntArray): Int {
 
 // Extension function for select0 in O(log n) time complexity
 fun BitSet.select0Common(j: Int, rank0: IntArray): Int {
+    var low = 0
+    var high = this.size() - 1
+    while (low <= high) {
+        val mid = (low + high) / 2
+        if (rank0[mid + 1] > j) {
+            high = mid - 1
+        } else if (rank0[mid + 1] < j) {
+            low = mid + 1
+        } else {
+            if (!this[mid]) return mid
+            high = mid - 1
+        }
+    }
+    return -1
+}
+
+fun BitSet.select0Common(j: Int, rank0: IntBuffer): Int {
     var low = 0
     var high = this.size() - 1
     while (low <= high) {
