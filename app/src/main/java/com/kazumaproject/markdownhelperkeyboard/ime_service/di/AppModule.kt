@@ -2,13 +2,11 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.di
 
 import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
-import android.graphics.drawable.Drawable
 import android.transition.Slide
 import android.transition.Transition
 import android.view.Gravity
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputMethodManager
-import androidx.core.content.ContextCompat
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
@@ -19,7 +17,6 @@ import com.kazumaproject.bitset.rank1GetShortArray
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
-import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -979,101 +976,5 @@ object AppModule {
     @Provides
     fun providesInputManager(@ApplicationContext context: Context): InputMethodManager =
         context.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-
-    @DrawableReturn
-    @Provides
-    fun providesDrawableReturn(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.baseline_keyboard_return_24
-        )!!
-
-    @DrawableKanaSmall
-    @Provides
-    fun providesDrawableKanaSmall(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.kana_small
-        )!!
-
-    @DrawableEnglishSmall
-    @Provides
-    fun providesDrawableEnglishSmall(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.english_small
-        )!!
-
-    @DrawableHenkan
-    @Provides
-    fun providesDrawableHenkan(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.henkan
-        )!!
-
-    @DrawableSpaceBar
-    @Provides
-    fun providesDrawableSpaceBar(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.space_bar
-        )!!
-
-    @DrawableRightArrow
-    @Provides
-    fun providesDrawableRightArrow(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.baseline_arrow_right_alt_24
-        )!!
-
-    @DrawableSearch
-    @Provides
-    fun providesDrawableSearch(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.baseline_search_24
-        )!!
-
-    @DrawableArrowTab
-    @Provides
-    fun providesDrawableArrowTab(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.keyboard_tab_24px
-        )!!
-
-    @DrawableCheck
-    @Provides
-    fun providesDrawableCheck(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.baseline_check_24
-        )!!
-
-    @DrawableLanguage
-    @Provides
-    fun providesDrawableLanguage(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.logo_key
-        )!!
-
-    @DrawableNumberSmall
-    @Provides
-    fun providesDrawableNumberSmall(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.number_small
-        )!!
-
-    @DrawableOpenBracket
-    @Provides
-    fun providesDrawableOpenBracket(@ApplicationContext context: Context): Drawable =
-        ContextCompat.getDrawable(
-            context,
-            R.drawable.open_bracket
-        )!!
 
 }
