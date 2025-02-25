@@ -4,7 +4,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
-import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Bundle
@@ -53,18 +52,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableArrowTab
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableCheck
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableEnglishSmall
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableHenkan
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableKanaSmall
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableLanguage
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableNumberSmall
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableOpenBracket
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableReturn
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableRightArrow
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSearch
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.DrawableSpaceBar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
@@ -135,54 +122,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var inputMethodManager: InputMethodManager
-
-    @Inject
-    @DrawableReturn
-    lateinit var drawableReturn: Drawable
-
-    @Inject
-    @DrawableArrowTab
-    lateinit var drawableArrowTab: Drawable
-
-    @Inject
-    @DrawableKanaSmall
-    lateinit var drawableKanaSmall: Drawable
-
-    @Inject
-    @DrawableHenkan
-    lateinit var drawableHenkan: Drawable
-
-    @Inject
-    @DrawableEnglishSmall
-    lateinit var drawableEnglishSmall: Drawable
-
-    @Inject
-    @DrawableSpaceBar
-    lateinit var drawableSpaceBar: Drawable
-
-    @Inject
-    @DrawableRightArrow
-    lateinit var drawableRightArrow: Drawable
-
-    @Inject
-    @DrawableSearch
-    lateinit var drawableSearch: Drawable
-
-    @Inject
-    @DrawableCheck
-    lateinit var drawableCheck: Drawable
-
-    @Inject
-    @DrawableLanguage
-    lateinit var drawableLogo: Drawable
-
-    @Inject
-    @DrawableNumberSmall
-    lateinit var drawableNumberSmall: Drawable
-
-    @Inject
-    @DrawableOpenBracket
-    lateinit var drawableOpenBracket: Drawable
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
@@ -734,9 +673,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionRecyclerView.isVisible = true
             keyboardView.apply {
                 if (currentInputMode == InputMode.ModeNumber) {
-                    setBackgroundSmallLetterKey(drawableNumberSmall)
+                    setBackgroundSmallLetterKey(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.number_small
+                        )
+                    )
                 } else {
-                    setBackgroundSmallLetterKey(drawableLogo)
+                    setBackgroundSmallLetterKey(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.logo_key
+                        )
+                    )
                 }
             }
         }
@@ -950,11 +899,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             resetInputString()
             mainView.keyboardView.apply {
-                setSideKeySpaceDrawable(drawableSpaceBar)
+                setSideKeySpaceDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        R.drawable.space_bar
+                    )
+                )
                 if (currentInputMode == InputMode.ModeNumber) {
-                    setBackgroundSmallLetterKey(drawableNumberSmall)
+                    setBackgroundSmallLetterKey(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.number_small
+                        )
+                    )
                 } else {
-                    setBackgroundSmallLetterKey(drawableLogo)
+                    setBackgroundSmallLetterKey(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.logo_key
+                        )
+                    )
                 }
             }
         }
@@ -989,7 +953,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(drawableRightArrow)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.baseline_arrow_right_alt_24
+                            )
+                        )
                     }
 
                     InputTypeForIME.TextMultiLine,
@@ -1000,28 +969,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(drawableReturn)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.baseline_keyboard_return_24
+                            )
+                        )
                     }
 
                     InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(drawableArrowTab)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.keyboard_tab_24px
+                            )
+                        )
                     }
 
                     InputTypeForIME.TextDone -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(drawableCheck)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.baseline_check_24
+                            )
+                        )
                     }
 
                     InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(drawableSearch)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.baseline_search_24
+                            )
+                        )
                     }
 
                     InputTypeForIME.TextEditTextInWebView,
@@ -1035,14 +1024,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         currentInputMode = InputMode.ModeEnglish
                         setInputModeSwitchState(InputMode.ModeEnglish)
                         setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(drawableRightArrow)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.baseline_arrow_right_alt_24
+                            )
+                        )
                     }
 
                     InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(drawableRightArrow)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.baseline_arrow_right_alt_24
+                            )
+                        )
                     }
 
                     InputTypeForIME.Number,
@@ -1057,7 +1056,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         currentInputMode = InputMode.ModeNumber
                         setInputModeSwitchState(InputMode.ModeNumber)
                         setSideKeyPreviousState(false)
-                        this.setSideKeyEnterDrawable(drawableRightArrow)
+                        this.setSideKeyEnterDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.baseline_arrow_right_alt_24
+                            )
+                        )
                     }
 
                 }
@@ -1582,37 +1586,92 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView.keyboardView.apply {
             when (currentInputMode) {
                 is InputMode.ModeJapanese -> {
-                    setSideKeySpaceDrawable(drawableSpaceBar)
+                    setSideKeySpaceDrawable(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.space_bar
+                        )
+                    )
                     setSideKeyPreviousState(true)
                     if (insertString.isNotEmpty()) {
                         if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
-                            setBackgroundSmallLetterKey(drawableEnglishSmall)
+                            setBackgroundSmallLetterKey(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.english_small
+                                )
+                            )
                         } else {
-                            setBackgroundSmallLetterKey(drawableLogo)
+                            setBackgroundSmallLetterKey(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.logo_key
+                                )
+                            )
                         }
                     } else {
-                        setBackgroundSmallLetterKey(drawableLogo)
+                        setBackgroundSmallLetterKey(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.logo_key
+                            )
+                        )
                     }
                 }
 
                 is InputMode.ModeEnglish -> {
-                    setSideKeySpaceDrawable(drawableSpaceBar)
-                    setBackgroundSmallLetterKey(drawableNumberSmall)
+                    setSideKeySpaceDrawable(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.space_bar
+                        )
+                    )
+                    setBackgroundSmallLetterKey(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.number_small
+                        )
+                    )
                     setSideKeyPreviousState(false)
                 }
 
                 is InputMode.ModeNumber -> {
                     setSideKeyPreviousState(true)
                     if (insertString.isNotEmpty()) {
-                        setSideKeySpaceDrawable(drawableHenkan)
+                        setSideKeySpaceDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.henkan
+                            )
+                        )
                         if (insertString.last().isHiragana()) {
-                            setBackgroundSmallLetterKey(drawableKanaSmall)
+                            setBackgroundSmallLetterKey(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.kana_small
+                                )
+                            )
                         } else {
-                            setBackgroundSmallLetterKey(drawableLogo)
+                            setBackgroundSmallLetterKey(
+                                ContextCompat.getDrawable(
+                                    context,
+                                    R.drawable.logo_key
+                                )
+                            )
                         }
                     } else {
-                        setSideKeySpaceDrawable(drawableSpaceBar)
-                        setBackgroundSmallLetterKey(drawableLogo)
+                        setSideKeySpaceDrawable(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.space_bar
+                            )
+                        )
+                        setBackgroundSmallLetterKey(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.logo_key
+                            )
+                        )
                     }
                 }
             }
@@ -1621,30 +1680,75 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun updateUIinHenkan(mainView: MainLayoutBinding, insertString: String) {
         mainView.keyboardView.apply {
-            setSideKeyEnterDrawable(drawableReturn)
+            setSideKeyEnterDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    R.drawable.baseline_keyboard_return_24
+                )
+            )
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
                     if (insertString.isNotEmpty() && insertString.last().isHiragana()) {
-                        setBackgroundSmallLetterKey(drawableKanaSmall)
+                        setBackgroundSmallLetterKey(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.kana_small
+                            )
+                        )
                     } else {
-                        setBackgroundSmallLetterKey(drawableLogo)
+                        setBackgroundSmallLetterKey(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.logo_key
+                            )
+                        )
                     }
-                    setSideKeySpaceDrawable(drawableHenkan)
+                    setSideKeySpaceDrawable(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.henkan
+                        )
+                    )
                 }
 
                 InputMode.ModeEnglish -> {
 
                     if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
-                        setBackgroundSmallLetterKey(drawableEnglishSmall)
+                        setBackgroundSmallLetterKey(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.english_small
+                            )
+                        )
                     } else {
-                        setBackgroundSmallLetterKey(drawableLogo)
+                        setBackgroundSmallLetterKey(
+                            ContextCompat.getDrawable(
+                                context,
+                                R.drawable.logo_key
+                            )
+                        )
                     }
-                    setSideKeySpaceDrawable(drawableSpaceBar)
+                    setSideKeySpaceDrawable(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.space_bar
+                        )
+                    )
                 }
 
                 InputMode.ModeNumber -> {
-                    setBackgroundSmallLetterKey(drawableNumberSmall)
-                    setSideKeySpaceDrawable(drawableSpaceBar)
+                    setBackgroundSmallLetterKey(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.number_small
+                        )
+                    )
+                    setSideKeySpaceDrawable(
+                        ContextCompat.getDrawable(
+                            context,
+                            R.drawable.space_bar
+                        )
+                    )
                 }
             }
         }
@@ -1964,14 +2068,40 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
         val currentDrawable = when (currentInputType) {
-            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> drawableSearch
+            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                ContextCompat.getDrawable(
+                    applicationContext,
+                    R.drawable.baseline_search_24
+                )
+            }
 
-            InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage -> drawableReturn
+            InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage -> {
+                ContextCompat.getDrawable(
+                    applicationContext,
+                    R.drawable.baseline_keyboard_return_24
+                )
+            }
 
-            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> drawableArrowTab
+            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                ContextCompat.getDrawable(
+                    applicationContext,
+                    R.drawable.keyboard_tab_24px
+                )
+            }
 
-            InputTypeForIME.TextDone -> drawableCheck
-            else -> drawableRightArrow
+            InputTypeForIME.TextDone -> {
+                ContextCompat.getDrawable(
+                    applicationContext,
+                    R.drawable.baseline_check_24
+                )
+            }
+
+            else -> {
+                ContextCompat.getDrawable(
+                    applicationContext,
+                    R.drawable.baseline_arrow_right_alt_24
+                )
+            }
         }
         mainView.keyboardView.setSideKeyEnterDrawable(currentDrawable)
     }
