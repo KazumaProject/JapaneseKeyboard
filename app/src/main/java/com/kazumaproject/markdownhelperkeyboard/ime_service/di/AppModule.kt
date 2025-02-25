@@ -14,7 +14,6 @@ import com.kazumaproject.bitset.rank0GetIntArray
 import com.kazumaproject.bitset.rank0GetShortArray
 import com.kazumaproject.bitset.rank1GetIntArray
 import com.kazumaproject.bitset.rank1GetShortArray
-import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -40,7 +39,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.io.ObjectInputStream
+import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
 import java.util.zip.ZipInputStream
 import javax.inject.Named
 import javax.inject.Singleton
@@ -127,18 +130,37 @@ object AppModule {
     @Provides
     @ConnectionIds
     fun provideConnectionIds(@ApplicationContext context: Context): ShortArray {
+        val tempFile = File(context.cacheDir, "connectionId.dat")
+
+        // Unzip and write the file to a temporary location
         ZipInputStream(context.assets.open("connectionId.dat.zip")).use { zipStream ->
             var entry = zipStream.nextEntry
             while (entry != null) {
                 if (entry.name == "connectionId.dat") {
-                    BufferedInputStream(zipStream).use { inputStream ->
-                        return ConnectionIdBuilder().readShortArrayFromBytes(inputStream)
+                    FileOutputStream(tempFile).use { outputStream ->
+                        zipStream.copyTo(outputStream)
                     }
+                    break
                 }
                 entry = zipStream.nextEntry
             }
         }
-        throw IllegalArgumentException("connectionId.dat not found in connectionId.zip")
+
+        if (!tempFile.exists()) {
+            throw IllegalArgumentException("connectionId.dat not found in connectionId.zip")
+        }
+
+        // Use MappedByteBuffer to map the file into memory
+        RandomAccessFile(tempFile, "r").use { raf ->
+            val channel = raf.channel
+            val buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, raf.length())
+
+            // Convert MappedByteBuffer to ShortArray
+            val shortArray = ShortArray(buffer.remaining() / 2) // Each short is 2 bytes
+            buffer.asShortBuffer().get(shortArray)
+
+            return shortArray
+        }
     }
 
     @SystemTangoTrie
