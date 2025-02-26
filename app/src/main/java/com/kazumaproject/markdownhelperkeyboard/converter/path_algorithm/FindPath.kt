@@ -1,35 +1,15 @@
 package com.kazumaproject.viterbi
 
-import android.util.SparseArray
-import androidx.core.util.size
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
-import com.kazumaproject.maxKeyOrNull
 import java.util.PriorityQueue
 
 class FindPath {
 
-    fun viterbi(
-        graph: List<MutableList<MutableList<Node>>>,
-        length: Int,
-        connectionIds: ShortArray
-    ): String {
-        buildViterbi(graph, length, connectionIds)
-        var node = graph[length + 1][0][0]
-        val result: MutableList<String> = mutableListOf()
-        while (node.tango != "BOS") {
-            node.prev?.let {
-                result.add(it.tango)
-                node = it
-            }
-        }
-        return result.asReversed().drop(1).joinToString(separator = "") { it }
-    }
-
     fun backwardAStar(
-        graph: SparseArray<MutableList<Node>>,
+        graph: MutableMap<Int, MutableList<Node>>, // Adjusted type
         length: Int,
         connectionIds: ShortArray,
         n: Int
@@ -42,7 +22,6 @@ class FindPath {
         val resultFinal: MutableList<Candidate> = mutableListOf()
         val pQueue: PriorityQueue<Pair<Node, Int>> = PriorityQueue(compareBy { it.second })
 
-        // EOS (End of Sentence) node is accessed from the graph using the key length + 1
         val eos = Pair(graph[length + 1]?.get(0) ?: return resultFinal, 0)
         pQueue.add(eos)
 
@@ -64,20 +43,17 @@ class FindPath {
                         resultFinal.add(candidate)
                     }
                 } else {
-                    val prevNodesSparse = getPrevNodes2(graph, node.first, node.first.sPos)
-                    for (i in 0 until prevNodesSparse.size) {
-                        val nodeList = prevNodesSparse.valueAt(i)
-                        for (prevNode in nodeList) {
-                            val edgeScore = getEdgeCost(
-                                prevNode.l.toInt(),
-                                node.first.r.toInt(),
-                                connectionIds
-                            )
-                            prevNode.g = node.first.g + edgeScore + node.first.score
-                            prevNode.next = node.first
-                            val result2 = Pair(prevNode, prevNode.g + prevNode.f)
-                            pQueue.add(result2)
-                        }
+                    val prevNodes = getPrevNodes2(graph, node.first, node.first.sPos).flatten()
+                    for (prevNode in prevNodes) {
+                        val edgeScore = getEdgeCost(
+                            prevNode.l.toInt(),
+                            node.first.r.toInt(),
+                            connectionIds
+                        )
+                        prevNode.g = node.first.g + edgeScore + node.first.score
+                        prevNode.next = node.first
+                        val result2 = Pair(prevNode, prevNode.g + prevNode.f)
+                        pQueue.add(result2)
                     }
                 }
                 if (resultFinal.size >= n) {
@@ -88,42 +64,8 @@ class FindPath {
         return resultFinal
     }
 
-    private fun buildViterbi(
-        graph: List<MutableList<MutableList<Node>>>,
-        length: Int,
-        connectionIds: ShortArray
-    ) {
-        for (i in 1..length + 1) {
-            val nodes = graph[i].flatten()
-            for (node in nodes) {
-                val nodeCost = node.score
-                var cost = Int.MAX_VALUE
-                var shortestPrev: Node? = null
-                val prevNodes = getPrevNodesForViterbi(
-                    graph,
-                    node,
-                    i,
-                ).flatten()
-                for (prevNode in prevNodes) {
-                    val edgeCost = getEdgeCost(
-                        prevNode.l.toInt(),
-                        node.r.toInt(),
-                        connectionIds
-                    )
-                    val tempCost = prevNode.score + nodeCost + edgeCost
-                    if (tempCost < cost) {
-                        cost = tempCost
-                        shortestPrev = prevNode
-                    }
-                }
-                node.score = cost
-                node.prev = shortestPrev
-            }
-        }
-    }
-
     private fun forwardDp(
-        graph: SparseArray<MutableList<Node>>,
+        graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray
     ) {
@@ -156,54 +98,29 @@ class FindPath {
     }
 
     private fun getPrevNodes(
-        graph: SparseArray<MutableList<Node>>,
+        graph: MutableMap<Int, MutableList<Node>>,
         node: Node,
         startPosition: Int
     ): MutableList<Node> {
-        val index = if (node.tango == "EOS") {
-            val maxKey = graph.maxKeyOrNull() ?: return mutableListOf()
-            maxKey - 1
-        } else {
-            startPosition - node.len
-        }
-        if (startPosition - node.len == 0) {
-            return mutableListOf(BOS)
-        }
+        val index =
+            if (node.tango == "EOS") graph.keys.maxOrNull()?.minus(1) ?: return mutableListOf()
+            else startPosition - node.len
+        if ((startPosition - node.len) == 0) return mutableListOf(BOS)
         if (index < 0) return mutableListOf()
-        return graph.get(index) ?: mutableListOf()
+        return graph[index] ?: mutableListOf()
     }
 
     private fun getPrevNodes2(
-        graph: SparseArray<MutableList<Node>>,
+        graph: MutableMap<Int, MutableList<Node>>,
         node: Node,
         startPosition: Int
-    ): SparseArray<MutableList<Node>> {
-        val result = SparseArray<MutableList<Node>>()
-        val index = if (node.tango == "EOS") {
-            val maxKey = graph.maxKeyOrNull() ?: return result
-            maxKey - 1
-        } else {
-            startPosition
-        }
-        if (startPosition == 0) {
-            result.put(0, mutableListOf(BOS))
-            return result
-        }
-        if (index < 0) return result
-        val listAtIndex = graph.get(index) ?: mutableListOf()
-        result.put(index, listAtIndex)
-        return result
-    }
-
-    private fun getPrevNodesForViterbi(
-        graph: List<MutableList<MutableList<Node>>>,
-        node: Node,
-        startPosition: Int,
     ): MutableList<MutableList<Node>> {
-        if ((startPosition - node.len) == 0) return mutableListOf(mutableListOf(BOS))
-        val index = if (node.tango == "EOS") startPosition - 1 else startPosition - node.len.toInt()
+        val index =
+            if (node.tango == "EOS") graph.keys.maxOrNull()?.minus(1) ?: return mutableListOf()
+            else startPosition
+        if (startPosition == 0) return mutableListOf(mutableListOf(BOS))
         if (index < 0) return mutableListOf()
-        return graph[index]
+        return mutableListOf(graph[index] ?: mutableListOf())
     }
 
     private fun getEdgeCost(
