@@ -14,14 +14,13 @@ import com.kazumaproject.bitset.rank0GetIntArray
 import com.kazumaproject.bitset.rank0GetShortArray
 import com.kazumaproject.bitset.rank1GetIntArray
 import com.kazumaproject.bitset.rank1GetShortArray
-import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.converter.ByteBufferBackedInputStream
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
-import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionaryAdapter
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDatabase
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
@@ -40,7 +39,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.io.ObjectInputStream
+import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
 import java.util.zip.ZipInputStream
 import javax.inject.Named
 import javax.inject.Singleton
@@ -74,10 +77,6 @@ object AppModule {
     @Provides
     fun providesClipBoardUtil(@ApplicationContext context: Context): ClipboardUtil =
         ClipboardUtil(context)
-
-    @Singleton
-    @Provides
-    fun providesLearnDictionaryAdapter(): LearnDictionaryAdapter = LearnDictionaryAdapter()
 
     @Singleton
     @Provides
@@ -127,28 +126,62 @@ object AppModule {
     @Provides
     @ConnectionIds
     fun provideConnectionIds(@ApplicationContext context: Context): ShortArray {
+        val tempFile = File(context.cacheDir, "connectionId.dat")
+
         ZipInputStream(context.assets.open("connectionId.dat.zip")).use { zipStream ->
             var entry = zipStream.nextEntry
             while (entry != null) {
                 if (entry.name == "connectionId.dat") {
-                    BufferedInputStream(zipStream).use { inputStream ->
-                        return ConnectionIdBuilder().readShortArrayFromBytes(inputStream)
+                    FileOutputStream(tempFile).use { outputStream ->
+                        zipStream.copyTo(outputStream)
                     }
+                    break
                 }
                 entry = zipStream.nextEntry
             }
         }
-        throw IllegalArgumentException("connectionId.dat not found in connectionId.zip")
+
+        if (!tempFile.exists()) {
+            throw IllegalArgumentException("connectionId.dat not found in connectionId.zip")
+        }
+
+        RandomAccessFile(tempFile, "r").use { raf ->
+            val channel = raf.channel
+            val buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, raf.length())
+            val shortArray = ShortArray(buffer.remaining() / 2)
+            buffer.asShortBuffer().get(shortArray)
+
+            return shortArray
+        }
     }
 
     @SystemTangoTrie
     @Singleton
     @Provides
     fun provideTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val zipInputStream = ZipInputStream(context.assets.open("system/tango.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return LOUDS().readExternalNotCompress(it)
+        val tempFile = File(context.cacheDir, "tango.dat")
+        ZipInputStream(context.assets.open("system/tango.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "tango.dat") {
+                    FileOutputStream(tempFile).use { outputStream ->
+                        zipStream.copyTo(outputStream)
+                    }
+                    break
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+        if (!tempFile.exists()) {
+            throw IllegalArgumentException("tango.dat not found in system/tango.dat.zip")
+        }
+        RandomAccessFile(tempFile, "r").use { raf ->
+            val channel = raf.channel
+            val mappedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, raf.length())
+            val inputStream = ByteBufferBackedInputStream(mappedBuffer)
+            ObjectInputStream(inputStream).use { objectInput ->
+                return LOUDS().readExternalNotCompress(objectInput)
+            }
         }
     }
 
@@ -156,10 +189,29 @@ object AppModule {
     @Singleton
     @Provides
     fun provideYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val zipInputStream = ZipInputStream(context.assets.open("system/yomi.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return LOUDSWithTermId().readExternalNotCompress(it)
+        val tempFile = File(context.cacheDir, "yomi.dat")
+        ZipInputStream(context.assets.open("system/yomi.dat.zip")).use { zipStream ->
+            var entry = zipStream.nextEntry
+            while (entry != null) {
+                if (entry.name == "yomi.dat") {
+                    FileOutputStream(tempFile).use { outputStream ->
+                        zipStream.copyTo(outputStream)
+                    }
+                    break
+                }
+                entry = zipStream.nextEntry
+            }
+        }
+        if (!tempFile.exists()) {
+            throw IllegalArgumentException("yomi.dat not found in system/yomi.dat.zip")
+        }
+        RandomAccessFile(tempFile, "r").use { raf ->
+            val channel = raf.channel
+            val mappedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, raf.length())
+            val inputStream = ByteBufferBackedInputStream(mappedBuffer)
+            ObjectInputStream(inputStream).use { objectInput ->
+                return LOUDSWithTermId().readExternalNotCompress(objectInput)
+            }
         }
     }
 
@@ -168,27 +220,47 @@ object AppModule {
     @Provides
     fun providesTokenArray(@ApplicationContext context: Context): TokenArray {
         val tokenArray = TokenArray()
-
-        // Extract and read `token.dat` from `token.dat.zip`
+        val tempTokenFile = File(context.cacheDir, "token.dat")
         ZipInputStream(context.assets.open("system/token.dat.zip")).use { zipStream ->
             var entry = zipStream.nextEntry
             while (entry != null) {
-                if (entry.name == "token.dat") { // Ensure we are processing the correct file inside the zip
-                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
-                        tokenArray.readExternal(objectInput) // Load `token.dat` into TokenArray
+                if (entry.name == "token.dat") {
+                    FileOutputStream(tempTokenFile).use { out ->
+                        zipStream.copyTo(out)
                     }
                     break
                 }
                 entry = zipStream.nextEntry
             }
         }
-
-        context.assets.open("pos_table.dat").use { inputStream ->
-            ObjectInputStream(BufferedInputStream(inputStream)).use { objectInput ->
-                tokenArray.readPOSTable(objectInput)
+        if (!tempTokenFile.exists()) {
+            throw IllegalArgumentException("token.dat not found in system/token.dat.zip")
+        }
+        RandomAccessFile(tempTokenFile, "r").use { raf ->
+            val channel = raf.channel
+            val mappedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, raf.length())
+            ByteBufferBackedInputStream(mappedBuffer).use { mmInputStream ->
+                ObjectInputStream(BufferedInputStream(mmInputStream)).use { objectInput ->
+                    tokenArray.readExternal(objectInput)
+                }
             }
         }
+        val tempPosFile = File(context.cacheDir, "pos_table.dat")
+        context.assets.open("pos_table.dat").use { inputStream ->
+            FileOutputStream(tempPosFile).use { outputStream ->
+                inputStream.copyTo(outputStream)
+            }
+        }
+        RandomAccessFile(tempPosFile, "r").use { raf ->
+            val channel = raf.channel
+            val mappedBuffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, raf.length())
 
+            ByteBufferBackedInputStream(mappedBuffer).use { mmInputStream ->
+                ObjectInputStream(BufferedInputStream(mmInputStream)).use { objectInput ->
+                    tokenArray.readPOSTable(objectInput)
+                }
+            }
+        }
         return tokenArray
     }
 
