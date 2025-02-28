@@ -22,6 +22,7 @@ import com.kazumaproject.toBooleanArray
 import com.kazumaproject.toFullWidthDigitsEfficient
 import com.kazumaproject.viterbi.FindPath
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
@@ -730,7 +731,7 @@ class KanaKanjiEngine {
 
     suspend fun getCandidates(
         input: String, n: Int, appPreference: AppPreference
-    ): List<Candidate> {
+    ): List<Candidate> = coroutineScope {
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -763,7 +764,7 @@ class KanaKanjiEngine {
                     rightId = 2040
                 )
             }
-            return resultNBestFinalDeferred + fullWidth
+            return@coroutineScope resultNBestFinalDeferred + fullWidth
         }
 
         val hirakanaAndKana = listOf(
@@ -880,7 +881,7 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        if (input.length == 1) return resultNBestFinalDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
+        if (input.length == 1) return@coroutineScope resultNBestFinalDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = withContext(Dispatchers.Default) {
             if (input.length > 16) {
@@ -1148,7 +1149,7 @@ class KanaKanjiEngine {
             }
         }
 
-        appPreference.apply {
+        appPreference.run {
             val mozcUTPersonName = mozc_ut_person_names_preference ?: false
             val mozcUTPlaces = mozc_ut_places_preference ?: false
             val mozcUTWiki = mozc_ut_wiki_preference ?: false
@@ -1172,7 +1173,7 @@ class KanaKanjiEngine {
                     mozcUTNeologdList +
                     mozcUTWebList
 
-            return (resultList.sortedBy { it.score } +
+            return@coroutineScope (resultList.sortedBy { it.score } +
                     numbersDeferred +
                     symbolHalfWidthListDeferred +
                     (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } +

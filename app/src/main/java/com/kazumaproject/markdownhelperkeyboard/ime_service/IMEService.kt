@@ -4,6 +4,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
+import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Bundle
@@ -181,6 +182,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private val cachedSpaceDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
+    }
+    private val cachedNumberDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.number_small)
+    }
+    private val cachedLogoDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
+    }
+
+    private val cachedArrowDropDownDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.outline_arrow_drop_down_24)
+    }
+
+    private val cachedArrowDropUpDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.outline_arrow_drop_up_24)
+    }
+
+    private val cachedArrowRightDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_arrow_right_alt_24)
+    }
+
+    private val cachedReturnDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_keyboard_return_24)
+    }
+
+    private val cachedTabDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.keyboard_tab_24px)
+    }
+
+    private val cachedCheckDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_check_24)
+    }
+
+    private val cachedSearchDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_search_24)
+    }
+
+    private val cachedEnglishDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.english_small)
+    }
+
+    private val cachedHenkanDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
+    }
+
+    private val cachedKanaDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
+    }
+
     companion object {
         const val EMPTY_STRING = ""
         const val DELAY_TIME = 1000L
@@ -280,7 +331,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
-        lifecycleRegistry.currentState = Lifecycle.State.STARTED
         if (!clipboardUtil.isClipboardEmpty()) {
             suggestionAdapter.suggestions = clipboardUtil.getAllClipboardTexts()
         }
@@ -304,7 +354,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onWindowHidden() {
         super.onWindowHidden()
         resetAllFlags()
-        suggestionCache = null
     }
 
     override fun onDestroy() {
@@ -587,11 +636,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleTap(
-        char: Char?,
-        insertString:
-        String,
-        sb: StringBuilder,
-        mainView: MainLayoutBinding
+        char: Char?, insertString: String, sb: StringBuilder, mainView: MainLayoutBinding
     ) {
         if (isHenkan.get()) {
             suggestionAdapter.updateHighlightPosition(-1)
@@ -674,15 +719,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             keyboardView.apply {
                 if (currentInputMode == InputMode.ModeNumber) {
                     setBackgroundSmallLetterKey(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.number_small
-                        )
+                        cachedNumberDrawable
                     )
                 } else {
                     setBackgroundSmallLetterKey(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.logo_key
-                        )
+                        cachedLogoDrawable
                     )
                 }
             }
@@ -797,10 +838,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         mainView.suggestionVisibility.apply {
             setImageDrawable(
-                ContextCompat.getDrawable(
-                    applicationContext,
-                    if (isVisible) R.drawable.outline_arrow_drop_down_24 else R.drawable.outline_arrow_drop_up_24
-                )
+                if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable
             )
         }
     }
@@ -808,7 +846,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun animateViewVisibility(
         mainView: View, isVisible: Boolean, withAnimation: Boolean = true
     ) {
-        // Cancel any ongoing animation on the view
         mainView.animate().cancel()
 
         if (isVisible) {
@@ -896,21 +933,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             resetInputString()
             mainView.keyboardView.apply {
                 setSideKeySpaceDrawable(
-                    ContextCompat.getDrawable(
-                        context, R.drawable.space_bar
-                    )
+                    cachedSpaceDrawable
                 )
                 if (currentInputMode == InputMode.ModeNumber) {
                     setBackgroundSmallLetterKey(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.number_small
-                        )
+                        cachedNumberDrawable
                     )
                 } else {
                     setBackgroundSmallLetterKey(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.logo_key
-                        )
+                        cachedLogoDrawable
                     )
                 }
             }
@@ -942,14 +973,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextPersonName,
                     InputTypeForIME.TextPhonetic,
                     InputTypeForIME.TextWebEditText,
-                        -> {
+                    -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.baseline_arrow_right_alt_24
-                            )
+                            cachedArrowRightDrawable
                         )
                     }
 
@@ -957,14 +986,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextImeMultiLine,
                     InputTypeForIME.TextShortMessage,
                     InputTypeForIME.TextLongMessage,
-                        -> {
+                    -> {
                         currentInputMode = InputMode.ModeJapanese
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.baseline_keyboard_return_24
-                            )
+                            cachedReturnDrawable
                         )
                     }
 
@@ -973,9 +1000,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.keyboard_tab_24px
-                            )
+                            cachedTabDrawable
                         )
                     }
 
@@ -984,9 +1009,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.baseline_check_24
-                            )
+                            cachedCheckDrawable
                         )
                     }
 
@@ -995,9 +1018,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.baseline_search_24
-                            )
+                            cachedSearchDrawable
                         )
                     }
 
@@ -1008,14 +1029,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextPassword,
                     InputTypeForIME.TextVisiblePassword,
                     InputTypeForIME.TextWebPassword,
-                        -> {
+                    -> {
                         currentInputMode = InputMode.ModeEnglish
                         setInputModeSwitchState(InputMode.ModeEnglish)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.baseline_arrow_right_alt_24
-                            )
+                            cachedArrowRightDrawable
                         )
                     }
 
@@ -1024,9 +1043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.baseline_arrow_right_alt_24
-                            )
+                            cachedArrowRightDrawable
                         )
                     }
 
@@ -1038,14 +1055,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.Date,
                     InputTypeForIME.Datetime,
                     InputTypeForIME.Time,
-                        -> {
+                    -> {
                         currentInputMode = InputMode.ModeNumber
                         setInputModeSwitchState(InputMode.ModeNumber)
                         setSideKeyPreviousState(false)
                         this.setSideKeyEnterDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.baseline_arrow_right_alt_24
-                            )
+                            cachedArrowRightDrawable
                         )
                     }
 
@@ -1558,44 +1573,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             when (currentInputMode) {
                 is InputMode.ModeJapanese -> {
                     setSideKeySpaceDrawable(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.space_bar
-                        )
+                        cachedSpaceDrawable
                     )
                     setSideKeyPreviousState(true)
                     if (insertString.isNotEmpty()) {
                         if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
                             setBackgroundSmallLetterKey(
-                                ContextCompat.getDrawable(
-                                    context, R.drawable.english_small
-                                )
+                                cachedEnglishDrawable
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                ContextCompat.getDrawable(
-                                    context, R.drawable.logo_key
-                                )
+                                cachedLogoDrawable
                             )
                         }
                     } else {
                         setBackgroundSmallLetterKey(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.logo_key
-                            )
+                            cachedLogoDrawable
                         )
                     }
                 }
 
                 is InputMode.ModeEnglish -> {
                     setSideKeySpaceDrawable(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.space_bar
-                        )
+                        cachedSpaceDrawable
                     )
                     setBackgroundSmallLetterKey(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.number_small
-                        )
+                        cachedNumberDrawable
                     )
                     setSideKeyPreviousState(false)
                 }
@@ -1604,33 +1607,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     setSideKeyPreviousState(true)
                     if (insertString.isNotEmpty()) {
                         setSideKeySpaceDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.henkan
-                            )
+                            cachedHenkanDrawable
                         )
                         if (insertString.last().isHiragana()) {
                             setBackgroundSmallLetterKey(
-                                ContextCompat.getDrawable(
-                                    context, R.drawable.kana_small
-                                )
+                                cachedKanaDrawable
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                ContextCompat.getDrawable(
-                                    context, R.drawable.logo_key
-                                )
+                                cachedLogoDrawable
                             )
                         }
                     } else {
                         setSideKeySpaceDrawable(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.space_bar
-                            )
+                            cachedSpaceDrawable
                         )
                         setBackgroundSmallLetterKey(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.logo_key
-                            )
+                            cachedLogoDrawable
                         )
                     }
                 }
@@ -1641,29 +1634,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun updateUIinHenkan(mainView: MainLayoutBinding, insertString: String) {
         mainView.keyboardView.apply {
             setSideKeyEnterDrawable(
-                ContextCompat.getDrawable(
-                    context, R.drawable.baseline_keyboard_return_24
-                )
+                cachedReturnDrawable
             )
             when (currentInputMode) {
                 InputMode.ModeJapanese -> {
                     if (insertString.isNotEmpty() && insertString.last().isHiragana()) {
                         setBackgroundSmallLetterKey(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.kana_small
-                            )
+                            cachedKanaDrawable
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.logo_key
-                            )
+                            cachedLogoDrawable
                         )
                     }
                     setSideKeySpaceDrawable(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.henkan
-                        )
+                        cachedHenkanDrawable
                     )
                 }
 
@@ -1671,34 +1656,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
                         setBackgroundSmallLetterKey(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.english_small
-                            )
+                            cachedEnglishDrawable
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            ContextCompat.getDrawable(
-                                context, R.drawable.logo_key
-                            )
+                            cachedLogoDrawable
                         )
                     }
                     setSideKeySpaceDrawable(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.space_bar
-                        )
+                        cachedSpaceDrawable
                     )
                 }
 
                 InputMode.ModeNumber -> {
                     setBackgroundSmallLetterKey(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.number_small
-                        )
+                        cachedNumberDrawable
                     )
                     setSideKeySpaceDrawable(
-                        ContextCompat.getDrawable(
-                            context, R.drawable.space_bar
-                        )
+                        cachedSpaceDrawable
                     )
                 }
             }
@@ -1713,9 +1688,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) {
-        val candidates = withContext(Dispatchers.Default) {
-            getSuggestionList(insertString)
-        }
+        val candidates = getSuggestionList(insertString)
         // Filter in the background if the list could be large
         val filteredCandidates = withContext(Dispatchers.Default) {
             if (stringInTail.get().isNotEmpty()) {
@@ -1826,7 +1799,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextImeMultiLine,
             InputTypeForIME.TextShortMessage,
             InputTypeForIME.TextLongMessage,
-                -> {
+            -> {
                 commitText("\n", 1)
             }
 
@@ -1852,7 +1825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextWebPassword,
             InputTypeForIME.TextNotCursorUpdate,
             InputTypeForIME.TextEditTextInWebView,
-                -> {
+            -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
                     KeyEvent(
@@ -1877,7 +1850,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-                -> {
+            -> {
                 performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
@@ -2012,33 +1985,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setDrawableToEnterKeyCorrespondingToImeOptions(mainView: MainLayoutBinding) {
         val currentDrawable = when (currentInputType) {
             InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                ContextCompat.getDrawable(
-                    applicationContext, R.drawable.baseline_search_24
-                )
+                cachedSearchDrawable
             }
 
             InputTypeForIME.TextMultiLine, InputTypeForIME.TextImeMultiLine, InputTypeForIME.TextShortMessage, InputTypeForIME.TextLongMessage -> {
-                ContextCompat.getDrawable(
-                    applicationContext, R.drawable.baseline_keyboard_return_24
-                )
+                cachedReturnDrawable
             }
 
             InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                ContextCompat.getDrawable(
-                    applicationContext, R.drawable.keyboard_tab_24px
-                )
+                cachedTabDrawable
             }
 
             InputTypeForIME.TextDone -> {
-                ContextCompat.getDrawable(
-                    applicationContext, R.drawable.baseline_check_24
-                )
+                cachedCheckDrawable
             }
 
             else -> {
-                ContextCompat.getDrawable(
-                    applicationContext, R.drawable.baseline_arrow_right_alt_24
-                )
+                cachedArrowRightDrawable
             }
         }
         mainView.keyboardView.setSideKeyEnterDrawable(currentDrawable)
@@ -2419,7 +2382,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-                -> {
+            -> {
                 sendKeyChar(charToSend)
             }
 
@@ -2451,7 +2414,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-                -> {
+            -> {
                 sendKeyChar(charToSend)
             }
 
