@@ -46,8 +46,7 @@ class KanaKanjiEngine {
     private lateinit var systemSuccinctBitVectorLBSYomi: SuccinctBitVector
     private lateinit var systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector
     private lateinit var systemSuccinctBitVectorTokenArray: SuccinctBitVector
-    private lateinit var systemRank0ArrayLBSTango: IntArray
-    private lateinit var systemRank1ArrayLBSTango: IntArray
+    private lateinit var systemSuccinctBitVectorTangoLBS: SuccinctBitVector
     private lateinit var systemYomiLBSBooleanArray: BooleanArray
     private lateinit var systemYomiLBSPreprocess: IntArray
 
@@ -219,8 +218,7 @@ class KanaKanjiEngine {
         systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
         systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         systemSuccinctBitVectorTokenArray: SuccinctBitVector,
-        systemRank0ArrayLBSTango: IntArray,
-        systemRank1ArrayLBSTango: IntArray,
+        systemSuccinctBitVectorTangoLBS: SuccinctBitVector,
         systemYomiLBSBooleanArray: BooleanArray,
 
         singleKanjiTangoTrie: LOUDS,
@@ -315,8 +313,7 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi
         this@KanaKanjiEngine.systemSuccinctBitVectorTokenArray =
             systemSuccinctBitVectorTokenArray
-        this@KanaKanjiEngine.systemRank0ArrayLBSTango = systemRank0ArrayLBSTango
-        this@KanaKanjiEngine.systemRank1ArrayLBSTango = systemRank1ArrayLBSTango
+        this@KanaKanjiEngine.systemSuccinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS
         this@KanaKanjiEngine.systemYomiLBSBooleanArray = systemYomiLBSBooleanArray
 
 
@@ -735,8 +732,7 @@ class KanaKanjiEngine {
             succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
             succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
             succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
-            rank0ArrayLBSTango = systemRank0ArrayLBSTango,
-            rank1ArrayLBSTango = systemRank1ArrayLBSTango,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             LBSBooleanArray = systemYomiLBSBooleanArray,
             LBSBooleanArrayPreprocess = systemYomiLBSPreprocess
         )
@@ -930,7 +926,7 @@ class KanaKanjiEngine {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> systemTangoTrie.getLetter(
-                                token.nodeId, systemRank0ArrayLBSTango, systemRank1ArrayLBSTango
+                                token.nodeId, systemSuccinctBitVectorTangoLBS
                             )
                         },
                         type = 9,
@@ -961,7 +957,7 @@ class KanaKanjiEngine {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> systemTangoTrie.getLetter(
-                                it.nodeId, systemRank0ArrayLBSTango, systemRank1ArrayLBSTango
+                                it.nodeId, systemSuccinctBitVectorTangoLBS
                             )
                         },
                         type = if (yomi.length == input.length) 2 else 5,
