@@ -127,14 +127,12 @@ class LOUDSWithTermId {
     fun getNodeIndex(
         s: String,
         succinctBitVector: SuccinctBitVector,
-        LBSInBoolArrayPreprocess: IntArray
     ): Int {
         return search(
             2,
             s.toCharArray(),
             0,
             succinctBitVector,
-            LBSInBoolArrayPreprocess
         )
     }
 
@@ -451,7 +449,6 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         succinctBitVector: SuccinctBitVector,
-        LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = succinctBitVector.rank1(currentIndex)
@@ -465,13 +462,12 @@ class LOUDSWithTermId {
                 if (wordOffset + 1 == charCount) {
                     return if (isLeaf[currentIndex]) currentIndex else currentIndex
                 }
-                val nextIndex = indexOfLabel(charIndex, LBSInBoolArrayPreprocess)
+                val nextIndex = succinctBitVector.select0(charIndex) + 1
                 return search(
                     nextIndex,
                     chars,
                     wordOffset + 1,
                     succinctBitVector,
-                    LBSInBoolArrayPreprocess
                 )
             }
             currentIndex++
