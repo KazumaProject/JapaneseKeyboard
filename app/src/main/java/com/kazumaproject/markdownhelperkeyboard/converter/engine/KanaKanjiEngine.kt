@@ -44,7 +44,7 @@ class KanaKanjiEngine {
     private lateinit var systemTokenArray: TokenArray
 
     private lateinit var systemSuccinctBitVectorLBSYomi: SuccinctBitVector
-    private lateinit var systemRank1ArrayIsLeaf: IntArray
+    private lateinit var systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector
     private lateinit var systemRank0ArrayTokenArrayBitvector: IntArray
     private lateinit var systemRank1ArrayTokenArrayBitvector: IntArray
     private lateinit var systemRank0ArrayLBSTango: IntArray
@@ -218,7 +218,7 @@ class KanaKanjiEngine {
         systemYomiTrie: LOUDSWithTermId,
         systemTokenArray: TokenArray,
         systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
-        systemRank1ArrayIsLeaf: IntArray,
+        systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         systemRank0ArrayTokenArrayBitvector: IntArray,
         systemRank1ArrayTokenArrayBitvector: IntArray,
         systemRank0ArrayLBSTango: IntArray,
@@ -314,7 +314,7 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.systemTokenArray = systemTokenArray
         this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
         this@KanaKanjiEngine.systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi
-        this@KanaKanjiEngine.systemRank1ArrayIsLeaf = systemRank1ArrayIsLeaf
+        this@KanaKanjiEngine.systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi
         this@KanaKanjiEngine.systemRank0ArrayTokenArrayBitvector =
             systemRank0ArrayTokenArrayBitvector
         this@KanaKanjiEngine.systemRank1ArrayTokenArrayBitvector =
@@ -737,7 +737,7 @@ class KanaKanjiEngine {
             systemTangoTrie,
             systemTokenArray,
             systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
-            systemRank1ArrayIsLeaf,
+            systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
             systemRank0ArrayTokenArrayBitvector,
             systemRank1ArrayTokenArrayBitvector,
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
@@ -919,7 +919,7 @@ class KanaKanjiEngine {
                     systemYomiLBSBooleanArray,
                     systemYomiLBSPreprocess
                 )
-                val termId = systemYomiTrie.getTermId(nodeIndex, systemRank1ArrayIsLeaf)
+                val termId = systemYomiTrie.getTermId(nodeIndex, systemSuccinctBitVectorIsLeafYomi)
 
                 systemTokenArray.getListDictionaryByYomiTermId(
                     termId, systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector
@@ -956,7 +956,7 @@ class KanaKanjiEngine {
                         systemSuccinctBitVectorLBSYomi,
                         systemYomiLBSBooleanArray,
                         systemYomiLBSPreprocess
-                    ), systemRank1ArrayIsLeaf
+                    ), systemSuccinctBitVectorIsLeafYomi
                 )
                 systemTokenArray.getListDictionaryByYomiTermId(
                     termId, systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector

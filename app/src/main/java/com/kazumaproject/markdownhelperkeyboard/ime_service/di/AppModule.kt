@@ -183,9 +183,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SystemRank1ArrayIsLeafYomi
-    fun provideRank1ArrayIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray =
-        yomiTrie.isLeaf.rank1GetIntArray()
+    @SystemSuccinctBitVectorIsLeafYomi
+    fun provideRank1ArrayIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
@@ -752,7 +752,7 @@ object AppModule {
         @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
         @SystemTokenArray systemTokenArray: TokenArray,
         @SystemSuccinctBitVectorLBSYomi systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
-        @SystemRank1ArrayIsLeafYomi systemRank1ArrayIsLeaf: IntArray,
+        @SystemSuccinctBitVectorIsLeafYomi systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         @SystemRank0ArrayTokenArrayBitvector systemRank0ArrayTokenArrayBitvector: IntArray,
         @SystemRank1ArrayTokenArrayBitvector systemRank1ArrayTokenArrayBitvector: IntArray,
         @SystemRank0ArrayTangoLBS systemRank0ArrayTangoLBS: IntArray,
@@ -852,7 +852,7 @@ object AppModule {
             systemYomiTrie = systemYomiTrie,
             systemTokenArray = systemTokenArray,
             systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
-            systemRank1ArrayIsLeaf = systemRank1ArrayIsLeaf,
+            systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
             systemRank0ArrayTokenArrayBitvector = systemRank0ArrayTokenArrayBitvector,
             systemRank1ArrayTokenArrayBitvector = systemRank1ArrayTokenArrayBitvector,
             systemRank0ArrayLBSTango = systemRank0ArrayTangoLBS,
