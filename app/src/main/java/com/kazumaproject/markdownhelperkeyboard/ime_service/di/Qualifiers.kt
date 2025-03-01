@@ -36,10 +36,6 @@ annotation class SystemSuccinctBitVectorTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SystemYomiLBSBooleanArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
 annotation class SystemYomiLBSBooleanArrayPreprocess
 
 @Retention(AnnotationRetention.RUNTIME)
@@ -84,10 +80,6 @@ annotation class SingleKanjiRank1ArrayTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SingleKanjiYomiLBSBooleanArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
 annotation class SingleKanjiYomiLBSBooleanArrayPreprocess
 
 @Retention(AnnotationRetention.RUNTIME)
@@ -129,11 +121,6 @@ annotation class EmojiRank0ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class EmojiRank1ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class EmojiYomiLBSBooleanArray
-
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class EmojiYomiLBSBooleanArrayPreprocess
@@ -177,11 +164,6 @@ annotation class EmoticonRank0ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class EmoticonRank1ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class EmoticonYomiLBSBooleanArray
-
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class EmoticonYomiLBSBooleanArrayPreprocess
@@ -228,10 +210,6 @@ annotation class SymbolRank1ArrayTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SymbolYomiLBSBooleanArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
 annotation class SymbolYomiLBSBooleanArrayPreprocess
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
@@ -272,10 +250,6 @@ annotation class ReadingCorrectionRank0ArrayTangoLBS
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class ReadingCorrectionRank1ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class ReadingCorrectionYomiLBSBooleanArray
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
@@ -322,104 +296,4 @@ annotation class KotowazaRank1ArrayTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class KotowazaYomiLBSBooleanArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
 annotation class KotowazaYomiLBSBooleanArrayPreprocess
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameYomiTrie
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameTangoTrie
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameTokenArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameRank0ArrayLBSYomi
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameRank1ArrayLBSYomi
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameRank1ArrayIsLeafYomi
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameRank0ArrayTokenArrayBitvector
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameRank1ArrayTokenArrayBitvector
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameRank0ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameRank1ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameYomiLBSBooleanArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PersonNameYomiLBSBooleanArrayPreprocess
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceYomiTrie
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceTangoTrie
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceTokenArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceRank0ArrayLBSYomi
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceRank1ArrayLBSYomi
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceRank1ArrayIsLeafYomi
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceRank0ArrayTokenArrayBitvector
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceRank1ArrayTokenArrayBitvector
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceRank0ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceRank1ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceYomiLBSBooleanArray
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class PlaceYomiLBSBooleanArrayPreprocess
