@@ -6,6 +6,7 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 
 class GraphBuilder {
     fun constructGraph(
@@ -13,15 +14,10 @@ class GraphBuilder {
         yomiTrie: LOUDSWithTermId,
         tangoTrie: LOUDS,
         tokenArray: TokenArray,
-        rank0ArrayLBSYomi: IntArray,
-        rank1ArrayLBSYomi: IntArray,
-        rank1ArrayIsLeafYomi: IntArray,
-        rank0ArrayTokenArrayBitvector: IntArray,
-        rank1ArrayTokenArrayBitvector: IntArray,
-        rank0ArrayLBSTango: IntArray,
-        rank1ArrayLBSTango: IntArray,
-        LBSBooleanArray: BooleanArray,
-        LBSBooleanArrayPreprocess: IntArray
+        succinctBitVectorLBSYomi: SuccinctBitVector,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector,
+        succinctBitVectorTokenArray: SuccinctBitVector,
+        succinctBitVectorTangoLBS: SuccinctBitVector,
     ): MutableMap<Int, MutableList<Node>> {
         val graph: MutableMap<Int, MutableList<Node>> = mutableMapOf()
         graph[0] = mutableListOf(BOS)
@@ -42,8 +38,7 @@ class GraphBuilder {
             val subStr = str.substring(i)
             val commonPrefixSearch: MutableList<String> = yomiTrie.commonPrefixSearch(
                 str = subStr,
-                rank0Array = rank0ArrayLBSYomi,
-                rank1Array = rank1ArrayLBSYomi
+                succinctBitVector = succinctBitVectorLBSYomi
             ).toMutableList().apply {
                 if (isEmpty()) add(subStr)
             }
@@ -51,15 +46,12 @@ class GraphBuilder {
             for (yomiStr in commonPrefixSearch) {
                 val nodeIndex = yomiTrie.getNodeIndex(
                     yomiStr,
-                    rank1ArrayLBSYomi,
-                    LBSBooleanArray,
-                    LBSBooleanArrayPreprocess
+                    succinctBitVectorLBSYomi,
                 )
-                val termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
+                val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
                 val listToken = tokenArray.getListDictionaryByYomiTermId(
                     termId,
-                    rank0ArrayTokenArrayBitvector,
-                    rank1ArrayTokenArrayBitvector
+                    succinctBitVectorTokenArray
                 )
 
                 val tangoList = listToken.map {
@@ -74,8 +66,7 @@ class GraphBuilder {
                             -1 -> yomiStr.hiraToKata()
                             else -> tangoTrie.getLetter(
                                 it.nodeId,
-                                rank0ArrayLBSTango,
-                                rank1ArrayLBSTango
+                                succinctBitVector = succinctBitVectorTangoLBS
                             )
                         },
                         len = yomiStr.length.toShort(),
