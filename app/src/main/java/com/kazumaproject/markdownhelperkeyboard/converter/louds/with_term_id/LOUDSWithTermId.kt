@@ -189,15 +189,8 @@ class LOUDSWithTermId {
         return -1
     }
 
-    private fun select0CommonCached(pos: Int, rank0Array: IntArray): Int {
-        val cachedResults = mutableMapOf<Pair<Int, IntArray>, Int>()
-        return cachedResults.getOrPut(Pair(pos, rank0Array)) {
-            LBS.select0Common(pos, rank0Array)
-        }
-    }
-
     private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
-        val y = select0CommonCached(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
+        val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
         return if (y < 0 || !LBS[y]) -1 else y
     }
 
