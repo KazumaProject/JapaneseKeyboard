@@ -16,6 +16,7 @@ import com.kazumaproject.bitset.rank1GetShortArray
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -176,15 +177,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SystemRank0ArrayLBSYomi
-    fun provideRank0ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray =
-        yomiTrie.LBS.rank0GetIntArray()
-
-    @Singleton
-    @Provides
-    @SystemRank1ArrayLBSYomi
-    fun provideRank1ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray =
-        yomiTrie.LBS.rank1GetIntArray()
+    @SystemSuccinctBitVectorLBSYomi
+    fun provideRank0ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
@@ -756,8 +751,7 @@ object AppModule {
         @SystemTangoTrie systemTangoTrie: LOUDS,
         @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
         @SystemTokenArray systemTokenArray: TokenArray,
-        @SystemRank0ArrayLBSYomi systemRank0ArrayLBSYomi: IntArray,
-        @SystemRank1ArrayLBSYomi systemRank1ArrayLBSYomi: IntArray,
+        @SystemSuccinctBitVectorLBSYomi systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
         @SystemRank1ArrayIsLeafYomi systemRank1ArrayIsLeaf: IntArray,
         @SystemRank0ArrayTokenArrayBitvector systemRank0ArrayTokenArrayBitvector: IntArray,
         @SystemRank1ArrayTokenArrayBitvector systemRank1ArrayTokenArrayBitvector: IntArray,
@@ -857,8 +851,7 @@ object AppModule {
             systemTangoTrie = systemTangoTrie,
             systemYomiTrie = systemYomiTrie,
             systemTokenArray = systemTokenArray,
-            systemRank0ArrayLBSYomi = systemRank0ArrayLBSYomi,
-            systemRank1ArrayLBSYomi = systemRank1ArrayLBSYomi,
+            systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
             systemRank1ArrayIsLeaf = systemRank1ArrayIsLeaf,
             systemRank0ArrayTokenArrayBitvector = systemRank0ArrayTokenArrayBitvector,
             systemRank1ArrayTokenArrayBitvector = systemRank1ArrayTokenArrayBitvector,

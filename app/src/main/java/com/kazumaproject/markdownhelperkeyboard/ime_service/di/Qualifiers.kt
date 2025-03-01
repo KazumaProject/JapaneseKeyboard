@@ -20,11 +20,7 @@ annotation class SystemTokenArray
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SystemRank0ArrayLBSYomi
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class SystemRank1ArrayLBSYomi
+annotation class SystemSuccinctBitVectorLBSYomi
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier

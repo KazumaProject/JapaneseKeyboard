@@ -10,6 +10,7 @@ import com.kazumaproject.convertFullWidthToHalfWidth
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
@@ -42,8 +43,7 @@ class KanaKanjiEngine {
     private lateinit var systemTangoTrie: LOUDS
     private lateinit var systemTokenArray: TokenArray
 
-    private lateinit var systemRank0ArrayLBSYomi: IntArray
-    private lateinit var systemRank1ArrayLBSYomi: IntArray
+    private lateinit var systemSuccinctBitVectorLBSYomi: SuccinctBitVector
     private lateinit var systemRank1ArrayIsLeaf: IntArray
     private lateinit var systemRank0ArrayTokenArrayBitvector: IntArray
     private lateinit var systemRank1ArrayTokenArrayBitvector: IntArray
@@ -217,8 +217,7 @@ class KanaKanjiEngine {
         systemTangoTrie: LOUDS,
         systemYomiTrie: LOUDSWithTermId,
         systemTokenArray: TokenArray,
-        systemRank0ArrayLBSYomi: IntArray,
-        systemRank1ArrayLBSYomi: IntArray,
+        systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
         systemRank1ArrayIsLeaf: IntArray,
         systemRank0ArrayTokenArrayBitvector: IntArray,
         systemRank1ArrayTokenArrayBitvector: IntArray,
@@ -314,8 +313,7 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.systemTangoTrie = systemTangoTrie
         this@KanaKanjiEngine.systemTokenArray = systemTokenArray
         this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
-        this@KanaKanjiEngine.systemRank0ArrayLBSYomi = systemRank0ArrayLBSYomi
-        this@KanaKanjiEngine.systemRank1ArrayLBSYomi = systemRank1ArrayLBSYomi
+        this@KanaKanjiEngine.systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi
         this@KanaKanjiEngine.systemRank1ArrayIsLeaf = systemRank1ArrayIsLeaf
         this@KanaKanjiEngine.systemRank0ArrayTokenArrayBitvector =
             systemRank0ArrayTokenArrayBitvector
@@ -738,8 +736,7 @@ class KanaKanjiEngine {
             systemYomiTrie,
             systemTangoTrie,
             systemTokenArray,
-            systemRank0ArrayLBSYomi,
-            systemRank1ArrayLBSYomi,
+            systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
             systemRank1ArrayIsLeaf,
             systemRank0ArrayTokenArrayBitvector,
             systemRank1ArrayTokenArrayBitvector,
@@ -889,16 +886,14 @@ class KanaKanjiEngine {
             } else {
                 systemYomiTrie.commonPrefixSearch(
                     str = input,
-                    rank0Array = systemRank0ArrayLBSYomi,
-                    rank1Array = systemRank1ArrayLBSYomi
+                    succinctBitVector = systemSuccinctBitVectorLBSYomi
                 ).asReversed()
             }
         }
         val predictiveSearchDeferred = deferredPrediction(
             input = input,
             yomiTrie = systemYomiTrie,
-            rank0ArrayLBSYomi = systemRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = systemRank1ArrayLBSYomi
+            succinctBitVector = systemSuccinctBitVectorLBSYomi
         )
 
         val readingCorrectionCommonPrefixDeferred = deferredPrediction(
@@ -920,7 +915,7 @@ class KanaKanjiEngine {
             yomiList.flatMap { yomi ->
                 val nodeIndex = systemYomiTrie.getNodeIndex(
                     yomi,
-                    systemRank1ArrayLBSYomi,
+                    succinctBitVector = systemSuccinctBitVectorLBSYomi,
                     systemYomiLBSBooleanArray,
                     systemYomiLBSPreprocess
                 )
@@ -958,7 +953,7 @@ class KanaKanjiEngine {
                 val termId = systemYomiTrie.getTermId(
                     systemYomiTrie.getNodeIndex(
                         yomi,
-                        systemRank1ArrayLBSYomi,
+                        systemSuccinctBitVectorLBSYomi,
                         systemYomiLBSBooleanArray,
                         systemYomiLBSPreprocess
                     ), systemRank1ArrayIsLeaf
@@ -1446,13 +1441,12 @@ class KanaKanjiEngine {
     private fun deferredPrediction(
         input: String,
         yomiTrie: LOUDSWithTermId,
-        rank0ArrayLBSYomi: IntArray,
-        rank1ArrayLBSYomi: IntArray
+        succinctBitVector: SuccinctBitVector
     ): List<String> {
         if (input.length > 16) return emptyList()
         if (input.length <= 2) return emptyList()
         return yomiTrie.predictiveSearch(
-            prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
+            prefix = input, succinctBitVector = succinctBitVector
         ).filter {
             when (input.length) {
                 in 3..4 -> it.length <= input.length + 2

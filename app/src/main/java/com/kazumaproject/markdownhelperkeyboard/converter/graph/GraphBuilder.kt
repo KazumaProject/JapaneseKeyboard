@@ -6,6 +6,7 @@ import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 
 class GraphBuilder {
     fun constructGraph(
@@ -13,8 +14,7 @@ class GraphBuilder {
         yomiTrie: LOUDSWithTermId,
         tangoTrie: LOUDS,
         tokenArray: TokenArray,
-        rank0ArrayLBSYomi: IntArray,
-        rank1ArrayLBSYomi: IntArray,
+        systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
         rank1ArrayIsLeafYomi: IntArray,
         rank0ArrayTokenArrayBitvector: IntArray,
         rank1ArrayTokenArrayBitvector: IntArray,
@@ -42,8 +42,7 @@ class GraphBuilder {
             val subStr = str.substring(i)
             val commonPrefixSearch: MutableList<String> = yomiTrie.commonPrefixSearch(
                 str = subStr,
-                rank0Array = rank0ArrayLBSYomi,
-                rank1Array = rank1ArrayLBSYomi
+                succinctBitVector = systemSuccinctBitVectorLBSYomi
             ).toMutableList().apply {
                 if (isEmpty()) add(subStr)
             }
@@ -51,7 +50,7 @@ class GraphBuilder {
             for (yomiStr in commonPrefixSearch) {
                 val nodeIndex = yomiTrie.getNodeIndex(
                     yomiStr,
-                    rank1ArrayLBSYomi,
+                    systemSuccinctBitVectorLBSYomi,
                     LBSBooleanArray,
                     LBSBooleanArrayPreprocess
                 )
