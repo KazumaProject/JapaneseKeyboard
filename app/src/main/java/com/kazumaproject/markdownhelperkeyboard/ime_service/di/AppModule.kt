@@ -232,52 +232,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SingleKanjiRank0ArrayLBSYomi
-    fun provideSingleKanjiRank0ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank0GetShortArray()
+    @SingleKanjiSuccinctBitVectorLBSYomi
+    fun provideSingleKanjiSuccinctBitVectorLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @SingleKanjiRank1ArrayLBSYomi
-    fun provideSingleKanjiRank1ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank1GetShortArray()
+    @SingleKanjiSuccinctBitVectorIsLeafYomi
+    fun provideSingleKanjiSuccinctBitVectorIsLeafYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @SingleKanjiRank1ArrayIsLeafYomi
-    fun provideSingleKanjiRank1ArrayIsLeaf(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.isLeaf.rank1GetShortArray()
+    @SingleKanjiSuccinctBitVectorTokenArray
+    fun provideSingleKanjiSuccinctBitVectorTokenArray(@SingleKanjiTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @SingleKanjiYomiLBSBooleanArrayPreprocess
-    fun providesSingleKanjiYomiLBSBooleanArrayPreprocess(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId) =
-        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank0ArrayTokenArrayBitvector
-    fun provideSingleKanjiRank0ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank1ArrayTokenArrayBitvector
-    fun provideSingleKanjiRank1ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank1GetShortArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank0ArrayTangoLBS
-    fun provideSingleKanjiRank0ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank1ArrayTangoLBS
-    fun provideSingleKanjiRank1ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank1GetShortArray()
-
+    @SingleKanjiSuccinctBitVectorTangoLBS
+    fun provideSSingleKanjiSuccinctBitVectorTangoLBS(@SingleKanjiTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
     @EmojiTangoTrie
     @Singleton
@@ -697,13 +672,10 @@ object AppModule {
         @SingleKanjiTangoTrie singleKanjiTangoTrie: LOUDS,
         @SingleKanjiYomiTrie singleKanjiYomiTrie: LOUDSWithTermId,
         @SingleKanjiTokenArray singleKanjiTokenArray: TokenArray,
-        @SingleKanjiRank0ArrayLBSYomi singleKanjiRank0ArrayLBSYomi: ShortArray,
-        @SingleKanjiRank1ArrayLBSYomi singleKanjiRank1ArrayLBSYomi: ShortArray,
-        @SingleKanjiRank1ArrayIsLeafYomi singleKanjiRank1ArrayIsLeaf: ShortArray,
-        @SingleKanjiRank0ArrayTokenArrayBitvector singleKanjiRank0ArrayTokenArrayBitvector: ShortArray,
-        @SingleKanjiRank1ArrayTokenArrayBitvector singleKanjiRank1ArrayTokenArrayBitvector: ShortArray,
-        @SingleKanjiRank0ArrayTangoLBS singleKanjiRank0ArrayTangoLBS: ShortArray,
-        @SingleKanjiRank1ArrayTangoLBS singleKanjiRank1ArrayTangoLBS: ShortArray,
+        @SingleKanjiSuccinctBitVectorLBSYomi singleKanjiSuccinctBitVectorLBSYomi: SuccinctBitVector ,
+        @SingleKanjiSuccinctBitVectorIsLeafYomi singleKanjiSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @SingleKanjiSuccinctBitVectorTokenArray singleKanjiSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @SingleKanjiSuccinctBitVectorTangoLBS singleKanjiSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         @EmojiTangoTrie emojiTangoTrie: LOUDS,
         @EmojiYomiTrie emojiYomiTrie: LOUDSWithTermId,
@@ -760,7 +732,6 @@ object AppModule {
         @KotowazaRank0ArrayTangoLBS kotowazaRank0ArrayTangoLBS: ShortArray,
         @KotowazaRank1ArrayTangoLBS kotowazaRank1ArrayTangoLBS: ShortArray,
 
-        @SingleKanjiYomiLBSBooleanArrayPreprocess singleKanjiYomiLBSBooleanArrayPreprocess: IntArray,
         @EmojiYomiLBSBooleanArrayPreprocess emojiYomiLBSBooleanArrayPreprocess: IntArray,
         @EmoticonYomiLBSBooleanArrayPreprocess emoticonYomiLBSBooleanArrayPreprocess: IntArray,
         @SymbolYomiLBSBooleanArrayPreprocess symbolYomiLBSBooleanArrayPreprocess: IntArray,
@@ -787,13 +758,10 @@ object AppModule {
             singleKanjiTangoTrie = singleKanjiTangoTrie,
             singleKanjiYomiTrie = singleKanjiYomiTrie,
             singleKanjiTokenArray = singleKanjiTokenArray,
-            singleKanjiRank0ArrayLBSYomi = singleKanjiRank0ArrayLBSYomi,
-            singleKanjiRank1ArrayLBSYomi = singleKanjiRank1ArrayLBSYomi,
-            singleKanjiRank1ArrayIsLeaf = singleKanjiRank1ArrayIsLeaf,
-            singleKanjiRank0ArrayTokenArrayBitvector = singleKanjiRank0ArrayTokenArrayBitvector,
-            singleKanjiRank1ArrayTokenArrayBitvector = singleKanjiRank1ArrayTokenArrayBitvector,
-            singleKanjiRank0ArrayLBSTango = singleKanjiRank0ArrayTangoLBS,
-            singleKanjiRank1ArrayLBSTango = singleKanjiRank1ArrayTangoLBS,
+            singleKanjiSuccinctBitVectorLBSYomi = singleKanjiSuccinctBitVectorLBSYomi,
+            singleKanjiSuccinctBitVectorIsLeafYomi = singleKanjiSuccinctBitVectorIsLeafYomi,
+            singleKanjiSuccinctBitVectorTokenArray = singleKanjiSuccinctBitVectorTokenArray,
+            singleKanjiSuccinctBitVectorTangoLBS = singleKanjiSuccinctBitVectorTangoLBS,
 
             emojiTangoTrie = emojiTangoTrie,
             emojiYomiTrie = emojiYomiTrie,
@@ -850,7 +818,6 @@ object AppModule {
             kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayTangoLBS,
             kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayTangoLBS,
 
-            singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSBooleanArrayPreprocess,
             emojiYomiLBSPreprocess = emojiYomiLBSBooleanArrayPreprocess,
             emoticonYomiLBSPreprocess = emoticonYomiLBSBooleanArrayPreprocess,
             symbolYomiLBSPreprocess = symbolYomiLBSBooleanArrayPreprocess,

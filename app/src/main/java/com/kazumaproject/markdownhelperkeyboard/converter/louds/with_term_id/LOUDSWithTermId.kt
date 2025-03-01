@@ -178,6 +178,16 @@ class LOUDSWithTermId {
         return firstTermId.toShort()
     }
 
+    fun getTermIdShortArray(
+        nodeIndex: Int,
+        succinctBitVector: SuccinctBitVector
+    ): Short {
+        val firstNodeId: Int = succinctBitVector.rank1(nodeIndex) - 1
+        if (firstNodeId < 0) return -1
+        val firstTermId: Int = termIdsSaved[firstNodeId]
+        return firstTermId.toShort()
+    }
+
 
     private fun firstChildShortArray(
         pos: Int,
