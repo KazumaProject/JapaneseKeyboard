@@ -166,6 +166,15 @@ class LOUDSWithTermId {
         return termIdsSaved[firstNodeId]
     }
 
+    fun getTermId(
+        nodeIndex: Int,
+        succinctBitVector: SuccinctBitVector
+    ): Int {
+        val firstNodeId: Int = succinctBitVector.rank1(nodeIndex) - 1
+        if (firstNodeId < 0) return -1
+        return termIdsSaved[firstNodeId]
+    }
+
     fun getTermIdShortArray(
         nodeIndex: Int,
         rank1Array: ShortArray

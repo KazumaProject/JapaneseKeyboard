@@ -24,7 +24,7 @@ annotation class SystemSuccinctBitVectorLBSYomi
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SystemRank1ArrayIsLeafYomi
+annotation class SystemSuccinctBitVectorIsLeafYomi
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier

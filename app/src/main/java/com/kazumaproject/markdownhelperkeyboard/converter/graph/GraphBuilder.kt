@@ -15,7 +15,7 @@ class GraphBuilder {
         tangoTrie: LOUDS,
         tokenArray: TokenArray,
         systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
-        rank1ArrayIsLeafYomi: IntArray,
+        systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         rank0ArrayTokenArrayBitvector: IntArray,
         rank1ArrayTokenArrayBitvector: IntArray,
         rank0ArrayLBSTango: IntArray,
@@ -54,7 +54,7 @@ class GraphBuilder {
                     LBSBooleanArray,
                     LBSBooleanArrayPreprocess
                 )
-                val termId = yomiTrie.getTermId(nodeIndex, rank1ArrayIsLeafYomi)
+                val termId = yomiTrie.getTermId(nodeIndex, systemSuccinctBitVectorIsLeafYomi)
                 val listToken = tokenArray.getListDictionaryByYomiTermId(
                     termId,
                     rank0ArrayTokenArrayBitvector,
