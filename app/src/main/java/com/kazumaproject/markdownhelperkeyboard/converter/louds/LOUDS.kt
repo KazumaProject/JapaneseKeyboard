@@ -176,6 +176,27 @@ class LOUDS {
         return list.toList().asReversed().joinToString("")
     }
 
+    fun getLetterShortArray(
+        nodeIndex: Int,
+        succinctBitVector: SuccinctBitVector
+    ): String {
+        val list = mutableListOf<Char>()
+        val firstNodeId = succinctBitVector.rank1(nodeIndex)
+        val firstChar = labels[firstNodeId]
+        list.add(firstChar)
+        val rank0 = succinctBitVector.rank0(nodeIndex)
+        var parentNodeIndex = succinctBitVector.select1(rank0)
+        while (parentNodeIndex != 0) {
+            val parentNodeId = succinctBitVector.rank1(parentNodeIndex)
+            val pair = labels[parentNodeId]
+            list.add(pair)
+            val rank0InLoop = succinctBitVector.rank0(parentNodeIndex)
+            parentNodeIndex = succinctBitVector.select1(rank0InLoop)
+            if (parentNodeId == (0)) return ""
+        }
+        return list.toList().asReversed().joinToString("")
+    }
+
     fun getLetterByNodeId(nodeId: Int): String {
         val list = mutableListOf<Char>()
         var parentNodeIndex = LBS.select1(nodeId)

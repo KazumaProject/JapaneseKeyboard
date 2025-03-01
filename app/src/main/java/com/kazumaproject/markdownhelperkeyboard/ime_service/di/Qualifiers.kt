@@ -48,35 +48,19 @@ annotation class SingleKanjiTokenArray
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SingleKanjiRank0ArrayLBSYomi
+annotation class SingleKanjiSuccinctBitVectorLBSYomi
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SingleKanjiRank1ArrayLBSYomi
+annotation class SingleKanjiSuccinctBitVectorIsLeafYomi
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SingleKanjiRank1ArrayIsLeafYomi
+annotation class SingleKanjiSuccinctBitVectorTokenArray
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SingleKanjiRank0ArrayTokenArrayBitvector
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class SingleKanjiRank1ArrayTokenArrayBitvector
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class SingleKanjiRank0ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class SingleKanjiRank1ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class SingleKanjiYomiLBSBooleanArrayPreprocess
+annotation class SingleKanjiSuccinctBitVectorTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier

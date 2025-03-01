@@ -1,21 +1,13 @@
 package com.kazumaproject.dictionary
 
-import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.bitset.rank1Common
 import com.kazumaproject.bitset.rank1CommonShort
 import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.bitset.select0CommonShort
-import com.kazumaproject.dictionary.models.Dictionary
 import com.kazumaproject.dictionary.models.TokenEntry
-import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
-import com.kazumaproject.toBitSet
-import com.kazumaproject.toByteArray
-import com.kazumaproject.toByteArrayFromListShort
-import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectInputStream
-import java.io.ObjectOutput
 import java.io.ObjectOutputStream
 import java.util.BitSet
 
@@ -118,53 +110,25 @@ class TokenArray {
         return tempList2
     }
 
-    fun buildJunctionArray(
-        dictionaries: MutableList<Dictionary>,
-        tangoTrie: LOUDS,
-        out: ObjectOutput,
-        objectInputStream: ObjectInputStream
-    ) {
-        val posTableWithIndex = readPOSTableWithIndex(objectInputStream)
-        dictionaries.sortedBy { it.yomi.length }.groupBy { it.yomi }.onEachIndexed { index, entry ->
-            bitListTemp.add(false)
-
-            entry.value.forEach { dictionary ->
-                val key = Pair(dictionary.leftId, dictionary.rightId)
-                val posIndex = posTableWithIndex[key]
-                posIndex?.let {
-                    println("build token array:$index ${entry.key} ${dictionary.tango}")
-                    val posTableIndex = it.toShort()
-                    bitListTemp.add(true)
-                    posTableIndexListTemp.add(posTableIndex)
-                    wordCostListTemp.add(dictionary.cost)
-                    nodeIdListTemp.add(
-                        if (dictionary.yomi == dictionary.tango || entry.key.hiraToKata() == dictionary.tango) -1 else tangoTrie.getNodeIndex(
-                            dictionary.tango
-                        )
-                    )
-                }
-            }
+    fun getListDictionaryByYomiTermIdShortArray(
+        nodeId: Short,
+        succinctBitVector: SuccinctBitVector
+    ): List<TokenEntry> {
+        val startSelect0 = succinctBitVector.select0(nodeId.toInt())
+        val startRank1 = succinctBitVector.rank1(startSelect0)
+        val endSelect0 = succinctBitVector.select0(nodeId + 1)
+        val endRank1 = succinctBitVector.rank1(endSelect0)
+        val tempList2 = mutableListOf<TokenEntry>()
+        for (i in startRank1 until endRank1) {
+            tempList2.add(
+                TokenEntry(
+                    posTableIndex = posTableIndexList[i],
+                    wordCost = wordCostList[i],
+                    nodeId = nodeIdList[i],
+                )
+            )
         }
-        writeExternal(out)
-    }
-
-    private fun writeExternal(out: ObjectOutput) {
-        try {
-            out.apply {
-                writeInt(posTableIndexListTemp.toByteArrayFromListShort().size)
-                writeInt(wordCostListTemp.toByteArrayFromListShort().size)
-                writeInt(nodeIdListTemp.toByteArray().size)
-
-                writeObject(posTableIndexListTemp.toShortArray())
-                writeObject(wordCostListTemp.toShortArray())
-                writeObject(nodeIdListTemp.toIntArray())
-                writeObject(bitListTemp.toBitSet())
-                flush()
-                close()
-            }
-        } catch (e: IOException) {
-            println(e.stackTraceToString())
-        }
+        return tempList2
     }
 
     fun readExternal(
