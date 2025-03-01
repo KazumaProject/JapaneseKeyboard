@@ -32,11 +32,7 @@ annotation class SystemSuccinctBitVectorTokenArray
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SystemRank0ArrayTangoLBS
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class SystemRank1ArrayTangoLBS
+annotation class SystemSuccinctBitVectorTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier

@@ -9,9 +9,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.bitset.rank0GetIntArray
 import com.kazumaproject.bitset.rank0GetShortArray
-import com.kazumaproject.bitset.rank1GetIntArray
 import com.kazumaproject.bitset.rank1GetShortArray
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
@@ -207,15 +205,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SystemRank0ArrayTangoLBS
-    fun provideRank0ArrayLBSTango(@SystemTangoTrie tangoTrie: LOUDS): IntArray =
-        tangoTrie.LBS.rank0GetIntArray()
-
-    @Singleton
-    @Provides
-    @SystemRank1ArrayTangoLBS
-    fun provideRank1ArrayLBSTango(@SystemTangoTrie tangoTrie: LOUDS): IntArray =
-        tangoTrie.LBS.rank1GetIntArray()
+    @SystemSuccinctBitVectorTangoLBS
+    fun provideSystemSuccinctBitVectorTangoLBS(@SystemTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
 
     @SingleKanjiTangoTrie
@@ -748,8 +740,7 @@ object AppModule {
         @SystemSuccinctBitVectorLBSYomi systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
         @SystemSuccinctBitVectorIsLeafYomi systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         @SystemSuccinctBitVectorTokenArray systemSuccinctBitVectorTokenArray: SuccinctBitVector,
-        @SystemRank0ArrayTangoLBS systemRank0ArrayTangoLBS: IntArray,
-        @SystemRank1ArrayTangoLBS systemRank1ArrayTangoLBS: IntArray,
+        @SystemSuccinctBitVectorTangoLBS systemSuccinctBitVectorTangoLBS: SuccinctBitVector,
         @SystemYomiLBSBooleanArray systemYomiLBSBooleanArray: BooleanArray,
 
         @SingleKanjiTangoTrie singleKanjiTangoTrie: LOUDS,
@@ -847,8 +838,7 @@ object AppModule {
             systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
             systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
             systemSuccinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
-            systemRank0ArrayLBSTango = systemRank0ArrayTangoLBS,
-            systemRank1ArrayLBSTango = systemRank1ArrayTangoLBS,
+            systemSuccinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             systemYomiLBSBooleanArray = systemYomiLBSBooleanArray,
 
             singleKanjiTangoTrie = singleKanjiTangoTrie,

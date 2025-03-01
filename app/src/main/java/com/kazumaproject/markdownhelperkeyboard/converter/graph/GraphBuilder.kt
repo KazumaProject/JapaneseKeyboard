@@ -17,8 +17,7 @@ class GraphBuilder {
         succinctBitVectorLBSYomi: SuccinctBitVector,
         succinctBitVectorIsLeafYomi: SuccinctBitVector,
         succinctBitVectorTokenArray: SuccinctBitVector,
-        rank0ArrayLBSTango: IntArray,
-        rank1ArrayLBSTango: IntArray,
+        succinctBitVectorTangoLBS: SuccinctBitVector,
         LBSBooleanArray: BooleanArray,
         LBSBooleanArrayPreprocess: IntArray
     ): MutableMap<Int, MutableList<Node>> {
@@ -71,8 +70,7 @@ class GraphBuilder {
                             -1 -> yomiStr.hiraToKata()
                             else -> tangoTrie.getLetter(
                                 it.nodeId,
-                                rank0ArrayLBSTango,
-                                rank1ArrayLBSTango
+                                succinctBitVector = succinctBitVectorTangoLBS
                             )
                         },
                         len = yomiStr.length.toShort(),
