@@ -178,13 +178,13 @@ object AppModule {
     @Singleton
     @Provides
     @SystemSuccinctBitVectorLBSYomi
-    fun provideRank0ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+    fun provideSuccinctBitVectorLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
         SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
     @SystemSuccinctBitVectorIsLeafYomi
-    fun provideRank1ArrayIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+    fun provideSuccinctBitVectorIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
         SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
@@ -201,15 +201,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SystemRank0ArrayTokenArrayBitvector
-    fun provideRank0ArrayTokenArrayBitvector(@SystemTokenArray tokenArray: TokenArray): IntArray =
-        tokenArray.bitvector.rank0GetIntArray()
-
-    @Singleton
-    @Provides
-    @SystemRank1ArrayTokenArrayBitvector
-    fun provideRank1ArrayTokenArrayBitvector(@SystemTokenArray tokenArray: TokenArray): IntArray =
-        tokenArray.bitvector.rank1GetIntArray()
+    @SystemSuccinctBitVectorTokenArray
+    fun provideSystemSuccinctBitVectorTokenArray(@SystemTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
@@ -753,8 +747,7 @@ object AppModule {
         @SystemTokenArray systemTokenArray: TokenArray,
         @SystemSuccinctBitVectorLBSYomi systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
         @SystemSuccinctBitVectorIsLeafYomi systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
-        @SystemRank0ArrayTokenArrayBitvector systemRank0ArrayTokenArrayBitvector: IntArray,
-        @SystemRank1ArrayTokenArrayBitvector systemRank1ArrayTokenArrayBitvector: IntArray,
+        @SystemSuccinctBitVectorTokenArray systemSuccinctBitVectorTokenArray: SuccinctBitVector,
         @SystemRank0ArrayTangoLBS systemRank0ArrayTangoLBS: IntArray,
         @SystemRank1ArrayTangoLBS systemRank1ArrayTangoLBS: IntArray,
         @SystemYomiLBSBooleanArray systemYomiLBSBooleanArray: BooleanArray,
@@ -853,8 +846,7 @@ object AppModule {
             systemTokenArray = systemTokenArray,
             systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
             systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
-            systemRank0ArrayTokenArrayBitvector = systemRank0ArrayTokenArrayBitvector,
-            systemRank1ArrayTokenArrayBitvector = systemRank1ArrayTokenArrayBitvector,
+            systemSuccinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
             systemRank0ArrayLBSTango = systemRank0ArrayTangoLBS,
             systemRank1ArrayLBSTango = systemRank1ArrayTangoLBS,
             systemYomiLBSBooleanArray = systemYomiLBSBooleanArray,

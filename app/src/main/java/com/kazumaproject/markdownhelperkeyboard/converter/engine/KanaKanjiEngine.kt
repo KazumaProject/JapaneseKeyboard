@@ -45,8 +45,7 @@ class KanaKanjiEngine {
 
     private lateinit var systemSuccinctBitVectorLBSYomi: SuccinctBitVector
     private lateinit var systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector
-    private lateinit var systemRank0ArrayTokenArrayBitvector: IntArray
-    private lateinit var systemRank1ArrayTokenArrayBitvector: IntArray
+    private lateinit var systemSuccinctBitVectorTokenArray: SuccinctBitVector
     private lateinit var systemRank0ArrayLBSTango: IntArray
     private lateinit var systemRank1ArrayLBSTango: IntArray
     private lateinit var systemYomiLBSBooleanArray: BooleanArray
@@ -219,8 +218,7 @@ class KanaKanjiEngine {
         systemTokenArray: TokenArray,
         systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
         systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
-        systemRank0ArrayTokenArrayBitvector: IntArray,
-        systemRank1ArrayTokenArrayBitvector: IntArray,
+        systemSuccinctBitVectorTokenArray: SuccinctBitVector,
         systemRank0ArrayLBSTango: IntArray,
         systemRank1ArrayLBSTango: IntArray,
         systemYomiLBSBooleanArray: BooleanArray,
@@ -315,10 +313,8 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
         this@KanaKanjiEngine.systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi
         this@KanaKanjiEngine.systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi
-        this@KanaKanjiEngine.systemRank0ArrayTokenArrayBitvector =
-            systemRank0ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.systemRank1ArrayTokenArrayBitvector =
-            systemRank1ArrayTokenArrayBitvector
+        this@KanaKanjiEngine.systemSuccinctBitVectorTokenArray =
+            systemSuccinctBitVectorTokenArray
         this@KanaKanjiEngine.systemRank0ArrayLBSTango = systemRank0ArrayLBSTango
         this@KanaKanjiEngine.systemRank1ArrayLBSTango = systemRank1ArrayLBSTango
         this@KanaKanjiEngine.systemYomiLBSBooleanArray = systemYomiLBSBooleanArray
@@ -736,10 +732,9 @@ class KanaKanjiEngine {
             systemYomiTrie,
             systemTangoTrie,
             systemTokenArray,
-            systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
-            systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
-            systemRank0ArrayTokenArrayBitvector,
-            systemRank1ArrayTokenArrayBitvector,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
             rank0ArrayLBSTango = systemRank0ArrayLBSTango,
             rank1ArrayLBSTango = systemRank1ArrayLBSTango,
             LBSBooleanArray = systemYomiLBSBooleanArray,
@@ -922,7 +917,7 @@ class KanaKanjiEngine {
                 val termId = systemYomiTrie.getTermId(nodeIndex, systemSuccinctBitVectorIsLeafYomi)
 
                 systemTokenArray.getListDictionaryByYomiTermId(
-                    termId, systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector
+                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
                 ).map { token ->
                     val baseCost = token.wordCost.toInt()
                     val score = when {
@@ -959,7 +954,7 @@ class KanaKanjiEngine {
                     ), systemSuccinctBitVectorIsLeafYomi
                 )
                 systemTokenArray.getListDictionaryByYomiTermId(
-                    termId, systemRank0ArrayTokenArrayBitvector, systemRank1ArrayTokenArrayBitvector
+                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
                 ).map {
                     Candidate(
                         string = when (it.nodeId) {
