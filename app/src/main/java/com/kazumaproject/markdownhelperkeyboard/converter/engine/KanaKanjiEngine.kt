@@ -61,64 +61,46 @@ class KanaKanjiEngine {
     private lateinit var emojiTangoTrie: LOUDS
     private lateinit var emojiTokenArray: TokenArray
 
-    private lateinit var emojiRank0ArrayLBSYomi: ShortArray
-    private lateinit var emojiRank1ArrayLBSYomi: ShortArray
-    private lateinit var emojiRank1ArrayIsLeaf: ShortArray
-    private lateinit var emojiRank0ArrayTokenArrayBitvector: ShortArray
-    private lateinit var emojiRank1ArrayTokenArrayBitvector: ShortArray
-    private lateinit var emojiRank0ArrayLBSTango: ShortArray
-    private lateinit var emojiRank1ArrayLBSTango: ShortArray
-    private lateinit var emojiYomiLBSPreprocess: IntArray
+    private lateinit var emojiSuccinctBitVectorLBSYomi: SuccinctBitVector
+    private lateinit var emojiSuccinctBitVectorIsLeafYomi: SuccinctBitVector
+    private lateinit var emojiSuccinctBitVectorTokenArray: SuccinctBitVector
+    private lateinit var emojiSuccinctBitVectorTangoLBS: SuccinctBitVector
 
     private lateinit var emoticonYomiTrie: LOUDSWithTermId
     private lateinit var emoticonTangoTrie: LOUDS
     private lateinit var emoticonTokenArray: TokenArray
 
-    private lateinit var emoticonRank0ArrayLBSYomi: ShortArray
-    private lateinit var emoticonRank1ArrayLBSYomi: ShortArray
-    private lateinit var emoticonRank1ArrayIsLeaf: ShortArray
-    private lateinit var emoticonRank0ArrayTokenArrayBitvector: ShortArray
-    private lateinit var emoticonRank1ArrayTokenArrayBitvector: ShortArray
-    private lateinit var emoticonRank0ArrayLBSTango: ShortArray
-    private lateinit var emoticonRank1ArrayLBSTango: ShortArray
-    private lateinit var emoticonYomiLBSPreprocess: IntArray
+    private lateinit var emoticonSuccinctBitVectorLBSYomi: SuccinctBitVector
+    private lateinit var emoticonSuccinctBitVectorIsLeafYomi: SuccinctBitVector
+    private lateinit var emoticonSuccinctBitVectorTokenArray: SuccinctBitVector
+    private lateinit var emoticonSuccinctBitVectorTangoLBS: SuccinctBitVector
 
     private lateinit var symbolYomiTrie: LOUDSWithTermId
     private lateinit var symbolTangoTrie: LOUDS
     private lateinit var symbolTokenArray: TokenArray
 
-    private lateinit var symbolRank0ArrayLBSYomi: ShortArray
-    private lateinit var symbolRank1ArrayLBSYomi: ShortArray
-    private lateinit var symbolRank1ArrayIsLeaf: ShortArray
-    private lateinit var symbolRank0ArrayTokenArrayBitvector: ShortArray
-    private lateinit var symbolRank1ArrayTokenArrayBitvector: ShortArray
-    private lateinit var symbolRank0ArrayLBSTango: ShortArray
-    private lateinit var symbolRank1ArrayLBSTango: ShortArray
-    private lateinit var symbolYomiLBSPreprocess: IntArray
+    private lateinit var symbolSuccinctBitVectorLBSYomi: SuccinctBitVector
+    private lateinit var symbolSuccinctBitVectorIsLeafYomi: SuccinctBitVector
+    private lateinit var symbolSuccinctBitVectorTokenArray: SuccinctBitVector
+    private lateinit var symbolSuccinctBitVectorTangoLBS: SuccinctBitVector
 
     private lateinit var readingCorrectionYomiTrie: LOUDSWithTermId
     private lateinit var readingCorrectionTangoTrie: LOUDS
     private lateinit var readingCorrectionTokenArray: TokenArray
-    private lateinit var readingCorrectionRank0ArrayLBSYomi: ShortArray
-    private lateinit var readingCorrectionRank1ArrayLBSYomi: ShortArray
-    private lateinit var readingCorrectionRank1ArrayIsLeaf: ShortArray
-    private lateinit var readingCorrectionRank0ArrayTokenArrayBitvector: ShortArray
-    private lateinit var readingCorrectionRank1ArrayTokenArrayBitvector: ShortArray
-    private lateinit var readingCorrectionRank0ArrayLBSTango: ShortArray
-    private lateinit var readingCorrectionRank1ArrayLBSTango: ShortArray
-    private lateinit var readingCorrectionYomiLBSPreprocess: IntArray
+
+    private lateinit var readingCorrectionSuccinctBitVectorLBSYomi: SuccinctBitVector
+    private lateinit var readingCorrectionSuccinctBitVectorIsLeafYomi: SuccinctBitVector
+    private lateinit var readingCorrectionSuccinctBitVectorTokenArray: SuccinctBitVector
+    private lateinit var readingCorrectionSuccinctBitVectorTangoLBS: SuccinctBitVector
 
     private lateinit var kotowazaYomiTrie: LOUDSWithTermId
     private lateinit var kotowazaTangoTrie: LOUDS
     private lateinit var kotowazaTokenArray: TokenArray
-    private lateinit var kotowazaRank0ArrayLBSYomi: ShortArray
-    private lateinit var kotowazaRank1ArrayLBSYomi: ShortArray
-    private lateinit var kotowazaRank1ArrayIsLeaf: ShortArray
-    private lateinit var kotowazaRank0ArrayTokenArrayBitvector: ShortArray
-    private lateinit var kotowazaRank1ArrayTokenArrayBitvector: ShortArray
-    private lateinit var kotowazaRank0ArrayLBSTango: ShortArray
-    private lateinit var kotowazaRank1ArrayLBSTango: ShortArray
-    private lateinit var kotowazaYomiLBSPreprocess: IntArray
+
+    private lateinit var kotowazaSuccinctBitVectorLBSYomi: SuccinctBitVector
+    private lateinit var kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector
+    private lateinit var kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector
+    private lateinit var kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector
 
     private var personYomiTrie: LOUDSWithTermId? = null
     private var personTangoTrie: LOUDS? = null
@@ -219,63 +201,42 @@ class KanaKanjiEngine {
         emojiTangoTrie: LOUDS,
         emojiYomiTrie: LOUDSWithTermId,
         emojiTokenArray: TokenArray,
-        emojiRank0ArrayLBSYomi: ShortArray,
-        emojiRank1ArrayLBSYomi: ShortArray,
-        emojiRank1ArrayIsLeaf: ShortArray,
-        emojiRank0ArrayTokenArrayBitvector: ShortArray,
-        emojiRank1ArrayTokenArrayBitvector: ShortArray,
-        emojiRank0ArrayLBSTango: ShortArray,
-        emojiRank1ArrayLBSTango: ShortArray,
+        emojiSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        emojiSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        emojiSuccinctBitVectorTokenArray: SuccinctBitVector,
+        emojiSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         emoticonTangoTrie: LOUDS,
         emoticonYomiTrie: LOUDSWithTermId,
         emoticonTokenArray: TokenArray,
-        emoticonRank0ArrayLBSYomi: ShortArray,
-        emoticonRank1ArrayLBSYomi: ShortArray,
-        emoticonRank1ArrayIsLeaf: ShortArray,
-        emoticonRank0ArrayTokenArrayBitvector: ShortArray,
-        emoticonRank1ArrayTokenArrayBitvector: ShortArray,
-        emoticonRank0ArrayLBSTango: ShortArray,
-        emoticonRank1ArrayLBSTango: ShortArray,
+        emoticonSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        emoticonSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        emoticonSuccinctBitVectorTokenArray: SuccinctBitVector,
+        emoticonSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         symbolTangoTrie: LOUDS,
         symbolYomiTrie: LOUDSWithTermId,
         symbolTokenArray: TokenArray,
-        symbolRank0ArrayLBSYomi: ShortArray,
-        symbolRank1ArrayLBSYomi: ShortArray,
-        symbolRank1ArrayIsLeaf: ShortArray,
-        symbolRank0ArrayTokenArrayBitvector: ShortArray,
-        symbolRank1ArrayTokenArrayBitvector: ShortArray,
-        symbolRank0ArrayLBSTango: ShortArray,
-        symbolRank1ArrayLBSTango: ShortArray,
+        symbolSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        symbolSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        symbolSuccinctBitVectorTokenArray: SuccinctBitVector,
+        symbolSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         readingCorrectionTangoTrie: LOUDS,
         readingCorrectionYomiTrie: LOUDSWithTermId,
         readingCorrectionTokenArray: TokenArray,
-        readingCorrectionRank0ArrayLBSYomi: ShortArray,
-        readingCorrectionRank1ArrayLBSYomi: ShortArray,
-        readingCorrectionRank1ArrayIsLeaf: ShortArray,
-        readingCorrectionRank0ArrayTokenArrayBitvector: ShortArray,
-        readingCorrectionRank1ArrayTokenArrayBitvector: ShortArray,
-        readingCorrectionRank0ArrayLBSTango: ShortArray,
-        readingCorrectionRank1ArrayLBSTango: ShortArray,
+        readingCorrectionSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        readingCorrectionSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        readingCorrectionSuccinctBitVectorTokenArray: SuccinctBitVector,
+        readingCorrectionSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         kotowazaTangoTrie: LOUDS,
         kotowazaYomiTrie: LOUDSWithTermId,
         kotowazaTokenArray: TokenArray,
-        kotowazaRank0ArrayLBSYomi: ShortArray,
-        kotowazaRank1ArrayLBSYomi: ShortArray,
-        kotowazaRank1ArrayIsLeaf: ShortArray,
-        kotowazaRank0ArrayTokenArrayBitvector: ShortArray,
-        kotowazaRank1ArrayTokenArrayBitvector: ShortArray,
-        kotowazaRank0ArrayLBSTango: ShortArray,
-        kotowazaRank1ArrayLBSTango: ShortArray,
-
-        emojiYomiLBSPreprocess: IntArray,
-        emoticonYomiLBSPreprocess: IntArray,
-        symbolYomiLBSPreprocess: IntArray,
-        readingCorrectionYomiLBSPreprocess: IntArray,
-        kotowazaYomiLBSPreprocess: IntArray
+        kotowazaSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
+        kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -309,78 +270,56 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.emojiTangoTrie = emojiTangoTrie
         this@KanaKanjiEngine.emojiTokenArray = emojiTokenArray
         this@KanaKanjiEngine.emojiYomiTrie = emojiYomiTrie
-        this@KanaKanjiEngine.emojiRank0ArrayLBSYomi = emojiRank0ArrayLBSYomi
-        this@KanaKanjiEngine.emojiRank1ArrayLBSYomi = emojiRank1ArrayLBSYomi
-        this@KanaKanjiEngine.emojiRank1ArrayIsLeaf = emojiRank1ArrayIsLeaf
-        this@KanaKanjiEngine.emojiRank0ArrayTokenArrayBitvector = emojiRank0ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.emojiRank1ArrayTokenArrayBitvector = emojiRank1ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.emojiRank0ArrayLBSTango = emojiRank0ArrayLBSTango
-        this@KanaKanjiEngine.emojiRank1ArrayLBSTango = emojiRank1ArrayLBSTango
+        this@KanaKanjiEngine.emojiSuccinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi
+        this@KanaKanjiEngine.emojiSuccinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi
+        this@KanaKanjiEngine.emojiSuccinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray
+        this@KanaKanjiEngine.emojiSuccinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS
 
         /** Emoticon **/
         this@KanaKanjiEngine.emoticonTangoTrie = emoticonTangoTrie
         this@KanaKanjiEngine.emoticonTokenArray = emoticonTokenArray
         this@KanaKanjiEngine.emoticonYomiTrie = emoticonYomiTrie
-        this@KanaKanjiEngine.emoticonRank0ArrayLBSYomi = emoticonRank0ArrayLBSYomi
-        this@KanaKanjiEngine.emoticonRank1ArrayLBSYomi = emoticonRank1ArrayLBSYomi
-        this@KanaKanjiEngine.emoticonRank1ArrayIsLeaf = emoticonRank1ArrayIsLeaf
-        this@KanaKanjiEngine.emoticonRank0ArrayTokenArrayBitvector =
-            emoticonRank0ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.emoticonRank1ArrayTokenArrayBitvector =
-            emoticonRank1ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.emoticonRank0ArrayLBSTango = emoticonRank0ArrayLBSTango
-        this@KanaKanjiEngine.emoticonRank1ArrayLBSTango = emoticonRank1ArrayLBSTango
+        this@KanaKanjiEngine.emoticonSuccinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi
+        this@KanaKanjiEngine.emoticonSuccinctBitVectorIsLeafYomi =
+            emoticonSuccinctBitVectorIsLeafYomi
+        this@KanaKanjiEngine.emoticonSuccinctBitVectorTokenArray =
+            emoticonSuccinctBitVectorTokenArray
+        this@KanaKanjiEngine.emoticonSuccinctBitVectorTangoLBS =
+            emoticonSuccinctBitVectorTangoLBS
 
         /** Symbol **/
         this@KanaKanjiEngine.symbolTangoTrie = symbolTangoTrie
         this@KanaKanjiEngine.symbolTokenArray = symbolTokenArray
         this@KanaKanjiEngine.symbolYomiTrie = symbolYomiTrie
-        this@KanaKanjiEngine.symbolRank0ArrayLBSYomi = symbolRank0ArrayLBSYomi
-        this@KanaKanjiEngine.symbolRank1ArrayLBSYomi = symbolRank1ArrayLBSYomi
-        this@KanaKanjiEngine.symbolRank1ArrayIsLeaf = symbolRank1ArrayIsLeaf
-        this@KanaKanjiEngine.symbolRank0ArrayTokenArrayBitvector =
-            symbolRank0ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.symbolRank1ArrayTokenArrayBitvector =
-            symbolRank1ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.symbolRank0ArrayLBSTango = symbolRank0ArrayLBSTango
-        this@KanaKanjiEngine.symbolRank1ArrayLBSTango = symbolRank1ArrayLBSTango
+        this@KanaKanjiEngine.symbolSuccinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi
+        this@KanaKanjiEngine.symbolSuccinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi
+        this@KanaKanjiEngine.symbolSuccinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray
+        this@KanaKanjiEngine.symbolSuccinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS
 
         /** Reading Correction **/
         this@KanaKanjiEngine.readingCorrectionTangoTrie = readingCorrectionTangoTrie
         this@KanaKanjiEngine.readingCorrectionTokenArray = readingCorrectionTokenArray
         this@KanaKanjiEngine.readingCorrectionYomiTrie = readingCorrectionYomiTrie
-        this@KanaKanjiEngine.readingCorrectionRank0ArrayLBSYomi = readingCorrectionRank0ArrayLBSYomi
-        this@KanaKanjiEngine.readingCorrectionRank1ArrayLBSYomi = readingCorrectionRank1ArrayLBSYomi
-        this@KanaKanjiEngine.readingCorrectionRank1ArrayIsLeaf = readingCorrectionRank1ArrayIsLeaf
-        this@KanaKanjiEngine.readingCorrectionRank0ArrayTokenArrayBitvector =
-            readingCorrectionRank0ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.readingCorrectionRank1ArrayTokenArrayBitvector =
-            readingCorrectionRank1ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.readingCorrectionRank0ArrayLBSTango =
-            readingCorrectionRank0ArrayLBSTango
-        this@KanaKanjiEngine.readingCorrectionRank1ArrayLBSTango =
-            readingCorrectionRank1ArrayLBSTango
+        this@KanaKanjiEngine.readingCorrectionSuccinctBitVectorLBSYomi =
+            readingCorrectionSuccinctBitVectorLBSYomi
+        this@KanaKanjiEngine.readingCorrectionSuccinctBitVectorIsLeafYomi =
+            readingCorrectionSuccinctBitVectorIsLeafYomi
+        this@KanaKanjiEngine.readingCorrectionSuccinctBitVectorTokenArray =
+            readingCorrectionSuccinctBitVectorTokenArray
+        this@KanaKanjiEngine.readingCorrectionSuccinctBitVectorTangoLBS =
+            readingCorrectionSuccinctBitVectorTangoLBS
 
         /**  Kotowaza **/
         this@KanaKanjiEngine.kotowazaTangoTrie = kotowazaTangoTrie
         this@KanaKanjiEngine.kotowazaTokenArray = kotowazaTokenArray
         this@KanaKanjiEngine.kotowazaYomiTrie = kotowazaYomiTrie
-        this@KanaKanjiEngine.kotowazaRank0ArrayLBSYomi = kotowazaRank0ArrayLBSYomi
-        this@KanaKanjiEngine.kotowazaRank1ArrayLBSYomi = kotowazaRank1ArrayLBSYomi
-        this@KanaKanjiEngine.kotowazaRank1ArrayIsLeaf = kotowazaRank1ArrayIsLeaf
-        this@KanaKanjiEngine.kotowazaRank0ArrayTokenArrayBitvector =
-            kotowazaRank0ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.kotowazaRank1ArrayTokenArrayBitvector =
-            kotowazaRank1ArrayTokenArrayBitvector
-        this@KanaKanjiEngine.kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayLBSTango
-        this@KanaKanjiEngine.kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayLBSTango
-
-        this@KanaKanjiEngine.emojiYomiLBSPreprocess = emojiYomiLBSPreprocess
-        this@KanaKanjiEngine.emoticonYomiLBSPreprocess = emoticonYomiLBSPreprocess
-        this@KanaKanjiEngine.symbolYomiLBSPreprocess = symbolYomiLBSPreprocess
-        this@KanaKanjiEngine.readingCorrectionYomiLBSPreprocess = readingCorrectionYomiLBSPreprocess
-        this@KanaKanjiEngine.kotowazaYomiLBSPreprocess = kotowazaYomiLBSPreprocess
-
+        this@KanaKanjiEngine.kotowazaSuccinctBitVectorLBSYomi = kotowazaSuccinctBitVectorLBSYomi
+        this@KanaKanjiEngine.kotowazaSuccinctBitVectorIsLeafYomi =
+            kotowazaSuccinctBitVectorIsLeafYomi
+        this@KanaKanjiEngine.kotowazaSuccinctBitVectorTokenArray =
+            kotowazaSuccinctBitVectorTokenArray
+        this@KanaKanjiEngine.kotowazaSuccinctBitVectorTangoLBS =
+            kotowazaSuccinctBitVectorTangoLBS
     }
 
     fun buildPersonNamesDictionary(context: Context) {
@@ -725,22 +664,19 @@ class KanaKanjiEngine {
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
             yomiTrie = emojiYomiTrie,
-            rank0ArrayLBSYomi = emojiRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = emojiRank1ArrayLBSYomi
+            succinctBitVector = emojiSuccinctBitVectorLBSYomi
         )
 
         val emoticonCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
             yomiTrie = emoticonYomiTrie,
-            rank0ArrayLBSYomi = emoticonRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = emoticonRank1ArrayLBSYomi
+            succinctBitVector = emoticonSuccinctBitVectorLBSYomi,
         )
 
         val symbolCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
             yomiTrie = symbolYomiTrie,
-            rank0ArrayLBSYomi = symbolRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = symbolRank1ArrayLBSYomi
+            succinctBitVector = symbolSuccinctBitVectorLBSYomi,
         )
 
         val emojiListDeferred = deferredFromDictionarySymbols(
@@ -749,13 +685,10 @@ class KanaKanjiEngine {
             yomiTrie = emojiYomiTrie,
             tokenArray = emojiTokenArray,
             tangoTrie = emojiTangoTrie,
-            yomiRank1ArrayLBS = emojiRank1ArrayLBSYomi,
-            yomiLBSPreprocess = emojiYomiLBSPreprocess,
-            rank1ArrayIsLeaf = emojiRank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector = emojiRank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector = emojiRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = emojiRank0ArrayLBSTango,
-            rank1ArrayLBSTango = emojiRank1ArrayLBSTango,
+            succinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
             type = 11
         )
 
@@ -765,13 +698,10 @@ class KanaKanjiEngine {
             yomiTrie = emoticonYomiTrie,
             tokenArray = emoticonTokenArray,
             tangoTrie = emoticonTangoTrie,
-            yomiRank1ArrayLBS = emoticonRank1ArrayLBSYomi,
-            yomiLBSPreprocess = emoticonYomiLBSPreprocess,
-            rank1ArrayIsLeaf = emoticonRank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector = emoticonRank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector = emoticonRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = emoticonRank0ArrayLBSTango,
-            rank1ArrayLBSTango = emoticonRank1ArrayLBSTango,
+            succinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emoticonSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emoticonSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emoticonSuccinctBitVectorTangoLBS,
             type = 12
         )
 
@@ -781,13 +711,10 @@ class KanaKanjiEngine {
             yomiTrie = symbolYomiTrie,
             tokenArray = symbolTokenArray,
             tangoTrie = symbolTangoTrie,
-            yomiRank1ArrayLBS = symbolRank1ArrayLBSYomi,
-            yomiLBSPreprocess = symbolYomiLBSPreprocess,
-            rank1ArrayIsLeaf = symbolRank1ArrayIsLeaf,
-            rank0ArrayTokenArrayBitvector = symbolRank0ArrayTokenArrayBitvector,
-            rank1ArrayTokenArrayBitvector = symbolRank1ArrayTokenArrayBitvector,
-            rank0ArrayLBSTango = symbolRank0ArrayLBSTango,
-            rank1ArrayLBSTango = symbolRank1ArrayLBSTango,
+            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
             type = 13
         )
 
@@ -813,13 +740,10 @@ class KanaKanjiEngine {
                 yomiTrie = symbolYomiTrie,
                 tokenArray = symbolTokenArray,
                 tangoTrie = symbolTangoTrie,
-                yomiRank1ArrayLBS = symbolRank1ArrayLBSYomi,
-                yomiLBSPreprocess = symbolYomiLBSPreprocess,
-                rank1ArrayIsLeaf = symbolRank1ArrayIsLeaf,
-                rank0ArrayTokenArrayBitvector = symbolRank0ArrayTokenArrayBitvector,
-                rank1ArrayTokenArrayBitvector = symbolRank1ArrayTokenArrayBitvector,
-                rank0ArrayLBSTango = symbolRank0ArrayLBSTango,
-                rank1ArrayLBSTango = symbolRank1ArrayLBSTango,
+                succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
                 type = 21
             )
 
@@ -844,15 +768,13 @@ class KanaKanjiEngine {
         val readingCorrectionCommonPrefixDeferred = deferredPrediction(
             input = input,
             yomiTrie = readingCorrectionYomiTrie,
-            rank0ArrayLBSYomi = readingCorrectionRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = readingCorrectionRank1ArrayLBSYomi
+            succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi
         )
 
         val kotowazaCommonPrefixDeferred = deferredPrediction(
             input = input,
             yomiTrie = kotowazaYomiTrie,
-            rank0ArrayLBSYomi = kotowazaRank0ArrayLBSYomi,
-            rank1ArrayLBSYomi = kotowazaRank1ArrayLBSYomi
+            succinctBitVector = kotowazaSuccinctBitVectorLBSYomi
         )
 
         val predictiveSearchResultDeferred: List<Candidate> = withContext(Dispatchers.Default) {
@@ -925,14 +847,12 @@ class KanaKanjiEngine {
                 val termId = readingCorrectionYomiTrie.getTermIdShortArray(
                     readingCorrectionYomiTrie.getNodeIndex(
                         yomi,
-                        readingCorrectionRank1ArrayLBSYomi,
-                        readingCorrectionYomiLBSPreprocess
-                    ), readingCorrectionRank1ArrayIsLeaf
+                        readingCorrectionSuccinctBitVectorLBSYomi
+                    ), readingCorrectionSuccinctBitVectorIsLeafYomi
                 )
                 readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId,
-                    readingCorrectionRank0ArrayTokenArrayBitvector,
-                    readingCorrectionRank1ArrayTokenArrayBitvector
+                    readingCorrectionSuccinctBitVectorTokenArray
                 ).map {
                     Candidate(
                         string = when (it.nodeId) {
@@ -940,8 +860,7 @@ class KanaKanjiEngine {
                             -1 -> yomi.hiraToKata()
                             else -> readingCorrectionTangoTrie.getLetterShortArray(
                                 it.nodeId,
-                                readingCorrectionRank0ArrayLBSTango,
-                                readingCorrectionRank1ArrayLBSTango
+                                readingCorrectionSuccinctBitVectorTangoLBS
                             )
                         },
                         type = 15,
@@ -959,21 +878,19 @@ class KanaKanjiEngine {
                 val termId = kotowazaYomiTrie.getTermIdShortArray(
                     kotowazaYomiTrie.getNodeIndex(
                         yomi,
-                        kotowazaRank1ArrayLBSYomi,
-                        kotowazaYomiLBSPreprocess
-                    ), kotowazaRank1ArrayIsLeaf
+                        kotowazaSuccinctBitVectorLBSYomi
+                    ), kotowazaSuccinctBitVectorIsLeafYomi
                 )
                 kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
                     termId,
-                    kotowazaRank0ArrayTokenArrayBitvector,
-                    kotowazaRank1ArrayTokenArrayBitvector
+                    kotowazaSuccinctBitVectorTokenArray
                 ).map {
                     Candidate(
                         string = when (it.nodeId) {
                             -2 -> yomi
                             -1 -> yomi.hiraToKata()
                             else -> kotowazaTangoTrie.getLetterShortArray(
-                                it.nodeId, kotowazaRank0ArrayLBSTango, kotowazaRank1ArrayLBSTango
+                                it.nodeId, kotowazaSuccinctBitVectorTangoLBS
                             )
                         },
                         type = 16,
@@ -1121,20 +1038,20 @@ class KanaKanjiEngine {
 
     fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {
         emojiTangoTrie.getLetterShortArray(
-            it, emojiRank0ArrayLBSTango, emojiRank1ArrayLBSTango
+            it, emojiSuccinctBitVectorTangoLBS
         )
     }.distinct().sortByEmojiCategory()
 
     fun getSymbolEmoticonCandidates(): List<String> = emoticonTokenArray.getNodeIds().map {
         emoticonTangoTrie.getLetterShortArray(
-            it, emoticonRank0ArrayLBSTango, emoticonRank1ArrayLBSTango
+            it, emoticonSuccinctBitVectorTangoLBS
         )
     }.distinct()
 
     fun getSymbolCandidates(): List<String> = symbolTokenArray.getNodeIds().map {
         if (it >= 0) {
             symbolTangoTrie.getLetterShortArray(
-                it, symbolRank0ArrayLBSTango, symbolRank1ArrayLBSTango
+                it, symbolSuccinctBitVectorTangoLBS
             )
         } else {
             ""
@@ -1211,31 +1128,28 @@ class KanaKanjiEngine {
         yomiTrie: LOUDSWithTermId,
         tokenArray: TokenArray,
         tangoTrie: LOUDS,
-        yomiRank1ArrayLBS: ShortArray,
-        yomiLBSPreprocess: IntArray,
-        rank1ArrayIsLeaf: ShortArray,
-        rank0ArrayTokenArrayBitvector: ShortArray,
-        rank1ArrayTokenArrayBitvector: ShortArray,
-        rank0ArrayLBSTango: ShortArray,
-        rank1ArrayLBSTango: ShortArray,
+        succinctBitVectorLBSYomi: SuccinctBitVector,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector,
+        succinctBitVectorTokenArray: SuccinctBitVector,
+        succinctBitVectorTangoLBS: SuccinctBitVector,
         type: Byte
     ) = withContext(Dispatchers.Default) {
         commonPrefixListString.flatMap { yomi ->
             if (input.length > yomi.length) return@withContext emptyList()
             val termId = yomiTrie.getTermIdShortArray(
                 yomiTrie.getNodeIndex(
-                    yomi, yomiRank1ArrayLBS, yomiLBSPreprocess
-                ), rank1ArrayIsLeaf
+                    yomi, succinctBitVectorLBSYomi
+                ), succinctBitVectorIsLeafYomi
             )
             tokenArray.getListDictionaryByYomiTermIdShortArray(
-                termId, rank0ArrayTokenArrayBitvector, rank1ArrayTokenArrayBitvector
+                termId, succinctBitVectorTokenArray
             ).map {
                 Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
                         else -> tangoTrie.getLetterShortArray(
-                            it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango
+                            it.nodeId, succinctBitVectorTangoLBS
                         )
                     },
                     type = type,
@@ -1297,30 +1211,27 @@ class KanaKanjiEngine {
         yomiTrie: LOUDSWithTermId,
         tokenArray: TokenArray,
         tangoTrie: LOUDS,
-        yomiRank1ArrayLBS: ShortArray,
-        yomiLBSPreprocess: IntArray,
-        rank1ArrayIsLeaf: ShortArray,
-        rank0ArrayTokenArrayBitvector: ShortArray,
-        rank1ArrayTokenArrayBitvector: ShortArray,
-        rank0ArrayLBSTango: ShortArray,
-        rank1ArrayLBSTango: ShortArray,
+        succinctBitVectorLBSYomi: SuccinctBitVector,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector,
+        succinctBitVectorTokenArray: SuccinctBitVector,
+        succinctBitVectorTangoLBS: SuccinctBitVector,
         type: Byte
     ) = withContext(Dispatchers.Default) {
         commonPrefixListString.flatMap { yomi ->
             val termId = yomiTrie.getTermIdShortArray(
                 yomiTrie.getNodeIndex(
-                    yomi, yomiRank1ArrayLBS, yomiLBSPreprocess
-                ), rank1ArrayIsLeaf
+                    yomi, succinctBitVectorLBSYomi
+                ), succinctBitVectorIsLeafYomi
             )
             tokenArray.getListDictionaryByYomiTermIdShortArray(
-                termId, rank0ArrayTokenArrayBitvector, rank1ArrayTokenArrayBitvector
+                termId, succinctBitVectorTokenArray
             ).map {
                 Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
                         else -> tangoTrie.getLetterShortArray(
-                            it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango
+                            it.nodeId, succinctBitVectorTangoLBS
                         )
                     },
                     type = type,
@@ -1388,34 +1299,14 @@ class KanaKanjiEngine {
         }
     }
 
-    private fun deferredPrediction(
-        input: String,
-        yomiTrie: LOUDSWithTermId,
-        rank0ArrayLBSYomi: ShortArray,
-        rank1ArrayLBSYomi: ShortArray
-    ): List<String> {
-        if (input.length > 16) return emptyList()
-        if (input.length in 2..3) return emptyList()
-        return yomiTrie.predictiveSearch(
-            prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
-        ).filter {
-            when (input.length) {
-                4 -> it.length <= input.length + 2
-                in 5..6 -> it.length <= input.length + 3
-                else -> it.length > input.length
-            }
-        }
-    }
-
     private fun deferredPredictionEmojiSymbols(
         input: String,
         yomiTrie: LOUDSWithTermId,
-        rank0ArrayLBSYomi: ShortArray,
-        rank1ArrayLBSYomi: ShortArray
+        succinctBitVector: SuccinctBitVector
     ): List<String> {
         if (input.length > 16) return emptyList()
         return yomiTrie.predictiveSearch(
-            prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
+            prefix = input, succinctBitVector = succinctBitVector
         ).filter {
             when (input.length) {
                 1 -> it.length == input.length
