@@ -9,6 +9,7 @@ import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
@@ -118,16 +119,26 @@ class LOUDSWithTermId {
     fun getNodeIndex(
         s: String,
         rank1Array: IntArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
-        return search(2, s.toCharArray(), 0, rank1Array, LBSInBoolArray, LBSInBoolArrayPreprocess)
+        return search(2, s.toCharArray(), 0, rank1Array, LBSInBoolArrayPreprocess)
+    }
+
+    fun getNodeIndex(
+        s: String,
+        succinctBitVector: SuccinctBitVector,
+    ): Int {
+        return search(
+            2,
+            s.toCharArray(),
+            0,
+            succinctBitVector,
+        )
     }
 
     fun getNodeIndex(
         s: String,
         rank1Array: ShortArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         return searchShortArray(
@@ -135,7 +146,6 @@ class LOUDSWithTermId {
             s.toCharArray(),
             0,
             rank1Array,
-            LBSInBoolArray,
             LBSInBoolArrayPreprocess
         )
     }
@@ -149,11 +159,30 @@ class LOUDSWithTermId {
         return termIdsSaved[firstNodeId]
     }
 
+    fun getTermId(
+        nodeIndex: Int,
+        succinctBitVector: SuccinctBitVector
+    ): Int {
+        val firstNodeId: Int = succinctBitVector.rank1(nodeIndex) - 1
+        if (firstNodeId < 0) return -1
+        return termIdsSaved[firstNodeId]
+    }
+
     fun getTermIdShortArray(
         nodeIndex: Int,
         rank1Array: ShortArray
     ): Short {
         val firstNodeId: Int = isLeaf.rank1CommonShort(nodeIndex, rank1Array) - 1
+        if (firstNodeId < 0) return -1
+        val firstTermId: Int = termIdsSaved[firstNodeId]
+        return firstTermId.toShort()
+    }
+
+    fun getTermIdShortArray(
+        nodeIndex: Int,
+        succinctBitVector: SuccinctBitVector
+    ): Short {
+        val firstNodeId: Int = succinctBitVector.rank1(nodeIndex) - 1
         if (firstNodeId < 0) return -1
         val firstTermId: Int = termIdsSaved[firstNodeId]
         return firstTermId.toShort()
@@ -189,22 +218,32 @@ class LOUDSWithTermId {
         return -1
     }
 
-    private fun select0CommonCached(pos: Int, rank0Array: IntArray): Int {
-        val cachedResults = mutableMapOf<Pair<Int, IntArray>, Int>()
-        return cachedResults.getOrPut(Pair(pos, rank0Array)) {
-            LBS.select0Common(pos, rank0Array)
-        }
+    private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
+        val y = LBS.select0Common(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
+        return if (y < 0 || !LBS[y]) -1 else y
     }
 
-    private fun firstChild(pos: Int, rank0Array: IntArray, rank1Array: IntArray): Int {
-        val y = select0CommonCached(LBS.rank1Common(pos, rank1Array), rank0Array) + 1
-        return if (y < 0 || !LBS[y]) -1 else y
+    private fun firstChild(pos: Int, succinctBitVector: SuccinctBitVector): Int {
+        val rank1 = succinctBitVector.rank1(pos)
+        val select0 = succinctBitVector.select0(rank1) + 1
+        return if (select0 < 0 || !LBS[select0]) -1 else select0
     }
 
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
         var childPos = firstChild(pos, rank0Array, rank1Array)
         while (childPos >= 0 && LBS[childPos]) {
             if (c == labels[LBS.rank1Common(childPos, rank1Array)]) {
+                return childPos
+            }
+            childPos++
+        }
+        return -1
+    }
+
+    private fun traverse(pos: Int, c: Char, succinctBitVector: SuccinctBitVector): Int {
+        var childPos = firstChild(pos, succinctBitVector)
+        while (childPos >= 0 && LBS[childPos]) {
+            if (c == labels[succinctBitVector.rank1(childPos)]) {
                 return childPos
             }
             childPos++
@@ -220,6 +259,23 @@ class LOUDSWithTermId {
             n = traverse(n, c, rank0Array, rank1Array)
             if (n < 0) break
             val index = LBS.rank1Common(n, rank1Array)
+            if (index >= labels.size) break
+            resultTemp.append(labels[index])
+            if (isLeaf[n]) {
+                result.add(resultTemp.toString())
+            }
+        }
+        return result
+    }
+
+    fun commonPrefixSearch(str: String, succinctBitVector: SuccinctBitVector): List<String> {
+        val result = mutableListOf<String>()
+        val resultTemp = StringBuilder()
+        var n = 0
+        for (c in str) {
+            n = traverse(n, c, succinctBitVector)
+            if (n < 0) break
+            val index = succinctBitVector.rank1(n)
             if (index >= labels.size) break
             resultTemp.append(labels[index])
             if (isLeaf[n]) {
@@ -271,6 +327,26 @@ class LOUDSWithTermId {
         }
     }
 
+    private fun collectWords(
+        pos: Int,
+        prefix: StringBuilder,
+        succinctBitVector: SuccinctBitVector,
+        result: MutableList<String>
+    ) {
+        if (isLeaf[pos]) {
+            result.add(prefix.toString())
+        }
+        var childPos = firstChild(pos, succinctBitVector)
+        while (childPos >= 0 && LBS[childPos]) {
+            val index = succinctBitVector.rank1(childPos)
+            if (index >= labels.size) break
+            prefix.append(labels[index])
+            collectWords(childPos, prefix, succinctBitVector, result)
+            prefix.deleteCharAt(prefix.length - 1)
+            childPos++
+        }
+    }
+
     fun predictiveSearch(prefix: String, rank0Array: IntArray, rank1Array: IntArray): List<String> {
         val result = mutableListOf<String>()
         val resultTemp = StringBuilder()
@@ -284,6 +360,22 @@ class LOUDSWithTermId {
         }
         // Collect all words starting from the last matched node
         collectWords(n, resultTemp, rank0Array, rank1Array, result)
+        return result
+    }
+
+    fun predictiveSearch(prefix: String, succinctBitVector: SuccinctBitVector): List<String> {
+        val result = mutableListOf<String>()
+        val resultTemp = StringBuilder()
+        var n = 0
+        for (c in prefix) {
+            n = traverse(n, c, succinctBitVector)
+            if (n < 0) return result // No match found
+            val index = succinctBitVector.rank1(n)
+            if (index >= labels.size) return result
+            resultTemp.append(labels[index])
+        }
+        // Collect all words starting from the last matched node
+        collectWords(n, resultTemp, succinctBitVector, result)
         return result
     }
 
@@ -333,14 +425,13 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         rank1Array: IntArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = LBS.rank1Common(currentIndex, rank1Array)
         val charCount = chars.size
 
-        while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
+        while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex]
 
@@ -354,8 +445,39 @@ class LOUDSWithTermId {
                     chars,
                     wordOffset + 1,
                     rank1Array,
-                    LBSInBoolArray,
                     LBSInBoolArrayPreprocess
+                )
+            }
+            currentIndex++
+            charIndex++
+        }
+        return -1
+    }
+
+    private tailrec fun search(
+        index: Int,
+        chars: CharArray,
+        wordOffset: Int,
+        succinctBitVector: SuccinctBitVector,
+    ): Int {
+        var currentIndex = index
+        var charIndex = succinctBitVector.rank1(currentIndex)
+        val charCount = chars.size
+
+        while (currentIndex < LBS.size() && LBS[currentIndex]) {
+            val currentChar = chars[wordOffset]
+            val currentLabel = labels[charIndex]
+
+            if (currentChar == currentLabel) {
+                if (wordOffset + 1 == charCount) {
+                    return if (isLeaf[currentIndex]) currentIndex else currentIndex
+                }
+                val nextIndex = succinctBitVector.select0(charIndex) + 1
+                return search(
+                    nextIndex,
+                    chars,
+                    wordOffset + 1,
+                    succinctBitVector,
                 )
             }
             currentIndex++
@@ -384,14 +506,13 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         rank1Array: ShortArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = LBS.rank1CommonShort(currentIndex, rank1Array)
         val charCount = chars.size
 
-        while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
+        while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex.toInt()]
 
@@ -405,7 +526,6 @@ class LOUDSWithTermId {
                     chars,
                     wordOffset + 1,
                     rank1Array,
-                    LBSInBoolArray,
                     LBSInBoolArrayPreprocess
                 )
             }

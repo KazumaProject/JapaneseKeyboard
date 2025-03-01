@@ -9,13 +9,10 @@ import android.view.inputmethod.InputMethodManager
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.bitset.rank0GetIntArray
-import com.kazumaproject.bitset.rank0GetShortArray
-import com.kazumaproject.bitset.rank1GetIntArray
-import com.kazumaproject.bitset.rank1GetShortArray
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -24,8 +21,6 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDatabase
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.preprocessLBSIntoBooleanArray
-import com.kazumaproject.toBooleanArray
 import com.kazumaproject.viterbi.FindPath
 import dagger.Module
 import dagger.Provides
@@ -176,57 +171,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SystemRank0ArrayLBSYomi
-    fun provideRank0ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray =
-        yomiTrie.LBS.rank0GetIntArray()
+    @SystemSuccinctBitVectorLBSYomi
+    fun provideSuccinctBitVectorLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @SystemRank1ArrayLBSYomi
-    fun provideRank1ArrayLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray =
-        yomiTrie.LBS.rank1GetIntArray()
+    @SystemSuccinctBitVectorIsLeafYomi
+    fun provideSuccinctBitVectorIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @SystemRank1ArrayIsLeafYomi
-    fun provideRank1ArrayIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): IntArray =
-        yomiTrie.isLeaf.rank1GetIntArray()
+    @SystemSuccinctBitVectorTokenArray
+    fun provideSystemSuccinctBitVectorTokenArray(@SystemTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @SystemYomiLBSBooleanArray
-    fun providesYomiLBSBooleanArray(@SystemYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
-    @SystemYomiLBSBooleanArrayPreprocess
-    fun providesYomiLBSBooleanArrayPreprocess(@SystemYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @SystemRank0ArrayTokenArrayBitvector
-    fun provideRank0ArrayTokenArrayBitvector(@SystemTokenArray tokenArray: TokenArray): IntArray =
-        tokenArray.bitvector.rank0GetIntArray()
-
-    @Singleton
-    @Provides
-    @SystemRank1ArrayTokenArrayBitvector
-    fun provideRank1ArrayTokenArrayBitvector(@SystemTokenArray tokenArray: TokenArray): IntArray =
-        tokenArray.bitvector.rank1GetIntArray()
-
-    @Singleton
-    @Provides
-    @SystemRank0ArrayTangoLBS
-    fun provideRank0ArrayLBSTango(@SystemTangoTrie tangoTrie: LOUDS): IntArray =
-        tangoTrie.LBS.rank0GetIntArray()
-
-    @Singleton
-    @Provides
-    @SystemRank1ArrayTangoLBS
-    fun provideRank1ArrayLBSTango(@SystemTangoTrie tangoTrie: LOUDS): IntArray =
-        tangoTrie.LBS.rank1GetIntArray()
+    @SystemSuccinctBitVectorTangoLBS
+    fun provideSystemSuccinctBitVectorTangoLBS(@SystemTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
 
     @SingleKanjiTangoTrie
@@ -263,58 +228,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SingleKanjiRank0ArrayLBSYomi
-    fun provideSingleKanjiRank0ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank0GetShortArray()
+    @SingleKanjiSuccinctBitVectorLBSYomi
+    fun provideSingleKanjiSuccinctBitVectorLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @SingleKanjiRank1ArrayLBSYomi
-    fun provideSingleKanjiRank1ArrayLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank1GetShortArray()
+    @SingleKanjiSuccinctBitVectorIsLeafYomi
+    fun provideSingleKanjiSuccinctBitVectorIsLeafYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @SingleKanjiRank1ArrayIsLeafYomi
-    fun provideSingleKanjiRank1ArrayIsLeaf(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.isLeaf.rank1GetShortArray()
+    @SingleKanjiSuccinctBitVectorTokenArray
+    fun provideSingleKanjiSuccinctBitVectorTokenArray(@SingleKanjiTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @SingleKanjiYomiLBSBooleanArray
-    fun providesSingleKanjiYomiLBSBooleanArray(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiYomiLBSBooleanArrayPreprocess
-    fun providesSingleKanjiYomiLBSBooleanArrayPreprocess(@SingleKanjiYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank0ArrayTokenArrayBitvector
-    fun provideSingleKanjiRank0ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank1ArrayTokenArrayBitvector
-    fun provideSingleKanjiRank1ArrayTokenArrayBitvector(@SingleKanjiTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank1GetShortArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank0ArrayTangoLBS
-    fun provideSingleKanjiRank0ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @SingleKanjiRank1ArrayTangoLBS
-    fun provideSingleKanjiRank1ArrayLBSTango(@SingleKanjiTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank1GetShortArray()
-
+    @SingleKanjiSuccinctBitVectorTangoLBS
+    fun provideSSingleKanjiSuccinctBitVectorTangoLBS(@SingleKanjiTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
     @EmojiTangoTrie
     @Singleton
@@ -350,57 +284,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @EmojiRank0ArrayLBSYomi
-    fun provideEmojiRank0ArrayLBSYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank0GetShortArray()
+    @EmojiSuccinctBitVectorLBSYomi
+    fun provideEmojiSuccinctBitVectorLBSYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @EmojiRank1ArrayLBSYomi
-    fun provideEmojiRank1ArrayLBSYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank1GetShortArray()
+    @EmojiSuccinctBitVectorIsLeafYomi
+    fun provideEmojiSuccinctBitVectorIsLeafYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @EmojiRank1ArrayIsLeafYomi
-    fun provideEmojiRank1ArrayIsLeaf(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.isLeaf.rank1GetShortArray()
+    @EmojiSuccinctBitVectorTokenArray
+    fun provideEmojiSuccinctBitVectorTokenArray(@EmojiTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @EmojiYomiLBSBooleanArray
-    fun providesEmojiYomiLBSBooleanArray(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
-    @EmojiYomiLBSBooleanArrayPreprocess
-    fun providesEmojiYomiLBSBooleanArrayPreprocess(@EmojiYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @EmojiRank0ArrayTokenArrayBitvector
-    fun provideEmojiRank0ArrayTokenArrayBitvector(@EmojiTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @EmojiRank1ArrayTokenArrayBitvector
-    fun provideEmojiRank1ArrayTokenArrayBitvector(@EmojiTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank1GetShortArray()
-
-    @Singleton
-    @Provides
-    @EmojiRank0ArrayTangoLBS
-    fun provideEmojiRank0ArrayLBSTango(@EmojiTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @EmojiRank1ArrayTangoLBS
-    fun provideEmojiRank1ArrayLBSTango(@EmojiTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank1GetShortArray()
+    @EmojiSuccinctBitVectorTangoLBS
+    fun provideEmojiSuccinctBitVectorTangoLBS(@EmojiTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
     @EmoticonTangoTrie
     @Singleton
@@ -436,58 +340,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @EmoticonRank0ArrayLBSYomi
-    fun provideEmoticonRank0ArrayLBSYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank0GetShortArray()
+    @EmoticonSuccinctBitVectorLBSYomi
+    fun provideEmoticonSuccinctBitVectorLBSYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @EmoticonRank1ArrayLBSYomi
-    fun provideEmoticonRank1ArrayLBSYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank1GetShortArray()
+    @EmoticonSuccinctBitVectorIsLeafYomi
+    fun provideEmoticonSuccinctBitVectorIsLeafYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @EmoticonRank1ArrayIsLeafYomi
-    fun provideEmoticonRank1ArrayIsLeaf(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.isLeaf.rank1GetShortArray()
+    @EmoticonSuccinctBitVectorTokenArray
+    fun provideEmoticonSuccinctBitVectorTokenArray(@EmoticonTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @EmoticonYomiLBSBooleanArray
-    fun providesEmoticonYomiLBSBooleanArray(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
-    @EmoticonYomiLBSBooleanArrayPreprocess
-    fun providesEmoticonYomiLBSBooleanArrayPreprocess(@EmoticonYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @EmoticonRank0ArrayTokenArrayBitvector
-    fun provideEmoticonRank0ArrayTokenArrayBitvector(@EmoticonTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @EmoticonRank1ArrayTokenArrayBitvector
-    fun provideEmoticonRank1ArrayTokenArrayBitvector(@EmoticonTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank1GetShortArray()
-
-    @Singleton
-    @Provides
-    @EmoticonRank0ArrayTangoLBS
-    fun provideEmoticonRank0ArrayLBSTango(@EmoticonTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @EmoticonRank1ArrayTangoLBS
-    fun provideEmoticonRank1ArrayLBSTango(@EmoticonTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank1GetShortArray()
-
+    @EmoticonSuccinctBitVectorTangoLBS
+    fun provideEmoticonSuccinctBitVectorTangoLBS(@EmoticonTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
     @SymbolTangoTrie
     @Singleton
@@ -523,57 +396,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SymbolRank0ArrayLBSYomi
-    fun provideSymbolRank0ArrayLBSYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank0GetShortArray()
+    @SymbolSuccinctBitVectorLBSYomi
+    fun provideSymbolSuccinctBitVectorLBSYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @SymbolRank1ArrayLBSYomi
-    fun provideSymbolRank1ArrayLBSYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank1GetShortArray()
+    @SymbolSuccinctBitVectorIsLeafYomi
+    fun provideSymbolSuccinctBitVectorIsLeafYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @SymbolRank1ArrayIsLeafYomi
-    fun provideSymbolRank1ArrayIsLeaf(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.isLeaf.rank1GetShortArray()
+    @SymbolSuccinctBitVectorTokenArray
+    fun provideSymbolSuccinctBitVectorTokenArray(@SymbolTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @SymbolYomiLBSBooleanArray
-    fun providesSymbolYomiLBSBooleanArray(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
-    @SymbolYomiLBSBooleanArrayPreprocess
-    fun providesSymbolYomiLBSBooleanArrayPreprocess(@SymbolYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @SymbolRank0ArrayTokenArrayBitvector
-    fun provideSymbolRank0ArrayTokenArrayBitvector(@SymbolTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @SymbolRank1ArrayTokenArrayBitvector
-    fun provideSymbolRank1ArrayTokenArrayBitvector(@SymbolTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank1GetShortArray()
-
-    @Singleton
-    @Provides
-    @SymbolRank0ArrayTangoLBS
-    fun provideSymbolRank0ArrayLBSTango(@SymbolTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @SymbolRank1ArrayTangoLBS
-    fun provideSymbolRank1ArrayLBSTango(@SymbolTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank1GetShortArray()
+    @SymbolSuccinctBitVectorTangoLBS
+    fun provideSymbolSuccinctBitVectorTangoLBS(@SymbolTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
 
     @ReadingCorrectionTangoTrie
@@ -610,57 +453,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @ReadingCorrectionRank0ArrayLBSYomi
-    fun provideReadingCorrectionRank0ArrayLBSYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank0GetShortArray()
+    @ReadingCorrectionSuccinctBitVectorLBSYomi
+    fun provideReadingCorrectionSuccinctBitVectorLBSYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @ReadingCorrectionRank1ArrayLBSYomi
-    fun provideReadingCorrectionRank1ArrayLBSYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank1GetShortArray()
+    @ReadingCorrectionSuccinctBitVectorIsLeafYomi
+    fun provideReadingCorrectionSuccinctBitVectorIsLeafYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @ReadingCorrectionRank1ArrayIsLeafYomi
-    fun provideReadingCorrectionRank1ArrayIsLeaf(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.isLeaf.rank1GetShortArray()
+    @ReadingCorrectionSuccinctBitVectorTokenArray
+    fun provideReadingCorrectionSuccinctBitVectorTokenArray(@ReadingCorrectionTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @ReadingCorrectionYomiLBSBooleanArray
-    fun providesReadingCorrectionYomiLBSBooleanArray(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
-    @ReadingCorrectionYomiLBSBooleanArrayPrerpcess
-    fun providesReadingCorrectionYomiLBSBooleanArrayPreprocess(@ReadingCorrectionYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @ReadingCorrectionRank0ArrayTokenArrayBitvector
-    fun provideReadingCorrectionRank0ArrayTokenArrayBitvector(@ReadingCorrectionTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @ReadingCorrectionRank1ArrayTokenArrayBitvector
-    fun provideReadingCorrectionRank1ArrayTokenArrayBitvector(@ReadingCorrectionTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank1GetShortArray()
-
-    @Singleton
-    @Provides
-    @ReadingCorrectionRank0ArrayTangoLBS
-    fun provideReadingCorrectionRank0ArrayLBSTango(@ReadingCorrectionTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @ReadingCorrectionRank1ArrayTangoLBS
-    fun provideReadingCorrectionRank1ArrayLBSTango(@ReadingCorrectionTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank1GetShortArray()
+    @ReadingCorrectionSuccinctBitVectorTangoLBS
+    fun provideReadingCorrectionSuccinctBitVectorTangoLBS(@ReadingCorrectionTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
     @KotowazaTangoTrie
     @Singleton
@@ -696,57 +509,27 @@ object AppModule {
 
     @Singleton
     @Provides
-    @KotowazaRank0ArrayLBSYomi
-    fun provideKotowazaRank0ArrayLBSYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank0GetShortArray()
+    @KotowazaSuccinctBitVectorLBSYomi
+    fun provideKotowazaSuccinctBitVectorLBSYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.LBS)
 
     @Singleton
     @Provides
-    @KotowazaRank1ArrayLBSYomi
-    fun provideKotowazaRank1ArrayLBSYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.LBS.rank1GetShortArray()
+    @KotowazaSuccinctBitVectorIsLeafYomi
+    fun provideKotowazaSuccinctBitVectorIsLeafYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        SuccinctBitVector(yomiTrie.isLeaf)
 
     @Singleton
     @Provides
-    @KotowazaRank1ArrayIsLeafYomi
-    fun provideKotowazaRank1ArrayIsLeaf(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): ShortArray =
-        yomiTrie.isLeaf.rank1GetShortArray()
+    @KotowazaSuccinctBitVectorTokenArray
+    fun provideKotowazaSuccinctBitVectorTokenArray(@KotowazaTokenArray tokenArray: TokenArray): SuccinctBitVector =
+        SuccinctBitVector(tokenArray.bitvector)
 
     @Singleton
     @Provides
-    @KotowazaYomiLBSBooleanArray
-    fun providesKotowazaYomiLBSBooleanArray(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
-    @KotowazaYomiLBSBooleanArrayPreprocess
-    fun providesKotowazaYomiLBSBooleanArrayPreprocess(@KotowazaYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
-    @KotowazaRank0ArrayTokenArrayBitvector
-    fun provideKotowazaRank0ArrayTokenArrayBitvector(@KotowazaTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @KotowazaRank1ArrayTokenArrayBitvector
-    fun provideKotowazaRank1ArrayTokenArrayBitvector(@KotowazaTokenArray tokenArray: TokenArray): ShortArray =
-        tokenArray.bitvector.rank1GetShortArray()
-
-    @Singleton
-    @Provides
-    @KotowazaRank0ArrayTangoLBS
-    fun provideKotowazaRank0ArrayLBSTango(@KotowazaTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank0GetShortArray()
-
-    @Singleton
-    @Provides
-    @KotowazaRank1ArrayTangoLBS
-    fun provideKotowazaRank1ArrayLBSTango(@KotowazaTangoTrie tangoTrie: LOUDS): ShortArray =
-        tangoTrie.LBS.rank1GetShortArray()
+    @KotowazaSuccinctBitVectorTangoLBS
+    fun provideKotowazaSuccinctBitVectorTangoLBS(@KotowazaTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
+        SuccinctBitVector(tangoTrie.LBS)
 
     @Singleton
     @Provides
@@ -756,94 +539,58 @@ object AppModule {
         @SystemTangoTrie systemTangoTrie: LOUDS,
         @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
         @SystemTokenArray systemTokenArray: TokenArray,
-        @SystemRank0ArrayLBSYomi systemRank0ArrayLBSYomi: IntArray,
-        @SystemRank1ArrayLBSYomi systemRank1ArrayLBSYomi: IntArray,
-        @SystemRank1ArrayIsLeafYomi systemRank1ArrayIsLeaf: IntArray,
-        @SystemRank0ArrayTokenArrayBitvector systemRank0ArrayTokenArrayBitvector: IntArray,
-        @SystemRank1ArrayTokenArrayBitvector systemRank1ArrayTokenArrayBitvector: IntArray,
-        @SystemRank0ArrayTangoLBS systemRank0ArrayTangoLBS: IntArray,
-        @SystemRank1ArrayTangoLBS systemRank1ArrayTangoLBS: IntArray,
-        @SystemYomiLBSBooleanArray systemYomiLBSBooleanArray: BooleanArray,
+        @SystemSuccinctBitVectorLBSYomi systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @SystemSuccinctBitVectorIsLeafYomi systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @SystemSuccinctBitVectorTokenArray systemSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @SystemSuccinctBitVectorTangoLBS systemSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         @SingleKanjiTangoTrie singleKanjiTangoTrie: LOUDS,
         @SingleKanjiYomiTrie singleKanjiYomiTrie: LOUDSWithTermId,
         @SingleKanjiTokenArray singleKanjiTokenArray: TokenArray,
-        @SingleKanjiRank0ArrayLBSYomi singleKanjiRank0ArrayLBSYomi: ShortArray,
-        @SingleKanjiRank1ArrayLBSYomi singleKanjiRank1ArrayLBSYomi: ShortArray,
-        @SingleKanjiRank1ArrayIsLeafYomi singleKanjiRank1ArrayIsLeaf: ShortArray,
-        @SingleKanjiRank0ArrayTokenArrayBitvector singleKanjiRank0ArrayTokenArrayBitvector: ShortArray,
-        @SingleKanjiRank1ArrayTokenArrayBitvector singleKanjiRank1ArrayTokenArrayBitvector: ShortArray,
-        @SingleKanjiRank0ArrayTangoLBS singleKanjiRank0ArrayTangoLBS: ShortArray,
-        @SingleKanjiRank1ArrayTangoLBS singleKanjiRank1ArrayTangoLBS: ShortArray,
-        @SingleKanjiYomiLBSBooleanArray singleKanjiYomiLBSBooleanArray: BooleanArray,
+        @SingleKanjiSuccinctBitVectorLBSYomi singleKanjiSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @SingleKanjiSuccinctBitVectorIsLeafYomi singleKanjiSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @SingleKanjiSuccinctBitVectorTokenArray singleKanjiSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @SingleKanjiSuccinctBitVectorTangoLBS singleKanjiSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         @EmojiTangoTrie emojiTangoTrie: LOUDS,
         @EmojiYomiTrie emojiYomiTrie: LOUDSWithTermId,
         @EmojiTokenArray emojiTokenArray: TokenArray,
-        @EmojiRank0ArrayLBSYomi emojiRank0ArrayLBSYomi: ShortArray,
-        @EmojiRank1ArrayLBSYomi emojiRank1ArrayLBSYomi: ShortArray,
-        @EmojiRank1ArrayIsLeafYomi emojiRank1ArrayIsLeaf: ShortArray,
-        @EmojiRank0ArrayTokenArrayBitvector emojiRank0ArrayTokenArrayBitvector: ShortArray,
-        @EmojiRank1ArrayTokenArrayBitvector emojiRank1ArrayTokenArrayBitvector: ShortArray,
-        @EmojiRank0ArrayTangoLBS emojiRank0ArrayTangoLBS: ShortArray,
-        @EmojiRank1ArrayTangoLBS emojiRank1ArrayTangoLBS: ShortArray,
-        @EmojiYomiLBSBooleanArray emojiYomiLBSBooleanArray: BooleanArray,
+        @EmojiSuccinctBitVectorLBSYomi emojiSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @EmojiSuccinctBitVectorIsLeafYomi emojiSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @EmojiSuccinctBitVectorTokenArray emojiSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @EmojiSuccinctBitVectorTangoLBS emojiSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         @EmoticonTangoTrie emoticonTangoTrie: LOUDS,
         @EmoticonYomiTrie emoticonYomiTrie: LOUDSWithTermId,
         @EmoticonTokenArray emoticonTokenArray: TokenArray,
-        @EmoticonRank0ArrayLBSYomi emoticonRank0ArrayLBSYomi: ShortArray,
-        @EmoticonRank1ArrayLBSYomi emoticonRank1ArrayLBSYomi: ShortArray,
-        @EmoticonRank1ArrayIsLeafYomi emoticonRank1ArrayIsLeaf: ShortArray,
-        @EmoticonRank0ArrayTokenArrayBitvector emoticonRank0ArrayTokenArrayBitvector: ShortArray,
-        @EmoticonRank1ArrayTokenArrayBitvector emoticonRank1ArrayTokenArrayBitvector: ShortArray,
-        @EmoticonRank0ArrayTangoLBS emoticonRank0ArrayTangoLBS: ShortArray,
-        @EmoticonRank1ArrayTangoLBS emoticonRank1ArrayTangoLBS: ShortArray,
-        @EmoticonYomiLBSBooleanArray emoticonYomiLBSBooleanArray: BooleanArray,
+        @EmoticonSuccinctBitVectorLBSYomi emoticonSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @EmoticonSuccinctBitVectorIsLeafYomi emoticonSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @EmoticonSuccinctBitVectorTokenArray emoticonSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @EmoticonSuccinctBitVectorTangoLBS emoticonSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         @SymbolTangoTrie symbolTangoTrie: LOUDS,
         @SymbolYomiTrie symbolYomiTrie: LOUDSWithTermId,
         @SymbolTokenArray symbolTokenArray: TokenArray,
-        @SymbolRank0ArrayLBSYomi symbolRank0ArrayLBSYomi: ShortArray,
-        @SymbolRank1ArrayLBSYomi symbolRank1ArrayLBSYomi: ShortArray,
-        @SymbolRank1ArrayIsLeafYomi symbolRank1ArrayIsLeaf: ShortArray,
-        @SymbolRank0ArrayTokenArrayBitvector symbolRank0ArrayTokenArrayBitvector: ShortArray,
-        @SymbolRank1ArrayTokenArrayBitvector symbolRank1ArrayTokenArrayBitvector: ShortArray,
-        @SymbolRank0ArrayTangoLBS symbolRank0ArrayTangoLBS: ShortArray,
-        @SymbolRank1ArrayTangoLBS symbolRank1ArrayTangoLBS: ShortArray,
-        @SymbolYomiLBSBooleanArray symbolYomiLBSBooleanArray: BooleanArray,
+        @SymbolSuccinctBitVectorLBSYomi symbolSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @SymbolSuccinctBitVectorIsLeafYomi symbolSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @SymbolSuccinctBitVectorTokenArray symbolSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @SymbolSuccinctBitVectorTangoLBS symbolSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         @ReadingCorrectionTangoTrie readingCorrectionTangoTrie: LOUDS,
         @ReadingCorrectionYomiTrie readingCorrectionYomiTrie: LOUDSWithTermId,
         @ReadingCorrectionTokenArray readingCorrectionTokenArray: TokenArray,
-        @ReadingCorrectionRank0ArrayLBSYomi readingCorrectionRank0ArrayLBSYomi: ShortArray,
-        @ReadingCorrectionRank1ArrayLBSYomi readingCorrectionRank1ArrayLBSYomi: ShortArray,
-        @ReadingCorrectionRank1ArrayIsLeafYomi readingCorrectionRank1ArrayIsLeaf: ShortArray,
-        @ReadingCorrectionRank0ArrayTokenArrayBitvector readingCorrectionRank0ArrayTokenArrayBitvector: ShortArray,
-        @ReadingCorrectionRank1ArrayTokenArrayBitvector readingCorrectionRank1ArrayTokenArrayBitvector: ShortArray,
-        @ReadingCorrectionRank0ArrayTangoLBS readingCorrectionRank0ArrayTangoLBS: ShortArray,
-        @ReadingCorrectionRank1ArrayTangoLBS readingCorrectionRank1ArrayTangoLBS: ShortArray,
-        @ReadingCorrectionYomiLBSBooleanArray readingCorrectionYomiLBSBooleanArray: BooleanArray,
+        @ReadingCorrectionSuccinctBitVectorLBSYomi readingCorrectionSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @ReadingCorrectionSuccinctBitVectorIsLeafYomi readingCorrectionSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @ReadingCorrectionSuccinctBitVectorTokenArray readingCorrectionSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @ReadingCorrectionSuccinctBitVectorTangoLBS readingCorrectionSuccinctBitVectorTangoLBS: SuccinctBitVector,
 
         @KotowazaTangoTrie kotowazaTangoTrie: LOUDS,
         @KotowazaYomiTrie kotowazaYomiTrie: LOUDSWithTermId,
         @KotowazaTokenArray kotowazaTokenArray: TokenArray,
-        @KotowazaRank0ArrayLBSYomi kotowazaRank0ArrayLBSYomi: ShortArray,
-        @KotowazaRank1ArrayLBSYomi kotowazaRank1ArrayLBSYomi: ShortArray,
-        @KotowazaRank1ArrayIsLeafYomi kotowazaRank1ArrayIsLeaf: ShortArray,
-        @KotowazaRank0ArrayTokenArrayBitvector kotowazaRank0ArrayTokenArrayBitvector: ShortArray,
-        @KotowazaRank1ArrayTokenArrayBitvector kotowazaRank1ArrayTokenArrayBitvector: ShortArray,
-        @KotowazaRank0ArrayTangoLBS kotowazaRank0ArrayTangoLBS: ShortArray,
-        @KotowazaRank1ArrayTangoLBS kotowazaRank1ArrayTangoLBS: ShortArray,
-        @KotowazaYomiLBSBooleanArray kotowazaYomiLBSBooleanArray: BooleanArray,
-
-        @SystemYomiLBSBooleanArrayPreprocess systemYomiLBSBooleanArrayPreprocess: IntArray,
-        @SingleKanjiYomiLBSBooleanArrayPreprocess singleKanjiYomiLBSBooleanArrayPreprocess: IntArray,
-        @EmojiYomiLBSBooleanArrayPreprocess emojiYomiLBSBooleanArrayPreprocess: IntArray,
-        @EmoticonYomiLBSBooleanArrayPreprocess emoticonYomiLBSBooleanArrayPreprocess: IntArray,
-        @SymbolYomiLBSBooleanArrayPreprocess symbolYomiLBSBooleanArrayPreprocess: IntArray,
-        @ReadingCorrectionYomiLBSBooleanArrayPrerpcess readingCorrectionYomiLBSBooleanArrayPreprocess: IntArray,
-        @KotowazaYomiLBSBooleanArrayPreprocess kotowazaYomiLBSBooleanArrayPreprocess: IntArray,
+        @KotowazaSuccinctBitVectorLBSYomi kotowazaSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @KotowazaSuccinctBitVectorIsLeafYomi kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @KotowazaSuccinctBitVectorTokenArray kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @KotowazaSuccinctBitVectorTangoLBS kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
@@ -857,94 +604,58 @@ object AppModule {
             systemTangoTrie = systemTangoTrie,
             systemYomiTrie = systemYomiTrie,
             systemTokenArray = systemTokenArray,
-            systemRank0ArrayLBSYomi = systemRank0ArrayLBSYomi,
-            systemRank1ArrayLBSYomi = systemRank1ArrayLBSYomi,
-            systemRank1ArrayIsLeaf = systemRank1ArrayIsLeaf,
-            systemRank0ArrayTokenArrayBitvector = systemRank0ArrayTokenArrayBitvector,
-            systemRank1ArrayTokenArrayBitvector = systemRank1ArrayTokenArrayBitvector,
-            systemRank0ArrayLBSTango = systemRank0ArrayTangoLBS,
-            systemRank1ArrayLBSTango = systemRank1ArrayTangoLBS,
-            systemYomiLBSBooleanArray = systemYomiLBSBooleanArray,
+            systemSuccinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            systemSuccinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            systemSuccinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
 
             singleKanjiTangoTrie = singleKanjiTangoTrie,
             singleKanjiYomiTrie = singleKanjiYomiTrie,
             singleKanjiTokenArray = singleKanjiTokenArray,
-            singleKanjiRank0ArrayLBSYomi = singleKanjiRank0ArrayLBSYomi,
-            singleKanjiRank1ArrayLBSYomi = singleKanjiRank1ArrayLBSYomi,
-            singleKanjiRank1ArrayIsLeaf = singleKanjiRank1ArrayIsLeaf,
-            singleKanjiRank0ArrayTokenArrayBitvector = singleKanjiRank0ArrayTokenArrayBitvector,
-            singleKanjiRank1ArrayTokenArrayBitvector = singleKanjiRank1ArrayTokenArrayBitvector,
-            singleKanjiRank0ArrayLBSTango = singleKanjiRank0ArrayTangoLBS,
-            singleKanjiRank1ArrayLBSTango = singleKanjiRank1ArrayTangoLBS,
-            singleKanjiYomiLBSBooleanArray = singleKanjiYomiLBSBooleanArray,
+            singleKanjiSuccinctBitVectorLBSYomi = singleKanjiSuccinctBitVectorLBSYomi,
+            singleKanjiSuccinctBitVectorIsLeafYomi = singleKanjiSuccinctBitVectorIsLeafYomi,
+            singleKanjiSuccinctBitVectorTokenArray = singleKanjiSuccinctBitVectorTokenArray,
+            singleKanjiSuccinctBitVectorTangoLBS = singleKanjiSuccinctBitVectorTangoLBS,
 
             emojiTangoTrie = emojiTangoTrie,
             emojiYomiTrie = emojiYomiTrie,
             emojiTokenArray = emojiTokenArray,
-            emojiRank0ArrayLBSYomi = emojiRank0ArrayLBSYomi,
-            emojiRank1ArrayLBSYomi = emojiRank1ArrayLBSYomi,
-            emojiRank1ArrayIsLeaf = emojiRank1ArrayIsLeaf,
-            emojiRank0ArrayTokenArrayBitvector = emojiRank0ArrayTokenArrayBitvector,
-            emojiRank1ArrayTokenArrayBitvector = emojiRank1ArrayTokenArrayBitvector,
-            emojiRank0ArrayLBSTango = emojiRank0ArrayTangoLBS,
-            emojiRank1ArrayLBSTango = emojiRank1ArrayTangoLBS,
-            emojiYomiLBSBooleanArray = emojiYomiLBSBooleanArray,
+            emojiSuccinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
+            emojiSuccinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
+            emojiSuccinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
+            emojiSuccinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
 
             emoticonTangoTrie = emoticonTangoTrie,
             emoticonYomiTrie = emoticonYomiTrie,
             emoticonTokenArray = emoticonTokenArray,
-            emoticonRank0ArrayLBSYomi = emoticonRank0ArrayLBSYomi,
-            emoticonRank1ArrayLBSYomi = emoticonRank1ArrayLBSYomi,
-            emoticonRank1ArrayIsLeaf = emoticonRank1ArrayIsLeaf,
-            emoticonRank0ArrayTokenArrayBitvector = emoticonRank0ArrayTokenArrayBitvector,
-            emoticonRank1ArrayTokenArrayBitvector = emoticonRank1ArrayTokenArrayBitvector,
-            emoticonRank0ArrayLBSTango = emoticonRank0ArrayTangoLBS,
-            emoticonRank1ArrayLBSTango = emoticonRank1ArrayTangoLBS,
-            emoticonYomiLBSBooleanArray = emoticonYomiLBSBooleanArray,
+            emoticonSuccinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi,
+            emoticonSuccinctBitVectorIsLeafYomi = emoticonSuccinctBitVectorIsLeafYomi,
+            emoticonSuccinctBitVectorTokenArray = emoticonSuccinctBitVectorTokenArray,
+            emoticonSuccinctBitVectorTangoLBS = emoticonSuccinctBitVectorTangoLBS,
 
             symbolTangoTrie = symbolTangoTrie,
             symbolYomiTrie = symbolYomiTrie,
             symbolTokenArray = symbolTokenArray,
-            symbolRank0ArrayLBSYomi = symbolRank0ArrayLBSYomi,
-            symbolRank1ArrayLBSYomi = symbolRank1ArrayLBSYomi,
-            symbolRank1ArrayIsLeaf = symbolRank1ArrayIsLeaf,
-            symbolRank0ArrayTokenArrayBitvector = symbolRank0ArrayTokenArrayBitvector,
-            symbolRank1ArrayTokenArrayBitvector = symbolRank1ArrayTokenArrayBitvector,
-            symbolRank0ArrayLBSTango = symbolRank0ArrayTangoLBS,
-            symbolRank1ArrayLBSTango = symbolRank1ArrayTangoLBS,
-            symbolYomiLBSBooleanArray = symbolYomiLBSBooleanArray,
+            symbolSuccinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            symbolSuccinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            symbolSuccinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            symbolSuccinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
 
             readingCorrectionTangoTrie = readingCorrectionTangoTrie,
             readingCorrectionYomiTrie = readingCorrectionYomiTrie,
             readingCorrectionTokenArray = readingCorrectionTokenArray,
-            readingCorrectionRank0ArrayLBSYomi = readingCorrectionRank0ArrayLBSYomi,
-            readingCorrectionRank1ArrayLBSYomi = readingCorrectionRank1ArrayLBSYomi,
-            readingCorrectionRank1ArrayIsLeaf = readingCorrectionRank1ArrayIsLeaf,
-            readingCorrectionRank0ArrayTokenArrayBitvector = readingCorrectionRank0ArrayTokenArrayBitvector,
-            readingCorrectionRank1ArrayTokenArrayBitvector = readingCorrectionRank1ArrayTokenArrayBitvector,
-            readingCorrectionRank0ArrayLBSTango = readingCorrectionRank0ArrayTangoLBS,
-            readingCorrectionRank1ArrayLBSTango = readingCorrectionRank1ArrayTangoLBS,
-            readingCorrectionYomiLBSBooleanArray = readingCorrectionYomiLBSBooleanArray,
+            readingCorrectionSuccinctBitVectorLBSYomi = readingCorrectionSuccinctBitVectorLBSYomi,
+            readingCorrectionSuccinctBitVectorIsLeafYomi = readingCorrectionSuccinctBitVectorIsLeafYomi,
+            readingCorrectionSuccinctBitVectorTokenArray = readingCorrectionSuccinctBitVectorTokenArray,
+            readingCorrectionSuccinctBitVectorTangoLBS = readingCorrectionSuccinctBitVectorTangoLBS,
 
             kotowazaTangoTrie = kotowazaTangoTrie,
             kotowazaYomiTrie = kotowazaYomiTrie,
             kotowazaTokenArray = kotowazaTokenArray,
-            kotowazaRank0ArrayLBSYomi = kotowazaRank0ArrayLBSYomi,
-            kotowazaRank1ArrayLBSYomi = kotowazaRank1ArrayLBSYomi,
-            kotowazaRank1ArrayIsLeaf = kotowazaRank1ArrayIsLeaf,
-            kotowazaRank0ArrayTokenArrayBitvector = kotowazaRank0ArrayTokenArrayBitvector,
-            kotowazaRank1ArrayTokenArrayBitvector = kotowazaRank1ArrayTokenArrayBitvector,
-            kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayTangoLBS,
-            kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayTangoLBS,
-            kotowazaYomiLBSBooleanArray = kotowazaYomiLBSBooleanArray,
-
-            systemYomiLBSPreprocess = systemYomiLBSBooleanArrayPreprocess,
-            singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSBooleanArrayPreprocess,
-            emojiYomiLBSPreprocess = emojiYomiLBSBooleanArrayPreprocess,
-            emoticonYomiLBSPreprocess = emoticonYomiLBSBooleanArrayPreprocess,
-            symbolYomiLBSPreprocess = symbolYomiLBSBooleanArrayPreprocess,
-            readingCorrectionYomiLBSPreprocess = readingCorrectionYomiLBSBooleanArrayPreprocess,
-            kotowazaYomiLBSPreprocess = kotowazaYomiLBSBooleanArrayPreprocess
+            kotowazaSuccinctBitVectorLBSYomi = kotowazaSuccinctBitVectorLBSYomi,
+            kotowazaSuccinctBitVectorIsLeafYomi = kotowazaSuccinctBitVectorIsLeafYomi,
+            kotowazaSuccinctBitVectorTokenArray = kotowazaSuccinctBitVectorTokenArray,
+            kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS,
         )
 
         return kanaKanjiEngine

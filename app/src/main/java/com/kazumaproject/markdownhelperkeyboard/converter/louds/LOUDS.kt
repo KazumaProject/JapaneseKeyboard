@@ -12,6 +12,7 @@ import com.kazumaproject.bitset.select1Common
 import com.kazumaproject.bitset.select1CommonShort
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.toByteArrayFromListChar
 import com.kazumaproject.toListChar
 import java.io.IOException
@@ -126,6 +127,29 @@ class LOUDS {
         return result.reverse().toString()
     }
 
+    fun getLetter(
+        nodeIndex: Int,
+        succinctBitVector: SuccinctBitVector
+    ): String {
+        val result = StringBuilder()
+        var currentNodeIndex = nodeIndex
+
+        while (true) {
+            val currentNodeId = succinctBitVector.rank1(currentNodeIndex)
+            val currentChar = labels[currentNodeId]
+
+            /** Remove this for Wakati **/
+            if (currentChar != ' ') {
+                result.append(currentChar)
+            }
+
+            if (currentNodeId == 0) break
+            val rank0 = succinctBitVector.rank0(currentNodeIndex)
+            currentNodeIndex = succinctBitVector.select1(rank0)
+        }
+        return result.reverse().toString()
+    }
+
     fun getLetterShortArray(
         nodeIndex: Int,
         rank0Array: ShortArray,
@@ -148,6 +172,27 @@ class LOUDS {
                 rank1Array
             ).toInt()
             if (parentNodeId == (0).toShort()) return ""
+        }
+        return list.toList().asReversed().joinToString("")
+    }
+
+    fun getLetterShortArray(
+        nodeIndex: Int,
+        succinctBitVector: SuccinctBitVector
+    ): String {
+        val list = mutableListOf<Char>()
+        val firstNodeId = succinctBitVector.rank1(nodeIndex)
+        val firstChar = labels[firstNodeId]
+        list.add(firstChar)
+        val rank0 = succinctBitVector.rank0(nodeIndex)
+        var parentNodeIndex = succinctBitVector.select1(rank0)
+        while (parentNodeIndex != 0) {
+            val parentNodeId = succinctBitVector.rank1(parentNodeIndex)
+            val pair = labels[parentNodeId]
+            list.add(pair)
+            val rank0InLoop = succinctBitVector.rank0(parentNodeIndex)
+            parentNodeIndex = succinctBitVector.select1(rank0InLoop)
+            if (parentNodeId == (0)) return ""
         }
         return list.toList().asReversed().joinToString("")
     }
