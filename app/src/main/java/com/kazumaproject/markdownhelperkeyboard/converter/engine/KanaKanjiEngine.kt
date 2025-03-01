@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.bitset.rank0GetIntArray
-import com.kazumaproject.bitset.rank1GetIntArray
 import com.kazumaproject.convertFullWidthToHalfWidth
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
@@ -18,8 +16,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByEmo
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.preprocessLBSIntoBooleanArray
-import com.kazumaproject.toBooleanArray
 import com.kazumaproject.toFullWidthDigitsEfficient
 import com.kazumaproject.viterbi.FindPath
 import kotlinx.coroutines.Dispatchers
@@ -106,71 +102,46 @@ class KanaKanjiEngine {
     private var personTangoTrie: LOUDS? = null
     private var personTokenArray: TokenArray? = null
 
-    private var personRank0ArrayLBSYomi: IntArray? = null
-    private var personRank1ArrayLBSYomi: IntArray? = null
-    private var personRank1ArrayIsLeaf: IntArray? = null
-    private var personRank0ArrayTokenArrayBitvector: IntArray? = null
-    private var personRank1ArrayTokenArrayBitvector: IntArray? = null
-    private var personRank0ArrayLBSTango: IntArray? = null
-    private var personRank1ArrayLBSTango: IntArray? = null
-    private var personYomiLBSBooleanArray: BooleanArray? = null
-    private var personYomiLBSPreprocess: IntArray? = null
+    private var personSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var personSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
+    private var personSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var personSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private var placesYomiTrie: LOUDSWithTermId? = null
     private var placesTangoTrie: LOUDS? = null
     private var placesTokenArray: TokenArray? = null
 
-    private var placesRank0ArrayLBSYomi: IntArray? = null
-    private var placesRank1ArrayLBSYomi: IntArray? = null
-    private var placesRank1ArrayIsLeaf: IntArray? = null
-    private var placesRank0ArrayTokenArrayBitvector: IntArray? = null
-    private var placesRank1ArrayTokenArrayBitvector: IntArray? = null
-    private var placesRank0ArrayLBSTango: IntArray? = null
-    private var placesRank1ArrayLBSTango: IntArray? = null
-    private var placesYomiLBSBooleanArray: BooleanArray? = null
-    private var placesYomiLBSPreprocess: IntArray? = null
+    private var placesSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var placesSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
+    private var placesSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var placesSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private var wikiYomiTrie: LOUDSWithTermId? = null
     private var wikiTangoTrie: LOUDS? = null
     private var wikiTokenArray: TokenArray? = null
 
-    private var wikiRank0ArrayLBSYomi: IntArray? = null
-    private var wikiRank1ArrayLBSYomi: IntArray? = null
-    private var wikiRank1ArrayIsLeaf: IntArray? = null
-    private var wikiRank0ArrayTokenArrayBitvector: IntArray? = null
-    private var wikiRank1ArrayTokenArrayBitvector: IntArray? = null
-    private var wikiRank0ArrayLBSTango: IntArray? = null
-    private var wikiRank1ArrayLBSTango: IntArray? = null
-    private var wikiYomiLBSBooleanArray: BooleanArray? = null
-    private var wikiYomiLBSPreprocess: IntArray? = null
+    private var wikiSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var wikiSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
+    private var wikiSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var wikiSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private var neologdYomiTrie: LOUDSWithTermId? = null
     private var neologdTangoTrie: LOUDS? = null
     private var neologdTokenArray: TokenArray? = null
 
-    private var neologdRank0ArrayLBSYomi: IntArray? = null
-    private var neologdRank1ArrayLBSYomi: IntArray? = null
-    private var neologdRank1ArrayIsLeaf: IntArray? = null
-    private var neologdRank0ArrayTokenArrayBitvector: IntArray? = null
-    private var neologdRank1ArrayTokenArrayBitvector: IntArray? = null
-    private var neologdRank0ArrayLBSTango: IntArray? = null
-    private var neologdRank1ArrayLBSTango: IntArray? = null
-    private var neologdYomiLBSBooleanArray: BooleanArray? = null
-    private var neologdYomiLBSPreprocess: IntArray? = null
+    private var neologdSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var neologdSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
+    private var neologdSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var neologdSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private var webYomiTrie: LOUDSWithTermId? = null
     private var webTangoTrie: LOUDS? = null
     private var webTokenArray: TokenArray? = null
 
-    private var webRank0ArrayLBSYomi: IntArray? = null
-    private var webRank1ArrayLBSYomi: IntArray? = null
-    private var webRank1ArrayIsLeaf: IntArray? = null
-    private var webRank0ArrayTokenArrayBitvector: IntArray? = null
-    private var webRank1ArrayTokenArrayBitvector: IntArray? = null
-    private var webRank0ArrayLBSTango: IntArray? = null
-    private var webRank1ArrayLBSTango: IntArray? = null
-    private var webYomiLBSBooleanArray: BooleanArray? = null
-    private var webYomiLBSPreprocess: IntArray? = null
+    private var webSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var webSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
+    private var webSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var webSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     companion object {
         const val SCORE_OFFSET = 8000
@@ -339,16 +310,10 @@ class KanaKanjiEngine {
         this.personTokenArray?.readExternal(objectInputTokenArray)
         this.personTokenArray?.readPOSTable(objectInputReadPOSTable)
 
-        this.personRank0ArrayLBSYomi = personYomiTrie?.LBS?.rank0GetIntArray()
-        this.personRank1ArrayLBSYomi = personYomiTrie?.LBS?.rank1GetIntArray()
-        this.personRank1ArrayIsLeaf = personYomiTrie?.isLeaf?.rank1GetIntArray()
-        this.personYomiLBSBooleanArray = personYomiTrie?.LBS?.toBooleanArray()
-        this.personYomiLBSPreprocess =
-            this.personYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
-        this.personRank0ArrayTokenArrayBitvector = personTokenArray?.bitvector?.rank0GetIntArray()
-        this.personRank1ArrayTokenArrayBitvector = personTokenArray?.bitvector?.rank1GetIntArray()
-        this.personRank0ArrayLBSTango = personTangoTrie?.LBS?.rank0GetIntArray()
-        this.personRank1ArrayLBSTango = personTangoTrie?.LBS?.rank1GetIntArray()
+        this.personSuccinctBitVectorLBSYomi = SuccinctBitVector(personYomiTrie!!.LBS)
+        this.personSuccinctBitVectorIsLeaf = SuccinctBitVector(personYomiTrie!!.isLeaf)
+        this.personSuccinctBitVectorTokenArray = SuccinctBitVector(personTokenArray!!.bitvector)
+        this.personSuccinctBitVectorLBSTango = SuccinctBitVector(personTangoTrie!!.LBS)
     }
 
     fun buildPlaceDictionary(context: Context) {
@@ -382,17 +347,10 @@ class KanaKanjiEngine {
             ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
 
         this.placesTokenArray?.readPOSTable(objectInputReadPOSTable)
-
-        this.placesRank0ArrayLBSYomi = placesYomiTrie?.LBS?.rank0GetIntArray()
-        this.placesRank1ArrayLBSYomi = placesYomiTrie?.LBS?.rank1GetIntArray()
-        this.placesRank1ArrayIsLeaf = placesYomiTrie?.isLeaf?.rank1GetIntArray()
-        this.placesYomiLBSBooleanArray = placesYomiTrie?.LBS?.toBooleanArray()
-        this.placesYomiLBSPreprocess =
-            this.placesYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
-        this.placesRank0ArrayTokenArrayBitvector = placesTokenArray?.bitvector?.rank0GetIntArray()
-        this.placesRank1ArrayTokenArrayBitvector = placesTokenArray?.bitvector?.rank1GetIntArray()
-        this.placesRank0ArrayLBSTango = placesTangoTrie?.LBS?.rank0GetIntArray()
-        this.placesRank1ArrayLBSTango = placesTangoTrie?.LBS?.rank1GetIntArray()
+        this.placesSuccinctBitVectorLBSYomi = SuccinctBitVector(placesYomiTrie!!.LBS)
+        this.placesSuccinctBitVectorIsLeaf = SuccinctBitVector(placesYomiTrie!!.isLeaf)
+        this.placesSuccinctBitVectorTokenArray = SuccinctBitVector(placesTokenArray!!.bitvector)
+        this.placesSuccinctBitVectorLBSTango = SuccinctBitVector(placesTangoTrie!!.LBS)
     }
 
     fun buildWikiDictionary(context: Context) {
@@ -427,15 +385,10 @@ class KanaKanjiEngine {
 
         this.wikiTokenArray?.readPOSTable(objectInputReadPOSTable)
 
-        this.wikiRank0ArrayLBSYomi = wikiYomiTrie?.LBS?.rank0GetIntArray()
-        this.wikiRank1ArrayLBSYomi = wikiYomiTrie?.LBS?.rank1GetIntArray()
-        this.wikiRank1ArrayIsLeaf = wikiYomiTrie?.isLeaf?.rank1GetIntArray()
-        this.wikiYomiLBSBooleanArray = wikiYomiTrie?.LBS?.toBooleanArray()
-        this.wikiYomiLBSPreprocess = this.wikiYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
-        this.wikiRank0ArrayTokenArrayBitvector = wikiTokenArray?.bitvector?.rank0GetIntArray()
-        this.wikiRank1ArrayTokenArrayBitvector = wikiTokenArray?.bitvector?.rank1GetIntArray()
-        this.wikiRank0ArrayLBSTango = wikiTangoTrie?.LBS?.rank0GetIntArray()
-        this.wikiRank1ArrayLBSTango = wikiTangoTrie?.LBS?.rank1GetIntArray()
+        this.wikiSuccinctBitVectorLBSYomi = SuccinctBitVector(wikiYomiTrie!!.LBS)
+        this.wikiSuccinctBitVectorIsLeaf = SuccinctBitVector(wikiYomiTrie!!.isLeaf)
+        this.wikiSuccinctBitVectorTokenArray = SuccinctBitVector(wikiTokenArray!!.bitvector)
+        this.wikiSuccinctBitVectorLBSTango = SuccinctBitVector(wikiTangoTrie!!.LBS)
     }
 
     fun buildNeologdDictionary(context: Context) {
@@ -471,16 +424,10 @@ class KanaKanjiEngine {
 
         this.neologdTokenArray?.readPOSTable(objectInputReadPOSTable)
 
-        this.neologdRank0ArrayLBSYomi = neologdYomiTrie?.LBS?.rank0GetIntArray()
-        this.neologdRank1ArrayLBSYomi = neologdYomiTrie?.LBS?.rank1GetIntArray()
-        this.neologdRank1ArrayIsLeaf = neologdYomiTrie?.isLeaf?.rank1GetIntArray()
-        this.neologdYomiLBSBooleanArray = neologdYomiTrie?.LBS?.toBooleanArray()
-        this.neologdYomiLBSPreprocess =
-            this.neologdYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
-        this.neologdRank0ArrayTokenArrayBitvector = neologdTokenArray?.bitvector?.rank0GetIntArray()
-        this.neologdRank1ArrayTokenArrayBitvector = neologdTokenArray?.bitvector?.rank1GetIntArray()
-        this.neologdRank0ArrayLBSTango = neologdTangoTrie?.LBS?.rank0GetIntArray()
-        this.neologdRank1ArrayLBSTango = neologdTangoTrie?.LBS?.rank1GetIntArray()
+        this.neologdSuccinctBitVectorLBSYomi = SuccinctBitVector(neologdYomiTrie!!.LBS)
+        this.neologdSuccinctBitVectorIsLeaf = SuccinctBitVector(neologdYomiTrie!!.isLeaf)
+        this.neologdSuccinctBitVectorTokenArray = SuccinctBitVector(neologdTokenArray!!.bitvector)
+        this.neologdSuccinctBitVectorLBSTango = SuccinctBitVector(neologdTangoTrie!!.LBS)
     }
 
     fun buildWebDictionary(context: Context) {
@@ -516,91 +463,60 @@ class KanaKanjiEngine {
 
         this.webTokenArray?.readPOSTable(objectInputReadPOSTable)
 
-        this.webRank0ArrayLBSYomi = webYomiTrie?.LBS?.rank0GetIntArray()
-        this.webRank1ArrayLBSYomi = webYomiTrie?.LBS?.rank1GetIntArray()
-        this.webRank1ArrayIsLeaf = webYomiTrie?.isLeaf?.rank1GetIntArray()
-        this.webYomiLBSBooleanArray = webYomiTrie?.LBS?.toBooleanArray()
-        this.webYomiLBSPreprocess =
-            this.webYomiLBSBooleanArray?.preprocessLBSIntoBooleanArray()
-        this.webRank0ArrayTokenArrayBitvector = webTokenArray?.bitvector?.rank0GetIntArray()
-        this.webRank1ArrayTokenArrayBitvector = webTokenArray?.bitvector?.rank1GetIntArray()
-        this.webRank0ArrayLBSTango = webTangoTrie?.LBS?.rank0GetIntArray()
-        this.webRank1ArrayLBSTango = webTangoTrie?.LBS?.rank1GetIntArray()
+        this.webSuccinctBitVectorLBSYomi = SuccinctBitVector(webYomiTrie!!.LBS)
+        this.webSuccinctBitVectorIsLeaf = SuccinctBitVector(webYomiTrie!!.isLeaf)
+        this.webSuccinctBitVectorTokenArray = SuccinctBitVector(webTokenArray!!.bitvector)
+        this.webSuccinctBitVectorLBSTango = SuccinctBitVector(webTangoTrie!!.LBS)
     }
 
     fun releasePersonNamesDictionary() {
         this.personTangoTrie = null
         this.personYomiTrie = null
         this.personTokenArray = null
-        this.personRank0ArrayLBSYomi = null
-        this.personRank1ArrayLBSYomi = null
-        this.personRank1ArrayIsLeaf = null
-        this.personYomiLBSBooleanArray = null
-        this.personYomiLBSPreprocess = null
-        this.personRank0ArrayTokenArrayBitvector = null
-        this.personRank1ArrayTokenArrayBitvector = null
-        this.personRank0ArrayLBSTango = null
-        this.personRank1ArrayLBSTango = null
+        this.personSuccinctBitVectorLBSYomi = null
+        this.personSuccinctBitVectorIsLeaf = null
+        this.personSuccinctBitVectorTokenArray = null
+        this.personSuccinctBitVectorLBSTango = null
     }
 
     fun releasePlacesDictionary() {
         this.placesTangoTrie = null
         this.placesYomiTrie = null
         this.placesTokenArray = null
-        this.placesRank0ArrayLBSYomi = null
-        this.placesRank1ArrayLBSYomi = null
-        this.placesRank1ArrayIsLeaf = null
-        this.placesYomiLBSBooleanArray = null
-        this.placesYomiLBSPreprocess = null
-        this.placesRank0ArrayTokenArrayBitvector = null
-        this.placesRank1ArrayTokenArrayBitvector = null
-        this.placesRank0ArrayLBSTango = null
-        this.placesRank1ArrayLBSTango = null
+        this.placesSuccinctBitVectorLBSYomi = null
+        this.placesSuccinctBitVectorIsLeaf = null
+        this.placesSuccinctBitVectorTokenArray = null
+        this.placesSuccinctBitVectorLBSTango = null
     }
 
     fun releaseWikiDictionary() {
         this.wikiTangoTrie = null
         this.wikiYomiTrie = null
         this.wikiTokenArray = null
-        this.wikiRank0ArrayLBSYomi = null
-        this.wikiRank1ArrayLBSYomi = null
-        this.wikiRank1ArrayIsLeaf = null
-        this.wikiYomiLBSBooleanArray = null
-        this.wikiYomiLBSPreprocess = null
-        this.wikiRank0ArrayTokenArrayBitvector = null
-        this.wikiRank1ArrayTokenArrayBitvector = null
-        this.wikiRank0ArrayLBSTango = null
-        this.wikiRank1ArrayLBSTango = null
+        this.wikiSuccinctBitVectorLBSYomi = null
+        this.wikiSuccinctBitVectorIsLeaf = null
+        this.wikiSuccinctBitVectorTokenArray = null
+        this.wikiSuccinctBitVectorLBSTango = null
     }
 
     fun releaseNeologdDictionary() {
         this.neologdTangoTrie = null
         this.neologdYomiTrie = null
         this.neologdTokenArray = null
-        this.neologdRank0ArrayLBSYomi = null
-        this.neologdRank1ArrayLBSYomi = null
-        this.neologdRank1ArrayIsLeaf = null
-        this.neologdYomiLBSBooleanArray = null
-        this.neologdYomiLBSPreprocess = null
-        this.neologdRank0ArrayTokenArrayBitvector = null
-        this.neologdRank1ArrayTokenArrayBitvector = null
-        this.neologdRank0ArrayLBSTango = null
-        this.neologdRank1ArrayLBSTango = null
+        this.neologdSuccinctBitVectorLBSYomi = null
+        this.neologdSuccinctBitVectorIsLeaf = null
+        this.neologdSuccinctBitVectorTokenArray = null
+        this.neologdSuccinctBitVectorLBSTango = null
     }
 
     fun releaseWebDictionary() {
         this.webTangoTrie = null
         this.webYomiTrie = null
         this.webTokenArray = null
-        this.webRank0ArrayLBSYomi = null
-        this.webRank1ArrayLBSYomi = null
-        this.webRank1ArrayIsLeaf = null
-        this.webYomiLBSBooleanArray = null
-        this.webYomiLBSPreprocess = null
-        this.webRank0ArrayTokenArrayBitvector = null
-        this.webRank1ArrayTokenArrayBitvector = null
-        this.webRank0ArrayLBSTango = null
-        this.webRank1ArrayLBSTango = null
+        this.webSuccinctBitVectorLBSYomi = null
+        this.webSuccinctBitVectorIsLeaf = null
+        this.webSuccinctBitVectorTokenArray = null
+        this.webSuccinctBitVectorLBSTango = null
     }
 
     fun isMozcUTPersonDictionariesInitialized(): Boolean {
@@ -1168,13 +1084,10 @@ class KanaKanjiEngine {
         yomiTrie: LOUDSWithTermId,
         tokenArray: TokenArray,
         tangoTrie: LOUDS,
-        yomiRank1ArrayLBS: IntArray,
-        yomiLBSPreprocess: IntArray,
-        rank1ArrayIsLeaf: IntArray,
-        rank0ArrayTokenArrayBitvector: IntArray,
-        rank1ArrayTokenArrayBitvector: IntArray,
-        rank0ArrayLBSTango: IntArray,
-        rank1ArrayLBSTango: IntArray,
+        succinctBitVectorLBSYomi: SuccinctBitVector,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector,
+        succinctBitVectorTokenArray: SuccinctBitVector,
+        succinctBitVectorTangoLBS: SuccinctBitVector,
         type: Byte,
         n: Int
     ) = withContext(Dispatchers.Default) {
@@ -1182,18 +1095,18 @@ class KanaKanjiEngine {
             if (input.length > yomi.length) return@withContext emptyList()
             val termId = yomiTrie.getTermId(
                 yomiTrie.getNodeIndex(
-                    yomi, yomiRank1ArrayLBS, yomiLBSPreprocess
-                ), rank1ArrayIsLeaf
+                    yomi, succinctBitVectorLBSYomi
+                ), succinctBitVectorIsLeafYomi
             )
             tokenArray.getListDictionaryByYomiTermId(
-                termId, rank0ArrayTokenArrayBitvector, rank1ArrayTokenArrayBitvector
+                termId, succinctBitVectorTokenArray
             ).map {
                 Candidate(
                     string = when (it.nodeId) {
                         -2 -> yomi
                         -1 -> yomi.hiraToKata()
                         else -> tangoTrie.getLetter(
-                            it.nodeId, rank0ArrayLBSTango, rank1ArrayLBSTango
+                            it.nodeId, succinctBitVectorTangoLBS
                         )
                     },
                     type = type,
@@ -1321,13 +1234,12 @@ class KanaKanjiEngine {
     private fun commonPrefixMozcUT(
         input: String,
         yomiTrie: LOUDSWithTermId,
-        rank0ArrayLBSYomi: IntArray,
-        rank1ArrayLBSYomi: IntArray
+        succinctBitVector: SuccinctBitVector
     ): List<String> {
         if (input.length > 16) return emptyList()
         if (input.length in 0..3) return emptyList()
         return yomiTrie.predictiveSearch(
-            prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
+            prefix = input, succinctBitVector = succinctBitVector
         ).filter {
             when (input.length) {
                 in 3..4 -> it.length <= input.length + 2
@@ -1340,13 +1252,12 @@ class KanaKanjiEngine {
     private fun commonPrefixMozcUTWeb(
         input: String,
         yomiTrie: LOUDSWithTermId,
-        rank0ArrayLBSYomi: IntArray,
-        rank1ArrayLBSYomi: IntArray
+        succinctBitVector: SuccinctBitVector
     ): List<String> {
         if (input.length > 16) return emptyList()
         if (input.length in 0..2) return emptyList()
         return yomiTrie.predictiveSearch(
-            prefix = input, rank0Array = rank0ArrayLBSYomi, rank1Array = rank1ArrayLBSYomi
+            prefix = input, succinctBitVector = succinctBitVector
         ).filter {
             when (input.length) {
                 in 3..4 -> it.length <= input.length + 2
@@ -1362,8 +1273,7 @@ class KanaKanjiEngine {
         val commonPrefix = commonPrefixMozcUT(
             input = input,
             yomiTrie = personYomiTrie!!,
-            rank0ArrayLBSYomi = personRank0ArrayLBSYomi!!,
-            rank1ArrayLBSYomi = personRank1ArrayLBSYomi!!
+            succinctBitVector = personSuccinctBitVectorLBSYomi!!
         )
         return deferredFromMozcUTDictionary(
             input = input,
@@ -1371,13 +1281,10 @@ class KanaKanjiEngine {
             yomiTrie = personYomiTrie!!,
             tokenArray = personTokenArray!!,
             tangoTrie = personTangoTrie!!,
-            yomiRank1ArrayLBS = personRank1ArrayLBSYomi!!,
-            yomiLBSPreprocess = personYomiLBSPreprocess!!,
-            rank1ArrayIsLeaf = personRank1ArrayIsLeaf!!,
-            rank0ArrayTokenArrayBitvector = personRank0ArrayTokenArrayBitvector!!,
-            rank1ArrayTokenArrayBitvector = personRank1ArrayTokenArrayBitvector!!,
-            rank0ArrayLBSTango = personRank0ArrayLBSTango!!,
-            rank1ArrayLBSTango = personRank1ArrayLBSTango!!,
+            succinctBitVectorLBSYomi = personSuccinctBitVectorLBSYomi!!,
+            succinctBitVectorIsLeafYomi = personSuccinctBitVectorIsLeaf!!,
+            succinctBitVectorTokenArray = personSuccinctBitVectorTokenArray!!,
+            succinctBitVectorTangoLBS = personSuccinctBitVectorLBSTango!!,
             type = 23,
             4
         )
@@ -1389,8 +1296,7 @@ class KanaKanjiEngine {
         val commonPrefix = commonPrefixMozcUT(
             input = input,
             yomiTrie = placesYomiTrie!!,
-            rank0ArrayLBSYomi = placesRank0ArrayLBSYomi!!,
-            rank1ArrayLBSYomi = placesRank1ArrayLBSYomi!!
+            succinctBitVector = placesSuccinctBitVectorLBSYomi!!
         )
         return deferredFromMozcUTDictionary(
             input = input,
@@ -1398,13 +1304,10 @@ class KanaKanjiEngine {
             yomiTrie = placesYomiTrie!!,
             tokenArray = placesTokenArray!!,
             tangoTrie = placesTangoTrie!!,
-            yomiRank1ArrayLBS = placesRank1ArrayLBSYomi!!,
-            yomiLBSPreprocess = placesYomiLBSPreprocess!!,
-            rank1ArrayIsLeaf = placesRank1ArrayIsLeaf!!,
-            rank0ArrayTokenArrayBitvector = placesRank0ArrayTokenArrayBitvector!!,
-            rank1ArrayTokenArrayBitvector = placesRank1ArrayTokenArrayBitvector!!,
-            rank0ArrayLBSTango = placesRank0ArrayLBSTango!!,
-            rank1ArrayLBSTango = placesRank1ArrayLBSTango!!,
+            succinctBitVectorLBSYomi = placesSuccinctBitVectorLBSYomi!!,
+            succinctBitVectorIsLeafYomi = placesSuccinctBitVectorIsLeaf!!,
+            succinctBitVectorTokenArray = placesSuccinctBitVectorTokenArray!!,
+            succinctBitVectorTangoLBS = placesSuccinctBitVectorLBSTango!!,
             type = 24,
             4
         )
@@ -1416,8 +1319,7 @@ class KanaKanjiEngine {
         val commonPrefix = commonPrefixMozcUTWeb(
             input = input,
             yomiTrie = wikiYomiTrie!!,
-            rank0ArrayLBSYomi = wikiRank0ArrayLBSYomi!!,
-            rank1ArrayLBSYomi = wikiRank1ArrayLBSYomi!!
+            succinctBitVector = wikiSuccinctBitVectorLBSYomi!!
         )
         return deferredFromMozcUTDictionary(
             input = input,
@@ -1425,13 +1327,10 @@ class KanaKanjiEngine {
             yomiTrie = wikiYomiTrie!!,
             tokenArray = wikiTokenArray!!,
             tangoTrie = wikiTangoTrie!!,
-            yomiRank1ArrayLBS = wikiRank1ArrayLBSYomi!!,
-            yomiLBSPreprocess = wikiYomiLBSPreprocess!!,
-            rank1ArrayIsLeaf = wikiRank1ArrayIsLeaf!!,
-            rank0ArrayTokenArrayBitvector = wikiRank0ArrayTokenArrayBitvector!!,
-            rank1ArrayTokenArrayBitvector = wikiRank1ArrayTokenArrayBitvector!!,
-            rank0ArrayLBSTango = wikiRank0ArrayLBSTango!!,
-            rank1ArrayLBSTango = wikiRank1ArrayLBSTango!!,
+            succinctBitVectorLBSYomi = wikiSuccinctBitVectorLBSYomi!!,
+            succinctBitVectorIsLeafYomi = wikiSuccinctBitVectorIsLeaf!!,
+            succinctBitVectorTokenArray = wikiSuccinctBitVectorTokenArray!!,
+            succinctBitVectorTangoLBS = wikiSuccinctBitVectorLBSTango!!,
             type = 25,
             4
         )
@@ -1443,8 +1342,7 @@ class KanaKanjiEngine {
         val commonPrefix = commonPrefixMozcUTWeb(
             input = input,
             yomiTrie = neologdYomiTrie!!,
-            rank0ArrayLBSYomi = neologdRank0ArrayLBSYomi!!,
-            rank1ArrayLBSYomi = neologdRank1ArrayLBSYomi!!
+            succinctBitVector = neologdSuccinctBitVectorLBSYomi!!,
         )
         return deferredFromMozcUTDictionary(
             input = input,
@@ -1452,13 +1350,10 @@ class KanaKanjiEngine {
             yomiTrie = neologdYomiTrie!!,
             tokenArray = neologdTokenArray!!,
             tangoTrie = neologdTangoTrie!!,
-            yomiRank1ArrayLBS = neologdRank1ArrayLBSYomi!!,
-            yomiLBSPreprocess = neologdYomiLBSPreprocess!!,
-            rank1ArrayIsLeaf = neologdRank1ArrayIsLeaf!!,
-            rank0ArrayTokenArrayBitvector = neologdRank0ArrayTokenArrayBitvector!!,
-            rank1ArrayTokenArrayBitvector = neologdRank1ArrayTokenArrayBitvector!!,
-            rank0ArrayLBSTango = neologdRank0ArrayLBSTango!!,
-            rank1ArrayLBSTango = neologdRank1ArrayLBSTango!!,
+            succinctBitVectorLBSYomi = neologdSuccinctBitVectorLBSYomi!!,
+            succinctBitVectorIsLeafYomi = neologdSuccinctBitVectorIsLeaf!!,
+            succinctBitVectorTokenArray = neologdSuccinctBitVectorTokenArray!!,
+            succinctBitVectorTangoLBS = neologdSuccinctBitVectorLBSTango!!,
             type = 26,
             4
         )
@@ -1470,8 +1365,7 @@ class KanaKanjiEngine {
         val commonPrefix = commonPrefixMozcUTWeb(
             input = input,
             yomiTrie = webYomiTrie!!,
-            rank0ArrayLBSYomi = webRank0ArrayLBSYomi!!,
-            rank1ArrayLBSYomi = webRank1ArrayLBSYomi!!
+            succinctBitVector = webSuccinctBitVectorLBSYomi!!,
         )
         return deferredFromMozcUTDictionary(
             input = input,
@@ -1479,13 +1373,10 @@ class KanaKanjiEngine {
             yomiTrie = webYomiTrie!!,
             tokenArray = webTokenArray!!,
             tangoTrie = webTangoTrie!!,
-            yomiRank1ArrayLBS = webRank1ArrayLBSYomi!!,
-            yomiLBSPreprocess = webYomiLBSPreprocess!!,
-            rank1ArrayIsLeaf = webRank1ArrayIsLeaf!!,
-            rank0ArrayTokenArrayBitvector = webRank0ArrayTokenArrayBitvector!!,
-            rank1ArrayTokenArrayBitvector = webRank1ArrayTokenArrayBitvector!!,
-            rank0ArrayLBSTango = webRank0ArrayLBSTango!!,
-            rank1ArrayLBSTango = webRank1ArrayLBSTango!!,
+            succinctBitVectorLBSYomi = webSuccinctBitVectorLBSYomi!!,
+            succinctBitVectorIsLeafYomi = webSuccinctBitVectorIsLeaf!!,
+            succinctBitVectorTokenArray = webSuccinctBitVectorTokenArray!!,
+            succinctBitVectorTangoLBS = webSuccinctBitVectorLBSTango!!,
             type = 27,
             4
         )
