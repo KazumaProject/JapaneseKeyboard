@@ -14,10 +14,9 @@ class GraphBuilder {
         yomiTrie: LOUDSWithTermId,
         tangoTrie: LOUDS,
         tokenArray: TokenArray,
-        systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
-        systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
-        rank0ArrayTokenArrayBitvector: IntArray,
-        rank1ArrayTokenArrayBitvector: IntArray,
+        succinctBitVectorLBSYomi: SuccinctBitVector,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector,
+        succinctBitVectorTokenArray: SuccinctBitVector,
         rank0ArrayLBSTango: IntArray,
         rank1ArrayLBSTango: IntArray,
         LBSBooleanArray: BooleanArray,
@@ -42,7 +41,7 @@ class GraphBuilder {
             val subStr = str.substring(i)
             val commonPrefixSearch: MutableList<String> = yomiTrie.commonPrefixSearch(
                 str = subStr,
-                succinctBitVector = systemSuccinctBitVectorLBSYomi
+                succinctBitVector = succinctBitVectorLBSYomi
             ).toMutableList().apply {
                 if (isEmpty()) add(subStr)
             }
@@ -50,15 +49,14 @@ class GraphBuilder {
             for (yomiStr in commonPrefixSearch) {
                 val nodeIndex = yomiTrie.getNodeIndex(
                     yomiStr,
-                    systemSuccinctBitVectorLBSYomi,
+                    succinctBitVectorLBSYomi,
                     LBSBooleanArray,
                     LBSBooleanArrayPreprocess
                 )
-                val termId = yomiTrie.getTermId(nodeIndex, systemSuccinctBitVectorIsLeafYomi)
+                val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
                 val listToken = tokenArray.getListDictionaryByYomiTermId(
                     termId,
-                    rank0ArrayTokenArrayBitvector,
-                    rank1ArrayTokenArrayBitvector
+                    succinctBitVectorTokenArray
                 )
 
                 val tangoList = listToken.map {

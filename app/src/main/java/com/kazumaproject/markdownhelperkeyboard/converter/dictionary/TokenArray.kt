@@ -8,6 +8,7 @@ import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.dictionary.models.Dictionary
 import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.hiraToKata
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListShort
@@ -30,7 +31,7 @@ class TokenArray {
     var leftIds: List<Short> = listOf()
     var rightIds: List<Short> = listOf()
 
-    fun getNodeIds(): IntArray{
+    fun getNodeIds(): IntArray {
         return nodeIdList
     }
 
@@ -39,11 +40,42 @@ class TokenArray {
         rank0ArrayTokenArrayBitvector: IntArray,
         rank1ArrayTokenArrayBitvector: IntArray
     ): List<TokenEntry> {
-        val startRank = bitvector.rank1Common(bitvector.select0Common(nodeId, rank0ArrayTokenArrayBitvector), rank1ArrayTokenArrayBitvector)
-        val endRank = bitvector.rank1Common(bitvector.select0Common(nodeId + 1, rank0ArrayTokenArrayBitvector), rank1ArrayTokenArrayBitvector)
+        val startRank = bitvector.rank1Common(
+            bitvector.select0Common(nodeId, rank0ArrayTokenArrayBitvector),
+            rank1ArrayTokenArrayBitvector
+        )
+        val endRank = bitvector.rank1Common(
+            bitvector.select0Common(
+                nodeId + 1,
+                rank0ArrayTokenArrayBitvector
+            ), rank1ArrayTokenArrayBitvector
+        )
 
         val tempList2 = mutableListOf<TokenEntry>().apply {
             for (i in startRank until endRank) {
+                add(
+                    TokenEntry(
+                        posTableIndex = posTableIndexList[i],
+                        wordCost = wordCostList[i],
+                        nodeId = nodeIdList[i]
+                    )
+                )
+            }
+        }
+        return tempList2
+    }
+
+    fun getListDictionaryByYomiTermId(
+        nodeId: Int,
+        succinctBitVector: SuccinctBitVector
+    ): List<TokenEntry> {
+        val startSelect0 = succinctBitVector.select0(nodeId)
+        val endSelect0 = succinctBitVector.select0(nodeId + 1)
+        val startRank1 = succinctBitVector.rank1(startSelect0)
+        val endRank1 = succinctBitVector.rank1(endSelect0)
+
+        val tempList2 = mutableListOf<TokenEntry>().apply {
+            for (i in startRank1 until endRank1) {
                 add(
                     TokenEntry(
                         posTableIndex = posTableIndexList[i],
@@ -61,10 +93,20 @@ class TokenArray {
         rank0ArrayTokenArrayBitvector: ShortArray,
         rank1ArrayTokenArrayBitvector: ShortArray,
     ): List<TokenEntry> {
-        val b = bitvector.rank1CommonShort(bitvector.select0CommonShort(nodeId,rank0ArrayTokenArrayBitvector).toInt(),rank1ArrayTokenArrayBitvector)
-        val c = bitvector.rank1CommonShort(bitvector.select0CommonShort((nodeId + 1).toShort(),rank0ArrayTokenArrayBitvector).toInt(),rank1ArrayTokenArrayBitvector)
+        val b = bitvector.rank1CommonShort(
+            bitvector.select0CommonShort(
+                nodeId,
+                rank0ArrayTokenArrayBitvector
+            ).toInt(), rank1ArrayTokenArrayBitvector
+        )
+        val c = bitvector.rank1CommonShort(
+            bitvector.select0CommonShort(
+                (nodeId + 1).toShort(),
+                rank0ArrayTokenArrayBitvector
+            ).toInt(), rank1ArrayTokenArrayBitvector
+        )
         val tempList2 = mutableListOf<TokenEntry>()
-        for (i in b until c){
+        for (i in b until c) {
             tempList2.add(
                 TokenEntry(
                     posTableIndex = posTableIndexList[i],
@@ -81,9 +123,9 @@ class TokenArray {
         tangoTrie: LOUDS,
         out: ObjectOutput,
         objectInputStream: ObjectInputStream
-    ){
+    ) {
         val posTableWithIndex = readPOSTableWithIndex(objectInputStream)
-        dictionaries.sortedBy { it.yomi.length } .groupBy { it.yomi }.onEachIndexed{ index, entry ->
+        dictionaries.sortedBy { it.yomi.length }.groupBy { it.yomi }.onEachIndexed { index, entry ->
             bitListTemp.add(false)
 
             entry.value.forEach { dictionary ->
@@ -95,14 +137,18 @@ class TokenArray {
                     bitListTemp.add(true)
                     posTableIndexListTemp.add(posTableIndex)
                     wordCostListTemp.add(dictionary.cost)
-                    nodeIdListTemp.add(if (dictionary.yomi == dictionary.tango || entry.key.hiraToKata() == dictionary.tango) -1 else tangoTrie.getNodeIndex(dictionary.tango))
+                    nodeIdListTemp.add(
+                        if (dictionary.yomi == dictionary.tango || entry.key.hiraToKata() == dictionary.tango) -1 else tangoTrie.getNodeIndex(
+                            dictionary.tango
+                        )
+                    )
                 }
             }
         }
         writeExternal(out)
     }
 
-    private fun writeExternal(out: ObjectOutput){
+    private fun writeExternal(out: ObjectOutput) {
         try {
             out.apply {
                 writeInt(posTableIndexListTemp.toByteArrayFromListShort().size)
@@ -116,7 +162,7 @@ class TokenArray {
                 flush()
                 close()
             }
-        }catch (e: IOException){
+        } catch (e: IOException) {
             println(e.stackTraceToString())
         }
     }
@@ -131,7 +177,7 @@ class TokenArray {
                 nodeIdList = readObject() as IntArray
                 bitvector = readObject() as BitSet
                 close()
-            }catch (e: Exception){
+            } catch (e: Exception) {
                 println(e.stackTraceToString())
             }
         }
@@ -146,8 +192,8 @@ class TokenArray {
     fun buildPOSTable(
         fileList: List<String>,
         objectOutputStream: ObjectOutputStream
-    ){
-        val tempMap: MutableMap<Pair<Short,Short>,Int> = mutableMapOf()
+    ) {
+        val tempMap: MutableMap<Pair<Short, Short>, Int> = mutableMapOf()
         fileList.forEach {
             val line = this::class.java.getResourceAsStream(it)
                 ?.bufferedReader()
@@ -156,10 +202,11 @@ class TokenArray {
                 str.apply {
                     val leftId = split("\\t".toRegex())[1]
                     val rightId = split("\\t".toRegex())[2]
-                    if (tempMap[Pair(leftId.toShort(),rightId.toShort())] == null){
-                        tempMap[Pair(leftId.toShort(),rightId.toShort())] = 0
-                    }else{
-                        tempMap[Pair(leftId.toShort(),rightId.toShort())] = (tempMap[Pair(leftId.toShort(),rightId.toShort())]!!) + 1
+                    if (tempMap[Pair(leftId.toShort(), rightId.toShort())] == null) {
+                        tempMap[Pair(leftId.toShort(), rightId.toShort())] = 0
+                    } else {
+                        tempMap[Pair(leftId.toShort(), rightId.toShort())] =
+                            (tempMap[Pair(leftId.toShort(), rightId.toShort())]!!) + 1
                     }
                 }
             }
@@ -173,7 +220,7 @@ class TokenArray {
                 flush()
                 close()
             }
-        }catch (e: Exception){
+        } catch (e: Exception) {
             println(e.stackTraceToString())
         }
     }
@@ -186,8 +233,8 @@ class TokenArray {
     fun buildPOSTableWithIndex(
         fileList: List<String>,
         objectOutputStream: ObjectOutputStream
-    ){
-        val tempMap: MutableMap<Pair<Short,Short>,Int> = mutableMapOf()
+    ) {
+        val tempMap: MutableMap<Pair<Short, Short>, Int> = mutableMapOf()
         fileList.forEach {
             val line = this::class.java.getResourceAsStream(it)
                 ?.bufferedReader()
@@ -196,24 +243,25 @@ class TokenArray {
                 str.apply {
                     val leftId = split("\\t".toRegex())[1]
                     val rightId = split("\\t".toRegex())[2]
-                    if (tempMap[Pair(leftId.toShort(),rightId.toShort())] == null){
-                        tempMap[Pair(leftId.toShort(),rightId.toShort())] = 0
-                    }else{
-                        tempMap[Pair(leftId.toShort(),rightId.toShort())] = (tempMap[Pair(leftId.toShort(),rightId.toShort())]!!) + 1
+                    if (tempMap[Pair(leftId.toShort(), rightId.toShort())] == null) {
+                        tempMap[Pair(leftId.toShort(), rightId.toShort())] = 0
+                    } else {
+                        tempMap[Pair(leftId.toShort(), rightId.toShort())] =
+                            (tempMap[Pair(leftId.toShort(), rightId.toShort())]!!) + 1
                     }
                 }
             }
         }
 
         val result = tempMap.toList().sortedByDescending { (_, value) -> value }.toMap()
-        val mapToSave = result.keys.toList().mapIndexed { index, pair -> pair to index  }.toMap()
+        val mapToSave = result.keys.toList().mapIndexed { index, pair -> pair to index }.toMap()
         try {
             objectOutputStream.apply {
                 writeObject(mapToSave)
                 flush()
                 close()
             }
-        }catch (e: Exception){
+        } catch (e: Exception) {
             println(e.stackTraceToString())
         }
     }
@@ -230,7 +278,7 @@ class TokenArray {
     fun readPOSTableWithIndex(
         objectInputStream: ObjectInputStream
     ): Map<Pair<Short, Short>, Int> {
-        var a:  Map<Pair<Short, Short>, Int>
+        var a: Map<Pair<Short, Short>, Int>
         objectInputStream.apply {
             a = (readObject() as Map<Pair<Short, Short>, Int>)
         }
