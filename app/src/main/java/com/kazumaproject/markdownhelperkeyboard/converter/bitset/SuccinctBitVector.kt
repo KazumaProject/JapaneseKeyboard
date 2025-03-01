@@ -42,6 +42,8 @@ class SuccinctBitVector(private val bitSet: BitSet) {
             // 大ブロック内を小ブロック（8 ビット単位）に分割して計算
             for (small in 0 until numSmallBlocksPerBig) {
                 val globalSmallIndex = big * numSmallBlocksPerBig + small
+                // 範囲外にならないようにチェック
+                if (globalSmallIndex >= numSmallBlocks) break
                 // 小ブロック開始時の「大ブロック内での累積 1 数」
                 smallBlockRanks[globalSmallIndex] = rank - bigBlockRanks[big]
                 val smallStart = bigStart + small * smallBlockSize
@@ -100,7 +102,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
     fun select1(nodeId: Int): Int {
         if (nodeId < 1 || nodeId > totalOnes) return -1
 
-        // ★ 大ブロック補助データに対する二分探索で対象の大ブロックを求める
+        // 大ブロック補助データに対する二分探索で対象の大ブロックを求める
         var lo = 0
         var hi = bigBlockRanks.size - 1
         var bigBlock = 0
@@ -116,7 +118,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         // 大ブロック開始までの 1 の数との差分が、この大ブロック内での目標となる
         val localTarget = nodeId - bigBlockRanks[bigBlock]
 
-        // ★ 該当大ブロック内の小ブロックを線形探索
+        // 該当大ブロック内の小ブロックを線形探索
         val baseSmallIndex = bigBlock * numSmallBlocksPerBig
         var smallBlock = 0
         while (smallBlock < numSmallBlocksPerBig - 1 &&
@@ -125,7 +127,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
             smallBlock++
         }
 
-        // ★ 小ブロック内をビット単位に走査して正確な位置を求める
+        // 小ブロック内をビット単位に走査して正確な位置を求める
         val globalSmallIndex = baseSmallIndex + smallBlock
         val offsetInSmallBlock = localTarget - smallBlockRanks[globalSmallIndex]
         val smallBlockStart = bigBlock * bigBlockSize + smallBlock * smallBlockSize
@@ -145,21 +147,13 @@ class SuccinctBitVector(private val bitSet: BitSet) {
 
     /**
      * select0(nodeId): nodeId 番目の 0 のビットが現れる位置を返す（nodeId は 1 から始まる）
-     *
-     * 1 の select と同様の考え方で実装します。
-     * ・まず、大ブロック補助データから、各大ブロック開始までの 0 の数は、
-     *   zerosBefore = (bigBlockIndex * bigBlockSize) - bigBlockRanks[bigBlockIndex]
-     *   で求め、二分探索により対象の大ブロックを特定します。
-     * ・次に、該当大ブロック内で小ブロックごとに線形探索し、
-     *   小ブロック内での 0 の累積数から目的の 0 の位置を求めます。
-     * ・最後に、その小ブロック内をビット単位に走査して正確な位置を返します。
      */
     fun select0(nodeId: Int): Int {
         val n = bitSet.size()
         val totalZeros = n - totalOnes
         if (nodeId < 1 || nodeId > totalZeros) return -1
 
-        // ★ 大ブロックに対する二分探索:
+        // 大ブロックに対する二分探索:
         // 各大ブロック開始時までの 0 の数は、(bigBlockIndex * bigBlockSize) - bigBlockRanks[bigBlockIndex]
         var lo = 0
         var hi = bigBlockRanks.size - 1
@@ -177,8 +171,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         val zerosBeforeBlock = bigBlock * bigBlockSize - bigBlockRanks[bigBlock]
         val localTarget = nodeId - zerosBeforeBlock
 
-        // ★ 大ブロック内での小ブロック線形探索:
-        // 各小ブロック内の 0 の数は、(smallBlockIndex * smallBlockSize) - smallBlockRanks[globalSmallIndex]
+        // 大ブロック内での小ブロック線形探索:
         val baseSmallIndex = bigBlock * numSmallBlocksPerBig
         var smallBlock = 0
         while (smallBlock < numSmallBlocksPerBig - 1) {
@@ -194,7 +187,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         val zerosBeforeSmall = (smallBlock * smallBlockSize) - smallBlockRanks[globalSmallIndex]
         val offsetInSmallBlock = localTarget - zerosBeforeSmall
 
-        // ★ 小ブロック内を 1 ビットずつ走査して目的の 0 を探す
+        // 小ブロック内を 1 ビットずつ走査して目的の 0 を探す
         val smallBlockStart = bigBlock * bigBlockSize + smallBlock * smallBlockSize
         var count = 0
         for (i in 0 until smallBlockSize) {
