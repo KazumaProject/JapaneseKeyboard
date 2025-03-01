@@ -18,7 +18,6 @@ class GraphBuilder {
         succinctBitVectorIsLeafYomi: SuccinctBitVector,
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
-        LBSBooleanArrayPreprocess: IntArray
     ): MutableMap<Int, MutableList<Node>> {
         val graph: MutableMap<Int, MutableList<Node>> = mutableMapOf()
         graph[0] = mutableListOf(BOS)
@@ -48,7 +47,6 @@ class GraphBuilder {
                 val nodeIndex = yomiTrie.getNodeIndex(
                     yomiStr,
                     succinctBitVectorLBSYomi,
-                    LBSBooleanArrayPreprocess
                 )
                 val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
                 val listToken = tokenArray.getListDictionaryByYomiTermId(

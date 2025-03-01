@@ -47,7 +47,6 @@ class KanaKanjiEngine {
     private lateinit var systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector
     private lateinit var systemSuccinctBitVectorTokenArray: SuccinctBitVector
     private lateinit var systemSuccinctBitVectorTangoLBS: SuccinctBitVector
-    private lateinit var systemYomiLBSPreprocess: IntArray
 
     private lateinit var singleKanjiYomiTrie: LOUDSWithTermId
     private lateinit var singleKanjiTangoTrie: LOUDS
@@ -279,7 +278,6 @@ class KanaKanjiEngine {
         kotowazaRank0ArrayLBSTango: ShortArray,
         kotowazaRank1ArrayLBSTango: ShortArray,
 
-        systemYomiLBSPreprocess: IntArray,
         singleKanjiYomiLBSPreprocess: IntArray,
         emojiYomiLBSPreprocess: IntArray,
         emoticonYomiLBSPreprocess: IntArray,
@@ -386,7 +384,6 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayLBSTango
         this@KanaKanjiEngine.kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayLBSTango
 
-        this@KanaKanjiEngine.systemYomiLBSPreprocess = systemYomiLBSPreprocess
         this@KanaKanjiEngine.singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSPreprocess
         this@KanaKanjiEngine.emojiYomiLBSPreprocess = emojiYomiLBSPreprocess
         this@KanaKanjiEngine.emoticonYomiLBSPreprocess = emoticonYomiLBSPreprocess
@@ -710,7 +707,6 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
             succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
-            LBSBooleanArrayPreprocess = systemYomiLBSPreprocess
         )
 
         val resultNBestFinalDeferred: List<Candidate> = withContext(Dispatchers.Default) {
@@ -878,7 +874,6 @@ class KanaKanjiEngine {
                 val nodeIndex = systemYomiTrie.getNodeIndex(
                     yomi,
                     succinctBitVector = systemSuccinctBitVectorLBSYomi,
-                    systemYomiLBSPreprocess
                 )
                 val termId = systemYomiTrie.getTermId(nodeIndex, systemSuccinctBitVectorIsLeafYomi)
 
@@ -915,7 +910,6 @@ class KanaKanjiEngine {
                     systemYomiTrie.getNodeIndex(
                         yomi,
                         systemSuccinctBitVectorLBSYomi,
-                        systemYomiLBSPreprocess
                     ), systemSuccinctBitVectorIsLeafYomi
                 )
                 systemTokenArray.getListDictionaryByYomiTermId(

@@ -187,12 +187,6 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SystemYomiLBSBooleanArrayPreprocess
-    fun providesYomiLBSBooleanArrayPreprocess(@SystemYomiTrie yomiTrie: LOUDSWithTermId) =
-        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
-
-    @Singleton
-    @Provides
     @SystemSuccinctBitVectorTokenArray
     fun provideSystemSuccinctBitVectorTokenArray(@SystemTokenArray tokenArray: TokenArray): SuccinctBitVector =
         SuccinctBitVector(tokenArray.bitvector)
@@ -766,7 +760,6 @@ object AppModule {
         @KotowazaRank0ArrayTangoLBS kotowazaRank0ArrayTangoLBS: ShortArray,
         @KotowazaRank1ArrayTangoLBS kotowazaRank1ArrayTangoLBS: ShortArray,
 
-        @SystemYomiLBSBooleanArrayPreprocess systemYomiLBSBooleanArrayPreprocess: IntArray,
         @SingleKanjiYomiLBSBooleanArrayPreprocess singleKanjiYomiLBSBooleanArrayPreprocess: IntArray,
         @EmojiYomiLBSBooleanArrayPreprocess emojiYomiLBSBooleanArrayPreprocess: IntArray,
         @EmoticonYomiLBSBooleanArrayPreprocess emoticonYomiLBSBooleanArrayPreprocess: IntArray,
@@ -857,7 +850,6 @@ object AppModule {
             kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayTangoLBS,
             kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayTangoLBS,
 
-            systemYomiLBSPreprocess = systemYomiLBSBooleanArrayPreprocess,
             singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSBooleanArrayPreprocess,
             emojiYomiLBSPreprocess = emojiYomiLBSBooleanArrayPreprocess,
             emoticonYomiLBSPreprocess = emoticonYomiLBSBooleanArrayPreprocess,

@@ -36,10 +36,6 @@ annotation class SystemSuccinctBitVectorTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class SystemYomiLBSBooleanArrayPreprocess
-
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
 annotation class SingleKanjiYomiTrie
 
 @Retention(AnnotationRetention.RUNTIME)
