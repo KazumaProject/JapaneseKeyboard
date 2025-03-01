@@ -187,15 +187,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SystemYomiLBSBooleanArray
-    fun providesYomiLBSBooleanArray(@SystemYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
     @SystemYomiLBSBooleanArrayPreprocess
-    fun providesYomiLBSBooleanArrayPreprocess(@SystemYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
+    fun providesYomiLBSBooleanArrayPreprocess(@SystemYomiTrie yomiTrie: LOUDSWithTermId) =
+        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -262,15 +256,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SingleKanjiYomiLBSBooleanArray
-    fun providesSingleKanjiYomiLBSBooleanArray(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
     @SingleKanjiYomiLBSBooleanArrayPreprocess
-    fun providesSingleKanjiYomiLBSBooleanArrayPreprocess(@SingleKanjiYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
+    fun providesSingleKanjiYomiLBSBooleanArrayPreprocess(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId) =
+        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -349,15 +337,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @EmojiYomiLBSBooleanArray
-    fun providesEmojiYomiLBSBooleanArray(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
     @EmojiYomiLBSBooleanArrayPreprocess
-    fun providesEmojiYomiLBSBooleanArrayPreprocess(@EmojiYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
+    fun providesEmojiYomiLBSBooleanArrayPreprocess(@EmojiYomiTrie yomiTrie: LOUDSWithTermId) =
+        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -435,15 +417,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @EmoticonYomiLBSBooleanArray
-    fun providesEmoticonYomiLBSBooleanArray(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
     @EmoticonYomiLBSBooleanArrayPreprocess
-    fun providesEmoticonYomiLBSBooleanArrayPreprocess(@EmoticonYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
+    fun providesEmoticonYomiLBSBooleanArrayPreprocess(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId) =
+        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -522,15 +498,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @SymbolYomiLBSBooleanArray
-    fun providesSymbolYomiLBSBooleanArray(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
     @SymbolYomiLBSBooleanArrayPreprocess
-    fun providesSymbolYomiLBSBooleanArrayPreprocess(@SymbolYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
+    fun providesSymbolYomiLBSBooleanArrayPreprocess(@SymbolYomiTrie yomiTrie: LOUDSWithTermId) =
+        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -609,15 +579,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @ReadingCorrectionYomiLBSBooleanArray
-    fun providesReadingCorrectionYomiLBSBooleanArray(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
     @ReadingCorrectionYomiLBSBooleanArrayPrerpcess
-    fun providesReadingCorrectionYomiLBSBooleanArrayPreprocess(@ReadingCorrectionYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
+    fun providesReadingCorrectionYomiLBSBooleanArrayPreprocess(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId) =
+        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -695,15 +659,9 @@ object AppModule {
 
     @Singleton
     @Provides
-    @KotowazaYomiLBSBooleanArray
-    fun providesKotowazaYomiLBSBooleanArray(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): BooleanArray =
-        yomiTrie.LBS.toBooleanArray()
-
-    @Singleton
-    @Provides
     @KotowazaYomiLBSBooleanArrayPreprocess
-    fun providesKotowazaYomiLBSBooleanArrayPreprocess(@KotowazaYomiLBSBooleanArray booleanArray: BooleanArray) =
-        booleanArray.preprocessLBSIntoBooleanArray()
+    fun providesKotowazaYomiLBSBooleanArrayPreprocess(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId) =
+        yomiTrie.LBS.toBooleanArray().preprocessLBSIntoBooleanArray()
 
     @Singleton
     @Provides
@@ -741,7 +699,6 @@ object AppModule {
         @SystemSuccinctBitVectorIsLeafYomi systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         @SystemSuccinctBitVectorTokenArray systemSuccinctBitVectorTokenArray: SuccinctBitVector,
         @SystemSuccinctBitVectorTangoLBS systemSuccinctBitVectorTangoLBS: SuccinctBitVector,
-        @SystemYomiLBSBooleanArray systemYomiLBSBooleanArray: BooleanArray,
 
         @SingleKanjiTangoTrie singleKanjiTangoTrie: LOUDS,
         @SingleKanjiYomiTrie singleKanjiYomiTrie: LOUDSWithTermId,
@@ -753,7 +710,6 @@ object AppModule {
         @SingleKanjiRank1ArrayTokenArrayBitvector singleKanjiRank1ArrayTokenArrayBitvector: ShortArray,
         @SingleKanjiRank0ArrayTangoLBS singleKanjiRank0ArrayTangoLBS: ShortArray,
         @SingleKanjiRank1ArrayTangoLBS singleKanjiRank1ArrayTangoLBS: ShortArray,
-        @SingleKanjiYomiLBSBooleanArray singleKanjiYomiLBSBooleanArray: BooleanArray,
 
         @EmojiTangoTrie emojiTangoTrie: LOUDS,
         @EmojiYomiTrie emojiYomiTrie: LOUDSWithTermId,
@@ -765,7 +721,6 @@ object AppModule {
         @EmojiRank1ArrayTokenArrayBitvector emojiRank1ArrayTokenArrayBitvector: ShortArray,
         @EmojiRank0ArrayTangoLBS emojiRank0ArrayTangoLBS: ShortArray,
         @EmojiRank1ArrayTangoLBS emojiRank1ArrayTangoLBS: ShortArray,
-        @EmojiYomiLBSBooleanArray emojiYomiLBSBooleanArray: BooleanArray,
 
         @EmoticonTangoTrie emoticonTangoTrie: LOUDS,
         @EmoticonYomiTrie emoticonYomiTrie: LOUDSWithTermId,
@@ -777,7 +732,6 @@ object AppModule {
         @EmoticonRank1ArrayTokenArrayBitvector emoticonRank1ArrayTokenArrayBitvector: ShortArray,
         @EmoticonRank0ArrayTangoLBS emoticonRank0ArrayTangoLBS: ShortArray,
         @EmoticonRank1ArrayTangoLBS emoticonRank1ArrayTangoLBS: ShortArray,
-        @EmoticonYomiLBSBooleanArray emoticonYomiLBSBooleanArray: BooleanArray,
 
         @SymbolTangoTrie symbolTangoTrie: LOUDS,
         @SymbolYomiTrie symbolYomiTrie: LOUDSWithTermId,
@@ -789,7 +743,6 @@ object AppModule {
         @SymbolRank1ArrayTokenArrayBitvector symbolRank1ArrayTokenArrayBitvector: ShortArray,
         @SymbolRank0ArrayTangoLBS symbolRank0ArrayTangoLBS: ShortArray,
         @SymbolRank1ArrayTangoLBS symbolRank1ArrayTangoLBS: ShortArray,
-        @SymbolYomiLBSBooleanArray symbolYomiLBSBooleanArray: BooleanArray,
 
         @ReadingCorrectionTangoTrie readingCorrectionTangoTrie: LOUDS,
         @ReadingCorrectionYomiTrie readingCorrectionYomiTrie: LOUDSWithTermId,
@@ -801,7 +754,6 @@ object AppModule {
         @ReadingCorrectionRank1ArrayTokenArrayBitvector readingCorrectionRank1ArrayTokenArrayBitvector: ShortArray,
         @ReadingCorrectionRank0ArrayTangoLBS readingCorrectionRank0ArrayTangoLBS: ShortArray,
         @ReadingCorrectionRank1ArrayTangoLBS readingCorrectionRank1ArrayTangoLBS: ShortArray,
-        @ReadingCorrectionYomiLBSBooleanArray readingCorrectionYomiLBSBooleanArray: BooleanArray,
 
         @KotowazaTangoTrie kotowazaTangoTrie: LOUDS,
         @KotowazaYomiTrie kotowazaYomiTrie: LOUDSWithTermId,
@@ -813,7 +765,6 @@ object AppModule {
         @KotowazaRank1ArrayTokenArrayBitvector kotowazaRank1ArrayTokenArrayBitvector: ShortArray,
         @KotowazaRank0ArrayTangoLBS kotowazaRank0ArrayTangoLBS: ShortArray,
         @KotowazaRank1ArrayTangoLBS kotowazaRank1ArrayTangoLBS: ShortArray,
-        @KotowazaYomiLBSBooleanArray kotowazaYomiLBSBooleanArray: BooleanArray,
 
         @SystemYomiLBSBooleanArrayPreprocess systemYomiLBSBooleanArrayPreprocess: IntArray,
         @SingleKanjiYomiLBSBooleanArrayPreprocess singleKanjiYomiLBSBooleanArrayPreprocess: IntArray,
@@ -839,7 +790,6 @@ object AppModule {
             systemSuccinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
             systemSuccinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
             systemSuccinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
-            systemYomiLBSBooleanArray = systemYomiLBSBooleanArray,
 
             singleKanjiTangoTrie = singleKanjiTangoTrie,
             singleKanjiYomiTrie = singleKanjiYomiTrie,
@@ -851,7 +801,6 @@ object AppModule {
             singleKanjiRank1ArrayTokenArrayBitvector = singleKanjiRank1ArrayTokenArrayBitvector,
             singleKanjiRank0ArrayLBSTango = singleKanjiRank0ArrayTangoLBS,
             singleKanjiRank1ArrayLBSTango = singleKanjiRank1ArrayTangoLBS,
-            singleKanjiYomiLBSBooleanArray = singleKanjiYomiLBSBooleanArray,
 
             emojiTangoTrie = emojiTangoTrie,
             emojiYomiTrie = emojiYomiTrie,
@@ -863,7 +812,6 @@ object AppModule {
             emojiRank1ArrayTokenArrayBitvector = emojiRank1ArrayTokenArrayBitvector,
             emojiRank0ArrayLBSTango = emojiRank0ArrayTangoLBS,
             emojiRank1ArrayLBSTango = emojiRank1ArrayTangoLBS,
-            emojiYomiLBSBooleanArray = emojiYomiLBSBooleanArray,
 
             emoticonTangoTrie = emoticonTangoTrie,
             emoticonYomiTrie = emoticonYomiTrie,
@@ -875,7 +823,6 @@ object AppModule {
             emoticonRank1ArrayTokenArrayBitvector = emoticonRank1ArrayTokenArrayBitvector,
             emoticonRank0ArrayLBSTango = emoticonRank0ArrayTangoLBS,
             emoticonRank1ArrayLBSTango = emoticonRank1ArrayTangoLBS,
-            emoticonYomiLBSBooleanArray = emoticonYomiLBSBooleanArray,
 
             symbolTangoTrie = symbolTangoTrie,
             symbolYomiTrie = symbolYomiTrie,
@@ -887,7 +834,6 @@ object AppModule {
             symbolRank1ArrayTokenArrayBitvector = symbolRank1ArrayTokenArrayBitvector,
             symbolRank0ArrayLBSTango = symbolRank0ArrayTangoLBS,
             symbolRank1ArrayLBSTango = symbolRank1ArrayTangoLBS,
-            symbolYomiLBSBooleanArray = symbolYomiLBSBooleanArray,
 
             readingCorrectionTangoTrie = readingCorrectionTangoTrie,
             readingCorrectionYomiTrie = readingCorrectionYomiTrie,
@@ -899,7 +845,6 @@ object AppModule {
             readingCorrectionRank1ArrayTokenArrayBitvector = readingCorrectionRank1ArrayTokenArrayBitvector,
             readingCorrectionRank0ArrayLBSTango = readingCorrectionRank0ArrayTangoLBS,
             readingCorrectionRank1ArrayLBSTango = readingCorrectionRank1ArrayTangoLBS,
-            readingCorrectionYomiLBSBooleanArray = readingCorrectionYomiLBSBooleanArray,
 
             kotowazaTangoTrie = kotowazaTangoTrie,
             kotowazaYomiTrie = kotowazaYomiTrie,
@@ -911,7 +856,6 @@ object AppModule {
             kotowazaRank1ArrayTokenArrayBitvector = kotowazaRank1ArrayTokenArrayBitvector,
             kotowazaRank0ArrayLBSTango = kotowazaRank0ArrayTangoLBS,
             kotowazaRank1ArrayLBSTango = kotowazaRank1ArrayTangoLBS,
-            kotowazaYomiLBSBooleanArray = kotowazaYomiLBSBooleanArray,
 
             systemYomiLBSPreprocess = systemYomiLBSBooleanArrayPreprocess,
             singleKanjiYomiLBSPreprocess = singleKanjiYomiLBSBooleanArrayPreprocess,

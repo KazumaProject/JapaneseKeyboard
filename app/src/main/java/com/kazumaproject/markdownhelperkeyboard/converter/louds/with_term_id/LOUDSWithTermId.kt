@@ -119,16 +119,14 @@ class LOUDSWithTermId {
     fun getNodeIndex(
         s: String,
         rank1Array: IntArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
-        return search(2, s.toCharArray(), 0, rank1Array, LBSInBoolArray, LBSInBoolArrayPreprocess)
+        return search(2, s.toCharArray(), 0, rank1Array, LBSInBoolArrayPreprocess)
     }
 
     fun getNodeIndex(
         s: String,
         succinctBitVector: SuccinctBitVector,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         return search(
@@ -136,7 +134,6 @@ class LOUDSWithTermId {
             s.toCharArray(),
             0,
             succinctBitVector,
-            LBSInBoolArray,
             LBSInBoolArrayPreprocess
         )
     }
@@ -144,7 +141,6 @@ class LOUDSWithTermId {
     fun getNodeIndex(
         s: String,
         rank1Array: ShortArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         return searchShortArray(
@@ -152,7 +148,6 @@ class LOUDSWithTermId {
             s.toCharArray(),
             0,
             rank1Array,
-            LBSInBoolArray,
             LBSInBoolArrayPreprocess
         )
     }
@@ -422,14 +417,13 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         rank1Array: IntArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = LBS.rank1Common(currentIndex, rank1Array)
         val charCount = chars.size
 
-        while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
+        while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex]
 
@@ -443,7 +437,6 @@ class LOUDSWithTermId {
                     chars,
                     wordOffset + 1,
                     rank1Array,
-                    LBSInBoolArray,
                     LBSInBoolArrayPreprocess
                 )
             }
@@ -458,14 +451,13 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         succinctBitVector: SuccinctBitVector,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = succinctBitVector.rank1(currentIndex)
         val charCount = chars.size
 
-        while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
+        while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex]
 
@@ -479,7 +471,6 @@ class LOUDSWithTermId {
                     chars,
                     wordOffset + 1,
                     succinctBitVector,
-                    LBSInBoolArray,
                     LBSInBoolArrayPreprocess
                 )
             }
@@ -509,14 +500,13 @@ class LOUDSWithTermId {
         chars: CharArray,
         wordOffset: Int,
         rank1Array: ShortArray,
-        LBSInBoolArray: BooleanArray,
         LBSInBoolArrayPreprocess: IntArray
     ): Int {
         var currentIndex = index
         var charIndex = LBS.rank1CommonShort(currentIndex, rank1Array)
         val charCount = chars.size
 
-        while (currentIndex < LBSInBoolArray.size && LBSInBoolArray[currentIndex]) {
+        while (currentIndex < LBS.size() && LBS[currentIndex]) {
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex.toInt()]
 
@@ -530,7 +520,6 @@ class LOUDSWithTermId {
                     chars,
                     wordOffset + 1,
                     rank1Array,
-                    LBSInBoolArray,
                     LBSInBoolArrayPreprocess
                 )
             }
