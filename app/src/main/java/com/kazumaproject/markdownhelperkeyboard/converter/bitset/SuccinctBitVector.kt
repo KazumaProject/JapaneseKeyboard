@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.bitset
 
 import java.util.BitSet
+import kotlin.math.min
 
 class SuccinctBitVector(private val bitSet: BitSet) {
     // 定数: 大ブロックサイズ = 256ビット、 小ブロックサイズ = 8ビット
@@ -172,9 +173,11 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         val localTarget = nodeId - zerosBeforeBlock
 
         // 大ブロック内での小ブロック線形探索:
+        // 大ブロック内での小ブロック線形探索:
         val baseSmallIndex = bigBlock * numSmallBlocksPerBig
+        val smallBlocksInThisBig = min(numSmallBlocksPerBig, smallBlockRanks.size - baseSmallIndex)
         var smallBlock = 0
-        while (smallBlock < numSmallBlocksPerBig - 1) {
+        while (smallBlock < smallBlocksInThisBig - 1) {
             val nextZeros =
                 (smallBlock + 1) * smallBlockSize - smallBlockRanks[baseSmallIndex + smallBlock + 1]
             if (nextZeros < localTarget) {
