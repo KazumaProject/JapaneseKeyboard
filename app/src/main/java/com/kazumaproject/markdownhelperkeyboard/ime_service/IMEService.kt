@@ -182,14 +182,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private val cachedSpaceDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
-    }
+    private var cachedSpaceDrawable: Drawable? = null
+    private var cachedLogoDrawable: Drawable? = null
+    private var cachedKanaDrawable: Drawable? = null
+    private var cachedHenkanDrawable: Drawable? = null
+
     private val cachedNumberDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(applicationContext, R.drawable.number_small)
-    }
-    private val cachedLogoDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
     }
 
     private val cachedArrowDropDownDrawable: Drawable? by lazy {
@@ -222,14 +221,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private val cachedEnglishDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(applicationContext, R.drawable.english_small)
-    }
-
-    private val cachedHenkanDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
-    }
-
-    private val cachedKanaDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
     }
 
     companion object {
@@ -329,6 +320,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        cachedSpaceDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
+        cachedLogoDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
+        cachedHenkanDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
+        cachedKanaDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
         if (!clipboardUtil.isClipboardEmpty()) {
@@ -348,6 +343,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onFinishInputView")
         mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
+        cachedSpaceDrawable = null
+        cachedLogoDrawable = null
+        cachedHenkanDrawable = null
+        cachedKanaDrawable = null
     }
 
 
