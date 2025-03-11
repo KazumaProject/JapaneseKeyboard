@@ -262,6 +262,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
             setClipBoardTextToCandidate()
+            cachedSpaceDrawable =
+                ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
+            cachedLogoDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
+            cachedHenkanDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
+            cachedKanaDrawable =
+                ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
         }
     }
 
@@ -320,10 +326,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
-        cachedSpaceDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
-        cachedLogoDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
-        cachedHenkanDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
-        cachedKanaDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
         if (!clipboardUtil.isClipboardEmpty()) {
@@ -343,10 +345,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onFinishInputView")
         mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        cachedSpaceDrawable = null
-        cachedLogoDrawable = null
-        cachedHenkanDrawable = null
-        cachedKanaDrawable = null
     }
 
 
@@ -373,6 +371,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (mozcUTNeologd) kanaKanjiEngine.releaseNeologdDictionary()
             if (mozcUTWeb) kanaKanjiEngine.releaseWebDictionary()
         }
+        cachedSpaceDrawable = null
+        cachedLogoDrawable = null
+        cachedHenkanDrawable = null
+        cachedKanaDrawable = null
+        mainLayoutBinding?.suggestionRecyclerView?.adapter = null
+        mainLayoutBinding = null
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
