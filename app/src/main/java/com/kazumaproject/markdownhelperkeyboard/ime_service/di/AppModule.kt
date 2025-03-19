@@ -2,9 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.di
 
 import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
-import android.transition.Slide
-import android.transition.Transition
-import android.view.Gravity
 import android.view.inputmethod.InputMethodManager
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
@@ -14,7 +11,6 @@ import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
@@ -60,11 +56,6 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun provideSuggestionAdapter(): SuggestionAdapter =
-        SuggestionAdapter()
-
-    @Singleton
-    @Provides
     fun providesClipBoardUtil(@ApplicationContext context: Context): ClipboardUtil =
         ClipboardUtil(context)
 
@@ -76,14 +67,6 @@ object AppModule {
     @Singleton
     @Provides
     fun providesMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
-
-    @Singleton
-    @Provides
-    fun providesStringBuilder(): StringBuilder = StringBuilder()
-
-    @Singleton
-    @Provides
-    fun providesTransition(): Transition = Slide(Gravity.BOTTOM)
 
     @Singleton
     @Provides
