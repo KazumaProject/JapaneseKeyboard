@@ -1,6 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -127,8 +126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
-    @Inject
-    lateinit var suggestionAdapter: SuggestionAdapter
+    private var suggestionAdapter: SuggestionAdapter? = null
 
     @Inject
     lateinit var learnRepository: LearnRepository
@@ -234,6 +232,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onCreate()
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+        suggestionAdapter = SuggestionAdapter()
     }
 
     override fun onCreateInputView(): View? {
@@ -261,7 +260,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     startScope(mainView)
                 }
             }
-            setClipBoardTextToCandidate()
             cachedSpaceDrawable =
                 ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
             cachedLogoDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
@@ -329,7 +327,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
         if (!clipboardUtil.isClipboardEmpty()) {
-            suggestionAdapter.suggestions = clipboardUtil.getAllClipboardTexts()
+            suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
         setKeyboardSize()
     }
@@ -356,6 +354,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
+        suggestionAdapter?.release()
+        suggestionAdapter = null
         actionInDestroy()
         suggestionCache = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
@@ -428,7 +428,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     Timber.d("Flick: $char $key $gestureType")
                     val insertString = _inputString.value
                     val sb = StringBuilder()
-                    val suggestionList = suggestionAdapter.suggestions
+                    val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     when (gestureType) {
                         GestureType.Null -> {
 
@@ -615,7 +615,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         char: Char?, insertString: String, sb: StringBuilder, mainView: MainLayoutBinding
     ) {
         if (isHenkan.get()) {
-            suggestionAdapter.updateHighlightPosition(-1)
+            suggestionAdapter?.updateHighlightPosition(-1)
             finishComposingText()
             mainView.root.post {
                 isHenkan.set(false)
@@ -642,7 +642,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         char: Char?, insertString: String, sb: StringBuilder, mainView: MainLayoutBinding
     ) {
         if (isHenkan.get()) {
-            suggestionAdapter.updateHighlightPosition(-1)
+            suggestionAdapter?.updateHighlightPosition(-1)
             finishComposingText()
             mainView.root.post {
                 isHenkan.set(false)
@@ -740,10 +740,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun cancelHenkanByLongPressDeleteKey() {
         val insertString = _inputString.value
-        val selectedSuggestion = suggestionAdapter.suggestions.getOrNull(suggestionClickNum)
+        val selectedSuggestion = suggestionAdapter?.suggestions?.getOrNull(suggestionClickNum)
 
         deleteKeyLongKeyPressed.set(true)
-        suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionClickNum = 0
         isFirstClickHasStringTail = false
         isContinuousTapInputEnabled.set(true)
@@ -771,7 +771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _suggestionFlag.conflate().collect {
                 when (it) {
                     CandidateShowFlag.Idle -> {
-                        suggestionAdapter.suggestions = emptyList()
+                        suggestionAdapter?.suggestions = emptyList()
                         if (isSuggestionVisible) {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, false
@@ -779,7 +779,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             isSuggestionVisible = false
                         }
                         if (!clipboardUtil.isClipboardEmpty()) {
-                            suggestionAdapter.suggestions = clipboardUtil.getAllClipboardTexts()
+                            suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
                         }
                     }
 
@@ -1078,7 +1078,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
         suggestionAdapter.apply {
-            this.setOnItemClickListener { candidate, position ->
+            this?.setOnItemClickListener { candidate, position ->
                 val insertString = _inputString.value
                 val currentInputMode = mainView.keyboardView.currentInputMode
                 setVibrate()
@@ -1089,7 +1089,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     position = position
                 )
             }
-            this.setOnItemLongClickListener { candidate, _ ->
+            this?.setOnItemLongClickListener { candidate, _ ->
                 val insertString = _inputString.value
                 setCandidateClipboardLongClick(candidate, insertString)
             }
@@ -1098,9 +1098,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             itemAnimator = null
             focusable = View.NOT_FOCUSABLE
             addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
-                if (suggestionAdapter.suggestions.isNotEmpty()) {
-                    if (_suggestionViewStatus.value) {
-                        _suggestionViewStatus.update { !it }
+                suggestionAdapter?.let { adapter ->
+                    if (adapter.suggestions.isNotEmpty()){
+                        if (_suggestionViewStatus.value) {
+                            _suggestionViewStatus.update { !it }
+                        }
                     }
                 }
             }, onSwipeUp = {}))
@@ -1218,7 +1220,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         if (insertString.isEmpty() && candidate.type.toInt() == 28) {
             clipboardUtil.clearClipboard()
-            suggestionAdapter.suggestions = emptyList()
+            suggestionAdapter?.suggestions = emptyList()
         }
         resetFlagsSuggestionClick()
     }
@@ -1331,7 +1333,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 candidateLength = candidate.length.toInt()
             )
             clipboardUtil.clearClipboard()
-            suggestionAdapter.suggestions = emptyList()
+            suggestionAdapter?.suggestions = emptyList()
         }
     }
 
@@ -1405,7 +1407,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { EMPTY_STRING }
-        suggestionAdapter.suggestions = emptyList()
+        suggestionAdapter?.suggestions = emptyList()
         stringInTail.set(EMPTY_STRING)
         suggestionClickNum = 0
         isHenkan.set(false)
@@ -1418,7 +1420,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         lastFlickConvertedNextHiragana.set(false)
         onDeleteLongPressUp.set(false)
         isSpaceKeyLongPressed = false
-        suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         resetKeyboard()
         _keyboardSymbolViewState.value = false
@@ -1444,7 +1446,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
         _suggestionViewStatus.update { true }
-        suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
     }
 
@@ -1457,7 +1459,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
-        suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
     }
 
@@ -1471,7 +1473,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled.set(true)
         _inputString.update { EMPTY_STRING }
         stringInTail.set(EMPTY_STRING)
-        suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         learnMultiple.stop()
     }
@@ -1492,7 +1494,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isHenkan.set(false)
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
-        suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
     }
 
@@ -1702,7 +1704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         // Now update UI on main
         withContext(Dispatchers.Main) {
-            suggestionAdapter.suggestions = filteredCandidates
+            suggestionAdapter?.suggestions = filteredCandidates
             mainView.suggestionRecyclerView.scrollToPosition(0)
             updateUIinHenkan(mainView, insertString)
         }
@@ -1920,7 +1922,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             smoothScrollToPosition(
                 (suggestionClickNum - 1 + 2).coerceAtLeast(0).coerceAtMost(suggestions.size - 1)
             )
-            suggestionAdapter.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
+            suggestionAdapter?.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
         }
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
@@ -1952,7 +1954,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         0
                     )
                 )
-                suggestionAdapter.updateHighlightPosition(
+                suggestionAdapter?.updateHighlightPosition(
                     if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
                         0
                     )
@@ -1979,7 +1981,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setEnterKeyPress()
             isHenkan.set(false)
             suggestionClickNum = 0
-            suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+            suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
         }
         setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
@@ -2064,7 +2066,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (insertString.length == 1) {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
                     _inputString.update { EMPTY_STRING }
-                    suggestionAdapter.suggestions = emptyList()
+                    suggestionAdapter?.suggestions = emptyList()
                 } else {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
                     _inputString.update { it.dropLast(1) }
@@ -2177,7 +2179,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (insertString.length == 1) {
                 stringInTail.set(insertString + stringInTail.get())
                 _inputString.update { EMPTY_STRING }
-                suggestionAdapter.suggestions = emptyList()
+                suggestionAdapter?.suggestions = emptyList()
             } else {
                 stringInTail.set(insertString.last() + stringInTail.get())
                 _inputString.update { it.dropLast(1) }
@@ -2533,7 +2535,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 key.toString()
             }
             isHenkan.set(false)
-            suggestionAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+            suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
         } else {
             setCurrentInputCharacter(
@@ -2554,14 +2556,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             !listIterator.hasPrevious() && isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
                 mainView.suggestionRecyclerView.smoothScrollToPosition(0)
-                suggestionAdapter.updateHighlightPosition(0)
+                suggestionAdapter?.updateHighlightPosition(0)
                 println("setConvertLetterInJapaneseFromButton space hasPrevious $suggestionClickNum ${suggestions.size}")
             }
 
             !listIterator.hasPrevious() && !isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
                 mainView.suggestionRecyclerView.smoothScrollToPosition(0)
-                suggestionAdapter.updateHighlightPosition(0)
+                suggestionAdapter?.updateHighlightPosition(0)
                 println("setConvertLetterInJapaneseFromButton delete hasPrevious $suggestionClickNum ${suggestions.size}")
             }
 
@@ -2590,10 +2592,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             EMPTY_STRING
         }
         if (isHenkan.get()) {
-            suggestionAdapter.suggestions = emptyList()
+            suggestionAdapter?.suggestions = emptyList()
             isHenkan.set(false)
             suggestionClickNum = 0
-            suggestionAdapter.updateHighlightPosition(-1)
+            suggestionAdapter?.updateHighlightPosition(-1)
         }
     }
 
@@ -2616,10 +2618,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         _inputString.update { EMPTY_STRING }
         if (isHenkan.get()) {
-            suggestionAdapter.suggestions = emptyList()
+            suggestionAdapter?.suggestions = emptyList()
             isHenkan.set(false)
             suggestionClickNum = 0
-            suggestionAdapter.updateHighlightPosition(-1)
+            suggestionAdapter?.updateHighlightPosition(-1)
         }
     }
 
@@ -2676,16 +2678,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         charForReturn, insertString, sb
                     )
                 }
-            }
-        }
-    }
-
-    private fun setClipBoardTextToCandidate() {
-        val clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboardManager.addPrimaryClipChangedListener {
-            val latestClipboardText = clipboardUtil.getAllClipboardTexts()
-            if (latestClipboardText.isNotEmpty()) {
-                suggestionAdapter.suggestions = latestClipboardText
             }
         }
     }
