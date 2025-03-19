@@ -35,9 +35,6 @@ import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
@@ -99,7 +96,7 @@ import kotlin.math.roundToInt
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
-class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
+class IMEService : InputMethodService(), InputConnection {
 
     sealed class CandidateShowFlag {
         data object Idle : CandidateShowFlag()
@@ -141,7 +138,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var symbolList: List<String> = emptyList()
 
     private var mainLayoutBinding: MainLayoutBinding? = null
-    private lateinit var lifecycleRegistry: LifecycleRegistry
     private val _inputString = MutableStateFlow(EMPTY_STRING)
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
@@ -230,8 +226,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onCreate() {
         super.onCreate()
-        lifecycleRegistry = LifecycleRegistry(this)
-        lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter()
     }
 
@@ -253,12 +247,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
                 setSymbolKeyboard(mainView)
                 setTenKeyListeners(mainView)
-                if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                    startScope(mainView)
-                } else {
-                    scope.coroutineContext.cancelChildren()
-                    startScope(mainView)
-                }
+//                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+//                    startScope(mainView)
+//                } else {
+//                    scope.coroutineContext.cancelChildren()
+//                    startScope(mainView)
+//                }
             }
             cachedSpaceDrawable =
                 ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
@@ -330,6 +324,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
         setKeyboardSize()
+        mainLayoutBinding?.let { mainView ->
+            scope.coroutineContext.cancelChildren()
+            startScope(mainView)
+        }
     }
 
     override fun onFinishInput() {
@@ -343,6 +341,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onFinishInputView")
         mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
+        scope.coroutineContext.cancelChildren()
     }
 
 
@@ -358,7 +357,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter = null
         actionInDestroy()
         suggestionCache = null
-        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         appPreference.apply {
             val mozcUTPersonNames = mozc_ut_person_names_preference ?: false
             val mozcUTPlaces = mozc_ut_places_preference ?: false
@@ -1099,7 +1097,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             focusable = View.NOT_FOCUSABLE
             addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
                 suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty()){
+                    if (adapter.suggestions.isNotEmpty()) {
                         if (_suggestionViewStatus.value) {
                             _suggestionViewStatus.update { !it }
                         }
@@ -1127,7 +1125,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setSymbolKeyboard(mainView: MainLayoutBinding) {
         mainView.keyboardSymbolView.apply {
-            setLifecycleOwner(this@IMEService)
             setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
                 override fun onClick() {
                     setVibrate()
@@ -2799,9 +2796,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun easeInOutQuad(t: Float): Float = if (t < 0.5) 2 * t * t else -1 + (4 - 2 * t) * t
-
-    override val lifecycle: Lifecycle
-        get() = lifecycleRegistry
 
     override fun getTextBeforeCursor(p0: Int, p1: Int): CharSequence? {
         println("getTextBeforeCursor")
