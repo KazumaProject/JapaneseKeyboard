@@ -41,6 +41,11 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
 
+    fun release(){
+        onItemClickListener = null
+        onItemLongClickListener = null
+    }
+
     fun setOnItemLongClickListener(onItemLongClick: (Candidate, Int) -> Unit) {
         this.onItemLongClickListener = onItemLongClick
     }
