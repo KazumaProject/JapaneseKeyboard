@@ -35,6 +35,9 @@ import android.widget.FrameLayout
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
@@ -49,7 +52,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
-import com.kazumaproject.markdownhelperkeyboard.ime_service.di.MainDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
@@ -73,9 +75,11 @@ import com.kazumaproject.tenkey.state.InputMode
 import com.kazumaproject.tenkey.state.Key
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -91,12 +95,11 @@ import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
-import javax.inject.Named
 import kotlin.math.roundToInt
 
 @RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
-class IMEService : InputMethodService(), InputConnection {
+class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     sealed class CandidateShowFlag {
         data object Idle : CandidateShowFlag()
@@ -105,14 +108,6 @@ class IMEService : InputMethodService(), InputConnection {
 
     @Inject
     lateinit var learnMultiple: LearnMultiple
-
-    @Inject
-    @Named("main_ime_scope")
-    lateinit var scope: CoroutineScope
-
-    @Inject
-    @MainDispatcher
-    lateinit var mainDispatcher: CoroutineDispatcher
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -130,6 +125,9 @@ class IMEService : InputMethodService(), InputConnection {
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
+
+    private var isSuggestionVisible = false
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var emojiList: List<String> = emptyList()
 
@@ -157,6 +155,8 @@ class IMEService : InputMethodService(), InputConnection {
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
+    private lateinit var lifecycleRegistry: LifecycleRegistry
+    private var commitAfterTextJob: Job? = null
 
     private val vibratorManager: VibratorManager by lazy {
         getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -226,6 +226,8 @@ class IMEService : InputMethodService(), InputConnection {
 
     override fun onCreate() {
         super.onCreate()
+        lifecycleRegistry = LifecycleRegistry(this)
+        lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter()
     }
 
@@ -247,12 +249,12 @@ class IMEService : InputMethodService(), InputConnection {
                 )
                 setSymbolKeyboard(mainView)
                 setTenKeyListeners(mainView)
-//                if (lifecycle.currentState == Lifecycle.State.CREATED) {
-//                    startScope(mainView)
-//                } else {
-//                    scope.coroutineContext.cancelChildren()
-//                    startScope(mainView)
-//                }
+                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                    startScope(mainView)
+                } else {
+                    scope.coroutineContext.cancelChildren()
+                    startScope(mainView)
+                }
             }
             cachedSpaceDrawable =
                 ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
@@ -324,10 +326,6 @@ class IMEService : InputMethodService(), InputConnection {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
         setKeyboardSize()
-        mainLayoutBinding?.let { mainView ->
-            scope.coroutineContext.cancelChildren()
-            startScope(mainView)
-        }
     }
 
     override fun onFinishInput() {
@@ -341,7 +339,6 @@ class IMEService : InputMethodService(), InputConnection {
         Timber.d("onUpdate onFinishInputView")
         mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        scope.coroutineContext.cancelChildren()
     }
 
 
@@ -355,7 +352,7 @@ class IMEService : InputMethodService(), InputConnection {
         super.onDestroy()
         suggestionAdapter?.release()
         suggestionAdapter = null
-        actionInDestroy()
+        lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
         appPreference.apply {
             val mozcUTPersonNames = mozc_ut_person_names_preference ?: false
@@ -373,8 +370,7 @@ class IMEService : InputMethodService(), InputConnection {
         cachedLogoDrawable = null
         cachedHenkanDrawable = null
         cachedKanaDrawable = null
-        mainLayoutBinding?.suggestionRecyclerView?.adapter = null
-        mainLayoutBinding = null
+        actionInDestroy()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -762,8 +758,6 @@ class IMEService : InputMethodService(), InputConnection {
         }
     }
 
-    private var isSuggestionVisible = false
-
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
             _suggestionFlag.conflate().collect {
@@ -914,10 +908,15 @@ class IMEService : InputMethodService(), InputConnection {
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
-            if (!isHenkan.get() && _inputString.value.isNotEmpty() && !onDeleteLongPressUp.get() && !englishSpaceKeyPressed.get() && !deleteKeyLongKeyPressed.get()) {
-                isContinuousTapInputEnabled.set(true)
-                lastFlickConvertedNextHiragana.set(true)
-                setComposingTextAfterEdit(inputString, spannableString)
+            commitAfterTextJob = CoroutineScope(Dispatchers.Main).launch {
+                if (!isHenkan.get() && _inputString.value.isNotEmpty() &&
+                    !onDeleteLongPressUp.get() && !englishSpaceKeyPressed.get() &&
+                    !deleteKeyLongKeyPressed.get()
+                ) {
+                    isContinuousTapInputEnabled.set(true)
+                    lastFlickConvertedNextHiragana.set(true)
+                    setComposingTextAfterEdit(inputString, spannableString)
+                }
             }
         } else {
             println("input is empty now!!")
@@ -1422,6 +1421,8 @@ class IMEService : InputMethodService(), InputConnection {
         resetKeyboard()
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
+        commitAfterTextJob?.cancel()
+        commitAfterTextJob = null
     }
 
     private fun actionInDestroy() {
@@ -1431,7 +1432,7 @@ class IMEService : InputMethodService(), InputConnection {
         }
         mainLayoutBinding = null
         closeConnection()
-        scope.coroutineContext.cancelChildren()
+        scope.cancel()
     }
 
     private fun resetFlagsSuggestionClick() {
@@ -2796,6 +2797,9 @@ class IMEService : InputMethodService(), InputConnection {
     }
 
     private fun easeInOutQuad(t: Float): Float = if (t < 0.5) 2 * t * t else -1 + (4 - 2 * t) * t
+
+    override val lifecycle: Lifecycle
+        get() = lifecycleRegistry
 
     override fun getTextBeforeCursor(p0: Int, p1: Int): CharSequence? {
         println("getTextBeforeCursor")
