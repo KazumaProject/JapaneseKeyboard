@@ -23,15 +23,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.util.zip.ZipInputStream
-import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -62,18 +56,6 @@ object AppModule {
     @Singleton
     @Provides
     fun providesLearnMultiple(): LearnMultiple = LearnMultiple()
-
-    @MainDispatcher
-    @Singleton
-    @Provides
-    fun providesMainDispatcher(): CoroutineDispatcher = Dispatchers.Main
-
-    @Singleton
-    @Provides
-    @Named("main_ime_scope")
-    fun providesIMEScope(
-        @MainDispatcher mainDispatcher: CoroutineDispatcher,
-    ): CoroutineScope = CoroutineScope(SupervisorJob(Job()) + mainDispatcher)
 
     @Singleton
     @Provides
