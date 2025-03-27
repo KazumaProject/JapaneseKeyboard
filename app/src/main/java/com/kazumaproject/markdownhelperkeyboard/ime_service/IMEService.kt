@@ -269,7 +269,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting")
         resetAllFlags()
-        setCurrentInputType(attribute)
         if (suggestionCache == null) {
             suggestionCache = mutableMapOf()
         }
@@ -322,6 +321,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         resetKeyboard()
+        setCurrentInputType(editorInfo)
         if (!clipboardUtil.isClipboardEmpty()) {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
@@ -1124,6 +1124,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setSymbolKeyboard(mainView: MainLayoutBinding) {
         mainView.keyboardSymbolView.apply {
+            setLifecycleOwner(this@IMEService)
             setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
                 override fun onClick() {
                     setVibrate()
@@ -1162,7 +1163,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
-
         emojiList = withContext(Dispatchers.Default) {
             kanaKanjiEngine.getSymbolEmojiCandidates()
         }
@@ -1172,12 +1172,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         symbolList = withContext(Dispatchers.Default) {
             kanaKanjiEngine.getSymbolCandidates()
         }
-
-        withContext(Dispatchers.Main) {
-            mainView.keyboardSymbolView.setSymbolLists(
-                emojiList, emoticonList, symbolList, mainView.keyboardSymbolView.getTabPosition()
-            )
-        }
+        mainView.keyboardSymbolView.setSymbolLists(
+            emojiList, emoticonList, symbolList, mainView.keyboardSymbolView.getTabPosition()
+        )
     }
 
     private suspend fun clearSymbols() {
