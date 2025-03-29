@@ -1535,7 +1535,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
+        beginBatchEdit()
         setComposingText(spannableString, 1)
+        endBatchEdit()
     }
 
     private fun setComposingTextAfterEdit(
@@ -1551,7 +1553,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setSpan(UnderlineSpan(), 0, inputString.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         Timber.d("launchInputString: setComposingTextAfterEdit $spannableString")
+        beginBatchEdit()
         setComposingText(spannableString, 1)
+        endBatchEdit()
     }
 
     private fun setEnterKeyAction(
