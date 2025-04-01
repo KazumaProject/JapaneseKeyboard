@@ -292,15 +292,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         key,
                         null
                     )
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        pressedKey = PressedKey(
+                    pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        PressedKey(
                             key = key,
                             pointer = 0,
                             initialX = event.getRawX(event.actionIndex),
                             initialY = event.getRawY(event.actionIndex),
                         )
                     } else {
-                        pressedKey = PressedKey(
+                        PressedKey(
                             key = key,
                             pointer = 0,
                             initialX = event.getX(event.actionIndex),
@@ -660,21 +660,23 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {
-        val x = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val x: Float = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             event.getRawX(pointer)
         } else {
-            event.getX(pointer)
+            val location = IntArray(2)
+            this.getLocationOnScreen(location)
+            event.getX(pointer) + location[0]
         }
-        val y = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+
+        val y: Float = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             event.getRawY(pointer)
         } else {
-            event.getY(pointer)
+            val location = IntArray(2)
+            this.getLocationOnScreen(location)
+            event.getY(pointer) + location[1]
         }
         val keyWidth = keyA.width
         val keyHeight = keyA.height
-        println("aaaa: x: $x y:$y")
-        println("aaab: $keyWidth $keyHeight")
-        println("aaac: ${keyA.layoutXPosition()} ${keyA.layoutYPosition()}")
         when {
             x >= 0 && x <= sideKeyPreviousChar.layoutXPosition() + keyWidth && y >= 0 && y <= sideKeyPreviousChar.layoutYPosition() + keyHeight -> return Key.SideKeyPreviousChar
             x >= keyWidth + 1 && x <= keyA.layoutXPosition() + keyWidth && y <= keyA.layoutYPosition() + keyHeight -> return Key.KeyA
