@@ -7,9 +7,8 @@ import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Bundle
-import android.os.CombinedVibration
 import android.os.Handler
-import android.os.VibrationEffect
+import android.os.Vibrator
 import android.os.VibratorManager
 import android.text.Spannable
 import android.text.SpannableString
@@ -32,7 +31,6 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
-import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -97,7 +95,6 @@ import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
-@RequiresApi(Build.VERSION_CODES.S)
 @AndroidEntryPoint
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
@@ -126,7 +123,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
-    private var isSuggestionVisible = false
+    private var isSuggestionVisible = AtomicBoolean(false)
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var emojiList: List<String> = emptyList()
@@ -157,24 +154,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
     private var commitAfterTextJob: Job? = null
-
-    private val vibratorManager: VibratorManager by lazy {
-        getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-    }
-
-    private val shortVibrationEffect: VibrationEffect by lazy {
-        VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
-    }
-
-    private val shortCombinedVibration: CombinedVibration by lazy {
-        CombinedVibration.createParallel(shortVibrationEffect)
-    }
-
-    private fun setVibrate() {
-        appPreference.vibration_preference?.let {
-            if (it) vibratorManager.vibrate(shortCombinedVibration)
-        }
-    }
 
     private var cachedSpaceDrawable: Drawable? = null
     private var cachedLogoDrawable: Drawable? = null
@@ -249,12 +228,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
                 setSymbolKeyboard(mainView)
                 setTenKeyListeners(mainView)
-                if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                    startScope(mainView)
-                } else {
-                    scope.coroutineContext.cancelChildren()
-                    startScope(mainView)
-                }
+//                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+//                    startScope(mainView)
+//                } else {
+//                    scope.coroutineContext.cancelChildren()
+//                    startScope(mainView)
+//                }
             }
             cachedSpaceDrawable =
                 ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
@@ -326,6 +305,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
         setKeyboardSize()
+
+        mainLayoutBinding?.let { mainView ->
+            scope.coroutineContext.cancelChildren()
+            startScope(mainView)
+        }
     }
 
     override fun onFinishInput() {
@@ -339,6 +323,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onFinishInputView")
         mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
+        scope.coroutineContext.cancelChildren()
     }
 
 
@@ -430,15 +415,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                         GestureType.Down -> {
                             if (appPreference.vibration_timing_preference == null) {
-                                setVibrate()
+                                vibrate()
                             } else {
                                 when (appPreference.vibration_timing_preference) {
                                     "both" -> {
-                                        setVibrate()
+                                        vibrate()
                                     }
 
                                     "press" -> {
-                                        setVibrate()
+                                        vibrate()
                                     }
 
                                     "release" -> {
@@ -497,11 +482,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding
     ) {
         if (appPreference.vibration_timing_preference == null) {
-            setVibrate()
+            vibrate()
         } else {
             when (appPreference.vibration_timing_preference) {
                 "both" -> {
-                    setVibrate()
+                    vibrate()
                 }
 
                 "press" -> {
@@ -509,7 +494,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 "release" -> {
-                    setVibrate()
+                    vibrate()
                 }
             }
         }
@@ -588,7 +573,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySymbol -> {
-                setVibrate()
+                vibrate()
                 _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
                 stringInTail.set(EMPTY_STRING)
                 finishComposingText()
@@ -764,11 +749,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (it) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
-                        if (isSuggestionVisible) {
+                        if (isSuggestionVisible.get()) {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, false
                             )
-                            isSuggestionVisible = false
+                            isSuggestionVisible.set(false)
                         }
                         if (!clipboardUtil.isClipboardEmpty()) {
                             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
@@ -777,11 +762,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     CandidateShowFlag.Updating -> {
                         setSuggestionOnView(mainView)
-                        if (!isSuggestionVisible) {
+                        if (!isSuggestionVisible.get()) {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
-                            isSuggestionVisible = true
+                            isSuggestionVisible.set(true)
                         }
                     }
                 }
@@ -1078,7 +1063,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             this?.setOnItemClickListener { candidate, position ->
                 val insertString = _inputString.value
                 val currentInputMode = mainView.keyboardView.currentInputMode
-                setVibrate()
+                vibrate()
                 setCandidateClick(
                     candidate = candidate,
                     insertString = insertString,
@@ -1093,7 +1078,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         mainView.suggestionRecyclerView.apply {
             itemAnimator = null
-            focusable = View.NOT_FOCUSABLE
+            isFocusable = false
             addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
                 suggestionAdapter?.let { adapter ->
                     if (adapter.suggestions.isNotEmpty()) {
@@ -1107,7 +1092,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         mainView.candidatesRowView.apply {
             itemAnimator = null
-            focusable = View.NOT_FOCUSABLE
+            isFocusable = false
         }
 
         suggestionAdapter.apply {
@@ -1127,7 +1112,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setLifecycleOwner(this@IMEService)
             setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
                 override fun onClick() {
-                    setVibrate()
+                    vibrate()
                     _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
                     finishComposingText()
                 }
@@ -1135,7 +1120,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setOnDeleteButtonSymbolViewClickListener(object : DeleteButtonSymbolViewClickListener {
                 override fun onClick() {
                     if (!deleteKeyLongKeyPressed.get()) {
-                        setVibrate()
+                        vibrate()
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                     }
                     onDeleteLongPressUp.set(true)
@@ -1155,7 +1140,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             })
             setOnSymbolRecyclerViewItemClickListener(object : SymbolRecyclerViewItemClickListener {
                 override fun onClick(symbol: String) {
-                    setVibrate()
+                    vibrate()
                     commitText(symbol, 1)
                 }
             })
@@ -2799,6 +2784,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun easeInOutQuad(t: Float): Float = if (t < 0.5) 2 * t * t else -1 + (4 - 2 * t) * t
 
+    private fun vibrate() {
+        if (appPreference.vibration_preference != true) return
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+        } else {
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+        vibrator?.vibrate(4)
+    }
+
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
 
@@ -2947,9 +2942,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return currentInputConnection.closeConnection()
     }
 
-    override fun commitContent(p0: InputContentInfo, p1: Int, p2: Bundle?): Boolean {
-        println("commitContent")
+    override fun commitContent(
+        inputContent: InputContentInfo,
+        flags: Int,
+        opts: Bundle?
+    ): Boolean {
         if (currentInputConnection == null) return false
-        return currentInputConnection.commitContent(p0, p1, p2)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            currentInputConnection.commitContent(inputContent, flags, opts)
+        } else {
+            false
+        }
     }
 }
