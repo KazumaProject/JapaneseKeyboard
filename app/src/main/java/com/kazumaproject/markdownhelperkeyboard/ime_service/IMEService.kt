@@ -307,7 +307,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setKeyboardSize()
 
         mainLayoutBinding?.let { mainView ->
-            scope.coroutineContext.cancelChildren()
             startScope(mainView)
         }
     }
@@ -329,6 +328,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onWindowHidden() {
         super.onWindowHidden()
+        Timber.d("onUpdate onWindowHidden")
         resetAllFlags()
     }
 
