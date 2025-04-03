@@ -228,12 +228,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
                 setSymbolKeyboard(mainView)
                 setTenKeyListeners(mainView)
-//                if (lifecycle.currentState == Lifecycle.State.CREATED) {
-//                    startScope(mainView)
-//                } else {
-//                    scope.coroutineContext.cancelChildren()
-//                    startScope(mainView)
-//                }
+                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                    startScope(mainView)
+                } else {
+                    scope.coroutineContext.cancelChildren()
+                    startScope(mainView)
+                }
             }
             cachedSpaceDrawable =
                 ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
@@ -305,10 +305,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
         setKeyboardSize()
-
-        mainLayoutBinding?.let { mainView ->
-            startScope(mainView)
-        }
     }
 
     override fun onFinishInput() {
@@ -322,7 +318,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdate onFinishInputView")
         mainLayoutBinding?.keyboardView?.isVisible = true
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        scope.coroutineContext.cancelChildren()
     }
 
 
