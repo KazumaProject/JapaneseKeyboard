@@ -155,10 +155,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private lateinit var lifecycleRegistry: LifecycleRegistry
     private var commitAfterTextJob: Job? = null
 
-    private var cachedSpaceDrawable: Drawable? = null
-    private var cachedLogoDrawable: Drawable? = null
-    private var cachedKanaDrawable: Drawable? = null
-    private var cachedHenkanDrawable: Drawable? = null
+    private val cachedSpaceDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
+    }
+    private val cachedLogoDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
+    }
+    private val cachedKanaDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
+    }
+    private val cachedHenkanDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
+    }
 
     private val cachedNumberDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(applicationContext, R.drawable.number_small)
@@ -235,12 +243,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     startScope(mainView)
                 }
             }
-            cachedSpaceDrawable =
-                ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
-            cachedLogoDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
-            cachedHenkanDrawable = ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
-            cachedKanaDrawable =
-                ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
         }
     }
 
@@ -299,12 +301,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
-        resetKeyboard()
         setCurrentInputType(editorInfo)
         if (!clipboardUtil.isClipboardEmpty()) {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
         setKeyboardSize()
+        resetKeyboard()
     }
 
     override fun onFinishInput() {
@@ -346,10 +348,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (mozcUTNeologd) kanaKanjiEngine.releaseNeologdDictionary()
             if (mozcUTWeb) kanaKanjiEngine.releaseWebDictionary()
         }
-        cachedSpaceDrawable = null
-        cachedLogoDrawable = null
-        cachedHenkanDrawable = null
-        cachedKanaDrawable = null
         actionInDestroy()
     }
 
