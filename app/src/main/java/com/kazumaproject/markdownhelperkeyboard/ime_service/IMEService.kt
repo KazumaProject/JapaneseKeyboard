@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -123,7 +125,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
-    private var isSuggestionVisible = AtomicBoolean(false)
+    private var isSuggestionVisible = false
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var emojiList: List<String> = emptyList()
@@ -152,6 +154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
+    private var isAnimating = false
     private lateinit var lifecycleRegistry: LifecycleRegistry
     private var commitAfterTextJob: Job? = null
 
@@ -742,11 +745,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (it) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
-                        if (isSuggestionVisible.get()) {
+                        if (isSuggestionVisible) {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, false
                             )
-                            isSuggestionVisible.set(false)
+                            isSuggestionVisible = false
                         }
                         if (!clipboardUtil.isClipboardEmpty()) {
                             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
@@ -755,11 +758,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     CandidateShowFlag.Updating -> {
                         setSuggestionOnView(mainView)
-                        if (!isSuggestionVisible.get()) {
+                        if (!isSuggestionVisible) {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
-                            isSuggestionVisible.set(true)
+                            isSuggestionVisible = true
                         }
                     }
                 }
@@ -847,32 +850,54 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun animateSuggestionImageViewVisibility(
         mainView: View, isVisible: Boolean
     ) {
+        if (isAnimating) return
+
         mainView.post {
             mainView.animate().cancel()
             mainView.pivotX = mainView.width / 2f
             mainView.pivotY = mainView.height / 2f
 
+            isAnimating = true
+
             if (isVisible) {
+                if (mainView.visibility == View.VISIBLE) {
+                    isAnimating = false
+                    return@post
+                }
                 mainView.visibility = View.VISIBLE
                 mainView.scaleX = 0f
                 mainView.scaleY = 0f
 
                 mainView.animate().scaleX(1f).scaleY(1f).setDuration(200)
-                    .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
-                        mainView.scaleX = 1f
-                        mainView.scaleY = 1f
-                    }.start()
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .setListener(object : AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: Animator) {
+                            mainView.scaleX = 1f
+                            mainView.scaleY = 1f
+                            isAnimating = false
+                            mainView.animate().setListener(null)
+                        }
+                    }).start()
             } else {
+                if (mainView.visibility != View.VISIBLE) {
+                    isAnimating = false
+                    return@post
+                }
                 mainView.visibility = View.VISIBLE
                 mainView.scaleX = 1f
                 mainView.scaleY = 1f
 
                 mainView.animate().scaleX(0f).scaleY(0f).setDuration(200)
-                    .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
-                        mainView.visibility = View.GONE
-                        mainView.scaleX = 1f
-                        mainView.scaleY = 1f
-                    }.start()
+                    .setInterpolator(AccelerateDecelerateInterpolator())
+                    .setListener(object : AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: Animator) {
+                            mainView.visibility = View.GONE
+                            mainView.scaleX = 1f
+                            mainView.scaleY = 1f
+                            isAnimating = false
+                            mainView.animate().setListener(null)
+                        }
+                    }).start()
             }
         }
     }
