@@ -17,7 +17,6 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
-import com.bumptech.glide.Glide
 import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.tenkey.extensions.hide
@@ -1275,11 +1274,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             R.drawable.logo_key
         )
     ) {
-        Glide.with(context).load(drawable).into(keyDakutenSmall)
+        keyDakutenSmall.setImageDrawable(drawable)
     }
 
     fun setSideKeyEnterDrawable(drawable: Drawable?) {
-        Glide.with(context).load(drawable).into(sideKeyEnter)
+        sideKeyEnter.setImageDrawable(drawable)
     }
 
     fun getCurrentEnterKeyDrawable(): Drawable? {
@@ -1287,7 +1286,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun setSideKeySpaceDrawable(drawable: Drawable?) {
-        Glide.with(context).load(drawable).into(sideKeySpace)
+        sideKeySpace.setImageDrawable(drawable)
     }
 
     fun setSideKeyPreviousState(state: Boolean) {

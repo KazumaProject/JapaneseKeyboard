@@ -37,7 +37,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
@@ -808,9 +807,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         mainView.suggestionVisibility.apply {
-            Glide.with(this@IMEService).load(
-                if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable
-            ).into(this)
+            this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
         }
     }
 
