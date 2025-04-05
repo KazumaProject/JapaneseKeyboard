@@ -1,7 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
@@ -39,6 +37,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
@@ -60,6 +59,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextRe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isHiragana
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isLatinAlphabet
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SuggestionEvent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
@@ -82,11 +83,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -99,11 +98,6 @@ import kotlin.math.roundToInt
 
 @AndroidEntryPoint
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
-
-    sealed class CandidateShowFlag {
-        data object Idle : CandidateShowFlag()
-        data object Updating : CandidateShowFlag()
-    }
 
     @Inject
     lateinit var learnMultiple: LearnMultiple
@@ -138,7 +132,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _inputString = MutableStateFlow(EMPTY_STRING)
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
-    private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>()
+    private val _suggestionFlag = MutableStateFlow(
+        SuggestionEvent(
+            flag = CandidateShowFlag.Idle,
+        )
+    )
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val _keyboardSymbolViewState = MutableStateFlow(false)
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
@@ -154,7 +152,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
-    private var isAnimating = false
     private lateinit var lifecycleRegistry: LifecycleRegistry
     private var commitAfterTextJob: Job? = null
 
@@ -741,8 +738,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
-            _suggestionFlag.conflate().collect {
-                when (it) {
+            _suggestionFlag.asStateFlow().collectLatest {
+                when (it.flag) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         if (isSuggestionVisible) {
@@ -811,9 +808,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         mainView.suggestionVisibility.apply {
-            setImageDrawable(
+            Glide.with(this@IMEService).load(
                 if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable
-            )
+            ).into(this)
         }
     }
 
@@ -834,12 +831,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         } else {
             if (withAnimation) {
-                mainView.translationY = 0f // Start from visible position
+                mainView.translationY = 0f
                 mainView.animate()
-                    .translationY(mainView.height.toFloat()) // Animate to hidden position
+                    .translationY(mainView.height.toFloat())
                     .setDuration(200).setInterpolator(AccelerateDecelerateInterpolator())
                     .withEndAction {
-                        mainView.visibility = View.GONE // Set visibility after animation ends
+                        mainView.visibility = View.GONE
                     }.start()
             } else {
                 mainView.visibility = View.GONE
@@ -850,54 +847,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun animateSuggestionImageViewVisibility(
         mainView: View, isVisible: Boolean
     ) {
-        if (isAnimating) return
-
         mainView.post {
             mainView.animate().cancel()
             mainView.pivotX = mainView.width / 2f
             mainView.pivotY = mainView.height / 2f
 
-            isAnimating = true
-
             if (isVisible) {
-                if (mainView.visibility == View.VISIBLE) {
-                    isAnimating = false
-                    return@post
-                }
                 mainView.visibility = View.VISIBLE
                 mainView.scaleX = 0f
                 mainView.scaleY = 0f
 
                 mainView.animate().scaleX(1f).scaleY(1f).setDuration(200)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .setListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator) {
-                            mainView.scaleX = 1f
-                            mainView.scaleY = 1f
-                            isAnimating = false
-                            mainView.animate().setListener(null)
-                        }
-                    }).start()
+                    .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
+                        mainView.scaleX = 1f
+                        mainView.scaleY = 1f
+                    }.start()
             } else {
-                if (mainView.visibility != View.VISIBLE) {
-                    isAnimating = false
-                    return@post
-                }
                 mainView.visibility = View.VISIBLE
                 mainView.scaleX = 1f
                 mainView.scaleY = 1f
 
                 mainView.animate().scaleX(0f).scaleY(0f).setDuration(200)
-                    .setInterpolator(AccelerateDecelerateInterpolator())
-                    .setListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator) {
-                            mainView.visibility = View.GONE
-                            mainView.scaleX = 1f
-                            mainView.scaleY = 1f
-                            isAnimating = false
-                            mainView.animate().setListener(null)
-                        }
-                    }).start()
+                    .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
+                        mainView.visibility = View.GONE
+                        mainView.scaleX = 1f
+                        mainView.scaleY = 1f
+                    }.start()
             }
         }
     }
@@ -905,7 +880,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            _suggestionFlag.emit(CandidateShowFlag.Updating)
+            _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Updating) }
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
@@ -949,10 +924,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun resetInputString() {
+    private fun resetInputString() {
         if (!isHenkan.get()) {
-            _suggestionFlag.apply {
-                emit(CandidateShowFlag.Idle)
+            _suggestionFlag.update {
+                SuggestionEvent(CandidateShowFlag.Idle)
             }
         }
     }
@@ -1790,7 +1765,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             CandidateShowFlag.Updating
         }
-        _suggestionFlag.emit(candidateFlag)
+        _suggestionFlag.update { SuggestionEvent(candidateFlag) }
     }
 
     private fun enableContinuousTapInput() {
@@ -2124,17 +2099,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             delay(LONG_DELAY_TIME)
         }
 
-        // If we left the loop "normally", figure out which suggestion flag to emit
         if (finalSuggestionFlag != null) {
-            _suggestionFlag.emit(finalSuggestionFlag)
+            _suggestionFlag.update { SuggestionEvent(finalSuggestionFlag) }
         } else {
-            // We broke because user released the key, or the coroutine was canceled
-            // Use the updated _inputString to decide on Idle vs Updating
             val insertString = _inputString.value
             if (insertString.isEmpty()) {
-                _suggestionFlag.emit(CandidateShowFlag.Idle)
+                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Idle) }
             } else {
-                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Updating) }
             }
         }
     }
@@ -2159,16 +2131,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             delay(LONG_DELAY_TIME)
         }
 
-        // Decide on final suggestion once we exit the loop
         if (finalSuggestionFlag != null) {
-            _suggestionFlag.emit(finalSuggestionFlag)
+            _suggestionFlag.update { SuggestionEvent(finalSuggestionFlag) }
         } else {
-            // If we broke because user released the key or the coroutine ended
             val insertString = _inputString.value
             if (insertString.isNotEmpty()) {
-                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Updating) }
             } else {
-                _suggestionFlag.emit(CandidateShowFlag.Idle)
+                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Idle) }
             }
         }
     }
