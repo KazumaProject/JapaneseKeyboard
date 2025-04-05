@@ -800,8 +800,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
-        if (mainView.keyboardView.visibility == (if (isVisible) View.VISIBLE else View.GONE)) return
-
         animateViewVisibility(mainView.keyboardView, isVisible)
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
 
