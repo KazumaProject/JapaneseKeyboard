@@ -743,9 +743,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         if (isSuggestionVisible.get()) {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, false
-                            )
+                            mainView.suggestionVisibility.isVisible = false
                             isSuggestionVisible.set(false)
                         }
                         if (!clipboardUtil.isClipboardEmpty()) {
@@ -756,9 +754,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     CandidateShowFlag.Updating -> {
                         setSuggestionOnView(mainView)
                         if (!isSuggestionVisible.get()) {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, true
-                            )
+                            mainView.suggestionVisibility.isVisible = true
                             isSuggestionVisible.set(true)
                         }
                     }
@@ -847,6 +843,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun animateSuggestionImageViewVisibility(
         mainView: View, isVisible: Boolean
     ) {
+
         mainView.post {
             mainView.animate().cancel()
             mainView.pivotX = mainView.width / 2f
@@ -906,7 +903,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 onRightKeyLongPressUp.set(true)
                 onDeleteLongPressUp.set(true)
             }
-            resetInputString()
+            if (!isHenkan.get()) {
+                _suggestionFlag.emit(CandidateShowFlag.Idle)
+            }
             mainView.keyboardView.apply {
                 setSideKeySpaceDrawable(
                     cachedSpaceDrawable
@@ -926,9 +925,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private suspend fun resetInputString() {
         if (!isHenkan.get()) {
-            _suggestionFlag.apply {
-                emit(CandidateShowFlag.Idle)
-            }
+            _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
     }
 
