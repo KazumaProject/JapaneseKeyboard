@@ -119,7 +119,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
-    private var isSuggestionVisible = false
+    private var isSuggestionVisible = true
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var emojiList: List<String> = emptyList()
@@ -687,7 +687,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             animateViewVisibility(this.keyboardView, true)
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
-            suggestionVisibility.isVisible = false
             keyboardView.apply {
                 if (currentInputMode == InputMode.ModeNumber) {
                     setBackgroundSmallLetterKey(
@@ -843,7 +842,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: View, isVisible: Boolean
     ) {
         mainView.post {
-            mainView.animate().cancel()
             mainView.pivotX = mainView.width / 2f
             mainView.pivotY = mainView.height / 2f
 
