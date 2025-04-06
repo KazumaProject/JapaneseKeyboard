@@ -742,9 +742,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         if (isSuggestionVisible) {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, false
-                            )
+                            mainView.suggestionVisibility.isVisible = false
                             isSuggestionVisible = false
                         }
                         if (!clipboardUtil.isClipboardEmpty()) {
@@ -755,9 +753,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     CandidateShowFlag.Updating -> {
                         setSuggestionOnView(mainView)
                         if (!isSuggestionVisible) {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, true
-                            )
+                            mainView.suggestionVisibility.isVisible = true
                             isSuggestionVisible = true
                         }
                     }
