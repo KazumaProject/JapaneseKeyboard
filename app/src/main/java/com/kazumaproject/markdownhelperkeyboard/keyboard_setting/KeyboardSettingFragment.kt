@@ -171,7 +171,7 @@ class KeyboardSettingFragment : Fragment() {
     }
 
     private fun updateKeyboardAlignment() {
-        val constraintLayout = binding.root
+        val constraintLayout = binding.keyboardSettingConstraint
         val constraintSet = ConstraintSet()
         constraintSet.clone(constraintLayout)
 
