@@ -59,7 +59,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isHiragan
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isLatinAlphabet
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
-import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SuggestionEvent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
@@ -82,9 +81,11 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -131,11 +132,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _inputString = MutableStateFlow(EMPTY_STRING)
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
-    private val _suggestionFlag = MutableStateFlow(
-        SuggestionEvent(
-            flag = CandidateShowFlag.Idle,
-        )
-    )
+    private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>()
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val _keyboardSymbolViewState = MutableStateFlow(false)
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
@@ -690,6 +687,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             animateViewVisibility(this.keyboardView, true)
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
+            suggestionVisibility.isVisible = false
             keyboardView.apply {
                 if (currentInputMode == InputMode.ModeNumber) {
                     setBackgroundSmallLetterKey(
@@ -737,12 +735,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
-            _suggestionFlag.asStateFlow().collectLatest {
-                when (it.flag) {
+            _suggestionFlag.conflate().collect {
+                when (it) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         if (isSuggestionVisible) {
-                            mainView.suggestionVisibility.isVisible = false
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, false
+                            )
                             isSuggestionVisible = false
                         }
                         if (!clipboardUtil.isClipboardEmpty()) {
@@ -753,7 +753,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     CandidateShowFlag.Updating -> {
                         setSuggestionOnView(mainView)
                         if (!isSuggestionVisible) {
-                            mainView.suggestionVisibility.isVisible = true
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, true
+                            )
                             isSuggestionVisible = true
                         }
                     }
@@ -873,7 +875,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Updating) }
+            _suggestionFlag.emit(CandidateShowFlag.Updating)
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
@@ -917,11 +919,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun resetInputString() {
+    private suspend fun resetInputString() {
         if (!isHenkan.get()) {
-            _suggestionFlag.update {
-                SuggestionEvent(CandidateShowFlag.Idle)
-            }
+            _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
     }
 
@@ -1065,13 +1065,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isFocusable = false
             addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
                 suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty()) {
+                    if (adapter.suggestions.isNotEmpty() && _inputString.value.isNotBlank() && _inputString.value.isNotEmpty()) {
                         if (_suggestionViewStatus.value) {
-                            _suggestionViewStatus.update { !it }
+                            _suggestionViewStatus.update { false }
                         }
                     }
                 }
-            }, onSwipeUp = {}))
+            }, onSwipeUp = {
+                suggestionAdapter?.let { adapter ->
+                    if (adapter.suggestions.isNotEmpty() && _inputString.value.isNotBlank() && _inputString.value.isNotEmpty()) {
+                        if (!_suggestionViewStatus.value) {
+                            _suggestionViewStatus.update { true }
+                        }
+                    }
+                }
+            }))
         }
 
         mainView.candidatesRowView.apply {
@@ -1724,41 +1732,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val tailIsEmpty = stringInTail.get().isEmpty()
 
             if (insertString.isEmpty()) {
-                // If there's no composing text, try sending a DEL key event
-                // Otherwise, exit the loop because there's nothing to delete
                 if (tailIsEmpty) {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                 } else {
-                    // Nothing left to delete in the composing text, break out
                     break
                 }
             } else {
-                // Remove the last character from the composing text
                 val newString = insertString.dropLast(1)
                 _inputString.update { newString }
-
-                // If it becomes empty, we may need to clear any tail text
                 if (newString.isEmpty() && tailIsEmpty) {
                     setComposingText("", 0)
                 }
             }
-
-            // Add a small delay before the next deletion
             delay(LONG_DELAY_TIME)
         }
-
-        // Once the loop finishes (for any reason),
-        // re-enable normal tap input
         enableContinuousTapInput()
 
-        // Update the suggestion flag based on the new composing text
         val finalInsertString = _inputString.value
         val candidateFlag = if (finalInsertString.isEmpty()) {
             CandidateShowFlag.Idle
         } else {
             CandidateShowFlag.Updating
         }
-        _suggestionFlag.update { SuggestionEvent(candidateFlag) }
+        _suggestionFlag.emit(candidateFlag)
     }
 
     private fun enableContinuousTapInput() {
@@ -2093,45 +2089,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         if (finalSuggestionFlag != null) {
-            _suggestionFlag.update { SuggestionEvent(finalSuggestionFlag) }
+            _suggestionFlag.emit(finalSuggestionFlag)
         } else {
             val insertString = _inputString.value
             if (insertString.isEmpty()) {
-                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Idle) }
+                _suggestionFlag.emit(CandidateShowFlag.Idle)
             } else {
-                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Updating) }
+                _suggestionFlag.emit(CandidateShowFlag.Updating)
             }
         }
     }
 
     private fun asyncRightLongPress() = scope.launch {
-        // Same pattern: we store a reason for break if needed
         var finalSuggestionFlag: CandidateShowFlag? = null
-
         while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
             val insertString = _inputString.value
-
-            // If there's composing text but no "tail," we emit "Updating" and stop.
-            // (Mimics original logic: break out if stringInTail is empty + inputString is not empty.)
             if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
                 finalSuggestionFlag = CandidateShowFlag.Updating
                 break
             }
-
-            // Perform actual "right key pressed" logic
             actionInRightKeyPressed(insertString)
-
             delay(LONG_DELAY_TIME)
         }
 
         if (finalSuggestionFlag != null) {
-            _suggestionFlag.update { SuggestionEvent(finalSuggestionFlag) }
+            _suggestionFlag.emit(finalSuggestionFlag)
         } else {
             val insertString = _inputString.value
             if (insertString.isNotEmpty()) {
-                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Updating) }
+                _suggestionFlag.emit(CandidateShowFlag.Updating)
             } else {
-                _suggestionFlag.update { SuggestionEvent(CandidateShowFlag.Idle) }
+                _suggestionFlag.emit(CandidateShowFlag.Idle)
             }
         }
     }
