@@ -7,7 +7,9 @@ import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Bundle
+import android.os.CombinedVibration
 import android.os.Handler
+import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.text.Spannable
@@ -2749,14 +2751,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun easeInOutQuad(t: Float): Float = if (t < 0.5) 2 * t * t else -1 + (4 - 2 * t) * t
 
+    private val vibratorManager by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        } else null
+    }
+    private val vibrator by lazy {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        } else null
+    }
+
     private fun vibrate() {
         if (appPreference.vibration_preference != true) return
-        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibrationEffect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+            val combinedVibration = CombinedVibration.createParallel(vibrationEffect)
+            vibratorManager?.vibrate(combinedVibration)
         } else {
-            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            vibrator?.vibrate(2)
         }
-        vibrator?.vibrate(4)
     }
 
     override val lifecycle: Lifecycle
