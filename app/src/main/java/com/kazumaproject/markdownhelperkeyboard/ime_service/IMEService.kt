@@ -78,7 +78,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
@@ -146,9 +145,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val deleteKeyLongKeyPressed = AtomicBoolean(false)
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
+    private val isInputFinished = AtomicBoolean(true)
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
-    private var commitAfterTextJob: Job? = null
 
     private val cachedSpaceDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
@@ -865,20 +864,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
+            isInputFinished.set(false)
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
             setSuggestionOnView(mainView)
             _suggestionFlag.update { CandidateShowFlag.Updating }
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
-            commitAfterTextJob = CoroutineScope(Dispatchers.Main).launch {
-                if (!isHenkan.get() && _inputString.value.isNotEmpty() &&
-                    !onDeleteLongPressUp.get() && !englishSpaceKeyPressed.get() &&
-                    !deleteKeyLongKeyPressed.get()
-                ) {
-                    isContinuousTapInputEnabled.set(true)
-                    lastFlickConvertedNextHiragana.set(true)
-                    setComposingTextAfterEdit(inputString, spannableString)
-                }
+            val henkanValue = isHenkan.get()
+            val deleteLongPressUp = onDeleteLongPressUp.get()
+            val englishSpacePressed = englishSpaceKeyPressed.get()
+            val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
+            val isInputFinishState = isInputFinished.get()
+            if (!henkanValue && !deleteLongPressUp &&
+                !englishSpacePressed && !deleteKeyLongPressed && !isInputFinishState
+            ) {
+                isContinuousTapInputEnabled.set(true)
+                lastFlickConvertedNextHiragana.set(true)
+                isInputFinished.set(true)
+                setComposingTextAfterEdit(inputString, spannableString)
             }
         } else {
             println("input is empty now!!")
@@ -913,6 +916,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetInputString() {
         if (!isHenkan.get()) {
             _suggestionFlag.update { CandidateShowFlag.Idle }
+            isInputFinished.set(true)
         }
     }
 
@@ -1380,14 +1384,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         englishSpaceKeyPressed.set(false)
         lastFlickConvertedNextHiragana.set(false)
         onDeleteLongPressUp.set(false)
+        isInputFinished.set(true)
         isSpaceKeyLongPressed = false
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         resetKeyboard()
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
-        commitAfterTextJob?.cancel()
-        commitAfterTextJob = null
     }
 
     private fun actionInDestroy() {
