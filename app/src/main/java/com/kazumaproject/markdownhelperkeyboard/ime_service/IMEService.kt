@@ -83,11 +83,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -121,7 +119,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
-    private var isSuggestionVisible = true
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var emojiList: List<String> = emptyList()
@@ -134,7 +131,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _inputString = MutableStateFlow(EMPTY_STRING)
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
-    private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>()
+    private val _suggestionFlag = MutableStateFlow<CandidateShowFlag>(CandidateShowFlag.Idle)
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val _keyboardSymbolViewState = MutableStateFlow(false)
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
@@ -736,29 +733,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
-            _suggestionFlag.conflate().collect {
+            _suggestionFlag.asStateFlow().collectLatest {
                 when (it) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
-                        if (isSuggestionVisible) {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, false
-                            )
-                            isSuggestionVisible = false
-                        }
+                        animateSuggestionImageViewVisibility(
+                            mainView.suggestionVisibility, false
+                        )
                         if (!clipboardUtil.isClipboardEmpty()) {
                             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
                         }
                     }
 
                     CandidateShowFlag.Updating -> {
-                        setSuggestionOnView(mainView)
-                        if (!isSuggestionVisible) {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, true
-                            )
-                            isSuggestionVisible = true
-                        }
+                        animateSuggestionImageViewVisibility(
+                            mainView.suggestionVisibility, true
+                        )
                     }
                 }
             }
@@ -875,9 +865,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            _suggestionFlag.emit(CandidateShowFlag.Updating)
             val spannableString = SpannableString(inputString + stringInTail)
             setComposingTextPreEdit(inputString, spannableString)
+            setSuggestionOnView(mainView)
+            _suggestionFlag.update { CandidateShowFlag.Updating }
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
             commitAfterTextJob = CoroutineScope(Dispatchers.Main).launch {
                 if (!isHenkan.get() && _inputString.value.isNotEmpty() &&
@@ -919,9 +910,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun resetInputString() {
+    private fun resetInputString() {
         if (!isHenkan.get()) {
-            _suggestionFlag.emit(CandidateShowFlag.Idle)
+            _suggestionFlag.update { CandidateShowFlag.Idle }
         }
     }
 
@@ -1754,7 +1745,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             CandidateShowFlag.Updating
         }
-        _suggestionFlag.emit(candidateFlag)
+        _suggestionFlag.update { candidateFlag }
     }
 
     private fun enableContinuousTapInput() {
@@ -2089,13 +2080,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         if (finalSuggestionFlag != null) {
-            _suggestionFlag.emit(finalSuggestionFlag)
+            _suggestionFlag.update { finalSuggestionFlag }
         } else {
             val insertString = _inputString.value
             if (insertString.isEmpty()) {
-                _suggestionFlag.emit(CandidateShowFlag.Idle)
+                _suggestionFlag.update { CandidateShowFlag.Idle }
             } else {
-                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                _suggestionFlag.update { CandidateShowFlag.Updating }
             }
         }
     }
@@ -2113,13 +2104,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         if (finalSuggestionFlag != null) {
-            _suggestionFlag.emit(finalSuggestionFlag)
+            _suggestionFlag.update { finalSuggestionFlag }
         } else {
             val insertString = _inputString.value
             if (insertString.isNotEmpty()) {
-                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                _suggestionFlag.update { CandidateShowFlag.Updating }
             } else {
-                _suggestionFlag.emit(CandidateShowFlag.Idle)
+                _suggestionFlag.update { CandidateShowFlag.Idle }
             }
         }
     }
