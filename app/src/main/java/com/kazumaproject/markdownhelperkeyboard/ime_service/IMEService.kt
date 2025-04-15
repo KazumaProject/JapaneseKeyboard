@@ -78,6 +78,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
@@ -119,6 +120,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var clipboardUtil: ClipboardUtil
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private val commitSpannableStringJob: Job = Job()
+    private val commitSpannableStringScope =
+        CoroutineScope(Dispatchers.Default + commitSpannableStringJob)
 
     private var emojiList: List<String> = emptyList()
 
@@ -383,7 +388,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 stringInTail.set(EMPTY_STRING)
             } else {
                 _inputString.update { EMPTY_STRING }
+                commitSpannableStringScope.coroutineContext.cancelChildren()
             }
+        }
+    }
+
+    private fun commitPreEditText(inputString: String, spannableString: SpannableString): Job {
+        return commitSpannableStringScope.launch {
+            setComposingTextPreEdit(inputString, spannableString)
+        }
+    }
+
+    private fun commitAfterEditText(inputString: String, spannableString: SpannableString): Job {
+        return commitSpannableStringScope.launch {
+            setComposingTextAfterEdit(inputString, spannableString)
         }
     }
 
@@ -722,7 +740,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             stringInTail.set(EMPTY_STRING)
             SpannableString(insertString)
         }
-        setComposingTextAfterEdit(insertString, spannableString)
+        commitAfterEditText(insertString, spannableString)
         mainLayoutBinding?.suggestionRecyclerView?.apply {
             post {
                 scrollToPosition(0)
@@ -817,10 +835,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             if (withAnimation) {
                 mainView.translationY = 0f
-                mainView.animate()
-                    .translationY(mainView.height.toFloat())
-                    .setDuration(200).setInterpolator(AccelerateDecelerateInterpolator())
-                    .withEndAction {
+                mainView.animate().translationY(mainView.height.toFloat()).setDuration(200)
+                    .setInterpolator(AccelerateDecelerateInterpolator()).withEndAction {
                         mainView.visibility = View.GONE
                     }.start()
             } else {
@@ -866,7 +882,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (inputString.isNotEmpty()) {
             isInputFinished.set(false)
             val spannableString = SpannableString(inputString + stringInTail)
-            setComposingTextPreEdit(inputString, spannableString)
+            commitPreEditText(inputString, spannableString)
             setSuggestionOnView(mainView)
             _suggestionFlag.update { CandidateShowFlag.Updating }
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
@@ -875,13 +891,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
             val isInputFinishState = isInputFinished.get()
-            if (!henkanValue && !deleteLongPressUp &&
-                !englishSpacePressed && !deleteKeyLongPressed && !isInputFinishState
-            ) {
+            if (!henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed && !isInputFinishState) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
                 isInputFinished.set(true)
-                setComposingTextAfterEdit(inputString, spannableString)
+                commitAfterEditText(inputString, spannableString)
             }
         } else {
             println("input is empty now!!")
@@ -917,6 +931,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!isHenkan.get()) {
             _suggestionFlag.update { CandidateShowFlag.Idle }
             isInputFinished.set(true)
+            commitSpannableStringScope.coroutineContext.cancelChildren()
         }
     }
 
@@ -1391,6 +1406,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetKeyboard()
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
+        commitSpannableStringScope.coroutineContext.cancelChildren()
     }
 
     private fun actionInDestroy() {
@@ -1401,6 +1417,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding = null
         closeConnection()
         scope.cancel()
+        commitSpannableStringScope.cancel()
     }
 
     private fun resetFlagsSuggestionClick() {
@@ -2916,9 +2933,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     override fun commitContent(
-        inputContent: InputContentInfo,
-        flags: Int,
-        opts: Bundle?
+        inputContent: InputContentInfo, flags: Int, opts: Bundle?
     ): Boolean {
         if (currentInputConnection == null) return false
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {

@@ -13,7 +13,7 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 35
-        versionCode 289
+        versionCode 290
         versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -108,5 +108,9 @@ dependencies {
 
     // Mockito-Kotlin for better Kotlin support
     testImplementation "org.mockito.kotlin:mockito-kotlin:5.0.0"
+
+//    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14") {
+//        exclude group: "junit", module: "junit"
+//    }
 
 }
