@@ -382,10 +382,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
+        println("onUpdateSelection $candidatesStart $candidatesEnd ${stringInTail.get()} ${_inputString.value} $oldSelStart $oldSelEnd $newSelStart $newSelEnd")
         if (candidatesStart == -1 && candidatesEnd == -1) {
             if (stringInTail.get().isNotEmpty()) {
-                _inputString.update { stringInTail.get() }
-                stringInTail.set(EMPTY_STRING)
+                if (newSelStart == 0 && newSelEnd == 0) {
+                    _inputString.update { EMPTY_STRING }
+                    stringInTail.set(EMPTY_STRING)
+                    commitSpannableStringScope.coroutineContext.cancelChildren()
+                    suggestionAdapter?.suggestions = emptyList()
+                } else {
+                    _inputString.update { stringInTail.get() }
+                    stringInTail.set(EMPTY_STRING)
+                }
             } else {
                 _inputString.update { EMPTY_STRING }
                 commitSpannableStringScope.coroutineContext.cancelChildren()
