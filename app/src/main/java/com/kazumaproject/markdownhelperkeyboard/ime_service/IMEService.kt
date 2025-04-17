@@ -78,6 +78,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
@@ -125,6 +126,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var emoticonList: List<String> = emptyList()
 
     private var symbolList: List<String> = emptyList()
+
+    private var commitPreEditTextJob: Job? = null
+    private var commitAfterEditTextJob: Job? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private val _inputString = MutableStateFlow("")
@@ -383,12 +387,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     _inputString.update { "" }
                     stringInTail.set("")
                     suggestionAdapter?.suggestions = emptyList()
+                    commitPreEditTextJob?.cancel()
+                    commitAfterEditTextJob?.cancel()
                 } else {
                     _inputString.update { stringInTail.get() }
                     stringInTail.set("")
                 }
             } else {
                 _inputString.update { "" }
+                commitPreEditTextJob?.cancel()
+                commitAfterEditTextJob?.cancel()
             }
         }
     }
@@ -785,7 +793,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         launch {
             _inputString.asStateFlow().collectLatest { inputString ->
-                processInputString(inputString, mainView)
+                processInputString(inputString, mainView, this)
             }
         }
     }
@@ -865,12 +873,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun processInputString(inputString: String, mainView: MainLayoutBinding) {
+    private suspend fun processInputString(
+        inputString: String,
+        mainView: MainLayoutBinding,
+        inputStringScope: CoroutineScope
+    ) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
             isInputFinished.set(false)
             val spannableString = SpannableString(inputString + stringInTail.get())
-            setComposingTextPreEdit(inputString, spannableString)
+            commitPreEditTextJob = inputStringScope.launch {
+                setComposingTextPreEdit(inputString, spannableString)
+            }
             setSuggestionOnView(mainView)
             _suggestionFlag.update { CandidateShowFlag.Updating }
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
@@ -883,7 +897,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
                 isInputFinished.set(true)
-                setComposingTextAfterEdit(inputString, spannableString)
+                commitAfterEditTextJob = inputStringScope.launch {
+                    setComposingTextAfterEdit(inputString, spannableString)
+                }
             }
         } else {
             println("input is empty now!!")
@@ -919,6 +935,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!isHenkan.get()) {
             _suggestionFlag.update { CandidateShowFlag.Idle }
             isInputFinished.set(true)
+            commitPreEditTextJob?.cancel()
+            commitAfterEditTextJob?.cancel()
         }
     }
 
@@ -1394,6 +1412,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetKeyboard()
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
+        commitPreEditTextJob?.cancel()
+        commitAfterEditTextJob?.cancel()
     }
 
     private fun actionInDestroy() {
@@ -1404,6 +1424,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding = null
         closeConnection()
         scope.cancel()
+        commitPreEditTextJob = null
+        commitAfterEditTextJob = null
+        commitAfterEditTextJob = null
     }
 
     private fun resetFlagsSuggestionClick() {
@@ -1419,6 +1442,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         _inputString.update { "" }
+        commitPreEditTextJob?.cancel()
+        commitAfterEditTextJob?.cancel()
     }
 
     private fun resetFlagsEnterKey() {
@@ -1433,6 +1458,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         _inputString.update { "" }
+        commitPreEditTextJob?.cancel()
+        commitAfterEditTextJob?.cancel()
     }
 
     private fun resetFlagsEnterKeyNotHenkan() {
@@ -1448,6 +1475,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         learnMultiple.stop()
+        commitPreEditTextJob?.cancel()
+        commitAfterEditTextJob?.cancel()
     }
 
     private fun resetFlagsKeySpace() {
@@ -1515,9 +1544,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
-        beginBatchEdit()
         setComposingText(spannableString, 1)
-        endBatchEdit()
     }
 
     private fun setComposingTextAfterEdit(
@@ -1538,9 +1565,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             )
         }
         Timber.d("launchInputString: setComposingTextAfterEdit $spannableString")
-        beginBatchEdit()
         setComposingText(spannableString, 1)
-        endBatchEdit()
     }
 
     private fun setEnterKeyAction(
