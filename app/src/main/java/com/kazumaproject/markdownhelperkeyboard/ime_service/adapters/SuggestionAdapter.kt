@@ -41,7 +41,7 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
 
     private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
 
-    fun release(){
+    fun release() {
         onItemClickListener = null
         onItemLongClickListener = null
     }
@@ -136,6 +136,8 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (27).toByte() -> ""
             /** クリップボード **/
             (28).toByte() -> "[タップでペースト] [長押しで削除]"
+            /** 英語 **/
+            (29).toByte() -> ""
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition

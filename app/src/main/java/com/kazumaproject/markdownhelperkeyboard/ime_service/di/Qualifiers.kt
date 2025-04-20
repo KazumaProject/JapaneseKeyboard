@@ -197,3 +197,15 @@ annotation class KotowazaSuccinctBitVectorTokenArray
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class KotowazaSuccinctBitVectorTangoLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EnglishDictionary
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EnglishSuccinctBitVectorLBS
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EnglishSuccinctBitVectorIsLeaf

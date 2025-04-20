@@ -42,6 +42,9 @@
     - Update the costs for words using jawiki-latest-all-titles.
   - [id.def](https://github.com/google/mozc/blob/master/src/data/dictionary_oss/id.def) from Mozc: [BSD-3-Clause](https://github.com/google/mozc)
     - Update the ID for words using id.def.
+- [englsih.dat](https://github.com/KazumaProject/JapaneseKeyboard/blob/cb70958d932ac9e141726463ac317540ac55dd6a/app/src/main/assets/english/english.dat)
+  - [Salesforce/wikitext](https://huggingface.co/datasets/Salesforce/wikitext): [CC BY-SA](https://creativecommons.org/licenses/by-sa/4.0/)
+  - Created Unigram dictionary using wikitext
 
 # スミレ - オフライン日本語キーボードアプリ
 「スミレ」は、完全オフラインで使用でき、ネットワークの権限を一切必要としない日本語キーボードアプリです。プライバシーを守りながら、軽快かつ直感的な入力体験を提供します。

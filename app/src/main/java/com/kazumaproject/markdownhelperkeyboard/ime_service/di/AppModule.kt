@@ -10,7 +10,9 @@ import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
@@ -634,5 +636,44 @@ object AppModule {
     @Provides
     fun providesInputManager(@ApplicationContext context: Context): InputMethodManager =
         context.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+
+    @EnglishDictionary
+    @Singleton
+    @Provides
+    fun provideEnglishLOUDS(@ApplicationContext context: Context): EnglishLOUDS {
+        val objectInputEnglish =
+            ObjectInputStream(BufferedInputStream(context.assets.open("english/english.dat")))
+        return EnglishLOUDS().readExternal(objectInputEnglish)
+    }
+
+    @Singleton
+    @Provides
+    fun providesEnglishEngine(
+        @EnglishDictionary englishLOUDS: EnglishLOUDS,
+        @EnglishSuccinctBitVectorLBS englishSuccinctBitVectorLBS: SuccinctBitVector,
+        @EnglishSuccinctBitVectorIsLeaf englishSuccinctBitVectorIsLeaf: SuccinctBitVector
+    ): EnglishEngine {
+        val englishEngine = EnglishEngine()
+        englishEngine.buildEngine(
+            englishLOUDS,
+            englishSuccinctBitVectorLBS,
+            englishSuccinctBitVectorIsLeaf
+        )
+        return englishEngine
+    }
+
+    @Singleton
+    @Provides
+    @EnglishSuccinctBitVectorLBS
+    fun provideEnglishSuccinctBitVectorLBS(@EnglishDictionary englishLOUDS: EnglishLOUDS): SuccinctBitVector {
+        return SuccinctBitVector(englishLOUDS.LBS)
+    }
+
+    @Singleton
+    @Provides
+    @EnglishSuccinctBitVectorIsLeaf
+    fun provideEnglishSuccinctBitVectorIsLeaf(@EnglishDictionary englishLOUDS: EnglishLOUDS): SuccinctBitVector {
+        return SuccinctBitVector(englishLOUDS.isLeaf)
+    }
 
 }
