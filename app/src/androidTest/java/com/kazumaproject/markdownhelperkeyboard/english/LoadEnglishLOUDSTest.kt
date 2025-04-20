@@ -23,6 +23,19 @@ class LoadEnglishLOUDSTest {
         val result = EnglishLOUDS().readExternal(objectInput)
         println("Loaded object: ${result.costListSave.size}")
         objectInput.close()
+
+        val text = "on"
+        val commonPrefixSearch = result.commonPrefixSearch(text)
+        val searchResult = commonPrefixSearch.map {
+            Pair(it, result.getTermId(result.getNodeIndex(it)))
+        }
+        println(searchResult)
+        val suggestions = result.predictiveSearch("i", 4)
+        val pairs = suggestions.map { term ->
+            term to result.getTermId(result.getNodeIndex(term))
+        }.toMutableList()
+        pairs.sortBy { it.second }
+        println(pairs)
     }
 
 }

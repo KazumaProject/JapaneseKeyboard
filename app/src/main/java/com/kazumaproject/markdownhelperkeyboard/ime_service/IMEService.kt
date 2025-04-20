@@ -48,6 +48,7 @@ import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
@@ -110,6 +111,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
+
+    @Inject
+    lateinit var englishEngine: EnglishEngine
 
     private var suggestionAdapter: SuggestionAdapter? = null
 
@@ -1702,7 +1706,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) {
-        val candidates = getSuggestionList(insertString)
+
+        val candidates = getSuggestionList(insertString, mainView.keyboardView.currentInputMode)
         // Filter in the background if the list could be large
         val filteredCandidates = withContext(Dispatchers.Default) {
             if (stringInTail.get().isNotEmpty()) {
@@ -1719,7 +1724,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun getSuggestionList(insertString: String): List<Candidate> {
+    private suspend fun getSuggestionList(
+        insertString: String,
+        inputMode: InputMode
+    ): List<Candidate> {
         val resultFromLearnDatabase = learnRepository.findLearnDataByInput(insertString)?.map {
             Candidate(
                 string = it.out,
@@ -1742,11 +1750,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
                 insertString, appPreference.n_best_preference ?: N_BEST, appPreference
             )
-            resultFromLearnDatabase + resultFromEngine
+            when (inputMode) {
+                InputMode.ModeJapanese -> {
+                    resultFromLearnDatabase + resultFromEngine
+                }
+
+                InputMode.ModeEnglish -> {
+                    englishEngine.getCandidates(insertString)
+                }
+
+                InputMode.ModeNumber -> {
+                    resultFromLearnDatabase + resultFromEngine
+                }
+            }
+
         } else {
-            kanaKanjiEngine.getCandidates(
-                insertString, appPreference.n_best_preference ?: N_BEST, appPreference
-            )
+            when (inputMode) {
+                InputMode.ModeJapanese -> {
+                    kanaKanjiEngine.getCandidates(
+                        insertString, appPreference.n_best_preference ?: N_BEST, appPreference
+                    )
+                }
+
+                InputMode.ModeEnglish -> {
+                    englishEngine.getCandidates(insertString)
+                }
+
+                InputMode.ModeNumber -> {
+                    kanaKanjiEngine.getCandidates(
+                        insertString, appPreference.n_best_preference ?: N_BEST, appPreference
+                    )
+                }
+            }
         }
         val distinct = result.distinctBy { it.string }
         appPreference.candidate_cache_preference?.let {
