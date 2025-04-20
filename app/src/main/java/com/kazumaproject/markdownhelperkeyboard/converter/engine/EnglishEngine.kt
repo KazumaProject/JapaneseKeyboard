@@ -23,7 +23,22 @@ class EnglishEngine {
         if (predictSearch.isEmpty()) {
             return listOf(
                 Candidate(
-                    string = input, type = (29).toByte(), length = input.length.toUByte(), score = 0
+                    string = input,
+                    type = 29.toByte(),
+                    length = input.length.toUByte(),
+                    score = 0
+                ),
+                Candidate(
+                    string = input.replaceFirstChar { it.uppercaseChar() },
+                    type = 29.toByte(),
+                    length = input.length.toUByte(),
+                    score = 500
+                ),
+                Candidate(
+                    string = input.uppercase(),
+                    type = 29.toByte(),
+                    length = input.length.toUByte(),
+                    score = 2000
                 )
             )
         } else {
