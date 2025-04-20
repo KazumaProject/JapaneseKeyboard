@@ -68,6 +68,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 @SuppressLint("ClickableViewAccessibility")
@@ -125,7 +126,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var longPressJob: Job? = null
     private var isLongPressed = false
 
-    var currentInputMode: InputMode = InputMode.ModeJapanese
+    val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
 
     fun setOnFlickListener(flickListener: FlickListener) {
         this.flickListener = flickListener
@@ -325,7 +326,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         val keyInfo =
-                            currentInputMode.next(tenKeyMap = tenKeyMap, key = pressedKey.key)
+                            currentInputMode.get().next(tenKeyMap = tenKeyMap, key = pressedKey.key)
                         if (keyInfo == TenKeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType, key = pressedKey.key, char = null
@@ -378,7 +379,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     button?.let {
                         if (it is AppCompatButton) {
                             if (it == sideKeySymbol) return false
-                            when (currentInputMode) {
+                            when (currentInputMode.get()) {
                                 InputMode.ModeJapanese -> {
                                     it.setTenKeyTextJapanese(it.id)
                                 }
@@ -392,7 +393,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 }
                             }
                         }
-                        if (it is AppCompatImageButton && currentInputMode == InputMode.ModeNumber && it == keyDakutenSmall) {
+                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                             it.setImageDrawable(
                                 ContextCompat.getDrawable(
                                     context,
@@ -435,7 +436,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         val pointer = event.getPointerId(event.actionIndex)
                         val key = pressedKeyByMotionEvent(event, pointer)
                         val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
-                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode == InputMode.ModeNumber) {
+                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.get() == InputMode.ModeNumber) {
                             keyDakutenSmall.setImageDrawable(
                                 ContextCompat.getDrawable(
                                     context,
@@ -444,7 +445,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             )
                         }
                         val keyInfo =
-                            currentInputMode.next(tenKeyMap = tenKeyMap, key = pressedKey.key)
+                            currentInputMode.get().next(tenKeyMap = tenKeyMap, key = pressedKey.key)
                         if (keyInfo == TenKeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
@@ -463,7 +464,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     button?.let {
                                         if (it is AppCompatButton) {
                                             if (it == sideKeySymbol) return false
-                                            when (currentInputMode) {
+                                            when (currentInputMode.get()) {
                                                 InputMode.ModeJapanese -> {
                                                     it.setTenKeyTextJapanese(it.id)
                                                 }
@@ -477,7 +478,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                                 }
                                             }
                                         }
-                                        if (it is AppCompatImageButton && currentInputMode == InputMode.ModeNumber && it == keyDakutenSmall) {
+                                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                                             it.setImageDrawable(
                                                 ContextCompat.getDrawable(
                                                     context,
@@ -548,7 +549,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             val gestureType =
                                 getGestureType(event, event.getPointerId(event.actionIndex))
                             val keyInfo =
-                                currentInputMode.next(tenKeyMap = tenKeyMap, key = pressedKey.key)
+                                currentInputMode.get()
+                                    .next(tenKeyMap = tenKeyMap, key = pressedKey.key)
                             if (keyInfo == TenKeyInfo.Null) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null
@@ -596,7 +598,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 if (it is AppCompatButton) {
                                     if (it == sideKeySymbol) return false
                                     it.isPressed = false
-                                    when (currentInputMode) {
+                                    when (currentInputMode.get()) {
                                         InputMode.ModeJapanese -> {
                                             it.setTenKeyTextJapanese(it.id)
                                         }
@@ -900,7 +902,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             if (it is AppCompatButton) {
                 if (it == sideKeySymbol) return
 
-                when (currentInputMode) {
+                when (currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
                         popTextTop.setTextFlickTopJapanese(it.id)
                         popTextLeft.setTextFlickLeftJapanese(it.id)
@@ -940,7 +942,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 ImageEffects.applyBlurEffect(this, 8f)
             }
 
-            if (it is AppCompatImageButton && currentInputMode == InputMode.ModeNumber && it == keyDakutenSmall) {
+            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                 popTextTop.setTextFlickTopNumber(it.id)
                 popTextLeft.setTextFlickLeftNumber(it.id)
                 popTextBottom.setTextFlickBottomNumber(it.id)
@@ -976,7 +978,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         button?.let {
             if (it is AppCompatButton) {
                 if (it == sideKeySymbol) return
-                when (currentInputMode) {
+                when (currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
                         it.setTenKeyTextWhenTapJapanese(it.id)
                         if (isLongPressed) popTextActive.setTextTapJapanese(it.id)
@@ -999,7 +1001,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     )
                 }
             }
-            if (it is AppCompatImageButton && currentInputMode == InputMode.ModeNumber && it == keyDakutenSmall) {
+            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                 it.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.open_bracket))
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 it.isPressed = true
@@ -1021,7 +1023,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 if (!isLongPressed) it.text = ""
                 when (gestureType) {
                     GestureType.FlickLeft -> {
-                        when (currentInputMode) {
+                        when (currentInputMode.get()) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickLeftJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -1052,7 +1054,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
 
                     GestureType.FlickTop -> {
-                        when (currentInputMode) {
+                        when (currentInputMode.get()) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickTopJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -1083,7 +1085,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
 
                     GestureType.FlickRight -> {
-                        when (currentInputMode) {
+                        when (currentInputMode.get()) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickRightJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -1114,7 +1116,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
 
                     GestureType.FlickBottom -> {
-                        when (currentInputMode) {
+                        when (currentInputMode.get()) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickBottomJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -1150,7 +1152,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
                 it.isPressed = false
             }
-            if (it is AppCompatImageButton && currentInputMode == InputMode.ModeNumber && it == keyDakutenSmall) {
+            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                 if (!isLongPressed) it.setImageDrawable(null)
                 when (gestureType) {
                     GestureType.FlickLeft -> {
@@ -1250,7 +1252,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             button?.let {
                 if (it is AppCompatButton) {
                     if (it == sideKeySymbol) return
-                    when (currentInputMode) {
+                    when (currentInputMode.get()) {
                         InputMode.ModeJapanese -> {
                             it.setTenKeyTextJapanese(it.id)
                         }
@@ -1317,7 +1319,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 InputMode.ModeJapanese
             }
         }
-        currentInputMode = newInputMode
+        currentInputMode.set(newInputMode)
         sideKeyInputModeSwitch.setInputMode(newInputMode)
     }
 

@@ -558,7 +558,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             Key.SideKeyPreviousChar -> {
                 mainView.keyboardView.let {
-                    when (it.currentInputMode) {
+                    when (it.currentInputMode.get()) {
                         is InputMode.ModeNumber -> {
 
                         }
@@ -704,7 +704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
             keyboardView.apply {
-                if (currentInputMode == InputMode.ModeNumber) {
+                if (currentInputMode.get() == InputMode.ModeNumber) {
                     setBackgroundSmallLetterKey(
                         cachedNumberDrawable
                     )
@@ -922,7 +922,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setSideKeySpaceDrawable(
                     cachedSpaceDrawable
                 )
-                if (currentInputMode == InputMode.ModeNumber) {
+                if (currentInputMode.get() == InputMode.ModeNumber) {
                     setBackgroundSmallLetterKey(
                         cachedNumberDrawable
                     )
@@ -962,7 +962,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextPhonetic,
                     InputTypeForIME.TextWebEditText,
                     -> {
-                        currentInputMode = InputMode.ModeJapanese
+                        currentInputMode.set(InputMode.ModeJapanese)
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
@@ -975,7 +975,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextShortMessage,
                     InputTypeForIME.TextLongMessage,
                     -> {
-                        currentInputMode = InputMode.ModeJapanese
+                        currentInputMode.set(InputMode.ModeJapanese)
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
@@ -984,7 +984,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                        currentInputMode = InputMode.ModeJapanese
+                        currentInputMode.set(InputMode.ModeJapanese)
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
@@ -993,7 +993,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     InputTypeForIME.TextDone -> {
-                        currentInputMode = InputMode.ModeJapanese
+                        currentInputMode.set(InputMode.ModeJapanese)
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
@@ -1002,7 +1002,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                        currentInputMode = InputMode.ModeJapanese
+                        currentInputMode.set(InputMode.ModeJapanese)
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
@@ -1018,7 +1018,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextVisiblePassword,
                     InputTypeForIME.TextWebPassword,
                     -> {
-                        currentInputMode = InputMode.ModeEnglish
+                        currentInputMode.set(InputMode.ModeEnglish)
                         setInputModeSwitchState(InputMode.ModeEnglish)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
@@ -1027,7 +1027,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                        currentInputMode = InputMode.ModeJapanese
+                        currentInputMode.set(InputMode.ModeJapanese)
                         setInputModeSwitchState(InputMode.ModeJapanese)
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
@@ -1044,7 +1044,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.Datetime,
                     InputTypeForIME.Time,
                     -> {
-                        currentInputMode = InputMode.ModeNumber
+                        currentInputMode.set(InputMode.ModeNumber)
                         setInputModeSwitchState(InputMode.ModeNumber)
                         setSideKeyPreviousState(false)
                         this.setSideKeyEnterDrawable(
@@ -1070,7 +1070,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setCandidateClick(
                     candidate = candidate,
                     insertString = insertString,
-                    currentInputMode = currentInputMode,
+                    currentInputMode = currentInputMode.get(),
                     position = position
                 )
             }
@@ -1588,7 +1588,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setTenkeyIconsInHenkan(insertString: String, mainView: MainLayoutBinding) {
         mainView.keyboardView.apply {
-            when (currentInputMode) {
+            when (currentInputMode.get()) {
                 is InputMode.ModeJapanese -> {
                     setSideKeySpaceDrawable(
                         cachedSpaceDrawable
@@ -1654,7 +1654,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setSideKeyEnterDrawable(
                 cachedReturnDrawable
             )
-            when (currentInputMode) {
+            when (currentInputMode.get()) {
                 InputMode.ModeJapanese -> {
                     if (insertString.isNotEmpty() && insertString.last().isHiragana()) {
                         setBackgroundSmallLetterKey(
@@ -1707,7 +1707,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) {
 
-        val candidates = getSuggestionList(insertString, mainView.keyboardView.currentInputMode)
+        val candidates =
+            getSuggestionList(insertString, mainView.keyboardView.currentInputMode.get())
         // Filter in the background if the list could be large
         val filteredCandidates = withContext(Dispatchers.Default) {
             if (stringInTail.get().isNotEmpty()) {
@@ -1928,7 +1929,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (insertString.isNotBlank()) {
             mainView.apply {
                 keyboardView.let { tenkey ->
-                    when (tenkey.currentInputMode) {
+                    when (tenkey.currentInputMode.get()) {
                         InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
                             this, suggestions, insertString
                         )
@@ -1963,10 +1964,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String
     ) {
         mainView.keyboardView.apply {
-            when (currentInputMode) {
+            when (val inputMode = currentInputMode.get()) {
                 InputMode.ModeJapanese -> {
                     if (isHenkan.get()) {
-                        handleHenkanModeEnterKey(suggestions, currentInputMode, insertString)
+                        handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                     } else {
                         finishInputEnterKey()
                     }
@@ -2509,7 +2510,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.let {
-            when (it.currentInputMode) {
+            when (it.currentInputMode.get()) {
                 InputMode.ModeJapanese -> {
                     dakutenSmallLetter(sb, insertString)
                 }
@@ -2624,7 +2625,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             stringInTail.set("")
         } else {
             mainLayoutBinding?.keyboardView?.apply {
-                if (currentInputMode == InputMode.ModeJapanese) {
+                if (currentInputMode.get() == InputMode.ModeJapanese) {
                     if (isFlick) {
                         commitText(" ", 1)
                     } else {
