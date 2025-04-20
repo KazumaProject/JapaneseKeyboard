@@ -29,7 +29,7 @@ class EnglishLOUDSConverter {
                     labels.add(entry.key)
                     isLeafTemp.add(entry.value.second.isWord)
                     if (entry.value.second.isWord) {
-                        costList.add(entry.value.second.termId)
+                        costList.add(entry.value.second.termId.toShort())
                     }
                 }
             }
