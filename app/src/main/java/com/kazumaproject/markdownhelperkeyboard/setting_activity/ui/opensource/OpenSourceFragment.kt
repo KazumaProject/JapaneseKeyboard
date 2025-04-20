@@ -11,6 +11,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentOpenSourceBi
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NeologdLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiLicense
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiTextLicense
 import de.psdev.licensesdialog.LicensesDialog
 import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20
 import de.psdev.licensesdialog.licenses.MITLicense
@@ -45,7 +46,8 @@ class OpenSourceFragment : Fragment() {
             "com.github.MasayukiSuda:BubbleLayout",
             "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
             "mecab-ipadic-neologd",
-            "merge-ut-dictionaries"
+            "merge-ut-dictionaries",
+            "Salesforce/wikitext"
         )
     }
 
@@ -195,6 +197,24 @@ class OpenSourceFragment : Fragment() {
                         )
                         LicensesDialog.Builder(requireContext())
                             .setTitle("merge-ut-dictionaries")
+                            .setNotices(notice)
+                            .build()
+                            .show()
+                    }
+
+                    26 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright =
+                            " Creative Commons Attribution-ShareAlike License (CC BY-SA 4.0)"
+                        val license = WikiTextLicense()
+                        val notice = Notice(
+                            name,
+                            "https://huggingface.co/datasets/Salesforce/wikitext",
+                            copyright,
+                            license
+                        )
+                        LicensesDialog.Builder(requireContext())
+                            .setTitle("Salesforce/wikitext")
                             .setNotices(notice)
                             .build()
                             .show()
