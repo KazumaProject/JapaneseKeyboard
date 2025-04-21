@@ -115,13 +115,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var englishEngine: EnglishEngine
 
-    private var suggestionAdapter: SuggestionAdapter? = null
-
     @Inject
     lateinit var learnRepository: LearnRepository
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
+
+    private var suggestionAdapter: SuggestionAdapter? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -878,9 +878,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun processInputString(
-        inputString: String,
-        mainView: MainLayoutBinding,
-        inputStringScope: CoroutineScope
+        inputString: String, mainView: MainLayoutBinding, inputStringScope: CoroutineScope
     ) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
@@ -889,7 +887,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             commitPreEditTextJob = inputStringScope.launch {
                 setComposingTextPreEdit(inputString, spannableString)
             }
-            setSuggestionOnView(mainView)
+            val inputMode = mainView.keyboardView.currentInputMode.get()
+            setSuggestionOnView(mainView, inputMode)
             _suggestionFlag.update { CandidateShowFlag.Updating }
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
             val henkanValue = isHenkan.get()
@@ -1698,45 +1697,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private suspend fun setSuggestionOnView(mainView: MainLayoutBinding) {
+    private suspend fun setSuggestionOnView(
+        mainView: MainLayoutBinding, inputMode: InputMode,
+    ) {
         if (_inputString.value.isNotEmpty() && suggestionClickNum == 0) {
             val insertString = _inputString.value
-            setCandidates(mainView, insertString)
+            setCandidates(mainView, insertString, inputMode)
         }
     }
 
-    private suspend fun setCandidates(mainView: MainLayoutBinding, insertString: String) {
-
-        val candidates =
-            getSuggestionList(insertString, mainView.keyboardView.currentInputMode.get())
-        // Filter in the background if the list could be large
-        val filteredCandidates = withContext(Dispatchers.Default) {
+    private suspend fun setCandidates(
+        mainView: MainLayoutBinding,
+        insertString: String,
+        inputMode: InputMode,
+    ) {
+        val candidates = getSuggestionList(insertString, inputMode)
+        val filtered = withContext(Dispatchers.Default) {
             if (stringInTail.get().isNotEmpty()) {
                 candidates.filter { it.length.toInt() == insertString.length }
             } else {
                 candidates
             }
         }
-        // Now update UI on main
-        withContext(Dispatchers.Main) {
-            suggestionAdapter?.suggestions = filteredCandidates
-            mainView.suggestionRecyclerView.scrollToPosition(0)
-            updateUIinHenkan(mainView, insertString)
-        }
+        suggestionAdapter?.suggestions = filtered
+        mainView.suggestionRecyclerView.scrollToPosition(0)
+        updateUIinHenkan(mainView, insertString)
     }
 
     private suspend fun getSuggestionList(
-        insertString: String,
-        inputMode: InputMode
+        insertString: String, inputMode: InputMode
     ): List<Candidate> {
-        val resultFromLearnDatabase = learnRepository.findLearnDataByInput(insertString)?.map {
-            Candidate(
-                string = it.out,
-                type = (20).toByte(),
-                length = (insertString.length).toUByte(),
-                score = it.score,
-            )
-        } ?: emptyList()
+        val resultFromLearnDatabase = withContext(Dispatchers.IO) {
+            learnRepository.findLearnDataByInput(insertString)?.map {
+                Candidate(
+                    string = it.out,
+                    type = (20).toByte(),
+                    length = (insertString.length).toUByte(),
+                    score = it.score,
+                )
+            } ?: emptyList()
+        }
 
         appPreference.candidate_cache_preference?.let {
             if (it) {
