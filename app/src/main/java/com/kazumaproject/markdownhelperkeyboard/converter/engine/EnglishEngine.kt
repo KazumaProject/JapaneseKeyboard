@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class EnglishEngine {
     private lateinit var englishLOUDS: EnglishLOUDS
@@ -18,8 +20,10 @@ class EnglishEngine {
         this.englishSuccinctBitVectorIsLeaf = englishSuccinctBitVectorIsLeaf
     }
 
-    fun getCandidates(input: String): List<Candidate> {
-        val predictSearch = englishLOUDS.predictiveSearch(input, englishSuccinctBitVectorLBS, 4)
+    suspend fun getCandidates(input: String): List<Candidate> {
+        val predictSearch = withContext(Dispatchers.Default) {
+            englishLOUDS.predictiveSearch(input, englishSuccinctBitVectorLBS, 4)
+        }
         if (predictSearch.isEmpty()) {
             return listOf(
                 Candidate(
