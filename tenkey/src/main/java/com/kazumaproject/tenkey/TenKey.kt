@@ -1322,8 +1322,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         sideKeyInputModeSwitch.setInputMode(newInputMode)
     }
 
-    private fun handleCurrentInputModeSwitch() {
-        when (currentInputMode.get()) {
+    private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
+        when (inputMode) {
             InputMode.ModeJapanese -> {
                 setKeysInJapaneseText()
             }
@@ -1338,10 +1338,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
-    fun setInputModeSwitchState(inputMode: InputMode) {
+    fun setInputModeSwitchState() {
+        val inputMode = currentInputMode.get()
         sideKeyInputModeSwitch.setInputMode(inputMode)
-        currentInputMode.set(inputMode)
-        handleCurrentInputModeSwitch()
+        handleCurrentInputModeSwitch(inputMode)
     }
 
     private fun setKeysInJapaneseText() {
