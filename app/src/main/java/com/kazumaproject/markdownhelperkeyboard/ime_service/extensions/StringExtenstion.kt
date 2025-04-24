@@ -138,3 +138,7 @@ fun List<String>.sortByEmojiCategory(): List<String> {
         { it }                               // Lexicographical order within each category
     ))
 }
+
+fun Char.isEnglishLetter(): Boolean {
+    return this in 'a'..'z' || this in 'A'..'Z'
+}
