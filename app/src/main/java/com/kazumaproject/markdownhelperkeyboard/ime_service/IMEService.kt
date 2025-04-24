@@ -887,8 +887,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             commitPreEditTextJob = inputStringScope.launch {
                 setComposingTextPreEdit(inputString, spannableString)
             }
-            val inputMode = mainView.keyboardView.currentInputMode.get()
-            setSuggestionOnView(mainView, inputMode)
+            setSuggestionOnView(mainView, inputString)
             _suggestionFlag.update { CandidateShowFlag.Updating }
             delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
             val henkanValue = isHenkan.get()
@@ -962,7 +961,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextWebEditText,
                     -> {
                         currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
                             cachedArrowRightDrawable
@@ -975,7 +974,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextLongMessage,
                     -> {
                         currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
                             cachedReturnDrawable
@@ -984,7 +983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
                         currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
                             cachedTabDrawable
@@ -993,7 +992,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     InputTypeForIME.TextDone -> {
                         currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
                             cachedCheckDrawable
@@ -1002,7 +1001,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                         currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
                             cachedSearchDrawable
@@ -1018,7 +1017,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.TextWebPassword,
                     -> {
                         currentInputMode.set(InputMode.ModeEnglish)
-                        setInputModeSwitchState(InputMode.ModeEnglish)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
                             cachedArrowRightDrawable
@@ -1027,7 +1026,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
                         currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState(InputMode.ModeJapanese)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(true)
                         this.setSideKeyEnterDrawable(
                             cachedArrowRightDrawable
@@ -1044,7 +1043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     InputTypeForIME.Time,
                     -> {
                         currentInputMode.set(InputMode.ModeNumber)
-                        setInputModeSwitchState(InputMode.ModeNumber)
+                        setInputModeSwitchState()
                         setSideKeyPreviousState(false)
                         this.setSideKeyEnterDrawable(
                             cachedArrowRightDrawable
@@ -1698,19 +1697,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSuggestionOnView(
-        mainView: MainLayoutBinding, inputMode: InputMode,
+        mainView: MainLayoutBinding, inputString: String
     ) {
-        if (_inputString.value.isNotEmpty() && suggestionClickNum == 0) {
+        if (inputString.isNotEmpty() && suggestionClickNum == 0) {
             val insertString = _inputString.value
-            setCandidates(mainView, insertString, inputMode)
+            setCandidates(mainView, insertString)
         }
     }
 
     private suspend fun setCandidates(
         mainView: MainLayoutBinding,
         insertString: String,
-        inputMode: InputMode,
     ) {
+        val inputMode = mainView.keyboardView.currentInputMode.get()
         val candidates = getSuggestionList(insertString, inputMode)
         val filtered = withContext(Dispatchers.Default) {
             if (stringInTail.get().isNotEmpty()) {
