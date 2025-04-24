@@ -12,6 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isEnglishLetter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByEmojiCategory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
@@ -143,6 +144,8 @@ class KanaKanjiEngine {
     private var webSuccinctBitVectorTokenArray: SuccinctBitVector? = null
     private var webSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
+    private lateinit var englishEngine: EnglishEngine
+
     companion object {
         const val SCORE_OFFSET = 8000
         const val SCORE_OFFSET_SMALL = 6000
@@ -208,6 +211,8 @@ class KanaKanjiEngine {
         kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
+
+        englishEngine: EnglishEngine
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -291,6 +296,8 @@ class KanaKanjiEngine {
             kotowazaSuccinctBitVectorTokenArray
         this@KanaKanjiEngine.kotowazaSuccinctBitVectorTangoLBS =
             kotowazaSuccinctBitVectorTangoLBS
+
+        this@KanaKanjiEngine.englishEngine = englishEngine
     }
 
     fun buildPersonNamesDictionary(context: Context) {
@@ -663,7 +670,12 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        if (input.length == 1) return@coroutineScope resultNBestFinalDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
+        val englishDeferred = if (input.first().isEnglishLetter()) englishEngine.getCandidates(
+            input,
+            n
+        ) else emptyList()
+
+        if (input.length == 1) return@coroutineScope resultNBestFinalDeferred + englishDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = withContext(Dispatchers.Default) {
             if (input.length > 16) {
@@ -943,6 +955,7 @@ class KanaKanjiEngine {
             return@coroutineScope (resultList.sortedBy { it.score } +
                     numbersDeferred +
                     symbolHalfWidthListDeferred +
+                    englishDeferred +
                     (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } +
                     symbolListDeferred +
                     hirakanaAndKana +

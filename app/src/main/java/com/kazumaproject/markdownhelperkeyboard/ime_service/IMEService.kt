@@ -1742,44 +1742,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
                 insertString, appPreference.n_best_preference ?: N_BEST, appPreference
             )
-            when (inputMode) {
-                InputMode.ModeJapanese -> {
-                    resultFromLearnDatabase + resultFromEngine
-                }
-
-                InputMode.ModeEnglish -> {
-                    englishEngine.getCandidates(
-                        insertString,
-                        appPreference.n_best_preference ?: N_BEST
-                    )
-                }
-
-                InputMode.ModeNumber -> {
-                    resultFromLearnDatabase + resultFromEngine
-                }
-            }
+            resultFromLearnDatabase + resultFromEngine
 
         } else {
-            when (inputMode) {
-                InputMode.ModeJapanese -> {
-                    kanaKanjiEngine.getCandidates(
-                        insertString, appPreference.n_best_preference ?: N_BEST, appPreference
-                    )
-                }
-
-                InputMode.ModeEnglish -> {
-                    englishEngine.getCandidates(
-                        insertString,
-                        appPreference.n_best_preference ?: N_BEST
-                    )
-                }
-
-                InputMode.ModeNumber -> {
-                    kanaKanjiEngine.getCandidates(
-                        insertString, appPreference.n_best_preference ?: N_BEST, appPreference
-                    )
-                }
-            }
+            kanaKanjiEngine.getCandidates(
+                insertString, appPreference.n_best_preference ?: N_BEST, appPreference
+            )
         }
         val distinct = result.distinctBy { it.string }
         appPreference.candidate_cache_preference?.let {
