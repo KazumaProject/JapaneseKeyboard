@@ -323,13 +323,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
-
-    override fun onWindowHidden() {
-        super.onWindowHidden()
-        Timber.d("onUpdate onWindowHidden")
-        resetAllFlags()
-    }
-
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
@@ -1700,8 +1693,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding, inputString: String
     ) {
         if (inputString.isNotEmpty() && suggestionClickNum == 0) {
-            val insertString = _inputString.value
-            setCandidates(mainView, insertString)
+            setCandidates(mainView, inputString)
         }
     }
 
@@ -1709,8 +1701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding,
         insertString: String,
     ) {
-        val inputMode = mainView.keyboardView.currentInputMode.get()
-        val candidates = getSuggestionList(insertString, inputMode)
+        val candidates = getSuggestionList(insertString, mainView)
         val filtered = withContext(Dispatchers.Default) {
             if (stringInTail.get().isNotEmpty()) {
                 candidates.filter { it.length.toInt() == insertString.length }
@@ -1724,8 +1715,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun getSuggestionList(
-        insertString: String, inputMode: InputMode
+        insertString: String, mainView: MainLayoutBinding
     ): List<Candidate> {
+        val inputMode = mainView.keyboardView.currentInputMode.get()
         val resultFromLearnDatabase = withContext(Dispatchers.IO) {
             learnRepository.findLearnDataByInput(insertString)?.map {
                 Candidate(
@@ -1756,7 +1748,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 InputMode.ModeEnglish -> {
-                    englishEngine.getCandidates(insertString)
+                    englishEngine.getCandidates(
+                        insertString,
+                        appPreference.n_best_preference ?: N_BEST
+                    )
                 }
 
                 InputMode.ModeNumber -> {
@@ -1773,7 +1768,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 InputMode.ModeEnglish -> {
-                    englishEngine.getCandidates(insertString)
+                    englishEngine.getCandidates(
+                        insertString,
+                        appPreference.n_best_preference ?: N_BEST
+                    )
                 }
 
                 InputMode.ModeNumber -> {
