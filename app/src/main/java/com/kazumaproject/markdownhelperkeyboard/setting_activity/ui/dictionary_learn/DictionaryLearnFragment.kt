@@ -81,10 +81,8 @@ class DictionaryLearnFragment : Fragment() {
         lifecycleScope.launch {
             learnRepository.all().collectLatest { data ->
                 binding.resetLearnDictionaryButton.isVisible = data.isNotEmpty()
-                println("Dictionary data: $data")
                 val transformedData = data.groupBy { it.input }.toSortedMap(compareBy { it })
                     .map { (key, value) -> key to value.map { it.out } }
-                println("Dictionary data transformed: $transformedData")
                 learnDictionaryAdapter.learnDataList = transformedData
             }
         }

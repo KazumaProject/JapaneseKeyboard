@@ -19,13 +19,11 @@ class LearnRepository @Inject constructor(
 
     suspend fun upsertLearnedData(learnData: LearnEntity) {
         val existingData = learnDao.findByInputAndOutput(learnData.input, learnData.out)
-        println("learn data exist? $existingData $learnData")
         if (existingData == null) {
             learnDao.insert(learnData)
         } else {
             val score =
                 if (existingData.score > 0) (existingData.score - 1).toShort() else (0).toShort()
-            println("learn data exist and score? $score")
             learnDao.updateLearnedData(
                 learnData.copy(
                     input = learnData.input,
