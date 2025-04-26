@@ -1455,7 +1455,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         commitPreEditTextJob = null
         commitAfterEditTextJob = null
         commitAfterEditTextJob = null
-        requestCursorUpdates(0)
     }
 
     private fun resetFlagsSuggestionClick() {
