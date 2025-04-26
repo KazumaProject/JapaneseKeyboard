@@ -375,27 +375,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         candidatesEnd: Int
     ) {
         super.onUpdateSelection(
-            oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
+            oldSelStart, oldSelEnd,
+            newSelStart, newSelEnd,
+            candidatesStart, candidatesEnd
         )
-        println("onUpdateSelection $candidatesStart $candidatesEnd ${stringInTail.get()} ${_inputString.value} $oldSelStart $oldSelEnd $newSelStart $newSelEnd")
-        if (candidatesStart == -1 && candidatesEnd == -1) {
-            if (stringInTail.get().isNotEmpty()) {
-                if (newSelStart == 0 && newSelEnd == 0) {
-                    _inputString.update { "" }
-                    stringInTail.set("")
-                    suggestionAdapter?.suggestions = emptyList()
-                    commitPreEditTextJob?.cancel()
-                    commitAfterEditTextJob?.cancel()
-                } else {
-                    _inputString.update { stringInTail.get() }
-                    stringInTail.set("")
-                }
-            } else {
-                _inputString.update { "" }
-                commitPreEditTextJob?.cancel()
-                commitAfterEditTextJob?.cancel()
-            }
+
+        // 1) 変換中 (composing) は IME 側の処理対象外
+        if (candidatesStart != -1 || candidatesEnd != -1) return
+
+        // 2) 状態スナップショット
+        val tail = stringInTail.get()
+        val hasTail = tail.isNotEmpty()
+        val caretTop = (newSelStart == 0 && newSelEnd == 0)
+
+        // 3) caret が先頭かつ tail を抱えている → キャンセル＆リセット
+        if (hasTail && caretTop) {
+            cancelPendingCommits()
+            stringInTail.set("")
+            _inputString.update { "" }
+            suggestionAdapter?.suggestions = emptyList()
+            return
         }
+
+        // 4) caret が移動済みで tail を抱えている → tail を確定
+        if (hasTail) {
+            _inputString.update { tail }
+            stringInTail.set("")
+            return
+        }
+
+        // 5) tail 無し & _inputString が残っている → 後片付け
+        if (_inputString.value.isNotEmpty()) {
+            cancelPendingCommits()
+            _inputString.update { "" }
+        }
+    }
+
+    private fun cancelPendingCommits() {
+        commitPreEditTextJob?.cancel()
+        commitAfterEditTextJob?.cancel()
     }
 
     private fun setTenKeyListeners(mainView: MainLayoutBinding) {
@@ -930,8 +948,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!isHenkan.get()) {
             _suggestionFlag.update { CandidateShowFlag.Idle }
             isInputFinished.set(true)
-            commitPreEditTextJob?.cancel()
-            commitAfterEditTextJob?.cancel()
+            cancelPendingCommits()
         }
     }
 
@@ -1407,8 +1424,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetKeyboard()
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
-        commitPreEditTextJob?.cancel()
-        commitAfterEditTextJob?.cancel()
+        cancelPendingCommits()
     }
 
     private fun actionInDestroy() {
@@ -1437,8 +1453,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         _inputString.update { "" }
-        commitPreEditTextJob?.cancel()
-        commitAfterEditTextJob?.cancel()
+        cancelPendingCommits()
     }
 
     private fun resetFlagsEnterKey() {
@@ -1453,8 +1468,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         _inputString.update { "" }
-        commitPreEditTextJob?.cancel()
-        commitAfterEditTextJob?.cancel()
+        cancelPendingCommits()
     }
 
     private fun resetFlagsEnterKeyNotHenkan() {
@@ -1470,8 +1484,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         learnMultiple.stop()
-        commitPreEditTextJob?.cancel()
-        commitAfterEditTextJob?.cancel()
+        cancelPendingCommits()
     }
 
     private fun resetFlagsKeySpace() {
@@ -1701,7 +1714,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding,
         insertString: String,
     ) {
-        val candidates = getSuggestionList(insertString, mainView)
+        val candidates = getSuggestionList(insertString)
         val filtered = withContext(Dispatchers.Default) {
             if (stringInTail.get().isNotEmpty()) {
                 candidates.filter { it.length.toInt() == insertString.length }
@@ -1715,9 +1728,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun getSuggestionList(
-        insertString: String, mainView: MainLayoutBinding
+        insertString: String,
     ): List<Candidate> {
-        val inputMode = mainView.keyboardView.currentInputMode.get()
         val resultFromLearnDatabase = withContext(Dispatchers.IO) {
             learnRepository.findLearnDataByInput(insertString)?.map {
                 Candidate(
@@ -2849,7 +2861,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
-        println("setComposingText : $p0 $p1 ")
+        println("setComposingText : $p0 $p1")
         if (currentInputConnection == null) return false
         return currentInputConnection.setComposingText(p0, p1)
     }
