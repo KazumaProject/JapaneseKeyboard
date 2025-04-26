@@ -3,7 +3,6 @@ package com.kazumaproject.symbol_keyboard
 import android.content.Context
 import android.content.res.Configuration
 import android.util.AttributeSet
-import android.util.Log
 import android.view.LayoutInflater
 import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -213,8 +212,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     symbolAdapter.submitData(pagingData)
                 }
             }
-        } else {
-            Log.e("CustomSymbolKeyboardView", "LifecycleOwner is null. Cannot load data.")
         }
     }
 

@@ -14,7 +14,6 @@ object ArraysStream {
         shortArray: ShortArray
     ) {
         DataOutputStream(BufferedOutputStream(fileOutputStream)).use { bos ->
-            println("write ${shortArray.size}")
             bos.writeInt(shortArray.size)
             shortArray.forEach {
                 bos.writeShort(it.toInt())

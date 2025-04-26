@@ -47,7 +47,6 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 "dictionary_fragment_request" -> {
-                    println("clicked")
                     navController.navigate(R.id.navigation_learn_dictionary)
                 }
             }

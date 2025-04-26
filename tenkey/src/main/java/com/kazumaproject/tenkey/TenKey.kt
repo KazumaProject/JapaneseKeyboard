@@ -6,7 +6,6 @@ import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -309,7 +308,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                     }
                     setKeyPressed()
-                    Log.d("Touch Listener", "ACTION_DOWN called: $pressedKey")
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
                         if (pressedKey.key != Key.NotSelected) {
@@ -369,9 +367,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 )
                             }
                         }
-                        Log.d(
-                            "Touch Listener", "ACTION_UP called: $pressedKey $gestureType $keyInfo"
-                        )
                     }
                     resetAllKeys()
                     popupWindowActive.hide()
@@ -494,10 +489,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 }
                             }
                         }
-                        Log.d(
-                            "Touch Listener",
-                            "ACTION_POINTER_DOWN sendChar called: $pressedKey $gestureType2"
-                        )
                         pressedKey = pressedKey.copy(
                             key = key,
                             pointer = pointer,
@@ -529,14 +520,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 onLongPressed()
                             }
                         }
-                        Log.d(
-                            "Touch Listener",
-                            "ACTION_POINTER_DOWN called: $pressedKey ${
-                                event.getPointerId(
-                                    event.actionIndex
-                                )
-                            }"
-                        )
                     }
 
                     return false
@@ -617,7 +600,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 key = Key.NotSelected,
                             )
                             popupWindowActive.hide()
-                            Log.d("Touch Listener", "ACTION_POINTER_UP called: $pressedKey")
                         }
                         return false
 

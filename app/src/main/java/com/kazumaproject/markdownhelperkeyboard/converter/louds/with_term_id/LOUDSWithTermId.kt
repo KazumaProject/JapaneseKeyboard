@@ -197,7 +197,6 @@ class LOUDSWithTermId {
         val rank1Value = LBS.rank1CommonShort(pos, rank1Array)
         val select0 = LBS.select0CommonShort(rank1Value, rank0Array)
         val y = select0 + 1
-        println("DEBUG: pos=$pos, rank1Value=$rank1Value, select0=$select0, y=$y")
         return if (!LBS[y]) -1 else y
     }
 

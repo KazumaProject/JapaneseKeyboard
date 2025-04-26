@@ -710,7 +710,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun resetKeyboard() {
         mainLayoutBinding?.apply {
-            println("reset keyboard called")
             animateViewVisibility(this.keyboardView, true)
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
@@ -915,7 +914,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            println("input is empty now!!")
             if (stringInTail.get().isNotEmpty()) {
                 setComposingText(stringInTail.get(), 0)
                 onLeftKeyLongPressUp.set(true)
@@ -1265,7 +1263,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun commitAndClearInput(candidateString: String) {
-        println("commitAndClearInput called")
         _inputString.update { "" }
         commitText(candidateString, 1)
     }
@@ -1441,7 +1438,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun resetFlagsSuggestionClick() {
-        println("reset FlagsSuggestionClick is called")
         isHenkan.set(false)
         suggestionClickNum = 0
         englishSpaceKeyPressed.set(false)
@@ -1457,7 +1453,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun resetFlagsEnterKey() {
-        println("enter key reset is called")
         isHenkan.set(false)
         suggestionClickNum = 0
         englishSpaceKeyPressed.set(false)
@@ -2554,26 +2549,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setSuggestionComposingText(suggestions, insertString)
                 mainView.suggestionRecyclerView.smoothScrollToPosition(0)
                 suggestionAdapter?.updateHighlightPosition(0)
-                println("setConvertLetterInJapaneseFromButton space hasPrevious $suggestionClickNum ${suggestions.size}")
             }
 
             !listIterator.hasPrevious() && !isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
                 mainView.suggestionRecyclerView.smoothScrollToPosition(0)
                 suggestionAdapter?.updateHighlightPosition(0)
-                println("setConvertLetterInJapaneseFromButton delete hasPrevious $suggestionClickNum ${suggestions.size}")
             }
 
             listIterator.hasNext() && isSpaceKey -> {
                 if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
                 setSuggestionComposingText(suggestions, insertString)
-                println("setConvertLetterInJapaneseFromButton space hasNext $suggestionClickNum ${suggestions.size}")
             }
 
             listIterator.hasNext() && !isSpaceKey -> {
                 if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
                 setSuggestionComposingText(suggestions, insertString)
-                println("setConvertLetterInJapaneseFromButton delete hasNext $suggestionClickNum ${suggestions.size}")
             }
         }
     }
@@ -2823,146 +2814,121 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         get() = lifecycleRegistry
 
     override fun getTextBeforeCursor(p0: Int, p1: Int): CharSequence? {
-        println("getTextBeforeCursor")
         return currentInputConnection?.getTextBeforeCursor(p0, p1)
     }
 
     override fun getTextAfterCursor(p0: Int, p1: Int): CharSequence? {
-        println("getTextAfterCursor")
         return currentInputConnection?.getTextAfterCursor(p0, p1)
     }
 
     override fun getSelectedText(p0: Int): CharSequence {
-        println("getSelectedText")
         return currentInputConnection.getSelectedText(p0)
     }
 
     override fun getCursorCapsMode(p0: Int): Int {
-        println("getCursorCapsMode")
         if (currentInputConnection == null) return 0
         return currentInputConnection.getCursorCapsMode(p0)
     }
 
     override fun getExtractedText(p0: ExtractedTextRequest?, p1: Int): ExtractedText? {
-        println("getExtractedText")
         return currentInputConnection.getExtractedText(p0, p1)
     }
 
     override fun deleteSurroundingText(p0: Int, p1: Int): Boolean {
-        println("deleteSurroundingText")
         if (currentInputConnection == null) return false
         return currentInputConnection.deleteSurroundingText(p0, p1)
     }
 
     override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean {
-        println("deleteSurroundingTextInCodePoints")
         if (currentInputConnection == null) return false
         return currentInputConnection.deleteSurroundingTextInCodePoints(p0, p1)
     }
 
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
-        println("setComposingText : $p0 $p1")
         if (currentInputConnection == null) return false
         return currentInputConnection.setComposingText(p0, p1)
     }
 
     override fun setComposingRegion(p0: Int, p1: Int): Boolean {
-        println("setComposingRegion")
         if (currentInputConnection == null) return false
         return currentInputConnection.setComposingRegion(p0, p1)
     }
 
     override fun finishComposingText(): Boolean {
         if (currentInputConnection == null) return false
-        println("finishComposingText")
         return currentInputConnection.finishComposingText()
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
-        println("commitText")
         return currentInputConnection.commitText(p0, p1)
     }
 
     override fun commitCompletion(p0: CompletionInfo?): Boolean {
-        println("commitCompletion")
         if (currentInputConnection == null) return false
         return currentInputConnection.commitCompletion(p0)
     }
 
     override fun commitCorrection(p0: CorrectionInfo?): Boolean {
-        println("commitCorrection")
         if (currentInputConnection == null) return false
         return currentInputConnection.commitCorrection(p0)
     }
 
     override fun setSelection(p0: Int, p1: Int): Boolean {
-        println("setSelection")
         if (currentInputConnection == null) return false
         return currentInputConnection.setSelection(p0, p1)
     }
 
     override fun performEditorAction(p0: Int): Boolean {
-        println("performEditorAction")
         if (currentInputConnection == null) return false
         return currentInputConnection.performEditorAction(p0)
     }
 
     override fun performContextMenuAction(p0: Int): Boolean {
-        println("performContextMenuAction")
         if (currentInputConnection == null) return false
         return currentInputConnection.performContextMenuAction(p0)
     }
 
     override fun beginBatchEdit(): Boolean {
-        println("beginBatchEdit")
         if (currentInputConnection == null) return false
         return currentInputConnection.beginBatchEdit()
     }
 
     override fun endBatchEdit(): Boolean {
-        println("endBatchEdit")
         if (currentInputConnection == null) return false
         return currentInputConnection.endBatchEdit()
     }
 
     override fun sendKeyEvent(p0: KeyEvent?): Boolean {
-        println("sendKeyEvent")
         if (currentInputConnection == null) return false
         return currentInputConnection.sendKeyEvent(p0)
     }
 
     override fun clearMetaKeyStates(p0: Int): Boolean {
-        println("clearMetaKeyStates")
         if (currentInputConnection == null) return false
         return currentInputConnection.clearMetaKeyStates(p0)
     }
 
     override fun reportFullscreenMode(p0: Boolean): Boolean {
-        println("reportFullscreenMode")
         if (currentInputConnection == null) return false
         return currentInputConnection.reportFullscreenMode(p0)
     }
 
     override fun performPrivateCommand(p0: String?, p1: Bundle?): Boolean {
-        println("performPrivateCommand")
         if (currentInputConnection == null) return false
         return currentInputConnection.performPrivateCommand(p0, p1)
     }
 
     override fun requestCursorUpdates(p0: Int): Boolean {
-        println("requestCursorUpdates")
         if (currentInputConnection == null) return false
         return currentInputConnection.requestCursorUpdates(p0)
     }
 
     override fun getHandler(): Handler? {
-        println("getHandler")
         return currentInputConnection?.handler
     }
 
     override fun closeConnection() {
-        println("closeConnection")
         if (currentInputConnection == null) return
         return currentInputConnection.closeConnection()
     }
