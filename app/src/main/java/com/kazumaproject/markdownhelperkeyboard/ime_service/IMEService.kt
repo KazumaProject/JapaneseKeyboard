@@ -377,8 +377,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
-        if (cursorAnchorInfo?.composingTextStart == -1) {
-            Timber.d("onUpdateCursorAnchorInfo called")
+        Timber.d("onUpdateCursorAnchorInfo called ${cursorAnchorInfo?.composingTextStart} ${_inputString.value}")
+        if (_inputString.value.isNotEmpty() && cursorAnchorInfo?.composingTextStart == -1) {
             cancelPendingCommits()
             _inputString.update { "" }
         }
