@@ -160,6 +160,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val isInputFinished = AtomicBoolean(true)
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
+    private var hadActiveCompose = false
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
     private val cachedSpaceDrawable: Drawable? by lazy {
@@ -317,6 +318,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         setKeyboardSize()
         resetKeyboard()
+        hadActiveCompose = false
     }
 
     override fun onFinishInput() {
@@ -378,9 +380,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
         Timber.d("onUpdateCursorAnchorInfo called ${cursorAnchorInfo?.composingTextStart} ${_inputString.value}")
-        if (_inputString.value.isNotEmpty() && cursorAnchorInfo?.composingTextStart == -1) {
-            cancelPendingCommits()
-            _inputString.update { "" }
+        val start = cursorAnchorInfo?.composingTextStart ?: -1
+        when {
+            start >= 0 -> hadActiveCompose = true
+            start == -1 && hadActiveCompose -> {
+                hadActiveCompose = false
+                if (_inputString.value.isNotEmpty()) {
+                    cancelPendingCommits()
+                    _inputString.update { "" }
+                }
+            }
+            // start == -1 かつ hadActiveCompose == false
+            // ＝ セッション初回 or そもそも compose 未発生 → 無視
         }
     }
 
