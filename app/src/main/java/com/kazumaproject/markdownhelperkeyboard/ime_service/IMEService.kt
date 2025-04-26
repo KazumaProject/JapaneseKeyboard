@@ -134,6 +134,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var commitPreEditTextJob: Job? = null
     private var commitAfterEditTextJob: Job? = null
 
+    private var deleteLongPressJob: Job? = null
+    private var rightLongPressJob: Job? = null
+    private var leftLongPressJob: Job? = null
+
     private var mainLayoutBinding: MainLayoutBinding? = null
     private val _inputString = MutableStateFlow("")
     private var stringInTail = AtomicReference("")
@@ -375,9 +379,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         candidatesEnd: Int
     ) {
         super.onUpdateSelection(
-            oldSelStart, oldSelEnd,
-            newSelStart, newSelEnd,
-            candidatesStart, candidatesEnd
+            oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
 
         // 1) 変換中 (composing) は IME 側の処理対象外
@@ -540,7 +542,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
                 onLeftKeyLongPressUp.set(true)
                 leftCursorKeyLongKeyPressed.set(false)
-                asyncLeftLongPress().cancel()
+                leftLongPressJob?.cancel()
+                leftLongPressJob = null
             }
 
             Key.SideKeyCursorRight -> {
@@ -549,7 +552,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
                 onRightKeyLongPressUp.set(true)
                 rightCursorKeyLongKeyPressed.set(false)
-                asyncRightLongPress().cancel()
+                rightLongPressJob?.cancel()
+                rightLongPressJob = null
             }
 
             Key.SideKeyDelete -> {
@@ -558,9 +562,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         handleDeleteKeyTap(insertString, suggestions)
                     }
                 }
-                onDeleteLongPressUp.set(true)
-                deleteKeyLongKeyPressed.set(false)
-                deleteLongPress().cancel()
+                stopDeleteLongPress()
             }
 
             Key.SideKeyInputMode -> {
@@ -677,7 +679,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (isHenkan.get()) {
                     cancelHenkanByLongPressDeleteKey()
                 } else {
-                    onDeleteLongPressUp.set(false)
+                    onDeleteLongPressUp.set(true)
                     deleteLongPress()
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed.set(false)
@@ -1140,15 +1142,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         vibrate()
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                     }
-                    onDeleteLongPressUp.set(true)
-                    deleteKeyLongKeyPressed.set(false)
-                    deleteLongPress().cancel()
+                    stopDeleteLongPress()
                 }
             })
             setOnDeleteButtonSymbolViewLongClickListener(object :
                 DeleteButtonSymbolViewLongClickListener {
                 override fun onLongClickListener() {
-                    onDeleteLongPressUp.set(false)
+                    onDeleteLongPressUp.set(true)
                     deleteLongPress()
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed.set(false)
@@ -1407,7 +1407,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionClickNum = 0
         isHenkan.set(false)
         isContinuousTapInputEnabled.set(false)
-        deleteKeyLongKeyPressed.set(false)
         leftCursorKeyLongKeyPressed.set(false)
         rightCursorKeyLongKeyPressed.set(false)
         _dakutenPressed.value = false
@@ -1422,6 +1421,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
         cancelPendingCommits()
+        stopDeleteLongPress()
     }
 
     private fun actionInDestroy() {
@@ -1767,35 +1767,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return distinct
     }
 
-    private fun deleteLongPress() = scope.launch {
-        while (isActive && deleteKeyLongKeyPressed.get() && !onDeleteLongPressUp.get()) {
-            val insertString = _inputString.value
-            val tailIsEmpty = stringInTail.get().isEmpty()
+    private fun deleteLongPress() {
+        if (deleteLongPressJob?.isActive == true) return
+        deleteLongPressJob = scope.launch {
+            while (isActive && deleteKeyLongKeyPressed.get()) {
+                val current = _inputString.value
+                val tailIsEmpty = stringInTail.get().isEmpty()
 
-            if (insertString.isEmpty()) {
-                if (tailIsEmpty) {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                if (current.isEmpty()) {
+                    if (tailIsEmpty) {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    } else {
+                        break          // composing tail left – stop deleting
+                    }
                 } else {
-                    break
+                    val newString = current.dropLast(1)
+                    _inputString.update { newString }
+                    if (newString.isEmpty() && tailIsEmpty) setComposingText("", 0)
                 }
-            } else {
-                val newString = insertString.dropLast(1)
-                _inputString.update { newString }
-                if (newString.isEmpty() && tailIsEmpty) {
-                    setComposingText("", 0)
-                }
-            }
-            delay(LONG_DELAY_TIME)
-        }
-        enableContinuousTapInput()
 
-        val finalInsertString = _inputString.value
-        val candidateFlag = if (finalInsertString.isEmpty()) {
-            CandidateShowFlag.Idle
-        } else {
-            CandidateShowFlag.Updating
+                delay(LONG_DELAY_TIME)
+            }
+
+            enableContinuousTapInput()
+
+            _suggestionFlag.update {
+                if (_inputString.value.isEmpty()) CandidateShowFlag.Idle
+                else CandidateShowFlag.Updating
+            }
         }
-        _suggestionFlag.update { candidateFlag }
+    }
+
+    private fun stopDeleteLongPress() {
+        deleteKeyLongKeyPressed.set(false)
+        onDeleteLongPressUp.set(true)
+        deleteLongPressJob?.cancel()
+        deleteLongPressJob = null
     }
 
     private fun enableContinuousTapInput() {
@@ -2102,69 +2109,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun asyncLeftLongPress() = scope.launch {
-        // We'll store a "reason" if we need to emit a specific suggestion flag
-        var finalSuggestionFlag: CandidateShowFlag? = null
+    private fun asyncLeftLongPress() {
+        if (leftLongPressJob?.isActive == true) return
+        leftLongPressJob = scope.launch {
+            var finalSuggestionFlag: CandidateShowFlag? = null
 
-        while (isActive && leftCursorKeyLongKeyPressed.get() && !onLeftKeyLongPressUp.get()) {
-            val insertString = _inputString.value
+            while (isActive && leftCursorKeyLongKeyPressed.get() && !onLeftKeyLongPressUp.get()) {
 
-            // If tail is not empty but there’s no composing text, we stop and emit Idle
-            if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
-                finalSuggestionFlag = CandidateShowFlag.Idle
-                break
-            }
+                val insertString = _inputString.value
 
-            if (insertString.isNotEmpty()) {
-                // Move a character from the composing text to the "tail" or handle it
-                updateLeftInputString(insertString)
-            } else {
-                // If there's really nothing in either the composing text or the tail,
-                // we can move the cursor left using a DPAD event (if we’re not already at the start)
-                if (stringInTail.get().isEmpty() && !isCursorAtBeginning()) {
+                // tail があり composing が空 → Idle で抜ける
+                if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
+                    finalSuggestionFlag = CandidateShowFlag.Idle
+                    break
+                }
+
+                if (insertString.isNotEmpty()) {
+                    updateLeftInputString(insertString)
+                } else if (stringInTail.get().isEmpty() && !isCursorAtBeginning()) {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
                 }
+
+                delay(LONG_DELAY_TIME)
             }
-
-            delay(LONG_DELAY_TIME)
-        }
-
-        if (finalSuggestionFlag != null) {
-            _suggestionFlag.update { finalSuggestionFlag }
-        } else {
-            val insertString = _inputString.value
-            if (insertString.isEmpty()) {
-                _suggestionFlag.update { CandidateShowFlag.Idle }
-            } else {
-                _suggestionFlag.update { CandidateShowFlag.Updating }
+            _suggestionFlag.update {
+                finalSuggestionFlag
+                    ?: if (_inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
             }
         }
     }
 
-    private fun asyncRightLongPress() = scope.launch {
-        var finalSuggestionFlag: CandidateShowFlag? = null
-        while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
-            val insertString = _inputString.value
-            if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
-                finalSuggestionFlag = CandidateShowFlag.Updating
-                break
-            }
-            actionInRightKeyPressed(insertString)
-            delay(LONG_DELAY_TIME)
-        }
+    private fun asyncRightLongPress() {
+        if (rightLongPressJob?.isActive == true) return
+        rightLongPressJob = scope.launch {
+            var finalSuggestionFlag: CandidateShowFlag? = null
+            while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
 
-        if (finalSuggestionFlag != null) {
-            _suggestionFlag.update { finalSuggestionFlag }
-        } else {
-            val insertString = _inputString.value
-            if (insertString.isNotEmpty()) {
-                _suggestionFlag.update { CandidateShowFlag.Updating }
-            } else {
-                _suggestionFlag.update { CandidateShowFlag.Idle }
+                val insertString = _inputString.value
+                if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
+                    finalSuggestionFlag = CandidateShowFlag.Updating
+                    break
+                }
+                actionInRightKeyPressed(insertString)
+                delay(LONG_DELAY_TIME)
+            }
+            _suggestionFlag.update {
+                finalSuggestionFlag
+                    ?: if (_inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
             }
         }
     }
-
 
     private fun updateLeftInputString(insertString: String) {
         if (insertString.isNotEmpty()) {
