@@ -26,6 +26,7 @@ import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
+import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
@@ -307,6 +308,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
+        requestCursorUpdates(
+            InputConnection.CURSOR_UPDATE_MONITOR or
+                    InputConnection.CURSOR_UPDATE_IMMEDIATE
+        )
         if (!clipboardUtil.isClipboardEmpty()) {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
@@ -370,6 +375,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
+        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        if (cursorAnchorInfo?.composingTextStart == -1) {
+            Timber.d("onUpdateCursorAnchorInfo called")
+            cancelPendingCommits()
+            _inputString.update { "" }
+        }
+    }
+
     override fun onUpdateSelection(
         oldSelStart: Int,
         oldSelEnd: Int,
@@ -381,6 +395,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
+
+        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
 
         // 1) 変換中 (composing) は IME 側の処理対象外
         if (candidatesStart != -1 || candidatesEnd != -1) return
@@ -416,6 +432,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun cancelPendingCommits() {
         commitPreEditTextJob?.cancel()
         commitAfterEditTextJob?.cancel()
+        commitPreEditTextJob = null
+        commitAfterEditTextJob = null
     }
 
     private fun setTenKeyListeners(mainView: MainLayoutBinding) {
@@ -559,7 +577,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyDelete -> {
                 if (!isFlick) {
                     if (!deleteKeyLongKeyPressed.get()) {
+                        beginBatchEdit()
                         handleDeleteKeyTap(insertString, suggestions)
+                        endBatchEdit()
                     }
                 }
                 stopDeleteLongPress()
@@ -1435,6 +1455,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         commitPreEditTextJob = null
         commitAfterEditTextJob = null
         commitAfterEditTextJob = null
+        requestCursorUpdates(0)
     }
 
     private fun resetFlagsSuggestionClick() {
