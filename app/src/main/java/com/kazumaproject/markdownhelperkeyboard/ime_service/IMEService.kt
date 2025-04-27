@@ -26,7 +26,6 @@ import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
-import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
@@ -160,7 +159,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val isInputFinished = AtomicBoolean(true)
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
-    private var hadActiveCompose = false
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
     private val cachedSpaceDrawable: Drawable? by lazy {
@@ -309,16 +307,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        requestCursorUpdates(
-            InputConnection.CURSOR_UPDATE_MONITOR or
-                    InputConnection.CURSOR_UPDATE_IMMEDIATE
-        )
         if (!clipboardUtil.isClipboardEmpty()) {
             suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
         setKeyboardSize()
         resetKeyboard()
-        hadActiveCompose = false
     }
 
     override fun onFinishInput() {
@@ -377,24 +370,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
-        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
-        Timber.d("onUpdateCursorAnchorInfo called ${cursorAnchorInfo?.composingTextStart} ${_inputString.value}")
-        val start = cursorAnchorInfo?.composingTextStart ?: -1
-        when {
-            start >= 0 -> hadActiveCompose = true
-            start == -1 && hadActiveCompose -> {
-                hadActiveCompose = false
-                if (_inputString.value.isNotEmpty()) {
-                    cancelPendingCommits()
-                    _inputString.update { "" }
-                }
-            }
-            // start == -1 かつ hadActiveCompose == false
-            // ＝ セッション初回 or そもそも compose 未発生 → 無視
-        }
-    }
-
     override fun onUpdateSelection(
         oldSelStart: Int,
         oldSelEnd: Int,
@@ -423,6 +398,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             stringInTail.set("")
             _inputString.update { "" }
             suggestionAdapter?.suggestions = emptyList()
+            setComposingText("", 0)
             return
         }
 
@@ -437,6 +413,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (_inputString.value.isNotEmpty()) {
             cancelPendingCommits()
             _inputString.update { "" }
+            setComposingText("", 0)
         }
     }
 
