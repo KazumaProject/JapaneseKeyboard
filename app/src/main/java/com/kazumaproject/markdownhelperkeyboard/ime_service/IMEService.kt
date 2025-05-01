@@ -158,6 +158,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val isInputFinished = AtomicBoolean(true)
+    private var isFlickOnlyMode: Boolean = false
+    private var delayTime: Int = 1000
+    private var isLearnDictionaryMode: Boolean = false
+    private var nBest: Int = 4
+    private var isVibration: Boolean = true
+    private var vibrationTimingStr: String = "both"
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
@@ -211,9 +217,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     companion object {
-        const val DELAY_TIME = 1000L
         const val LONG_DELAY_TIME = 64L
-        const val N_BEST = 4
     }
 
     override fun onCreate() {
@@ -265,6 +269,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val mozcUTWiki = mozc_ut_wiki_preference ?: false
             val mozcUTNeologd = mozc_ut_neologd_preference ?: false
             val mozcUTWeb = mozc_ut_web_preference ?: false
+            isFlickOnlyMode = flick_input_only_preference ?: false
+            delayTime = time_same_pronounce_typing_preference ?: 1000
+            isLearnDictionaryMode = learn_dictionary_preference ?: true
+            nBest = n_best_preference ?: 4
+            isVibration = vibration_preference ?: true
+            vibrationTimingStr = vibration_timing_preference ?: "both"
             if (mozcUTPersonName) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -438,21 +448,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         GestureType.Down -> {
-                            if (appPreference.vibration_timing_preference == null) {
-                                vibrate()
-                            } else {
-                                when (appPreference.vibration_timing_preference) {
-                                    "both" -> {
-                                        vibrate()
-                                    }
+                            when (vibrationTimingStr) {
+                                "both" -> {
+                                    vibrate()
+                                }
 
-                                    "press" -> {
-                                        vibrate()
-                                    }
+                                "press" -> {
+                                    vibrate()
+                                }
 
-                                    "release" -> {
+                                "release" -> {
 
-                                    }
                                 }
                             }
                         }
@@ -505,21 +511,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
-        if (appPreference.vibration_timing_preference == null) {
-            vibrate()
-        } else {
-            when (appPreference.vibration_timing_preference) {
-                "both" -> {
-                    vibrate()
-                }
+        when (vibrationTimingStr) {
+            "both" -> {
+                vibrate()
+            }
 
-                "press" -> {
+            "press" -> {
 
-                }
+            }
 
-                "release" -> {
-                    vibrate()
-                }
+            "release" -> {
+                vibrate()
             }
         }
         when (key) {
@@ -909,7 +911,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             setSuggestionOnView(mainView, inputString)
             _suggestionFlag.update { CandidateShowFlag.Updating }
-            delay(appPreference.time_same_pronounce_typing_preference?.toLong() ?: DELAY_TIME)
+            delay(delayTime.toLong())
             val henkanValue = isHenkan.get()
             val deleteLongPressUp = onDeleteLongPressUp.get()
             val englishSpacePressed = englishSpaceKeyPressed.get()
@@ -1347,9 +1349,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _inputString.update { "" }
             commitText(candidate.string, 1)
         } else {
-            val isEnable = appPreference.learn_dictionary_preference
-
-            if (isEnable == null || !isEnable) {
+            if (!isLearnDictionaryMode) {
                 _inputString.update { "" }
                 commitText(candidate.string, 1)
             } else {
@@ -1373,32 +1373,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         insertString: String
     ) {
         if (currentInputMode == InputMode.ModeJapanese) {
-            val isEnable = appPreference.learn_dictionary_preference
-            if (isEnable == null) {
+            if (isLearnDictionaryMode) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val learnData = LearnEntity(
+                        input = input, out = output
+                    )
+                    val learnData2 = LearnEntity(
+                        input = insertString, out = candidate.string
+                    )
+                    learnRepository.apply {
+                        upsertLearnedData(learnData)
+                        upsertLearnedData(learnData2)
+                    }
+                }
                 _inputString.update { "" }
                 commitText(candidate.string, 1)
             } else {
-                appPreference.learn_dictionary_preference?.let { enabledLearnDictionary ->
-                    if (enabledLearnDictionary) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val learnData = LearnEntity(
-                                input = input, out = output
-                            )
-                            val learnData2 = LearnEntity(
-                                input = insertString, out = candidate.string
-                            )
-                            learnRepository.apply {
-                                upsertLearnedData(learnData)
-                                upsertLearnedData(learnData2)
-                            }
-                        }
-                        _inputString.update { "" }
-                        commitText(candidate.string, 1)
-                    } else {
-                        _inputString.update { "" }
-                        commitText(candidate.string, 1)
-                    }
-                }
+                _inputString.update { "" }
+                commitText(candidate.string, 1)
             }
 
         } else {
@@ -1753,15 +1745,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         }
-        val result = if (appPreference.learn_dictionary_preference == true) {
+        val result = if (isLearnDictionaryMode) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
-                insertString, appPreference.n_best_preference ?: N_BEST, appPreference
+                insertString, nBest, appPreference
             )
             resultFromLearnDatabase + resultFromEngine
 
         } else {
             kanaKanjiEngine.getCandidates(
-                insertString, appPreference.n_best_preference ?: N_BEST, appPreference
+                insertString, nBest, appPreference
             )
         }
         val distinct = result.distinctBy { it.string }
@@ -2348,27 +2340,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setCurrentInputCharacter(
-        char: Char, inputForInsert: String, sb: StringBuilder, flickInputOnly: Boolean
+        char: Char, inputForInsert: String, sb: StringBuilder,
     ) {
 
         if (inputForInsert.isNotEmpty()) {
             val hiraganaAtInsertPosition = inputForInsert.last()
-
-            // flickInputOnly が true の場合は常に新しい文字を追加
-            if (flickInputOnly) {
+            val nextChar = hiraganaAtInsertPosition.getNextInputChar(char)
+            if (nextChar == null) {
                 _inputString.update {
                     sb.append(inputForInsert).append(char).toString()
                 }
             } else {
-                val nextChar = hiraganaAtInsertPosition.getNextInputChar(char)
-
-                if (nextChar == null) {
-                    _inputString.update {
-                        sb.append(inputForInsert).append(char).toString()
-                    }
-                } else {
-                    appendCharToStringBuilder(nextChar, inputForInsert, sb)
-                }
+                appendCharToStringBuilder(nextChar, inputForInsert, sb)
             }
         } else {
             _inputString.update {
@@ -2380,9 +2363,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun sendCharTap(
         charToSend: Char, insertString: String, sb: StringBuilder
     ) {
-        // フリックのみモードの設定を取得
-        val flickInputOnly = appPreference.flick_input_only_preference ?: false
-
         when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
@@ -2398,16 +2378,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             else -> {
-                // flickInputOnly が true の場合は連続タップ処理をスキップ
-                if (!flickInputOnly && isContinuousTapInputEnabled.get() && lastFlickConvertedNextHiragana.get()) {
-                    setCurrentInputCharacterContinuous(
-                        charToSend, insertString, sb
-                    )
-                    lastFlickConvertedNextHiragana.set(false)
+                if (isFlickOnlyMode) {
+                    sendCharFlick(charToSend, insertString, sb)
+                    isContinuousTapInputEnabled.set(true)
+                    lastFlickConvertedNextHiragana.set(true)
                 } else {
-                    setKeyTouch(
-                        charToSend, insertString, sb, flickInputOnly
-                    )
+                    if (isContinuousTapInputEnabled.get() && lastFlickConvertedNextHiragana.get()) {
+                        setCurrentInputCharacterContinuous(
+                            charToSend, insertString, sb
+                        )
+                        lastFlickConvertedNextHiragana.set(false)
+                    } else {
+                        setKeyTouch(
+                            charToSend, insertString, sb
+                        )
+                    }
                 }
             }
         }
@@ -2528,7 +2513,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setKeyTouch(
-        key: Char, insertString: String, sb: StringBuilder, flickInputOnly: Boolean
+        key: Char, insertString: String, sb: StringBuilder,
     ) {
         suggestionClickNum = 0
         _dakutenPressed.value = false
@@ -2546,7 +2531,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isFirstClickHasStringTail = false
         } else {
             setCurrentInputCharacter(
-                key, insertString, sb, flickInputOnly
+                key, insertString, sb
             )
         }
     }
@@ -2815,7 +2800,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun vibrate() {
-        if (appPreference.vibration_preference != true) return
+        if (!isVibration) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibrationEffect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
             val combinedVibration = CombinedVibration.createParallel(vibrationEffect)
