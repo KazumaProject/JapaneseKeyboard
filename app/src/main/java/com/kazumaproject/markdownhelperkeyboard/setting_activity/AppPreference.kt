@@ -23,6 +23,7 @@ object AppPreference {
     private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 280)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
+    private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -129,5 +130,11 @@ object AppPreference {
         get() = preferences.getBoolean(KEYBOARD_POSITION.first, KEYBOARD_POSITION.second)
         set(value) = preferences.edit {
             it.putBoolean(KEYBOARD_POSITION.first, value ?: true)
+        }
+
+    var flick_input_only_preference: Boolean?
+        get() = preferences.getBoolean(FLICK_INPUT_ONLY.first, FLICK_INPUT_ONLY.second)
+        set(value) = preferences.edit {
+            it.putBoolean(FLICK_INPUT_ONLY.first, value ?: false)
         }
 }
