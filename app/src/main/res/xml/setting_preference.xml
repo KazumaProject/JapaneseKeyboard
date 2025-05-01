@@ -7,6 +7,12 @@
             android:key="keyboard_screen_preference"
             android:summary="キーボードのサイズの設定を変更できます"
             android:title="サイズの設定" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="flick_input_only_preference"
+            android:summary="フリック入力のみを使用し、ケータイ打ちを無効にする"
+            android:title="フリックのみ" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="操作">
