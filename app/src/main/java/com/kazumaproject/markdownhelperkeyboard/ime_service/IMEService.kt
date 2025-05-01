@@ -2348,14 +2348,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setCurrentInputCharacter(
-        char: Char, inputForInsert: String, sb: StringBuilder
+        char: Char, inputForInsert: String, sb: StringBuilder, flickInputOnly: Boolean
     ) {
-        // フリック入力のみモードの設定を取得
-        val flickInputOnly = appPreference.flick_input_only_preference ?: false
-        
+
         if (inputForInsert.isNotEmpty()) {
             val hiraganaAtInsertPosition = inputForInsert.last()
-            
+
             // flickInputOnly が true の場合は常に新しい文字を追加
             if (flickInputOnly) {
                 _inputString.update {
@@ -2384,7 +2382,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         // フリックのみモードの設定を取得
         val flickInputOnly = appPreference.flick_input_only_preference ?: false
-        
+
         when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
@@ -2408,7 +2406,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     lastFlickConvertedNextHiragana.set(false)
                 } else {
                     setKeyTouch(
-                        charToSend, insertString, sb
+                        charToSend, insertString, sb, flickInputOnly
                     )
                 }
             }
@@ -2530,7 +2528,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setKeyTouch(
-        key: Char, insertString: String, sb: StringBuilder
+        key: Char, insertString: String, sb: StringBuilder, flickInputOnly: Boolean
     ) {
         suggestionClickNum = 0
         _dakutenPressed.value = false
@@ -2548,7 +2546,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isFirstClickHasStringTail = false
         } else {
             setCurrentInputCharacter(
-                key, insertString, sb
+                key, insertString, sb, flickInputOnly
             )
         }
     }
