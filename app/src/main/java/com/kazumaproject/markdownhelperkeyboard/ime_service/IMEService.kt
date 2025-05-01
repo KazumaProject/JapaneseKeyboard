@@ -2350,16 +2350,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setCurrentInputCharacter(
         char: Char, inputForInsert: String, sb: StringBuilder
     ) {
+        // フリック入力のみモードの設定を取得
+        val flickInputOnly = appPreference.flick_input_only_preference ?: false
+        
         if (inputForInsert.isNotEmpty()) {
             val hiraganaAtInsertPosition = inputForInsert.last()
-            val nextChar = hiraganaAtInsertPosition.getNextInputChar(char)
-
-            if (nextChar == null) {
+            
+            // flickInputOnly が true の場合は常に新しい文字を追加
+            if (flickInputOnly) {
                 _inputString.update {
                     sb.append(inputForInsert).append(char).toString()
                 }
             } else {
-                appendCharToStringBuilder(nextChar, inputForInsert, sb)
+                val nextChar = hiraganaAtInsertPosition.getNextInputChar(char)
+
+                if (nextChar == null) {
+                    _inputString.update {
+                        sb.append(inputForInsert).append(char).toString()
+                    }
+                } else {
+                    appendCharToStringBuilder(nextChar, inputForInsert, sb)
+                }
             }
         } else {
             _inputString.update {
@@ -2371,6 +2382,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun sendCharTap(
         charToSend: Char, insertString: String, sb: StringBuilder
     ) {
+        // フリックのみモードの設定を取得
+        val flickInputOnly = appPreference.flick_input_only_preference ?: false
+        
         when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
@@ -2386,7 +2400,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             else -> {
-                if (isContinuousTapInputEnabled.get() && lastFlickConvertedNextHiragana.get()) {
+                // flickInputOnly が true の場合は連続タップ処理をスキップ
+                if (!flickInputOnly && isContinuousTapInputEnabled.get() && lastFlickConvertedNextHiragana.get()) {
                     setCurrentInputCharacterContinuous(
                         charToSend, insertString, sb
                     )
