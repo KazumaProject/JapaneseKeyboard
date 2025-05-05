@@ -158,12 +158,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val isInputFinished = AtomicBoolean(true)
-    private var isFlickOnlyMode: Boolean = false
-    private var delayTime: Int = 1000
-    private var isLearnDictionaryMode: Boolean = false
-    private var nBest: Int = 4
-    private var isVibration: Boolean = true
-    private var vibrationTimingStr: String = "both"
+    private var isFlickOnlyMode: Boolean? = false
+    private var delayTime: Int? = 1000
+    private var isLearnDictionaryMode: Boolean? = false
+    private var nBest: Int? = 4
+    private var isVibration: Boolean? = true
+    private var vibrationTimingStr: String? = "both"
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
@@ -356,6 +356,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (mozcUTNeologd) kanaKanjiEngine.releaseNeologdDictionary()
             if (mozcUTWeb) kanaKanjiEngine.releaseWebDictionary()
         }
+        isFlickOnlyMode = null
+        delayTime = null
+        isLearnDictionaryMode = null
+        nBest = null
+        isVibration = null
+        vibrationTimingStr = null
         actionInDestroy()
     }
 
@@ -911,7 +917,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             setSuggestionOnView(mainView, inputString)
             _suggestionFlag.update { CandidateShowFlag.Updating }
-            delay(delayTime.toLong())
+            delay((delayTime ?: 1000).toLong())
             val henkanValue = isHenkan.get()
             val deleteLongPressUp = onDeleteLongPressUp.get()
             val englishSpacePressed = englishSpaceKeyPressed.get()
@@ -1349,7 +1355,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _inputString.update { "" }
             commitText(candidate.string, 1)
         } else {
-            if (!isLearnDictionaryMode) {
+            if (isLearnDictionaryMode != true) {
                 _inputString.update { "" }
                 commitText(candidate.string, 1)
             } else {
@@ -1373,7 +1379,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         insertString: String
     ) {
         if (currentInputMode == InputMode.ModeJapanese) {
-            if (isLearnDictionaryMode) {
+            if (isLearnDictionaryMode == true) {
                 CoroutineScope(Dispatchers.IO).launch {
                     val learnData = LearnEntity(
                         input = input, out = output
@@ -1745,15 +1751,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         }
-        val result = if (isLearnDictionaryMode) {
+        val result = if (isLearnDictionaryMode == true) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
-                insertString, nBest, appPreference
+                insertString, nBest ?: 4, appPreference
             )
             resultFromLearnDatabase + resultFromEngine
 
         } else {
             kanaKanjiEngine.getCandidates(
-                insertString, nBest, appPreference
+                insertString, nBest ?: 4, appPreference
             )
         }
         val distinct = result.distinctBy { it.string }
@@ -2378,7 +2384,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             else -> {
-                if (isFlickOnlyMode) {
+                if (isFlickOnlyMode == true) {
                     sendCharFlick(charToSend, insertString, sb)
                     isContinuousTapInputEnabled.set(true)
                     lastFlickConvertedNextHiragana.set(true)
@@ -2800,7 +2806,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun vibrate() {
-        if (!isVibration) return
+        if (isVibration == false) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibrationEffect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
             val combinedVibration = CombinedVibration.createParallel(vibrationEffect)
