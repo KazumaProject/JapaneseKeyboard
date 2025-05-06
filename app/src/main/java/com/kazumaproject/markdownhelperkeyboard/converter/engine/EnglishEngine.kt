@@ -5,7 +5,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 
 class EnglishEngine {
     private lateinit var englishLOUDS: EnglishLOUDS
@@ -32,11 +31,9 @@ class EnglishEngine {
             val lowerInput = input.lowercase()
             val upperInput = input.uppercase()
             val capInput = input.replaceFirstChar { it.uppercaseChar() }
-            Timber.d("english getCandidates: $input")
             // 1) predictive search
             val preds =
                 englishLOUDS.predictiveSearch(lowerInput, englishSuccinctBitVectorLBS, limit)
-            Timber.d("english getCandidates: $preds")
             if (preds.isEmpty()) {
                 // default fallback
                 val out = ArrayList<Candidate>(3)
