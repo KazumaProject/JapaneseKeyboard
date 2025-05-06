@@ -287,7 +287,7 @@ class EnglishLOUDS {
     fun predictiveSearch(
         prefix: String,
         succinctBitVector: SuccinctBitVector,
-        limit: Int = Int.MAX_VALUE
+        limit: Int
     ): List<String> {
         val results = mutableListOf<String>()
         val sb = StringBuilder()
@@ -324,19 +324,26 @@ class EnglishLOUDS {
         limit: Int,
         succinctBitVector: SuccinctBitVector
     ) {
+        // 1) bail immediately if we've hit the limit
         if (results.size >= limit) return
+
+        // 2) record this word if it's a leaf
         if (isLeaf[pos]) {
-            results.add(prefix.toString())
+            results += prefix.toString()
             if (results.size >= limit) return
         }
+        // 3) only walk valid child‐indices
+        val maxIndex = succinctBitVector.size() - 1
         var child = firstChild(pos, succinctBitVector)
-        while (child >= 0 && results.size < limit) {
+        while (child in 0..maxIndex && results.size < limit) {
             val idx = succinctBitVector.rank1(child)
             if (idx >= labels.size) break
+
             prefix.append(labels[idx])
             collectWords(child, prefix, results, limit, succinctBitVector)
             prefix.deleteCharAt(prefix.lastIndex)
-            child += 1
+
+            child += 1  // or nextSibling(child)
         }
     }
 

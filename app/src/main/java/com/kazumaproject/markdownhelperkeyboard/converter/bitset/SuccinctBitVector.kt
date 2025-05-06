@@ -21,6 +21,8 @@ class SuccinctBitVector(private val bitSet: BitSet) {
     // BitSet 全体の 1 の総数
     private val totalOnes: Int
 
+    private val n: Int = bitSet.size()
+
     init {
         // 0～255 の各値の 1 の数を求める popcount テーブルの構築
         for (i in 0 until 256) {
@@ -60,6 +62,8 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         }
         totalOnes = rank
     }
+
+    fun size(): Int = n
 
     /**
      * rank1(index): 0〜index（index 含む）までの 1 の数を返す
