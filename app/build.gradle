@@ -13,7 +13,7 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 35
-        versionCode 312
+        versionCode 313
         versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -65,7 +65,6 @@ dependencies {
     implementation project(':flexbox')
     implementation project(':tenkey')
     implementation project(':bl')
-    implementation 'androidx.test.ext:junit-ktx:1.2.1'
     implementation project(':symbol_keyboard')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.2'
@@ -109,8 +108,8 @@ dependencies {
     // Mockito-Kotlin for better Kotlin support
     testImplementation "org.mockito.kotlin:mockito-kotlin:5.0.0"
 
-//    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14") {
-//        exclude group: "junit", module: "junit"
-//    }
+    testImplementation 'androidx.test.ext:junit-ktx:1.2.1'
+
+    //debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 
 }
