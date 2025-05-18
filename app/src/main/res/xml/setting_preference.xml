@@ -101,13 +101,6 @@
             app:min="2"
             app:showSeekBarValue="true" />
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="candidates_cache"
-            android:summaryOff="変換候補のキャッシュを使用しない"
-            android:summaryOn="変換候補のキャッシュを使用する\n１度変換した候補を取得する速度が上昇しますがメモリの使用量が増えます"
-            android:title="キャッシュ" />
-
     </PreferenceCategory>
 
     <PreferenceCategory android:title="アプリについて">

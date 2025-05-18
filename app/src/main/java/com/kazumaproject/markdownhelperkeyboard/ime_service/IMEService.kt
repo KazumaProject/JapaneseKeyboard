@@ -1716,12 +1716,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         insertString: String,
     ) {
         val candidates = getSuggestionList(insertString)
-        val filtered = withContext(Dispatchers.Default) {
-            if (stringInTail.get().isNotEmpty()) {
-                candidates.filter { it.length.toInt() == insertString.length }
-            } else {
-                candidates
-            }
+        val filtered = if (stringInTail.get().isNotEmpty()) {
+            candidates.filter { it.length.toInt() == insertString.length }
+        } else {
+            candidates
         }
         suggestionAdapter?.suggestions = filtered
         mainView.suggestionRecyclerView.scrollToPosition(0)
@@ -1741,16 +1739,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             } ?: emptyList()
         }
-
-        appPreference.candidate_cache_preference?.let {
-            if (it) {
-                suggestionCache?.let { cache ->
-                    cache[insertString]?.let { cachedResult ->
-                        return (resultFromLearnDatabase + cachedResult).distinctBy { candidate -> candidate.string }
-                    }
-                }
-            }
-        }
         val result = if (isLearnDictionaryMode == true) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
                 insertString, nBest ?: 4, appPreference
@@ -1762,15 +1750,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 insertString, nBest ?: 4, appPreference
             )
         }
-        val distinct = result.distinctBy { it.string }
-        appPreference.candidate_cache_preference?.let {
-            if (it) {
-                suggestionCache?.let { cache ->
-                    cache[insertString] = distinct
-                }
-            }
-        }
-        return distinct
+        return result.distinctBy { it.string }
     }
 
     private fun deleteLongPress() {
