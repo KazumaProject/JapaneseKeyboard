@@ -19,7 +19,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberE
 import com.kazumaproject.toFullWidthDigitsEfficient
 import com.kazumaproject.viterbi.FindPath
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
@@ -553,7 +552,7 @@ class KanaKanjiEngine {
         mozcUTWiki: Boolean?,
         mozcUTNeologd: Boolean?,
         mozcUTWeb: Boolean?
-    ): List<Candidate> = coroutineScope {
+    ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -581,7 +580,7 @@ class KanaKanjiEngine {
                     rightId = 2040
                 )
             }
-            return@coroutineScope resultNBestFinalDeferred + fullWidth
+            return resultNBestFinalDeferred + fullWidth
         }
 
         val hirakanaAndKana = listOf(
@@ -680,7 +679,7 @@ class KanaKanjiEngine {
             n
         ) else emptyList()
 
-        if (input.length == 1) return@coroutineScope resultNBestFinalDeferred + englishDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
+        if (input.length == 1) return resultNBestFinalDeferred + englishDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = withContext(Dispatchers.Default) {
             if (input.length > 16) {
@@ -950,7 +949,7 @@ class KanaKanjiEngine {
                 mozcUTNeologdList +
                 mozcUTWebList
 
-        return@coroutineScope (resultList.sortedBy { it.score } +
+        return (resultList.sortedBy { it.score } +
                 numbersDeferred +
                 symbolHalfWidthListDeferred +
                 englishDeferred +
