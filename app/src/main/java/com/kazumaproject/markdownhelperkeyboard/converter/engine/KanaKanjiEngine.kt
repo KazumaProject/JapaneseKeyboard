@@ -16,7 +16,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByEmojiCategory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
-import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.toFullWidthDigitsEfficient
 import com.kazumaproject.viterbi.FindPath
 import kotlinx.coroutines.Dispatchers
@@ -547,7 +546,13 @@ class KanaKanjiEngine {
     }
 
     suspend fun getCandidates(
-        input: String, n: Int, appPreference: AppPreference
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?
     ): List<Candidate> = coroutineScope {
 
         val graph = graphBuilder.constructGraph(
@@ -928,40 +933,32 @@ class KanaKanjiEngine {
             }
         }
 
-        appPreference.run {
-            val mozcUTPersonName = mozc_ut_person_names_preference ?: false
-            val mozcUTPlaces = mozc_ut_places_preference ?: false
-            val mozcUTWiki = mozc_ut_wiki_preference ?: false
-            val mozcUTNeologd = mozc_ut_neologd_preference ?: false
-            val mozcUTWeb = mozc_ut_web_preference ?: false
+        val mozcUTPersonNames =
+            if (mozcUtPersonName == true) getMozcUTPersonNames(input) else emptyList()
+        val mozcUTPlacesList = if (mozcUTPlaces == true) getMozcUTPlace(input) else emptyList()
+        val mozcUTWikiList = if (mozcUTWiki == true) getMozcUTWiki(input) else emptyList()
+        val mozcUTNeologdList = if (mozcUTNeologd == true) getMozcUTNeologd(input) else emptyList()
+        val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
 
-            val mozcUTPersonNames =
-                if (mozcUTPersonName) getMozcUTPersonNames(input) else emptyList()
-            val mozcUTPlacesList = if (mozcUTPlaces) getMozcUTPlace(input) else emptyList()
-            val mozcUTWikiList = if (mozcUTWiki) getMozcUTWiki(input) else emptyList()
-            val mozcUTNeologdList = if (mozcUTNeologd) getMozcUTNeologd(input) else emptyList()
-            val mozcUTWebList = if (mozcUTWeb) getMozcUTWeb(input) else emptyList()
+        val resultList = resultNBestFinalDeferred +
+                readingCorrectionListDeferred +
+                predictiveSearchResultDeferred +
+                kotowazaListDeferred +
+                mozcUTPersonNames +
+                mozcUTPlacesList +
+                mozcUTWikiList +
+                mozcUTNeologdList +
+                mozcUTWebList
 
-            val resultList = resultNBestFinalDeferred +
-                    readingCorrectionListDeferred +
-                    predictiveSearchResultDeferred +
-                    kotowazaListDeferred +
-                    mozcUTPersonNames +
-                    mozcUTPlacesList +
-                    mozcUTWikiList +
-                    mozcUTNeologdList +
-                    mozcUTWebList
-
-            return@coroutineScope (resultList.sortedBy { it.score } +
-                    numbersDeferred +
-                    symbolHalfWidthListDeferred +
-                    englishDeferred +
-                    (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } +
-                    symbolListDeferred +
-                    hirakanaAndKana +
-                    yomiPartListDeferred +
-                    singleKanjiListDeferred)
-        }
+        return@coroutineScope (resultList.sortedBy { it.score } +
+                numbersDeferred +
+                symbolHalfWidthListDeferred +
+                englishDeferred +
+                (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } +
+                symbolListDeferred +
+                hirakanaAndKana +
+                yomiPartListDeferred +
+                singleKanjiListDeferred)
 
     }
 

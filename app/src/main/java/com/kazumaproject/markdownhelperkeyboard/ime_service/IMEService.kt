@@ -164,6 +164,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var nBest: Int? = 4
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
+    private var mozcUTPersonName: Boolean? = false
+    private var mozcUTPlaces: Boolean? = false
+    private var mozcUTWiki: Boolean? = false
+    private var mozcUTNeologd: Boolean? = false
+    private var mozcUTWeb: Boolean? = false
+
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
@@ -264,46 +270,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         _suggestionViewStatus.update { true }
         appPreference.apply {
-            val mozcUTPersonName = mozc_ut_person_names_preference ?: false
-            val mozcUTPlaces = mozc_ut_places_preference ?: false
-            val mozcUTWiki = mozc_ut_wiki_preference ?: false
-            val mozcUTNeologd = mozc_ut_neologd_preference ?: false
-            val mozcUTWeb = mozc_ut_web_preference ?: false
+            mozcUTPersonName = mozc_ut_person_names_preference ?: false
+            mozcUTPlaces = mozc_ut_places_preference ?: false
+            mozcUTWiki = mozc_ut_wiki_preference ?: false
+            mozcUTNeologd = mozc_ut_neologd_preference ?: false
+            mozcUTWeb = mozc_ut_web_preference ?: false
             isFlickOnlyMode = flick_input_only_preference ?: false
             delayTime = time_same_pronounce_typing_preference ?: 1000
             isLearnDictionaryMode = learn_dictionary_preference ?: true
             nBest = n_best_preference ?: 4
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
-            if (mozcUTPersonName) {
+            if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
                         applicationContext
                     )
                 }
             }
-            if (mozcUTPlaces) {
+            if (mozcUTPlaces == true) {
                 if (!kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
                     kanaKanjiEngine.buildPlaceDictionary(
                         applicationContext
                     )
                 }
             }
-            if (mozcUTWiki) {
+            if (mozcUTWiki == true) {
                 if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
                     kanaKanjiEngine.buildWikiDictionary(
                         applicationContext
                     )
                 }
             }
-            if (mozcUTNeologd) {
+            if (mozcUTNeologd == true) {
                 if (!kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
                     kanaKanjiEngine.buildNeologdDictionary(
                         applicationContext
                     )
                 }
             }
-            if (mozcUTWeb) {
+            if (mozcUTWeb == true) {
                 if (!kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
                     kanaKanjiEngine.buildWebDictionary(
                         applicationContext
@@ -344,24 +350,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
-        appPreference.apply {
-            val mozcUTPersonNames = mozc_ut_person_names_preference ?: false
-            val mozcUTPlaces = mozc_ut_places_preference ?: false
-            val mozcUTWiki = mozc_ut_wiki_preference ?: false
-            val mozcUTNeologd = mozc_ut_neologd_preference ?: false
-            val mozcUTWeb = mozc_ut_web_preference ?: false
-            if (mozcUTPersonNames) kanaKanjiEngine.releasePersonNamesDictionary()
-            if (mozcUTPlaces) kanaKanjiEngine.releasePlacesDictionary()
-            if (mozcUTWiki) kanaKanjiEngine.releaseWikiDictionary()
-            if (mozcUTNeologd) kanaKanjiEngine.releaseNeologdDictionary()
-            if (mozcUTWeb) kanaKanjiEngine.releaseWebDictionary()
-        }
+        if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
+        if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
+        if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
+        if (mozcUTNeologd == true) kanaKanjiEngine.releaseNeologdDictionary()
+        if (mozcUTWeb == true) kanaKanjiEngine.releaseWebDictionary()
         isFlickOnlyMode = null
         delayTime = null
         isLearnDictionaryMode = null
         nBest = null
         isVibration = null
         vibrationTimingStr = null
+        mozcUTPersonName = null
+        mozcUTPlaces = null
+        mozcUTWiki = null
+        mozcUTNeologd = null
+        mozcUTWeb = null
         actionInDestroy()
     }
 
@@ -1741,13 +1745,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         val result = if (isLearnDictionaryMode == true) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
-                insertString, nBest ?: 4, appPreference
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
             )
             resultFromLearnDatabase + resultFromEngine
 
         } else {
             kanaKanjiEngine.getCandidates(
-                insertString, nBest ?: 4, appPreference
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
             )
         }
         return result.distinctBy { it.string }
