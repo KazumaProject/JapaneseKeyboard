@@ -133,8 +133,6 @@ $ ./gradlew installDebug
 ### 🔐 プライバシーとセキュリティ
 
 * **通信ゼロ** — MANIFEST に INTERNET / NETWORK\_STATE 権限なし。
-* 入力履歴は `EncryptedSharedPreferences` に AES‑256 で保存。
-* DI で SecurityManager を注入し、キー管理を統一。
 
 ### 🛡 技術スタック
 
@@ -218,7 +216,6 @@ High‑level diagram in Japanese section. Core subsystems: IME Service, Dictio
 ### 🔐 Privacy & Security
 
 * Zero network permission; audited manifest.
-* EncryptedSharedPreferences (AES‑256) for user history.
 
 ### 🛡 Tech Stack
 
