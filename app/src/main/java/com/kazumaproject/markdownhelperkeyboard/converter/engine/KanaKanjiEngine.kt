@@ -5,11 +5,11 @@ import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.convertFullWidthToHalfWidth
-import com.kazumaproject.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isEnglishLetter
@@ -949,7 +949,12 @@ class KanaKanjiEngine {
                 mozcUTNeologdList +
                 mozcUTWebList
 
-        return (resultList.sortedBy { it.score } +
+        val resultListFinal = resultList.sortedWith(
+            compareBy<Candidate> { it.score }
+                .thenBy { it.string }
+        )
+
+        return resultListFinal +
                 numbersDeferred +
                 symbolHalfWidthListDeferred +
                 englishDeferred +
@@ -957,7 +962,7 @@ class KanaKanjiEngine {
                 symbolListDeferred +
                 hirakanaAndKana +
                 yomiPartListDeferred +
-                singleKanjiListDeferred)
+                singleKanjiListDeferred
 
     }
 

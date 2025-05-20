@@ -7,7 +7,7 @@ import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.connection_id.ConnectionIdBuilder
-import com.kazumaproject.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine

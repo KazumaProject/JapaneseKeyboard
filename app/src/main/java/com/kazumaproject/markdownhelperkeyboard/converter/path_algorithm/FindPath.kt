@@ -20,7 +20,13 @@ class FindPath {
             connectionIds
         )
         val resultFinal: MutableList<Candidate> = mutableListOf()
-        val pQueue: PriorityQueue<Pair<Node, Int>> = PriorityQueue(compareBy { it.second })
+        val pQueue: PriorityQueue<Pair<Node, Int>> =
+            PriorityQueue(
+                compareBy<Pair<Node, Int>> { it.second }    // ①総コスト
+                    .thenBy { it.first.sPos }               // ②開始位置（小さいほど前）
+                    .thenBy { it.first.len }                // ③単語長
+                    .thenBy { System.identityHashCode(it.first) } // ④メモリ上の一意性
+            )
 
         val eos = Pair(graph[length + 1]?.get(0) ?: return resultFinal, 0)
         pQueue.add(eos)

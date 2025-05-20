@@ -1,4 +1,4 @@
-package com.kazumaproject.converter.graph
+package com.kazumaproject.markdownhelperkeyboard.converter.graph
 
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
@@ -19,7 +19,7 @@ class GraphBuilder {
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
     ): MutableMap<Int, MutableList<Node>> {
-        val graph: MutableMap<Int, MutableList<Node>> = mutableMapOf()
+        val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
         graph[0] = mutableListOf(BOS)
         graph[str.length + 1] = mutableListOf(
             Node(
