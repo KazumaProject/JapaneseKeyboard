@@ -191,8 +191,8 @@ MIT © 2025 Kazuma Naka — See [`LICENSE`](LICENSE).
 ### Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/keyboard-light.png" width="200" alt="Light theme"/>
-  <img src="docs/screenshots/keyboard-dark.png" width="200" alt="Dark theme"/>
+  <img src="images/keyboard-light.png" width="200" alt="Light theme"/>
+  <img src="images/keyboard-dark.png" width="200" alt="Dark theme"/>
 </p>
 
 ### 🚀 Get Started
