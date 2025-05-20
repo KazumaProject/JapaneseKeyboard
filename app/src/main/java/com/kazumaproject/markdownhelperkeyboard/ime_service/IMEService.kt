@@ -238,6 +238,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     override fun onCreateInputView(): View? {
+        val isTablet = resources.getBoolean(R.bool.isTablet)
+        Timber.d("isTablet: $isTablet")
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
