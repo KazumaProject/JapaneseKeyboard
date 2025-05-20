@@ -13,7 +13,7 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 35
-        versionCode 315
+        versionCode 316
         versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -110,5 +110,5 @@ dependencies {
 
     testImplementation 'androidx.test.ext:junit-ktx:1.2.1'
 
-    //debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+//    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }

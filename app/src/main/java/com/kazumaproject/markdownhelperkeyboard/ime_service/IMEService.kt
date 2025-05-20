@@ -84,7 +84,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
@@ -142,7 +144,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _inputString = MutableStateFlow("")
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
-    private val _suggestionFlag = MutableStateFlow<CandidateShowFlag>(CandidateShowFlag.Idle)
+    private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
+    private val suggestionFlag = _suggestionFlag.asSharedFlow()
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val _keyboardSymbolViewState = MutableStateFlow(false)
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
@@ -782,8 +785,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
-            _suggestionFlag.asStateFlow().collectLatest {
-                when (it) {
+            var prevFlag: CandidateShowFlag? = null
+            suggestionFlag.collectLatest { currentFlag ->
+                if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
+                    animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                }
+                if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
+                    animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                }
+                when (currentFlag) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         animateSuggestionImageViewVisibility(
@@ -795,11 +805,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     CandidateShowFlag.Updating -> {
-                        animateSuggestionImageViewVisibility(
-                            mainView.suggestionVisibility, true
-                        )
+                        val inputString = _inputString.value
+                        setSuggestionOnView(mainView, inputString)
                     }
                 }
+                prevFlag = currentFlag
             }
         }
 
@@ -919,8 +929,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             commitPreEditTextJob = inputStringScope.launch {
                 setComposingTextPreEdit(inputString, spannableString)
             }
-            setSuggestionOnView(mainView, inputString)
-            _suggestionFlag.update { CandidateShowFlag.Updating }
+            _suggestionFlag.emit(CandidateShowFlag.Updating)
             delay((delayTime ?: 1000).toLong())
             val henkanValue = isHenkan.get()
             val deleteLongPressUp = onDeleteLongPressUp.get()
@@ -964,9 +973,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun resetInputString() {
+    private suspend fun resetInputString() {
         if (!isHenkan.get()) {
-            _suggestionFlag.update { CandidateShowFlag.Idle }
+            _suggestionFlag.emit(CandidateShowFlag.Idle)
             isInputFinished.set(true)
             cancelPendingCommits()
         }
@@ -1793,10 +1802,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             enableContinuousTapInput()
 
-            _suggestionFlag.update {
-                if (_inputString.value.isEmpty()) CandidateShowFlag.Idle
-                else CandidateShowFlag.Updating
-            }
+            val flag = if (_inputString.value.isEmpty()) CandidateShowFlag.Idle
+            else CandidateShowFlag.Updating
+            _suggestionFlag.emit(flag)
         }
     }
 
@@ -2134,10 +2142,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 delay(LONG_DELAY_TIME)
             }
-            _suggestionFlag.update {
+            _suggestionFlag.emit(
                 finalSuggestionFlag
                     ?: if (_inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
-            }
+            )
         }
     }
 
@@ -2155,10 +2163,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 actionInRightKeyPressed(insertString)
                 delay(LONG_DELAY_TIME)
             }
-            _suggestionFlag.update {
+            _suggestionFlag.emit(
                 finalSuggestionFlag
                     ?: if (_inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
-            }
+            )
+
         }
     }
 
