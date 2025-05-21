@@ -116,4 +116,11 @@
     <string name="ten_ten">\"</string>
     <string name="reset_learn_dictionary">学習辞書をリセットする</string>
     <string name="vibration_default">both</string>
+
+    <string name="keyboard_hide_key">キーボードを隠す</string>
+    <string name="keyboard_switch">キーボードの切り替え</string>
+    <string name="keyboard_symbols">絵文字、顔文字キーボードに切り替え</string>
+    <string name="keyboard_japanese">日本語キーボードに切り替え</string>
+    <string name="keyboard_english">英語キーボードに切り替え</string>
+    <string name="keyboard_kigou">記号キーボードに切り替え</string>
 </resources>
