@@ -62,7 +62,7 @@
         android:contentDescription="@string/keyboard_japanese"
         android:elevation="@dimen/key_elevation"
         android:scaleType="center"
-        app:layout_constraintBottom_toTopOf="@+id/key_symbols"
+        app:layout_constraintBottom_toTopOf="@+id/key_left_cursor"
         app:layout_constraintEnd_toStartOf="@+id/key_3"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
@@ -71,7 +71,7 @@
         app:tint="@color/keyboard_icon_color" />
 
     <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/key_symbols"
+        android:id="@+id/key_left_cursor"
         style="?android:attr/borderlessButtonStyle"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -82,12 +82,34 @@
         android:contentDescription="@string/keyboard_symbols"
         android:elevation="@dimen/key_elevation"
         android:scaleType="center"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:src="@drawable/baseline_arrow_left_24"
+        app:layout_constraintBottom_toTopOf="@id/key_right_cursor"
         app:layout_constraintEnd_toStartOf="@+id/key_4"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/key_japanese"
-        app:layout_constraintVertical_weight="2"
+        app:layout_constraintVertical_weight="1"
+        app:tint="@color/keyboard_icon_color" />
+
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/key_right_cursor"
+        style="?android:attr/borderlessButtonStyle"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginVertical="4dp"
+        android:layout_marginStart="2dp"
+        android:layout_marginEnd="8dp"
+        android:background="@drawable/ten_keys_side_bg"
+        android:contentDescription="@string/keyboard_symbols"
+        android:elevation="@dimen/key_elevation"
+        android:scaleType="center"
+        android:src="@drawable/baseline_arrow_right_24"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/key_5"
+        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/key_left_cursor"
+        app:layout_constraintVertical_weight="1"
         app:tint="@color/keyboard_icon_color" />
 
     <androidx.appcompat.widget.AppCompatButton
@@ -97,7 +119,7 @@
         android:layout_height="0dp"
         android:layout_marginTop="1dp"
         android:layout_marginEnd="2dp"
-        android:background="@drawable/tablet_keyboard_center_bg"
+        android:background="@drawable/selector_corner_top_left"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"
         android:text="@string/string_quotation"
@@ -169,7 +191,7 @@
         app:layout_constraintBottom_toTopOf="@+id/key_5"
         app:layout_constraintEnd_toStartOf="@+id/key_9"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_symbols"
+        app:layout_constraintStart_toEndOf="@+id/key_left_cursor"
         app:layout_constraintTop_toBottomOf="@id/key_3"
         app:layout_constraintVertical_weight="1" />
 
@@ -181,7 +203,7 @@
         android:layout_marginStart="8dp"
         android:layout_marginEnd="2dp"
         android:layout_marginBottom="1dp"
-        android:background="@drawable/tablet_keyboard_center_bg"
+        android:background="@drawable/selector_corner_bottom_left"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"
         android:text="@string/string_kuten"
@@ -191,7 +213,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_10"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_symbols"
+        app:layout_constraintStart_toEndOf="@+id/key_left_cursor"
         app:layout_constraintTop_toBottomOf="@id/key_4"
         app:layout_constraintVertical_weight="1" />
 
@@ -426,6 +448,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
+        android:clickable="false"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"
         android:textAllCaps="false"
@@ -464,6 +487,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
+        android:clickable="false"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"
         android:textAllCaps="false"
@@ -1138,9 +1162,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginTop="1dp"
-        android:background="@drawable/tablet_keyboard_center_bg"
+        android:background="@drawable/selector_corner_top_right"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_あ"
         android:textAllCaps="false"
@@ -1220,7 +1243,7 @@
         android:layout_height="0dp"
         android:layout_marginEnd="8dp"
         android:layout_marginBottom="1dp"
-        android:background="@drawable/tablet_keyboard_center_bg"
+        android:background="@drawable/selector_corner_bottom_right"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"
         android:text="@string/string_お"

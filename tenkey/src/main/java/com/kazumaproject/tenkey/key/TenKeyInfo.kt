@@ -1,7 +1,7 @@
 package com.kazumaproject.tenkey.key
 
 sealed class TenKeyInfo {
-    object Null : TenKeyInfo()
+    data object Null : TenKeyInfo()
 
     abstract class TenKeyTapFlickInfo : TenKeyInfo() {
         abstract val tap: Char
