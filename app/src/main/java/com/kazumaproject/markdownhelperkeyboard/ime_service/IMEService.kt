@@ -51,6 +51,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.databinding.TabletMainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -142,6 +143,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var leftLongPressJob: Job? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
+    private var tabletMainLayoutBinding: TabletMainLayoutBinding? = null
     private val _inputString = MutableStateFlow("")
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
@@ -173,6 +175,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var mozcUTWiki: Boolean? = false
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
+
+    private var isTablet: Boolean? = false
 
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
@@ -238,30 +242,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     override fun onCreateInputView(): View? {
-        val isTablet = resources.getBoolean(R.bool.isTablet)
+        isTablet = resources.getBoolean(R.bool.isTablet)
         Timber.d("isTablet: $isTablet")
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
-        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
-        return mainLayoutBinding?.root.apply {
-            val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
-                flexDirection = FlexDirection.COLUMN
-                justifyContent = JustifyContent.SPACE_AROUND
-            }
-            val flexboxLayoutManagerRow = FlexboxLayoutManager(applicationContext).apply {
-                flexDirection = FlexDirection.ROW
-                justifyContent = JustifyContent.FLEX_START
-            }
-            mainLayoutBinding?.let { mainView ->
-                setSuggestionRecyclerView(
-                    mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
-                )
-                setSymbolKeyboard(mainView)
-                setTenKeyListeners(mainView)
-                if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                    startScope(mainView)
-                } else {
-                    scope.coroutineContext.cancelChildren()
-                    startScope(mainView)
+        if (isTablet == true) {
+            tabletMainLayoutBinding = TabletMainLayoutBinding.inflate(LayoutInflater.from(ctx))
+            return tabletMainLayoutBinding?.root
+        } else {
+            mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
+            return mainLayoutBinding?.root.apply {
+                val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
+                    flexDirection = FlexDirection.COLUMN
+                    justifyContent = JustifyContent.SPACE_AROUND
+                }
+                val flexboxLayoutManagerRow = FlexboxLayoutManager(applicationContext).apply {
+                    flexDirection = FlexDirection.ROW
+                    justifyContent = JustifyContent.FLEX_START
+                }
+                mainLayoutBinding?.let { mainView ->
+                    setSuggestionRecyclerView(
+                        mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
+                    )
+                    setSymbolKeyboard(mainView)
+                    setTenKeyListeners(mainView)
+                    if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                        startScope(mainView)
+                    } else {
+                        scope.coroutineContext.cancelChildren()
+                        startScope(mainView)
+                    }
                 }
             }
         }
@@ -270,56 +279,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting")
-        resetAllFlags()
-        if (suggestionCache == null) {
-            suggestionCache = mutableMapOf()
-        }
-        _suggestionViewStatus.update { true }
-        appPreference.apply {
-            mozcUTPersonName = mozc_ut_person_names_preference ?: false
-            mozcUTPlaces = mozc_ut_places_preference ?: false
-            mozcUTWiki = mozc_ut_wiki_preference ?: false
-            mozcUTNeologd = mozc_ut_neologd_preference ?: false
-            mozcUTWeb = mozc_ut_web_preference ?: false
-            isFlickOnlyMode = flick_input_only_preference ?: false
-            delayTime = time_same_pronounce_typing_preference ?: 1000
-            isLearnDictionaryMode = learn_dictionary_preference ?: true
-            nBest = n_best_preference ?: 4
-            isVibration = vibration_preference ?: true
-            vibrationTimingStr = vibration_timing_preference ?: "both"
-            if (mozcUTPersonName == true) {
-                if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
-                    kanaKanjiEngine.buildPersonNamesDictionary(
-                        applicationContext
-                    )
-                }
+        if (isTablet == true) {
+
+        } else {
+            resetAllFlags()
+            if (suggestionCache == null) {
+                suggestionCache = mutableMapOf()
             }
-            if (mozcUTPlaces == true) {
-                if (!kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
-                    kanaKanjiEngine.buildPlaceDictionary(
-                        applicationContext
-                    )
+            _suggestionViewStatus.update { true }
+            appPreference.apply {
+                mozcUTPersonName = mozc_ut_person_names_preference ?: false
+                mozcUTPlaces = mozc_ut_places_preference ?: false
+                mozcUTWiki = mozc_ut_wiki_preference ?: false
+                mozcUTNeologd = mozc_ut_neologd_preference ?: false
+                mozcUTWeb = mozc_ut_web_preference ?: false
+                isFlickOnlyMode = flick_input_only_preference ?: false
+                delayTime = time_same_pronounce_typing_preference ?: 1000
+                isLearnDictionaryMode = learn_dictionary_preference ?: true
+                nBest = n_best_preference ?: 4
+                isVibration = vibration_preference ?: true
+                vibrationTimingStr = vibration_timing_preference ?: "both"
+                if (mozcUTPersonName == true) {
+                    if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
+                        kanaKanjiEngine.buildPersonNamesDictionary(
+                            applicationContext
+                        )
+                    }
                 }
-            }
-            if (mozcUTWiki == true) {
-                if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
-                    kanaKanjiEngine.buildWikiDictionary(
-                        applicationContext
-                    )
+                if (mozcUTPlaces == true) {
+                    if (!kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
+                        kanaKanjiEngine.buildPlaceDictionary(
+                            applicationContext
+                        )
+                    }
                 }
-            }
-            if (mozcUTNeologd == true) {
-                if (!kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
-                    kanaKanjiEngine.buildNeologdDictionary(
-                        applicationContext
-                    )
+                if (mozcUTWiki == true) {
+                    if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
+                        kanaKanjiEngine.buildWikiDictionary(
+                            applicationContext
+                        )
+                    }
                 }
-            }
-            if (mozcUTWeb == true) {
-                if (!kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
-                    kanaKanjiEngine.buildWebDictionary(
-                        applicationContext
-                    )
+                if (mozcUTNeologd == true) {
+                    if (!kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
+                        kanaKanjiEngine.buildNeologdDictionary(
+                            applicationContext
+                        )
+                    }
+                }
+                if (mozcUTWeb == true) {
+                    if (!kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
+                        kanaKanjiEngine.buildWebDictionary(
+                            applicationContext
+                        )
+                    }
                 }
             }
         }
@@ -329,24 +342,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        if (!clipboardUtil.isClipboardEmpty()) {
-            suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
+        if (isTablet == true) {
+
+        } else {
+            if (!clipboardUtil.isClipboardEmpty()) {
+                suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
+            }
+            setKeyboardSize()
+            resetKeyboard()
         }
-        setKeyboardSize()
-        resetKeyboard()
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("onUpdate onFinishInput Called")
-        resetAllFlags()
+        if (isTablet == true) {
+
+        } else {
+            resetAllFlags()
+        }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
-        mainLayoutBinding?.keyboardView?.isVisible = true
-        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
+        if (isTablet == true) {
+
+        } else {
+            mainLayoutBinding?.keyboardView?.isVisible = true
+            mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
+        }
     }
 
     override fun onDestroy() {
@@ -1449,6 +1474,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter = null
         }
         mainLayoutBinding = null
+        tabletMainLayoutBinding = null
         closeConnection()
         scope.cancel()
         ioScope.cancel()
