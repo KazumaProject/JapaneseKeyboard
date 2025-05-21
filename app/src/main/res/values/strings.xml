@@ -2,18 +2,66 @@
     <string name="app_name">スミレ 日本語キーボード</string>
 
     <string name="string_あ">あ</string>
+    <string name="string_い">い</string>
+    <string name="string_う">う</string>
+    <string name="string_え">え</string>
+    <string name="string_お">お</string>
+
     <string name="string_か">か</string>
+    <string name="string_き">き</string>
+    <string name="string_く">く</string>
+    <string name="string_け">け</string>
+    <string name="string_こ">こ</string>
+
     <string name="string_さ">さ</string>
+    <string name="string_し">し</string>
+    <string name="string_す">す</string>
+    <string name="string_せ">せ</string>
+    <string name="string_そ">そ</string>
+
     <string name="string_た">た</string>
+    <string name="string_ち">ち</string>
+    <string name="string_つ">つ</string>
+    <string name="string_て">て</string>
+    <string name="string_と">と</string>
+
     <string name="string_な">な</string>
+    <string name="string_に">に</string>
+    <string name="string_ぬ">ぬ</string>
+    <string name="string_ね">ね</string>
+    <string name="string_の">の</string>
+
     <string name="string_は">は</string>
+    <string name="string_ひ">ひ</string>
+    <string name="string_ふ">ふ</string>
+    <string name="string_へ">へ</string>
+    <string name="string_ほ">ほ</string>
+
     <string name="string_ま">ま</string>
+    <string name="string_み">み</string>
+    <string name="string_む">む</string>
+    <string name="string_め">め</string>
+    <string name="string_も">も</string>
+
     <string name="string_や">や</string>
+    <string name="string_ゆ">ゆ</string>
+    <string name="string_よ">よ</string>
+
     <string name="string_ら">ら</string>
+    <string name="string_り">り</string>
+    <string name="string_る">る</string>
+    <string name="string_れ">れ</string>
+    <string name="string_ろ">ろ</string>
+
     <string name="string_わ">わ</string>
+    <string name="string_を">を</string>
+    <string name="string_ん">ん</string>
+    <string name="string_minus">ー</string>
+    <string name="string_touten">、</string>
+    <string name="string_kuten">。</string>
     <string name="string_enter_1">改行</string>
     <string name="string_space_1">空白</string>
-    <string name="string_small">゛゜\n大 小</string>
+    <string name="string_small">\u00A0\u00A0\u00A0゛゜\n小</string>
     <string name="string_ten_hatena">､｡?!</string>
 
     <string name="string_key1_english">" @#&amp;_"</string>
@@ -123,4 +171,5 @@
     <string name="keyboard_japanese">日本語キーボードに切り替え</string>
     <string name="keyboard_english">英語キーボードに切り替え</string>
     <string name="keyboard_kigou">記号キーボードに切り替え</string>
+    <string name="string_quotation">「」</string>
 </resources>
