@@ -126,6 +126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var suggestionAdapter: SuggestionAdapter? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private var emojiList: List<String> = emptyList()
 
@@ -1363,26 +1364,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun upsertLearnDictionaryWhenTapCandidate(
-        currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
+        currentInputMode: InputMode,
+        insertString: String,
+        candidate: Candidate,
+        position: Int
     ) {
-        if (currentInputMode != InputMode.ModeJapanese) {
-            _inputString.update { "" }
-            commitText(candidate.string, 1)
-        } else {
-            if (isLearnDictionaryMode != true) {
-                _inputString.update { "" }
-                commitText(candidate.string, 1)
-            } else {
-                if (position != 0) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val learnData = LearnEntity(input = insertString, out = candidate.string)
-                        learnRepository.upsertLearnedData(learnData)
-                    }
+        // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
+        if (currentInputMode == InputMode.ModeJapanese
+            && isLearnDictionaryMode == true
+            && position != 0
+        ) {
+            ioScope.launch {
+                try {
+                    learnRepository.upsertLearnedData(
+                        LearnEntity(input = insertString, out = candidate.string)
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "upsertLearnDictionary failed")
                 }
-                _inputString.update { "" }
-                commitText(candidate.string, 1)
             }
         }
+        // 2) 共通の後処理（入力クリア＋コミット）
+        _inputString.update { "" }
+        commitText(candidate.string, 1)
     }
 
     private fun upsertLearnDictionaryMultipleTapCandidate(
@@ -1392,31 +1396,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         candidate: Candidate,
         insertString: String
     ) {
-        if (currentInputMode == InputMode.ModeJapanese) {
-            if (isLearnDictionaryMode == true) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    val learnData = LearnEntity(
-                        input = input, out = output
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true) {
+            ioScope.launch {
+                try {
+                    learnRepository.upsertLearnedData(LearnEntity(input = input, out = output))
+                    learnRepository.upsertLearnedData(
+                        LearnEntity(
+                            input = insertString,
+                            out = candidate.string
+                        )
                     )
-                    val learnData2 = LearnEntity(
-                        input = insertString, out = candidate.string
-                    )
-                    learnRepository.apply {
-                        upsertLearnedData(learnData)
-                        upsertLearnedData(learnData2)
-                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "upsertLearnDictionaryMultipleTap failed")
                 }
-                _inputString.update { "" }
-                commitText(candidate.string, 1)
-            } else {
-                _inputString.update { "" }
-                commitText(candidate.string, 1)
             }
-
-        } else {
-            commitText(candidate.string, 1)
-            _inputString.update { "" }
         }
+        // 共通後処理
+        _inputString.update { "" }
+        commitText(candidate.string, 1)
     }
 
     private fun resetAllFlags() {
@@ -1452,6 +1449,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding = null
         closeConnection()
         scope.cancel()
+        ioScope.cancel()
         commitPreEditTextJob = null
         commitAfterEditTextJob = null
         commitAfterEditTextJob = null
