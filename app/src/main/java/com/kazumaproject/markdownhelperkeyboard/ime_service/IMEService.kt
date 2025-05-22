@@ -370,6 +370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mozcUTNeologd = null
         mozcUTWeb = null
         actionInDestroy()
+        System.gc()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
