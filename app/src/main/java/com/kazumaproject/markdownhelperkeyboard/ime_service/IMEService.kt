@@ -279,60 +279,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting")
-        if (isTablet == true) {
-
-        } else {
-            resetAllFlags()
-            if (suggestionCache == null) {
-                suggestionCache = mutableMapOf()
+        resetAllFlags()
+        if (suggestionCache == null) {
+            suggestionCache = mutableMapOf()
+        }
+        _suggestionViewStatus.update { true }
+        appPreference.apply {
+            mozcUTPersonName = mozc_ut_person_names_preference ?: false
+            mozcUTPlaces = mozc_ut_places_preference ?: false
+            mozcUTWiki = mozc_ut_wiki_preference ?: false
+            mozcUTNeologd = mozc_ut_neologd_preference ?: false
+            mozcUTWeb = mozc_ut_web_preference ?: false
+            isFlickOnlyMode = flick_input_only_preference ?: false
+            delayTime = time_same_pronounce_typing_preference ?: 1000
+            isLearnDictionaryMode = learn_dictionary_preference ?: true
+            nBest = n_best_preference ?: 4
+            isVibration = vibration_preference ?: true
+            vibrationTimingStr = vibration_timing_preference ?: "both"
+            if (mozcUTPersonName == true) {
+                if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
+                    kanaKanjiEngine.buildPersonNamesDictionary(
+                        applicationContext
+                    )
+                }
             }
-            _suggestionViewStatus.update { true }
-            appPreference.apply {
-                mozcUTPersonName = mozc_ut_person_names_preference ?: false
-                mozcUTPlaces = mozc_ut_places_preference ?: false
-                mozcUTWiki = mozc_ut_wiki_preference ?: false
-                mozcUTNeologd = mozc_ut_neologd_preference ?: false
-                mozcUTWeb = mozc_ut_web_preference ?: false
-                isFlickOnlyMode = flick_input_only_preference ?: false
-                delayTime = time_same_pronounce_typing_preference ?: 1000
-                isLearnDictionaryMode = learn_dictionary_preference ?: true
-                nBest = n_best_preference ?: 4
-                isVibration = vibration_preference ?: true
-                vibrationTimingStr = vibration_timing_preference ?: "both"
-                if (mozcUTPersonName == true) {
-                    if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
-                        kanaKanjiEngine.buildPersonNamesDictionary(
-                            applicationContext
-                        )
-                    }
+            if (mozcUTPlaces == true) {
+                if (!kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
+                    kanaKanjiEngine.buildPlaceDictionary(
+                        applicationContext
+                    )
                 }
-                if (mozcUTPlaces == true) {
-                    if (!kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
-                        kanaKanjiEngine.buildPlaceDictionary(
-                            applicationContext
-                        )
-                    }
+            }
+            if (mozcUTWiki == true) {
+                if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
+                    kanaKanjiEngine.buildWikiDictionary(
+                        applicationContext
+                    )
                 }
-                if (mozcUTWiki == true) {
-                    if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
-                        kanaKanjiEngine.buildWikiDictionary(
-                            applicationContext
-                        )
-                    }
+            }
+            if (mozcUTNeologd == true) {
+                if (!kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
+                    kanaKanjiEngine.buildNeologdDictionary(
+                        applicationContext
+                    )
                 }
-                if (mozcUTNeologd == true) {
-                    if (!kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
-                        kanaKanjiEngine.buildNeologdDictionary(
-                            applicationContext
-                        )
-                    }
-                }
-                if (mozcUTWeb == true) {
-                    if (!kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
-                        kanaKanjiEngine.buildWebDictionary(
-                            applicationContext
-                        )
-                    }
+            }
+            if (mozcUTWeb == true) {
+                if (!kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
+                    kanaKanjiEngine.buildWebDictionary(
+                        applicationContext
+                    )
                 }
             }
         }
@@ -342,36 +338,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        if (isTablet == true) {
-
-        } else {
-            if (!clipboardUtil.isClipboardEmpty()) {
-                suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
-            }
-            setKeyboardSize()
-            resetKeyboard()
+        if (!clipboardUtil.isClipboardEmpty()) {
+            suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
         }
+        setKeyboardSize()
+        resetKeyboard()
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
         Timber.d("onUpdate onFinishInput Called")
-        if (isTablet == true) {
-
-        } else {
-            resetAllFlags()
-        }
+        resetAllFlags()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
-        if (isTablet == true) {
-
-        } else {
-            mainLayoutBinding?.keyboardView?.isVisible = true
-            mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
-        }
+        mainLayoutBinding?.keyboardView?.isVisible = true
+        mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
     override fun onDestroy() {
@@ -399,6 +383,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mozcUTWeb = null
         actionInDestroy()
         System.gc()
+        tabletMainLayoutBinding = null
+        isTablet = null
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -1474,7 +1460,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter = null
         }
         mainLayoutBinding = null
-        tabletMainLayoutBinding = null
         closeConnection()
         scope.cancel()
         ioScope.cancel()

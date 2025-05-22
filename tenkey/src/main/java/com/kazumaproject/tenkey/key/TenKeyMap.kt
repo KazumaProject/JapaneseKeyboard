@@ -1,6 +1,5 @@
 package com.kazumaproject.tenkey.key
 
-import com.kazumaproject.tenkey.R
 import com.kazumaproject.tenkey.state.Key
 
 interface TenKeyMapHolder {
