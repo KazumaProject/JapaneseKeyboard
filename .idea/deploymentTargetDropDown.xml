@@ -10,12 +10,12 @@
               <deviceKey>
                 <Key>
                   <type value="VIRTUAL_DEVICE_PATH" />
-                  <value value="$USER_HOME$/.android/avd/Pixel_6_Pro_API_31.avd" />
+                  <value value="$USER_HOME$/.android/avd/Pixel_7_Pro_2.avd" />
                 </Key>
               </deviceKey>
             </Target>
           </targetSelectedWithDropDown>
-          <timeTargetWasSelectedWithDropDown value="2025-04-26T20:13:01.063203Z" />
+          <timeTargetWasSelectedWithDropDown value="2025-05-22T17:04:11.564767Z" />
         </State>
       </entry>
       <entry key="testLoadEnglishLOUDS()">
