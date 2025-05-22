@@ -465,7 +465,7 @@ sealed class TabletKeyInfo {
             get() = null
     }
 
-    object KeyYAYapanese : TabletTapFlickInfo() {
+    object KeyYAJapanese : TabletTapFlickInfo() {
         override val tap: Char
             get() = 'や'
         override val flickLeft: Char?
@@ -478,7 +478,7 @@ sealed class TabletKeyInfo {
             get() = null
     }
 
-    object KeyYUYapanese : TabletTapFlickInfo() {
+    object KeyYUJapanese : TabletTapFlickInfo() {
         override val tap: Char
             get() = 'ゆ'
         override val flickLeft: Char?

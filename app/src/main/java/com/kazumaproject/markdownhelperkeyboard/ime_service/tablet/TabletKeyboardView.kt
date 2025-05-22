@@ -30,13 +30,6 @@ class TabletKeyboardView @JvmOverloads constructor(
         }
     }
 
-    companion object {
-        const val KEY_CODE_KIGOU = -100
-        const val KEY_CODE_ENGLISH = -101
-        const val KEY_CODE_DELETE = -5
-        const val KEY_CODE_ENTER = 10
-    }
-
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
             when (event.action and MotionEvent.ACTION_MASK) {
