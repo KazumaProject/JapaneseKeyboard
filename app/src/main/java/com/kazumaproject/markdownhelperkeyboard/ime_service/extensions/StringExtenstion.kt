@@ -142,3 +142,6 @@ fun List<String>.sortByEmojiCategory(): List<String> {
 fun Char.isEnglishLetter(): Boolean {
     return this in 'a'..'z' || this in 'A'..'Z'
 }
+
+fun String.isAllEnglishLetters(): Boolean =
+    isNotEmpty() && all { it.isEnglishLetter() }
