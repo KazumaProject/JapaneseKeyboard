@@ -53,6 +53,7 @@ import com.kazumaproject.tenkey.extensions.setTextTapEnglish
 import com.kazumaproject.tenkey.extensions.setTextTapJapanese
 import com.kazumaproject.tenkey.extensions.setTextTapNumber
 import com.kazumaproject.tenkey.image_effect.ImageEffects
+import com.kazumaproject.tenkey.key.KeyRect
 import com.kazumaproject.tenkey.key.TenKeyInfo
 import com.kazumaproject.tenkey.key.TenKeyMap
 import com.kazumaproject.tenkey.listener.FlickListener
@@ -644,49 +645,178 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {
-        val x: Float = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawX(pointer)
+        val (x, y) = getRawCoordinates(event, pointer)
+
+        // Define all key rectangles here
+        val keyRects = listOf(
+            KeyRect(
+                Key.SideKeyPreviousChar,
+                sideKeyPreviousChar.layoutXPosition(),
+                sideKeyPreviousChar.layoutYPosition(),
+                sideKeyPreviousChar.layoutXPosition() + sideKeyPreviousChar.width,
+                sideKeyPreviousChar.layoutYPosition() + sideKeyPreviousChar.height
+            ),
+            KeyRect(
+                Key.KeyA,
+                keyA.layoutXPosition(),
+                keyA.layoutYPosition(),
+                keyA.layoutXPosition() + keyA.width,
+                keyA.layoutYPosition() + keyA.height
+            ),
+            KeyRect(
+                Key.KeyKA,
+                keyKA.layoutXPosition(),
+                keyKA.layoutYPosition(),
+                keyKA.layoutXPosition() + keyKA.width,
+                keyKA.layoutYPosition() + keyKA.height
+            ),
+            KeyRect(
+                Key.KeySA,
+                keySA.layoutXPosition(),
+                keySA.layoutYPosition(),
+                keySA.layoutXPosition() + keySA.width,
+                keySA.layoutYPosition() + keySA.height
+            ),
+            KeyRect(
+                Key.SideKeyDelete,
+                sideKeyDelete.layoutXPosition(),
+                sideKeyDelete.layoutYPosition(),
+                sideKeyDelete.layoutXPosition() + sideKeyDelete.width,
+                sideKeyDelete.layoutYPosition() + sideKeyDelete.height
+            ),
+            KeyRect(
+                Key.SideKeyCursorLeft,
+                sideKeyCursorLeft.layoutXPosition(),
+                sideKeyCursorLeft.layoutYPosition(),
+                sideKeyCursorLeft.layoutXPosition() + sideKeyCursorLeft.width,
+                sideKeyCursorLeft.layoutYPosition() + sideKeyCursorLeft.height
+            ),
+            KeyRect(
+                Key.KeyTA,
+                keyTA.layoutXPosition(),
+                keyTA.layoutYPosition(),
+                keyTA.layoutXPosition() + keyTA.width,
+                keyTA.layoutYPosition() + keyTA.height
+            ),
+            KeyRect(
+                Key.KeyNA,
+                keyNA.layoutXPosition(),
+                keyNA.layoutYPosition(),
+                keyNA.layoutXPosition() + keyNA.width,
+                keyNA.layoutYPosition() + keyNA.height
+            ),
+            KeyRect(
+                Key.KeyHA,
+                keyHA.layoutXPosition(),
+                keyHA.layoutYPosition(),
+                keyHA.layoutXPosition() + keyHA.width,
+                keyHA.layoutYPosition() + keyHA.height
+            ),
+            KeyRect(
+                Key.SideKeyCursorRight,
+                sideKeyCursorRight.layoutXPosition(),
+                sideKeyCursorRight.layoutYPosition(),
+                sideKeyCursorRight.layoutXPosition() + sideKeyCursorRight.width,
+                sideKeyCursorRight.layoutYPosition() + sideKeyCursorRight.height
+            ),
+            KeyRect(
+                Key.SideKeySymbol,
+                sideKeySymbol.layoutXPosition(),
+                sideKeySymbol.layoutYPosition(),
+                sideKeySymbol.layoutXPosition() + sideKeySymbol.width,
+                sideKeySymbol.layoutYPosition() + sideKeySymbol.height
+            ),
+            KeyRect(
+                Key.KeyMA,
+                keyMA.layoutXPosition(),
+                keyMA.layoutYPosition(),
+                keyMA.layoutXPosition() + keyMA.width,
+                keyMA.layoutYPosition() + keyMA.height
+            ),
+            KeyRect(
+                Key.KeyYA,
+                keyYA.layoutXPosition(),
+                keyYA.layoutYPosition(),
+                keyYA.layoutXPosition() + keyYA.width,
+                keyYA.layoutYPosition() + keyYA.height
+            ),
+            KeyRect(
+                Key.KeyRA,
+                keyRA.layoutXPosition(),
+                keyRA.layoutYPosition(),
+                keyRA.layoutXPosition() + keyRA.width,
+                keyRA.layoutYPosition() + keyRA.height
+            ),
+            KeyRect(
+                Key.SideKeySpace,
+                sideKeySpace.layoutXPosition(),
+                sideKeySpace.layoutYPosition(),
+                sideKeySpace.layoutXPosition() + sideKeySpace.width,
+                sideKeySpace.layoutYPosition() + sideKeySpace.height
+            ),
+            KeyRect(
+                Key.SideKeyInputMode,
+                sideKeyInputModeSwitch.layoutXPosition(),
+                sideKeyInputModeSwitch.layoutYPosition(),
+                sideKeyInputModeSwitch.layoutXPosition() + sideKeyInputModeSwitch.width,
+                sideKeyInputModeSwitch.layoutYPosition() + sideKeyInputModeSwitch.height
+            ),
+            KeyRect(
+                Key.KeyDakutenSmall,
+                keyDakutenSmall.layoutXPosition(),
+                keyDakutenSmall.layoutYPosition(),
+                keyDakutenSmall.layoutXPosition() + keyDakutenSmall.width,
+                keyDakutenSmall.layoutYPosition() + keyDakutenSmall.height
+            ),
+            KeyRect(
+                Key.KeyWA,
+                keyWA.layoutXPosition(),
+                keyWA.layoutYPosition(),
+                keyWA.layoutXPosition() + keyWA.width,
+                keyWA.layoutYPosition() + keyWA.height
+            ),
+            KeyRect(
+                Key.KeyKutouten,
+                keyKutouten.layoutXPosition(),
+                keyKutouten.layoutYPosition(),
+                keyKutouten.layoutXPosition() + keyKutouten.width,
+                keyKutouten.layoutYPosition() + keyKutouten.height
+            ),
+            KeyRect(
+                Key.SideKeyEnter,
+                sideKeyEnter.layoutXPosition(),
+                sideKeyEnter.layoutYPosition(),
+                sideKeyEnter.layoutXPosition() + sideKeyEnter.width,
+                sideKeyEnter.layoutYPosition() + sideKeyEnter.height
+            )
+        )
+
+        // First, check if the tap falls within any key rectangle (normal hit test)
+        keyRects.forEach { rect ->
+            if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                return rect.key
+            }
+        }
+
+        // If not inside any, return the nearest key (prevents NotSelected for edge/gap taps)
+        val nearest = keyRects.minByOrNull { rect ->
+            val centerX = (rect.left + rect.right) / 2
+            val centerY = (rect.top + rect.bottom) / 2
+            val dx = x - centerX
+            val dy = y - centerY
+            dx * dx + dy * dy // Euclidean distance squared
+        }
+        return nearest?.key ?: Key.NotSelected
+    }
+
+    // --- Utility to get consistent absolute coordinates ---
+    private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawX(pointer) to event.getRawY(pointer)
         } else {
             val location = IntArray(2)
             this.getLocationOnScreen(location)
-            event.getX(pointer) + location[0]
-        }
-
-        val y: Float = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            event.getRawY(pointer)
-        } else {
-            val location = IntArray(2)
-            this.getLocationOnScreen(location)
-            event.getY(pointer) + location[1]
-        }
-        val keyWidth = keyA.width
-        val keyHeight = keyA.height
-        when {
-            x >= 0 && x <= sideKeyPreviousChar.layoutXPosition() + keyWidth && y >= 0 && y <= sideKeyPreviousChar.layoutYPosition() + keyHeight -> return Key.SideKeyPreviousChar
-            x >= keyWidth + 1 && x <= keyA.layoutXPosition() + keyWidth && y <= keyA.layoutYPosition() + keyHeight -> return Key.KeyA
-            x >= keyA.layoutXPosition() + keyWidth + 1 && x <= keyKA.layoutXPosition() + keyWidth && y <= keyKA.layoutYPosition() + keyHeight -> return Key.KeyKA
-            x >= keyKA.layoutXPosition() + keyWidth + 1 && x <= keySA.layoutXPosition() + keyWidth && y <= keySA.layoutYPosition() + keyHeight -> return Key.KeySA
-            x >= keySA.layoutXPosition() + keyWidth + 1 && x <= sideKeyDelete.layoutXPosition() + keyWidth && y <= sideKeyDelete.layoutYPosition() + keyHeight -> return Key.SideKeyDelete
-
-            x >= 0 && x <= sideKeyCursorLeft.layoutXPosition() + keyWidth && y >= 0 && y <= sideKeyCursorLeft.layoutYPosition() + keyHeight -> return Key.SideKeyCursorLeft
-            x >= keyWidth + 1 && x <= keyTA.layoutXPosition() + keyWidth && y <= keyTA.layoutYPosition() + keyHeight -> return Key.KeyTA
-            x >= keyTA.layoutXPosition() + keyWidth + 1 && x <= keyNA.layoutXPosition() + keyWidth && y <= keyNA.layoutYPosition() + keyHeight -> return Key.KeyNA
-            x >= keyNA.layoutXPosition() + keyWidth + 1 && x <= keyHA.layoutXPosition() + keyWidth && y <= keyHA.layoutYPosition() + keyHeight -> return Key.KeyHA
-            x >= keyHA.layoutXPosition() + keyWidth + 1 && x <= sideKeyCursorRight.layoutXPosition() + keyWidth && y <= sideKeyCursorRight.layoutYPosition() + keyHeight -> return Key.SideKeyCursorRight
-
-            x >= 0 && x <= sideKeySymbol.layoutXPosition() + keyWidth && y >= 0 && y <= sideKeySymbol.layoutYPosition() + keyHeight -> return Key.SideKeySymbol
-            x >= keyWidth + 1 && x <= keyMA.layoutXPosition() + keyWidth && y <= keyMA.layoutYPosition() + keyHeight -> return Key.KeyMA
-            x >= keyMA.layoutXPosition() + keyWidth + 1 && x <= keyYA.layoutXPosition() + keyWidth && y <= keyYA.layoutYPosition() + keyHeight -> return Key.KeyYA
-            x >= keyYA.layoutXPosition() + keyWidth + 1 && x <= keyRA.layoutXPosition() + keyWidth && y <= keyRA.layoutYPosition() + keyHeight -> return Key.KeyRA
-            x >= keyRA.layoutXPosition() + keyWidth + 1 && x <= sideKeySpace.layoutXPosition() + keyWidth && y <= sideKeySpace.layoutYPosition() + keyHeight -> return Key.SideKeySpace
-
-            x >= 0 && x <= sideKeyInputModeSwitch.layoutXPosition() + keyWidth && y >= 0 && y <= sideKeyInputModeSwitch.layoutYPosition() + keyHeight -> return Key.SideKeyInputMode
-            x >= keyWidth + 1 && x <= keyDakutenSmall.layoutXPosition() + keyWidth && y <= keyDakutenSmall.layoutYPosition() + keyHeight -> return Key.KeyDakutenSmall
-            x >= keyDakutenSmall.layoutXPosition() + keyWidth + 1 && x <= keyWA.layoutXPosition() + keyWidth && y <= keyWA.layoutYPosition() + keyHeight -> return Key.KeyWA
-            x >= keyWA.layoutXPosition() + keyWidth + 1 && x <= keyKutouten.layoutXPosition() + keyWidth && y <= keyKutouten.layoutYPosition() + keyHeight -> return Key.KeyKutouten
-            x >= keyKutouten.layoutXPosition() + keyWidth + 1 && x <= sideKeyEnter.layoutXPosition() + keyWidth && y <= sideKeyEnter.layoutYPosition() + keyHeight -> return Key.SideKeyEnter
-
-            else -> return Key.NotSelected
+            (event.getX(pointer) + location[0]) to (event.getY(pointer) + location[1])
         }
     }
 
