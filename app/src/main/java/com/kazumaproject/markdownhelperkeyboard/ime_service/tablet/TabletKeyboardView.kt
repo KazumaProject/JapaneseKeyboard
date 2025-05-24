@@ -11,7 +11,16 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
+import com.kazumaproject.tenkey.state.GestureType
 import timber.log.Timber
+
+interface TabletFlickListener {
+    fun onFlick(
+        gestureType: GestureType,
+        tabletKey: TabletKey,
+        char: Char?
+    )
+}
 
 /**
  * A custom view that wraps the tablet keyboard layout and provides easy access
@@ -48,6 +57,8 @@ class TabletKeyboardView @JvmOverloads constructor(
         binding.keyLeftCursor, binding.keyRightCursor,
         binding.keyDelete, binding.keySpace, binding.keyEnter
     )
+
+    private var flickListener: TabletFlickListener? = null
 
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
