@@ -162,7 +162,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             this.isFocusable = false
         }
     }
-    
+
     private fun declareKeys() {
         keyA = findViewById(R.id.key_1)
         keyKA = findViewById(R.id.key_2)
