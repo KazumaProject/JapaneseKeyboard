@@ -29,7 +29,8 @@ fun Char.getNextInputChar(charAtInsertPosition: Char): Char?{
         this == 'ち' && charAtInsertPosition == 'た' -> 'つ'
         this == 'つ' && charAtInsertPosition == 'た' -> 'て'
         this == 'て' && charAtInsertPosition == 'た' -> 'と'
-        this == 'と' && charAtInsertPosition == 'た' -> 'た'
+        this == 'と' && charAtInsertPosition == 'た' -> 'っ'
+        this == 'っ' && charAtInsertPosition == 'た' -> 'た'
 
         this == 'な' && charAtInsertPosition == 'な' -> 'に'
         this == 'に' && charAtInsertPosition == 'な' -> 'ぬ'
@@ -191,11 +192,12 @@ fun Char.getNextReturnInputChar(): Char?{
         'せ' -> 'す'
         'そ' -> 'せ'
 
-        'た' -> 'と'
+        'た' -> 'っ'
         'ち' -> 'た'
         'つ' -> 'ち'
         'て' -> 'つ'
         'と' -> 'て'
+        'っ' -> 'と'
 
         'な' -> 'の'
         'に' -> 'な'
