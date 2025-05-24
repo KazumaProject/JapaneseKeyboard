@@ -53,6 +53,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         setUpButtons()
     }
 
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        release()
+    }
+
+    private fun release() {
+        symbolLoadJob?.cancel()
+        symbolLoadJob = null
+        lifecycleOwner = null
+    }
+
     fun setOnReturnToTenKeyButtonClickListener(returnToTenKeyButtonClickListener: ReturnToTenKeyButtonClickListener) {
         this.returnToTenKeyButtonClickListener = returnToTenKeyButtonClickListener
     }
