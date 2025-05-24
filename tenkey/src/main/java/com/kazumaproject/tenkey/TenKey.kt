@@ -140,6 +140,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         sideKeySymbol.setPadding(paddingSize)
     }
 
+    private fun release() {
+        flickListener = null
+        longPressListener = null
+        longPressJob?.cancel()
+        longPressJob = null
+    }
+
     init {
         View.inflate(context, R.layout.keyboard_layout, this)
         declareKeys()
@@ -281,6 +288,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     override fun onInterceptTouchEvent(event: MotionEvent?): Boolean {
         return true
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        release()
     }
 
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
