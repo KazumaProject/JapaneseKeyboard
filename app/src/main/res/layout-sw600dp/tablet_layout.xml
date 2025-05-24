@@ -5,7 +5,9 @@
     android:layout_height="280dp"
     android:layout_gravity="bottom"
     android:background="@color/keyboard_bg"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    android:clickable="false"
+    android:focusable="false">
 
     <!-- Column 0 (function keys) -->
     <androidx.appcompat.widget.AppCompatImageButton
