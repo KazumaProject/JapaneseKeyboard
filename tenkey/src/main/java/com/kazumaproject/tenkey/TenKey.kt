@@ -6,10 +6,10 @@ import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
+import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
@@ -63,11 +63,6 @@ import com.kazumaproject.tenkey.state.InputMode
 import com.kazumaproject.tenkey.state.InputMode.ModeNumber.next
 import com.kazumaproject.tenkey.state.Key
 import com.kazumaproject.tenkey.state.PressedKey
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
@@ -122,8 +117,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var longPressListener: LongPressListener? = null
 
     private var tenKeyMap: TenKeyMap
-
-    private var longPressJob: Job? = null
     private var isLongPressed = false
 
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
@@ -143,9 +136,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun release() {
         flickListener = null
         longPressListener = null
-        longPressJob?.cancel()
-        longPressJob = null
     }
+
+    private val gestureDetector = GestureDetector(context,
+        object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent) = true  // must return true
+            override fun onLongPress(e: MotionEvent) {
+                val key = pressedKeyByMotionEvent(e, 0)
+                longPressListener?.onLongPress(key)
+                isLongPressed = true
+                onLongPressed()
+            }
+        }
+    )
 
     init {
         View.inflate(context, R.layout.keyboard_layout, this)
@@ -297,6 +300,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
         if (view != null && event != null) {
+            gestureDetector.onTouchEvent(event)
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
@@ -321,14 +325,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                     }
                     setKeyPressed()
-                    longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                        delay(ViewConfiguration.getLongPressTimeout().toLong())
-                        if (pressedKey.key != Key.NotSelected) {
-                            longPressListener?.onLongPress(pressedKey.key)
-                            isLongPressed = true
-                            onLongPressed()
-                        }
-                    }
                     return false
                 }
 
@@ -438,7 +434,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         ImageEffects.removeBlurEffect(this)
                     }
                     popupWindowActive.hide()
-                    longPressJob?.cancel()
                     if (event.pointerCount == 2) {
                         isLongPressed = false
                         val pointer = event.getPointerId(event.actionIndex)
@@ -525,16 +520,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             },
                         )
                         setKeyPressed()
-                        longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                            delay(ViewConfiguration.getLongPressTimeout().toLong())
-                            if (pressedKey.key != Key.NotSelected) {
-                                longPressListener?.onLongPress(pressedKey.key)
-                                isLongPressed = true
-                                onLongPressed()
-                            }
-                        }
                     }
-
                     return false
                 }
 
@@ -966,7 +952,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             hideAllPopWindow()
             ImageEffects.removeBlurEffect(this)
         }
-        longPressJob?.cancel()
         isLongPressed = false
     }
 
@@ -1139,7 +1124,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun setFlickInActionMove(gestureType: GestureType) {
-        longPressJob?.cancel()
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
