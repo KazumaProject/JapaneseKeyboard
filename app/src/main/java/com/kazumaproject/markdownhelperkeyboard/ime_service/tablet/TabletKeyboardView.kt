@@ -12,15 +12,6 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
 import com.kazumaproject.tenkey.state.GestureType
-import timber.log.Timber
-
-interface TabletFlickListener {
-    fun onFlick(
-        gestureType: GestureType,
-        tabletKey: TabletKey,
-        char: Char?
-    )
-}
 
 /**
  * A custom view that wraps the tablet keyboard layout and provides easy access
@@ -35,6 +26,8 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private val binding: TabletLayoutBinding =
         TabletLayoutBinding.inflate(LayoutInflater.from(context), this, true)
+
+    private lateinit var pressedKey: TabletPressedKey
 
     // All AppCompatButton keys (all the character keys)
     private val allButtonKeys = listOf(
@@ -69,7 +62,27 @@ class TabletKeyboardView @JvmOverloads constructor(
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
-                    Timber.d("ACTION_DOWN: $key")
+                    flickListener?.onFlick(
+                        gestureType = GestureType.Down,
+                        tabletKey = key,
+                        char = null
+                    )
+                    pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        TabletPressedKey(
+                            tabletKey = key,
+                            pointer = 0,
+                            initialX = event.getRawX(event.actionIndex),
+                            initialY = event.getRawY(event.actionIndex),
+                        )
+                    } else {
+                        TabletPressedKey(
+                            tabletKey = key,
+                            pointer = 0,
+                            initialX = event.getX(event.actionIndex),
+                            initialY = event.getY(event.actionIndex),
+                        )
+                    }
+
                     return false
                 }
 
@@ -91,6 +104,427 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
         }
         return false
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        release()
+    }
+
+    private fun release() {
+        flickListener = null
+    }
+
+    private fun setKeyPressed() {
+        when (pressedKey.tabletKey) {
+            // --- あ row ---
+            TabletKey.KeyA -> {
+                resetAllKeys()
+                binding.key51.isPressed = true
+            }
+
+            TabletKey.KeyI -> {
+                resetAllKeys()
+                binding.key52.isPressed = true
+            }
+
+            TabletKey.KeyU -> {
+                resetAllKeys()
+                binding.key53.isPressed = true
+            }
+
+            TabletKey.KeyE -> {
+                resetAllKeys()
+                binding.key54.isPressed = true
+            }
+
+            TabletKey.KeyO -> {
+                resetAllKeys()
+                binding.key55.isPressed = true
+            }
+
+            // --- か row ---
+            TabletKey.KeyKA -> {
+                resetAllKeys()
+                binding.key46.isPressed = true
+            }
+
+            TabletKey.KeyKI -> {
+                resetAllKeys()
+                binding.key47.isPressed = true
+            }
+
+            TabletKey.KeyKU -> {
+                resetAllKeys()
+                binding.key48.isPressed = true
+            }
+
+            TabletKey.KeyKE -> {
+                resetAllKeys()
+                binding.key49.isPressed = true
+            }
+
+            TabletKey.KeyKO -> {
+                resetAllKeys()
+                binding.key50.isPressed = true
+            }
+
+            // --- さ row ---
+            TabletKey.KeySA -> {
+                resetAllKeys()
+                binding.key41.isPressed = true
+            }
+
+            TabletKey.KeySHI -> {
+                resetAllKeys()
+                binding.key42.isPressed = true
+            }
+
+            TabletKey.KeySU -> {
+                resetAllKeys()
+                binding.key43.isPressed = true
+            }
+
+            TabletKey.KeySE -> {
+                resetAllKeys()
+                binding.key44.isPressed = true
+            }
+
+            TabletKey.KeySO -> {
+                resetAllKeys()
+                binding.key45.isPressed = true
+            }
+
+            // --- た row ---
+            TabletKey.KeyTA -> {
+                resetAllKeys()
+                binding.key36.isPressed = true
+            }
+
+            TabletKey.KeyCHI -> {
+                resetAllKeys()
+                binding.key37.isPressed = true
+            }
+
+            TabletKey.KeyTSU -> {
+                resetAllKeys()
+                binding.key38.isPressed = true
+            }
+
+            TabletKey.KeyTE -> {
+                resetAllKeys()
+                binding.key39.isPressed = true
+            }
+
+            TabletKey.KeyTO -> {
+                resetAllKeys()
+                binding.key40.isPressed = true
+            }
+
+            // --- な row ---
+            TabletKey.KeyNA -> {
+                resetAllKeys()
+                binding.key31.isPressed = true
+            }
+
+            TabletKey.KeyNI -> {
+                resetAllKeys()
+                binding.key32.isPressed = true
+            }
+
+            TabletKey.KeyNU -> {
+                resetAllKeys()
+                binding.key33.isPressed = true
+            }
+
+            TabletKey.KeyNE -> {
+                resetAllKeys()
+                binding.key34.isPressed = true
+            }
+
+            TabletKey.KeyNO -> {
+                resetAllKeys()
+                binding.key35.isPressed = true
+            }
+
+            // --- は row ---
+            TabletKey.KeyHA -> {
+                resetAllKeys()
+                binding.key26.isPressed = true
+            }
+
+            TabletKey.KeyHI -> {
+                resetAllKeys()
+                binding.key27.isPressed = true
+            }
+
+            TabletKey.KeyFU -> {
+                resetAllKeys()
+                binding.key28.isPressed = true
+            }
+
+            TabletKey.KeyHE -> {
+                resetAllKeys()
+                binding.key29.isPressed = true
+            }
+
+            TabletKey.KeyHO -> {
+                resetAllKeys()
+                binding.key30.isPressed = true
+            }
+
+            // --- ま row ---
+            TabletKey.KeyMA -> {
+                resetAllKeys()
+                binding.key21.isPressed = true
+            }
+
+            TabletKey.KeyMI -> {
+                resetAllKeys()
+                binding.key22.isPressed = true
+            }
+
+            TabletKey.KeyMU -> {
+                resetAllKeys()
+                binding.key23.isPressed = true
+            }
+
+            TabletKey.KeyME -> {
+                resetAllKeys()
+                binding.key24.isPressed = true
+            }
+
+            TabletKey.KeyMO -> {
+                resetAllKeys()
+                binding.key25.isPressed = true
+            }
+
+            // --- や row ---
+            TabletKey.KeyYA -> {
+                resetAllKeys()
+                binding.key16.isPressed = true
+            }
+
+            TabletKey.KeyYU -> {
+                resetAllKeys()
+                binding.key18.isPressed = true
+            }
+
+            TabletKey.KeyYO -> {
+                resetAllKeys()
+                binding.key20.isPressed = true
+            }
+
+            // --- ら row ---
+            TabletKey.KeyRA -> {
+                resetAllKeys()
+                binding.key11.isPressed = true
+            }
+
+            TabletKey.KeyRI -> {
+                resetAllKeys()
+                binding.key12.isPressed = true
+            }
+
+            TabletKey.KeyRU -> {
+                resetAllKeys()
+                binding.key13.isPressed = true
+            }
+
+            TabletKey.KeyRE -> {
+                resetAllKeys()
+                binding.key14.isPressed = true
+            }
+
+            TabletKey.KeyRO -> {
+                resetAllKeys()
+                binding.key15.isPressed = true
+            }
+
+            // --- わ row + ん + minus ---
+            TabletKey.KeyWA -> {
+                resetAllKeys()
+                binding.key6.isPressed = true
+            }
+
+            TabletKey.KeyWO -> {
+                resetAllKeys()
+                binding.key7.isPressed = true
+            }
+
+            TabletKey.KeyN -> {
+                resetAllKeys()
+                binding.key8.isPressed = true
+            }
+
+            TabletKey.KeyMinus -> {
+                resetAllKeys()
+                binding.key9.isPressed = true
+            }
+
+            // --- Modifiers & punctuation ---
+            TabletKey.KeyDakuten -> {
+                resetAllKeys()
+                binding.key10.isPressed = true
+            }
+
+            TabletKey.KeyKagikakko -> {
+                resetAllKeys()
+                binding.key1.isPressed = true
+            }
+
+            TabletKey.KeyQuestion -> {
+                resetAllKeys()
+                binding.key2.isPressed = true
+            }
+
+            TabletKey.KeyCaution -> {
+                resetAllKeys()
+                binding.key3.isPressed = true
+            }
+
+            TabletKey.KeyTouten -> {
+                resetAllKeys()
+                binding.key4.isPressed = true
+            }
+
+            TabletKey.KeyKuten -> {
+                resetAllKeys()
+                binding.key5.isPressed = true
+            }
+
+            // --- Side-row keys ---
+            TabletKey.SideKeySymbol -> {
+                resetAllKeys()
+                binding.keyKigou.isPressed = true
+            }
+
+            TabletKey.SideKeyEnglish -> {
+                resetAllKeys()
+                binding.keyEnglish.isPressed = true
+            }
+
+            TabletKey.SideKeyJapanese -> {
+                resetAllKeys()
+                binding.keyJapanese.isPressed = true
+            }
+
+            TabletKey.SideKeyCursorLeft -> {
+                resetAllKeys()
+                binding.keyLeftCursor.isPressed = true
+            }
+
+            TabletKey.SideKeyCursorRight -> {
+                resetAllKeys()
+                binding.keyRightCursor.isPressed = true
+            }
+
+            TabletKey.SideKeyDelete -> {
+                resetAllKeys()
+                binding.keyDelete.isPressed = true
+            }
+
+            TabletKey.SideKeySpace -> {
+                resetAllKeys()
+                binding.keySpace.isPressed = true
+            }
+
+            TabletKey.SideKeyEnter -> {
+                resetAllKeys()
+                binding.keyEnter.isPressed = true
+            }
+
+            TabletKey.NotSelected -> {
+                // no key pressed
+            }
+        }
+    }
+
+    private fun resetAllKeys() {
+        // あ row
+        binding.key51.isPressed = false
+        binding.key52.isPressed = false
+        binding.key53.isPressed = false
+        binding.key54.isPressed = false
+        binding.key55.isPressed = false
+
+        // か row
+        binding.key46.isPressed = false
+        binding.key47.isPressed = false
+        binding.key48.isPressed = false
+        binding.key49.isPressed = false
+        binding.key50.isPressed = false
+
+        // さ row
+        binding.key41.isPressed = false
+        binding.key42.isPressed = false
+        binding.key43.isPressed = false
+        binding.key44.isPressed = false
+        binding.key45.isPressed = false
+
+        // た row
+        binding.key36.isPressed = false
+        binding.key37.isPressed = false
+        binding.key38.isPressed = false
+        binding.key39.isPressed = false
+        binding.key40.isPressed = false
+
+        // な row
+        binding.key31.isPressed = false
+        binding.key32.isPressed = false
+        binding.key33.isPressed = false
+        binding.key34.isPressed = false
+        binding.key35.isPressed = false
+
+        // は row
+        binding.key26.isPressed = false
+        binding.key27.isPressed = false
+        binding.key28.isPressed = false
+        binding.key29.isPressed = false
+        binding.key30.isPressed = false
+
+        // ま row
+        binding.key21.isPressed = false
+        binding.key22.isPressed = false
+        binding.key23.isPressed = false
+        binding.key24.isPressed = false
+        binding.key25.isPressed = false
+
+        // や row
+        binding.key16.isPressed = false
+        binding.key18.isPressed = false
+        binding.key20.isPressed = false
+
+        // ら row
+        binding.key11.isPressed = false
+        binding.key12.isPressed = false
+        binding.key13.isPressed = false
+        binding.key14.isPressed = false
+        binding.key15.isPressed = false
+
+        // わ row + ん + minus
+        binding.key6.isPressed = false
+        binding.key7.isPressed = false
+        binding.key8.isPressed = false
+        binding.key9.isPressed = false
+
+        // Modifiers & punctuation
+        binding.key10.isPressed = false
+        binding.key1.isPressed = false
+        binding.key2.isPressed = false
+        binding.key3.isPressed = false
+        binding.key4.isPressed = false
+        binding.key5.isPressed = false
+
+        // Side-row keys
+        binding.keyKigou.isPressed = false
+        binding.keyEnglish.isPressed = false
+        binding.keyJapanese.isPressed = false
+        binding.keyLeftCursor.isPressed = false
+        binding.keyRightCursor.isPressed = false
+        binding.keyDelete.isPressed = false
+        binding.keySpace.isPressed = false
+        binding.keyEnter.isPressed = false
     }
 
     private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): TabletKey {
