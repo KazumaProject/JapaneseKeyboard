@@ -1,9 +1,9 @@
-package com.kazumaproject.tenkey.key
+package com.kazumaproject.core.key
 
-sealed class TenKeyInfo {
-    data object Null : TenKeyInfo()
+sealed class KeyInfo {
+    data object Null : KeyInfo()
 
-    abstract class TenKeyTapFlickInfo : TenKeyInfo() {
+    abstract class KeyTapFlickInfo : KeyInfo() {
         abstract val tap: Char
         abstract val flickLeft: Char
         abstract val flickTop: Char
@@ -11,7 +11,7 @@ sealed class TenKeyInfo {
         abstract val flickBottom: Char?
     }
 
-    object KeyAJapanese : TenKeyTapFlickInfo() {
+    object KeyAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'あ'
         override val flickLeft: Char
@@ -24,7 +24,7 @@ sealed class TenKeyInfo {
             get() = 'お'
     }
 
-    object KeyKAJapanese : TenKeyTapFlickInfo() {
+    object KeyKAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'か'
         override val flickLeft: Char
@@ -37,7 +37,7 @@ sealed class TenKeyInfo {
             get() = 'こ'
     }
 
-    object KeySAJapanese : TenKeyTapFlickInfo() {
+    object KeySAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'さ'
         override val flickLeft: Char
@@ -50,7 +50,7 @@ sealed class TenKeyInfo {
             get() = 'そ'
     }
 
-    object KeyTAJapanese : TenKeyTapFlickInfo() {
+    object KeyTAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'た'
         override val flickLeft: Char
@@ -63,7 +63,7 @@ sealed class TenKeyInfo {
             get() = 'と'
     }
 
-    object KeyNAJapanese : TenKeyTapFlickInfo() {
+    object KeyNAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'な'
         override val flickLeft: Char
@@ -76,7 +76,7 @@ sealed class TenKeyInfo {
             get() = 'の'
     }
 
-    object KeyHAJapanese : TenKeyTapFlickInfo() {
+    object KeyHAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'は'
         override val flickLeft: Char
@@ -89,7 +89,7 @@ sealed class TenKeyInfo {
             get() = 'ほ'
     }
 
-    object KeyMAJapanese : TenKeyTapFlickInfo() {
+    object KeyMAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'ま'
         override val flickLeft: Char
@@ -102,7 +102,7 @@ sealed class TenKeyInfo {
             get() = 'も'
     }
 
-    object KeyYAJapanese : TenKeyTapFlickInfo() {
+    object KeyYAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'や'
         override val flickLeft: Char
@@ -115,7 +115,7 @@ sealed class TenKeyInfo {
             get() = 'よ'
     }
 
-    object KeyRAJapanese : TenKeyTapFlickInfo() {
+    object KeyRAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'ら'
         override val flickLeft: Char
@@ -128,7 +128,7 @@ sealed class TenKeyInfo {
             get() = 'ろ'
     }
 
-    object KeyWAJapanese : TenKeyTapFlickInfo() {
+    object KeyWAJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'わ'
         override val flickLeft: Char
@@ -141,7 +141,7 @@ sealed class TenKeyInfo {
             get() = '〜'
     }
 
-    object KeyKigouJapanese : TenKeyTapFlickInfo() {
+    object KeyKigouJapanese : KeyTapFlickInfo() {
         override val tap: Char
             get() = '、'
         override val flickLeft: Char
@@ -154,7 +154,7 @@ sealed class TenKeyInfo {
             get() = '…'
     }
 
-    object Key1English : TenKeyTapFlickInfo() {
+    object Key1English : KeyTapFlickInfo() {
         override val tap: Char
             get() = '@'
         override val flickLeft: Char
@@ -167,7 +167,7 @@ sealed class TenKeyInfo {
             get() = '1'
     }
 
-    object Key2English : TenKeyTapFlickInfo() {
+    object Key2English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'a'
         override val flickLeft: Char
@@ -180,7 +180,7 @@ sealed class TenKeyInfo {
             get() = '2'
     }
 
-    object Key3English : TenKeyTapFlickInfo() {
+    object Key3English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'd'
         override val flickLeft: Char
@@ -193,7 +193,7 @@ sealed class TenKeyInfo {
             get() = '3'
     }
 
-    object Key4English : TenKeyTapFlickInfo() {
+    object Key4English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'g'
         override val flickLeft: Char
@@ -206,7 +206,7 @@ sealed class TenKeyInfo {
             get() = '4'
     }
 
-    object Key5English : TenKeyTapFlickInfo() {
+    object Key5English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'j'
         override val flickLeft: Char
@@ -219,7 +219,7 @@ sealed class TenKeyInfo {
             get() = '5'
     }
 
-    object Key6English : TenKeyTapFlickInfo() {
+    object Key6English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'm'
         override val flickLeft: Char
@@ -232,7 +232,7 @@ sealed class TenKeyInfo {
             get() = '6'
     }
 
-    object Key7English : TenKeyTapFlickInfo() {
+    object Key7English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'p'
         override val flickLeft: Char
@@ -245,7 +245,7 @@ sealed class TenKeyInfo {
             get() = '7'
     }
 
-    object Key8English : TenKeyTapFlickInfo() {
+    object Key8English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 't'
         override val flickLeft: Char
@@ -258,7 +258,7 @@ sealed class TenKeyInfo {
             get() = '8'
     }
 
-    object Key9English : TenKeyTapFlickInfo() {
+    object Key9English : KeyTapFlickInfo() {
         override val tap: Char
             get() = 'w'
         override val flickLeft: Char
@@ -271,7 +271,7 @@ sealed class TenKeyInfo {
             get() = '9'
     }
 
-    object Key0English : TenKeyTapFlickInfo() {
+    object Key0English : KeyTapFlickInfo() {
         override val tap: Char
             get() = '\''
         override val flickLeft: Char
@@ -284,7 +284,7 @@ sealed class TenKeyInfo {
             get() = '0'
     }
 
-    object KeyKigouEnglish : TenKeyTapFlickInfo() {
+    object KeyKigouEnglish : KeyTapFlickInfo() {
         override val tap: Char
             get() = '.'
         override val flickLeft: Char
@@ -297,7 +297,7 @@ sealed class TenKeyInfo {
             get() = '-'
     }
 
-    object Key1Number : TenKeyTapFlickInfo() {
+    object Key1Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '1'
         override val flickLeft: Char
@@ -310,7 +310,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key2Number : TenKeyTapFlickInfo() {
+    object Key2Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '2'
         override val flickLeft: Char
@@ -323,7 +323,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key3Number : TenKeyTapFlickInfo() {
+    object Key3Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '3'
         override val flickLeft: Char
@@ -336,7 +336,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key4Number : TenKeyTapFlickInfo() {
+    object Key4Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '4'
         override val flickLeft: Char
@@ -349,7 +349,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key5Number : TenKeyTapFlickInfo() {
+    object Key5Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '5'
         override val flickLeft: Char
@@ -362,7 +362,7 @@ sealed class TenKeyInfo {
             get() = '-'
     }
 
-    object Key6Number : TenKeyTapFlickInfo() {
+    object Key6Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '6'
         override val flickLeft: Char
@@ -375,7 +375,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key7Number : TenKeyTapFlickInfo() {
+    object Key7Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '7'
         override val flickLeft: Char
@@ -388,7 +388,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key8Number : TenKeyTapFlickInfo() {
+    object Key8Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '8'
         override val flickLeft: Char
@@ -401,7 +401,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key9Number : TenKeyTapFlickInfo() {
+    object Key9Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '9'
         override val flickLeft: Char
@@ -414,7 +414,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object Key0Number : TenKeyTapFlickInfo() {
+    object Key0Number : KeyTapFlickInfo() {
         override val tap: Char
             get() = '0'
         override val flickLeft: Char
@@ -427,7 +427,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object KeyKigouNumber : TenKeyTapFlickInfo() {
+    object KeyKigouNumber : KeyTapFlickInfo() {
         override val tap: Char
             get() = '.'
         override val flickLeft: Char
@@ -440,7 +440,7 @@ sealed class TenKeyInfo {
             get() = null
     }
 
-    object KeyDakutenSmallNumber : TenKeyTapFlickInfo() {
+    object KeyDakutenSmallNumber : KeyTapFlickInfo() {
         override val tap: Char
             get() = '('
         override val flickLeft: Char
@@ -452,5 +452,4 @@ sealed class TenKeyInfo {
         override val flickBottom: Char?
             get() = null
     }
-
 }

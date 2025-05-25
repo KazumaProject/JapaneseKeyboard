@@ -1,4 +1,4 @@
-package com.kazumaproject.tenkey.state
+package com.kazumaproject.core.state
 
 import com.kazumaproject.core.key.Key
 import com.kazumaproject.core.key.KeyInfo
@@ -9,18 +9,18 @@ sealed class InputMode {
     data object ModeEnglish : InputMode()
     data object ModeNumber : InputMode()
 
-    fun InputMode.next(tenKeyMap: KeyMap, key: Key): KeyInfo {
+    fun InputMode.next(keyMap: KeyMap, key: Key): KeyInfo {
         return when (this) {
             ModeJapanese -> {
-                tenKeyMap.getKeyInfoJapanese(key)
+                keyMap.getKeyInfoJapanese(key)
             }
 
             ModeEnglish -> {
-                tenKeyMap.getKeyInfoEnglish(key)
+                keyMap.getKeyInfoEnglish(key)
             }
 
             ModeNumber -> {
-                tenKeyMap.getKeyInfoNumber(key)
+                keyMap.getKeyInfoNumber(key)
             }
         }
     }

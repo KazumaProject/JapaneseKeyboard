@@ -19,7 +19,11 @@ import androidx.core.view.setPadding
 import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.key.Key
+import com.kazumaproject.core.key.KeyInfo
+import com.kazumaproject.core.key.KeyMap
+import com.kazumaproject.core.key.KeyRect
 import com.kazumaproject.core.state.GestureType
+import com.kazumaproject.core.state.PressedKey
 import com.kazumaproject.tenkey.extensions.hide
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
@@ -55,14 +59,10 @@ import com.kazumaproject.tenkey.extensions.setTextTapEnglish
 import com.kazumaproject.tenkey.extensions.setTextTapJapanese
 import com.kazumaproject.tenkey.extensions.setTextTapNumber
 import com.kazumaproject.tenkey.image_effect.ImageEffects
-import com.kazumaproject.tenkey.key.KeyRect
-import com.kazumaproject.tenkey.key.TenKeyInfo
-import com.kazumaproject.tenkey.key.TenKeyMap
 import com.kazumaproject.tenkey.listener.FlickListener
 import com.kazumaproject.tenkey.listener.LongPressListener
 import com.kazumaproject.tenkey.state.InputMode
 import com.kazumaproject.tenkey.state.InputMode.ModeNumber.next
-import com.kazumaproject.tenkey.state.PressedKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -121,7 +121,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
 
-    private var tenKeyMap: TenKeyMap
+    private var keyMap: KeyMap
 
     private var longPressJob: Job? = null
     private var isLongPressed = false
@@ -153,7 +153,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         declarePopupWindows()
         initialKeys()
         setViewsNotFocusable()
-        tenKeyMap = TenKeyMap()
+        keyMap = KeyMap()
         setBackgroundSmallLetterKey()
         this.setOnTouchListener(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -337,15 +337,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         val keyInfo =
-                            currentInputMode.get().next(tenKeyMap = tenKeyMap, key = pressedKey.key)
-                        if (keyInfo == TenKeyInfo.Null) {
+                            currentInputMode.get().next(tenKeyMap = keyMap, key = pressedKey.key)
+                        if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType, key = pressedKey.key, char = null
                             )
                             if (pressedKey.key == Key.SideKeyInputMode) {
                                 handleClickInputModeSwitch()
                             }
-                        } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType) {
                                 GestureType.Null -> {}
                                 GestureType.Down -> {}
@@ -453,12 +453,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             )
                         }
                         val keyInfo =
-                            currentInputMode.get().next(tenKeyMap = tenKeyMap, key = pressedKey.key)
-                        if (keyInfo == TenKeyInfo.Null) {
+                            currentInputMode.get().next(tenKeyMap = keyMap, key = pressedKey.key)
+                        if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
                             )
-                        } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType2) {
                                 GestureType.Null -> {}
                                 GestureType.Down -> {}
@@ -546,15 +546,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 getGestureType(event, event.getPointerId(event.actionIndex))
                             val keyInfo =
                                 currentInputMode.get()
-                                    .next(tenKeyMap = tenKeyMap, key = pressedKey.key)
-                            if (keyInfo == TenKeyInfo.Null) {
+                                    .next(tenKeyMap = keyMap, key = pressedKey.key)
+                            if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null
                                 )
                                 if (pressedKey.key == Key.SideKeyInputMode) {
                                     handleClickInputModeSwitch()
                                 }
-                            } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                            } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                                 when (gestureType) {
                                     GestureType.Null -> {}
                                     GestureType.Down -> {}
@@ -1357,8 +1357,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
-    private fun setFlickActionPointerDown(keyInfo: TenKeyInfo, gestureType: GestureType) {
-        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+    private fun setFlickActionPointerDown(keyInfo: KeyInfo, gestureType: GestureType) {
+        if (keyInfo is KeyInfo.KeyTapFlickInfo) {
             val charToSend = when (gestureType) {
                 GestureType.Tap -> keyInfo.tap
                 GestureType.FlickLeft -> keyInfo.flickLeft
