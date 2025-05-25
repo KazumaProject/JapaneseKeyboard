@@ -43,6 +43,8 @@ import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.key.Key
+import com.kazumaproject.core.listener.FlickListener
+import com.kazumaproject.core.listener.LongPressListener
 import com.kazumaproject.core.state.GestureType
 import com.kazumaproject.core.state.InputMode
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -74,8 +76,6 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.extensions.KEY_ENGLISH_SIZE
 import com.kazumaproject.tenkey.extensions.KEY_JAPANESE_SIZE
 import com.kazumaproject.tenkey.extensions.KEY_NUMBER_SIZE
-import com.kazumaproject.tenkey.listener.FlickListener
-import com.kazumaproject.tenkey.listener.LongPressListener
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -261,7 +261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
                 setSymbolKeyboard(mainView)
                 if (isTablet == true) {
-                    
+
                 } else {
                     setTenKeyListeners(mainView)
                 }
