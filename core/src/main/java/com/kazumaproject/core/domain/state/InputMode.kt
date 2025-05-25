@@ -1,8 +1,8 @@
-package com.kazumaproject.core.state
+package com.kazumaproject.core.domain.state
 
-import com.kazumaproject.core.key.Key
-import com.kazumaproject.core.key.KeyInfo
-import com.kazumaproject.core.key.KeyMap
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyInfo
+import com.kazumaproject.core.domain.key.KeyMap
 
 sealed class InputMode {
     data object ModeJapanese : InputMode()

@@ -16,19 +16,19 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
-import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.effect.Blur
-import com.kazumaproject.core.key.Key
-import com.kazumaproject.core.key.KeyInfo
-import com.kazumaproject.core.key.KeyMap
-import com.kazumaproject.core.key.KeyRect
-import com.kazumaproject.core.listener.FlickListener
-import com.kazumaproject.core.listener.LongPressListener
-import com.kazumaproject.core.state.GestureType
-import com.kazumaproject.core.state.InputMode
-import com.kazumaproject.core.state.InputMode.ModeEnglish.next
-import com.kazumaproject.core.state.PressedKey
+import com.kazumaproject.core.ui.effect.Blur
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyInfo
+import com.kazumaproject.core.domain.key.KeyMap
+import com.kazumaproject.core.domain.key.KeyRect
+import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.LongPressListener
+import com.kazumaproject.core.domain.state.GestureType
+import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
+import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.extensions.hide
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
@@ -98,22 +98,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private lateinit var sideKeyEnter: AppCompatImageButton
 
     private lateinit var popupWindowActive: PopupWindow
-    private lateinit var bubbleViewActive: BubbleLayout
+    private lateinit var bubbleViewActive: KeyWindowLayout
     private lateinit var popTextActive: MaterialTextView
     private lateinit var popupWindowLeft: PopupWindow
-    private lateinit var bubbleViewLeft: BubbleLayout
+    private lateinit var bubbleViewLeft: KeyWindowLayout
     private lateinit var popTextLeft: MaterialTextView
     private lateinit var popupWindowTop: PopupWindow
-    private lateinit var bubbleViewTop: BubbleLayout
+    private lateinit var bubbleViewTop: KeyWindowLayout
     private lateinit var popTextTop: MaterialTextView
     private lateinit var popupWindowRight: PopupWindow
-    private lateinit var bubbleViewRight: BubbleLayout
+    private lateinit var bubbleViewRight: KeyWindowLayout
     private lateinit var popTextRight: MaterialTextView
     private lateinit var popupWindowBottom: PopupWindow
-    private lateinit var bubbleViewBottom: BubbleLayout
+    private lateinit var bubbleViewBottom: KeyWindowLayout
     private lateinit var popTextBottom: MaterialTextView
     private lateinit var popupWindowCenter: PopupWindow
-    private lateinit var bubbleViewCenter: BubbleLayout
+    private lateinit var bubbleViewCenter: KeyWindowLayout
     private lateinit var popTextCenter: MaterialTextView
 
     private lateinit var pressedKey: PressedKey

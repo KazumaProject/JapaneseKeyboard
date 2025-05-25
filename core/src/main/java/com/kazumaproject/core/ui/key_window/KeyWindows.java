@@ -1,4 +1,4 @@
-package com.daasuu.bl;
+package com.kazumaproject.core.ui.key_window;
 
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
@@ -12,7 +12,7 @@ import android.graphics.drawable.Drawable;
 /**
  * Created by sudamasayuki on 16/03/27.
  */
-class Bubble extends Drawable {
+class KeyWindows extends Drawable {
 
     private RectF mRect;
     private Path mPath = new Path();
@@ -25,7 +25,7 @@ class Bubble extends Drawable {
     private float mArrowPosition;
     private float mStrokeWidth;
 
-    public Bubble(RectF rect, float arrowWidth, float cornersRadius, float arrowHeight, float arrowPosition, float strokeWidth, int strokeColor, int bubbleColor, ArrowDirection arrowDirection) {
+    public KeyWindows(RectF rect, float arrowWidth, float cornersRadius, float arrowHeight, float arrowPosition, float strokeWidth, int strokeColor, int bubbleColor, ArrowDirection arrowDirection) {
         this.mRect = rect;
 
         this.mArrowWidth = arrowWidth;

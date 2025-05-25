@@ -8,15 +8,15 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import androidx.constraintlayout.widget.ConstraintLayout
-import com.kazumaproject.core.key.Key
-import com.kazumaproject.core.key.KeyInfo
-import com.kazumaproject.core.key.KeyMap
-import com.kazumaproject.core.key.KeyRect
-import com.kazumaproject.core.listener.FlickListener
-import com.kazumaproject.core.state.GestureType
-import com.kazumaproject.core.state.InputMode
-import com.kazumaproject.core.state.InputMode.ModeEnglish.next
-import com.kazumaproject.core.state.PressedKey
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyInfo
+import com.kazumaproject.core.domain.key.KeyMap
+import com.kazumaproject.core.domain.key.KeyRect
+import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.state.GestureType
+import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
+import com.kazumaproject.core.domain.state.PressedKey
 import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
@@ -63,8 +63,8 @@ class TabletKeyboardView @JvmOverloads constructor(
     )
 
     private var keyMap: KeyMap
-
     private var flickListener: FlickListener? = null
+
 
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
@@ -467,7 +467,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
 
             // --- Modifiers & punctuation ---
-            Key.KeyDakuten -> {
+            Key.KeyDakutenSmall -> {
                 resetAllKeys()
                 binding.key10.isPressed = true
             }
@@ -765,7 +765,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                 binding.key9.layoutYPosition() + binding.key9.height
             ),
             KeyRect(
-                Key.KeyDakuten,
+                Key.KeyDakutenSmall,
                 binding.key10.layoutXPosition(),
                 binding.key10.layoutYPosition(),
                 binding.key10.layoutXPosition() + binding.key10.width,

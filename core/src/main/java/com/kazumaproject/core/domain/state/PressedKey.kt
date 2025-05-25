@@ -1,6 +1,6 @@
-package com.kazumaproject.core.state
+package com.kazumaproject.core.domain.state
 
-import com.kazumaproject.core.key.Key
+import com.kazumaproject.core.domain.key.Key
 
 data class PressedKey(
     var key: Key,

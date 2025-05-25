@@ -1,4 +1,4 @@
-package com.daasuu.bl;
+package com.kazumaproject.core.ui.key_window;
 
 /**
  * Created by sudamasayuki on 16/06/14.
