@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/keyboard_bg"
     android:clickable="false"
     android:focusable="false">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <com.kazumaproject.markdownhelperkeyboard.ime_service.tablet.TabletKeyboardView
+        android:id="@+id/tabletKeyboard"
+        android:layout_width="match_parent"
+        android:layout_height="280dp"
+        android:layout_gravity="bottom"
+        android:layout_marginTop="64dp" />
+
+</FrameLayout>

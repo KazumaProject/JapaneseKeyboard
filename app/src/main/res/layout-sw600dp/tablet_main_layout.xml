@@ -3,12 +3,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:clickable="false"
-    android:focusable="false">
+    android:focusable="false"
+    android:background="@color/keyboard_bg">
 
     <com.kazumaproject.markdownhelperkeyboard.ime_service.tablet.TabletKeyboardView
         android:id="@+id/tabletKeyboard"
         android:layout_width="match_parent"
         android:layout_height="280dp"
-        android:layout_gravity="bottom" />
+        android:layout_gravity="bottom"
+        android:layout_marginTop="64dp"/>
 
 </FrameLayout>
