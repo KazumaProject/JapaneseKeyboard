@@ -1,6 +1,6 @@
 package com.kazumaproject.tenkey.key
 
-import com.kazumaproject.tenkey.state.Key
+import com.kazumaproject.core.key.Key
 
 data class KeyRect(
     val key: Key,
