@@ -1,7 +1,7 @@
 package com.kazumaproject.tenkey.listener
 
 import com.kazumaproject.core.key.Key
-import com.kazumaproject.tenkey.state.GestureType
+import com.kazumaproject.core.state.GestureType
 
 interface FlickListener {
     fun onFlick(
