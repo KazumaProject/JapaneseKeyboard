@@ -110,7 +110,8 @@ class TabletKeyboardView @JvmOverloads constructor(
                         val keyInfo =
                             currentInputMode.get().next(
                                 keyMap = keyMap,
-                                key = pressedKey.key
+                                key = pressedKey.key,
+                                isTablet = true
                             )
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
