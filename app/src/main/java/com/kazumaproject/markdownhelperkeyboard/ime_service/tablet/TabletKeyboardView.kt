@@ -8,8 +8,15 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import androidx.constraintlayout.widget.ConstraintLayout
+import com.kazumaproject.core.key.Key
+import com.kazumaproject.core.key.KeyInfo
+import com.kazumaproject.core.key.KeyMap
+import com.kazumaproject.core.key.KeyRect
+import com.kazumaproject.core.listener.FlickListener
 import com.kazumaproject.core.state.GestureType
 import com.kazumaproject.core.state.InputMode
+import com.kazumaproject.core.state.InputMode.ModeEnglish.next
+import com.kazumaproject.core.state.PressedKey
 import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
@@ -31,7 +38,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         TabletLayoutBinding.inflate(LayoutInflater.from(context), this, true)
 
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
-    private lateinit var pressedKey: TabletPressedKey
+    private lateinit var pressedKey: PressedKey
 
     // All AppCompatButton keys (all the character keys)
     private val allButtonKeys = listOf(
@@ -55,16 +62,16 @@ class TabletKeyboardView @JvmOverloads constructor(
         binding.keyDelete, binding.keySpace, binding.keyEnter
     )
 
-    private var tabletKeyMap: TabletKeyMap
+    private var keyMap: KeyMap
 
-    private var flickListener: TabletFlickListener? = null
+    private var flickListener: FlickListener? = null
 
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
-        tabletKeyMap = TabletKeyMap()
+        keyMap = KeyMap()
     }
 
-    fun setOnFlickListener(flickListener: TabletFlickListener) {
+    fun setOnFlickListener(flickListener: FlickListener) {
         this.flickListener = flickListener
     }
 
@@ -75,19 +82,19 @@ class TabletKeyboardView @JvmOverloads constructor(
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(
                         gestureType = GestureType.Down,
-                        tabletKey = key,
+                        key = key,
                         char = null
                     )
                     pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        TabletPressedKey(
-                            tabletKey = key,
+                        PressedKey(
+                            key = key,
                             pointer = 0,
                             initialX = event.getRawX(event.actionIndex),
                             initialY = event.getRawY(event.actionIndex),
                         )
                     } else {
-                        TabletPressedKey(
-                            tabletKey = key,
+                        PressedKey(
+                            key = key,
                             pointer = 0,
                             initialX = event.getX(event.actionIndex),
                             initialY = event.getY(event.actionIndex),
@@ -101,50 +108,50 @@ class TabletKeyboardView @JvmOverloads constructor(
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         val keyInfo =
-                            currentInputMode.get().nextInTablet(
-                                tabletKeyMap = tabletKeyMap,
-                                tabletKey = pressedKey.tabletKey
+                            currentInputMode.get().next(
+                                keyMap = keyMap,
+                                key = pressedKey.key
                             )
-                        if (keyInfo == TabletKeyInfo.Null) {
+                        if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType,
-                                tabletKey = pressedKey.tabletKey,
+                                key = pressedKey.key,
                                 char = null
                             )
-//                            if (pressedKey.tabletKey == TabletKeyInfo.SideKeyInputMode) {
+//                            if (pressedKey.Key == KeyInfo.SideKeyInputMode) {
 //                                handleClickInputModeSwitch()
 //                            }
-                        } else if (keyInfo is TabletKeyInfo.TabletTapFlickInfo) {
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType) {
                                 GestureType.Null -> {}
                                 GestureType.Down -> {}
                                 GestureType.Tap -> flickListener?.onFlick(
                                     gestureType = gestureType,
-                                    tabletKey = pressedKey.tabletKey,
+                                    key = pressedKey.key,
                                     char = keyInfo.tap,
                                 )
 
                                 GestureType.FlickLeft -> flickListener?.onFlick(
                                     gestureType = gestureType,
-                                    tabletKey = pressedKey.tabletKey,
+                                    key = pressedKey.key,
                                     char = keyInfo.flickLeft,
                                 )
 
                                 GestureType.FlickTop -> flickListener?.onFlick(
                                     gestureType = gestureType,
-                                    tabletKey = pressedKey.tabletKey,
+                                    key = pressedKey.key,
                                     char = keyInfo.flickTop,
                                 )
 
                                 GestureType.FlickRight -> flickListener?.onFlick(
                                     gestureType = gestureType,
-                                    tabletKey = pressedKey.tabletKey,
+                                    key = pressedKey.key,
                                     char = keyInfo.flickRight,
                                 )
 
                                 GestureType.FlickBottom -> flickListener?.onFlick(
                                     gestureType = gestureType,
-                                    tabletKey = pressedKey.tabletKey,
+                                    key = pressedKey.key,
                                     char = keyInfo.flickBottom,
                                 )
                             }
@@ -202,337 +209,342 @@ class TabletKeyboardView @JvmOverloads constructor(
     }
 
     private fun setKeyPressed() {
-        when (pressedKey.tabletKey) {
+        when (pressedKey.key) {
             // --- あ row ---
-            TabletKey.KeyA -> {
+            Key.KeyA -> {
                 resetAllKeys()
                 binding.key51.isPressed = true
             }
 
-            TabletKey.KeyI -> {
+            Key.KeyI -> {
                 resetAllKeys()
                 binding.key52.isPressed = true
             }
 
-            TabletKey.KeyU -> {
+            Key.KeyU -> {
                 resetAllKeys()
                 binding.key53.isPressed = true
             }
 
-            TabletKey.KeyE -> {
+            Key.KeyE -> {
                 resetAllKeys()
                 binding.key54.isPressed = true
             }
 
-            TabletKey.KeyO -> {
+            Key.KeyO -> {
                 resetAllKeys()
                 binding.key55.isPressed = true
             }
 
             // --- か row ---
-            TabletKey.KeyKA -> {
+            Key.KeyKA -> {
                 resetAllKeys()
                 binding.key46.isPressed = true
             }
 
-            TabletKey.KeyKI -> {
+            Key.KeyKI -> {
                 resetAllKeys()
                 binding.key47.isPressed = true
             }
 
-            TabletKey.KeyKU -> {
+            Key.KeyKU -> {
                 resetAllKeys()
                 binding.key48.isPressed = true
             }
 
-            TabletKey.KeyKE -> {
+            Key.KeyKE -> {
                 resetAllKeys()
                 binding.key49.isPressed = true
             }
 
-            TabletKey.KeyKO -> {
+            Key.KeyKO -> {
                 resetAllKeys()
                 binding.key50.isPressed = true
             }
 
             // --- さ row ---
-            TabletKey.KeySA -> {
+            Key.KeySA -> {
                 resetAllKeys()
                 binding.key41.isPressed = true
             }
 
-            TabletKey.KeySHI -> {
+            Key.KeySHI -> {
                 resetAllKeys()
                 binding.key42.isPressed = true
             }
 
-            TabletKey.KeySU -> {
+            Key.KeySU -> {
                 resetAllKeys()
                 binding.key43.isPressed = true
             }
 
-            TabletKey.KeySE -> {
+            Key.KeySE -> {
                 resetAllKeys()
                 binding.key44.isPressed = true
             }
 
-            TabletKey.KeySO -> {
+            Key.KeySO -> {
                 resetAllKeys()
                 binding.key45.isPressed = true
             }
 
             // --- た row ---
-            TabletKey.KeyTA -> {
+            Key.KeyTA -> {
                 resetAllKeys()
                 binding.key36.isPressed = true
             }
 
-            TabletKey.KeyCHI -> {
+            Key.KeyCHI -> {
                 resetAllKeys()
                 binding.key37.isPressed = true
             }
 
-            TabletKey.KeyTSU -> {
+            Key.KeyTSU -> {
                 resetAllKeys()
                 binding.key38.isPressed = true
             }
 
-            TabletKey.KeyTE -> {
+            Key.KeyTE -> {
                 resetAllKeys()
                 binding.key39.isPressed = true
             }
 
-            TabletKey.KeyTO -> {
+            Key.KeyTO -> {
                 resetAllKeys()
                 binding.key40.isPressed = true
             }
 
             // --- な row ---
-            TabletKey.KeyNA -> {
+            Key.KeyNA -> {
                 resetAllKeys()
                 binding.key31.isPressed = true
             }
 
-            TabletKey.KeyNI -> {
+            Key.KeyNI -> {
                 resetAllKeys()
                 binding.key32.isPressed = true
             }
 
-            TabletKey.KeyNU -> {
+            Key.KeyNU -> {
                 resetAllKeys()
                 binding.key33.isPressed = true
             }
 
-            TabletKey.KeyNE -> {
+            Key.KeyNE -> {
                 resetAllKeys()
                 binding.key34.isPressed = true
             }
 
-            TabletKey.KeyNO -> {
+            Key.KeyNO -> {
                 resetAllKeys()
                 binding.key35.isPressed = true
             }
 
             // --- は row ---
-            TabletKey.KeyHA -> {
+            Key.KeyHA -> {
                 resetAllKeys()
                 binding.key26.isPressed = true
             }
 
-            TabletKey.KeyHI -> {
+            Key.KeyHI -> {
                 resetAllKeys()
                 binding.key27.isPressed = true
             }
 
-            TabletKey.KeyFU -> {
+            Key.KeyFU -> {
                 resetAllKeys()
                 binding.key28.isPressed = true
             }
 
-            TabletKey.KeyHE -> {
+            Key.KeyHE -> {
                 resetAllKeys()
                 binding.key29.isPressed = true
             }
 
-            TabletKey.KeyHO -> {
+            Key.KeyHO -> {
                 resetAllKeys()
                 binding.key30.isPressed = true
             }
 
             // --- ま row ---
-            TabletKey.KeyMA -> {
+            Key.KeyMA -> {
                 resetAllKeys()
                 binding.key21.isPressed = true
             }
 
-            TabletKey.KeyMI -> {
+            Key.KeyMI -> {
                 resetAllKeys()
                 binding.key22.isPressed = true
             }
 
-            TabletKey.KeyMU -> {
+            Key.KeyMU -> {
                 resetAllKeys()
                 binding.key23.isPressed = true
             }
 
-            TabletKey.KeyME -> {
+            Key.KeyME -> {
                 resetAllKeys()
                 binding.key24.isPressed = true
             }
 
-            TabletKey.KeyMO -> {
+            Key.KeyMO -> {
                 resetAllKeys()
                 binding.key25.isPressed = true
             }
 
             // --- や row ---
-            TabletKey.KeyYA -> {
+            Key.KeyYA -> {
                 resetAllKeys()
                 binding.key16.isPressed = true
             }
 
-            TabletKey.KeyYU -> {
+            Key.KeyYU -> {
                 resetAllKeys()
                 binding.key18.isPressed = true
             }
 
-            TabletKey.KeyYO -> {
+            Key.KeyYO -> {
                 resetAllKeys()
                 binding.key20.isPressed = true
             }
 
-            TabletKey.KeySPACE1 -> {
+            Key.KeySPACE1 -> {
                 resetAllKeys()
                 binding.key17.isPressed = true
             }
 
-            TabletKey.KeySPACE2 -> {
+            Key.KeySPACE2 -> {
                 resetAllKeys()
                 binding.key19.isPressed = true
             }
 
             // --- ら row ---
-            TabletKey.KeyRA -> {
+            Key.KeyRA -> {
                 resetAllKeys()
                 binding.key11.isPressed = true
             }
 
-            TabletKey.KeyRI -> {
+            Key.KeyRI -> {
                 resetAllKeys()
                 binding.key12.isPressed = true
             }
 
-            TabletKey.KeyRU -> {
+            Key.KeyRU -> {
                 resetAllKeys()
                 binding.key13.isPressed = true
             }
 
-            TabletKey.KeyRE -> {
+            Key.KeyRE -> {
                 resetAllKeys()
                 binding.key14.isPressed = true
             }
 
-            TabletKey.KeyRO -> {
+            Key.KeyRO -> {
                 resetAllKeys()
                 binding.key15.isPressed = true
             }
 
             // --- わ row + ん + minus ---
-            TabletKey.KeyWA -> {
+            Key.KeyWA -> {
                 resetAllKeys()
                 binding.key6.isPressed = true
             }
 
-            TabletKey.KeyWO -> {
+            Key.KeyWO -> {
                 resetAllKeys()
                 binding.key7.isPressed = true
             }
 
-            TabletKey.KeyN -> {
+            Key.KeyN -> {
                 resetAllKeys()
                 binding.key8.isPressed = true
             }
 
-            TabletKey.KeyMinus -> {
+            Key.KeyMinus -> {
                 resetAllKeys()
                 binding.key9.isPressed = true
             }
 
             // --- Modifiers & punctuation ---
-            TabletKey.KeyDakuten -> {
+            Key.KeyDakuten -> {
                 resetAllKeys()
                 binding.key10.isPressed = true
             }
 
-            TabletKey.KeyKagikakko -> {
+            Key.KeyKagikakko -> {
                 resetAllKeys()
                 binding.key1.isPressed = true
             }
 
-            TabletKey.KeyQuestion -> {
+            Key.KeyQuestion -> {
                 resetAllKeys()
                 binding.key2.isPressed = true
             }
 
-            TabletKey.KeyCaution -> {
+            Key.KeyCaution -> {
                 resetAllKeys()
                 binding.key3.isPressed = true
             }
 
-            TabletKey.KeyTouten -> {
+            Key.KeyTouten -> {
                 resetAllKeys()
                 binding.key4.isPressed = true
             }
 
-            TabletKey.KeyKuten -> {
+            Key.KeyKuten -> {
                 resetAllKeys()
                 binding.key5.isPressed = true
             }
 
             // --- Side-row keys ---
-            TabletKey.SideKeySymbol -> {
+            Key.SideKeySymbol -> {
                 resetAllKeys()
                 binding.keyKigou.isPressed = true
             }
 
-            TabletKey.SideKeyEnglish -> {
+            Key.SideKeyEnglish -> {
                 resetAllKeys()
                 binding.keyEnglish.isPressed = true
             }
 
-            TabletKey.SideKeyJapanese -> {
+            Key.SideKeyJapanese -> {
                 resetAllKeys()
                 binding.keyJapanese.isPressed = true
             }
 
-            TabletKey.SideKeyCursorLeft -> {
+            Key.SideKeyCursorLeft -> {
                 resetAllKeys()
                 binding.keyLeftCursor.isPressed = true
             }
 
-            TabletKey.SideKeyCursorRight -> {
+            Key.SideKeyCursorRight -> {
                 resetAllKeys()
                 binding.keyRightCursor.isPressed = true
             }
 
-            TabletKey.SideKeyDelete -> {
+            Key.SideKeyDelete -> {
                 resetAllKeys()
                 binding.keyDelete.isPressed = true
             }
 
-            TabletKey.SideKeySpace -> {
+            Key.SideKeySpace -> {
                 resetAllKeys()
                 binding.keySpace.isPressed = true
             }
 
-            TabletKey.SideKeyEnter -> {
+            Key.SideKeyEnter -> {
                 resetAllKeys()
                 binding.keyEnter.isPressed = true
             }
 
-            TabletKey.NotSelected -> {
+            Key.NotSelected -> {
                 // no key pressed
             }
+
+            Key.KeyDakutenSmall -> {}
+            Key.KeyKutouten -> {}
+            Key.SideKeyInputMode -> {}
+            Key.SideKeyPreviousChar -> {}
         }
     }
 
@@ -623,62 +635,62 @@ class TabletKeyboardView @JvmOverloads constructor(
         binding.keyEnter.isPressed = false
     }
 
-    private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): TabletKey {
+    private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {
         val (x, y) = getRawCoordinates(event, pointer)
 
         val keyRects = listOf(
             // ---- Side Keys ----
-            TabletKeyRect(
-                TabletKey.SideKeySymbol,
+            KeyRect(
+                Key.SideKeySymbol,
                 binding.keyKigou.layoutXPosition(),
                 binding.keyKigou.layoutYPosition(),
                 binding.keyKigou.layoutXPosition() + binding.keyKigou.width,
                 binding.keyKigou.layoutYPosition() + binding.keyKigou.height
             ),
-            TabletKeyRect(
-                TabletKey.SideKeyEnglish,
+            KeyRect(
+                Key.SideKeyEnglish,
                 binding.keyEnglish.layoutXPosition(),
                 binding.keyEnglish.layoutYPosition(),
                 binding.keyEnglish.layoutXPosition() + binding.keyEnglish.width,
                 binding.keyEnglish.layoutYPosition() + binding.keyEnglish.height
             ),
-            TabletKeyRect(
-                TabletKey.SideKeyJapanese,
+            KeyRect(
+                Key.SideKeyJapanese,
                 binding.keyJapanese.layoutXPosition(),
                 binding.keyJapanese.layoutYPosition(),
                 binding.keyJapanese.layoutXPosition() + binding.keyJapanese.width,
                 binding.keyJapanese.layoutYPosition() + binding.keyJapanese.height
             ),
-            TabletKeyRect(
-                TabletKey.SideKeyCursorLeft,
+            KeyRect(
+                Key.SideKeyCursorLeft,
                 binding.keyLeftCursor.layoutXPosition(),
                 binding.keyLeftCursor.layoutYPosition(),
                 binding.keyLeftCursor.layoutXPosition() + binding.keyLeftCursor.width,
                 binding.keyLeftCursor.layoutYPosition() + binding.keyLeftCursor.height
             ),
-            TabletKeyRect(
-                TabletKey.SideKeyCursorRight,
+            KeyRect(
+                Key.SideKeyCursorRight,
                 binding.keyRightCursor.layoutXPosition(),
                 binding.keyRightCursor.layoutYPosition(),
                 binding.keyRightCursor.layoutXPosition() + binding.keyRightCursor.width,
                 binding.keyRightCursor.layoutYPosition() + binding.keyRightCursor.height
             ),
-            TabletKeyRect(
-                TabletKey.SideKeyDelete,
+            KeyRect(
+                Key.SideKeyDelete,
                 binding.keyDelete.layoutXPosition(),
                 binding.keyDelete.layoutYPosition(),
                 binding.keyDelete.layoutXPosition() + binding.keyDelete.width,
                 binding.keyDelete.layoutYPosition() + binding.keyDelete.height
             ),
-            TabletKeyRect(
-                TabletKey.SideKeySpace,
+            KeyRect(
+                Key.SideKeySpace,
                 binding.keySpace.layoutXPosition(),
                 binding.keySpace.layoutYPosition(),
                 binding.keySpace.layoutXPosition() + binding.keySpace.width,
                 binding.keySpace.layoutYPosition() + binding.keySpace.height
             ),
-            TabletKeyRect(
-                TabletKey.SideKeyEnter,
+            KeyRect(
+                Key.SideKeyEnter,
                 binding.keyEnter.layoutXPosition(),
                 binding.keyEnter.layoutYPosition(),
                 binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
@@ -686,36 +698,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // ---- Character Keys ----
-            TabletKeyRect(
-                TabletKey.KeyKagikakko,
+            KeyRect(
+                Key.KeyKagikakko,
                 binding.key1.layoutXPosition(),
                 binding.key1.layoutYPosition(),
                 binding.key1.layoutXPosition() + binding.key1.width,
                 binding.key1.layoutYPosition() + binding.key1.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyQuestion,
+            KeyRect(
+                Key.KeyQuestion,
                 binding.key2.layoutXPosition(),
                 binding.key2.layoutYPosition(),
                 binding.key2.layoutXPosition() + binding.key2.width,
                 binding.key2.layoutYPosition() + binding.key2.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyCaution,
+            KeyRect(
+                Key.KeyCaution,
                 binding.key3.layoutXPosition(),
                 binding.key3.layoutYPosition(),
                 binding.key3.layoutXPosition() + binding.key3.width,
                 binding.key3.layoutYPosition() + binding.key3.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyTouten,
+            KeyRect(
+                Key.KeyTouten,
                 binding.key4.layoutXPosition(),
                 binding.key4.layoutYPosition(),
                 binding.key4.layoutXPosition() + binding.key4.width,
                 binding.key4.layoutYPosition() + binding.key4.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyKuten,
+            KeyRect(
+                Key.KeyKuten,
                 binding.key5.layoutXPosition(),
                 binding.key5.layoutYPosition(),
                 binding.key5.layoutXPosition() + binding.key5.width,
@@ -723,36 +735,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // わ row and punctuation
-            TabletKeyRect(
-                TabletKey.KeyWA,
+            KeyRect(
+                Key.KeyWA,
                 binding.key6.layoutXPosition(),
                 binding.key6.layoutYPosition(),
                 binding.key6.layoutXPosition() + binding.key6.width,
                 binding.key6.layoutYPosition() + binding.key6.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyWO,
+            KeyRect(
+                Key.KeyWO,
                 binding.key7.layoutXPosition(),
                 binding.key7.layoutYPosition(),
                 binding.key7.layoutXPosition() + binding.key7.width,
                 binding.key7.layoutYPosition() + binding.key7.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyN,
+            KeyRect(
+                Key.KeyN,
                 binding.key8.layoutXPosition(),
                 binding.key8.layoutYPosition(),
                 binding.key8.layoutXPosition() + binding.key8.width,
                 binding.key8.layoutYPosition() + binding.key8.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyMinus,
+            KeyRect(
+                Key.KeyMinus,
                 binding.key9.layoutXPosition(),
                 binding.key9.layoutYPosition(),
                 binding.key9.layoutXPosition() + binding.key9.width,
                 binding.key9.layoutYPosition() + binding.key9.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyDakuten,
+            KeyRect(
+                Key.KeyDakuten,
                 binding.key10.layoutXPosition(),
                 binding.key10.layoutYPosition(),
                 binding.key10.layoutXPosition() + binding.key10.width,
@@ -760,36 +772,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // ら row
-            TabletKeyRect(
-                TabletKey.KeyRA,
+            KeyRect(
+                Key.KeyRA,
                 binding.key11.layoutXPosition(),
                 binding.key11.layoutYPosition(),
                 binding.key11.layoutXPosition() + binding.key11.width,
                 binding.key11.layoutYPosition() + binding.key11.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyRI,
+            KeyRect(
+                Key.KeyRI,
                 binding.key12.layoutXPosition(),
                 binding.key12.layoutYPosition(),
                 binding.key12.layoutXPosition() + binding.key12.width,
                 binding.key12.layoutYPosition() + binding.key12.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyRU,
+            KeyRect(
+                Key.KeyRU,
                 binding.key13.layoutXPosition(),
                 binding.key13.layoutYPosition(),
                 binding.key13.layoutXPosition() + binding.key13.width,
                 binding.key13.layoutYPosition() + binding.key13.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyRE,
+            KeyRect(
+                Key.KeyRE,
                 binding.key14.layoutXPosition(),
                 binding.key14.layoutYPosition(),
                 binding.key14.layoutXPosition() + binding.key14.width,
                 binding.key14.layoutYPosition() + binding.key14.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyRO,
+            KeyRect(
+                Key.KeyRO,
                 binding.key15.layoutXPosition(),
                 binding.key15.layoutYPosition(),
                 binding.key15.layoutXPosition() + binding.key15.width,
@@ -797,38 +809,38 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // や row
-            TabletKeyRect(
-                TabletKey.KeyYA,
+            KeyRect(
+                Key.KeyYA,
                 binding.key16.layoutXPosition(),
                 binding.key16.layoutYPosition(),
                 binding.key16.layoutXPosition() + binding.key16.width,
                 binding.key16.layoutYPosition() + binding.key16.height
             ),
             // key17 = (empty)
-            TabletKeyRect(
-                TabletKey.KeySPACE1,
+            KeyRect(
+                Key.KeySPACE1,
                 binding.key17.layoutXPosition(),
                 binding.key17.layoutYPosition(),
                 binding.key17.layoutXPosition() + binding.key17.width,
                 binding.key17.layoutYPosition() + binding.key17.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyYU,
+            KeyRect(
+                Key.KeyYU,
                 binding.key18.layoutXPosition(),
                 binding.key18.layoutYPosition(),
                 binding.key18.layoutXPosition() + binding.key18.width,
                 binding.key18.layoutYPosition() + binding.key18.height
             ),
             // key19 = (empty)
-            TabletKeyRect(
-                TabletKey.KeySPACE2,
+            KeyRect(
+                Key.KeySPACE2,
                 binding.key19.layoutXPosition(),
                 binding.key19.layoutYPosition(),
                 binding.key19.layoutXPosition() + binding.key19.width,
                 binding.key19.layoutYPosition() + binding.key19.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyYO,
+            KeyRect(
+                Key.KeyYO,
                 binding.key20.layoutXPosition(),
                 binding.key20.layoutYPosition(),
                 binding.key20.layoutXPosition() + binding.key20.width,
@@ -836,36 +848,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // ま row
-            TabletKeyRect(
-                TabletKey.KeyMA,
+            KeyRect(
+                Key.KeyMA,
                 binding.key21.layoutXPosition(),
                 binding.key21.layoutYPosition(),
                 binding.key21.layoutXPosition() + binding.key21.width,
                 binding.key21.layoutYPosition() + binding.key21.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyMI,
+            KeyRect(
+                Key.KeyMI,
                 binding.key22.layoutXPosition(),
                 binding.key22.layoutYPosition(),
                 binding.key22.layoutXPosition() + binding.key22.width,
                 binding.key22.layoutYPosition() + binding.key22.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyMU,
+            KeyRect(
+                Key.KeyMU,
                 binding.key23.layoutXPosition(),
                 binding.key23.layoutYPosition(),
                 binding.key23.layoutXPosition() + binding.key23.width,
                 binding.key23.layoutYPosition() + binding.key23.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyME,
+            KeyRect(
+                Key.KeyME,
                 binding.key24.layoutXPosition(),
                 binding.key24.layoutYPosition(),
                 binding.key24.layoutXPosition() + binding.key24.width,
                 binding.key24.layoutYPosition() + binding.key24.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyMO,
+            KeyRect(
+                Key.KeyMO,
                 binding.key25.layoutXPosition(),
                 binding.key25.layoutYPosition(),
                 binding.key25.layoutXPosition() + binding.key25.width,
@@ -873,36 +885,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // は row
-            TabletKeyRect(
-                TabletKey.KeyHA,
+            KeyRect(
+                Key.KeyHA,
                 binding.key26.layoutXPosition(),
                 binding.key26.layoutYPosition(),
                 binding.key26.layoutXPosition() + binding.key26.width,
                 binding.key26.layoutYPosition() + binding.key26.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyHI,
+            KeyRect(
+                Key.KeyHI,
                 binding.key27.layoutXPosition(),
                 binding.key27.layoutYPosition(),
                 binding.key27.layoutXPosition() + binding.key27.width,
                 binding.key27.layoutYPosition() + binding.key27.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyFU,
+            KeyRect(
+                Key.KeyFU,
                 binding.key28.layoutXPosition(),
                 binding.key28.layoutYPosition(),
                 binding.key28.layoutXPosition() + binding.key28.width,
                 binding.key28.layoutYPosition() + binding.key28.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyHE,
+            KeyRect(
+                Key.KeyHE,
                 binding.key29.layoutXPosition(),
                 binding.key29.layoutYPosition(),
                 binding.key29.layoutXPosition() + binding.key29.width,
                 binding.key29.layoutYPosition() + binding.key29.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyHO,
+            KeyRect(
+                Key.KeyHO,
                 binding.key30.layoutXPosition(),
                 binding.key30.layoutYPosition(),
                 binding.key30.layoutXPosition() + binding.key30.width,
@@ -910,36 +922,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // な row
-            TabletKeyRect(
-                TabletKey.KeyNA,
+            KeyRect(
+                Key.KeyNA,
                 binding.key31.layoutXPosition(),
                 binding.key31.layoutYPosition(),
                 binding.key31.layoutXPosition() + binding.key31.width,
                 binding.key31.layoutYPosition() + binding.key31.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyNI,
+            KeyRect(
+                Key.KeyNI,
                 binding.key32.layoutXPosition(),
                 binding.key32.layoutYPosition(),
                 binding.key32.layoutXPosition() + binding.key32.width,
                 binding.key32.layoutYPosition() + binding.key32.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyNU,
+            KeyRect(
+                Key.KeyNU,
                 binding.key33.layoutXPosition(),
                 binding.key33.layoutYPosition(),
                 binding.key33.layoutXPosition() + binding.key33.width,
                 binding.key33.layoutYPosition() + binding.key33.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyNE,
+            KeyRect(
+                Key.KeyNE,
                 binding.key34.layoutXPosition(),
                 binding.key34.layoutYPosition(),
                 binding.key34.layoutXPosition() + binding.key34.width,
                 binding.key34.layoutYPosition() + binding.key34.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyNO,
+            KeyRect(
+                Key.KeyNO,
                 binding.key35.layoutXPosition(),
                 binding.key35.layoutYPosition(),
                 binding.key35.layoutXPosition() + binding.key35.width,
@@ -947,36 +959,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // た row
-            TabletKeyRect(
-                TabletKey.KeyTA,
+            KeyRect(
+                Key.KeyTA,
                 binding.key36.layoutXPosition(),
                 binding.key36.layoutYPosition(),
                 binding.key36.layoutXPosition() + binding.key36.width,
                 binding.key36.layoutYPosition() + binding.key36.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyCHI,
+            KeyRect(
+                Key.KeyCHI,
                 binding.key37.layoutXPosition(),
                 binding.key37.layoutYPosition(),
                 binding.key37.layoutXPosition() + binding.key37.width,
                 binding.key37.layoutYPosition() + binding.key37.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyTSU,
+            KeyRect(
+                Key.KeyTSU,
                 binding.key38.layoutXPosition(),
                 binding.key38.layoutYPosition(),
                 binding.key38.layoutXPosition() + binding.key38.width,
                 binding.key38.layoutYPosition() + binding.key38.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyTE,
+            KeyRect(
+                Key.KeyTE,
                 binding.key39.layoutXPosition(),
                 binding.key39.layoutYPosition(),
                 binding.key39.layoutXPosition() + binding.key39.width,
                 binding.key39.layoutYPosition() + binding.key39.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyTO,
+            KeyRect(
+                Key.KeyTO,
                 binding.key40.layoutXPosition(),
                 binding.key40.layoutYPosition(),
                 binding.key40.layoutXPosition() + binding.key40.width,
@@ -984,36 +996,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // さ row
-            TabletKeyRect(
-                TabletKey.KeySA,
+            KeyRect(
+                Key.KeySA,
                 binding.key41.layoutXPosition(),
                 binding.key41.layoutYPosition(),
                 binding.key41.layoutXPosition() + binding.key41.width,
                 binding.key41.layoutYPosition() + binding.key41.height
             ),
-            TabletKeyRect(
-                TabletKey.KeySHI,
+            KeyRect(
+                Key.KeySHI,
                 binding.key42.layoutXPosition(),
                 binding.key42.layoutYPosition(),
                 binding.key42.layoutXPosition() + binding.key42.width,
                 binding.key42.layoutYPosition() + binding.key42.height
             ),
-            TabletKeyRect(
-                TabletKey.KeySU,
+            KeyRect(
+                Key.KeySU,
                 binding.key43.layoutXPosition(),
                 binding.key43.layoutYPosition(),
                 binding.key43.layoutXPosition() + binding.key43.width,
                 binding.key43.layoutYPosition() + binding.key43.height
             ),
-            TabletKeyRect(
-                TabletKey.KeySE,
+            KeyRect(
+                Key.KeySE,
                 binding.key44.layoutXPosition(),
                 binding.key44.layoutYPosition(),
                 binding.key44.layoutXPosition() + binding.key44.width,
                 binding.key44.layoutYPosition() + binding.key44.height
             ),
-            TabletKeyRect(
-                TabletKey.KeySO,
+            KeyRect(
+                Key.KeySO,
                 binding.key45.layoutXPosition(),
                 binding.key45.layoutYPosition(),
                 binding.key45.layoutXPosition() + binding.key45.width,
@@ -1021,36 +1033,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // か row
-            TabletKeyRect(
-                TabletKey.KeyKA,
+            KeyRect(
+                Key.KeyKA,
                 binding.key46.layoutXPosition(),
                 binding.key46.layoutYPosition(),
                 binding.key46.layoutXPosition() + binding.key46.width,
                 binding.key46.layoutYPosition() + binding.key46.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyKI,
+            KeyRect(
+                Key.KeyKI,
                 binding.key47.layoutXPosition(),
                 binding.key47.layoutYPosition(),
                 binding.key47.layoutXPosition() + binding.key47.width,
                 binding.key47.layoutYPosition() + binding.key47.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyKU,
+            KeyRect(
+                Key.KeyKU,
                 binding.key48.layoutXPosition(),
                 binding.key48.layoutYPosition(),
                 binding.key48.layoutXPosition() + binding.key48.width,
                 binding.key48.layoutYPosition() + binding.key48.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyKE,
+            KeyRect(
+                Key.KeyKE,
                 binding.key49.layoutXPosition(),
                 binding.key49.layoutYPosition(),
                 binding.key49.layoutXPosition() + binding.key49.width,
                 binding.key49.layoutYPosition() + binding.key49.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyKO,
+            KeyRect(
+                Key.KeyKO,
                 binding.key50.layoutXPosition(),
                 binding.key50.layoutYPosition(),
                 binding.key50.layoutXPosition() + binding.key50.width,
@@ -1058,36 +1070,36 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
 
             // あ row
-            TabletKeyRect(
-                TabletKey.KeyA,
+            KeyRect(
+                Key.KeyA,
                 binding.key51.layoutXPosition(),
                 binding.key51.layoutYPosition(),
                 binding.key51.layoutXPosition() + binding.key51.width,
                 binding.key51.layoutYPosition() + binding.key51.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyI,
+            KeyRect(
+                Key.KeyI,
                 binding.key52.layoutXPosition(),
                 binding.key52.layoutYPosition(),
                 binding.key52.layoutXPosition() + binding.key52.width,
                 binding.key52.layoutYPosition() + binding.key52.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyU,
+            KeyRect(
+                Key.KeyU,
                 binding.key53.layoutXPosition(),
                 binding.key53.layoutYPosition(),
                 binding.key53.layoutXPosition() + binding.key53.width,
                 binding.key53.layoutYPosition() + binding.key53.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyE,
+            KeyRect(
+                Key.KeyE,
                 binding.key54.layoutXPosition(),
                 binding.key54.layoutYPosition(),
                 binding.key54.layoutXPosition() + binding.key54.width,
                 binding.key54.layoutYPosition() + binding.key54.height
             ),
-            TabletKeyRect(
-                TabletKey.KeyO,
+            KeyRect(
+                Key.KeyO,
                 binding.key55.layoutXPosition(),
                 binding.key55.layoutYPosition(),
                 binding.key55.layoutXPosition() + binding.key55.width,
@@ -1108,7 +1120,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             val dy = y - centerY
             dx * dx + dy * dy
         }
-        return nearest?.key ?: TabletKey.NotSelected
+        return nearest?.key ?: Key.NotSelected
     }
 
     // --- Utility to get consistent absolute coordinates ---
