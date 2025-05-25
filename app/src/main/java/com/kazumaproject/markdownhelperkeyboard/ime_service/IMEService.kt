@@ -245,36 +245,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isTablet = resources.getBoolean(R.bool.isTablet)
         Timber.d("isTablet: $isTablet")
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
-        if (isTablet == true) {
-            tabletMainLayoutBinding = TabletMainLayoutBinding.inflate(LayoutInflater.from(ctx))
-            return tabletMainLayoutBinding?.root.apply {
-                tabletMainLayoutBinding?.let { tabletView ->
-
-                }
+        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
+        return mainLayoutBinding?.root.apply {
+            val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
+                flexDirection = FlexDirection.COLUMN
+                justifyContent = JustifyContent.SPACE_AROUND
             }
-        } else {
-            mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
-            return mainLayoutBinding?.root.apply {
-                val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
-                    flexDirection = FlexDirection.COLUMN
-                    justifyContent = JustifyContent.SPACE_AROUND
-                }
-                val flexboxLayoutManagerRow = FlexboxLayoutManager(applicationContext).apply {
-                    flexDirection = FlexDirection.ROW
-                    justifyContent = JustifyContent.FLEX_START
-                }
-                mainLayoutBinding?.let { mainView ->
-                    setSuggestionRecyclerView(
-                        mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
-                    )
-                    setSymbolKeyboard(mainView)
+            val flexboxLayoutManagerRow = FlexboxLayoutManager(applicationContext).apply {
+                flexDirection = FlexDirection.ROW
+                justifyContent = JustifyContent.FLEX_START
+            }
+            mainLayoutBinding?.let { mainView ->
+                setSuggestionRecyclerView(
+                    mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
+                )
+                setSymbolKeyboard(mainView)
+                if (isTablet == true) {
+
+                } else {
                     setTenKeyListeners(mainView)
-                    if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                        startScope(mainView)
-                    } else {
-                        scope.coroutineContext.cancelChildren()
-                        startScope(mainView)
-                    }
+                }
+                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                    startScope(mainView)
+                } else {
+                    scope.coroutineContext.cancelChildren()
+                    startScope(mainView)
                 }
             }
         }
@@ -466,7 +461,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         commitAfterEditTextJob = null
     }
 
-    private fun setTenKeyListeners(mainView: MainLayoutBinding) {
+    private fun setTenKeyListeners(
+        mainView: MainLayoutBinding
+    ) {
         mainView.keyboardView.apply {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -531,6 +528,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             })
         }
+    }
+
+    private fun setTabletKeyListeners(
+        mainView: MainLayoutBinding
+    ) {
+        
     }
 
     private fun handleTapAndFlick(
@@ -1174,7 +1177,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setSymbolKeyboard(mainView: MainLayoutBinding) {
+    private fun setSymbolKeyboard(
+        mainView: MainLayoutBinding
+    ) {
         mainView.keyboardSymbolView.apply {
             setLifecycleOwner(this@IMEService)
             setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
