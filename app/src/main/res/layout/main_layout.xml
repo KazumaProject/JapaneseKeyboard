@@ -53,7 +53,7 @@
         android:importantForAccessibility="yes"
         android:visibility="visible" />
 
-    <com.kazumaproject.markdownhelperkeyboard.ime_service.tablet.TabletKeyboardView
+    <com.kazumaproject.tabletkey.TabletKeyboardView
         android:id="@+id/tablet_view"
         android:layout_width="match_parent"
         android:layout_height="@dimen/keyboard_height"
