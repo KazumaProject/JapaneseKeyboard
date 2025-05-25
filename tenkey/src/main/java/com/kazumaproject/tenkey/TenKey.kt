@@ -23,6 +23,8 @@ import com.kazumaproject.core.key.KeyInfo
 import com.kazumaproject.core.key.KeyMap
 import com.kazumaproject.core.key.KeyRect
 import com.kazumaproject.core.state.GestureType
+import com.kazumaproject.core.state.InputMode
+import com.kazumaproject.core.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.state.PressedKey
 import com.kazumaproject.tenkey.extensions.hide
 import com.kazumaproject.tenkey.extensions.layoutXPosition
@@ -61,8 +63,6 @@ import com.kazumaproject.tenkey.extensions.setTextTapNumber
 import com.kazumaproject.tenkey.image_effect.ImageEffects
 import com.kazumaproject.tenkey.listener.FlickListener
 import com.kazumaproject.tenkey.listener.LongPressListener
-import com.kazumaproject.tenkey.state.InputMode
-import com.kazumaproject.tenkey.state.InputMode.ModeNumber.next
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -337,7 +337,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         val keyInfo =
-                            currentInputMode.get().next(tenKeyMap = keyMap, key = pressedKey.key)
+                            currentInputMode.get().next(keyMap = keyMap, key = pressedKey.key)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType, key = pressedKey.key, char = null
@@ -453,7 +453,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             )
                         }
                         val keyInfo =
-                            currentInputMode.get().next(tenKeyMap = keyMap, key = pressedKey.key)
+                            currentInputMode.get().next(keyMap = keyMap, key = pressedKey.key)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
@@ -546,7 +546,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 getGestureType(event, event.getPointerId(event.actionIndex))
                             val keyInfo =
                                 currentInputMode.get()
-                                    .next(tenKeyMap = keyMap, key = pressedKey.key)
+                                    .next(keyMap = keyMap, key = pressedKey.key)
                             if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null

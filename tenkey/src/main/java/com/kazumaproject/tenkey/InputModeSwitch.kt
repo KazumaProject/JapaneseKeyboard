@@ -3,7 +3,7 @@ package com.kazumaproject.tenkey
 import android.content.Context
 import android.util.AttributeSet
 import androidx.core.content.ContextCompat
-import com.kazumaproject.tenkey.state.InputMode
+import com.kazumaproject.core.state.InputMode
 
 class InputModeSwitch(context: Context, attrs: AttributeSet) :
     androidx.appcompat.widget.AppCompatImageButton(context, attrs) {
