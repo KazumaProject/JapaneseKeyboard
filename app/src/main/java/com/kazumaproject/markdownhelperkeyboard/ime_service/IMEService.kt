@@ -247,7 +247,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         if (isTablet == true) {
             tabletMainLayoutBinding = TabletMainLayoutBinding.inflate(LayoutInflater.from(ctx))
-            return tabletMainLayoutBinding?.root
+            return tabletMainLayoutBinding?.root.apply {
+                tabletMainLayoutBinding?.let { tabletView ->
+
+                }
+            }
         } else {
             mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
             return mainLayoutBinding?.root.apply {

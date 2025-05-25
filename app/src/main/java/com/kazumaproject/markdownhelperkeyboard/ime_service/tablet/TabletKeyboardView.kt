@@ -64,6 +64,10 @@ class TabletKeyboardView @JvmOverloads constructor(
         tabletKeyMap = TabletKeyMap()
     }
 
+    fun setOnFlickListener(flickListener: TabletFlickListener) {
+        this.flickListener = flickListener
+    }
+
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
             when (event.action and MotionEvent.ACTION_MASK) {
@@ -96,6 +100,55 @@ class TabletKeyboardView @JvmOverloads constructor(
                 MotionEvent.ACTION_UP -> {
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
+                        val keyInfo =
+                            currentInputMode.get().nextInTablet(
+                                tabletKeyMap = tabletKeyMap,
+                                tabletKey = pressedKey.tabletKey
+                            )
+                        if (keyInfo == TabletKeyInfo.Null) {
+                            flickListener?.onFlick(
+                                gestureType = gestureType,
+                                tabletKey = pressedKey.tabletKey,
+                                char = null
+                            )
+//                            if (pressedKey.tabletKey == TabletKeyInfo.SideKeyInputMode) {
+//                                handleClickInputModeSwitch()
+//                            }
+                        } else if (keyInfo is TabletKeyInfo.TabletTapFlickInfo) {
+                            when (gestureType) {
+                                GestureType.Null -> {}
+                                GestureType.Down -> {}
+                                GestureType.Tap -> flickListener?.onFlick(
+                                    gestureType = gestureType,
+                                    tabletKey = pressedKey.tabletKey,
+                                    char = keyInfo.tap,
+                                )
+
+                                GestureType.FlickLeft -> flickListener?.onFlick(
+                                    gestureType = gestureType,
+                                    tabletKey = pressedKey.tabletKey,
+                                    char = keyInfo.flickLeft,
+                                )
+
+                                GestureType.FlickTop -> flickListener?.onFlick(
+                                    gestureType = gestureType,
+                                    tabletKey = pressedKey.tabletKey,
+                                    char = keyInfo.flickTop,
+                                )
+
+                                GestureType.FlickRight -> flickListener?.onFlick(
+                                    gestureType = gestureType,
+                                    tabletKey = pressedKey.tabletKey,
+                                    char = keyInfo.flickRight,
+                                )
+
+                                GestureType.FlickBottom -> flickListener?.onFlick(
+                                    gestureType = gestureType,
+                                    tabletKey = pressedKey.tabletKey,
+                                    char = keyInfo.flickBottom,
+                                )
+                            }
+                        }
                     }
                     resetAllKeys()
                 }
