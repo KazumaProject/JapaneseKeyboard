@@ -16,21 +16,21 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
             InputMode.ModeJapanese -> setImageDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    R.drawable.input_mode_japanese_select
+                    com.kazumaproject.core.R.drawable.input_mode_japanese_select
                 )
             )
 
             InputMode.ModeEnglish -> setImageDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    R.drawable.input_mode_english_select
+                    com.kazumaproject.core.R.drawable.input_mode_english_select
                 )
             )
 
             InputMode.ModeNumber -> setImageDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    R.drawable.input_mode_number_select
+                    com.kazumaproject.core.R.drawable.input_mode_number_select
                 )
             )
         }

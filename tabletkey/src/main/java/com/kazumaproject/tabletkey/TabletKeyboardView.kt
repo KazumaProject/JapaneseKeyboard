@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.ime_service.tablet
+package com.kazumaproject.tabletkey
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -19,7 +19,7 @@ import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
 import com.kazumaproject.core.ui.appcompatbutton.layoutXPosition
 import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
-import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
+import com.kazumaproject.tabletkey.databinding.TabletLayoutBinding
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
