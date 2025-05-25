@@ -110,9 +110,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private fun setupTabs() {
         tabLayout = findViewById(R.id.bottom_tab_layout)
 
-        addCustomTab(tabLayout, R.drawable.mood_24px)
-        addCustomTab(tabLayout, R.drawable.emoticon_24px)
-        addCustomTab(tabLayout, R.drawable.star_24px)
+        addCustomTab(tabLayout, com.kazumaproject.core.R.drawable.mood_24px)
+        addCustomTab(tabLayout, com.kazumaproject.core.R.drawable.emoticon_24px)
+        addCustomTab(tabLayout, com.kazumaproject.core.R.drawable.star_24px)
 
         tabLayout.getTabAt(0)?.let {
             tabLayout.selectTab(it)
@@ -127,7 +127,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     updateSymbolsForTab(position)
                     val iconView = it.customView?.findViewById<ImageView>(R.id.tab_icon)
                     iconView?.setColorFilter(
-                        ContextCompat.getColor(context, R.color.tab_selected),
+                        ContextCompat.getColor(
+                            context,
+                            com.kazumaproject.core.R.color.tab_selected
+                        ),
                         android.graphics.PorterDuff.Mode.SRC_IN
                     )
                     iconView?.isSelected = true
@@ -138,7 +141,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 tab?.let {
                     val iconView = it.customView?.findViewById<ImageView>(R.id.tab_icon)
                     iconView?.setColorFilter(
-                        ContextCompat.getColor(context, R.color.tab_unselected),
+                        ContextCompat.getColor(
+                            context,
+                            com.kazumaproject.core.R.color.tab_unselected
+                        ),
                         android.graphics.PorterDuff.Mode.SRC_IN
                     )
                     iconView?.isSelected = false
@@ -153,7 +159,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         tabLayout.getTabAt(tabPosition)?.let {
             tabLayout.getTabAt(tabPosition)?.customView?.findViewById<ImageView>(R.id.tab_icon)
                 ?.setColorFilter(
-                    ContextCompat.getColor(context, R.color.tab_selected),
+                    ContextCompat.getColor(context, com.kazumaproject.core.R.color.tab_selected),
                     android.graphics.PorterDuff.Mode.SRC_IN
                 )
         }

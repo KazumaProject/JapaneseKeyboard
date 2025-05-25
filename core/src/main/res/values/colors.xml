@@ -53,4 +53,10 @@
 
     <color name="recycler_view_size_change_button_tint">#1C1C1C</color>
     <color name="side_key_disable_color">#A5AFBF</color>
+
+    <color name="selectedTabColor">#C9E7FD</color>
+    <color name="tab_selected">#ff1C1C1C</color>
+    <color name="tab_unselected">#ff1C1C1C</color>
+    <color name="button_color">#A5AFBF</color>
+    <color name="symbol_text_color">#ff1C1C1C</color>
 </resources>
