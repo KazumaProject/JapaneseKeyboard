@@ -301,9 +301,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(
-                        GestureType.Down,
-                        key,
-                        null
+                        GestureType.Down, key, null
                     )
                     pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         PressedKey(
@@ -336,8 +334,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     resetLongPressAction()
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
-                        val keyInfo =
-                            currentInputMode.get().next(keyMap = keyMap, key = pressedKey.key)
+                        val keyInfo = currentInputMode.get()
+                            .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType, key = pressedKey.key, char = null
@@ -404,8 +402,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                             it.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context,
-                                    R.drawable.number_small
+                                    context, R.drawable.number_small
                                 )
                             )
                         }
@@ -447,13 +444,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.get() == InputMode.ModeNumber) {
                             keyDakutenSmall.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context,
-                                    R.drawable.number_small
+                                    context, R.drawable.number_small
                                 )
                             )
                         }
                         val keyInfo =
-                            currentInputMode.get().next(keyMap = keyMap, key = pressedKey.key)
+                            currentInputMode.get()
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
@@ -489,8 +486,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                         if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                                             it.setImageDrawable(
                                                 ContextCompat.getDrawable(
-                                                    context,
-                                                    R.drawable.number_small
+                                                    context, R.drawable.number_small
                                                 )
                                             )
                                         }
@@ -544,9 +540,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             resetLongPressAction()
                             val gestureType =
                                 getGestureType(event, event.getPointerId(event.actionIndex))
-                            val keyInfo =
-                                currentInputMode.get()
-                                    .next(keyMap = keyMap, key = pressedKey.key)
+                            val keyInfo = currentInputMode.get()
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                             if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null
@@ -667,134 +662,115 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 sideKeyPreviousChar.layoutYPosition(),
                 sideKeyPreviousChar.layoutXPosition() + sideKeyPreviousChar.width,
                 sideKeyPreviousChar.layoutYPosition() + sideKeyPreviousChar.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyA,
                 keyA.layoutXPosition(),
                 keyA.layoutYPosition(),
                 keyA.layoutXPosition() + keyA.width,
                 keyA.layoutYPosition() + keyA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyKA,
                 keyKA.layoutXPosition(),
                 keyKA.layoutYPosition(),
                 keyKA.layoutXPosition() + keyKA.width,
                 keyKA.layoutYPosition() + keyKA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeySA,
                 keySA.layoutXPosition(),
                 keySA.layoutYPosition(),
                 keySA.layoutXPosition() + keySA.width,
                 keySA.layoutYPosition() + keySA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyDelete,
                 sideKeyDelete.layoutXPosition(),
                 sideKeyDelete.layoutYPosition(),
                 sideKeyDelete.layoutXPosition() + sideKeyDelete.width,
                 sideKeyDelete.layoutYPosition() + sideKeyDelete.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyCursorLeft,
                 sideKeyCursorLeft.layoutXPosition(),
                 sideKeyCursorLeft.layoutYPosition(),
                 sideKeyCursorLeft.layoutXPosition() + sideKeyCursorLeft.width,
                 sideKeyCursorLeft.layoutYPosition() + sideKeyCursorLeft.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyTA,
                 keyTA.layoutXPosition(),
                 keyTA.layoutYPosition(),
                 keyTA.layoutXPosition() + keyTA.width,
                 keyTA.layoutYPosition() + keyTA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyNA,
                 keyNA.layoutXPosition(),
                 keyNA.layoutYPosition(),
                 keyNA.layoutXPosition() + keyNA.width,
                 keyNA.layoutYPosition() + keyNA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyHA,
                 keyHA.layoutXPosition(),
                 keyHA.layoutYPosition(),
                 keyHA.layoutXPosition() + keyHA.width,
                 keyHA.layoutYPosition() + keyHA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyCursorRight,
                 sideKeyCursorRight.layoutXPosition(),
                 sideKeyCursorRight.layoutYPosition(),
                 sideKeyCursorRight.layoutXPosition() + sideKeyCursorRight.width,
                 sideKeyCursorRight.layoutYPosition() + sideKeyCursorRight.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeySymbol,
                 sideKeySymbol.layoutXPosition(),
                 sideKeySymbol.layoutYPosition(),
                 sideKeySymbol.layoutXPosition() + sideKeySymbol.width,
                 sideKeySymbol.layoutYPosition() + sideKeySymbol.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyMA,
                 keyMA.layoutXPosition(),
                 keyMA.layoutYPosition(),
                 keyMA.layoutXPosition() + keyMA.width,
                 keyMA.layoutYPosition() + keyMA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyYA,
                 keyYA.layoutXPosition(),
                 keyYA.layoutYPosition(),
                 keyYA.layoutXPosition() + keyYA.width,
                 keyYA.layoutYPosition() + keyYA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyRA,
                 keyRA.layoutXPosition(),
                 keyRA.layoutYPosition(),
                 keyRA.layoutXPosition() + keyRA.width,
                 keyRA.layoutYPosition() + keyRA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeySpace,
                 sideKeySpace.layoutXPosition(),
                 sideKeySpace.layoutYPosition(),
                 sideKeySpace.layoutXPosition() + sideKeySpace.width,
                 sideKeySpace.layoutYPosition() + sideKeySpace.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyInputMode,
                 sideKeyInputModeSwitch.layoutXPosition(),
                 sideKeyInputModeSwitch.layoutYPosition(),
                 sideKeyInputModeSwitch.layoutXPosition() + sideKeyInputModeSwitch.width,
                 sideKeyInputModeSwitch.layoutYPosition() + sideKeyInputModeSwitch.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyDakutenSmall,
                 keyDakutenSmall.layoutXPosition(),
                 keyDakutenSmall.layoutYPosition(),
                 keyDakutenSmall.layoutXPosition() + keyDakutenSmall.width,
                 keyDakutenSmall.layoutYPosition() + keyDakutenSmall.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyWA,
                 keyWA.layoutXPosition(),
                 keyWA.layoutYPosition(),
                 keyWA.layoutXPosition() + keyWA.width,
                 keyWA.layoutYPosition() + keyWA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyKutouten,
                 keyKutouten.layoutXPosition(),
                 keyKutouten.layoutYPosition(),
                 keyKutouten.layoutXPosition() + keyKutouten.width,
                 keyKutouten.layoutYPosition() + keyKutouten.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyEnter,
                 sideKeyEnter.layoutXPosition(),
                 sideKeyEnter.layoutYPosition(),
@@ -1397,8 +1373,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setBackgroundSmallLetterKey(
         drawable: Drawable? = ContextCompat.getDrawable(
-            context,
-            R.drawable.logo_key
+            context, R.drawable.logo_key
         )
     ) {
         keyDakutenSmall.setImageDrawable(drawable)

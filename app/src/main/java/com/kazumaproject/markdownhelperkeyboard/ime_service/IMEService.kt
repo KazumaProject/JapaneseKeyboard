@@ -261,7 +261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
                 setSymbolKeyboard(mainView)
                 if (isTablet == true) {
-
+                    setTabletKeyListeners(mainView)
                 } else {
                     setTenKeyListeners(mainView)
                 }
@@ -533,7 +533,64 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setTabletKeyListeners(
         mainView: MainLayoutBinding
     ) {
+        mainView.tabletView.apply {
+            setOnFlickListener(object : FlickListener {
+                override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    Timber.d("Flick: $char $key $gestureType")
+                    val insertString = _inputString.value
+                    val sb = StringBuilder()
+                    val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
+                    when (gestureType) {
+                        GestureType.Null -> {
 
+                        }
+
+                        GestureType.Down -> {
+                            when (vibrationTimingStr) {
+                                "both" -> {
+                                    vibrate()
+                                }
+
+                                "press" -> {
+                                    vibrate()
+                                }
+
+                                "release" -> {
+
+                                }
+                            }
+                        }
+
+                        GestureType.Tap -> {
+                            handleTapAndFlick(
+                                key = key,
+                                char = char,
+                                insertString = insertString,
+                                sb = sb,
+                                isFlick = false,
+                                gestureType = gestureType,
+                                suggestions = suggestionList,
+                                mainView = mainView
+                            )
+                        }
+
+                        else -> {
+                            handleTapAndFlick(
+                                key = key,
+                                char = char,
+                                insertString = insertString,
+                                sb = sb,
+                                isFlick = true,
+                                gestureType = gestureType,
+                                suggestions = suggestionList,
+                                mainView = mainView
+                            )
+                        }
+                    }
+                }
+
+            })
+        }
     }
 
     private fun handleTapAndFlick(

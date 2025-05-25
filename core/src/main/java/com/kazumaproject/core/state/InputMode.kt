@@ -9,10 +9,10 @@ sealed class InputMode {
     data object ModeEnglish : InputMode()
     data object ModeNumber : InputMode()
 
-    fun InputMode.next(keyMap: KeyMap, key: Key): KeyInfo {
+    fun InputMode.next(keyMap: KeyMap, key: Key, isTablet: Boolean): KeyInfo {
         return when (this) {
             ModeJapanese -> {
-                keyMap.getKeyInfoJapanese(key)
+                keyMap.getKeyInfoJapanese(key, isTablet)
             }
 
             ModeEnglish -> {
