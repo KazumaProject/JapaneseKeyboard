@@ -1,6 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.tablet
 
-import com.kazumaproject.tenkey.state.InputMode
+import com.kazumaproject.core.state.InputMode
 
 fun InputMode.nextInTablet(tabletKeyMap: TabletKeyMap, tabletKey: TabletKey): TabletKeyInfo {
     return when (this) {

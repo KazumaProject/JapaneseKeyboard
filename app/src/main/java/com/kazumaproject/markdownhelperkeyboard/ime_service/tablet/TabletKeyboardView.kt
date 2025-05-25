@@ -9,10 +9,10 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.constraintlayout.widget.ConstraintLayout
 import com.kazumaproject.core.state.GestureType
+import com.kazumaproject.core.state.InputMode
 import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
-import com.kazumaproject.tenkey.state.InputMode
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
