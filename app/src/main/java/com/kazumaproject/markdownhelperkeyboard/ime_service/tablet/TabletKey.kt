@@ -57,6 +57,9 @@ sealed class TabletKey {
     data object KeyYU : TabletKey()
     data object KeyYO : TabletKey()
 
+    data object KeySPACE1 : TabletKey()
+    data object KeySPACE2 : TabletKey()
+
     // ら row
     data object KeyRA : TabletKey()
     data object KeyRI : TabletKey()

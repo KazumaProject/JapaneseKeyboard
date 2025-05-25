@@ -450,7 +450,6 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
-        android:clickable="false"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"
         android:textAllCaps="false"
@@ -470,7 +469,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ゆ"
         android:textAllCaps="false"
@@ -489,7 +487,6 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
-        android:clickable="false"
         android:elevation="@dimen/key_elevation"
         android:scaleType="fitCenter"
         android:textAllCaps="false"
@@ -1040,7 +1037,6 @@
         android:layout_marginBottom="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_そ"
         android:textAllCaps="false"
