@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.key.Key
 import com.kazumaproject.tenkey.extensions.hide
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
@@ -61,7 +62,6 @@ import com.kazumaproject.tenkey.listener.LongPressListener
 import com.kazumaproject.tenkey.state.GestureType
 import com.kazumaproject.tenkey.state.InputMode
 import com.kazumaproject.tenkey.state.InputMode.ModeNumber.next
-import com.kazumaproject.tenkey.state.Key
 import com.kazumaproject.tenkey.state.PressedKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -958,6 +958,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
 
             Key.NotSelected -> {}
+            else -> {}
         }
     }
 

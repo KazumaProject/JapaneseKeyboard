@@ -42,6 +42,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
+import com.kazumaproject.core.key.Key
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -75,7 +76,6 @@ import com.kazumaproject.tenkey.listener.FlickListener
 import com.kazumaproject.tenkey.listener.LongPressListener
 import com.kazumaproject.tenkey.state.GestureType
 import com.kazumaproject.tenkey.state.InputMode
-import com.kazumaproject.tenkey.state.Key
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -261,7 +261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
                 setSymbolKeyboard(mainView)
                 if (isTablet == true) {
-
+                    
                 } else {
                     setTenKeyListeners(mainView)
                 }
@@ -533,7 +533,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun setTabletKeyListeners(
         mainView: MainLayoutBinding
     ) {
-        
+
     }
 
     private fun handleTapAndFlick(

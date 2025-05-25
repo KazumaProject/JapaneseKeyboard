@@ -1,6 +1,6 @@
 package com.kazumaproject.tenkey.key
 
-import com.kazumaproject.tenkey.state.Key
+import com.kazumaproject.core.key.Key
 
 interface TenKeyMapHolder {
     val keysJapanese: Set<Key>

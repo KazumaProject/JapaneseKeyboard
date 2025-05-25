@@ -64,7 +64,7 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation project(':flexbox')
     implementation project(':tenkey')
-    implementation project(':bl')
+    implementation project(':core')
     implementation project(':symbol_keyboard')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.2'

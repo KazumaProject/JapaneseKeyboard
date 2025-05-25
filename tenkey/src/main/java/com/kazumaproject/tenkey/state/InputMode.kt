@@ -1,5 +1,6 @@
 package com.kazumaproject.tenkey.state
 
+import com.kazumaproject.core.key.Key
 import com.kazumaproject.tenkey.key.TenKeyInfo
 import com.kazumaproject.tenkey.key.TenKeyMap
 
