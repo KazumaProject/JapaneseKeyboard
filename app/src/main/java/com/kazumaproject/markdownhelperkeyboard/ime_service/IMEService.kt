@@ -180,52 +180,79 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
     private val cachedSpaceDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.space_bar)
+        ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.space_bar)
     }
     private val cachedLogoDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.logo_key)
+        ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.logo_key)
     }
     private val cachedKanaDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.kana_small)
+        ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.kana_small)
     }
     private val cachedHenkanDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.henkan)
+        ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.henkan)
     }
 
     private val cachedNumberDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.number_small)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.number_small
+        )
     }
 
     private val cachedArrowDropDownDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.outline_arrow_drop_down_24)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
+        )
     }
 
     private val cachedArrowDropUpDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.outline_arrow_drop_up_24)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
+        )
     }
 
     private val cachedArrowRightDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_arrow_right_alt_24)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.baseline_arrow_right_alt_24
+        )
     }
 
     private val cachedReturnDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_keyboard_return_24)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+        )
     }
 
     private val cachedTabDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.keyboard_tab_24px)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.keyboard_tab_24px
+        )
     }
 
     private val cachedCheckDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_check_24)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.baseline_check_24
+        )
     }
 
     private val cachedSearchDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.baseline_search_24)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.baseline_search_24
+        )
     }
 
     private val cachedEnglishDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, R.drawable.english_small)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.english_small
+        )
     }
 
     companion object {
@@ -240,7 +267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     override fun onCreateInputView(): View? {
-        isTablet = resources.getBoolean(R.bool.isTablet)
+        isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
         Timber.d("isTablet: $isTablet")
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
@@ -1605,7 +1632,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (isContinuousTapInputEnabled.get() && lastFlickConvertedNextHiragana.get()) {
             spannableString.apply {
                 setSpan(
-                    BackgroundColorSpan(getColor(R.color.green)),
+                    BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.green)),
                     0,
                     inputLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
@@ -1623,13 +1650,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             spannableString.apply {
                 setSpan(
-                    BackgroundColorSpan(getColor(R.color.green)),
+                    BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.green)),
                     0,
                     lastCharStart,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
                 )
                 setSpan(
-                    BackgroundColorSpan(getColor(R.color.char_in_edit_color)),
+                    BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.char_in_edit_color)),
                     lastCharStart,
                     inputLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
@@ -1649,7 +1676,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         spannableString.apply {
             setSpan(
-                BackgroundColorSpan(getColor(R.color.blue)),
+                BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.blue)),
                 0,
                 inputString.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
@@ -2732,7 +2759,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun applyComposingText(text: String, highlightLength: Int) {
         val spannableString = SpannableString(text)
         spannableString.setSpan(
-            BackgroundColorSpan(getColor(R.color.orange)),
+            BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.orange)),
             0,
             highlightLength,
             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
