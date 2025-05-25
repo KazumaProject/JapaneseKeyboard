@@ -66,6 +66,7 @@ dependencies {
     implementation project(':tenkey')
     implementation project(':core')
     implementation project(':symbol_keyboard')
+    implementation project(':tabletkey')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.2'
 
