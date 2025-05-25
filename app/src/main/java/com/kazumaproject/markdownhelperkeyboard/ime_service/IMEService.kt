@@ -43,6 +43,7 @@ import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.key.Key
+import com.kazumaproject.core.state.GestureType
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -74,7 +75,6 @@ import com.kazumaproject.tenkey.extensions.KEY_JAPANESE_SIZE
 import com.kazumaproject.tenkey.extensions.KEY_NUMBER_SIZE
 import com.kazumaproject.tenkey.listener.FlickListener
 import com.kazumaproject.tenkey.listener.LongPressListener
-import com.kazumaproject.tenkey.state.GestureType
 import com.kazumaproject.tenkey.state.InputMode
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
