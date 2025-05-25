@@ -1,4 +1,4 @@
-package com.kazumaproject.tenkey.listener
+package com.kazumaproject.core.listener
 
 import com.kazumaproject.core.key.Key
 import com.kazumaproject.core.state.GestureType

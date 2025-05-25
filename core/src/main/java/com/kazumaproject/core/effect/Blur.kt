@@ -1,10 +1,10 @@
-package com.kazumaproject.tenkey.image_effect
+package com.kazumaproject.core.effect
 
 import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.view.View
 
-object ImageEffects {
+object Blur {
     fun applyBlurEffect(view: View, blurRadius: Float) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             val blurEffect = RenderEffect.createBlurEffect(

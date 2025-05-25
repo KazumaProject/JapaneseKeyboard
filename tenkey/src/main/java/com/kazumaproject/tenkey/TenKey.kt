@@ -18,10 +18,13 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.effect.Blur
 import com.kazumaproject.core.key.Key
 import com.kazumaproject.core.key.KeyInfo
 import com.kazumaproject.core.key.KeyMap
 import com.kazumaproject.core.key.KeyRect
+import com.kazumaproject.core.listener.FlickListener
+import com.kazumaproject.core.listener.LongPressListener
 import com.kazumaproject.core.state.GestureType
 import com.kazumaproject.core.state.InputMode
 import com.kazumaproject.core.state.InputMode.ModeEnglish.next
@@ -60,9 +63,6 @@ import com.kazumaproject.tenkey.extensions.setTextFlickTopNumber
 import com.kazumaproject.tenkey.extensions.setTextTapEnglish
 import com.kazumaproject.tenkey.extensions.setTextTapJapanese
 import com.kazumaproject.tenkey.extensions.setTextTapNumber
-import com.kazumaproject.tenkey.image_effect.ImageEffects
-import com.kazumaproject.tenkey.listener.FlickListener
-import com.kazumaproject.tenkey.listener.LongPressListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -435,7 +435,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_POINTER_DOWN -> {
                     if (isLongPressed) {
                         hideAllPopWindow()
-                        ImageEffects.removeBlurEffect(this)
+                        Blur.removeBlurEffect(this)
                     }
                     popupWindowActive.hide()
                     longPressJob?.cancel()
@@ -965,7 +965,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun resetLongPressAction() {
         if (isLongPressed) {
             hideAllPopWindow()
-            ImageEffects.removeBlurEffect(this)
+            Blur.removeBlurEffect(this)
         }
         longPressJob?.cancel()
         isLongPressed = false
@@ -1064,7 +1064,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 popupWindowActive.setPopUpWindowCenter(
                     context, bubbleViewActive, it
                 )
-                ImageEffects.applyBlurEffect(this, 8f)
+                Blur.applyBlurEffect(this, 8f)
             }
 
             if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
@@ -1083,7 +1083,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 popupWindowActive.setPopUpWindowCenter(
                     context, bubbleViewActive, it
                 )
-                ImageEffects.applyBlurEffect(this, 8f)
+                Blur.applyBlurEffect(this, 8f)
             }
         }
     }
