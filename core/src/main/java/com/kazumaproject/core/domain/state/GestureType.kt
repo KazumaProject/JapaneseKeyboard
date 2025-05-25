@@ -1,4 +1,4 @@
-package com.kazumaproject.core.state
+package com.kazumaproject.core.domain.state
 
 sealed class GestureType {
     data object Null : GestureType()

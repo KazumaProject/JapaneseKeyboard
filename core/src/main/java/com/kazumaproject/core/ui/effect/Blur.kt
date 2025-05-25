@@ -1,4 +1,4 @@
-package com.kazumaproject.core.effect
+package com.kazumaproject.core.ui.effect
 
 import android.graphics.RenderEffect
 import android.graphics.Shader

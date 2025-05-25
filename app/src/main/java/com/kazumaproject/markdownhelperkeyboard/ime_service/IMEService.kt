@@ -42,11 +42,11 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
-import com.kazumaproject.core.key.Key
-import com.kazumaproject.core.listener.FlickListener
-import com.kazumaproject.core.listener.LongPressListener
-import com.kazumaproject.core.state.GestureType
-import com.kazumaproject.core.state.InputMode
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.LongPressListener
+import com.kazumaproject.core.domain.state.GestureType
+import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener

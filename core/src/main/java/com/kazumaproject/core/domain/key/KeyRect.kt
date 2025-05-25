@@ -1,4 +1,4 @@
-package com.kazumaproject.core.key
+package com.kazumaproject.core.domain.key
 
 data class KeyRect(
     val key: Key,

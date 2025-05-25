@@ -1,4 +1,4 @@
-package com.daasuu.bl;
+package com.kazumaproject.core.ui.key_window;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -9,16 +9,18 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.widget.FrameLayout;
 
+import com.kazumaproject.core.R;
+
 /**
  * Bubble View for Android with custom stroke width and color, arrow size, position and direction.
  * Created by sudamasayuki on 16/04/04.
  */
-public class BubbleLayout extends FrameLayout {
+public class KeyWindowLayout extends FrameLayout {
 
     public static float DEFAULT_STROKE_WIDTH = -1;
 
     private ArrowDirection mArrowDirection;
-    private Bubble mBubble;
+    private KeyWindows mKeyWindows;
 
     private float mArrowWidth;
     private float mCornersRadius;
@@ -28,15 +30,15 @@ public class BubbleLayout extends FrameLayout {
     private float mStrokeWidth;
     private int mStrokeColor;
 
-    public BubbleLayout(Context context) {
+    public KeyWindowLayout(Context context) {
         this(context, null, 0);
     }
 
-    public BubbleLayout(Context context, AttributeSet attrs) {
+    public KeyWindowLayout(Context context, AttributeSet attrs) {
         this(context, attrs, 0);
     }
 
-    public BubbleLayout(Context context, AttributeSet attrs, int defStyleAttr) {
+    public KeyWindowLayout(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
         TypedArray a = getContext().obtainStyledAttributes(attrs, R.styleable.BubbleLayout);
@@ -68,7 +70,7 @@ public class BubbleLayout extends FrameLayout {
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        if (mBubble != null) mBubble.draw(canvas);
+        if (mKeyWindows != null) mKeyWindows.draw(canvas);
         super.dispatchDraw(canvas);
     }
 
@@ -92,7 +94,7 @@ public class BubbleLayout extends FrameLayout {
             default:
                 break;
         }
-        mBubble = new Bubble(rectF, mArrowWidth, mCornersRadius, mArrowHeight, arrowPosition,
+        mKeyWindows = new KeyWindows(rectF, mArrowWidth, mCornersRadius, mArrowHeight, arrowPosition,
                 mStrokeWidth, mStrokeColor, mBubbleColor, mArrowDirection);
     }
 
@@ -169,54 +171,54 @@ public class BubbleLayout extends FrameLayout {
         return dp * (metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
     }
 
-    public BubbleLayout setArrowDirection(ArrowDirection arrowDirection) {
+    public KeyWindowLayout setArrowDirection(ArrowDirection arrowDirection) {
         resetPadding();
         mArrowDirection = arrowDirection;
         initPadding();
         return this;
     }
 
-    public BubbleLayout setArrowWidth(float arrowWidth) {
+    public KeyWindowLayout setArrowWidth(float arrowWidth) {
         resetPadding();
         mArrowWidth = arrowWidth;
         initPadding();
         return this;
     }
 
-    public BubbleLayout setCornersRadius(float cornersRadius) {
+    public KeyWindowLayout setCornersRadius(float cornersRadius) {
         mCornersRadius = cornersRadius;
         requestLayout();
         return this;
     }
 
-    public BubbleLayout setArrowHeight(float arrowHeight) {
+    public KeyWindowLayout setArrowHeight(float arrowHeight) {
         resetPadding();
         mArrowHeight = arrowHeight;
         initPadding();
         return this;
     }
 
-    public BubbleLayout setArrowPosition(float arrowPosition) {
+    public KeyWindowLayout setArrowPosition(float arrowPosition) {
         resetPadding();
         mArrowPosition = arrowPosition;
         initPadding();
         return this;
     }
 
-    public BubbleLayout setBubbleColor(int bubbleColor) {
+    public KeyWindowLayout setBubbleColor(int bubbleColor) {
         mBubbleColor = bubbleColor;
         requestLayout();
         return this;
     }
 
-    public BubbleLayout setStrokeWidth(float strokeWidth) {
+    public KeyWindowLayout setStrokeWidth(float strokeWidth) {
         resetPadding();
         mStrokeWidth = strokeWidth;
         initPadding();
         return this;
     }
 
-    public BubbleLayout setStrokeColor(int strokeColor) {
+    public KeyWindowLayout setStrokeColor(int strokeColor) {
         mStrokeColor = strokeColor;
         requestLayout();
         return this;

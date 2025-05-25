@@ -1,4 +1,4 @@
-package com.kazumaproject.core.key
+package com.kazumaproject.core.domain.key
 
 sealed class Key {
     // Original keys from TenKey (keep as is)
@@ -75,7 +75,6 @@ sealed class Key {
     data object KeySPACE2 : Key()
 
     data object KeyMinus : Key()
-    data object KeyDakuten : Key()
     data object KeyTouten : Key()
     data object KeyKuten : Key()
     data object KeyKagikakko : Key()
