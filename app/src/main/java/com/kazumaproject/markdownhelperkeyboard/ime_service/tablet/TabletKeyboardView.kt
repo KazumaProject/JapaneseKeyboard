@@ -17,9 +17,9 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.ui.appcompatbutton.layoutXPosition
+import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
 import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
-import com.kazumaproject.tenkey.extensions.layoutXPosition
-import com.kazumaproject.tenkey.extensions.layoutYPosition
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 

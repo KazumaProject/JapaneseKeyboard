@@ -17,7 +17,6 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
@@ -28,11 +27,12 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.ui.appcompatbutton.layoutXPosition
+import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
+import com.kazumaproject.core.ui.appcompatbutton.setIconColor
+import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.extensions.hide
-import com.kazumaproject.tenkey.extensions.layoutXPosition
-import com.kazumaproject.tenkey.extensions.layoutYPosition
-import com.kazumaproject.tenkey.extensions.setIconColor
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
 import com.kazumaproject.tenkey.extensions.setPopUpWindowCenter
 import com.kazumaproject.tenkey.extensions.setPopUpWindowFlickBottom
@@ -402,7 +402,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                             it.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context, R.drawable.number_small
+                                    context, com.kazumaproject.core.R.drawable.number_small
                                 )
                             )
                         }
@@ -444,7 +444,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.get() == InputMode.ModeNumber) {
                             keyDakutenSmall.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context, R.drawable.number_small
+                                    context, com.kazumaproject.core.R.drawable.number_small
                                 )
                             )
                         }
@@ -486,7 +486,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                         if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                                             it.setImageDrawable(
                                                 ContextCompat.getDrawable(
-                                                    context, R.drawable.number_small
+                                                    context,
+                                                    com.kazumaproject.core.R.drawable.number_small
                                                 )
                                             )
                                         }
@@ -1103,7 +1104,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
             }
             if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
-                it.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.open_bracket))
+                it.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        com.kazumaproject.core.R.drawable.open_bracket
+                    )
+                )
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 it.isPressed = true
                 if (isLongPressed) {
@@ -1373,7 +1379,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setBackgroundSmallLetterKey(
         drawable: Drawable? = ContextCompat.getDrawable(
-            context, R.drawable.logo_key
+            context, com.kazumaproject.core.R.drawable.logo_key
         )
     ) {
         keyDakutenSmall.setImageDrawable(drawable)
@@ -1394,9 +1400,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     fun setSideKeyPreviousState(state: Boolean) {
         sideKeyPreviousChar.isEnabled = state
         val colorResId = if (state) {
-            R.color.keyboard_icon_color
+            com.kazumaproject.core.R.color.keyboard_icon_color
         } else {
-            R.color.keyboard_icon_disable_color
+            com.kazumaproject.core.R.color.side_key_disable_color
         }
         sideKeyPreviousChar.setIconColor(colorResId)
     }

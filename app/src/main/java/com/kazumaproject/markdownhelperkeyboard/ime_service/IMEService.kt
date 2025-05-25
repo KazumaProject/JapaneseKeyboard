@@ -56,16 +56,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
-import com.kazumaproject.markdownhelperkeyboard.databinding.TabletMainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getDakutenSmallChar
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextInputChar
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getNextReturnInputChar
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isHiragana
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isLatinAlphabet
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -76,6 +70,11 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.extensions.KEY_ENGLISH_SIZE
 import com.kazumaproject.tenkey.extensions.KEY_JAPANESE_SIZE
 import com.kazumaproject.tenkey.extensions.KEY_NUMBER_SIZE
+import com.kazumaproject.tenkey.extensions.getDakutenSmallChar
+import com.kazumaproject.tenkey.extensions.getNextInputChar
+import com.kazumaproject.tenkey.extensions.getNextReturnInputChar
+import com.kazumaproject.tenkey.extensions.isHiragana
+import com.kazumaproject.tenkey.extensions.isLatinAlphabet
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -143,7 +142,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var leftLongPressJob: Job? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
-    private var tabletMainLayoutBinding: TabletMainLayoutBinding? = null
     private val _inputString = MutableStateFlow("")
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
@@ -382,7 +380,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mozcUTWeb = null
         actionInDestroy()
         System.gc()
-        tabletMainLayoutBinding = null
         isTablet = null
     }
 
