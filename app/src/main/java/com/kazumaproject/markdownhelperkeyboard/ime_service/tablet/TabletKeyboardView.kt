@@ -12,6 +12,9 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.TabletLayoutBinding
 import com.kazumaproject.tenkey.extensions.layoutXPosition
 import com.kazumaproject.tenkey.extensions.layoutYPosition
 import com.kazumaproject.tenkey.state.GestureType
+import com.kazumaproject.tenkey.state.InputMode
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.abs
 
 /**
  * A custom view that wraps the tablet keyboard layout and provides easy access
@@ -27,6 +30,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private val binding: TabletLayoutBinding =
         TabletLayoutBinding.inflate(LayoutInflater.from(context), this, true)
 
+    val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
     private lateinit var pressedKey: TabletPressedKey
 
     // All AppCompatButton keys (all the character keys)
@@ -51,10 +55,13 @@ class TabletKeyboardView @JvmOverloads constructor(
         binding.keyDelete, binding.keySpace, binding.keyEnter
     )
 
+    private var tabletKeyMap: TabletKeyMap
+
     private var flickListener: TabletFlickListener? = null
 
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
+        tabletKeyMap = TabletKeyMap()
     }
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
@@ -82,12 +89,15 @@ class TabletKeyboardView @JvmOverloads constructor(
                             initialY = event.getY(event.actionIndex),
                         )
                     }
-
+                    setKeyPressed()
                     return false
                 }
 
                 MotionEvent.ACTION_UP -> {
-
+                    if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                        val gestureType = getGestureType(event)
+                    }
+                    resetAllKeys()
                 }
 
                 MotionEvent.ACTION_MOVE -> {
@@ -113,6 +123,29 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private fun release() {
         flickListener = null
+    }
+
+    private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
+        val finalX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawX(pointer)
+        } else {
+            event.getX(pointer)
+        }
+        val finalY = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            event.getRawY(pointer)
+        } else {
+            event.getY(pointer)
+        }
+        val distanceX = finalX - pressedKey.initialX
+        val distanceY = finalY - pressedKey.initialY
+        return when {
+            abs(distanceX) < 100 && abs(distanceY) < 100 -> GestureType.Tap
+            abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
+            abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
+            abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
+            abs(distanceX) <= abs(distanceY) && pressedKey.initialY < finalY -> GestureType.FlickBottom
+            else -> GestureType.Null
+        }
     }
 
     private fun setKeyPressed() {
@@ -313,6 +346,16 @@ class TabletKeyboardView @JvmOverloads constructor(
             TabletKey.KeyYO -> {
                 resetAllKeys()
                 binding.key20.isPressed = true
+            }
+
+            TabletKey.KeySPACE1 -> {
+                resetAllKeys()
+                binding.key17.isPressed = true
+            }
+
+            TabletKey.KeySPACE2 -> {
+                resetAllKeys()
+                binding.key19.isPressed = true
             }
 
             // --- ら row ---
@@ -710,6 +753,13 @@ class TabletKeyboardView @JvmOverloads constructor(
             ),
             // key17 = (empty)
             TabletKeyRect(
+                TabletKey.KeySPACE1,
+                binding.key17.layoutXPosition(),
+                binding.key17.layoutYPosition(),
+                binding.key17.layoutXPosition() + binding.key17.width,
+                binding.key17.layoutYPosition() + binding.key17.height
+            ),
+            TabletKeyRect(
                 TabletKey.KeyYU,
                 binding.key18.layoutXPosition(),
                 binding.key18.layoutYPosition(),
@@ -717,6 +767,13 @@ class TabletKeyboardView @JvmOverloads constructor(
                 binding.key18.layoutYPosition() + binding.key18.height
             ),
             // key19 = (empty)
+            TabletKeyRect(
+                TabletKey.KeySPACE2,
+                binding.key19.layoutXPosition(),
+                binding.key19.layoutYPosition(),
+                binding.key19.layoutXPosition() + binding.key19.width,
+                binding.key19.layoutYPosition() + binding.key19.height
+            ),
             TabletKeyRect(
                 TabletKey.KeyYO,
                 binding.key20.layoutXPosition(),
