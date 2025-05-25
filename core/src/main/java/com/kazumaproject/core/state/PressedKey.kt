@@ -1,4 +1,4 @@
-package com.kazumaproject.tenkey.state
+package com.kazumaproject.core.state
 
 import com.kazumaproject.core.key.Key
 
