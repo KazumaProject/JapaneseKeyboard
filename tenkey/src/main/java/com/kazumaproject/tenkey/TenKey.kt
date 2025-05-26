@@ -530,7 +530,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                     }
-
                     return false
                 }
 

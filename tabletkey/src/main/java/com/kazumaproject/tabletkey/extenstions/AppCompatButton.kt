@@ -10,7 +10,7 @@ var KEY_JAPANESE_SIZE = 17f
 var KEY_ENGLISH_SIZE = 14f
 var KEY_NUMBER_SIZE = 18f
 
-fun AppCompatButton.setTenKeyTextJapanese(keyId: Int) {
+fun AppCompatButton.setTabletKeyTextJapanese(keyId: Int) {
     textSize = KEY_JAPANESE_SIZE
     setTextColor(
         ContextCompat.getColor(
