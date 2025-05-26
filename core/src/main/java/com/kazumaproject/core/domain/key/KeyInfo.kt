@@ -1084,9 +1084,9 @@ sealed class KeyInfo {
         override val flickLeft: Char
             get() = '「'
         override val flickTop: Char
-            get() = '('
-        override val flickRight: Char
             get() = '」'
+        override val flickRight: Char
+            get() = '('
         override val flickBottom: Char
             get() = ')'
     }
@@ -1119,7 +1119,7 @@ sealed class KeyInfo {
 
     object KeyKUTENJapanese : KeyTapFlickInfo() {
         override val tap: Char
-            get() = '、'
+            get() = '。'
         override val flickLeft: Char?
             get() = null
         override val flickTop: Char?
@@ -1132,7 +1132,7 @@ sealed class KeyInfo {
 
     object KeyTOUTENJapanese : KeyTapFlickInfo() {
         override val tap: Char
-            get() = '。'
+            get() = '、'
         override val flickLeft: Char?
             get() = null
         override val flickTop: Char?
