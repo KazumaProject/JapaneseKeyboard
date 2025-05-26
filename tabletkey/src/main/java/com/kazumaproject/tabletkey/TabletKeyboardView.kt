@@ -30,17 +30,22 @@ import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tabletkey.databinding.TabletLayoutBinding
-import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickBottom
-import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickLeft
-import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickRight
-import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickTap
-import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickTop
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowBottom
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowCenter
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowFlickBottom
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowFlickLeft
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowFlickRight
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowFlickTap
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowFlickTop
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowLeft
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowRight
+import com.kazumaproject.tabletkey.extenstions.setPopUpWindowTop
+import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickBottomJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickLeftJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickRightJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickTopJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextTapJapanese
-import com.kazumaproject.tabletkey.extenstions.setTenKeyTextJapanese
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -362,7 +367,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                         if (it is AppCompatButton) {
                             when (currentInputMode.get()) {
                                 InputMode.ModeJapanese -> {
-                                    it.setTenKeyTextJapanese(it.id)
+                                    it.setTabletKeyTextJapanese(it.id)
                                 }
 
                                 InputMode.ModeEnglish -> {
@@ -386,15 +391,197 @@ class TabletKeyboardView @JvmOverloads constructor(
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    val gestureType =
+                        if (event.pointerCount == 1) getGestureType(event, 0) else getGestureType(
+                            event, pressedKey.pointer
+                        )
+                    when (gestureType) {
+                        GestureType.Null -> {}
+                        GestureType.Down -> {}
+                        GestureType.Tap -> {
+                            setTapInActionMove()
+                        }
 
+                        GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
+                            setFlickInActionMove(gestureType)
+                        }
+                    }
+                    return false
                 }
 
                 MotionEvent.ACTION_POINTER_DOWN -> {
+                    if (isLongPressed) {
+                        hideAllPopWindow()
+                        Blur.removeBlurEffect(this)
+                    }
+                    popupWindowActive.hide()
+                    longPressJob?.cancel()
+                    if (event.pointerCount == 2) {
+                        isLongPressed = false
+                        val pointer = event.getPointerId(event.actionIndex)
+                        val key = pressedKeyByMotionEvent(event, pointer)
+                        val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
+                        val keyInfo =
+                            currentInputMode.get()
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                        if (keyInfo == KeyInfo.Null) {
+                            flickListener?.onFlick(
+                                gestureType = gestureType2, key = pressedKey.key, char = null
+                            )
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+                            when (gestureType2) {
+                                GestureType.Null -> {}
+                                GestureType.Down -> {}
+                                GestureType.Tap -> {
+                                    flickListener?.onFlick(
+                                        gestureType = gestureType2,
+                                        key = pressedKey.key,
+                                        char = keyInfo.tap,
+                                    )
+                                    val button = getButtonFromKey(pressedKey.key)
+                                    button?.let {
+                                        if (it is AppCompatButton) {
+                                            if (it == binding.key10) return false
+                                            when (currentInputMode.get()) {
+                                                InputMode.ModeJapanese -> {
+                                                    it.setTabletKeyTextJapanese(it.id)
+                                                }
 
+                                                InputMode.ModeEnglish -> {
+
+                                                }
+
+                                                InputMode.ModeNumber -> {
+
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
+                                    setFlickActionPointerDown(keyInfo, gestureType2)
+                                }
+                            }
+                        }
+                        pressedKey = pressedKey.copy(
+                            key = key,
+                            pointer = pointer,
+                            initialX = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawX(0)
+                            } else {
+                                event.getX(0)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawX(1)
+                            } else {
+                                event.getX(1)
+                            },
+                            initialY = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawY(0)
+                            } else {
+                                event.getY(0)
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                event.getRawY(1)
+                            } else {
+                                event.getY(1)
+                            },
+                        )
+                        setKeyPressed()
+                        longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                            delay(ViewConfiguration.getLongPressTimeout().toLong())
+                            if (pressedKey.key != Key.NotSelected) {
+                                longPressListener?.onLongPress(pressedKey.key)
+                                isLongPressed = true
+                                onLongPressed()
+                            }
+                        }
+                    }
+                    return false
                 }
 
                 MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.pointerCount == 2) {
+                        if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
+                            resetLongPressAction()
+                            val gestureType =
+                                getGestureType(event, event.getPointerId(event.actionIndex))
+                            val keyInfo = currentInputMode.get()
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                            if (keyInfo == KeyInfo.Null) {
+                                flickListener?.onFlick(
+                                    gestureType = gestureType, key = pressedKey.key, char = null
+                                )
+//                                if (pressedKey.key == Key.SideKeyInputMode) {
+//                                    handleClickInputModeSwitch()
+//                                }
+                            } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+                                when (gestureType) {
+                                    GestureType.Null -> {}
+                                    GestureType.Down -> {}
+                                    GestureType.Tap -> flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.tap,
+                                    )
 
+                                    GestureType.FlickLeft -> flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickLeft,
+                                    )
+
+                                    GestureType.FlickTop -> flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickTop,
+                                    )
+
+                                    GestureType.FlickRight -> flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickRight,
+                                    )
+
+                                    GestureType.FlickBottom -> flickListener?.onFlick(
+                                        gestureType = gestureType,
+                                        key = pressedKey.key,
+                                        char = keyInfo.flickBottom,
+                                    )
+                                }
+                            }
+                            val button = getButtonFromKey(pressedKey.key)
+                            button?.let {
+                                if (it is AppCompatButton) {
+                                    if (it == binding.key10) return false
+                                    it.isPressed = false
+                                    when (currentInputMode.get()) {
+                                        InputMode.ModeJapanese -> {
+                                            it.setTabletKeyTextJapanese(it.id)
+                                        }
+
+                                        InputMode.ModeEnglish -> {
+
+                                        }
+
+                                        InputMode.ModeNumber -> {
+
+                                        }
+                                    }
+                                }
+                            }
+                            pressedKey = pressedKey.copy(
+                                key = Key.NotSelected,
+                            )
+                            popupWindowActive.hide()
+                        }
+                        return false
+
+                    }
+                    return false
+                }
+
+                else -> {
+                    return false
                 }
             }
         }
@@ -1449,4 +1636,293 @@ class TabletKeyboardView @JvmOverloads constructor(
         popupWindowCenter.hide()
     }
 
+    private fun setTapInActionMove() {
+        if (!isLongPressed) popupWindowActive.hide()
+        val button = getButtonFromKey(pressedKey.key)
+        button?.let {
+            if (it is AppCompatButton) {
+                if (it == binding.key10) return
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        it.setTabletKeyTextJapanese(it.id)
+                        if (isLongPressed) popTextActive.setTabletTextTapJapanese(it.id)
+                    }
+
+                    InputMode.ModeEnglish -> {
+
+                    }
+
+                    InputMode.ModeNumber -> {
+
+                    }
+                }
+                it.isPressed = true
+                if (isLongPressed) {
+                    popupWindowActive.setPopUpWindowCenter(
+                        context, bubbleViewActive, it
+                    )
+                }
+            }
+        }
+    }
+
+    private fun setFlickInActionMove(gestureType: GestureType) {
+        longPressJob?.cancel()
+        val button = getButtonFromKey(pressedKey.key)
+        button?.let {
+            if (it is AppCompatButton) {
+                if (it == binding.key10) return
+                if (!isLongPressed) it.text = ""
+                when (gestureType) {
+                    GestureType.FlickLeft -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setTabletTextFlickLeftJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setTabletTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+
+                            }
+
+                            InputMode.ModeNumber -> {
+
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowLeft(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            popupWindowActive.setPopUpWindowFlickLeft(
+                                context, bubbleViewActive, it
+                            )
+                        }
+                    }
+
+                    GestureType.FlickTop -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setTabletTextFlickTopJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setTabletTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+
+                            }
+
+                            InputMode.ModeNumber -> {
+
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowTop(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            popupWindowActive.setPopUpWindowFlickTop(
+                                context, bubbleViewActive, it
+                            )
+                        }
+                    }
+
+                    GestureType.FlickRight -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setTabletTextFlickRightJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setTabletTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+
+                            }
+
+                            InputMode.ModeNumber -> {
+
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowRight(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickRight(
+                                    context, bubbleViewActive, it
+                                )
+                            }
+                        }
+                    }
+
+                    GestureType.FlickBottom -> {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                popTextActive.setTabletTextFlickBottomJapanese(it.id)
+                                if (isLongPressed) popTextCenter.setTabletTextTapJapanese(it.id)
+                            }
+
+                            InputMode.ModeEnglish -> {
+
+                            }
+
+                            InputMode.ModeNumber -> {
+
+                            }
+                        }
+                        if (isLongPressed) {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowBottom(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
+                        } else {
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickBottom(
+                                    context, bubbleViewActive, it
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+
+                    }
+                }
+                it.isPressed = false
+            }
+//            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.key10) {
+//                if (!isLongPressed) it.setImageDrawable(null)
+//                when (gestureType) {
+//                    GestureType.FlickLeft -> {
+//                        popTextActive.setTextFlickLeftNumber(it.id)
+//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
+//                        if (isLongPressed) {
+//                            popupWindowCenter.setPopUpWindowCenter(
+//                                context, bubbleViewCenter, it
+//                            )
+//                            popupWindowActive.setPopUpWindowLeft(
+//                                context, bubbleViewActive, it
+//                            )
+//                        } else {
+//                            popupWindowActive.setPopUpWindowFlickLeft(
+//                                context, bubbleViewActive, it
+//                            )
+//                        }
+//                    }
+//
+//                    GestureType.FlickTop -> {
+//                        popTextActive.setTextFlickTopNumber(it.id)
+//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
+//                        if (isLongPressed) {
+//                            popupWindowCenter.setPopUpWindowCenter(
+//                                context, bubbleViewCenter, it
+//                            )
+//                            popupWindowActive.setPopUpWindowTop(
+//                                context, bubbleViewActive, it
+//                            )
+//                        } else {
+//                            popupWindowActive.setPopUpWindowFlickTop(
+//                                context, bubbleViewActive, it
+//                            )
+//                        }
+//                    }
+//
+//                    GestureType.FlickRight -> {
+//                        popTextActive.setTextFlickRightNumber(it.id)
+//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
+//                        if (isLongPressed) {
+//                            popupWindowCenter.setPopUpWindowCenter(
+//                                context, bubbleViewCenter, it
+//                            )
+//                            popupWindowActive.setPopUpWindowRight(
+//                                context, bubbleViewActive, it
+//                            )
+//                        } else {
+//                            popupWindowActive.setPopUpWindowFlickRight(
+//                                context, bubbleViewActive, it
+//                            )
+//                        }
+//                    }
+//
+//                    GestureType.FlickBottom -> {
+//                        popTextActive.setTextFlickBottomNumber(it.id)
+//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
+//                        if (isLongPressed) {
+//                            popupWindowCenter.setPopUpWindowCenter(
+//                                context, bubbleViewCenter, it
+//                            )
+//                            popupWindowActive.setPopUpWindowBottom(
+//                                context, bubbleViewActive, it
+//                            )
+//                        } else {
+//                            popupWindowActive.setPopUpWindowFlickBottom(
+//                                context, bubbleViewActive, it
+//                            )
+//                        }
+//                    }
+//
+//                    else -> {
+//
+//                    }
+//                }
+//                it.isPressed = false
+//            }
+        }
+    }
+
+    private fun setFlickActionPointerDown(keyInfo: KeyInfo, gestureType: GestureType) {
+        if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+            val charToSend = when (gestureType) {
+                GestureType.Tap -> keyInfo.tap
+                GestureType.FlickLeft -> keyInfo.flickLeft
+                GestureType.FlickTop -> keyInfo.flickTop
+                GestureType.FlickRight -> keyInfo.flickRight
+                GestureType.FlickBottom -> keyInfo.flickBottom
+                GestureType.Down -> null
+                GestureType.Null -> null
+            }
+            flickListener?.onFlick(
+                gestureType = gestureType,
+                key = pressedKey.key,
+                char = charToSend,
+            )
+            val button = getButtonFromKey(pressedKey.key)
+            button?.let {
+                if (it is AppCompatButton) {
+                    if (it == binding.key10) return
+                    when (currentInputMode.get()) {
+                        InputMode.ModeJapanese -> {
+                            it.setTabletKeyTextJapanese(it.id)
+                        }
+
+                        InputMode.ModeEnglish -> {
+
+                        }
+
+                        InputMode.ModeNumber -> {
+
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
