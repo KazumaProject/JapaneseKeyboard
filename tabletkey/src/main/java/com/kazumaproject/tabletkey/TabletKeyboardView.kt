@@ -7,19 +7,45 @@ import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import android.widget.PopupWindow
+import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
+import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
 import com.kazumaproject.core.domain.key.KeyRect
 import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
 import com.kazumaproject.core.ui.appcompatbutton.layoutXPosition
 import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
+import com.kazumaproject.core.ui.effect.Blur
+import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tabletkey.databinding.TabletLayoutBinding
+import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickBottom
+import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickLeft
+import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickRight
+import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickTap
+import com.kazumaproject.tabletkey.extensions.setPopUpWindowFlickTop
+import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickBottomJapanese
+import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickLeftJapanese
+import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickRightJapanese
+import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickTopJapanese
+import com.kazumaproject.tabletkey.extenstions.setTabletTextTapJapanese
+import com.kazumaproject.tabletkey.extenstions.setTenKeyTextJapanese
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
@@ -62,17 +88,179 @@ class TabletKeyboardView @JvmOverloads constructor(
         binding.keyDelete, binding.keySpace, binding.keyEnter
     )
 
+    private val listKeys: Map<Key, Any> = mapOf(
+        // あ row
+        Key.KeyA to binding.key51,
+        Key.KeyI to binding.key52,
+        Key.KeyU to binding.key53,
+        Key.KeyE to binding.key54,
+        Key.KeyO to binding.key55,
+
+        // か row
+        Key.KeyKA to binding.key46,
+        Key.KeyKI to binding.key47,
+        Key.KeyKU to binding.key48,
+        Key.KeyKE to binding.key49,
+        Key.KeyKO to binding.key50,
+
+        // さ row
+        Key.KeySA to binding.key41,
+        Key.KeySHI to binding.key42,
+        Key.KeySU to binding.key43,
+        Key.KeySE to binding.key44,
+        Key.KeySO to binding.key45,
+
+        // た row
+        Key.KeyTA to binding.key36,
+        Key.KeyCHI to binding.key37,
+        Key.KeyTSU to binding.key38,
+        Key.KeyTE to binding.key39,
+        Key.KeyTO to binding.key40,
+
+        // な row
+        Key.KeyNA to binding.key31,
+        Key.KeyNI to binding.key32,
+        Key.KeyNU to binding.key33,
+        Key.KeyNE to binding.key34,
+        Key.KeyNO to binding.key35,
+
+        // は row
+        Key.KeyHA to binding.key26,
+        Key.KeyHI to binding.key27,
+        Key.KeyFU to binding.key28,
+        Key.KeyHE to binding.key29,
+        Key.KeyHO to binding.key30,
+
+        // ま row
+        Key.KeyMA to binding.key21,
+        Key.KeyMI to binding.key22,
+        Key.KeyMU to binding.key23,
+        Key.KeyME to binding.key24,
+        Key.KeyMO to binding.key25,
+
+        // や row
+        Key.KeyYA to binding.key16,
+        Key.KeySPACE1 to binding.key17,
+        Key.KeyYU to binding.key18,
+        Key.KeySPACE2 to binding.key19,
+        Key.KeyYO to binding.key20,
+
+        // ら row
+        Key.KeyRA to binding.key11,
+        Key.KeyRI to binding.key12,
+        Key.KeyRU to binding.key13,
+        Key.KeyRE to binding.key14,
+        Key.KeyRO to binding.key15,
+
+        // わ row
+        Key.KeyWA to binding.key6,
+        Key.KeyWO to binding.key7,
+        Key.KeyN to binding.key8,
+        Key.KeyMinus to binding.key9,
+
+        // symbols & modifiers
+        Key.KeyDakutenSmall to binding.key10,
+        Key.KeyKagikakko to binding.key1,
+        Key.KeyQuestion to binding.key2,
+        Key.KeyCaution to binding.key3,
+        Key.KeyTouten to binding.key4,
+        Key.KeyKuten to binding.key5,
+
+        // side keys
+        Key.SideKeySymbol to binding.keyKigou,
+        Key.SideKeyEnglish to binding.keyEnglish,
+        Key.SideKeyJapanese to binding.keyJapanese,
+        Key.SideKeyCursorLeft to binding.keyLeftCursor,
+        Key.SideKeyCursorRight to binding.keyRightCursor,
+        Key.SideKeyDelete to binding.keyDelete,
+        Key.SideKeySpace to binding.keySpace,
+        Key.SideKeyEnter to binding.keyEnter,
+    )
+
     private var keyMap: KeyMap
     private var flickListener: FlickListener? = null
+    private var longPressListener: LongPressListener? = null
 
+    private var longPressJob: Job? = null
+    private var isLongPressed = false
+
+    private lateinit var popupWindowActive: PopupWindow
+    private lateinit var bubbleViewActive: KeyWindowLayout
+    private lateinit var popTextActive: MaterialTextView
+    private lateinit var popupWindowLeft: PopupWindow
+    private lateinit var bubbleViewLeft: KeyWindowLayout
+    private lateinit var popTextLeft: MaterialTextView
+    private lateinit var popupWindowTop: PopupWindow
+    private lateinit var bubbleViewTop: KeyWindowLayout
+    private lateinit var popTextTop: MaterialTextView
+    private lateinit var popupWindowRight: PopupWindow
+    private lateinit var bubbleViewRight: KeyWindowLayout
+    private lateinit var popTextRight: MaterialTextView
+    private lateinit var popupWindowBottom: PopupWindow
+    private lateinit var bubbleViewBottom: KeyWindowLayout
+    private lateinit var popTextBottom: MaterialTextView
+    private lateinit var popupWindowCenter: PopupWindow
+    private lateinit var bubbleViewCenter: KeyWindowLayout
+    private lateinit var popTextCenter: MaterialTextView
 
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
+        declarePopupWindows()
+    }
+
+    @SuppressLint("InflateParams")
+    private fun declarePopupWindows() {
+        val mPopWindowActive = PopupWindow(context)
+        val popupViewActive =
+            LayoutInflater.from(context).inflate(R.layout.popup_layout_active, null)
+        mPopWindowActive.contentView = popupViewActive
+
+        val mPopWindowLeft = PopupWindow(context)
+        val mPopWindowTop = PopupWindow(context)
+        val mPopWindowRight = PopupWindow(context)
+        val mPopWindowBottom = PopupWindow(context)
+        val mPopWindowCenter = PopupWindow(context)
+
+        val popupViewLeft = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewTop = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewRight = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewBottom = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+        val popupViewCenter = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
+
+        mPopWindowLeft.contentView = popupViewLeft
+        mPopWindowTop.contentView = popupViewTop
+        mPopWindowRight.contentView = popupViewRight
+        mPopWindowBottom.contentView = popupViewBottom
+        mPopWindowCenter.contentView = popupViewCenter
+
+        popupWindowActive = mPopWindowActive
+        popupWindowLeft = mPopWindowLeft
+        popupWindowTop = mPopWindowTop
+        popupWindowRight = mPopWindowRight
+        popupWindowBottom = mPopWindowBottom
+        popupWindowCenter = mPopWindowCenter
+
+        bubbleViewActive = mPopWindowActive.contentView.findViewById(R.id.bubble_layout_active)
+        popTextActive = mPopWindowActive.contentView.findViewById(R.id.popup_text_active)
+        bubbleViewLeft = mPopWindowLeft.contentView.findViewById(R.id.bubble_layout)
+        popTextLeft = mPopWindowLeft.contentView.findViewById(R.id.popup_text)
+        bubbleViewTop = mPopWindowTop.contentView.findViewById(R.id.bubble_layout)
+        popTextTop = mPopWindowTop.contentView.findViewById(R.id.popup_text)
+        bubbleViewRight = mPopWindowRight.contentView.findViewById(R.id.bubble_layout)
+        popTextRight = mPopWindowRight.contentView.findViewById(R.id.popup_text)
+        bubbleViewBottom = mPopWindowBottom.contentView.findViewById(R.id.bubble_layout)
+        popTextBottom = mPopWindowBottom.contentView.findViewById(R.id.popup_text)
+        bubbleViewCenter = mPopWindowCenter.contentView.findViewById(R.id.bubble_layout)
+        popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
     }
 
     fun setOnFlickListener(flickListener: FlickListener) {
         this.flickListener = flickListener
+    }
+
+    fun setOnLongPressListener(longPressListener: LongPressListener) {
+        this.longPressListener = longPressListener
     }
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
@@ -101,10 +289,19 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                     }
                     setKeyPressed()
+                    longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                        delay(ViewConfiguration.getLongPressTimeout().toLong())
+                        if (pressedKey.key != Key.NotSelected) {
+                            longPressListener?.onLongPress(pressedKey.key)
+                            isLongPressed = true
+                            onLongPressed()
+                        }
+                    }
                     return false
                 }
 
                 MotionEvent.ACTION_UP -> {
+                    resetLongPressAction()
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         val keyInfo =
@@ -159,6 +356,33 @@ class TabletKeyboardView @JvmOverloads constructor(
                         }
                     }
                     resetAllKeys()
+                    popupWindowActive.hide()
+                    val button = getButtonFromKey(pressedKey.key)
+                    button?.let {
+                        if (it is AppCompatButton) {
+                            when (currentInputMode.get()) {
+                                InputMode.ModeJapanese -> {
+                                    it.setTenKeyTextJapanese(it.id)
+                                }
+
+                                InputMode.ModeEnglish -> {
+                                    //it.setTenKeyTextEnglish(it.id)
+                                }
+
+                                InputMode.ModeNumber -> {
+                                    //it.setTenKeyTextNumber(it.id)
+                                }
+                            }
+                        }
+                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.key10) {
+                            it.setImageDrawable(
+                                ContextCompat.getDrawable(
+                                    context, com.kazumaproject.core.R.drawable.number_small
+                                )
+                            )
+                        }
+                    }
+                    return false
                 }
 
                 MotionEvent.ACTION_MOVE -> {
@@ -184,6 +408,9 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private fun release() {
         flickListener = null
+        longPressListener = null
+        longPressJob?.cancel()
+        longPressJob = null
     }
 
     private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
@@ -1133,6 +1360,86 @@ class TabletKeyboardView @JvmOverloads constructor(
             this.getLocationOnScreen(location)
             (event.getX(pointer) + location[0]) to (event.getY(pointer) + location[1])
         }
+    }
+
+    private fun resetLongPressAction() {
+        if (isLongPressed) {
+            hideAllPopWindow()
+            Blur.removeBlurEffect(this)
+        }
+        longPressJob?.cancel()
+        isLongPressed = false
+    }
+
+    private fun getButtonFromKey(key: Key): Any? {
+        return listKeys.getOrDefault(key, null)
+    }
+
+    private fun onLongPressed() {
+        val button = getButtonFromKey(pressedKey.key)
+        button?.let {
+            if (it is AppCompatButton) {
+                if (it.id == binding.key10.id || it.id == binding.key17.id || it.id == binding.key19.id) return
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        popTextTop.setTabletTextFlickTopJapanese(it.id)
+                        popTextLeft.setTabletTextFlickLeftJapanese(it.id)
+                        popTextBottom.setTabletTextFlickBottomJapanese(it.id)
+                        popTextRight.setTabletTextFlickRightJapanese(it.id)
+                        popTextActive.setTabletTextTapJapanese(it.id)
+                    }
+
+                    InputMode.ModeEnglish -> {
+
+                    }
+
+                    InputMode.ModeNumber -> {
+
+                    }
+                }
+
+                popupWindowTop.setPopUpWindowFlickTop(context, bubbleViewTop, it)
+                popupWindowLeft.setPopUpWindowFlickLeft(context, bubbleViewLeft, it)
+                popupWindowBottom.setPopUpWindowFlickBottom(
+                    context, bubbleViewBottom, it
+                )
+                popupWindowRight.setPopUpWindowFlickRight(
+                    context, bubbleViewRight, it
+                )
+                popupWindowActive.setPopUpWindowFlickTap(
+                    context, bubbleViewActive, it
+                )
+                Blur.applyBlurEffect(this, 8f)
+            }
+
+            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.key10) {
+//                popTextTop.setTextFlickTopNumber(it.id)
+//                popTextLeft.setTextFlickLeftNumber(it.id)
+//                popTextBottom.setTextFlickBottomNumber(it.id)
+//                popTextRight.setTextFlickRightNumber(it.id)
+                popupWindowTop.setPopUpWindowFlickTop(context, bubbleViewTop, it)
+                popupWindowLeft.setPopUpWindowFlickLeft(context, bubbleViewLeft, it)
+                popupWindowBottom.setPopUpWindowFlickBottom(
+                    context, bubbleViewBottom, it
+                )
+                popupWindowRight.setPopUpWindowFlickRight(
+                    context, bubbleViewRight, it
+                )
+                popupWindowActive.setPopUpWindowFlickTap(
+                    context, bubbleViewActive, it
+                )
+                Blur.applyBlurEffect(this, 8f)
+            }
+        }
+    }
+
+    private fun hideAllPopWindow() {
+        popupWindowActive.hide()
+        popupWindowLeft.hide()
+        popupWindowTop.hide()
+        popupWindowRight.hide()
+        popupWindowBottom.hide()
+        popupWindowCenter.hide()
     }
 
 }

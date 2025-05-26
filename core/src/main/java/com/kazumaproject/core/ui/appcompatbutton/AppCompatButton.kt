@@ -1,12 +1,10 @@
 package com.kazumaproject.core.ui.appcompatbutton
 
 
-import android.graphics.PorterDuff
 import android.text.SpannableString
 import android.text.style.RelativeSizeSpan
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
-import androidx.core.content.ContextCompat
 
 var KEY_JAPANESE_SIZE = 17f
 var KEY_ENGLISH_SIZE = 14f
@@ -60,8 +58,4 @@ fun AppCompatImageButton.layoutYPosition(): Int {
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[1]
-}
-
-fun AppCompatImageButton.setIconColor(colorResId: Int) {
-    this.setColorFilter(ContextCompat.getColor(this.context, colorResId), PorterDuff.Mode.SRC_IN)
 }

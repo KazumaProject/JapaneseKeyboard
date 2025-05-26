@@ -17,6 +17,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
@@ -29,10 +30,8 @@ import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
 import com.kazumaproject.core.ui.appcompatbutton.layoutXPosition
 import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
-import com.kazumaproject.core.ui.appcompatbutton.setIconColor
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
-import com.kazumaproject.tenkey.extensions.hide
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
 import com.kazumaproject.tenkey.extensions.setPopUpWindowCenter
 import com.kazumaproject.tenkey.extensions.setPopUpWindowFlickBottom
@@ -1029,15 +1028,18 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextTapNumber(it.id)
                     }
                 }
-
                 popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
                 popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
-                popupWindowBottom.setPopUpWindowBottom(
-                    context, bubbleViewBottom, it
-                )
-                popupWindowRight.setPopUpWindowRight(
-                    context, bubbleViewRight, it
-                )
+                if (popTextBottom.text.isNotEmpty()) {
+                    popupWindowBottom.setPopUpWindowBottom(
+                        context, bubbleViewBottom, it
+                    )
+                }
+                if (popTextRight.text.isNotEmpty()) {
+                    popupWindowRight.setPopUpWindowRight(
+                        context, bubbleViewRight, it
+                    )
+                }
                 popupWindowActive.setPopUpWindowCenter(
                     context, bubbleViewActive, it
                 )
@@ -1209,16 +1211,20 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowRight(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowRight(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
                         } else {
-                            popupWindowActive.setPopUpWindowFlickRight(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickRight(
+                                    context, bubbleViewActive, it
+                                )
+                            }
                         }
                     }
 
@@ -1240,16 +1246,20 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowBottom(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowBottom(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
                         } else {
-                            popupWindowActive.setPopUpWindowFlickBottom(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickBottom(
+                                    context, bubbleViewActive, it
+                                )
+                            }
                         }
                     }
 
@@ -1399,12 +1409,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setSideKeyPreviousState(state: Boolean) {
         sideKeyPreviousChar.isEnabled = state
-        val colorResId = if (state) {
-            com.kazumaproject.core.R.color.keyboard_icon_color
-        } else {
-            com.kazumaproject.core.R.color.side_key_disable_color
-        }
-        sideKeyPreviousChar.setIconColor(colorResId)
     }
 
     private fun handleClickInputModeSwitch() {

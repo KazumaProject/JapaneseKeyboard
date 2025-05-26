@@ -954,7 +954,6 @@
         android:layout_marginTop="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_さ"
         android:textAllCaps="false"
@@ -976,7 +975,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_し"
         android:textAllCaps="false"
@@ -996,7 +994,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_す"
         android:textAllCaps="false"
@@ -1016,7 +1013,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_せ"
         android:textAllCaps="false"
@@ -1255,7 +1251,7 @@
         app:layout_constraintTop_toBottomOf="@id/key_54"
         app:layout_constraintVertical_weight="1" />
 
-    <!-- Rightmost column (delete/space/enter/hide) -->
+    <!-- Rightmost column (delete/space/enter/com.kazumaproject.core.domain.extensions.hide) -->
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_delete"
         style="?android:attr/borderlessButtonStyle"
