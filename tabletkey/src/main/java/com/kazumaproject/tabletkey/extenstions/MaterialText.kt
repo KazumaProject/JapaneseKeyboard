@@ -63,7 +63,11 @@ private val TABLET_KEYS_WA = listOf('わ', null, 'ゎ', null, null)
 private val TABLET_KEYS_WO = listOf('を', null, null, null, null)
 private val TABLET_KEYS_N = listOf('ん', null, null, null, null)
 private val TABLET_KEYS_HYPHEN = listOf('ー', null, '-', '〜', null)
-private val TABLET_KEYS_WAVE = listOf('〜', null, null, null, null)
+private val TABLET_KEYS_KAGGIKAKKO = listOf('「', '「', '」', '(', ')')
+private val TABLET_KEYS_QUESTION = listOf('？', null, '?', null, null)
+private val TABLET_KEYS_CAUTION = listOf('！', null, '!', null, null)
+private val TABLET_KEYS_KUTEN = listOf('、', null, null, null, null)
+private val TABLET_KEYS_TOUTEN = listOf('。', null, null, null, null)
 fun MaterialTextView.setTabletFlickTextJapanese(keyId: Int, direction: FlickDirection) {
     val char = when (keyId) {
         // A GYO
@@ -126,6 +130,12 @@ fun MaterialTextView.setTabletFlickTextJapanese(keyId: Int, direction: FlickDire
         R.id.key_8 -> TABLET_KEYS_N.getOrNull(direction.index)
         R.id.key_9 -> TABLET_KEYS_HYPHEN.getOrNull(direction.index)
         R.id.key_10 -> null
+
+        R.id.key_1 -> TABLET_KEYS_KAGGIKAKKO.getOrNull(direction.index)
+        R.id.key_2 -> TABLET_KEYS_QUESTION.getOrNull(direction.index)
+        R.id.key_3 -> TABLET_KEYS_CAUTION.getOrNull(direction.index)
+        R.id.key_4 -> TABLET_KEYS_KUTEN.getOrNull(direction.index)
+        R.id.key_5 -> TABLET_KEYS_TOUTEN.getOrNull(direction.index)
         else -> null
     }
     text = char?.toString() ?: ""

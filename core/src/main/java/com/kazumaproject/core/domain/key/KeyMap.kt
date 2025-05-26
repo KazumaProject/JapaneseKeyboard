@@ -93,7 +93,7 @@ class KeyMap : KeyMapHolder {
         Key.KeyN to KeyInfo.KeyNNJapanese,
 
         // 記号等
-        Key.KeyKutouten to KeyInfo.KeyKUTENJapanese, // 、
+        Key.KeyKuten to KeyInfo.KeyKUTENJapanese, // 、
         Key.KeyTouten to KeyInfo.KeyTOUTENJapanese,  // 。
         Key.KeyMinus to KeyInfo.KeyMINUSJapanese,    // ー
         Key.KeyDakutenSmall to KeyInfo.KeyDAKUTENJapanese, // (No char)

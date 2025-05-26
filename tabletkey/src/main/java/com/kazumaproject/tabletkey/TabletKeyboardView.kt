@@ -1397,15 +1397,22 @@ class TabletKeyboardView @JvmOverloads constructor(
 
                     }
                 }
-
-                popupWindowTop.setPopUpWindowFlickTop(context, bubbleViewTop, it)
-                popupWindowLeft.setPopUpWindowFlickLeft(context, bubbleViewLeft, it)
-                popupWindowBottom.setPopUpWindowFlickBottom(
-                    context, bubbleViewBottom, it
-                )
-                popupWindowRight.setPopUpWindowFlickRight(
-                    context, bubbleViewRight, it
-                )
+                if (popTextTop.text.isNotEmpty()) {
+                    popupWindowTop.setPopUpWindowFlickTop(context, bubbleViewTop, it)
+                }
+                if (popTextLeft.text.isNotEmpty()) {
+                    popupWindowLeft.setPopUpWindowFlickLeft(context, bubbleViewLeft, it)
+                }
+                if (popTextBottom.text.isNotEmpty()) {
+                    popupWindowBottom.setPopUpWindowFlickBottom(
+                        context, bubbleViewBottom, it
+                    )
+                }
+                if (popTextRight.text.isNotEmpty()) {
+                    popupWindowRight.setPopUpWindowFlickRight(
+                        context, bubbleViewRight, it
+                    )
+                }
                 popupWindowActive.setPopUpWindowFlickTap(
                     context, bubbleViewActive, it
                 )
