@@ -67,9 +67,9 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.tenkey.extensions.KEY_ENGLISH_SIZE
-import com.kazumaproject.tenkey.extensions.KEY_JAPANESE_SIZE
-import com.kazumaproject.tenkey.extensions.KEY_NUMBER_SIZE
+import com.kazumaproject.tabletkey.extenstions.KEY_ENGLISH_SIZE
+import com.kazumaproject.tabletkey.extenstions.KEY_JAPANESE_SIZE
+import com.kazumaproject.tabletkey.extenstions.KEY_NUMBER_SIZE
 import com.kazumaproject.tenkey.extensions.getDakutenSmallChar
 import com.kazumaproject.tenkey.extensions.getNextInputChar
 import com.kazumaproject.tenkey.extensions.getNextReturnInputChar

@@ -358,8 +358,8 @@ sealed class KeyInfo {
             get() = '×'
         override val flickRight: Char
             get() = '÷'
-        override val flickBottom: Char
-            get() = '-'
+        override val flickBottom: Char?
+            get() = null
     }
 
     object Key6Number : KeyTapFlickInfo() {
@@ -452,7 +452,7 @@ sealed class KeyInfo {
         override val flickBottom: Char?
             get() = null
     }
-    
+
     /** タブレット **/
     object TabletKeyAJapanese : KeyTapFlickInfo() {
         override val tap: Char
@@ -1142,5 +1142,5 @@ sealed class KeyInfo {
         override val flickBottom: Char?
             get() = null
     }
-    
+
 }

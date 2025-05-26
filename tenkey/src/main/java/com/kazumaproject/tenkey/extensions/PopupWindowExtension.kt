@@ -447,7 +447,3 @@ fun PopupWindow.setPopUpWindowTop(
         }
     }
 }
-
-fun PopupWindow.hide(){
-    if (this.isShowing) this.dismiss()
-}

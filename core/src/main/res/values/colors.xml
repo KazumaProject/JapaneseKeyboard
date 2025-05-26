@@ -17,6 +17,8 @@
     <color name="sub_text_color">#839096</color>
     <color name="keyboard_boarder_color">#cfd6d9</color>
     <color name="keyboard_icon_color">#ff1C1C1C</color>
+    <color name="keyboard_prev_char_icon_color">#2D3134</color>
+    <color name="keyboard_prev_char_icon_disabled_color">#2D3134</color>
     <color name="keyboard_enter_key_color">#212529</color>
 
     <color name="keyboard_icon_color_second">#aa000000</color>
