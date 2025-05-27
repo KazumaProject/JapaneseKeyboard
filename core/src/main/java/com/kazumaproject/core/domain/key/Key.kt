@@ -80,7 +80,4 @@ sealed class Key {
     data object KeyKagikakko : Key()
     data object KeyQuestion : Key()
     data object KeyCaution : Key()
-
-    data object SideKeyEnglish : Key()
-    data object SideKeyJapanese : Key()
 }

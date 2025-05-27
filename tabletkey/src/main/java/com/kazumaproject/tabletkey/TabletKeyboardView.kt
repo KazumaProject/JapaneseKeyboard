@@ -89,7 +89,7 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     // All AppCompatImageButton keys (side and utility keys)
     private val allImageButtonKeys = listOf(
-        binding.keyKigou, binding.keyEnglish, binding.keyJapanese,
+        binding.keyKigou, binding.keyPrevious, binding.keySwitchKeyMode,
         binding.keyLeftCursor, binding.keyRightCursor,
         binding.keyDelete, binding.keySpace, binding.keyEnter
     )
@@ -174,8 +174,8 @@ class TabletKeyboardView @JvmOverloads constructor(
 
         // side keys
         Key.SideKeySymbol to binding.keyKigou,
-        Key.SideKeyEnglish to binding.keyEnglish,
-        Key.SideKeyJapanese to binding.keyJapanese,
+        Key.SideKeyPreviousChar to binding.keyPrevious,
+        Key.SideKeyInputMode to binding.keySwitchKeyMode,
         Key.SideKeyCursorLeft to binding.keyLeftCursor,
         Key.SideKeyCursorRight to binding.keyRightCursor,
         Key.SideKeyDelete to binding.keyDelete,
@@ -918,14 +918,14 @@ class TabletKeyboardView @JvmOverloads constructor(
                 binding.keyKigou.isPressed = true
             }
 
-            Key.SideKeyEnglish -> {
+            Key.SideKeyPreviousChar -> {
                 resetAllKeys()
-                binding.keyEnglish.isPressed = true
+                binding.keyPrevious.isPressed = true
             }
 
-            Key.SideKeyJapanese -> {
+            Key.SideKeyInputMode -> {
                 resetAllKeys()
-                binding.keyJapanese.isPressed = true
+                binding.keySwitchKeyMode.isPressed = true
             }
 
             Key.SideKeyCursorLeft -> {
@@ -1042,8 +1042,8 @@ class TabletKeyboardView @JvmOverloads constructor(
 
         // Side-row keys
         binding.keyKigou.isPressed = false
-        binding.keyEnglish.isPressed = false
-        binding.keyJapanese.isPressed = false
+        binding.keyPrevious.isPressed = false
+        binding.keySwitchKeyMode.isPressed = false
         binding.keyLeftCursor.isPressed = false
         binding.keyRightCursor.isPressed = false
         binding.keyDelete.isPressed = false
@@ -1064,18 +1064,18 @@ class TabletKeyboardView @JvmOverloads constructor(
                 binding.keyKigou.layoutYPosition() + binding.keyKigou.height
             ),
             KeyRect(
-                Key.SideKeyEnglish,
-                binding.keyEnglish.layoutXPosition(),
-                binding.keyEnglish.layoutYPosition(),
-                binding.keyEnglish.layoutXPosition() + binding.keyEnglish.width,
-                binding.keyEnglish.layoutYPosition() + binding.keyEnglish.height
+                Key.SideKeyPreviousChar,
+                binding.keyPrevious.layoutXPosition(),
+                binding.keyPrevious.layoutYPosition(),
+                binding.keyPrevious.layoutXPosition() + binding.keyPrevious.width,
+                binding.keyPrevious.layoutYPosition() + binding.keyPrevious.height
             ),
             KeyRect(
-                Key.SideKeyJapanese,
-                binding.keyJapanese.layoutXPosition(),
-                binding.keyJapanese.layoutYPosition(),
-                binding.keyJapanese.layoutXPosition() + binding.keyJapanese.width,
-                binding.keyJapanese.layoutYPosition() + binding.keyJapanese.height
+                Key.SideKeyInputMode,
+                binding.keySwitchKeyMode.layoutXPosition(),
+                binding.keySwitchKeyMode.layoutYPosition(),
+                binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
+                binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
             ),
             KeyRect(
                 Key.SideKeyCursorLeft,
@@ -1930,6 +1930,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     fun setSideKeyEnterDrawable(drawable: Drawable?) {
         binding.keyEnter.setImageDrawable(drawable)
     }
+
     fun setSideKeySpaceDrawable(drawable: Drawable?) {
         binding.keySpace.setImageDrawable(drawable)
     }
