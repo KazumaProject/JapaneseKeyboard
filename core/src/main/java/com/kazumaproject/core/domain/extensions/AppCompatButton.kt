@@ -1,23 +1,24 @@
-package com.kazumaproject.core.ui.appcompatbutton
+package com.kazumaproject.core.domain.extensions
 
 
 import android.text.SpannableString
 import android.text.style.RelativeSizeSpan
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
+import com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan
 
 var KEY_JAPANESE_SIZE = 17f
 var KEY_ENGLISH_SIZE = 14f
 var KEY_NUMBER_SIZE = 18f
 
-private val JP_KEY_LAYOUT_WITH_SPACE = listOf(
+val JP_KEY_LAYOUT_WITH_SPACE = listOf(
     "    あ    ", "    か    ", "    さ    ", "    た    ", "    な    ",
     "    は    ", "    ま    ", "    や    ", "    ら    ", "    わ    ",
     "    、    "
 )
 
 // ?\n｡  ,  !\n…
-private fun getSpannableStringForKigouButtonJapanese(): SpannableString {
+fun getSpannableStringForKigouButtonJapanese(): SpannableString {
     val spannable = SpannableString("？\n。 , !\n…")
     spannable.setSpan(RelativeSizeSpan(0.6f), 0, 1, 0)
     spannable.setSpan(RelativeSizeSpan(0.6f), 2, 3, 0)
@@ -29,7 +30,7 @@ private fun getSpannableStringForKigouButtonJapanese(): SpannableString {
     return spannable
 }
 
-private fun getSpannableStringForNumberButton(str: String): SpannableString {
+fun getSpannableStringForNumberButton(str: String): SpannableString {
     val spannable = SpannableString(str)
     spannable.setSpan(RelativeSizeSpan(1f), 0, 1, 0)
     spannable.setSpan(RelativeSizeSpan(0.5f), 1, str.length, 0)

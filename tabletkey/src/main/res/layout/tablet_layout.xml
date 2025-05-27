@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="280dp"
-    android:layout_gravity="bottom"
-    android:background="@color/keyboard_bg"
-    android:clickable="false"
-    android:fitsSystemWindows="true"
-    android:focusable="false"
-    android:paddingBottom="12dp">
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <!-- Column 0 (function keys) -->
     <androidx.appcompat.widget.AppCompatImageButton
@@ -108,16 +100,15 @@
         android:background="@drawable/mode_key_bg"
         android:contentDescription="@string/keyboard_japanese"
         android:elevation="@dimen/key_elevation"
-        android:padding="6dp"
         android:scaleType="fitCenter"
-        android:src="@drawable/input_mode_japanese_select"
+        android:src="@drawable/input_mode_japanese_select_tablet"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_5"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/key_kigou"
         app:layout_constraintVertical_weight="1"
-        app:tint="@color/keyboard_icon_color" />
+        app:tint="@color/black" />
 
     <!-- Column 1: key_1–key_5 -->
 
@@ -1321,4 +1312,4 @@
         app:tint="@color/keyboard_icon_color" />
 
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</merge>

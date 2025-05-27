@@ -555,7 +555,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     handleLongPress(key)
                     Timber.d("Long Press: $key")
                 }
-
             })
         }
     }
@@ -1119,110 +1118,219 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME(this)
             Timber.d("setCurrentInputType: $currentInputType $inputType")
-            mainLayoutBinding?.keyboardView?.apply {
-                when (currentInputType) {
-                    InputTypeForIME.Text,
-                    InputTypeForIME.TextAutoComplete,
-                    InputTypeForIME.TextAutoCorrect,
-                    InputTypeForIME.TextCapCharacters,
-                    InputTypeForIME.TextCapSentences,
-                    InputTypeForIME.TextCapWords,
-                    InputTypeForIME.TextFilter,
-                    InputTypeForIME.TextNoSuggestion,
-                    InputTypeForIME.TextPersonName,
-                    InputTypeForIME.TextPhonetic,
-                    InputTypeForIME.TextWebEditText,
-                    -> {
-                        currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(
-                            cachedArrowRightDrawable
-                        )
-                    }
+            if (isTablet == true) {
+                mainLayoutBinding?.tabletView?.apply {
+                    when (currentInputType) {
+                        InputTypeForIME.Text,
+                        InputTypeForIME.TextAutoComplete,
+                        InputTypeForIME.TextAutoCorrect,
+                        InputTypeForIME.TextCapCharacters,
+                        InputTypeForIME.TextCapSentences,
+                        InputTypeForIME.TextCapWords,
+                        InputTypeForIME.TextFilter,
+                        InputTypeForIME.TextNoSuggestion,
+                        InputTypeForIME.TextPersonName,
+                        InputTypeForIME.TextPhonetic,
+                        InputTypeForIME.TextWebEditText,
+                        -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
 
-                    InputTypeForIME.TextMultiLine,
-                    InputTypeForIME.TextImeMultiLine,
-                    InputTypeForIME.TextShortMessage,
-                    InputTypeForIME.TextLongMessage,
-                    -> {
-                        currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(
-                            cachedReturnDrawable
-                        )
-                    }
+                        InputTypeForIME.TextMultiLine,
+                        InputTypeForIME.TextImeMultiLine,
+                        InputTypeForIME.TextShortMessage,
+                        InputTypeForIME.TextLongMessage,
+                        -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedReturnDrawable
+                            )
+                        }
 
-                    InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                        currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(
-                            cachedTabDrawable
-                        )
-                    }
+                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedTabDrawable
+                            )
+                        }
 
-                    InputTypeForIME.TextDone -> {
-                        currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(
-                            cachedCheckDrawable
-                        )
-                    }
+                        InputTypeForIME.TextDone -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedCheckDrawable
+                            )
+                        }
 
-                    InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                        currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(
-                            cachedSearchDrawable
-                        )
-                    }
+                        InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSearchDrawable
+                            )
+                        }
 
-                    InputTypeForIME.TextEditTextInWebView,
-                    InputTypeForIME.TextUri,
-                    InputTypeForIME.TextPostalAddress,
-                    InputTypeForIME.TextWebEmailAddress,
-                    InputTypeForIME.TextPassword,
-                    InputTypeForIME.TextVisiblePassword,
-                    InputTypeForIME.TextWebPassword,
-                    -> {
-                        currentInputMode.set(InputMode.ModeEnglish)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(
-                            cachedArrowRightDrawable
-                        )
-                    }
+                        InputTypeForIME.TextEditTextInWebView,
+                        InputTypeForIME.TextUri,
+                        InputTypeForIME.TextPostalAddress,
+                        InputTypeForIME.TextWebEmailAddress,
+                        InputTypeForIME.TextPassword,
+                        InputTypeForIME.TextVisiblePassword,
+                        InputTypeForIME.TextWebPassword,
+                        -> {
+                            currentInputMode.set(InputMode.ModeEnglish)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
 
-                    InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                        currentInputMode.set(InputMode.ModeJapanese)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(true)
-                        this.setSideKeyEnterDrawable(
-                            cachedArrowRightDrawable
-                        )
-                    }
+                        InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
 
-                    InputTypeForIME.Number,
-                    InputTypeForIME.NumberDecimal,
-                    InputTypeForIME.NumberPassword,
-                    InputTypeForIME.NumberSigned,
-                    InputTypeForIME.Phone,
-                    InputTypeForIME.Date,
-                    InputTypeForIME.Datetime,
-                    InputTypeForIME.Time,
-                    -> {
-                        currentInputMode.set(InputMode.ModeNumber)
-                        setInputModeSwitchState()
-                        setSideKeyPreviousState(false)
-                        this.setSideKeyEnterDrawable(
-                            cachedArrowRightDrawable
-                        )
-                    }
+                        InputTypeForIME.Number,
+                        InputTypeForIME.NumberDecimal,
+                        InputTypeForIME.NumberPassword,
+                        InputTypeForIME.NumberSigned,
+                        InputTypeForIME.Phone,
+                        InputTypeForIME.Date,
+                        InputTypeForIME.Datetime,
+                        InputTypeForIME.Time,
+                        -> {
+                            currentInputMode.set(InputMode.ModeNumber)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(false)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
 
+                    }
+                }
+            } else {
+                mainLayoutBinding?.keyboardView?.apply {
+                    when (currentInputType) {
+                        InputTypeForIME.Text,
+                        InputTypeForIME.TextAutoComplete,
+                        InputTypeForIME.TextAutoCorrect,
+                        InputTypeForIME.TextCapCharacters,
+                        InputTypeForIME.TextCapSentences,
+                        InputTypeForIME.TextCapWords,
+                        InputTypeForIME.TextFilter,
+                        InputTypeForIME.TextNoSuggestion,
+                        InputTypeForIME.TextPersonName,
+                        InputTypeForIME.TextPhonetic,
+                        InputTypeForIME.TextWebEditText,
+                        -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextMultiLine,
+                        InputTypeForIME.TextImeMultiLine,
+                        InputTypeForIME.TextShortMessage,
+                        InputTypeForIME.TextLongMessage,
+                        -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedReturnDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedTabDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextDone -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedCheckDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSearchDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEditTextInWebView,
+                        InputTypeForIME.TextUri,
+                        InputTypeForIME.TextPostalAddress,
+                        InputTypeForIME.TextWebEmailAddress,
+                        InputTypeForIME.TextPassword,
+                        InputTypeForIME.TextVisiblePassword,
+                        InputTypeForIME.TextWebPassword,
+                        -> {
+                            currentInputMode.set(InputMode.ModeEnglish)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.Number,
+                        InputTypeForIME.NumberDecimal,
+                        InputTypeForIME.NumberPassword,
+                        InputTypeForIME.NumberSigned,
+                        InputTypeForIME.Phone,
+                        InputTypeForIME.Date,
+                        InputTypeForIME.Datetime,
+                        InputTypeForIME.Time,
+                        -> {
+                            currentInputMode.set(InputMode.ModeNumber)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(false)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                    }
                 }
             }
         }
@@ -1739,62 +1847,88 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setTenkeyIconsInHenkan(insertString: String, mainView: MainLayoutBinding) {
-        mainView.keyboardView.apply {
-            when (currentInputMode.get()) {
-                is InputMode.ModeJapanese -> {
-                    setSideKeySpaceDrawable(
-                        cachedSpaceDrawable
-                    )
-                    setSideKeyPreviousState(true)
-                    if (insertString.isNotEmpty()) {
-                        if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
-                            setBackgroundSmallLetterKey(
-                                cachedEnglishDrawable
-                            )
-                        } else {
-                            setBackgroundSmallLetterKey(
-                                cachedLogoDrawable
-                            )
-                        }
-                    } else {
-                        setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+        if (isTablet == true) {
+            mainView.tabletView.apply {
+                when (currentInputMode.get()) {
+                    is InputMode.ModeJapanese -> {
+                        setSideKeySpaceDrawable(
+                            cachedSpaceDrawable
                         )
+                        setSideKeyPreviousState(true)
+                    }
+
+                    is InputMode.ModeEnglish -> {
+                        setSideKeySpaceDrawable(
+                            cachedSpaceDrawable
+                        )
+                        setSideKeyPreviousState(false)
+                    }
+
+                    is InputMode.ModeNumber -> {
+                        setSideKeyPreviousState(true)
                     }
                 }
-
-                is InputMode.ModeEnglish -> {
-                    setSideKeySpaceDrawable(
-                        cachedSpaceDrawable
-                    )
-                    setBackgroundSmallLetterKey(
-                        cachedNumberDrawable
-                    )
-                    setSideKeyPreviousState(false)
-                }
-
-                is InputMode.ModeNumber -> {
-                    setSideKeyPreviousState(true)
-                    if (insertString.isNotEmpty()) {
+            }
+        } else {
+            mainView.keyboardView.apply {
+                when (currentInputMode.get()) {
+                    is InputMode.ModeJapanese -> {
                         setSideKeySpaceDrawable(
-                            cachedHenkanDrawable
+                            cachedSpaceDrawable
                         )
-                        if (insertString.last().isHiragana()) {
-                            setBackgroundSmallLetterKey(
-                                cachedKanaDrawable
-                            )
+                        setSideKeyPreviousState(true)
+                        if (insertString.isNotEmpty()) {
+                            if (insertString.isNotEmpty() && insertString.last()
+                                    .isLatinAlphabet()
+                            ) {
+                                setBackgroundSmallLetterKey(
+                                    cachedEnglishDrawable
+                                )
+                            } else {
+                                setBackgroundSmallLetterKey(
+                                    cachedLogoDrawable
+                                )
+                            }
                         } else {
                             setBackgroundSmallLetterKey(
                                 cachedLogoDrawable
                             )
                         }
-                    } else {
+                    }
+
+                    is InputMode.ModeEnglish -> {
                         setSideKeySpaceDrawable(
                             cachedSpaceDrawable
                         )
                         setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                            cachedNumberDrawable
                         )
+                        setSideKeyPreviousState(false)
+                    }
+
+                    is InputMode.ModeNumber -> {
+                        setSideKeyPreviousState(true)
+                        if (insertString.isNotEmpty()) {
+                            setSideKeySpaceDrawable(
+                                cachedHenkanDrawable
+                            )
+                            if (insertString.last().isHiragana()) {
+                                setBackgroundSmallLetterKey(
+                                    cachedKanaDrawable
+                                )
+                            } else {
+                                setBackgroundSmallLetterKey(
+                                    cachedLogoDrawable
+                                )
+                            }
+                        } else {
+                            setSideKeySpaceDrawable(
+                                cachedSpaceDrawable
+                            )
+                            setBackgroundSmallLetterKey(
+                                cachedLogoDrawable
+                            )
+                        }
                     }
                 }
             }

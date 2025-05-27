@@ -2,43 +2,24 @@ package com.kazumaproject.core.ui.input_mode_witch
 
 import android.content.Context
 import android.util.AttributeSet
-import androidx.core.content.ContextCompat
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.appcompat.widget.AppCompatImageButton
+import com.kazumaproject.core.R
 import com.kazumaproject.core.domain.state.InputMode
 
 class InputModeSwitch(context: Context, attrs: AttributeSet) :
-    androidx.appcompat.widget.AppCompatImageButton(context, attrs) {
+    AppCompatImageButton(context, attrs) {
 
     private var currentInputMode: InputMode = InputMode.ModeJapanese
 
-    fun setInputMode(inputMode: InputMode) {
+    fun setInputMode(inputMode: InputMode, isTablet: Boolean) {
         currentInputMode = inputMode
-        when (inputMode) {
-            InputMode.ModeJapanese -> setImageDrawable(
-                ContextCompat.getDrawable(
-                    context,
-                    com.kazumaproject.core.R.drawable.input_mode_japanese_select
-                )
-            )
-
-            InputMode.ModeEnglish -> setImageDrawable(
-                ContextCompat.getDrawable(
-                    context,
-                    com.kazumaproject.core.R.drawable.input_mode_english_select
-                )
-            )
-
-            InputMode.ModeNumber -> setImageDrawable(
-                ContextCompat.getDrawable(
-                    context,
-                    com.kazumaproject.core.R.drawable.input_mode_number_select
-                )
-            )
+        val resId = when (inputMode) {
+            InputMode.ModeJapanese -> if (isTablet) R.drawable.input_mode_japanese_select_tablet else R.drawable.input_mode_japanese_select
+            InputMode.ModeEnglish -> if (isTablet) R.drawable.input_mode_english_select_tablet else R.drawable.input_mode_english_select
+            InputMode.ModeNumber -> if (isTablet) R.drawable.input_mode_number_select_tablet else R.drawable.input_mode_number_select
         }
+        val drawable = AppCompatResources.getDrawable(context, resId)
+        setImageDrawable(drawable)
     }
-
-    fun getCurrentInputMode(): InputMode {
-        return currentInputMode
-    }
-
-
 }
