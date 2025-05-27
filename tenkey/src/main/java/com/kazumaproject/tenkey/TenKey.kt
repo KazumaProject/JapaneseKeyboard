@@ -18,6 +18,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.extensions.hide
+import com.kazumaproject.core.domain.extensions.layoutXPosition
+import com.kazumaproject.core.domain.extensions.layoutYPosition
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
@@ -28,8 +30,6 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
-import com.kazumaproject.core.ui.appcompatbutton.layoutXPosition
-import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -1429,7 +1429,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
         }
         currentInputMode.set(newInputMode)
-        sideKeyInputModeSwitch.setInputMode(newInputMode)
+        sideKeyInputModeSwitch.setInputMode(newInputMode, false)
     }
 
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
@@ -1450,7 +1450,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setInputModeSwitchState() {
         val inputMode = currentInputMode.get()
-        sideKeyInputModeSwitch.setInputMode(inputMode)
+        sideKeyInputModeSwitch.setInputMode(inputMode, false)
         handleCurrentInputModeSwitch(inputMode)
     }
 

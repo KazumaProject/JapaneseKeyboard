@@ -1,21 +1,14 @@
 package com.kazumaproject.tenkey.extensions
 
-import android.text.SpannableString
-import android.text.style.RelativeSizeSpan
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
-import com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan
+import com.kazumaproject.core.domain.extensions.JP_KEY_LAYOUT_WITH_SPACE
+import com.kazumaproject.core.domain.extensions.KEY_ENGLISH_SIZE
+import com.kazumaproject.core.domain.extensions.KEY_JAPANESE_SIZE
+import com.kazumaproject.core.domain.extensions.KEY_NUMBER_SIZE
+import com.kazumaproject.core.domain.extensions.getSpannableStringForKigouButtonJapanese
+import com.kazumaproject.core.domain.extensions.getSpannableStringForNumberButton
 import com.kazumaproject.tenkey.R
-
-var KEY_JAPANESE_SIZE = 17f
-var KEY_ENGLISH_SIZE = 14f
-var KEY_NUMBER_SIZE = 18f
-
-private val JP_KEY_LAYOUT_WITH_SPACE = listOf(
-    "    あ    ", "    か    ", "    さ    ", "    た    ", "    な    ",
-    "    は    ", "    ま    ", "    や    ", "    ら    ", "    わ    ",
-    "    、    "
-)
 
 fun AppCompatButton.setTenKeyTextJapanese(
     keyId: Int
@@ -147,24 +140,4 @@ fun AppCompatButton.setTenKeyTextWhenTapNumber(
         R.id.key_11 -> this.text = "0"
         R.id.key_12 -> this.text = "."
     }
-}
-
-// ?\n｡  ,  !\n…
-private fun getSpannableStringForKigouButtonJapanese(): SpannableString {
-    val spannable = SpannableString("？\n。 , !\n…")
-    spannable.setSpan(RelativeSizeSpan(0.6f), 0, 1, 0)
-    spannable.setSpan(RelativeSizeSpan(0.6f), 2, 3, 0)
-    spannable.setSpan(RelativeSizeSpan(0.6f), 4, 5, 0)
-    spannable.setSpan(RelativeSizeSpan(0.6f), 6, 7, 0)
-    spannable.setSpan(RelativeSizeSpan(0.8f), 8, 9, 0)
-    spannable.setSpan(RelativeSizeSpan(0.5f), 1, 2, 0)
-    spannable.setSpan(CustomLineHeightSpan(15, 0), 7, 8, 0)
-    return spannable
-}
-
-private fun getSpannableStringForNumberButton(str: String): SpannableString {
-    val spannable = SpannableString(str)
-    spannable.setSpan(RelativeSizeSpan(1f), 0, 1, 0)
-    spannable.setSpan(RelativeSizeSpan(0.5f), 1, str.length, 0)
-    return spannable
 }

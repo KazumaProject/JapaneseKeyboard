@@ -16,6 +16,8 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.extensions.hide
+import com.kazumaproject.core.domain.extensions.layoutXPosition
+import com.kazumaproject.core.domain.extensions.layoutYPosition
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
@@ -26,8 +28,6 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
-import com.kazumaproject.core.ui.appcompatbutton.layoutXPosition
-import com.kazumaproject.core.ui.appcompatbutton.layoutYPosition
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tabletkey.databinding.TabletLayoutBinding
@@ -67,7 +67,7 @@ class TabletKeyboardView @JvmOverloads constructor(
 ) : ConstraintLayout(context, attrs, defStyleAttr), View.OnTouchListener {
 
     private val binding: TabletLayoutBinding =
-        TabletLayoutBinding.inflate(LayoutInflater.from(context), this, true)
+        TabletLayoutBinding.inflate(LayoutInflater.from(context), this)
 
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
     private lateinit var pressedKey: PressedKey
@@ -322,9 +322,9 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 key = pressedKey.key,
                                 char = null
                             )
-//                            if (pressedKey.Key == KeyInfo.SideKeyInputMode) {
-//                                handleClickInputModeSwitch()
-//                            }
+                            if (pressedKey.key == Key.SideKeyInputMode) {
+                                handleClickInputModeSwitch()
+                            }
                         } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType) {
                                 GestureType.Null -> {}
@@ -512,9 +512,9 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null
                                 )
-//                                if (pressedKey.key == Key.SideKeyInputMode) {
-//                                    handleClickInputModeSwitch()
-//                                }
+                                if (pressedKey.key == Key.SideKeyInputMode) {
+                                    handleClickInputModeSwitch()
+                                }
                             } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                                 when (gestureType) {
                                     GestureType.Null -> {}
@@ -1933,6 +1933,50 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     fun setSideKeySpaceDrawable(drawable: Drawable?) {
         binding.keySpace.setImageDrawable(drawable)
+    }
+
+    fun setSideKeyPreviousState(state: Boolean) {
+        binding.keyPrevious.isEnabled = state
+    }
+
+    fun setInputModeSwitchState() {
+        val inputMode = currentInputMode.get()
+        binding.keySwitchKeyMode.setInputMode(inputMode, true)
+        //handleCurrentInputModeSwitch(inputMode)
+    }
+
+    private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
+        when (inputMode) {
+            InputMode.ModeJapanese -> {
+
+            }
+
+            InputMode.ModeEnglish -> {
+
+            }
+
+            InputMode.ModeNumber -> {
+
+            }
+        }
+    }
+
+    private fun handleClickInputModeSwitch() {
+        val newInputMode = when (currentInputMode.get()) {
+            InputMode.ModeJapanese -> {
+                InputMode.ModeEnglish
+            }
+
+            InputMode.ModeEnglish -> {
+                InputMode.ModeNumber
+            }
+
+            InputMode.ModeNumber -> {
+                InputMode.ModeJapanese
+            }
+        }
+        currentInputMode.set(newInputMode)
+        binding.keySwitchKeyMode.setInputMode(newInputMode, isTablet = true)
     }
 
 }
