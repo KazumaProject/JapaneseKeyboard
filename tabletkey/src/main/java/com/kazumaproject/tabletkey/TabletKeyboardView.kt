@@ -1700,9 +1700,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 )
                             }
                         } else {
-                            popupWindowActive.setPopUpWindowFlickLeft(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickLeft(
+                                    context, bubbleViewActive, it
+                                )
+                            }
                         }
                     }
 
@@ -1731,9 +1733,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 )
                             }
                         } else {
-                            popupWindowActive.setPopUpWindowFlickTop(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickTop(
+                                    context, bubbleViewActive, it
+                                )
+                            }
                         }
                     }
 

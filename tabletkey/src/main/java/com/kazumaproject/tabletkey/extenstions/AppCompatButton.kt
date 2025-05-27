@@ -1,7 +1,5 @@
 package com.kazumaproject.tabletkey.extenstions
 
-import android.text.SpannableString
-import android.text.style.RelativeSizeSpan
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.tabletkey.R
@@ -76,13 +74,4 @@ fun AppCompatButton.setTabletKeyTextJapanese(keyId: Int) {
         R.id.key_55 -> context.getString(com.kazumaproject.core.R.string.string_お)
         else -> ""
     }
-}
-
-private fun getSpannableStringForNumberButton(str: String): SpannableString {
-    val spannable = SpannableString(str)
-    spannable.setSpan(RelativeSizeSpan(1f), 0, 1, 0)
-    if (str.length > 1) {
-        spannable.setSpan(RelativeSizeSpan(0.5f), 1, str.length, 0)
-    }
-    return spannable
 }

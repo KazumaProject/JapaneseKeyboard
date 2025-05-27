@@ -61,7 +61,8 @@
         android:clickable="true"
         android:focusable="true"
         android:importantForAccessibility="yes"
-        android:visibility="visible" />
+        android:visibility="visible"
+        android:paddingBottom="12dp"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/candidates_row_view"
