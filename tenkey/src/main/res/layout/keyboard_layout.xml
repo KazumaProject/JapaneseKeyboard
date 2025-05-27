@@ -64,7 +64,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/key_soft_left" />
 
-    <com.kazumaproject.tenkey.InputModeSwitch
+    <com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
         android:id="@+id/key_switch_key_mode"
         style="?android:attr/borderlessButtonStyle"
         android:layout_width="0dp"

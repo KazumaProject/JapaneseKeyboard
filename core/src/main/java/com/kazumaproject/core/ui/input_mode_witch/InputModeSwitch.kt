@@ -1,4 +1,4 @@
-package com.kazumaproject.tenkey
+package com.kazumaproject.core.ui.input_mode_witch
 
 import android.content.Context
 import android.util.AttributeSet
