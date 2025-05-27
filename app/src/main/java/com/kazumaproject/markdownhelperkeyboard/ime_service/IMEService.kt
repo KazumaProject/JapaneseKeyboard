@@ -378,7 +378,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
-        mainLayoutBinding?.keyboardView?.isVisible = true
+        if (isTablet == true) {
+            mainLayoutBinding?.tabletView?.isVisible = true
+            mainLayoutBinding?.keyboardView?.isVisible = false
+        } else {
+            mainLayoutBinding?.keyboardView?.isVisible = true
+            mainLayoutBinding?.tabletView?.isVisible = false
+        }
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
@@ -614,6 +620,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
             })
+            setOnLongPressListener(object : LongPressListener {
+                override fun onLongPress(key: Key) {
+                    handleLongPress(key)
+                }
+            })
         }
     }
 
@@ -838,7 +849,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun resetKeyboard() {
         mainLayoutBinding?.apply {
-            animateViewVisibility(this.keyboardView, true)
+            animateViewVisibility(
+                if (isTablet == true) this.tabletView else this.keyboardView,
+                true
+            )
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
             keyboardView.apply {
@@ -926,12 +940,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _keyboardSymbolViewState.asStateFlow().collectLatest { isSymbolKeyboardShow ->
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
-                        animateViewVisibility(keyboardView, false)
+                        animateViewVisibility(
+                            if (isTablet == true) this.tabletView else this.keyboardView,
+                            false
+                        )
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
                         setSymbols(mainView)
                     } else {
-                        animateViewVisibility(keyboardView, true)
+                        animateViewVisibility(
+                            if (isTablet == true) this.tabletView else this.keyboardView,
+                            true
+                        )
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
                         clearSymbols()
@@ -950,7 +970,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
-        animateViewVisibility(mainView.keyboardView, isVisible)
+        animateViewVisibility(
+            if (isTablet == true) mainView.tabletView else mainView.keyboardView,
+            isVisible
+        )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
 
         if (mainView.candidatesRowView.isVisible) {
@@ -1059,18 +1082,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 onDeleteLongPressUp.set(true)
             }
             resetInputString()
-            mainView.keyboardView.apply {
-                setSideKeySpaceDrawable(
-                    cachedSpaceDrawable
-                )
-                if (currentInputMode.get() == InputMode.ModeNumber) {
-                    setBackgroundSmallLetterKey(
-                        cachedNumberDrawable
+            if (isTablet == true) {
+                mainView.tabletView.apply {
+                    setSideKeySpaceDrawable(
+                        cachedSpaceDrawable
                     )
-                } else {
-                    setBackgroundSmallLetterKey(
-                        cachedLogoDrawable
+                }
+            } else {
+                mainView.keyboardView.apply {
+                    setSideKeySpaceDrawable(
+                        cachedSpaceDrawable
                     )
+                    if (currentInputMode.get() == InputMode.ModeNumber) {
+                        setBackgroundSmallLetterKey(
+                            cachedNumberDrawable
+                        )
+                    } else {
+                        setBackgroundSmallLetterKey(
+                            cachedLogoDrawable
+                        )
+                    }
                 }
             }
         }
@@ -1205,7 +1236,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter.apply {
             this?.setOnItemClickListener { candidate, position ->
                 val insertString = _inputString.value
-                val currentInputMode = mainView.keyboardView.currentInputMode
+                val currentInputMode =
+                    if (isTablet == true) mainView.tabletView.currentInputMode else mainView.keyboardView.currentInputMode
                 vibrate()
                 setCandidateClick(
                     candidate = candidate,
@@ -1770,49 +1802,76 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun updateUIinHenkan(mainView: MainLayoutBinding, insertString: String) {
-        mainView.keyboardView.apply {
-            setSideKeyEnterDrawable(
-                cachedReturnDrawable
-            )
-            when (currentInputMode.get()) {
-                InputMode.ModeJapanese -> {
-                    if (insertString.isNotEmpty() && insertString.last().isHiragana()) {
-                        setBackgroundSmallLetterKey(
-                            cachedKanaDrawable
-                        )
-                    } else {
-                        setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+        if (isTablet == true) {
+            mainView.tabletView.apply {
+                setSideKeyEnterDrawable(
+                    cachedReturnDrawable
+                )
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        setSideKeySpaceDrawable(
+                            cachedHenkanDrawable
                         )
                     }
-                    setSideKeySpaceDrawable(
-                        cachedHenkanDrawable
-                    )
-                }
 
-                InputMode.ModeEnglish -> {
-
-                    if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
-                        setBackgroundSmallLetterKey(
-                            cachedEnglishDrawable
-                        )
-                    } else {
-                        setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                    InputMode.ModeEnglish -> {
+                        setSideKeySpaceDrawable(
+                            cachedSpaceDrawable
                         )
                     }
-                    setSideKeySpaceDrawable(
-                        cachedSpaceDrawable
-                    )
-                }
 
-                InputMode.ModeNumber -> {
-                    setBackgroundSmallLetterKey(
-                        cachedNumberDrawable
-                    )
-                    setSideKeySpaceDrawable(
-                        cachedSpaceDrawable
-                    )
+                    InputMode.ModeNumber -> {
+                        setSideKeySpaceDrawable(
+                            cachedSpaceDrawable
+                        )
+                    }
+                }
+            }
+        } else {
+            mainView.keyboardView.apply {
+                setSideKeyEnterDrawable(
+                    cachedReturnDrawable
+                )
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        if (insertString.isNotEmpty() && insertString.last().isHiragana()) {
+                            setBackgroundSmallLetterKey(
+                                cachedKanaDrawable
+                            )
+                        } else {
+                            setBackgroundSmallLetterKey(
+                                cachedLogoDrawable
+                            )
+                        }
+                        setSideKeySpaceDrawable(
+                            cachedHenkanDrawable
+                        )
+                    }
+
+                    InputMode.ModeEnglish -> {
+
+                        if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
+                            setBackgroundSmallLetterKey(
+                                cachedEnglishDrawable
+                            )
+                        } else {
+                            setBackgroundSmallLetterKey(
+                                cachedLogoDrawable
+                            )
+                        }
+                        setSideKeySpaceDrawable(
+                            cachedSpaceDrawable
+                        )
+                    }
+
+                    InputMode.ModeNumber -> {
+                        setBackgroundSmallLetterKey(
+                            cachedNumberDrawable
+                        )
+                        setSideKeySpaceDrawable(
+                            cachedSpaceDrawable
+                        )
+                    }
                 }
             }
         }
@@ -2019,13 +2078,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         if (insertString.isNotBlank()) {
             mainView.apply {
-                keyboardView.let { tenkey ->
-                    when (tenkey.currentInputMode.get()) {
-                        InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
-                            this, suggestions, insertString
-                        )
+                if (isTablet == true) {
+                    tabletView.let { tabletKey ->
+                        when (tabletKey.currentInputMode.get()) {
+                            InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                this, suggestions, insertString
+                            )
 
-                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                            else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                        }
+                    }
+                } else {
+                    keyboardView.let { tenkey ->
+                        when (tenkey.currentInputMode.get()) {
+                            InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                this, suggestions, insertString
+                            )
+
+                            else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                        }
                     }
                 }
             }
@@ -2054,17 +2125,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun handleNonEmptyInputEnterKey(
         suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String
     ) {
-        mainView.keyboardView.apply {
-            when (val inputMode = currentInputMode.get()) {
-                InputMode.ModeJapanese -> {
-                    if (isHenkan.get()) {
-                        handleHenkanModeEnterKey(suggestions, inputMode, insertString)
-                    } else {
-                        finishInputEnterKey()
+        if (isTablet == true) {
+            mainView.tabletView.apply {
+                when (val inputMode = currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        if (isHenkan.get()) {
+                            handleHenkanModeEnterKey(suggestions, inputMode, insertString)
+                        } else {
+                            finishInputEnterKey()
+                        }
                     }
-                }
 
-                else -> finishInputEnterKey()
+                    else -> finishInputEnterKey()
+                }
+            }
+        } else {
+            mainView.keyboardView.apply {
+                when (val inputMode = currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        if (isHenkan.get()) {
+                            handleHenkanModeEnterKey(suggestions, inputMode, insertString)
+                        } else {
+                            finishInputEnterKey()
+                        }
+                    }
+
+                    else -> finishInputEnterKey()
+                }
             }
         }
     }
@@ -2133,7 +2220,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 cachedArrowRightDrawable
             }
         }
-        mainView.keyboardView.setSideKeyEnterDrawable(currentDrawable)
+        if (isTablet == true) {
+            mainView.tabletView.setSideKeyEnterDrawable(currentDrawable)
+        } else {
+            mainView.keyboardView.setSideKeyEnterDrawable(currentDrawable)
+        }
     }
 
     private fun finishInputEnterKey() {
@@ -2594,30 +2685,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         insertString: String,
         mainView: MainLayoutBinding
     ) {
-        mainView.keyboardView.let {
-            when (it.currentInputMode.get()) {
-                InputMode.ModeJapanese -> {
-                    dakutenSmallLetter(sb, insertString)
-                }
+        if (isTablet == true) {
+            mainView.tabletView.let {
+                when (it.currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        dakutenSmallLetter(sb, insertString)
+                    }
 
-                InputMode.ModeEnglish -> {
-                    smallBigLetterConversionEnglish(sb, insertString)
-                }
+                    InputMode.ModeEnglish -> {
+                        smallBigLetterConversionEnglish(sb, insertString)
+                    }
 
-                InputMode.ModeNumber -> {
-                    if (isFlick) {
-                        char?.let { c ->
-                            sendCharFlick(
-                                charToSend = c, insertString = insertString, sb = sb
-                            )
+                    InputMode.ModeNumber -> {
+                        if (isFlick) {
+                            char?.let { c ->
+                                sendCharFlick(
+                                    charToSend = c, insertString = insertString, sb = sb
+                                )
+                            }
+                            isContinuousTapInputEnabled.set(true)
+                            lastFlickConvertedNextHiragana.set(true)
+                        } else {
+                            char?.let { c ->
+                                sendCharTap(
+                                    charToSend = c, insertString = insertString, sb = sb
+                                )
+                            }
                         }
-                        isContinuousTapInputEnabled.set(true)
-                        lastFlickConvertedNextHiragana.set(true)
-                    } else {
-                        char?.let { c ->
-                            sendCharTap(
-                                charToSend = c, insertString = insertString, sb = sb
-                            )
+                    }
+                }
+            }
+        } else {
+            mainView.keyboardView.let {
+                when (it.currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+                        dakutenSmallLetter(sb, insertString)
+                    }
+
+                    InputMode.ModeEnglish -> {
+                        smallBigLetterConversionEnglish(sb, insertString)
+                    }
+
+                    InputMode.ModeNumber -> {
+                        if (isFlick) {
+                            char?.let { c ->
+                                sendCharFlick(
+                                    charToSend = c, insertString = insertString, sb = sb
+                                )
+                            }
+                            isContinuousTapInputEnabled.set(true)
+                            lastFlickConvertedNextHiragana.set(true)
+                        } else {
+                            char?.let { c ->
+                                sendCharTap(
+                                    charToSend = c, insertString = insertString, sb = sb
+                                )
+                            }
                         }
                     }
                 }
@@ -2705,15 +2828,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             commitText(" $stringInTail", 1)
             stringInTail.set("")
         } else {
-            mainLayoutBinding?.keyboardView?.apply {
-                if (currentInputMode.get() == InputMode.ModeJapanese) {
-                    if (isFlick) {
-                        commitText(" ", 1)
+            if (isTablet == true) {
+                mainLayoutBinding?.tabletView?.apply {
+                    if (currentInputMode.get() == InputMode.ModeJapanese) {
+                        if (isFlick) {
+                            commitText(" ", 1)
+                        } else {
+                            commitText("　", 1)
+                        }
                     } else {
-                        commitText("　", 1)
+                        commitText(" ", 1)
                     }
-                } else {
-                    commitText(" ", 1)
+                }
+            } else {
+                mainLayoutBinding?.keyboardView?.apply {
+                    if (currentInputMode.get() == InputMode.ModeJapanese) {
+                        if (isFlick) {
+                            commitText(" ", 1)
+                        } else {
+                            commitText("　", 1)
+                        }
+                    } else {
+                        commitText(" ", 1)
+                    }
                 }
             }
         }
@@ -2817,7 +2954,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 4f, 5f, easedProgress
             ).roundToInt()
             val padding =
-                if (isPortrait) lerp(12f * density, 21f * density, easedProgress).toInt() else lerp(
+                if (isPortrait) lerp(
+                    12f * density,
+                    21f * density,
+                    easedProgress
+                ).toInt() else lerp(
                     8f * density, 12f * density, easedProgress
                 ).toInt()
 

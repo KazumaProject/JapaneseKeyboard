@@ -2,6 +2,7 @@ package com.kazumaproject.tabletkey
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
 import android.view.LayoutInflater
@@ -1925,4 +1926,12 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
         }
     }
+
+    fun setSideKeyEnterDrawable(drawable: Drawable?) {
+        binding.keyEnter.setImageDrawable(drawable)
+    }
+    fun setSideKeySpaceDrawable(drawable: Drawable?) {
+        binding.keySpace.setImageDrawable(drawable)
+    }
+
 }
