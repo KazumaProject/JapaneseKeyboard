@@ -1980,23 +1980,46 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key29.setMarginEnd(0f)
                     key30.setMarginEnd(0f)
 
+                    /** 最後の行の margin を削除 **/
                     key1.setMarginEnd(0f)
                     key2.setMarginEnd(0f)
                     key3.setMarginEnd(0f)
                     key4.setMarginEnd(0f)
                     key5.setMarginEnd(0f)
 
+                    /** わ行を削除 **/
                     key6.isVisible = false
                     key7.isVisible = false
                     key8.isVisible = false
                     key9.isVisible = false
                     key10.isVisible = false
 
+                    /** 句点ボタンの width を 2 にする **/
                     key5.setHorizontalWeight(2f)
+                    /** ろボタンを隠す **/
                     key15.isVisible = false
+                    /** れボタンを句点ボタンの上に配置 **/
                     key14.setBottomToTopOf(key5)
+                    /** 句点ボタンをよボタンの左に配置 **/
                     key5.setEndToStartOf(key20)
 
+                    /** よボタンの width を 2 にする **/
+                    key20.setHorizontalWeight(2f)
+                    /** もボタンを隠す **/
+                    key25.isVisible = false
+                    /** めボタンをよボタンの上部に配置 **/
+                    key24.setBottomToTopOf(key20)
+                    /** よボタンをほボタンの左に配置 **/
+                    key20.setEndToStartOf(key30)
+                    /** ほボタンをよボタンの右に配置 **/
+                    key30.setStartToEndOf(key20)
+
+                    /** おボタンの width を 2 にする **/
+                    key55.setHorizontalWeight(2f)
+                    key50.isVisible = false
+                    key49.setBottomToTopOf(key55)
+                    key55.setStartToEndOf(key45)
+                    key45.setEndToStartOf(key55)
 
                 }
                 InputMode.ModeEnglish
@@ -2018,24 +2041,40 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key29.setMarginEnd(2f)
                     key30.setMarginEnd(2f)
 
+                    /** 最後の行に margin を追加 **/
                     key1.setMarginEnd(2f)
                     key2.setMarginEnd(2f)
                     key3.setMarginEnd(2f)
                     key4.setMarginEnd(2f)
                     key5.setMarginEnd(2f)
 
+                    /** わ行を追加 **/
                     key6.isVisible = true
                     key7.isVisible = true
                     key8.isVisible = true
                     key9.isVisible = true
                     key10.isVisible = true
 
+                    /** 句点ボタンの width を 1 にする **/
                     key5.setHorizontalWeight(1f)
+                    /** ろボタンを表示 **/
                     key15.isVisible = true
                     key14.setBottomToTopOf(key15)
                     key5.setEndToStartOf(key10)
                     key10.setStartToEndOf(key5)
+                    /** もボタンを表示 **/
+                    key25.isVisible = true
+                    /** めボタンをよボタンの上部に配置 **/
+                    key24.setBottomToTopOf(key25)
+                    key20.setEndToStartOf(key25)
+                    key30.setStartToEndOf(key25)
 
+                    /** おボタンの width を 1 にする **/
+                    key55.setHorizontalWeight(1f)
+                    key50.isVisible = true
+                    key49.setBottomToTopOf(key50)
+                    key55.setStartToEndOf(key50)
+                    key45.setEndToStartOf(key50)
                 }
                 InputMode.ModeJapanese
             }
