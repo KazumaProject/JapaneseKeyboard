@@ -2027,7 +2027,23 @@ class TabletKeyboardView @JvmOverloads constructor(
 
             InputMode.ModeEnglish -> {
                 binding.apply {
+                    /** や行を削除 **/
+                    key16.isVisible = false
+                    key17.isVisible = false
+                    key18.isVisible = false
+                    key19.isVisible = false
+                    key20.isVisible = false
+                    /** ま行を削除 **/
+                    key21.isVisible = false
+                    key22.isVisible = false
+                    key23.isVisible = false
+                    key24.isVisible = false
 
+                    key36.setMarginEnd(2f)
+                    key37.setMarginEnd(2f)
+                    key38.setMarginEnd(2f)
+                    key39.setMarginEnd(2f)
+                    key40.setMarginEnd(2f)
                 }
                 InputMode.ModeNumber
             }
@@ -2075,6 +2091,24 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key49.setBottomToTopOf(key50)
                     key55.setStartToEndOf(key50)
                     key45.setEndToStartOf(key50)
+
+                    /** や行を追加 **/
+                    key16.isVisible = true
+                    key17.isVisible = true
+                    key18.isVisible = true
+                    key19.isVisible = true
+                    key20.isVisible = true
+                    /** ま行を追加 **/
+                    key21.isVisible = true
+                    key22.isVisible = true
+                    key23.isVisible = true
+                    key24.isVisible = true
+
+                    key36.setMarginEnd(0f)
+                    key37.setMarginEnd(0f)
+                    key38.setMarginEnd(0f)
+                    key39.setMarginEnd(0f)
+                    key40.setMarginEnd(0f)
                 }
                 InputMode.ModeJapanese
             }
