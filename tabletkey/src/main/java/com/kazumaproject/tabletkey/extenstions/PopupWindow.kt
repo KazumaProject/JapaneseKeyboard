@@ -22,8 +22,8 @@ fun PopupWindow.setPopUpWindowFlickRight(
     keyWindowLayout.apply {
         if (arrowDirection != ArrowDirection.LEFT_CENTER) this@setPopUpWindowFlickRight.dismiss()
         arrowDirection = ArrowDirection.LEFT_CENTER
-        arrowHeight = anchorView.height - 12f
-        arrowWidth = (anchorView.width / 2).toFloat()
+        arrowHeight = anchorView.height - 6f
+        arrowWidth = (anchorView.width / 2) - 1.618034f
     }
     showPopupWithOrientation(
         context,
@@ -44,8 +44,8 @@ fun PopupWindow.setPopUpWindowFlickLeft(
     keyWindowLayout.apply {
         if (arrowDirection != ArrowDirection.RIGHT_CENTER) this@setPopUpWindowFlickLeft.dismiss()
         arrowDirection = ArrowDirection.RIGHT_CENTER
-        arrowHeight = anchorView.height - 12f
-        arrowWidth = (anchorView.width / 2).toFloat()
+        arrowHeight = anchorView.height - 6f
+        arrowWidth = (anchorView.width / 2) - 1.618034f
     }
     showPopupWithOrientation(context, anchorView, -anchorView.width, -anchorView.height)
 }
@@ -61,8 +61,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
     keyWindowLayout.apply {
         if (arrowDirection != ArrowDirection.BOTTOM_CENTER) this@setPopUpWindowFlickTop.dismiss()
         arrowDirection = ArrowDirection.BOTTOM_CENTER
-        arrowHeight = (anchorView.height / 2).toFloat()
-        arrowWidth = anchorView.width - 12f
+        arrowHeight = (anchorView.height / 2) - 1.618034f
+        arrowWidth = anchorView.width - 6f
     }
     showPopupWithOrientation(context, anchorView, 0, -(anchorView.height * 2))
 }
@@ -78,8 +78,8 @@ fun PopupWindow.setPopUpWindowFlickBottom(
     keyWindowLayout.apply {
         if (arrowDirection != ArrowDirection.TOP_CENTER) this@setPopUpWindowFlickBottom.dismiss()
         arrowDirection = ArrowDirection.TOP_CENTER
-        arrowHeight = (anchorView.height / 2).toFloat()
-        arrowWidth = anchorView.width - 12f
+        arrowHeight = (anchorView.height / 2) - 1.618034f
+        arrowWidth = anchorView.width - 6f
     }
     if (anchorView.id !in listOf(R.id.key_10, R.id.key_11, R.id.key_12)) {
         showPopupWithOrientation(context, anchorView, 0, -anchorView.height / 2)
