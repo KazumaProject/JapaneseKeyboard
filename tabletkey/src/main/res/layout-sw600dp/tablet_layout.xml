@@ -1091,7 +1091,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_け"
         android:textAllCaps="false"
@@ -1112,7 +1111,6 @@
         android:layout_marginBottom="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_こ"
         android:textAllCaps="false"
