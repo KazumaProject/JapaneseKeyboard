@@ -2,14 +2,11 @@ package com.kazumaproject.tabletkey.extenstions
 
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.domain.extensions.KEY_TABLET_SIZE
 import com.kazumaproject.tabletkey.R
 
-var KEY_JAPANESE_SIZE = 17f
-var KEY_ENGLISH_SIZE = 14f
-var KEY_NUMBER_SIZE = 18f
-
 fun AppCompatButton.setTabletKeyTextJapanese(keyId: Int) {
-    textSize = KEY_JAPANESE_SIZE
+    textSize = KEY_TABLET_SIZE
     setTextColor(
         ContextCompat.getColor(
             context,

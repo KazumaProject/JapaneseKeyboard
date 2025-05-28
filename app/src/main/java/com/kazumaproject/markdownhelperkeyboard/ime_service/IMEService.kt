@@ -93,7 +93,6 @@ import timber.log.Timber
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
-import kotlin.math.roundToInt
 
 @AndroidEntryPoint
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
@@ -3065,9 +3064,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             heightFromPreference.coerceAtMost(maxLandscapeHeight)
         }
-
         val heightInPx = (clampedHeight * density).toInt()
-
         val widthInPx = if (isPortrait) {
             if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT
             else (screenWidth * (widthFromPreference / 100f)).toInt()
@@ -3078,27 +3075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (widthFromPreference == 100) (screenWidth * 0.8).toInt() else (screenWidth * 0.8 * (widthFromPreference / 100f)).toInt()
             }
         }
-
         mainLayoutBinding?.apply {
-            val normalizedProgress = (clampedHeight - 210) / 70f
-            val easedProgress = easeInOutQuad(normalizedProgress)
-            val spanCount = if (isPortrait) lerp(2f, 4f, easedProgress).roundToInt() else lerp(
-                4f, 5f, easedProgress
-            ).roundToInt()
-
-            val letterSizeJP = lerp(14f, 17f, easedProgress)
-            val letterSizeEN = lerp(11f, 14f, easedProgress)
-            val letterSizeNUMBER = lerp(15f, 18f, easedProgress)
-            keyboardSymbolView.updateSpanCount(spanCount)
-            if (isTablet == true) {
-                com.kazumaproject.tabletkey.extenstions.KEY_JAPANESE_SIZE = letterSizeJP
-                com.kazumaproject.tabletkey.extenstions.KEY_ENGLISH_SIZE = letterSizeEN
-                com.kazumaproject.tabletkey.extenstions.KEY_NUMBER_SIZE = letterSizeNUMBER
-            } else {
-                com.kazumaproject.tenkey.extensions.KEY_JAPANESE_SIZE = letterSizeJP
-                com.kazumaproject.tenkey.extensions.KEY_ENGLISH_SIZE = letterSizeJP
-                com.kazumaproject.tenkey.extensions.KEY_NUMBER_SIZE = letterSizeJP
-            }
             if (isTablet == true) {
                 tabletView.apply {
                     val params = layoutParams as FrameLayout.LayoutParams
@@ -3177,12 +3154,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
     }
-
-    private fun lerp(start: Float, end: Float, fraction: Float): Float {
-        return start + (end - start) * fraction
-    }
-
-    private fun easeInOutQuad(t: Float): Float = if (t < 0.5) 2 * t * t else -1 + (4 - 2 * t) * t
 
     private val vibratorManager by lazy {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

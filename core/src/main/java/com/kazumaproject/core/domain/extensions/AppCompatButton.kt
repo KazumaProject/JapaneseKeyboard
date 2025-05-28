@@ -7,9 +7,11 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan
 
-var KEY_JAPANESE_SIZE = 17f
-var KEY_ENGLISH_SIZE = 14f
-var KEY_NUMBER_SIZE = 18f
+const val KEY_JAPANESE_SIZE = 17f
+const val KEY_ENGLISH_SIZE = 14f
+const val KEY_NUMBER_SIZE = 18f
+
+const val KEY_TABLET_SIZE = 18f
 
 val JP_KEY_LAYOUT_WITH_SPACE = listOf(
     "    あ    ", "    か    ", "    さ    ", "    た    ", "    な    ",

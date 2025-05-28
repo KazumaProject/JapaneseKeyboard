@@ -65,7 +65,7 @@
         android:layout_marginStart="@dimen/key_margin_start_size"
         android:layout_marginEnd="@dimen/key_margin_horizontal_size"
         android:background="@drawable/mode_key_bg"
-        android:scaleType="fitCenter"
+        android:scaleType="centerInside"
         android:src="@drawable/input_mode_japanese_select"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/key_1"

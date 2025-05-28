@@ -14,7 +14,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:contentDescription="@string/keyboard_english"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="center"
+        android:scaleType="centerInside"
         android:src="@drawable/undo_24px"
         app:layout_constraintBottom_toTopOf="@+id/key_left_cursor"
         app:layout_constraintEnd_toStartOf="@+id/key_1"
@@ -36,7 +36,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:contentDescription="@string/keyboard_symbols"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="center"
+        android:scaleType="centerInside"
         android:src="@drawable/baseline_arrow_left_24"
         app:layout_constraintBottom_toTopOf="@+id/key_right_cursor"
         app:layout_constraintEnd_toStartOf="@+id/key_2"
@@ -57,7 +57,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:contentDescription="@string/keyboard_symbols"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="center"
+        android:scaleType="centerInside"
         android:src="@drawable/baseline_arrow_right_24"
         app:layout_constraintBottom_toTopOf="@+id/key_kigou"
         app:layout_constraintEnd_toStartOf="@+id/key_3"
@@ -79,8 +79,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:contentDescription="@string/keyboard_kigou"
         android:elevation="@dimen/key_elevation"
-        android:padding="8dp"
-        android:scaleType="fitCenter"
+        android:scaleType="centerInside"
         android:src="@drawable/symbol"
         app:layout_constraintBottom_toTopOf="@+id/key_switch_key_mode"
         app:layout_constraintEnd_toStartOf="@+id/key_4"
@@ -100,7 +99,7 @@
         android:background="@drawable/mode_key_bg"
         android:contentDescription="@string/keyboard_japanese"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="fitCenter"
+        android:scaleType="centerInside"
         android:src="@drawable/input_mode_japanese_select_tablet"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_5"
@@ -505,7 +504,6 @@
         android:layout_marginBottom="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_よ"
         android:textAllCaps="false"
@@ -527,7 +525,6 @@
         android:layout_marginTop="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ま"
         android:textAllCaps="false"
@@ -549,7 +546,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_み"
         android:textAllCaps="false"
@@ -569,7 +565,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_む"
         android:textAllCaps="false"
@@ -589,7 +584,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_め"
         android:textAllCaps="false"
@@ -610,7 +604,6 @@
         android:layout_marginBottom="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_も"
         android:textAllCaps="false"
@@ -633,7 +626,6 @@
         android:layout_marginEnd="2dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_は"
         android:textAllCaps="false"
@@ -656,7 +648,6 @@
         android:layout_marginEnd="2dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ひ"
         android:textAllCaps="false"
@@ -677,7 +668,6 @@
         android:layout_marginEnd="2dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ふ"
         android:textAllCaps="false"
@@ -698,7 +688,6 @@
         android:layout_marginEnd="2dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_へ"
         android:textAllCaps="false"
@@ -720,7 +709,6 @@
         android:layout_marginBottom="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ほ"
         android:textAllCaps="false"
@@ -742,7 +730,6 @@
         android:layout_marginTop="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_な"
         android:textAllCaps="false"
@@ -764,7 +751,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_に"
         android:textAllCaps="false"
@@ -784,7 +770,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ぬ"
         android:textAllCaps="false"
@@ -804,7 +789,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ね"
         android:textAllCaps="false"
@@ -825,7 +809,6 @@
         android:layout_marginBottom="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_の"
         android:textAllCaps="false"
@@ -847,7 +830,6 @@
         android:layout_marginTop="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_た"
         android:textAllCaps="false"
@@ -869,7 +851,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_ち"
         android:textAllCaps="false"
@@ -889,7 +870,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_つ"
         android:textAllCaps="false"
@@ -909,7 +889,6 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_て"
         android:textAllCaps="false"
@@ -930,7 +909,6 @@
         android:layout_marginBottom="1dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_と"
         android:textAllCaps="false"
@@ -1260,7 +1238,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:contentDescription="@string/delete_key"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="center"
+        android:scaleType="centerInside"
         android:src="@drawable/baseline_backspace_24"
         app:layout_constraintBottom_toTopOf="@+id/key_space"
         app:layout_constraintEnd_toEndOf="parent"
@@ -1301,7 +1279,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:contentDescription="@string/enter_key"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="center"
+        android:scaleType="centerInside"
         android:src="@drawable/baseline_arrow_right_alt_24"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -1310,6 +1288,5 @@
         app:layout_constraintTop_toBottomOf="@id/key_space"
         app:layout_constraintVertical_weight="2"
         app:tint="@color/keyboard_icon_color" />
-
 
 </merge>

@@ -3,13 +3,12 @@ package com.kazumaproject.tenkey.extensions
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.extensions.JP_KEY_LAYOUT_WITH_SPACE
+import com.kazumaproject.core.domain.extensions.KEY_ENGLISH_SIZE
+import com.kazumaproject.core.domain.extensions.KEY_JAPANESE_SIZE
+import com.kazumaproject.core.domain.extensions.KEY_NUMBER_SIZE
 import com.kazumaproject.core.domain.extensions.getSpannableStringForKigouButtonJapanese
 import com.kazumaproject.core.domain.extensions.getSpannableStringForNumberButton
 import com.kazumaproject.tenkey.R
-
-var KEY_JAPANESE_SIZE = 17f
-var KEY_ENGLISH_SIZE = 14f
-var KEY_NUMBER_SIZE = 18f
 
 fun AppCompatButton.setTenKeyTextJapanese(
     keyId: Int
