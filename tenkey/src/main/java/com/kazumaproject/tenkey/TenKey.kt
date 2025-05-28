@@ -17,6 +17,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_SMART_PHONE
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
@@ -842,7 +843,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when {
-            abs(distanceX) < 100 && abs(distanceY) < 100 -> GestureType.Tap
+            abs(distanceX) < DEFAULT_TAP_RANGE_SMART_PHONE && abs(distanceY) < DEFAULT_TAP_RANGE_SMART_PHONE -> GestureType.Tap
             abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
             abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
             abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight

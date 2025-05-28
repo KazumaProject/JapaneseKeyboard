@@ -15,6 +15,7 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_TABLET
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
@@ -615,7 +616,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when {
-            abs(distanceX) < 100 && abs(distanceY) < 100 -> GestureType.Tap
+            abs(distanceX) < DEFAULT_TAP_RANGE_TABLET && abs(distanceY) < DEFAULT_TAP_RANGE_TABLET -> GestureType.Tap
             abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
             abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
             abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
@@ -1642,7 +1643,6 @@ class TabletKeyboardView @JvmOverloads constructor(
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.key10) return
                 when (currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
                         it.setTabletKeyTextJapanese(it.id)
@@ -1672,7 +1672,6 @@ class TabletKeyboardView @JvmOverloads constructor(
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.key10) return
                 if (!isLongPressed) it.text = ""
                 when (gestureType) {
                     GestureType.FlickLeft -> {
@@ -1912,7 +1911,6 @@ class TabletKeyboardView @JvmOverloads constructor(
             val button = getButtonFromKey(pressedKey.key)
             button?.let {
                 if (it is AppCompatButton) {
-                    if (it == binding.key10) return
                     when (currentInputMode.get()) {
                         InputMode.ModeJapanese -> {
                             it.setTabletKeyTextJapanese(it.id)
