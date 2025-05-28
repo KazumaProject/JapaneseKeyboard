@@ -14,11 +14,17 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_TABLET
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
+import com.kazumaproject.core.domain.extensions.setBottomToTopOf
+import com.kazumaproject.core.domain.extensions.setEndToStartOf
+import com.kazumaproject.core.domain.extensions.setHorizontalWeight
+import com.kazumaproject.core.domain.extensions.setMarginEnd
+import com.kazumaproject.core.domain.extensions.setStartToEndOf
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
@@ -1966,14 +1972,71 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun handleClickInputModeSwitch() {
         val newInputMode = when (currentInputMode.get()) {
             InputMode.ModeJapanese -> {
+                binding.apply {
+                    /** は行の margin を削除 **/
+                    key26.setMarginEnd(0f)
+                    key27.setMarginEnd(0f)
+                    key28.setMarginEnd(0f)
+                    key29.setMarginEnd(0f)
+                    key30.setMarginEnd(0f)
+
+                    key1.setMarginEnd(0f)
+                    key2.setMarginEnd(0f)
+                    key3.setMarginEnd(0f)
+                    key4.setMarginEnd(0f)
+                    key5.setMarginEnd(0f)
+
+                    key6.isVisible = false
+                    key7.isVisible = false
+                    key8.isVisible = false
+                    key9.isVisible = false
+                    key10.isVisible = false
+
+                    key5.setHorizontalWeight(2f)
+                    key15.isVisible = false
+                    key14.setBottomToTopOf(key5)
+                    key5.setEndToStartOf(key20)
+
+
+                }
                 InputMode.ModeEnglish
             }
 
             InputMode.ModeEnglish -> {
+                binding.apply {
+
+                }
                 InputMode.ModeNumber
             }
 
             InputMode.ModeNumber -> {
+                binding.apply {
+                    /** は行に margin を追加 **/
+                    key26.setMarginEnd(2f)
+                    key27.setMarginEnd(2f)
+                    key28.setMarginEnd(2f)
+                    key29.setMarginEnd(2f)
+                    key30.setMarginEnd(2f)
+
+                    key1.setMarginEnd(2f)
+                    key2.setMarginEnd(2f)
+                    key3.setMarginEnd(2f)
+                    key4.setMarginEnd(2f)
+                    key5.setMarginEnd(2f)
+
+                    key6.isVisible = true
+                    key7.isVisible = true
+                    key8.isVisible = true
+                    key9.isVisible = true
+                    key10.isVisible = true
+
+                    key5.setHorizontalWeight(1f)
+                    key15.isVisible = true
+                    key14.setBottomToTopOf(key15)
+                    key5.setEndToStartOf(key10)
+                    key10.setStartToEndOf(key5)
+
+                }
                 InputMode.ModeJapanese
             }
         }
