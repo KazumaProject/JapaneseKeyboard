@@ -140,6 +140,26 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         sideKeySymbol.setPadding(paddingSize)
     }
 
+    fun setPaddingToSideKeyLeftCursor(paddingSize: Int) {
+        sideKeyCursorLeft.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyRightCursor(paddingSize: Int) {
+        sideKeyCursorRight.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyDelete(paddingSize: Int) {
+        sideKeyDelete.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyEnter(paddingSize: Int) {
+        sideKeyEnter.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyPreviousChar(paddingSize: Int) {
+        sideKeyPreviousChar.setPadding(paddingSize)
+    }
+
     private fun release() {
         flickListener = null
         longPressListener = null

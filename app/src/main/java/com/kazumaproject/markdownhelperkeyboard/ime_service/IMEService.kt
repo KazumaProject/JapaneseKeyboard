@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.content.Context
 import android.content.res.Configuration
-import android.content.res.Resources
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -67,9 +66,6 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.tabletkey.extenstions.KEY_ENGLISH_SIZE
-import com.kazumaproject.tabletkey.extenstions.KEY_JAPANESE_SIZE
-import com.kazumaproject.tabletkey.extenstions.KEY_NUMBER_SIZE
 import com.kazumaproject.tenkey.extensions.getDakutenSmallChar
 import com.kazumaproject.tenkey.extensions.getNextInputChar
 import com.kazumaproject.tenkey.extensions.getNextReturnInputChar
@@ -3059,9 +3055,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val widthFromPreference = appPreference.keyboard_width ?: 100
         val keyboardPositionPreference = appPreference.keyboard_position ?: true
         val density = resources.displayMetrics.density
-        val screenWidth = Resources.getSystem().displayMetrics.widthPixels
+        val screenWidth = resources.displayMetrics.widthPixels
         val orientation = resources.configuration.orientation
-
         val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
 
         val maxLandscapeHeight = 200
@@ -3077,46 +3072,59 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT
             else (screenWidth * (widthFromPreference / 100f)).toInt()
         } else {
-            (screenWidth * 0.8).toInt()
+            if (isTablet == true) {
+                if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT else (screenWidth * (widthFromPreference / 100f)).toInt()
+            } else {
+                if (widthFromPreference == 100) (screenWidth * 0.8).toInt() else (screenWidth * 0.8 * (widthFromPreference / 100f)).toInt()
+            }
         }
 
         mainLayoutBinding?.apply {
             val normalizedProgress = (clampedHeight - 210) / 70f
             val easedProgress = easeInOutQuad(normalizedProgress)
-
             val spanCount = if (isPortrait) lerp(2f, 4f, easedProgress).roundToInt() else lerp(
                 4f, 5f, easedProgress
             ).roundToInt()
-            val padding =
-                if (isPortrait) lerp(
-                    12f * density,
-                    21f * density,
-                    easedProgress
-                ).toInt() else lerp(
-                    8f * density, 12f * density, easedProgress
-                ).toInt()
 
             val letterSizeJP = lerp(14f, 17f, easedProgress)
             val letterSizeEN = lerp(11f, 14f, easedProgress)
             val letterSizeNUMBER = lerp(15f, 18f, easedProgress)
-
             keyboardSymbolView.updateSpanCount(spanCount)
-            keyboardView.setPaddingToSideKeySymbol(padding)
-            KEY_JAPANESE_SIZE = letterSizeJP
-            KEY_ENGLISH_SIZE = letterSizeEN
-            KEY_NUMBER_SIZE = letterSizeNUMBER
-
-            keyboardView.apply {
-                val params = layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    height = heightInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
+            if (isTablet == true) {
+                com.kazumaproject.tabletkey.extenstions.KEY_JAPANESE_SIZE = letterSizeJP
+                com.kazumaproject.tabletkey.extenstions.KEY_ENGLISH_SIZE = letterSizeEN
+                com.kazumaproject.tabletkey.extenstions.KEY_NUMBER_SIZE = letterSizeNUMBER
+            } else {
+                com.kazumaproject.tenkey.extensions.KEY_JAPANESE_SIZE = letterSizeJP
+                com.kazumaproject.tenkey.extensions.KEY_ENGLISH_SIZE = letterSizeJP
+                com.kazumaproject.tenkey.extensions.KEY_NUMBER_SIZE = letterSizeJP
+            }
+            if (isTablet == true) {
+                tabletView.apply {
+                    val params = layoutParams as FrameLayout.LayoutParams
+                    params.apply {
+                        height = heightInPx
+                        gravity = if (keyboardPositionPreference) {
+                            Gravity.BOTTOM or Gravity.END
+                        } else {
+                            Gravity.BOTTOM or Gravity.START
+                        }
                     }
+                    layoutParams = params
                 }
-                layoutParams = params
+            } else {
+                keyboardView.apply {
+                    val params = layoutParams as FrameLayout.LayoutParams
+                    params.apply {
+                        height = heightInPx
+                        gravity = if (keyboardPositionPreference) {
+                            Gravity.BOTTOM or Gravity.END
+                        } else {
+                            Gravity.BOTTOM or Gravity.START
+                        }
+                    }
+                    layoutParams = params
+                }
             }
             candidatesRowView.apply {
                 val params = layoutParams as FrameLayout.LayoutParams
