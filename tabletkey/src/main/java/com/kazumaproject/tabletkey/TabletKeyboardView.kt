@@ -425,7 +425,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                         val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
                         val keyInfo =
                             currentInputMode.get()
-                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = true)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
@@ -508,7 +508,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                             val gestureType =
                                 getGestureType(event, event.getPointerId(event.actionIndex))
                             val keyInfo = currentInputMode.get()
-                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = true)
                             if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null
