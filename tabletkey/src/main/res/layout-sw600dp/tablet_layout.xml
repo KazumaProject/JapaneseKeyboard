@@ -857,7 +857,7 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_38"
-        app:layout_constraintEnd_toStartOf="@+id/key_41"
+        app:layout_constraintEnd_toStartOf="@+id/key_42"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toEndOf="@+id/key_31"
         app:layout_constraintTop_toBottomOf="@id/key_36"
@@ -876,7 +876,7 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_39"
-        app:layout_constraintEnd_toStartOf="@+id/key_41"
+        app:layout_constraintEnd_toStartOf="@+id/key_43"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toEndOf="@+id/key_31"
         app:layout_constraintTop_toBottomOf="@id/key_37"
@@ -895,7 +895,7 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_40"
-        app:layout_constraintEnd_toStartOf="@+id/key_41"
+        app:layout_constraintEnd_toStartOf="@+id/key_44"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toEndOf="@+id/key_31"
         app:layout_constraintTop_toBottomOf="@id/key_38"
@@ -915,7 +915,7 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/key_41"
+        app:layout_constraintEnd_toStartOf="@+id/key_45"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toEndOf="@+id/key_31"
         app:layout_constraintTop_toBottomOf="@id/key_39"
@@ -957,9 +957,9 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_43"
-        app:layout_constraintEnd_toStartOf="@+id/key_46"
+        app:layout_constraintEnd_toStartOf="@+id/key_47"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_36"
+        app:layout_constraintStart_toEndOf="@+id/key_37"
         app:layout_constraintTop_toBottomOf="@id/key_41"
         app:layout_constraintVertical_weight="1" />
 
@@ -976,9 +976,9 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_44"
-        app:layout_constraintEnd_toStartOf="@+id/key_46"
+        app:layout_constraintEnd_toStartOf="@+id/key_48"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_36"
+        app:layout_constraintStart_toEndOf="@+id/key_38"
         app:layout_constraintTop_toBottomOf="@id/key_42"
         app:layout_constraintVertical_weight="1" />
 
@@ -995,9 +995,9 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_45"
-        app:layout_constraintEnd_toStartOf="@+id/key_46"
+        app:layout_constraintEnd_toStartOf="@+id/key_49"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_36"
+        app:layout_constraintStart_toEndOf="@+id/key_39"
         app:layout_constraintTop_toBottomOf="@id/key_43"
         app:layout_constraintVertical_weight="1" />
 
@@ -1015,9 +1015,9 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/key_46"
+        app:layout_constraintEnd_toStartOf="@+id/key_50"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_36"
+        app:layout_constraintStart_toEndOf="@+id/key_40"
         app:layout_constraintTop_toBottomOf="@id/key_44"
         app:layout_constraintVertical_weight="1" />
 
@@ -1058,9 +1058,9 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_48"
-        app:layout_constraintEnd_toStartOf="@+id/key_51"
+        app:layout_constraintEnd_toStartOf="@+id/key_52"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_41"
+        app:layout_constraintStart_toEndOf="@+id/key_42"
         app:layout_constraintTop_toBottomOf="@id/key_46"
         app:layout_constraintVertical_weight="1" />
 
@@ -1071,16 +1071,15 @@
         android:layout_height="0dp"
         android:background="@drawable/tablet_keyboard_center_bg"
         android:elevation="@dimen/key_elevation"
-
         android:scaleType="fitCenter"
         android:text="@string/string_く"
         android:textAllCaps="false"
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_49"
-        app:layout_constraintEnd_toStartOf="@+id/key_51"
+        app:layout_constraintEnd_toStartOf="@+id/key_53"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_41"
+        app:layout_constraintStart_toEndOf="@+id/key_43"
         app:layout_constraintTop_toBottomOf="@id/key_47"
         app:layout_constraintVertical_weight="1" />
 
@@ -1097,9 +1096,9 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toTopOf="@+id/key_50"
-        app:layout_constraintEnd_toStartOf="@+id/key_51"
+        app:layout_constraintEnd_toStartOf="@+id/key_54"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_41"
+        app:layout_constraintStart_toEndOf="@+id/key_44"
         app:layout_constraintTop_toBottomOf="@id/key_48"
         app:layout_constraintVertical_weight="1" />
 
@@ -1117,9 +1116,9 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/key_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/key_51"
+        app:layout_constraintEnd_toStartOf="@+id/key_55"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@+id/key_41"
+        app:layout_constraintStart_toEndOf="@+id/key_45"
         app:layout_constraintTop_toBottomOf="@id/key_49"
         app:layout_constraintVertical_weight="1" />
 
