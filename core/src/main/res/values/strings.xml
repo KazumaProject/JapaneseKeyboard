@@ -177,7 +177,7 @@
     <string name="caps_lock_icon">&#x21EA;</string>
     <string name="shift_symbol">&#x21E7;</string>
     <string name="under_bar">_</string>
-    <string name="undo_symbol">↶</string>
+    <string name="undo_symbol">a/A</string>
     <string name="ampersand_symbol">&amp;</string>
     <string name="sharp_symbol">#</string>
     <string name="asterisk_symbol">*</string>

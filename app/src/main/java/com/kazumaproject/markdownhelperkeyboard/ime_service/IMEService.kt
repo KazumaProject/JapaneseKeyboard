@@ -263,7 +263,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onCreateInputView(): View? {
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-        Timber.d("isTablet: $isTablet")
         val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
