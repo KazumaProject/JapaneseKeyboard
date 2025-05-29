@@ -158,8 +158,8 @@
     <string name="semi_colon">;</string>
     <string name="bracket_left">(</string>
     <string name="bracket_right">)</string>
-    <string name="square_bracket_left">(</string>
-    <string name="square_bracket_right">)</string>
+    <string name="square_bracket_left">[</string>
+    <string name="square_bracket_right">]</string>
     <string name="dollar_mark">$</string>
     <string name="and"><![CDATA[&]]></string>
     <string name="at_mark">\@</string>

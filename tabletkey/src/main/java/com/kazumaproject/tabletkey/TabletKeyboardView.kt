@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.appcompat.widget.AppCompatButton
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import com.google.android.material.textview.MaterialTextView
@@ -52,6 +51,7 @@ import com.kazumaproject.tabletkey.extenstions.setPopUpWindowTop
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextEnglish
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextNumber
+import com.kazumaproject.tabletkey.extenstions.setTabletTextDefaultEnglish
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickBottomJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickLeftJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickRightJapanese
@@ -1582,11 +1582,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
 
                     InputMode.ModeEnglish -> {
-
+                        return
                     }
 
                     InputMode.ModeNumber -> {
-
+                        return
                     }
                 }
                 if (popTextTop.text.isNotEmpty()) {
@@ -1605,25 +1605,6 @@ class TabletKeyboardView @JvmOverloads constructor(
                         context, bubbleViewRight, it
                     )
                 }
-                popupWindowActive.setPopUpWindowFlickTap(
-                    context, bubbleViewActive, it
-                )
-                Blur.applyBlurEffect(this, 8f)
-            }
-
-            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.key10) {
-//                popTextTop.setTextFlickTopNumber(it.id)
-//                popTextLeft.setTextFlickLeftNumber(it.id)
-//                popTextBottom.setTextFlickBottomNumber(it.id)
-//                popTextRight.setTextFlickRightNumber(it.id)
-                popupWindowTop.setPopUpWindowFlickTop(context, bubbleViewTop, it)
-                popupWindowLeft.setPopUpWindowFlickLeft(context, bubbleViewLeft, it)
-                popupWindowBottom.setPopUpWindowFlickBottom(
-                    context, bubbleViewBottom, it
-                )
-                popupWindowRight.setPopUpWindowFlickRight(
-                    context, bubbleViewRight, it
-                )
                 popupWindowActive.setPopUpWindowFlickTap(
                     context, bubbleViewActive, it
                 )
@@ -1654,6 +1635,7 @@ class TabletKeyboardView @JvmOverloads constructor(
 
                     InputMode.ModeEnglish -> {
                         it.setTabletKeyTextEnglish(it.id)
+                        if (isLongPressed) popTextActive.setTabletTextDefaultEnglish(it.id)
                     }
 
                     InputMode.ModeNumber -> {
@@ -1685,11 +1667,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                             }
 
                             InputMode.ModeEnglish -> {
-
+                                return
                             }
 
                             InputMode.ModeNumber -> {
-
+                                return
                             }
                         }
                         if (isLongPressed) {
@@ -1718,11 +1700,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                             }
 
                             InputMode.ModeEnglish -> {
-
+                                return
                             }
 
                             InputMode.ModeNumber -> {
-
+                                return
                             }
                         }
                         if (isLongPressed) {
@@ -1751,11 +1733,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                             }
 
                             InputMode.ModeEnglish -> {
-
+                                return
                             }
 
                             InputMode.ModeNumber -> {
-
+                                return
                             }
                         }
                         if (isLongPressed) {
@@ -1784,11 +1766,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                             }
 
                             InputMode.ModeEnglish -> {
-
+                                return
                             }
 
                             InputMode.ModeNumber -> {
-
+                                return
                             }
                         }
                         if (isLongPressed) {

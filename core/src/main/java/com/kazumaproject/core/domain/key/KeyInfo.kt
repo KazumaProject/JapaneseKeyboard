@@ -1143,4 +1143,624 @@ sealed class KeyInfo {
             get() = null
     }
 
+    /** Tablet Key
+     *
+     *  tap: Default
+     *  left: Capital Letter
+     *  top: Zenkaku Small
+     *  right: Zenkaku
+     *
+     * **/
+    object KeyAEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'a'
+        override val flickLeft: Char
+            get() = 'A'
+        override val flickTop: Char
+            get() = 'ａ'
+        override val flickRight: Char
+            get() = 'Ａ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyBEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'b'
+        override val flickLeft: Char
+            get() = 'B'
+        override val flickTop: Char
+            get() = 'ｂ'
+        override val flickRight: Char
+            get() = 'Ｂ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyCEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'c'
+        override val flickLeft: Char
+            get() = 'C'
+        override val flickTop: Char
+            get() = 'ｃ'
+        override val flickRight: Char
+            get() = 'Ｃ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyDEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'd'
+        override val flickLeft: Char
+            get() = 'D'
+        override val flickTop: Char
+            get() = 'ｄ'
+        override val flickRight: Char
+            get() = 'Ｄ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyEEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'e'
+        override val flickLeft: Char
+            get() = 'E'
+        override val flickTop: Char
+            get() = 'ｅ'
+        override val flickRight: Char
+            get() = 'Ｅ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyFEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'f'
+        override val flickLeft: Char
+            get() = 'F'
+        override val flickTop: Char
+            get() = 'ｆ'
+        override val flickRight: Char
+            get() = 'Ｆ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyGEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'g'
+        override val flickLeft: Char
+            get() = 'G'
+        override val flickTop: Char
+            get() = 'ｇ'
+        override val flickRight: Char
+            get() = 'Ｇ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyHEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'h'
+        override val flickLeft: Char
+            get() = 'H'
+        override val flickTop: Char
+            get() = 'ｈ'
+        override val flickRight: Char
+            get() = 'Ｈ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyIEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'i'
+        override val flickLeft: Char
+            get() = 'I'
+        override val flickTop: Char
+            get() = 'ｉ'
+        override val flickRight: Char
+            get() = 'Ｉ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyJEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'j'
+        override val flickLeft: Char
+            get() = 'J'
+        override val flickTop: Char
+            get() = 'ｊ'
+        override val flickRight: Char
+            get() = 'Ｊ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyKEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'k'
+        override val flickLeft: Char
+            get() = 'K'
+        override val flickTop: Char
+            get() = 'ｋ'
+        override val flickRight: Char
+            get() = 'Ｋ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyLEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'l'
+        override val flickLeft: Char
+            get() = 'L'
+        override val flickTop: Char
+            get() = 'ｌ'
+        override val flickRight: Char
+            get() = 'Ｌ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyMEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'm'
+        override val flickLeft: Char
+            get() = 'M'
+        override val flickTop: Char
+            get() = 'ｍ'
+        override val flickRight: Char
+            get() = 'Ｍ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyNEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'n'
+        override val flickLeft: Char
+            get() = 'N'
+        override val flickTop: Char
+            get() = 'ｎ'
+        override val flickRight: Char
+            get() = 'Ｎ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyOEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'o'
+        override val flickLeft: Char
+            get() = 'O'
+        override val flickTop: Char
+            get() = 'ｏ'
+        override val flickRight: Char
+            get() = 'Ｏ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyPEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'p'
+        override val flickLeft: Char
+            get() = 'P'
+        override val flickTop: Char
+            get() = 'ｐ'
+        override val flickRight: Char
+            get() = 'Ｐ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyQEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'q'
+        override val flickLeft: Char
+            get() = 'Q'
+        override val flickTop: Char
+            get() = 'ｑ'
+        override val flickRight: Char
+            get() = 'Ｑ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyREnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'r'
+        override val flickLeft: Char
+            get() = 'R'
+        override val flickTop: Char
+            get() = 'ｒ'
+        override val flickRight: Char
+            get() = 'Ｒ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeySEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 's'
+        override val flickLeft: Char
+            get() = 'S'
+        override val flickTop: Char
+            get() = 'ｓ'
+        override val flickRight: Char
+            get() = 'Ｓ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyTEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 't'
+        override val flickLeft: Char
+            get() = 'T'
+        override val flickTop: Char
+            get() = 'ｔ'
+        override val flickRight: Char
+            get() = 'Ｔ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyUEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'u'
+        override val flickLeft: Char
+            get() = 'U'
+        override val flickTop: Char
+            get() = 'ｕ'
+        override val flickRight: Char
+            get() = 'Ｕ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyVEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'v'
+        override val flickLeft: Char
+            get() = 'V'
+        override val flickTop: Char
+            get() = 'ｖ'
+        override val flickRight: Char
+            get() = 'Ｖ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyWEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'w'
+        override val flickLeft: Char
+            get() = 'W'
+        override val flickTop: Char
+            get() = 'ｗ'
+        override val flickRight: Char
+            get() = 'Ｗ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyXEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'x'
+        override val flickLeft: Char
+            get() = 'X'
+        override val flickTop: Char
+            get() = 'ｘ'
+        override val flickRight: Char
+            get() = 'Ｘ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyYEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'y'
+        override val flickLeft: Char
+            get() = 'Y'
+        override val flickTop: Char
+            get() = 'ｙ'
+        override val flickRight: Char
+            get() = 'Ｙ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyZEnglish : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = 'z'
+        override val flickLeft: Char
+            get() = 'Z'
+        override val flickTop: Char
+            get() = 'ｚ'
+        override val flickRight: Char
+            get() = 'Ｚ'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyLeftBracket : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '('
+        override val flickLeft: Char
+            get() = '<'
+        override val flickTop: Char
+            get() = '（'
+        override val flickRight: Char
+            get() = '〈'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyRightBracket : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = ')'
+        override val flickLeft: Char
+            get() = '>'
+        override val flickTop: Char
+            get() = '）'
+        override val flickRight: Char
+            get() = '〉'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeySquareLeftBracket : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '['
+        override val flickLeft: Char
+            get() = '{'
+        override val flickTop: Char
+            get() = '［'
+        override val flickRight: Char
+            get() = '｛'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeySquareRightBracket : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = ']'
+        override val flickLeft: Char
+            get() = '}'
+        override val flickTop: Char
+            get() = '］'
+        override val flickRight: Char
+            get() = '｝'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyMinus : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '-'
+        override val flickLeft: Char
+            get() = '+'
+        override val flickTop: Char
+            get() = '－'
+        override val flickRight: Char
+            get() = '＋'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyUnderBar : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '_'
+        override val flickLeft: Char
+            get() = '~'
+        override val flickTop: Char
+            get() = '＿'
+        override val flickRight: Char
+            get() = '〜'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeySlash : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '/'
+        override val flickLeft: Char
+            get() = '\\'
+        override val flickTop: Char
+            get() = '／'
+        override val flickRight: Char
+            get() = '＼'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyColon : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = ':'
+        override val flickLeft: Char
+            get() = ';'
+        override val flickTop: Char
+            get() = '：'
+        override val flickRight: Char
+            get() = '；'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyAnd : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '&'
+        override val flickLeft: Char
+            get() = '%'
+        override val flickTop: Char
+            get() = '＆'
+        override val flickRight: Char
+            get() = '％'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyAtMark : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '@'
+        override val flickLeft: Char
+            get() = '|'
+        override val flickTop: Char
+            get() = '＠'
+        override val flickRight: Char
+            get() = '｜'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeySharp : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '#'
+        override val flickLeft: Char
+            get() = '='
+        override val flickTop: Char
+            get() = '＃'
+        override val flickRight: Char
+            get() = '＝'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyAsterisk : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '*'
+        override val flickLeft: Char
+            get() = '$'
+        override val flickTop: Char
+            get() = '＊'
+        override val flickRight: Char
+            get() = '＄'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyCaret : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '^'
+        override val flickLeft: Char
+            get() = '\''
+        override val flickTop: Char
+            get() = '＾'
+        override val flickRight: Char
+            get() = '＇'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyBackQuote : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '`'
+        override val flickLeft: Char
+            get() = '"'
+        override val flickTop: Char
+            get() = '｀'
+        override val flickRight: Char
+            get() = '＂'
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyComma : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = ','
+        override val flickLeft: Char
+            get() = '、'
+        override val flickTop: Char
+            get() = '，'
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyPeriod : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '.'
+        override val flickLeft: Char
+            get() = '。'
+        override val flickTop: Char
+            get() = '．'
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyCaution : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '!'
+        override val flickLeft: Char?
+            get() = null
+        override val flickTop: Char
+            get() = '！'
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyQuestion : KeyTapFlickInfo() {
+        override val tap: Char
+            get() = '?'
+        override val flickLeft: Char?
+            get() = null
+        override val flickTop: Char
+            get() = '？'
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyShiftEnglish : KeyTapFlickInfo() {
+        override val tap: Char?
+            get() = null
+        override val flickLeft: Char?
+            get() = null
+        override val flickTop: Char?
+            get() = null
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyUndoEnglish : KeyTapFlickInfo() {
+        override val tap: Char?
+            get() = null
+        override val flickLeft: Char?
+            get() = null
+        override val flickTop: Char?
+            get() = null
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
+    object KeyZenkakuEnglish : KeyTapFlickInfo() {
+        override val tap: Char?
+            get() = null
+        override val flickLeft: Char?
+            get() = null
+        override val flickTop: Char?
+            get() = null
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
+
 }
