@@ -22,6 +22,7 @@ import com.kazumaproject.core.domain.extensions.layoutYPosition
 import com.kazumaproject.core.domain.extensions.setBottomToTopOf
 import com.kazumaproject.core.domain.extensions.setEndToStartOf
 import com.kazumaproject.core.domain.extensions.setHorizontalWeight
+import com.kazumaproject.core.domain.extensions.setLargeUnicodeIcon
 import com.kazumaproject.core.domain.extensions.setLargeUnicodeIconScaleX
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setStartToEndOf
@@ -50,6 +51,7 @@ import com.kazumaproject.tabletkey.extenstions.setPopUpWindowRight
 import com.kazumaproject.tabletkey.extenstions.setPopUpWindowTop
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextEnglish
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextJapanese
+import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextNumber
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickBottomJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickLeftJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickRightJapanese
@@ -385,7 +387,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 }
 
                                 InputMode.ModeNumber -> {
-                                    //it.setTenKeyTextNumber(it.id)
+                                    it.setTabletKeyTextNumber(it.id)
                                 }
                             }
                         }
@@ -455,7 +457,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                                                 }
 
                                                 InputMode.ModeNumber -> {
-
+                                                    it.setTabletKeyTextNumber(it.id)
                                                 }
                                             }
                                         }
@@ -567,7 +569,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                                         }
 
                                         InputMode.ModeNumber -> {
-
+                                            it.setTabletKeyTextNumber(it.id)
                                         }
                                     }
                                 }
@@ -1655,7 +1657,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
 
                     InputMode.ModeNumber -> {
-
+                        it.setTabletKeyTextNumber(it.id)
                     }
                 }
                 it.isPressed = true
@@ -1845,7 +1847,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                         }
 
                         InputMode.ModeNumber -> {
-
+                            it.setTabletKeyTextNumber(it.id)
                         }
                     }
                 }
@@ -1882,7 +1884,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
 
             InputMode.ModeNumber -> {
-
+                setKeysInNumberText()
             }
         }
     }
@@ -1945,6 +1947,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
 
             InputMode.ModeEnglish -> {
+                setKeysInNumberText()
                 binding.apply {
                     /** や行を削除 **/
                     key16.isVisible = false
@@ -2046,6 +2049,10 @@ class TabletKeyboardView @JvmOverloads constructor(
                 icon = resources.getString(com.kazumaproject.core.R.string.string_kuten),
                 scaleX = 1f
             )
+            key20.setLargeUnicodeIconScaleX(
+                icon = resources.getString(com.kazumaproject.core.R.string.string_よ),
+                scaleX = 1f
+            )
         }
     }
 
@@ -2056,8 +2063,23 @@ class TabletKeyboardView @JvmOverloads constructor(
         binding.apply {
             key5.setLargeUnicodeIconScaleX(
                 icon = resources.getString(com.kazumaproject.core.R.string.shift_symbol),
-                iconSizeSp = 22,
-                scaleX = 1.5f
+                iconSizeSp = 18,
+                scaleX = 1.618f
+            )
+            key20.setLargeUnicodeIcon(
+                icon = resources.getString(com.kazumaproject.core.R.string.undo_symbol),
+                iconSizeSp = 18,
+            )
+        }
+    }
+
+    private fun setKeysInNumberText() {
+        allButtonKeys.forEach { button ->
+            if (button != binding.key5) button.setTabletKeyTextNumber(keyId = button.id)
+        }
+        binding.apply {
+            key5.setLargeUnicodeIconScaleX(
+                icon = resources.getString(com.kazumaproject.core.R.string.tablet_number_command),
             )
         }
     }

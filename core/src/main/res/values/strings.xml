@@ -184,4 +184,26 @@
     <string name="caret">^</string>
     <string name="apostrophe">\'</string>
     <string name="zenkaku">全角</string>
+
+    <string name="tablet_number_year">年</string>
+    <string name="tablet_number_month">月</string>
+    <string name="tablet_number_day">日</string>
+    <string name="tablet_number_hour">時</string>
+    <string name="tablet_number_minute">分</string>
+    <string name="tablet_number_multiplication">×</string>
+    <string name="tablet_number_divide">÷</string>
+    <string name="tablet_number_plus">+</string>
+    <string name="tablet_number_minus">-</string>
+    <string name="tablet_number_equal">=</string>
+    <string name="tablet_number_music_note">♪</string>
+    <string name="tablet_number_star">☆</string>
+    <string name="tablet_number_percent">%</string>
+    <string name="tablet_number_yen">￥</string>
+    <string name="tablet_number_post_mark">〒</string>
+    <string name="tablet_number_arrow_right">→</string>
+    <string name="tablet_number_tilde">~</string>
+    <string name="tablet_number_middle_dot">・</string>
+    <string name="tablet_number_ellipsis">…</string>
+    <string name="tablet_number_circle">○</string>
+    <string name="tablet_number_command">⌘</string>
 </resources>

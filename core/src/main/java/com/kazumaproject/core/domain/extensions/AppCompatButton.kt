@@ -73,7 +73,7 @@ fun AppCompatImageButton.setWidthDp(widthDp: Int) {
     }
 }
 
-fun AppCompatButton.setLargeUnicodeIcon(icon: String, iconSizeSp: Int = 24) {
+fun AppCompatButton.setLargeUnicodeIcon(icon: String, iconSizeSp: Int = 18) {
     val spannable = SpannableString(icon)
 
     spannable.setSpan(
@@ -90,7 +90,7 @@ fun AppCompatButton.setLargeUnicodeIcon(icon: String, iconSizeSp: Int = 24) {
 fun AppCompatButton.setLargeUnicodeIconScaleX(
     icon: String,
     iconSizeSp: Int = 18,
-    scaleX: Float,
+    scaleX: Float = 1f,
 ) {
     val spannable = SpannableString(icon)
     spannable.setSpan(
