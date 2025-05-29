@@ -2,6 +2,8 @@ package com.kazumaproject.core.domain.extensions
 
 
 import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.AbsoluteSizeSpan
 import android.text.style.RelativeSizeSpan
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
@@ -61,4 +63,44 @@ fun AppCompatImageButton.layoutYPosition(): Int {
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[1]
+}
+
+fun AppCompatImageButton.setWidthDp(widthDp: Int) {
+    val scale = context.resources.displayMetrics.density
+    val widthPx = (widthDp * scale + 0.5f).toInt()
+    layoutParams = layoutParams.apply {
+        width = widthPx
+    }
+}
+
+fun AppCompatButton.setLargeUnicodeIcon(icon: String, iconSizeSp: Int = 24) {
+    val spannable = SpannableString(icon)
+
+    spannable.setSpan(
+        AbsoluteSizeSpan(iconSizeSp, true),
+        0,
+        icon.length,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+    )
+
+    this.text = spannable
+    this.gravity = android.view.Gravity.CENTER
+}
+
+fun AppCompatButton.setLargeUnicodeIconScaleX(
+    icon: String,
+    iconSizeSp: Int = 18,
+    scaleX: Float,
+) {
+    val spannable = SpannableString(icon)
+    spannable.setSpan(
+        AbsoluteSizeSpan(iconSizeSp, true),
+        0,
+        icon.length,
+        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+    )
+
+    this.text = spannable
+    this.gravity = android.view.Gravity.CENTER
+    this.textScaleX = scaleX
 }
