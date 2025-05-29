@@ -36,6 +36,10 @@ class SettingFragment : PreferenceFragmentCompat() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
+        if (isTablet) {
+            appPreference.flick_input_only_preference = true
+        }
         CoroutineScope(Dispatchers.IO).launch {
             learnRepository.apply {
                 if (findLearnDataByInput("びゃんびゃんめん")

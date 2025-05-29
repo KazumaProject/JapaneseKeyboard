@@ -1736,7 +1736,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    object KeyUndoEnglish : KeyTapFlickInfo() {
+    object KeySmallEnglish : KeyTapFlickInfo() {
         override val tap: Char?
             get() = null
         override val flickLeft: Char?

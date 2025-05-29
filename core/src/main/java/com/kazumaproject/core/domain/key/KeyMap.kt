@@ -116,6 +116,7 @@ class KeyMap : KeyMapHolder {
         Key.KeySPACE1 to KeyInfo.KeyMEnglish,
         Key.KeyYU to KeyInfo.KeyWEnglish,
         Key.KeySPACE2 to KeyInfo.KeySlash,
+        Key.KeyYO to KeyInfo.KeySmallEnglish,
         Key.KeyMA to KeyInfo.KeyDEnglish,
         Key.KeyMI to KeyInfo.KeyNEnglish,
         Key.KeyMU to KeyInfo.KeyXEnglish,
