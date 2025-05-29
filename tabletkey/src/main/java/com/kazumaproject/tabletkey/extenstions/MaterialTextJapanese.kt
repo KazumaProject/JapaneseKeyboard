@@ -48,9 +48,7 @@ private val TABLET_KEYS_ME = listOf('め', null, null, null, null)
 private val TABLET_KEYS_MO = listOf('も', null, null, null, null)
 
 private val TABLET_KEYS_YA = listOf('や', null, 'ゃ', null, null)
-private val TABLET_KEYS_BLANK1 = listOf(null, null, null, null, null)
 private val TABLET_KEYS_YU = listOf('ゆ', null, 'ゅ', null, null)
-private val TABLET_KEYS_BLANK2 = listOf(null, null, null, null, null)
 private val TABLET_KEYS_YO = listOf('よ', null, 'ょ', null, null)
 
 private val TABLET_KEYS_RA = listOf('ら', null, null, null, null)
@@ -114,9 +112,9 @@ fun MaterialTextView.setTabletFlickTextJapanese(keyId: Int, direction: FlickDire
         R.id.key_25 -> TABLET_KEYS_MO.getOrNull(direction.index)
         // YA GYO
         R.id.key_16 -> TABLET_KEYS_YA.getOrNull(direction.index)
-        R.id.key_17 -> TABLET_KEYS_BLANK1.getOrNull(direction.index)
+        R.id.key_17 -> null
         R.id.key_18 -> TABLET_KEYS_YU.getOrNull(direction.index)
-        R.id.key_19 -> TABLET_KEYS_BLANK2.getOrNull(direction.index)
+        R.id.key_19 -> null
         R.id.key_20 -> TABLET_KEYS_YO.getOrNull(direction.index)
         // RA GYO
         R.id.key_11 -> TABLET_KEYS_RA.getOrNull(direction.index)
