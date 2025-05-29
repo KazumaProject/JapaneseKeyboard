@@ -6,7 +6,7 @@
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_previous"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="4dp"
         android:layout_marginStart="8dp"
@@ -28,7 +28,7 @@
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_left_cursor"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="4dp"
         android:layout_marginStart="8dp"
@@ -49,7 +49,7 @@
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_right_cursor"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="4dp"
         android:layout_marginStart="8dp"
@@ -71,7 +71,7 @@
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_kigou"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/key_margin_vertical_size"
         android:layout_marginStart="8dp"
@@ -92,7 +92,7 @@
     <com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
         android:id="@+id/key_switch_key_mode"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="4dp"
         android:layout_marginStart="8dp"
@@ -1228,7 +1228,7 @@
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_delete"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="2dp"
         android:layout_marginStart="4dp"
@@ -1250,7 +1250,7 @@
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_space"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="2dp"
         android:layout_marginStart="4dp"
@@ -1271,7 +1271,7 @@
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_enter"
         style="?android:attr/borderlessButtonStyle"
-        android:layout_width="@dimen/tablet_side_key_portrait_width"
+        android:layout_width="@dimen/tablet_side_key_width"
         android:layout_height="0dp"
         android:layout_marginVertical="2dp"
         android:layout_marginStart="4dp"

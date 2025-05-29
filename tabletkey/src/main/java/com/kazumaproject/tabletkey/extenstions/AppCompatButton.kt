@@ -72,3 +72,63 @@ fun AppCompatButton.setTabletKeyTextJapanese(keyId: Int) {
         else -> ""
     }
 }
+
+fun AppCompatButton.setTabletKeyTextEnglish(keyId: Int) {
+    textSize = KEY_TABLET_SIZE
+    setTextColor(
+        ContextCompat.getColor(
+            context,
+            com.kazumaproject.core.R.color.keyboard_icon_color
+        )
+    )
+    text = when (keyId) {
+        R.id.key_1 -> context.getString(com.kazumaproject.core.R.string.a)
+        R.id.key_2 -> context.getString(com.kazumaproject.core.R.string.k)
+        R.id.key_3 -> context.getString(com.kazumaproject.core.R.string.u)
+        R.id.key_4 -> context.getString(com.kazumaproject.core.R.string.horizontalbar)
+        R.id.key_5 -> context.getString(com.kazumaproject.core.R.string.caps_lock_icon)
+        R.id.key_11 -> context.getString(com.kazumaproject.core.R.string.b)
+        R.id.key_12 -> context.getString(com.kazumaproject.core.R.string.l)
+        R.id.key_13 -> context.getString(com.kazumaproject.core.R.string.v)
+        R.id.key_14 -> context.getString(com.kazumaproject.core.R.string.under_bar)
+        R.id.key_16 -> context.getString(com.kazumaproject.core.R.string.c)
+        R.id.key_17 -> context.getString(com.kazumaproject.core.R.string.m)
+        R.id.key_18 -> context.getString(com.kazumaproject.core.R.string.w)
+        R.id.key_19 -> context.getString(com.kazumaproject.core.R.string.slash)
+        R.id.key_20 -> context.getString(com.kazumaproject.core.R.string.undo_symbol)
+        R.id.key_21 -> context.getString(com.kazumaproject.core.R.string.d)
+        R.id.key_22 -> context.getString(com.kazumaproject.core.R.string.n)
+        R.id.key_23 -> context.getString(com.kazumaproject.core.R.string.x)
+        R.id.key_24 -> context.getString(com.kazumaproject.core.R.string.colon)
+        R.id.key_26 -> context.getString(com.kazumaproject.core.R.string.e)
+        R.id.key_27 -> context.getString(com.kazumaproject.core.R.string.o)
+        R.id.key_28 -> context.getString(com.kazumaproject.core.R.string.y)
+        R.id.key_29 -> context.getString(com.kazumaproject.core.R.string.ampersand_symbol)
+        R.id.key_30 -> context.getString(com.kazumaproject.core.R.string.comma)
+        R.id.key_31 -> context.getString(com.kazumaproject.core.R.string.f)
+        R.id.key_32 -> context.getString(com.kazumaproject.core.R.string.p)
+        R.id.key_33 -> context.getString(com.kazumaproject.core.R.string.z)
+        R.id.key_34 -> context.getString(com.kazumaproject.core.R.string.at_mark)
+        R.id.key_35 -> context.getString(com.kazumaproject.core.R.string.period)
+        R.id.key_36 -> context.getString(com.kazumaproject.core.R.string.g)
+        R.id.key_37 -> context.getString(com.kazumaproject.core.R.string.q)
+        R.id.key_38 -> context.getString(com.kazumaproject.core.R.string.bracket_left)
+        R.id.key_39 -> context.getString(com.kazumaproject.core.R.string.sharp_symbol)
+        R.id.key_40 -> context.getString(com.kazumaproject.core.R.string.mark)
+        R.id.key_41 -> context.getString(com.kazumaproject.core.R.string.h)
+        R.id.key_42 -> context.getString(com.kazumaproject.core.R.string.r)
+        R.id.key_43 -> context.getString(com.kazumaproject.core.R.string.bracket_right)
+        R.id.key_44 -> context.getString(com.kazumaproject.core.R.string.asterisk_symbol)
+        R.id.key_45 -> context.getString(com.kazumaproject.core.R.string.question)
+        R.id.key_46 -> context.getString(com.kazumaproject.core.R.string.i)
+        R.id.key_47 -> context.getString(com.kazumaproject.core.R.string.s)
+        R.id.key_48 -> context.getString(com.kazumaproject.core.R.string.square_bracket_left)
+        R.id.key_49 -> context.getString(com.kazumaproject.core.R.string.caret)
+        R.id.key_51 -> context.getString(com.kazumaproject.core.R.string.j)
+        R.id.key_52 -> context.getString(com.kazumaproject.core.R.string.t)
+        R.id.key_53 -> context.getString(com.kazumaproject.core.R.string.square_bracket_right)
+        R.id.key_54 -> context.getString(com.kazumaproject.core.R.string.apostrophe)
+        R.id.key_55 -> context.getString(com.kazumaproject.core.R.string.zenkaku)
+        else -> ""
+    }
+}

@@ -13,7 +13,6 @@ import android.widget.PopupWindow
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_TABLET
@@ -23,6 +22,7 @@ import com.kazumaproject.core.domain.extensions.layoutYPosition
 import com.kazumaproject.core.domain.extensions.setBottomToTopOf
 import com.kazumaproject.core.domain.extensions.setEndToStartOf
 import com.kazumaproject.core.domain.extensions.setHorizontalWeight
+import com.kazumaproject.core.domain.extensions.setLargeUnicodeIconScaleX
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setStartToEndOf
 import com.kazumaproject.core.domain.key.Key
@@ -48,6 +48,7 @@ import com.kazumaproject.tabletkey.extenstions.setPopUpWindowFlickTop
 import com.kazumaproject.tabletkey.extenstions.setPopUpWindowLeft
 import com.kazumaproject.tabletkey.extenstions.setPopUpWindowRight
 import com.kazumaproject.tabletkey.extenstions.setPopUpWindowTop
+import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextEnglish
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickBottomJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletTextFlickLeftJapanese
@@ -220,6 +221,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
         declarePopupWindows()
+        handleCurrentInputModeSwitch(inputMode = currentInputMode.get())
     }
 
     @SuppressLint("InflateParams")
@@ -379,20 +381,13 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 }
 
                                 InputMode.ModeEnglish -> {
-                                    //it.setTenKeyTextEnglish(it.id)
+                                    it.setTabletKeyTextEnglish(it.id)
                                 }
 
                                 InputMode.ModeNumber -> {
                                     //it.setTenKeyTextNumber(it.id)
                                 }
                             }
-                        }
-                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.key10) {
-                            it.setImageDrawable(
-                                ContextCompat.getDrawable(
-                                    context, com.kazumaproject.core.R.drawable.number_small
-                                )
-                            )
                         }
                     }
                     return false
@@ -456,7 +451,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                                                 }
 
                                                 InputMode.ModeEnglish -> {
-
+                                                    it.setTabletKeyTextEnglish(it.id)
                                                 }
 
                                                 InputMode.ModeNumber -> {
@@ -568,7 +563,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                                         }
 
                                         InputMode.ModeEnglish -> {
-
+                                            it.setTabletKeyTextEnglish(it.id)
                                         }
 
                                         InputMode.ModeNumber -> {
@@ -1656,7 +1651,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
 
                     InputMode.ModeEnglish -> {
-
+                        it.setTabletKeyTextEnglish(it.id)
                     }
 
                     InputMode.ModeNumber -> {
@@ -1818,83 +1813,6 @@ class TabletKeyboardView @JvmOverloads constructor(
                 }
                 it.isPressed = false
             }
-//            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.key10) {
-//                if (!isLongPressed) it.setImageDrawable(null)
-//                when (gestureType) {
-//                    GestureType.FlickLeft -> {
-//                        popTextActive.setTextFlickLeftNumber(it.id)
-//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
-//                        if (isLongPressed) {
-//                            popupWindowCenter.setPopUpWindowCenter(
-//                                context, bubbleViewCenter, it
-//                            )
-//                            popupWindowActive.setPopUpWindowLeft(
-//                                context, bubbleViewActive, it
-//                            )
-//                        } else {
-//                            popupWindowActive.setPopUpWindowFlickLeft(
-//                                context, bubbleViewActive, it
-//                            )
-//                        }
-//                    }
-//
-//                    GestureType.FlickTop -> {
-//                        popTextActive.setTextFlickTopNumber(it.id)
-//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
-//                        if (isLongPressed) {
-//                            popupWindowCenter.setPopUpWindowCenter(
-//                                context, bubbleViewCenter, it
-//                            )
-//                            popupWindowActive.setPopUpWindowTop(
-//                                context, bubbleViewActive, it
-//                            )
-//                        } else {
-//                            popupWindowActive.setPopUpWindowFlickTop(
-//                                context, bubbleViewActive, it
-//                            )
-//                        }
-//                    }
-//
-//                    GestureType.FlickRight -> {
-//                        popTextActive.setTextFlickRightNumber(it.id)
-//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
-//                        if (isLongPressed) {
-//                            popupWindowCenter.setPopUpWindowCenter(
-//                                context, bubbleViewCenter, it
-//                            )
-//                            popupWindowActive.setPopUpWindowRight(
-//                                context, bubbleViewActive, it
-//                            )
-//                        } else {
-//                            popupWindowActive.setPopUpWindowFlickRight(
-//                                context, bubbleViewActive, it
-//                            )
-//                        }
-//                    }
-//
-//                    GestureType.FlickBottom -> {
-//                        popTextActive.setTextFlickBottomNumber(it.id)
-//                        if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
-//                        if (isLongPressed) {
-//                            popupWindowCenter.setPopUpWindowCenter(
-//                                context, bubbleViewCenter, it
-//                            )
-//                            popupWindowActive.setPopUpWindowBottom(
-//                                context, bubbleViewActive, it
-//                            )
-//                        } else {
-//                            popupWindowActive.setPopUpWindowFlickBottom(
-//                                context, bubbleViewActive, it
-//                            )
-//                        }
-//                    }
-//
-//                    else -> {
-//
-//                    }
-//                }
-//                it.isPressed = false
-//            }
         }
     }
 
@@ -1923,7 +1841,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                         }
 
                         InputMode.ModeEnglish -> {
-
+                            it.setTabletKeyTextEnglish(it.id)
                         }
 
                         InputMode.ModeNumber -> {
@@ -1950,17 +1868,17 @@ class TabletKeyboardView @JvmOverloads constructor(
     fun setInputModeSwitchState() {
         val inputMode = currentInputMode.get()
         binding.keySwitchKeyMode.setInputMode(inputMode, true)
-        //handleCurrentInputModeSwitch(inputMode)
+        handleCurrentInputModeSwitch(inputMode)
     }
 
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
         when (inputMode) {
             InputMode.ModeJapanese -> {
-
+                setKeysInJapaneseText()
             }
 
             InputMode.ModeEnglish -> {
-
+                setKeysInEnglishText()
             }
 
             InputMode.ModeNumber -> {
@@ -1972,6 +1890,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun handleClickInputModeSwitch() {
         val newInputMode = when (currentInputMode.get()) {
             InputMode.ModeJapanese -> {
+                setKeysInEnglishText()
                 binding.apply {
                     /** は行の margin を削除 **/
                     key26.setMarginEnd(0f)
@@ -2049,6 +1968,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
 
             InputMode.ModeNumber -> {
+                setKeysInJapaneseText()
                 binding.apply {
                     /** は行に margin を追加 **/
                     key26.setMarginEnd(2f)
@@ -2115,6 +2035,31 @@ class TabletKeyboardView @JvmOverloads constructor(
         }
         currentInputMode.set(newInputMode)
         binding.keySwitchKeyMode.setInputMode(newInputMode, isTablet = true)
+    }
+
+    private fun setKeysInJapaneseText() {
+        allButtonKeys.forEach {
+            it.setTabletKeyTextJapanese(keyId = it.id)
+        }
+        binding.apply {
+            key5.setLargeUnicodeIconScaleX(
+                icon = resources.getString(com.kazumaproject.core.R.string.string_kuten),
+                scaleX = 1f
+            )
+        }
+    }
+
+    private fun setKeysInEnglishText() {
+        allButtonKeys.forEach { button ->
+            if (button != binding.key5) button.setTabletKeyTextEnglish(keyId = button.id)
+        }
+        binding.apply {
+            key5.setLargeUnicodeIconScaleX(
+                icon = resources.getString(com.kazumaproject.core.R.string.shift_symbol),
+                iconSizeSp = 22,
+                scaleX = 1.5f
+            )
+        }
     }
 
 }

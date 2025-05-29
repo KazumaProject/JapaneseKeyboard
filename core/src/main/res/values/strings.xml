@@ -158,6 +158,8 @@
     <string name="semi_colon">;</string>
     <string name="bracket_left">(</string>
     <string name="bracket_right">)</string>
+    <string name="square_bracket_left">(</string>
+    <string name="square_bracket_right">)</string>
     <string name="dollar_mark">$</string>
     <string name="and"><![CDATA[&]]></string>
     <string name="at_mark">\@</string>
@@ -172,4 +174,14 @@
     <string name="keyboard_english">英語キーボードに切り替え</string>
     <string name="keyboard_kigou">記号キーボードに切り替え</string>
     <string name="string_quotation">「」</string>
+    <string name="caps_lock_icon">&#x21EA;</string>
+    <string name="shift_symbol">&#x21E7;</string>
+    <string name="under_bar">_</string>
+    <string name="undo_symbol">↶</string>
+    <string name="ampersand_symbol">&amp;</string>
+    <string name="sharp_symbol">#</string>
+    <string name="asterisk_symbol">*</string>
+    <string name="caret">^</string>
+    <string name="apostrophe">\'</string>
+    <string name="zenkaku">全角</string>
 </resources>
