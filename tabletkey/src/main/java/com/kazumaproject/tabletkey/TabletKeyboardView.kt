@@ -2339,7 +2339,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
 
                     InputMode.ModeEnglish -> {
-                        it.setTabletKeyTextEnglish(it.id)
+                        if (tabletCapsLockState.value.capsLockOn){
+                            it.setTabletKeyTextEnglish(it.id)
+                        }else{
+                            it.setTabletKeyTextEnglishCaps(it.id)
+                        }
                         if (isLongPressed) popTextActive.setTabletTextDefaultEnglish(it.id)
                     }
 
