@@ -855,9 +855,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             )
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
-            if (isTablet == true){
+            if (isTablet == true) {
                 tabletView.resetLayout()
-            }else{
+            } else {
                 keyboardView.apply {
                     if (currentInputMode.get() == InputMode.ModeNumber) {
                         setBackgroundSmallLetterKey(
@@ -908,9 +908,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         launch {
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
-                if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
-                    animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
-                }
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
                 }
