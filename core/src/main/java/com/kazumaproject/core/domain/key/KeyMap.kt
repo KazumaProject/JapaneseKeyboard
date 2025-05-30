@@ -132,7 +132,7 @@ class KeyMap : KeyMapHolder {
         Key.KeyNE to KeyInfo.KeyAtMark,
         Key.KeyNO to KeyInfo.KeyPeriod,
         Key.KeyTA to KeyInfo.KeyGEnglish,
-        Key.KeyCHI to KeyInfo.KeyPEnglish,
+        Key.KeyCHI to KeyInfo.KeyQEnglish,
         Key.KeyTSU to KeyInfo.KeyLeftBracket,
         Key.KeyTE to KeyInfo.KeySharp,
         Key.KeyTO to KeyInfo.KeyCaution,

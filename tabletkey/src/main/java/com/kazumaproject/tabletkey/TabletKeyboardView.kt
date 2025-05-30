@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
+import android.util.Log
 import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -374,10 +375,11 @@ class TabletKeyboardView @JvmOverloads constructor(
         _capsLockState.update {
             it.copy(
                 shiftOn = !it.shiftOn,
-                capsLockOn = false
+                capsLockOn = it.capsLockOn
             )
         }
     }
+
 
     private fun enableCapsLock() {
         _capsLockState.update {
@@ -501,6 +503,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                     }
                     setKeyPressed()
+                    if (currentInputMode.get() == InputMode.ModeEnglish && key == Key.KeyKuten) {
+                        toggleShift()
+                    } else if (pressedKey.key == Key.KeyKuten && capsLockState.value.capsLockOn) {
+                        clearShiftCaps()
+                    }
                     if (currentInputMode.get() == InputMode.ModeEnglish &&
                         key != Key.SideKeyDelete &&
                         key != Key.SideKeyCursorRight &&
@@ -554,13 +561,7 @@ class TabletKeyboardView @JvmOverloads constructor(
 
                                         InputMode.ModeEnglish -> {
                                             val capState = capsLockState.value
-                                            if (pressedKey.key == Key.KeyKuten) {
-                                                if (!capState.shiftOn && !capState.capsLockOn) {
-                                                    toggleShift()
-                                                } else {
-                                                    clearShiftCaps()
-                                                }
-                                            }
+                                            Log.d("capState", "$capState")
 
                                             val isUpper = capState.shiftOn || capState.capsLockOn
                                             val outputChar =
@@ -573,6 +574,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                                             if (pressedKey.key == Key.KeyKuten && capState.capsLockOn) {
                                                 clearShiftCaps()
                                             }
+                                            Log.d("capState", "after: $capState")
                                             flickListener?.onFlick(
                                                 gestureType = gestureType,
                                                 key = pressedKey.key,
