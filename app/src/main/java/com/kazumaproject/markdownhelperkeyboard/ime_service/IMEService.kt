@@ -855,15 +855,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             )
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
-            keyboardView.apply {
-                if (currentInputMode.get() == InputMode.ModeNumber) {
-                    setBackgroundSmallLetterKey(
-                        cachedNumberDrawable
-                    )
-                } else {
-                    setBackgroundSmallLetterKey(
-                        cachedLogoDrawable
-                    )
+            if (isTablet == true){
+                tabletView.resetLayout()
+            }else{
+                keyboardView.apply {
+                    if (currentInputMode.get() == InputMode.ModeNumber) {
+                        setBackgroundSmallLetterKey(
+                            cachedNumberDrawable
+                        )
+                    } else {
+                        setBackgroundSmallLetterKey(
+                            cachedLogoDrawable
+                        )
+                    }
                 }
             }
         }
