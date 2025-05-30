@@ -183,6 +183,7 @@
     <string name="asterisk_symbol">*</string>
     <string name="caret">^</string>
     <string name="apostrophe">\'</string>
+    <string name="backtick">\`</string>
     <string name="zenkaku">全角</string>
 
     <string name="tablet_number_year">年</string>
@@ -206,4 +207,10 @@
     <string name="tablet_number_ellipsis">…</string>
     <string name="tablet_number_circle">○</string>
     <string name="tablet_number_command">⌘</string>
+    <string name="tablet_double_quote">&quot;</string>
+    <string name="tablet_code_bracket_left">{</string>
+    <string name="tablet_code_bracket_right">}</string>
+    <string name="tablet_less_than">&lt;</string>
+    <string name="tablet_code_bigger_than">&gt;</string>
+    <string name="tablet_straight_bar">|</string>
 </resources>
