@@ -13,9 +13,11 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.appcompat.widget.AppCompatButton
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_TABLET
+import com.kazumaproject.core.data.english_caps_lock.CapsLockState
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
@@ -50,6 +52,7 @@ import com.kazumaproject.tabletkey.extenstions.setPopUpWindowLeft
 import com.kazumaproject.tabletkey.extenstions.setPopUpWindowRight
 import com.kazumaproject.tabletkey.extenstions.setPopUpWindowTop
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextEnglish
+import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextEnglishCaps
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextJapanese
 import com.kazumaproject.tabletkey.extenstions.setTabletKeyTextNumber
 import com.kazumaproject.tabletkey.extenstions.setTabletTextDefaultEnglish
@@ -61,7 +64,14 @@ import com.kazumaproject.tabletkey.extenstions.setTabletTextTapJapanese
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
@@ -288,9 +298,6 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private var longPressJob: Job? = null
     private var isLongPressed = false
-    private var isShiftOn = false
-    private var isCapsLockOn = false
-    private var isZenkakuOn = false
 
     private lateinit var popupWindowActive: PopupWindow
     private lateinit var bubbleViewActive: KeyWindowLayout
@@ -311,12 +318,80 @@ class TabletKeyboardView @JvmOverloads constructor(
     private lateinit var bubbleViewCenter: KeyWindowLayout
     private lateinit var popTextCenter: MaterialTextView
 
+    private val _capsLockState = MutableStateFlow(CapsLockState())
+    private val capsLockState: StateFlow<CapsLockState> = _capsLockState.asStateFlow()
+    private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
         declarePopupWindows()
         handleCurrentInputModeSwitch(inputMode = currentInputMode.get())
+
+        uiScope.launch {
+            capsLockState.collectLatest { state ->
+                when (currentInputMode.get()) {
+                    InputMode.ModeJapanese -> {
+
+                    }
+
+                    InputMode.ModeEnglish -> {
+                        binding.key5.apply {
+                            val icon = when {
+                                state.capsLockOn -> resources.getString(com.kazumaproject.core.R.string.caps_lock_icon)
+                                else -> resources.getString(com.kazumaproject.core.R.string.shift_symbol)
+                            }
+                            setLargeUnicodeIconScaleX(
+                                icon = icon,
+                                scaleX = if (state.capsLockOn) 1.618f else 1f
+                            )
+                            background = ContextCompat.getDrawable(
+                                context,
+                                if (state.shiftOn || state.capsLockOn)
+                                    com.kazumaproject.core.R.drawable.caps_lock_on_bg
+                                else
+                                    com.kazumaproject.core.R.drawable.tablet_keyboard_center_bg
+                            )
+                        }
+                        if (state.capsLockOn) {
+                            setKeysInEnglishCapsOnText()
+                        } else if (state.shiftOn) {
+                            setKeysInEnglishShiftOnText()
+                        } else {
+                            setKeysInEnglishText()
+                        }
+                    }
+
+                    InputMode.ModeNumber -> {
+
+                    }
+                }
+            }
+        }
     }
+
+    private fun toggleShift() {
+        _capsLockState.update {
+            it.copy(
+                shiftOn = !it.shiftOn,
+                capsLockOn = false
+            )
+        }
+    }
+
+    private fun enableCapsLock() {
+        _capsLockState.update {
+            it.copy(
+                capsLockOn = true,
+                shiftOn = false
+            )
+        }
+    }
+
+    private fun clearShiftCaps() {
+        _capsLockState.value = CapsLockState()
+    }
+
 
     private var skipNextTouches = false
 
@@ -326,7 +401,8 @@ class TabletKeyboardView @JvmOverloads constructor(
                 return if (currentInputMode.get() == InputMode.ModeEnglish) {
                     val key = pressedKeyByMotionEvent(e, 0)
                     if (key == Key.KeyKuten) {
-                        isCapsLockOn = true
+                        hideAllPopWindow()
+                        enableCapsLock()
                         skipNextTouches = true
                     }
                     true
@@ -393,12 +469,14 @@ class TabletKeyboardView @JvmOverloads constructor(
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
             if (skipNextTouches) {
-                if (event.actionMasked == MotionEvent.ACTION_UP) {
+                if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
                     skipNextTouches = false
                 }
                 return true
             }
-            gestureDetector.onTouchEvent(event)
+            if (currentInputMode.get() == InputMode.ModeEnglish) {
+                gestureDetector.onTouchEvent(event)
+            }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
@@ -423,6 +501,13 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                     }
                     setKeyPressed()
+                    if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        key != Key.SideKeyDelete &&
+                        key != Key.SideKeyCursorRight &&
+                        key != Key.SideKeyCursorLeft
+                    ) {
+                        return false
+                    }
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
                         if (pressedKey.key != Key.NotSelected) {
@@ -468,29 +553,25 @@ class TabletKeyboardView @JvmOverloads constructor(
                                         }
 
                                         InputMode.ModeEnglish -> {
-                                            // 1) Kuten key toggles:
-                                            //   – if neither on ⇒ turn shift on
-                                            //   – otherwise ⇒ clear both
+                                            val capState = capsLockState.value
                                             if (pressedKey.key == Key.KeyKuten) {
-                                                if (!isShiftOn && !isCapsLockOn) {
-                                                    isShiftOn = true
+                                                if (!capState.shiftOn && !capState.capsLockOn) {
+                                                    toggleShift()
                                                 } else {
-                                                    isShiftOn = false
-                                                    isCapsLockOn = false
+                                                    clearShiftCaps()
                                                 }
                                             }
 
-                                            // 2) Decide output based on either shift *or* caps:
-                                            val isUpper = isShiftOn || isCapsLockOn
+                                            val isUpper = capState.shiftOn || capState.capsLockOn
                                             val outputChar =
                                                 if (isUpper) keyInfo.flickLeft else keyInfo.tap
 
-                                            if (isShiftOn && pressedKey.key != Key.KeyKuten) {
-                                                isShiftOn = false
+                                            if (capState.shiftOn && pressedKey.key != Key.KeyKuten) {
+                                                toggleShift()
                                             }
 
-                                            if (pressedKey.key == Key.KeyKuten && isCapsLockOn) {
-                                                isCapsLockOn = false
+                                            if (pressedKey.key == Key.KeyKuten && capState.capsLockOn) {
+                                                clearShiftCaps()
                                             }
                                             flickListener?.onFlick(
                                                 gestureType = gestureType,
@@ -559,7 +640,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 }
 
                                 InputMode.ModeEnglish -> {
-                                    it.setTabletKeyTextEnglish(it.id)
+                                    if (capsLockState.value.capsLockOn) {
+                                        it.setTabletKeyTextEnglishCaps(it.id)
+                                    } else {
+                                        it.setTabletKeyTextEnglish(it.id)
+                                    }
                                 }
 
                                 InputMode.ModeNumber -> {
@@ -772,6 +857,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         release()
+        uiScope.cancel()
     }
 
     private fun release() {
@@ -2521,6 +2607,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                 setKeysInNumberText()
             }
         }
+        clearShiftCaps()
     }
 
     private fun handleClickInputModeSwitch() {
@@ -2694,15 +2781,57 @@ class TabletKeyboardView @JvmOverloads constructor(
         allButtonKeys.forEach { button ->
             if (button != binding.key5) button.setTabletKeyTextEnglish(keyId = button.id)
         }
+        val shiftCapState = capsLockState.value
         binding.apply {
-            key5.setLargeUnicodeIconScaleX(
-                icon = resources.getString(com.kazumaproject.core.R.string.shift_symbol),
-                iconSizeSp = 18,
-                scaleX = 1.618f
-            )
+            key5.apply {
+                setLargeUnicodeIconScaleX(
+                    icon = if (shiftCapState.capsLockOn) resources.getString(com.kazumaproject.core.R.string.caps_lock_icon) else resources.getString(
+                        com.kazumaproject.core.R.string.shift_symbol
+                    ),
+                    scaleX = 1.618f,
+                )
+                background = ContextCompat.getDrawable(
+                    this@TabletKeyboardView.context,
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_left
+                )
+            }
             key20.setLargeUnicodeIcon(
                 icon = resources.getString(com.kazumaproject.core.R.string.undo_symbol),
-                iconSizeSp = 18,
+            )
+        }
+    }
+
+    private fun setKeysInEnglishCapsOnText() {
+        allButtonKeys.forEach { button ->
+            if (button != binding.key5) button.setTabletKeyTextEnglishCaps(keyId = button.id)
+        }
+        binding.apply {
+            key5.apply {
+                setLargeUnicodeIconScaleX(
+                    icon = resources.getString(com.kazumaproject.core.R.string.caps_lock_icon),
+                    scaleX = 1.618f,
+                    iconSizeSp = 30
+                )
+            }
+            key20.setLargeUnicodeIcon(
+                icon = resources.getString(com.kazumaproject.core.R.string.undo_symbol),
+            )
+        }
+    }
+
+    private fun setKeysInEnglishShiftOnText() {
+        allButtonKeys.forEach { button ->
+            if (button != binding.key5) button.setTabletKeyTextEnglishCaps(keyId = button.id)
+        }
+        binding.apply {
+            key5.apply {
+                setLargeUnicodeIconScaleX(
+                    icon = resources.getString(com.kazumaproject.core.R.string.shift_symbol),
+                    scaleX = 1.618f,
+                )
+            }
+            key20.setLargeUnicodeIcon(
+                icon = resources.getString(com.kazumaproject.core.R.string.undo_symbol),
             )
         }
     }

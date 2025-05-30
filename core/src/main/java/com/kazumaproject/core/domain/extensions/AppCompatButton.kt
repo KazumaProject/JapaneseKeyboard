@@ -5,6 +5,7 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
 import android.text.style.RelativeSizeSpan
+import android.view.Gravity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan
@@ -84,7 +85,7 @@ fun AppCompatButton.setLargeUnicodeIcon(icon: String, iconSizeSp: Int = 18) {
     )
 
     this.text = spannable
-    this.gravity = android.view.Gravity.CENTER
+    this.gravity = Gravity.CENTER
 }
 
 fun AppCompatButton.setLargeUnicodeIconScaleX(
@@ -101,6 +102,6 @@ fun AppCompatButton.setLargeUnicodeIconScaleX(
     )
 
     this.text = spannable
-    this.gravity = android.view.Gravity.CENTER
+    this.gravity = Gravity.CENTER
     this.textScaleX = scaleX
 }
