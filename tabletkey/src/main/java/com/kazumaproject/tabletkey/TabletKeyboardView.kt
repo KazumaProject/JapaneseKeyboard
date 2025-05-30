@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
+import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -287,6 +288,9 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private var longPressJob: Job? = null
     private var isLongPressed = false
+    private var isShiftOn = false
+    private var isCapsLockOn = false
+    private var isZenkakuOn = false
 
     private lateinit var popupWindowActive: PopupWindow
     private lateinit var bubbleViewActive: KeyWindowLayout
@@ -313,6 +317,24 @@ class TabletKeyboardView @JvmOverloads constructor(
         declarePopupWindows()
         handleCurrentInputModeSwitch(inputMode = currentInputMode.get())
     }
+
+    private var skipNextTouches = false
+
+    private val gestureDetector =
+        GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDoubleTap(e: MotionEvent): Boolean {
+                return if (currentInputMode.get() == InputMode.ModeEnglish) {
+                    val key = pressedKeyByMotionEvent(e, 0)
+                    if (key == Key.KeyKuten) {
+                        isCapsLockOn = true
+                        skipNextTouches = true
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+        })
 
     @SuppressLint("InflateParams")
     private fun declarePopupWindows() {
@@ -370,6 +392,13 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
+            if (skipNextTouches) {
+                if (event.actionMasked == MotionEvent.ACTION_UP) {
+                    skipNextTouches = false
+                }
+                return true
+            }
+            gestureDetector.onTouchEvent(event)
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
@@ -394,7 +423,6 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                     }
                     setKeyPressed()
-                    if (currentInputMode.get() == InputMode.ModeEnglish || currentInputMode.get() == InputMode.ModeNumber) return false
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
                         if (pressedKey.key != Key.NotSelected) {
@@ -429,11 +457,58 @@ class TabletKeyboardView @JvmOverloads constructor(
                             when (gestureType) {
                                 GestureType.Null -> {}
                                 GestureType.Down -> {}
-                                GestureType.Tap -> flickListener?.onFlick(
-                                    gestureType = gestureType,
-                                    key = pressedKey.key,
-                                    char = keyInfo.tap,
-                                )
+                                GestureType.Tap -> {
+                                    when (currentInputMode.get()) {
+                                        InputMode.ModeJapanese -> {
+                                            flickListener?.onFlick(
+                                                gestureType = gestureType,
+                                                key = pressedKey.key,
+                                                char = keyInfo.tap,
+                                            )
+                                        }
+
+                                        InputMode.ModeEnglish -> {
+                                            // 1) Kuten key toggles:
+                                            //   – if neither on ⇒ turn shift on
+                                            //   – otherwise ⇒ clear both
+                                            if (pressedKey.key == Key.KeyKuten) {
+                                                if (!isShiftOn && !isCapsLockOn) {
+                                                    isShiftOn = true
+                                                } else {
+                                                    isShiftOn = false
+                                                    isCapsLockOn = false
+                                                }
+                                            }
+
+                                            // 2) Decide output based on either shift *or* caps:
+                                            val isUpper = isShiftOn || isCapsLockOn
+                                            val outputChar =
+                                                if (isUpper) keyInfo.flickLeft else keyInfo.tap
+
+                                            if (isShiftOn && pressedKey.key != Key.KeyKuten) {
+                                                isShiftOn = false
+                                            }
+
+                                            if (pressedKey.key == Key.KeyKuten && isCapsLockOn) {
+                                                isCapsLockOn = false
+                                            }
+                                            flickListener?.onFlick(
+                                                gestureType = gestureType,
+                                                key = pressedKey.key,
+                                                char = outputChar
+                                            )
+                                        }
+
+                                        InputMode.ModeNumber -> {
+                                            flickListener?.onFlick(
+                                                gestureType = gestureType,
+                                                key = pressedKey.key,
+                                                char = keyInfo.tap,
+                                            )
+                                        }
+                                    }
+
+                                }
 
                                 GestureType.FlickLeft -> {
                                     if (currentInputMode.get() == InputMode.ModeEnglish) return false
