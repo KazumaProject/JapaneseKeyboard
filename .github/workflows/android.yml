@@ -67,12 +67,6 @@ jobs:
       - name: Build Signed Release APK
         run: ./gradlew clean assembleRelease
 
-      # 追加：ファイル名をリリース名に合わせて変更する
-      - name: Rename APK for Release
-        run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk \
-             app/build/outputs/apk/release/app-release.apk
-
       # ↓（あらためて）どのファイルがあるか確認しておく
       - name: List APK directory
         run: ls -R app/build/outputs/apk
