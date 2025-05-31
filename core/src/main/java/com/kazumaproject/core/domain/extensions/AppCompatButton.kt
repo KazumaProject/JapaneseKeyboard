@@ -10,9 +10,9 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan
 
-const val KEY_JAPANESE_SIZE = 17f
-const val KEY_ENGLISH_SIZE = 14f
-const val KEY_NUMBER_SIZE = 18f
+const val KEY_JAPANESE_SIZE = 16f
+const val KEY_ENGLISH_SIZE = 12f
+const val KEY_NUMBER_SIZE = 16f
 
 const val KEY_TABLET_SIZE = 18f
 

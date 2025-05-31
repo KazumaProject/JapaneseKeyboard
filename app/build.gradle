@@ -9,6 +9,21 @@ android {
     namespace 'com.kazumaproject.markdownhelperkeyboard'
     compileSdk 36
 
+    def localProperties = new Properties()
+    def localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localProperties.load(new FileInputStream(localPropertiesFile))
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(localProperties['KEYSTORE_FILE'])
+            storePassword localProperties['KEYSTORE_PASSWORD']
+            keyAlias localProperties['KEY_ALIAS']
+            keyPassword localProperties['KEY_PASSWORD']
+        }
+    }
+
     defaultConfig {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
@@ -23,8 +38,10 @@ android {
         }
     }
 
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
