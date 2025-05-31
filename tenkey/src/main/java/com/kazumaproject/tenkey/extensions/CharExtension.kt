@@ -1,7 +1,7 @@
-package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
+package com.kazumaproject.tenkey.extensions
 
-fun Char.getNextInputChar(charAtInsertPosition: Char): Char?{
-    return when{
+fun Char.getNextInputChar(charAtInsertPosition: Char): Char? {
+    return when {
         this == 'あ' && charAtInsertPosition == 'あ' -> 'い'
         this == 'い' && charAtInsertPosition == 'あ' -> 'う'
         this == 'う' && charAtInsertPosition == 'あ' -> 'え'
@@ -167,8 +167,8 @@ fun Char.getNextInputChar(charAtInsertPosition: Char): Char?{
     }
 }
 
-fun Char.getNextReturnInputChar(): Char?{
-    return when(this){
+fun Char.getNextReturnInputChar(): Char? {
+    return when (this) {
         'あ' -> 'ぉ'
         'い' -> 'あ'
         'う' -> 'い'
@@ -334,8 +334,8 @@ fun Char.getNextReturnInputChar(): Char?{
     }
 }
 
-fun Char.getDakutenSmallChar(): Char?{
-    return when(this){
+fun Char.getDakutenSmallChar(): Char? {
+    return when (this) {
         'あ' -> 'ぁ'
         'ぁ' -> 'あ'
         'い' -> 'ぃ'
@@ -472,8 +472,8 @@ fun Char.getDakutenSmallChar(): Char?{
     }
 }
 
-fun Char.getCharPopUpText(): Char?{
-    return when(this){
+fun Char.getCharPopUpText(): Char? {
+    return when (this) {
         'い' -> 'う'
         'う' -> 'え'
         'え' -> 'お'

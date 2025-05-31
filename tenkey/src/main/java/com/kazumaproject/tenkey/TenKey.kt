@@ -16,12 +16,24 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
-import com.daasuu.bl.BubbleLayout
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.tenkey.extensions.hide
-import com.kazumaproject.tenkey.extensions.layoutXPosition
-import com.kazumaproject.tenkey.extensions.layoutYPosition
-import com.kazumaproject.tenkey.extensions.setIconColor
+import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_SMART_PHONE
+import com.kazumaproject.core.domain.extensions.hide
+import com.kazumaproject.core.domain.extensions.layoutXPosition
+import com.kazumaproject.core.domain.extensions.layoutYPosition
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.key.KeyInfo
+import com.kazumaproject.core.domain.key.KeyMap
+import com.kazumaproject.core.domain.key.KeyRect
+import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.LongPressListener
+import com.kazumaproject.core.domain.state.GestureType
+import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
+import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.ui.effect.Blur
+import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
+import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
 import com.kazumaproject.tenkey.extensions.setPopUpWindowCenter
 import com.kazumaproject.tenkey.extensions.setPopUpWindowFlickBottom
@@ -52,17 +64,6 @@ import com.kazumaproject.tenkey.extensions.setTextFlickTopNumber
 import com.kazumaproject.tenkey.extensions.setTextTapEnglish
 import com.kazumaproject.tenkey.extensions.setTextTapJapanese
 import com.kazumaproject.tenkey.extensions.setTextTapNumber
-import com.kazumaproject.tenkey.image_effect.ImageEffects
-import com.kazumaproject.tenkey.key.KeyRect
-import com.kazumaproject.tenkey.key.TenKeyInfo
-import com.kazumaproject.tenkey.key.TenKeyMap
-import com.kazumaproject.tenkey.listener.FlickListener
-import com.kazumaproject.tenkey.listener.LongPressListener
-import com.kazumaproject.tenkey.state.GestureType
-import com.kazumaproject.tenkey.state.InputMode
-import com.kazumaproject.tenkey.state.InputMode.ModeNumber.next
-import com.kazumaproject.tenkey.state.Key
-import com.kazumaproject.tenkey.state.PressedKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -98,22 +99,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private lateinit var sideKeyEnter: AppCompatImageButton
 
     private lateinit var popupWindowActive: PopupWindow
-    private lateinit var bubbleViewActive: BubbleLayout
+    private lateinit var bubbleViewActive: KeyWindowLayout
     private lateinit var popTextActive: MaterialTextView
     private lateinit var popupWindowLeft: PopupWindow
-    private lateinit var bubbleViewLeft: BubbleLayout
+    private lateinit var bubbleViewLeft: KeyWindowLayout
     private lateinit var popTextLeft: MaterialTextView
     private lateinit var popupWindowTop: PopupWindow
-    private lateinit var bubbleViewTop: BubbleLayout
+    private lateinit var bubbleViewTop: KeyWindowLayout
     private lateinit var popTextTop: MaterialTextView
     private lateinit var popupWindowRight: PopupWindow
-    private lateinit var bubbleViewRight: BubbleLayout
+    private lateinit var bubbleViewRight: KeyWindowLayout
     private lateinit var popTextRight: MaterialTextView
     private lateinit var popupWindowBottom: PopupWindow
-    private lateinit var bubbleViewBottom: BubbleLayout
+    private lateinit var bubbleViewBottom: KeyWindowLayout
     private lateinit var popTextBottom: MaterialTextView
     private lateinit var popupWindowCenter: PopupWindow
-    private lateinit var bubbleViewCenter: BubbleLayout
+    private lateinit var bubbleViewCenter: KeyWindowLayout
     private lateinit var popTextCenter: MaterialTextView
 
     private lateinit var pressedKey: PressedKey
@@ -121,7 +122,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
 
-    private var tenKeyMap: TenKeyMap
+    private var keyMap: KeyMap
 
     private var longPressJob: Job? = null
     private var isLongPressed = false
@@ -140,6 +141,26 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         sideKeySymbol.setPadding(paddingSize)
     }
 
+    fun setPaddingToSideKeyLeftCursor(paddingSize: Int) {
+        sideKeyCursorLeft.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyRightCursor(paddingSize: Int) {
+        sideKeyCursorRight.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyDelete(paddingSize: Int) {
+        sideKeyDelete.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyEnter(paddingSize: Int) {
+        sideKeyEnter.setPadding(paddingSize)
+    }
+
+    fun setPaddingToSideKeyPreviousChar(paddingSize: Int) {
+        sideKeyPreviousChar.setPadding(paddingSize)
+    }
+
     private fun release() {
         flickListener = null
         longPressListener = null
@@ -153,7 +174,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         declarePopupWindows()
         initialKeys()
         setViewsNotFocusable()
-        tenKeyMap = TenKeyMap()
+        keyMap = KeyMap()
         setBackgroundSmallLetterKey()
         this.setOnTouchListener(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -301,9 +322,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(
-                        GestureType.Down,
-                        key,
-                        null
+                        GestureType.Down, key, null
                     )
                     pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         PressedKey(
@@ -336,16 +355,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     resetLongPressAction()
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
-                        val keyInfo =
-                            currentInputMode.get().next(tenKeyMap = tenKeyMap, key = pressedKey.key)
-                        if (keyInfo == TenKeyInfo.Null) {
+                        val keyInfo = currentInputMode.get()
+                            .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                        if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType, key = pressedKey.key, char = null
                             )
                             if (pressedKey.key == Key.SideKeyInputMode) {
                                 handleClickInputModeSwitch()
                             }
-                        } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType) {
                                 GestureType.Null -> {}
                                 GestureType.Down -> {}
@@ -404,8 +423,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
                             it.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context,
-                                    R.drawable.number_small
+                                    context, com.kazumaproject.core.R.drawable.number_small
                                 )
                             )
                         }
@@ -435,7 +453,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 MotionEvent.ACTION_POINTER_DOWN -> {
                     if (isLongPressed) {
                         hideAllPopWindow()
-                        ImageEffects.removeBlurEffect(this)
+                        Blur.removeBlurEffect(this)
                     }
                     popupWindowActive.hide()
                     longPressJob?.cancel()
@@ -447,18 +465,18 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.get() == InputMode.ModeNumber) {
                             keyDakutenSmall.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context,
-                                    R.drawable.number_small
+                                    context, com.kazumaproject.core.R.drawable.number_small
                                 )
                             )
                         }
                         val keyInfo =
-                            currentInputMode.get().next(tenKeyMap = tenKeyMap, key = pressedKey.key)
-                        if (keyInfo == TenKeyInfo.Null) {
+                            currentInputMode.get()
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                        if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
                             )
-                        } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType2) {
                                 GestureType.Null -> {}
                                 GestureType.Down -> {}
@@ -490,7 +508,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                             it.setImageDrawable(
                                                 ContextCompat.getDrawable(
                                                     context,
-                                                    R.drawable.number_small
+                                                    com.kazumaproject.core.R.drawable.number_small
                                                 )
                                             )
                                         }
@@ -534,7 +552,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                     }
-
                     return false
                 }
 
@@ -544,17 +561,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             resetLongPressAction()
                             val gestureType =
                                 getGestureType(event, event.getPointerId(event.actionIndex))
-                            val keyInfo =
-                                currentInputMode.get()
-                                    .next(tenKeyMap = tenKeyMap, key = pressedKey.key)
-                            if (keyInfo == TenKeyInfo.Null) {
+                            val keyInfo = currentInputMode.get()
+                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                            if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null
                                 )
                                 if (pressedKey.key == Key.SideKeyInputMode) {
                                     handleClickInputModeSwitch()
                                 }
-                            } else if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+                            } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                                 when (gestureType) {
                                     GestureType.Null -> {}
                                     GestureType.Down -> {}
@@ -667,134 +683,115 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 sideKeyPreviousChar.layoutYPosition(),
                 sideKeyPreviousChar.layoutXPosition() + sideKeyPreviousChar.width,
                 sideKeyPreviousChar.layoutYPosition() + sideKeyPreviousChar.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyA,
                 keyA.layoutXPosition(),
                 keyA.layoutYPosition(),
                 keyA.layoutXPosition() + keyA.width,
                 keyA.layoutYPosition() + keyA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyKA,
                 keyKA.layoutXPosition(),
                 keyKA.layoutYPosition(),
                 keyKA.layoutXPosition() + keyKA.width,
                 keyKA.layoutYPosition() + keyKA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeySA,
                 keySA.layoutXPosition(),
                 keySA.layoutYPosition(),
                 keySA.layoutXPosition() + keySA.width,
                 keySA.layoutYPosition() + keySA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyDelete,
                 sideKeyDelete.layoutXPosition(),
                 sideKeyDelete.layoutYPosition(),
                 sideKeyDelete.layoutXPosition() + sideKeyDelete.width,
                 sideKeyDelete.layoutYPosition() + sideKeyDelete.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyCursorLeft,
                 sideKeyCursorLeft.layoutXPosition(),
                 sideKeyCursorLeft.layoutYPosition(),
                 sideKeyCursorLeft.layoutXPosition() + sideKeyCursorLeft.width,
                 sideKeyCursorLeft.layoutYPosition() + sideKeyCursorLeft.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyTA,
                 keyTA.layoutXPosition(),
                 keyTA.layoutYPosition(),
                 keyTA.layoutXPosition() + keyTA.width,
                 keyTA.layoutYPosition() + keyTA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyNA,
                 keyNA.layoutXPosition(),
                 keyNA.layoutYPosition(),
                 keyNA.layoutXPosition() + keyNA.width,
                 keyNA.layoutYPosition() + keyNA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyHA,
                 keyHA.layoutXPosition(),
                 keyHA.layoutYPosition(),
                 keyHA.layoutXPosition() + keyHA.width,
                 keyHA.layoutYPosition() + keyHA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyCursorRight,
                 sideKeyCursorRight.layoutXPosition(),
                 sideKeyCursorRight.layoutYPosition(),
                 sideKeyCursorRight.layoutXPosition() + sideKeyCursorRight.width,
                 sideKeyCursorRight.layoutYPosition() + sideKeyCursorRight.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeySymbol,
                 sideKeySymbol.layoutXPosition(),
                 sideKeySymbol.layoutYPosition(),
                 sideKeySymbol.layoutXPosition() + sideKeySymbol.width,
                 sideKeySymbol.layoutYPosition() + sideKeySymbol.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyMA,
                 keyMA.layoutXPosition(),
                 keyMA.layoutYPosition(),
                 keyMA.layoutXPosition() + keyMA.width,
                 keyMA.layoutYPosition() + keyMA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyYA,
                 keyYA.layoutXPosition(),
                 keyYA.layoutYPosition(),
                 keyYA.layoutXPosition() + keyYA.width,
                 keyYA.layoutYPosition() + keyYA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyRA,
                 keyRA.layoutXPosition(),
                 keyRA.layoutYPosition(),
                 keyRA.layoutXPosition() + keyRA.width,
                 keyRA.layoutYPosition() + keyRA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeySpace,
                 sideKeySpace.layoutXPosition(),
                 sideKeySpace.layoutYPosition(),
                 sideKeySpace.layoutXPosition() + sideKeySpace.width,
                 sideKeySpace.layoutYPosition() + sideKeySpace.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyInputMode,
                 sideKeyInputModeSwitch.layoutXPosition(),
                 sideKeyInputModeSwitch.layoutYPosition(),
                 sideKeyInputModeSwitch.layoutXPosition() + sideKeyInputModeSwitch.width,
                 sideKeyInputModeSwitch.layoutYPosition() + sideKeyInputModeSwitch.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyDakutenSmall,
                 keyDakutenSmall.layoutXPosition(),
                 keyDakutenSmall.layoutYPosition(),
                 keyDakutenSmall.layoutXPosition() + keyDakutenSmall.width,
                 keyDakutenSmall.layoutYPosition() + keyDakutenSmall.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyWA,
                 keyWA.layoutXPosition(),
                 keyWA.layoutYPosition(),
                 keyWA.layoutXPosition() + keyWA.width,
                 keyWA.layoutYPosition() + keyWA.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.KeyKutouten,
                 keyKutouten.layoutXPosition(),
                 keyKutouten.layoutYPosition(),
                 keyKutouten.layoutXPosition() + keyKutouten.width,
                 keyKutouten.layoutYPosition() + keyKutouten.height
-            ),
-            KeyRect(
+            ), KeyRect(
                 Key.SideKeyEnter,
                 sideKeyEnter.layoutXPosition(),
                 sideKeyEnter.layoutYPosition(),
@@ -846,7 +843,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when {
-            abs(distanceX) < 100 && abs(distanceY) < 100 -> GestureType.Tap
+            abs(distanceX) < DEFAULT_TAP_RANGE_SMART_PHONE && abs(distanceY) < DEFAULT_TAP_RANGE_SMART_PHONE -> GestureType.Tap
             abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
             abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
             abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
@@ -958,13 +955,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
 
             Key.NotSelected -> {}
+            else -> {}
         }
     }
 
     private fun resetLongPressAction() {
         if (isLongPressed) {
             hideAllPopWindow()
-            ImageEffects.removeBlurEffect(this)
+            Blur.removeBlurEffect(this)
         }
         longPressJob?.cancel()
         isLongPressed = false
@@ -1051,19 +1049,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextTapNumber(it.id)
                     }
                 }
-
                 popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
                 popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
-                popupWindowBottom.setPopUpWindowBottom(
-                    context, bubbleViewBottom, it
-                )
-                popupWindowRight.setPopUpWindowRight(
-                    context, bubbleViewRight, it
-                )
+                if (popTextBottom.text.isNotEmpty()) {
+                    popupWindowBottom.setPopUpWindowBottom(
+                        context, bubbleViewBottom, it
+                    )
+                }
+                if (popTextRight.text.isNotEmpty()) {
+                    popupWindowRight.setPopUpWindowRight(
+                        context, bubbleViewRight, it
+                    )
+                }
                 popupWindowActive.setPopUpWindowCenter(
                     context, bubbleViewActive, it
                 )
-                ImageEffects.applyBlurEffect(this, 8f)
+                Blur.applyBlurEffect(this, 8f)
             }
 
             if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
@@ -1082,7 +1083,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 popupWindowActive.setPopUpWindowCenter(
                     context, bubbleViewActive, it
                 )
-                ImageEffects.applyBlurEffect(this, 8f)
+                Blur.applyBlurEffect(this, 8f)
             }
         }
     }
@@ -1126,7 +1127,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
             }
             if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
-                it.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.open_bracket))
+                it.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        com.kazumaproject.core.R.drawable.open_bracket
+                    )
+                )
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 it.isPressed = true
                 if (isLongPressed) {
@@ -1226,16 +1232,20 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowRight(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowRight(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
                         } else {
-                            popupWindowActive.setPopUpWindowFlickRight(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickRight(
+                                    context, bubbleViewActive, it
+                                )
+                            }
                         }
                     }
 
@@ -1257,16 +1267,20 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowBottom(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowBottom(
+                                    context, bubbleViewActive, it
+                                )
+                                popupWindowCenter.setPopUpWindowCenter(
+                                    context, bubbleViewCenter, it
+                                )
+                            }
                         } else {
-                            popupWindowActive.setPopUpWindowFlickBottom(
-                                context, bubbleViewActive, it
-                            )
+                            if (popTextActive.text.isNotEmpty()) {
+                                popupWindowActive.setPopUpWindowFlickBottom(
+                                    context, bubbleViewActive, it
+                                )
+                            }
                         }
                     }
 
@@ -1356,8 +1370,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
-    private fun setFlickActionPointerDown(keyInfo: TenKeyInfo, gestureType: GestureType) {
-        if (keyInfo is TenKeyInfo.TenKeyTapFlickInfo) {
+    private fun setFlickActionPointerDown(keyInfo: KeyInfo, gestureType: GestureType) {
+        if (keyInfo is KeyInfo.KeyTapFlickInfo) {
             val charToSend = when (gestureType) {
                 GestureType.Tap -> keyInfo.tap
                 GestureType.FlickLeft -> keyInfo.flickLeft
@@ -1396,8 +1410,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setBackgroundSmallLetterKey(
         drawable: Drawable? = ContextCompat.getDrawable(
-            context,
-            R.drawable.logo_key
+            context, com.kazumaproject.core.R.drawable.logo_key
         )
     ) {
         keyDakutenSmall.setImageDrawable(drawable)
@@ -1417,12 +1430,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setSideKeyPreviousState(state: Boolean) {
         sideKeyPreviousChar.isEnabled = state
-        val colorResId = if (state) {
-            R.color.keyboard_icon_color
-        } else {
-            R.color.keyboard_icon_disable_color
-        }
-        sideKeyPreviousChar.setIconColor(colorResId)
     }
 
     private fun handleClickInputModeSwitch() {
@@ -1443,7 +1450,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
         }
         currentInputMode.set(newInputMode)
-        sideKeyInputModeSwitch.setInputMode(newInputMode)
+        sideKeyInputModeSwitch.setInputMode(newInputMode, false)
     }
 
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
@@ -1464,7 +1471,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setInputModeSwitchState() {
         val inputMode = currentInputMode.get()
-        sideKeyInputModeSwitch.setInputMode(inputMode)
+        sideKeyInputModeSwitch.setInputMode(inputMode, false)
         handleCurrentInputModeSwitch(inputMode)
     }
 

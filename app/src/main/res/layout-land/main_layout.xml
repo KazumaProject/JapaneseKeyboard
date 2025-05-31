@@ -46,7 +46,18 @@
         android:layout_height="@dimen/keyboard_height_land"
         android:layout_gravity="bottom"
         android:clickable="true"
-        android:focusable="true" />
+        android:focusable="true"
+        android:visibility="visible"/>
+
+    <com.kazumaproject.tabletkey.TabletKeyboardView
+        android:id="@+id/tablet_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:clickable="true"
+        android:focusable="true"
+        android:importantForAccessibility="yes"
+        android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/candidates_row_view"

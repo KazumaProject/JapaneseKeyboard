@@ -16,5 +16,6 @@ rootProject.name = "MarkdownHelperKeyboard"
 include ':app'
 include ':flexbox'
 include ':tenkey'
-include ':bl'
 include ':symbol_keyboard'
+include ':core'
+include ':tabletkey'

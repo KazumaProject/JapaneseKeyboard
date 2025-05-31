@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="keyboard_height">280dp</dimen>
+    <dimen name="key_height">75dp</dimen>
+    <dimen name="keyboard_side_boarder_height">290dp</dimen>
+    <dimen name="key_text_size">18sp</dimen>
+    <dimen name="key__number_text_size">20sp</dimen>
+    <dimen name="key_text_land_size">16sp</dimen>
+    <dimen name="key_margin_horizontal_size">1dp</dimen>
+    <dimen name="key_margin_vertical_size">1dp</dimen>
+    <dimen name="key_margin_start_size">2dp</dimen>
+    <dimen name="key_margin_end_size">2dp</dimen>
+    <dimen name="key_height_number_only_right_column">55dp</dimen>
+
+    <dimen name="keyboard_height_inside">360dp</dimen>
+
+    <dimen name="key_width_size">90dp</dimen>
+
+    <dimen name="keyboard_height_land">200dp</dimen>
+    <dimen name="keyboard_qwerty_land">197dp</dimen>
+    <dimen name="keyboard_number_height_land">192dp</dimen>
+    <dimen name="setting_view_margin_bottom">252dp</dimen>
+    <dimen name="key_height_land">63dp</dimen>
+    <dimen name="keyboard_side_boarder_height_land">192dp</dimen>
+    <dimen name="key_text_size_land">12sp</dimen>
+
+    <dimen name="enter_key_height">140dp</dimen>
+    <dimen name="key_side_min_width">76dp</dimen>
+    <dimen name="key_parent_horizontal_margin">78dp</dimen>
+
+    <dimen name="key_width">60dp</dimen>
+    <dimen name="keyboard_small_icon_size">88dp</dimen>
+    <dimen name="key_icon_padding">24dp</dimen>
+    <dimen name="keyboard_kanji_size">11sp</dimen>
+    <dimen name="candidate_view_size">50sp</dimen>
+    <dimen name="candidate_vertical_padding">6dp</dimen>
+    <dimen name="main_key_padding">24dp</dimen>
+    <dimen name="pop_view_size">14sp</dimen>
+
+    <dimen name="qwety_line_size">72dp</dimen>
+    <dimen name="qwety_line_horizontal_size">48dp</dimen>
+    <dimen name="qwety_key_text_size">18sp</dimen>
+    <dimen name="qwety_key_text_horizontal_size">16sp</dimen>
+
+    <dimen name="qwerty_key_vertical_size">8dp</dimen>
+    <dimen name="qwerty_key_horizontal_size">4dp</dimen>
+
+    <dimen name="key_number_height">48dp</dimen>
+    <dimen name="key_height_number_only_right_column_land">38dp</dimen>
+
+    <dimen name="key_elevation">4dp</dimen>
+
+    <dimen name="tablet_side_key_portrait_width">52dp</dimen>
+    <dimen name="tablet_side_key_width">80dp</dimen>
+</resources>
