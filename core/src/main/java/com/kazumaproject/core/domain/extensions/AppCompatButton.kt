@@ -66,14 +66,6 @@ fun AppCompatImageButton.layoutYPosition(): Int {
     return location[1]
 }
 
-fun AppCompatImageButton.setWidthDp(widthDp: Int) {
-    val scale = context.resources.displayMetrics.density
-    val widthPx = (widthDp * scale + 0.5f).toInt()
-    layoutParams = layoutParams.apply {
-        width = widthPx
-    }
-}
-
 fun AppCompatButton.setLargeUnicodeIcon(icon: String, iconSizeSp: Int = 18) {
     val spannable = SpannableString(icon)
 
