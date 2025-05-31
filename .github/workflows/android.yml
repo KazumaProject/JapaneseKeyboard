@@ -1,70 +1,70 @@
 name: Android Release CI
 
+# 例: v1.0.0 のタグを push したときに実行
 on:
   push:
     tags:
-      - 'v*' # Triggers only on version tags like v1.0.0, v2.1.3, etc.
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        api-level: [24]
-        target: [android-35]
-        build-tools: [35.0.0]
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      # 1. ソースコードをチェックアウト
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      # 2. JDK 17 をセットアップ（Android Studio バンドル JDK が不要な場合）
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Download Android SDK
-      uses: android-actions/setup-android@v2
-      with:
-        api-level: ${{ matrix.api-level }}
-        target: ${{ matrix.target }}
-        build-tools: ${{ matrix.build-tools }}
+      # 3. Android SDK をセットアップ
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 35
+          build-tools: '35.0.0'
+          target: 'android-35'
 
-    - name: Cache Gradle
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      # 4. Gradle キャッシュ
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      # 5. JKS を Secrets から復号してファイルに保存
+      - name: Decode JKS from Base64
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
+        # my-release-key.jks はワークスペース直下に作成される（必要に応じてパスは変えてください）。
 
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }} # Use the tag name
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-        body: |
-          This release includes:
-          - The latest APK build for Android.
+      # 6. gradle.properties を更新して、署名情報を設定
+      #    （既存の gradle.properties に末尾追記するイメージ）
+      - name: Add signing info to gradle.properties
+        run: |
+          echo "" >> gradle.properties
+          echo "# --- SigningConfig for CI ---" >> gradle.properties
+          echo "KEYSTORE_FILE=my-release-key.jks" >> gradle.properties
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> gradle.properties
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> gradle.properties
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> gradle.properties
 
-    - name: Upload APK to Release
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: app/build/outputs/apk/debug/app-debug.apk
-        asset_name: app-debug.apk
-        asset_content_type: application/vnd.android.package-archive
+      # 7. 署名付きリリースAPK をビルド
+      - name: Build Signed Release APK
+        run: ./gradlew clean assembleRelease
+
+      # 8. (オプション) 作成された APK をアーティファクトとしてアップロードする
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/app-release.apk
