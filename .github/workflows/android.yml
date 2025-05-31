@@ -65,7 +65,12 @@ jobs:
 
       # 7. リリース APK をビルド
       - name: Build Signed Release APK
-        run: ./gradlew clean assembleRelease
+        run: |
+          ./gradlew clean assembleRelease \
+            -Pandroid.injected.signing.store.file=app/my-release-key.jks \
+            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
       # ↓（あらためて）どのファイルがあるか確認しておく
       - name: List APK directory
