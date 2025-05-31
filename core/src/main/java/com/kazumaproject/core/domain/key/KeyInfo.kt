@@ -1,5 +1,7 @@
 package com.kazumaproject.core.domain.key
 
+import com.kazumaproject.core.data.tablet.TabletCapsLockState
+
 sealed class KeyInfo {
     data object Null : KeyInfo()
 
@@ -9,6 +11,16 @@ sealed class KeyInfo {
         abstract val flickTop: Char?
         abstract val flickRight: Char?
         abstract val flickBottom: Char?
+    }
+
+    fun KeyTapFlickInfo.getOutputChar(state: TabletCapsLockState): Char? {
+        val isUpper = state.shiftOn || state.capsLockOn
+        return when {
+            isUpper && state.zenkakuOn -> this.flickRight
+            isUpper && !state.zenkakuOn -> this.flickLeft
+            !isUpper && state.zenkakuOn -> this.flickTop
+            else -> this.tap
+        }
     }
 
     object KeyAJapanese : KeyTapFlickInfo() {

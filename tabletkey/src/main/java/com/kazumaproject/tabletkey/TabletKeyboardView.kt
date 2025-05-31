@@ -31,6 +31,7 @@ import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setStartToEndOf
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
+import com.kazumaproject.core.domain.key.KeyInfo.KeyEEnglish.getOutputChar
 import com.kazumaproject.core.domain.key.KeyMap
 import com.kazumaproject.core.domain.key.KeyRect
 import com.kazumaproject.core.domain.listener.FlickListener
@@ -83,9 +84,7 @@ import kotlin.math.abs
  */
 @SuppressLint("ClickableViewAccessibility")
 class TabletKeyboardView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
+    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr), View.OnTouchListener {
 
     private val binding: TabletLayoutBinding =
@@ -96,24 +95,73 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     // All AppCompatButton keys (all the character keys)
     private val allButtonKeys = listOf(
-        binding.key1, binding.key2, binding.key3, binding.key4, binding.key5,
-        binding.key6, binding.key7, binding.key8, binding.key9, binding.key10,
-        binding.key11, binding.key12, binding.key13, binding.key14, binding.key15,
-        binding.key16, binding.key17, binding.key18, binding.key19, binding.key20,
-        binding.key21, binding.key22, binding.key23, binding.key24, binding.key25,
-        binding.key26, binding.key27, binding.key28, binding.key29, binding.key30,
-        binding.key31, binding.key32, binding.key33, binding.key34, binding.key35,
-        binding.key36, binding.key37, binding.key38, binding.key39, binding.key40,
-        binding.key41, binding.key42, binding.key43, binding.key44, binding.key45,
-        binding.key46, binding.key47, binding.key48, binding.key49, binding.key50,
-        binding.key51, binding.key52, binding.key53, binding.key54, binding.key55
+        binding.key1,
+        binding.key2,
+        binding.key3,
+        binding.key4,
+        binding.key5,
+        binding.key6,
+        binding.key7,
+        binding.key8,
+        binding.key9,
+        binding.key10,
+        binding.key11,
+        binding.key12,
+        binding.key13,
+        binding.key14,
+        binding.key15,
+        binding.key16,
+        binding.key17,
+        binding.key18,
+        binding.key19,
+        binding.key20,
+        binding.key21,
+        binding.key22,
+        binding.key23,
+        binding.key24,
+        binding.key25,
+        binding.key26,
+        binding.key27,
+        binding.key28,
+        binding.key29,
+        binding.key30,
+        binding.key31,
+        binding.key32,
+        binding.key33,
+        binding.key34,
+        binding.key35,
+        binding.key36,
+        binding.key37,
+        binding.key38,
+        binding.key39,
+        binding.key40,
+        binding.key41,
+        binding.key42,
+        binding.key43,
+        binding.key44,
+        binding.key45,
+        binding.key46,
+        binding.key47,
+        binding.key48,
+        binding.key49,
+        binding.key50,
+        binding.key51,
+        binding.key52,
+        binding.key53,
+        binding.key54,
+        binding.key55
     )
 
     // All AppCompatImageButton keys (side and utility keys)
     private val allImageButtonKeys = listOf(
-        binding.keyKigou, binding.keyPrevious, binding.keySwitchKeyMode,
-        binding.keyLeftCursor, binding.keyRightCursor,
-        binding.keyDelete, binding.keySpace, binding.keyEnter
+        binding.keyKigou,
+        binding.keyPrevious,
+        binding.keySwitchKeyMode,
+        binding.keyLeftCursor,
+        binding.keyRightCursor,
+        binding.keyDelete,
+        binding.keySpace,
+        binding.keyEnter
     )
 
     private val listKeys: Map<Key, Any> = mapOf(
@@ -294,9 +342,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun toggleShift() {
         _tabletCapsLockState.update {
             it.copy(
-                shiftOn = !it.shiftOn,
-                capsLockOn = it.capsLockOn,
-                zenkakuOn = it.zenkakuOn
+                shiftOn = !it.shiftOn, capsLockOn = it.capsLockOn, zenkakuOn = it.zenkakuOn
             )
         }
     }
@@ -305,9 +351,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun enableCapsLock() {
         _tabletCapsLockState.update {
             it.copy(
-                capsLockOn = true,
-                shiftOn = false,
-                zenkakuOn = it.zenkakuOn
+                capsLockOn = true, shiftOn = false, zenkakuOn = it.zenkakuOn
             )
         }
     }
@@ -315,9 +359,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun toggleZenkaku() {
         _tabletCapsLockState.update {
             it.copy(
-                shiftOn = it.shiftOn,
-                capsLockOn = it.capsLockOn,
-                zenkakuOn = !it.zenkakuOn
+                shiftOn = it.shiftOn, capsLockOn = it.capsLockOn, zenkakuOn = !it.zenkakuOn
             )
         }
     }
@@ -330,9 +372,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun clearShiftCapsWithoutZenkaku() {
         _tabletCapsLockState.update {
             it.copy(
-                shiftOn = false,
-                capsLockOn = false,
-                zenkakuOn = it.zenkakuOn
+                shiftOn = false, capsLockOn = false, zenkakuOn = it.zenkakuOn
             )
         }
     }
@@ -340,9 +380,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun clearShiftCapsOnlyZenkaku() {
         _tabletCapsLockState.update {
             it.copy(
-                shiftOn = it.shiftOn,
-                capsLockOn = it.capsLockOn,
-                zenkakuOn = false
+                shiftOn = it.shiftOn, capsLockOn = it.capsLockOn, zenkakuOn = false
             )
         }
     }
@@ -435,9 +473,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
                     flickListener?.onFlick(
-                        gestureType = GestureType.Down,
-                        key = key,
-                        char = null
+                        gestureType = GestureType.Down, key = key, char = null
                     )
                     pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         PressedKey(
@@ -455,20 +491,25 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                     }
                     setKeyPressed()
-                    if (currentInputMode.get() == InputMode.ModeEnglish && key == Key.KeyKuten) {
+                    Log.d("ACTION_DOWN", "key: $pressedKey\n${tabletCapsLockState.value}")
+                    if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        key == Key.KeyKuten
+                    ) {
                         toggleShift()
-                    } else if (pressedKey.key == Key.KeyKuten && tabletCapsLockState.value.capsLockOn) {
+                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        pressedKey.key == Key.KeyKuten && tabletCapsLockState.value.capsLockOn
+                    ) {
                         clearShiftCaps()
-                    } else if (currentInputMode.get() == InputMode.ModeEnglish && pressedKey.key == Key.KeyO) {
+                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        pressedKey.key == Key.KeyO
+                    ) {
                         toggleZenkaku()
-                    } else if (currentInputMode.get() == InputMode.ModeEnglish && pressedKey.key == Key.KeyKO) {
+                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        pressedKey.key == Key.KeyKO
+                    ) {
                         toggleZenkaku()
                     }
-                    if (currentInputMode.get() == InputMode.ModeEnglish &&
-                        key != Key.SideKeyDelete &&
-                        key != Key.SideKeyCursorRight &&
-                        key != Key.SideKeyCursorLeft
-                    ) {
+                    if (currentInputMode.get() == InputMode.ModeEnglish && key != Key.SideKeyDelete && key != Key.SideKeyCursorRight && key != Key.SideKeyCursorLeft) {
                         return false
                     }
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
@@ -486,17 +527,12 @@ class TabletKeyboardView @JvmOverloads constructor(
                     resetLongPressAction()
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
-                        val keyInfo =
-                            currentInputMode.get().next(
-                                keyMap = keyMap,
-                                key = pressedKey.key,
-                                isTablet = true
-                            )
+                        val keyInfo = currentInputMode.get().next(
+                            keyMap = keyMap, key = pressedKey.key, isTablet = true
+                        )
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
-                                gestureType = gestureType,
-                                key = pressedKey.key,
-                                char = null
+                                gestureType = gestureType, key = pressedKey.key, char = null
                             )
                             if (pressedKey.key == Key.SideKeyInputMode) {
                                 handleClickInputModeSwitch()
@@ -517,17 +553,11 @@ class TabletKeyboardView @JvmOverloads constructor(
 
                                         InputMode.ModeEnglish -> {
                                             val capState = tabletCapsLockState.value
-                                            Log.d("capState", "$capState")
-
-                                            val isUpper = capState.shiftOn || capState.capsLockOn
                                             val isZenkaku = capState.zenkakuOn
-                                            val outputChar =
-                                                if (isUpper) if (isZenkaku) keyInfo.flickRight else keyInfo.flickLeft else if (isZenkaku) keyInfo.flickTop else keyInfo.tap
+                                            val outputChar = keyInfo.getOutputChar(capState)
 
                                             if (capState.shiftOn && pressedKey.key !in setOf(
-                                                    Key.KeyKuten,
-                                                    Key.KeyO,
-                                                    Key.KeyKO
+                                                    Key.KeyKuten, Key.KeyO, Key.KeyKO
                                                 )
                                             ) {
                                                 toggleShift()
@@ -655,9 +685,8 @@ class TabletKeyboardView @JvmOverloads constructor(
                         val pointer = event.getPointerId(event.actionIndex)
                         val key = pressedKeyByMotionEvent(event, pointer)
                         val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
-                        val keyInfo =
-                            currentInputMode.get()
-                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = true)
+                        val keyInfo = currentInputMode.get()
+                            .next(keyMap = keyMap, key = pressedKey.key, isTablet = true)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType2, key = pressedKey.key, char = null
@@ -667,26 +696,42 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 GestureType.Null -> {}
                                 GestureType.Down -> {}
                                 GestureType.Tap -> {
+                                    val capState = tabletCapsLockState.value
+                                    val outputChar = keyInfo.getOutputChar(capState)
                                     flickListener?.onFlick(
                                         gestureType = gestureType2,
                                         key = pressedKey.key,
-                                        char = keyInfo.tap,
+                                        char = outputChar,
                                     )
                                     val button = getButtonFromKey(pressedKey.key)
-                                    button?.let {
-                                        if (it is AppCompatButton) {
-                                            if (it == binding.key10) return false
-                                            when (currentInputMode.get()) {
-                                                InputMode.ModeJapanese -> {
-                                                    it.setTabletKeyTextJapanese(it.id)
-                                                }
+                                    if (currentInputMode.get() == InputMode.ModeEnglish &&
+                                        tabletCapsLockState.value.capsLockOn
+                                    ) {
+                                        button?.let {
+                                            if (it is AppCompatButton) {
+                                                it.setTabletKeyTextEnglishCaps(it.id)
+                                            }
+                                        }
+                                    } else if (currentInputMode.get() == InputMode.ModeEnglish &&
+                                        tabletCapsLockState.value.shiftOn
+                                    ) {
+                                        toggleShift()
+                                    } else {
+                                        button?.let {
+                                            if (it is AppCompatButton) {
+                                                if (it == binding.key10) return false
+                                                when (currentInputMode.get()) {
+                                                    InputMode.ModeJapanese -> {
+                                                        it.setTabletKeyTextJapanese(it.id)
+                                                    }
 
-                                                InputMode.ModeEnglish -> {
-                                                    it.setTabletKeyTextEnglish(it.id)
-                                                }
+                                                    InputMode.ModeEnglish -> {
+                                                        it.setTabletKeyTextEnglish(it.id)
+                                                    }
 
-                                                InputMode.ModeNumber -> {
-                                                    it.setTabletKeyTextNumber(it.id)
+                                                    InputMode.ModeNumber -> {
+                                                        it.setTabletKeyTextNumber(it.id)
+                                                    }
                                                 }
                                             }
                                         }
@@ -749,56 +794,42 @@ class TabletKeyboardView @JvmOverloads constructor(
                                     handleClickInputModeSwitch()
                                 }
                             } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
+                                val capState = tabletCapsLockState.value
+                                val outputChar = keyInfo.getOutputChar(capState)
                                 when (gestureType) {
                                     GestureType.Null -> {}
                                     GestureType.Down -> {}
-                                    GestureType.Tap -> flickListener?.onFlick(
+                                    GestureType.Tap, GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> flickListener?.onFlick(
                                         gestureType = gestureType,
                                         key = pressedKey.key,
-                                        char = keyInfo.tap,
-                                    )
-
-                                    GestureType.FlickLeft -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickLeft,
-                                    )
-
-                                    GestureType.FlickTop -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickTop,
-                                    )
-
-                                    GestureType.FlickRight -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickRight,
-                                    )
-
-                                    GestureType.FlickBottom -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickBottom,
+                                        char = outputChar,
                                     )
                                 }
                             }
                             val button = getButtonFromKey(pressedKey.key)
-                            button?.let {
-                                if (it is AppCompatButton) {
-                                    if (it == binding.key10) return false
-                                    it.isPressed = false
-                                    when (currentInputMode.get()) {
-                                        InputMode.ModeJapanese -> {
-                                            it.setTabletKeyTextJapanese(it.id)
-                                        }
+                            if (currentInputMode.get() == InputMode.ModeEnglish && tabletCapsLockState.value.capsLockOn) {
+                                button?.let {
+                                    if (it is AppCompatButton) {
+                                        it.setTabletKeyTextEnglishCaps(it.id)
+                                    }
+                                }
+                            } else {
+                                button?.let {
+                                    if (it is AppCompatButton) {
+                                        if (it == binding.key10) return false
+                                        it.isPressed = false
+                                        when (currentInputMode.get()) {
+                                            InputMode.ModeJapanese -> {
+                                                it.setTabletKeyTextJapanese(it.id)
+                                            }
 
-                                        InputMode.ModeEnglish -> {
-                                            it.setTabletKeyTextEnglish(it.id)
-                                        }
+                                            InputMode.ModeEnglish -> {
+                                                it.setTabletKeyTextEnglish(it.id)
+                                            }
 
-                                        InputMode.ModeNumber -> {
-                                            it.setTabletKeyTextNumber(it.id)
+                                            InputMode.ModeNumber -> {
+                                                it.setTabletKeyTextNumber(it.id)
+                                            }
                                         }
                                     }
                                 }
@@ -2330,6 +2361,16 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun setTapInActionMove() {
         if (!isLongPressed) popupWindowActive.hide()
         val button = getButtonFromKey(pressedKey.key)
+        if (currentInputMode.get() == InputMode.ModeEnglish &&
+            (tabletCapsLockState.value.capsLockOn || tabletCapsLockState.value.shiftOn)
+        ) {
+            button?.let {
+                if (it is AppCompatButton) {
+                    it.setTabletKeyTextEnglishCaps(it.id)
+                }
+            }
+            return
+        }
         button?.let {
             if (it is AppCompatButton) {
                 when (currentInputMode.get()) {
@@ -2359,8 +2400,19 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
-        if (currentInputMode.get() == InputMode.ModeEnglish || currentInputMode.get() == InputMode.ModeNumber) return
         val button = getButtonFromKey(pressedKey.key)
+        if (currentInputMode.get() == InputMode.ModeEnglish &&
+            (tabletCapsLockState.value.capsLockOn || tabletCapsLockState.value.shiftOn)
+        ) {
+            button?.let {
+                if (it is AppCompatButton) {
+                    it.setTabletKeyTextEnglishCaps(it.id)
+                }
+            }
+            return
+        } else if (currentInputMode.get() == InputMode.ModeEnglish) {
+            return
+        }
         button?.let {
             if (it is AppCompatButton) {
                 if (!isLongPressed) it.text = ""
@@ -2508,14 +2560,19 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private fun setFlickActionPointerDown(keyInfo: KeyInfo, gestureType: GestureType) {
         if (keyInfo is KeyInfo.KeyTapFlickInfo) {
-            val charToSend = when (gestureType) {
-                GestureType.Tap -> keyInfo.tap
-                GestureType.FlickLeft -> keyInfo.flickLeft
-                GestureType.FlickTop -> keyInfo.flickTop
-                GestureType.FlickRight -> keyInfo.flickRight
-                GestureType.FlickBottom -> keyInfo.flickBottom
-                GestureType.Down -> null
-                GestureType.Null -> null
+            val charToSend = if (currentInputMode.get() == InputMode.ModeEnglish) {
+                val capState = tabletCapsLockState.value
+                keyInfo.getOutputChar(capState)
+            } else {
+                when (gestureType) {
+                    GestureType.Tap -> keyInfo.tap
+                    GestureType.FlickLeft -> keyInfo.flickLeft
+                    GestureType.FlickTop -> keyInfo.flickTop
+                    GestureType.FlickRight -> keyInfo.flickRight
+                    GestureType.FlickBottom -> keyInfo.flickBottom
+                    GestureType.Down -> null
+                    GestureType.Null -> null
+                }
             }
             flickListener?.onFlick(
                 gestureType = gestureType,
@@ -2523,19 +2580,27 @@ class TabletKeyboardView @JvmOverloads constructor(
                 char = charToSend,
             )
             val button = getButtonFromKey(pressedKey.key)
-            button?.let {
-                if (it is AppCompatButton) {
-                    when (currentInputMode.get()) {
-                        InputMode.ModeJapanese -> {
-                            it.setTabletKeyTextJapanese(it.id)
-                        }
+            if (currentInputMode.get() == InputMode.ModeEnglish && tabletCapsLockState.value.capsLockOn) {
+                button?.let {
+                    if (it is AppCompatButton) {
+                        it.setTabletKeyTextEnglishCaps(it.id)
+                    }
+                }
+            } else {
+                button?.let {
+                    if (it is AppCompatButton) {
+                        when (currentInputMode.get()) {
+                            InputMode.ModeJapanese -> {
+                                it.setTabletKeyTextJapanese(it.id)
+                            }
 
-                        InputMode.ModeEnglish -> {
-                            it.setTabletKeyTextEnglish(it.id)
-                        }
+                            InputMode.ModeEnglish -> {
+                                it.setTabletKeyTextEnglish(it.id)
+                            }
 
-                        InputMode.ModeNumber -> {
-                            it.setTabletKeyTextNumber(it.id)
+                            InputMode.ModeNumber -> {
+                                it.setTabletKeyTextNumber(it.id)
+                            }
                         }
                     }
                 }
@@ -2747,6 +2812,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     }
 
     fun resetLayout() {
+        Log.d("resetLayout","called: ${tabletCapsLockState.value} ${currentInputMode.get()}")
         when (currentInputMode.get()) {
             InputMode.ModeJapanese -> {
                 binding.apply {
@@ -2862,7 +2928,6 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key49.setBottomToTopOf(key55)
                     key55.setStartToEndOf(key45)
                     key45.setEndToStartOf(key55)
-
                 }
                 clearShiftCaps()
             }
@@ -2916,28 +2981,22 @@ class TabletKeyboardView @JvmOverloads constructor(
                 scaleX = 1f
             )
             key20.setLargeUnicodeIconScaleX(
-                icon = resources.getString(com.kazumaproject.core.R.string.string_よ),
-                scaleX = 1f
+                icon = resources.getString(com.kazumaproject.core.R.string.string_よ), scaleX = 1f
             )
         }
     }
 
     private fun setKeysInEnglishText(isZenkaku: Boolean) = binding.run {
-        allButtonKeys
-            .filterNot { it == key5 }
-            .forEach { it.setTabletKeyTextEnglish(it.id) }
+        allButtonKeys.filterNot { it == key5 }.forEach { it.setTabletKeyTextEnglish(it.id) }
 
         val shiftOn = tabletCapsLockState.value.capsLockOn
         val ctx = root.context
         key5.apply {
             setLargeUnicodeIconScaleX(
                 icon = ctx.getString(
-                    if (shiftOn)
-                        com.kazumaproject.core.R.string.caps_lock_icon
-                    else
-                        com.kazumaproject.core.R.string.shift_symbol
-                ),
-                scaleX = 1.618f
+                    if (shiftOn) com.kazumaproject.core.R.string.caps_lock_icon
+                    else com.kazumaproject.core.R.string.shift_symbol
+                ), scaleX = 1.618f
             )
             background = ContextCompat.getDrawable(
                 ctx, com.kazumaproject.core.R.drawable.selector_corner_bottom_left
@@ -2946,18 +3005,14 @@ class TabletKeyboardView @JvmOverloads constructor(
         key20.setLargeUnicodeIcon(
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
-        val zenkakuBg = if (isZenkaku)
-            com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-        else
-            com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+        val zenkakuBg = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
+        else com.kazumaproject.core.R.drawable.selector_corner_bottom_right
 
         key55.background = ContextCompat.getDrawable(ctx, zenkakuBg)
     }
 
     private fun setKeysInEnglishCapsOnText(isZenkaku: Boolean) = binding.run {
-        allButtonKeys
-            .filterNot { it == key5 }
-            .forEach { it.setTabletKeyTextEnglishCaps(it.id) }
+        allButtonKeys.filterNot { it == key5 }.forEach { it.setTabletKeyTextEnglishCaps(it.id) }
 
         val ctx = root.context
         key5.apply {
@@ -2967,8 +3022,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                 iconSizeSp = 30
             )
             background = ContextCompat.getDrawable(
-                this@TabletKeyboardView.context,
-                com.kazumaproject.core.R.drawable.caps_lock_on_bg
+                this@TabletKeyboardView.context, com.kazumaproject.core.R.drawable.caps_lock_on_bg
             )
         }
         key20.setLargeUnicodeIcon(
@@ -2980,20 +3034,16 @@ class TabletKeyboardView @JvmOverloads constructor(
     }
 
     private fun setKeysInEnglishShiftOnText(isZenkaku: Boolean) = binding.run {
-        allButtonKeys
-            .filterNot { it == key5 }
-            .forEach { it.setTabletKeyTextEnglishCaps(it.id) }
+        allButtonKeys.filterNot { it == key5 }.forEach { it.setTabletKeyTextEnglishCaps(it.id) }
 
         val ctx = root.context
 
         key5.apply {
             setLargeUnicodeIconScaleX(
-                icon = ctx.getString(com.kazumaproject.core.R.string.shift_symbol),
-                scaleX = 1.618f
+                icon = ctx.getString(com.kazumaproject.core.R.string.shift_symbol), scaleX = 1.618f
             )
             background = ContextCompat.getDrawable(
-                ctx,
-                com.kazumaproject.core.R.drawable.caps_lock_on_bg
+                ctx, com.kazumaproject.core.R.drawable.caps_lock_on_bg
             )
         }
 
