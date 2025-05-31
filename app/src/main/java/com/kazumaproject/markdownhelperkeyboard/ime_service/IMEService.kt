@@ -129,9 +129,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var symbolList: List<String> = emptyList()
 
-    private var commitPreEditTextJob: Job? = null
-    private var commitAfterEditTextJob: Job? = null
-
     private var deleteLongPressJob: Job? = null
     private var rightLongPressJob: Job? = null
     private var leftLongPressJob: Job? = null
@@ -156,7 +153,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val deleteKeyLongKeyPressed = AtomicBoolean(false)
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
-    private val isInputFinished = AtomicBoolean(true)
     private var isFlickOnlyMode: Boolean? = false
     private var delayTime: Int? = 1000
     private var isLearnDictionaryMode: Boolean? = false
@@ -459,7 +455,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         // 3) caret が先頭かつ tail を抱えている → キャンセル＆リセット
         if (hasTail && caretTop) {
-            cancelPendingCommits()
             stringInTail.set("")
             _inputString.update { "" }
             suggestionAdapter?.suggestions = emptyList()
@@ -476,18 +471,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         // 5) tail 無し & _inputString が残っている → 後片付け
         if (_inputString.value.isNotEmpty()) {
-            cancelPendingCommits()
             _inputString.update { "" }
             finishComposingText()
             setComposingText("", 0)
         }
-    }
-
-    private fun cancelPendingCommits() {
-        commitPreEditTextJob?.cancel()
-        commitAfterEditTextJob?.cancel()
-        commitPreEditTextJob = null
-        commitAfterEditTextJob = null
     }
 
     private fun setTenKeyListeners(
@@ -964,7 +951,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         launch {
             _inputString.asStateFlow().collectLatest { inputString ->
-                processInputString(inputString, mainView, this)
+                processInputString(inputString, mainView)
             }
         }
     }
@@ -1048,30 +1035,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun processInputString(
-        inputString: String, mainView: MainLayoutBinding, inputStringScope: CoroutineScope
+        inputString: String, mainView: MainLayoutBinding,
     ) {
         Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
         if (inputString.isNotEmpty()) {
-            isInputFinished.set(false)
             val spannableString = SpannableString(inputString + stringInTail.get())
-            commitPreEditTextJob = inputStringScope.launch {
-                setComposingTextPreEdit(inputString, spannableString)
-            }
+            setComposingTextPreEdit(inputString, spannableString)
             _suggestionFlag.emit(CandidateShowFlag.Updating)
             delay((delayTime ?: 1000).toLong())
             val henkanValue = isHenkan.get()
             val deleteLongPressUp = onDeleteLongPressUp.get()
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
-            val isInputFinishState = isInputFinished.get()
             val inputStringAfterDelay = _inputString.value
-            if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed && !isInputFinishState) {
+            if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
-                isInputFinished.set(true)
-                commitAfterEditTextJob = inputStringScope.launch {
-                    setComposingTextAfterEdit(inputStringAfterDelay, spannableString)
-                }
+                setComposingTextAfterEdit(inputStringAfterDelay, spannableString)
             }
         } else {
             if (stringInTail.get().isNotEmpty()) {
@@ -1113,8 +1093,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun resetInputString() {
         if (!isHenkan.get()) {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
-            isInputFinished.set(true)
-            cancelPendingCommits()
         }
     }
 
@@ -1678,14 +1656,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         englishSpaceKeyPressed.set(false)
         lastFlickConvertedNextHiragana.set(false)
         onDeleteLongPressUp.set(false)
-        isInputFinished.set(true)
         isSpaceKeyLongPressed = false
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         resetKeyboard()
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
-        cancelPendingCommits()
         stopDeleteLongPress()
     }
 
@@ -1698,9 +1674,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         closeConnection()
         scope.cancel()
         ioScope.cancel()
-        commitPreEditTextJob = null
-        commitAfterEditTextJob = null
-        commitAfterEditTextJob = null
     }
 
     private fun resetFlagsSuggestionClick() {
@@ -1715,7 +1688,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         _inputString.update { "" }
-        cancelPendingCommits()
     }
 
     private fun resetFlagsEnterKey() {
@@ -1729,7 +1701,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         _inputString.update { "" }
-        cancelPendingCommits()
     }
 
     private fun resetFlagsEnterKeyNotHenkan() {
@@ -1745,7 +1716,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         learnMultiple.stop()
-        cancelPendingCommits()
     }
 
     private fun resetFlagsKeySpace() {
