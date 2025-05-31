@@ -5,8 +5,8 @@ interface KeyMapHolder {
     val keysEnglish: Set<Key>
     val keysNumber: Set<Key>
     fun getKeyInfoJapanese(key: Key, isTablet: Boolean): KeyInfo
-    fun getKeyInfoEnglish(key: Key): KeyInfo
-    fun getKeyInfoNumber(key: Key): KeyInfo
+    fun getKeyInfoEnglish(key: Key, isTablet: Boolean): KeyInfo
+    fun getKeyInfoNumber(key: Key, isTablet: Boolean): KeyInfo
 }
 
 
@@ -103,6 +103,20 @@ class KeyMap : KeyMapHolder {
     )
 
     private val listEnglish: Map<Key, KeyInfo> = mapOf(
+        Key.KeyA to KeyInfo.Key1English,
+        Key.KeyKA to KeyInfo.Key2English,
+        Key.KeySA to KeyInfo.Key3English,
+        Key.KeyTA to KeyInfo.Key4English,
+        Key.KeyNA to KeyInfo.Key5English,
+        Key.KeyHA to KeyInfo.Key6English,
+        Key.KeyMA to KeyInfo.Key7English,
+        Key.KeyYA to KeyInfo.Key8English,
+        Key.KeyRA to KeyInfo.Key9English,
+        Key.KeyWA to KeyInfo.Key0English,
+        Key.KeyKutouten to KeyInfo.KeyKigouEnglish,
+    )
+
+    private val listEnglishTablet: Map<Key, KeyInfo> = mapOf(
         Key.KeyKagikakko to KeyInfo.KeyAEnglish,
         Key.KeyQuestion to KeyInfo.KeyKEnglish,
         Key.KeyCaution to KeyInfo.KeyUEnglish,
@@ -157,6 +171,21 @@ class KeyMap : KeyMapHolder {
         )
 
     private val listNumber: Map<Key, KeyInfo> = mapOf(
+        Key.KeyA to KeyInfo.Key1Number,
+        Key.KeyKA to KeyInfo.Key2Number,
+        Key.KeySA to KeyInfo.Key3Number,
+        Key.KeyTA to KeyInfo.Key4Number,
+        Key.KeyNA to KeyInfo.Key5Number,
+        Key.KeyHA to KeyInfo.Key6Number,
+        Key.KeyMA to KeyInfo.Key7Number,
+        Key.KeyYA to KeyInfo.Key8Number,
+        Key.KeyRA to KeyInfo.Key9Number,
+        Key.KeyWA to KeyInfo.Key0Number,
+        Key.KeyKutouten to KeyInfo.KeyKigouNumber,
+        Key.KeyDakutenSmall to KeyInfo.KeyDakutenSmallNumber
+    )
+
+    private val listNumberTablet: Map<Key, KeyInfo> = mapOf(
         Key.KeyKagikakko to KeyInfo.KeyYearNumber,
         Key.KeyQuestion to KeyInfo.KeyMultipleNumber,
         Key.KeyCaution to KeyInfo.KeyMusicNoteNumber,
@@ -223,12 +252,20 @@ class KeyMap : KeyMapHolder {
         }
     }
 
-    override fun getKeyInfoEnglish(key: Key): KeyInfo {
-        return listEnglish.getOrDefault(key, KeyInfo.Null)
+    override fun getKeyInfoEnglish(key: Key, isTablet: Boolean): KeyInfo {
+        return if (isTablet) {
+            listEnglishTablet.getOrDefault(key, KeyInfo.Null)
+        } else {
+            listEnglish.getOrDefault(key, KeyInfo.Null)
+        }
     }
 
-    override fun getKeyInfoNumber(key: Key): KeyInfo {
-        return listNumber.getOrDefault(key, KeyInfo.Null)
+    override fun getKeyInfoNumber(key: Key, isTablet: Boolean): KeyInfo {
+        return if (isTablet) {
+            listNumberTablet.getOrDefault(key, KeyInfo.Null)
+        } else {
+            listNumber.getOrDefault(key, KeyInfo.Null)
+        }
     }
 
 }

@@ -16,11 +16,11 @@ sealed class InputMode {
             }
 
             ModeEnglish -> {
-                keyMap.getKeyInfoEnglish(key)
+                keyMap.getKeyInfoEnglish(key, isTablet)
             }
 
             ModeNumber -> {
-                keyMap.getKeyInfoNumber(key)
+                keyMap.getKeyInfoNumber(key, isTablet)
             }
         }
     }
