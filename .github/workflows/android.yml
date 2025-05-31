@@ -63,18 +63,27 @@ jobs:
           echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> gradle.properties
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> gradle.properties
 
-      # 7. リリース APK をビルド（assembleRelease）
+      # 7. リリース APK をビルド
       - name: Build Signed Release APK
         run: ./gradlew clean assembleRelease
 
-      # 8. GitHub リリースを作成（または取得）する
+      # 追加：ファイル名をリリース名に合わせて変更する
+      - name: Rename APK for Release
+        run: |
+          mv app/build/outputs/apk/release/app-release-unsigned.apk \
+             app/build/outputs/apk/release/app-release.apk
+
+      # ↓（あらためて）どのファイルがあるか確認しておく
+      - name: List APK directory
+        run: ls -R app/build/outputs/apk
+
+      # 8. リリース作成
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # github.ref が "refs/tags/v1.0.0" のように入るので、tag_name にそのまま渡す
           tag_name: ${{ github.ref }}
           release_name: Release ${{ github.ref_name }}
           draft: false
@@ -82,8 +91,8 @@ jobs:
           body: |
             • このリリースには署名済みのAPKが含まれます。
             • バージョン: ${{ github.ref_name }}
-      # ──────────────────────────────────────────────────────────────────────────────
-      # 9. 上記で作成したリリースに APK をアップロードする
+
+      # 9. リネーム後のファイルをアップロード
       - name: Upload APK to Release
         uses: actions/upload-release-asset@v1
         env:
