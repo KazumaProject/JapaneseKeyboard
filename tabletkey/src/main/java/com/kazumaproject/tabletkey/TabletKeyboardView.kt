@@ -533,6 +533,14 @@ class TabletKeyboardView @JvmOverloads constructor(
                     ) {
                         toggleZenkaku()
                     }
+
+                    if (currentInputMode.get() == InputMode.ModeNumber &&
+                        key != Key.SideKeyDelete &&
+                        key != Key.SideKeyCursorRight &&
+                        key != Key.SideKeyCursorLeft
+                    ) {
+                        return false
+                    }
                     Log.d("ACTION_DOWN: ", "${tabletCapsLockState.value}")
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
@@ -2789,6 +2797,8 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
             return
         } else if (currentInputMode.get() == InputMode.ModeEnglish) {
+            return
+        } else if (currentInputMode.get() == InputMode.ModeNumber) {
             return
         }
         button?.let {
