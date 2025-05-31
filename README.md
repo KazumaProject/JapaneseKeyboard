@@ -53,6 +53,11 @@
 </p>
 
 #### Tablet
+<p align="center">
+  <img src="images/tablet_light_j.png" width="200" alt="ライトテーマ"/>
+  <img src="images/tablet_dark_j.png" width="200" alt="ダークテーマ"/>
+</p>
+
 
 ### 🚀 使い方 (ユーザー向け)
 
