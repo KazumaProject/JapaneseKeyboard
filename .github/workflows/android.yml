@@ -1,34 +1,41 @@
 name: Android Release CI
 
-# 例: v1.0.0 のタグを push したときに実行
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*'  # v1.0.0 のようにタグをプッシュしたときに実行
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        # 必要に応じて matrix を使って複数 API Level / ビルドツールを並列に回せますが、
+        # 今回は単一のセットで大丈夫なら省略しても OK です。
+        api-level: [ 35 ]
+        build-tools: [ '35.0.0' ]
+        target: [ 'android-35' ]
+
     steps:
-      # 1. ソースコードをチェックアウト
+      # 1. コードチェックアウト
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. JDK 17 をセットアップ（Android Studio バンドル JDK が不要な場合）
+      # 2. JDK 17 セットアップ
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. Android SDK をセットアップ
+      # 3. Android SDK セットアップ
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
-          api-level: 35
-          build-tools: '35.0.0'
-          target: 'android-35'
+          api-level: ${{ matrix.api-level }}
+          build-tools: ${{ matrix.build-tools }}
+          target: ${{ matrix.target }}
 
       # 4. Gradle キャッシュ
       - name: Cache Gradle
@@ -41,14 +48,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 5. JKS を Secrets から復号してファイルに保存
+      # 5. JKS を Secrets から復号して my-release-key.jks に出力
       - name: Decode JKS from Base64
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
-        # my-release-key.jks はワークスペース直下に作成される（必要に応じてパスは変えてください）。
 
-      # 6. gradle.properties を更新して、署名情報を設定
-      #    （既存の gradle.properties に末尾追記するイメージ）
+      # 6. gradle.properties に署名情報を追記
       - name: Add signing info to gradle.properties
         run: |
           echo "" >> gradle.properties
@@ -58,13 +63,33 @@ jobs:
           echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> gradle.properties
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> gradle.properties
 
-      # 7. 署名付きリリースAPK をビルド
+      # 7. リリース APK をビルド（assembleRelease）
       - name: Build Signed Release APK
         run: ./gradlew clean assembleRelease
 
-      # 8. (オプション) 作成された APK をアーティファクトとしてアップロードする
-      - name: Upload APK as Artifact
-        uses: actions/upload-artifact@v3
+      # 8. GitHub リリースを作成（または取得）する
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          # github.ref が "refs/tags/v1.0.0" のように入るので、tag_name にそのまま渡す
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            • このリリースには署名済みのAPKが含まれます。
+            • バージョン: ${{ github.ref_name }}
+      # ──────────────────────────────────────────────────────────────────────────────
+      # 9. 上記で作成したリリースに APK をアップロードする
+      - name: Upload APK to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: app/build/outputs/apk/release/app-release.apk
+          asset_name: app-release.apk
+          asset_content_type: application/vnd.android.package-archive
