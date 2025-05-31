@@ -53,24 +53,22 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
-      # 6. gradle.properties に署名情報を追記
-      - name: Add signing info to gradle.properties
+      # 6. local.properties に署名情報を追記
+      - name: Add signing info to local.properties
         run: |
-          echo "" >> gradle.properties
-          echo "# --- SigningConfig for CI ---" >> gradle.properties
-          echo "KEYSTORE_FILE=my-release-key.jks" >> gradle.properties
-          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> gradle.properties
-          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> gradle.properties
-          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> gradle.properties
+          # local.properties が存在しなければ新規作成
+          if [ ! -f local.properties ]; then
+            touch local.properties
+          fi
+          echo "# --- SigningConfig for CI ---" >> local.properties
+          echo "KEYSTORE_FILE=my-release-key.jks"     >> local.properties
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> local.properties
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"   >> local.properties
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> local.properties
 
       # 7. リリース APK をビルド
       - name: Build Signed Release APK
-        run: |
-          ./gradlew clean assembleRelease \
-            -Pandroid.injected.signing.store.file=app/my-release-key.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+        run: ./gradlew clean assembleRelease
 
       # ↓（あらためて）どのファイルがあるか確認しておく
       - name: List APK directory
