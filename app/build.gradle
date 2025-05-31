@@ -23,20 +23,9 @@ android {
         }
     }
 
-    signingConfigs {
-        release {
-            storeFile file(KEYSTORE_FILE)
-            storePassword KEYSTORE_PASSWORD
-            keyAlias KEY_ALIAS
-            keyPassword KEY_PASSWORD
-            v1SigningEnabled true
-            v2SigningEnabled true
-        }
-    }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
