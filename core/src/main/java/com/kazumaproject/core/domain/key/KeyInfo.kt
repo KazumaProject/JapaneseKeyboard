@@ -1774,13 +1774,17 @@ sealed class KeyInfo {
             get() = null
     }
 
+    // Assuming KeyTapFlickInfo has been updated so that flickTop is a non-nullable Char:
+// abstract val flickTop: Char
+// (alongside nullable flickLeft, flickRight, flickBottom)
+
     object KeyYearNumber : KeyTapFlickInfo() {
         override val tap: Char
             get() = '年'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '年'  // 全角文字（すでに全角）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1792,8 +1796,8 @@ sealed class KeyInfo {
             get() = '月'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '月'  // 全角文字（すでに全角）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1805,8 +1809,8 @@ sealed class KeyInfo {
             get() = '日'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '日'  // 全角文字（すでに全角）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1818,8 +1822,8 @@ sealed class KeyInfo {
             get() = '時'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '時'  // 全角文字（すでに全角）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1831,8 +1835,8 @@ sealed class KeyInfo {
             get() = '分'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '分'  // 全角文字（すでに全角）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1844,8 +1848,8 @@ sealed class KeyInfo {
             get() = '×'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '×'  // 全角文字（かける記号）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1857,8 +1861,8 @@ sealed class KeyInfo {
             get() = '÷'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '÷'  // 全角文字（割る記号）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1870,8 +1874,8 @@ sealed class KeyInfo {
             get() = '+'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '＋'  // 全角プラス
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1880,11 +1884,11 @@ sealed class KeyInfo {
 
     object KeyMinusNumber : KeyTapFlickInfo() {
         override val tap: Char
-            get() = '−'  // Unicode minus sign
+            get() = '−'  // Unicode マイナス符号（半角ではなく標準マイナス）
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '－'  // 全角マイナス
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1896,8 +1900,8 @@ sealed class KeyInfo {
             get() = '='
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '＝'  // 全角イコール
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1909,8 +1913,8 @@ sealed class KeyInfo {
             get() = '♪'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '♪'  // 全角楽譜記号（そのまま）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1922,8 +1926,8 @@ sealed class KeyInfo {
             get() = '☆'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '☆'  // 全角星印（そのまま）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1935,8 +1939,8 @@ sealed class KeyInfo {
             get() = '%'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '％'  // 全角パーセント
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1948,8 +1952,8 @@ sealed class KeyInfo {
             get() = '¥'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '￥'  // 全角円記号
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1961,8 +1965,8 @@ sealed class KeyInfo {
             get() = '〒'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '〒'  // 全角郵便記号（そのまま）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1974,8 +1978,8 @@ sealed class KeyInfo {
             get() = '→'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '→'  // 全角矢印（そのまま）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -1987,8 +1991,8 @@ sealed class KeyInfo {
             get() = '~'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '～'  // 全角チルダ
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -2000,8 +2004,8 @@ sealed class KeyInfo {
             get() = '・'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '・'  // 全角中点（そのまま）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -2013,8 +2017,8 @@ sealed class KeyInfo {
             get() = '…'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '…'  // 全角三点リーダー（そのまま）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -2026,8 +2030,8 @@ sealed class KeyInfo {
             get() = '○'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '○'  // 全角丸（そのまま）
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -2039,8 +2043,8 @@ sealed class KeyInfo {
             get() = '/'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '／'  // 全角スラッシュ
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -2052,8 +2056,8 @@ sealed class KeyInfo {
             get() = '('
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '（'  // 全角左括弧
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?
@@ -2065,8 +2069,8 @@ sealed class KeyInfo {
             get() = ')'
         override val flickLeft: Char?
             get() = null
-        override val flickTop: Char?
-            get() = null
+        override val flickTop: Char
+            get() = '）'  // 全角右括弧
         override val flickRight: Char?
             get() = null
         override val flickBottom: Char?

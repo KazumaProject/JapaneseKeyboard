@@ -292,6 +292,7 @@ class TabletKeyboardView @JvmOverloads constructor(
 
         uiScope.launch {
             tabletCapsLockState.collectLatest { state ->
+                Log.d("tabletCapsLockState", "$state")
                 when (currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
 
@@ -299,19 +300,21 @@ class TabletKeyboardView @JvmOverloads constructor(
 
                     InputMode.ModeEnglish -> {
                         binding.apply {
-                            updateKeyStyles(state)
+                            updateKeyStylesEnglish(state)
                         }
                     }
 
                     InputMode.ModeNumber -> {
-
+                        binding.apply {
+                            setKeysInNumberText(state.zenkakuOn)
+                        }
                     }
                 }
             }
         }
     }
 
-    private fun updateKeyStyles(state: TabletCapsLockState) {
+    private fun updateKeyStylesEnglish(state: TabletCapsLockState) {
         if (state.zenkakuOn) {
             when {
                 state.capsLockOn && state.shiftOn -> {
@@ -337,6 +340,10 @@ class TabletKeyboardView @JvmOverloads constructor(
                 else -> setKeysInEnglishText(false)
             }
         }
+    }
+
+    private fun updateKeyStylesNumber(state: TabletCapsLockState) {
+        setKeysInNumberText(state.zenkakuOn)
     }
 
     private fun toggleShift() {
@@ -491,7 +498,6 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                     }
                     setKeyPressed()
-                    Log.d("ACTION_DOWN", "key: $pressedKey\n${tabletCapsLockState.value}")
                     if (currentInputMode.get() == InputMode.ModeEnglish &&
                         key == Key.KeyKuten
                     ) {
@@ -509,9 +515,25 @@ class TabletKeyboardView @JvmOverloads constructor(
                     ) {
                         toggleZenkaku()
                     }
-                    if (currentInputMode.get() == InputMode.ModeEnglish && key != Key.SideKeyDelete && key != Key.SideKeyCursorRight && key != Key.SideKeyCursorLeft) {
+                    if (currentInputMode.get() == InputMode.ModeEnglish &&
+                        key != Key.SideKeyDelete &&
+                        key != Key.SideKeyCursorRight &&
+                        key != Key.SideKeyCursorLeft
+                    ) {
                         return false
                     }
+
+                    if (currentInputMode.get() == InputMode.ModeNumber &&
+                        key == Key.KeyO
+                    ) {
+                        toggleZenkaku()
+                    } else if (
+                        currentInputMode.get() == InputMode.ModeNumber &&
+                        key == Key.KeyKO
+                    ) {
+                        toggleZenkaku()
+                    }
+                    Log.d("ACTION_DOWN: ", "${tabletCapsLockState.value}")
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
                         if (pressedKey.key != Key.NotSelected) {
@@ -579,10 +601,12 @@ class TabletKeyboardView @JvmOverloads constructor(
                                         }
 
                                         InputMode.ModeNumber -> {
+                                            val capState = tabletCapsLockState.value
+                                            val outputChar = keyInfo.getOutputChar(capState)
                                             flickListener?.onFlick(
                                                 gestureType = gestureType,
                                                 key = pressedKey.key,
-                                                char = keyInfo.tap,
+                                                char = outputChar,
                                             )
                                         }
                                     }
@@ -2991,7 +3015,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
 
             InputMode.ModeNumber -> {
-                setKeysInNumberText()
+                setKeysInNumberText(false)
             }
         }
         clearShiftCaps()
@@ -3056,7 +3080,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
 
             InputMode.ModeEnglish -> {
-                setKeysInNumberText()
+                setKeysInNumberText(false)
                 binding.apply {
                     /** や行を削除 **/
                     key16.isVisible = false
@@ -3156,6 +3180,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key38.setMarginEnd(0f)
                     key39.setMarginEnd(0f)
                     key40.setMarginEnd(0f)
+
+                    key55.background = ContextCompat.getDrawable(
+                        this@TabletKeyboardView.context,
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                    )
                 }
                 clearShiftCaps()
                 InputMode.ModeJapanese
@@ -3229,6 +3258,15 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key38.setMarginEnd(0f)
                     key39.setMarginEnd(0f)
                     key40.setMarginEnd(0f)
+
+                    key5.background = ContextCompat.getDrawable(
+                        this@TabletKeyboardView.context,
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_left
+                    )
+                    key55.background = ContextCompat.getDrawable(
+                        this@TabletKeyboardView.context,
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                    )
                 }
                 clearShiftCaps()
             }
@@ -3282,6 +3320,15 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key49.setBottomToTopOf(key55)
                     key55.setStartToEndOf(key45)
                     key45.setEndToStartOf(key55)
+
+                    key5.background = ContextCompat.getDrawable(
+                        this@TabletKeyboardView.context,
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_left
+                    )
+                    key55.background = ContextCompat.getDrawable(
+                        this@TabletKeyboardView.context,
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                    )
                 }
                 clearShiftCaps()
             }
@@ -3306,19 +3353,15 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key39.setMarginEnd(2f)
                     key40.setMarginEnd(2f)
 
-                    if (tabletCapsLockState.value.capsLockOn || tabletCapsLockState.value.shiftOn) {
-                        binding.key5.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left
-                        )
-                    }
+                    key5.background = ContextCompat.getDrawable(
+                        this@TabletKeyboardView.context,
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_left
+                    )
 
-                    if (tabletCapsLockState.value.zenkakuOn) {
-                        binding.key55.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                        )
-                    }
+                    key55.background = ContextCompat.getDrawable(
+                        this@TabletKeyboardView.context,
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                    )
                 }
                 clearShiftCaps()
             }
@@ -3410,14 +3453,19 @@ class TabletKeyboardView @JvmOverloads constructor(
         key55.background = ContextCompat.getDrawable(ctx, bgRes)
     }
 
-    private fun setKeysInNumberText() {
+    private fun setKeysInNumberText(isZenkaku: Boolean) {
         allButtonKeys.forEach { button ->
             if (button != binding.key5) button.setTabletKeyTextNumber(keyId = button.id)
         }
         binding.apply {
+            val ctx = root.context
             key5.setLargeUnicodeIconScaleX(
                 icon = resources.getString(com.kazumaproject.core.R.string.tablet_number_command),
             )
+            val zenkakuBg = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
+            else com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+
+            key55.background = ContextCompat.getDrawable(ctx, zenkakuBg)
         }
     }
 
