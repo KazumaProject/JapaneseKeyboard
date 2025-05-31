@@ -61,7 +61,7 @@ jobs:
             touch local.properties
           fi
           echo "# --- SigningConfig for CI ---" >> local.properties
-          echo "KEYSTORE_FILE=my-release-key.jks"     >> local.properties
+          echo "KEYSTORE_FILE=../my-release-key.jks"     >> local.properties
           echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> local.properties
           echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"   >> local.properties
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> local.properties
