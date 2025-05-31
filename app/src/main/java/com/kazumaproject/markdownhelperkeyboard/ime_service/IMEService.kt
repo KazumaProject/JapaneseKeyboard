@@ -415,22 +415,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         when (newConfig.orientation) {
             Configuration.ORIENTATION_PORTRAIT -> {
                 finishComposingText()
-                commitText("", 1)
+                setComposingText("", 0)
             }
 
             Configuration.ORIENTATION_LANDSCAPE -> {
                 finishComposingText()
-                commitText("", 1)
+                setComposingText("", 0)
             }
 
             Configuration.ORIENTATION_UNDEFINED -> {
                 finishComposingText()
-                commitText("", 1)
+                setComposingText("", 0)
             }
 
             else -> {
                 finishComposingText()
-                commitText("", 1)
+                setComposingText("", 0)
             }
         }
     }
@@ -478,6 +478,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (_inputString.value.isNotEmpty()) {
             cancelPendingCommits()
             _inputString.update { "" }
+            finishComposingText()
             setComposingText("", 0)
         }
     }
@@ -729,7 +730,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
                 stringInTail.set("")
                 finishComposingText()
-                commitText("", 1)
+                setComposingText("", 0)
                 mainView.keyboardSymbolView.setTabPosition(0)
             }
 
@@ -749,7 +750,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (isHenkan.get()) {
             suggestionAdapter?.updateHighlightPosition(-1)
             finishComposingText()
-            commitText("", 1)
+            setComposingText("", 0)
             mainView.root.post {
                 isHenkan.set(false)
                 char?.let {
@@ -777,7 +778,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (isHenkan.get()) {
             suggestionAdapter?.updateHighlightPosition(-1)
             finishComposingText()
-            commitText("", 1)
+            setComposingText("", 0)
             mainView.root.post {
                 isHenkan.set(false)
                 char?.let {
@@ -1410,7 +1411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     vibrate()
                     _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
                     finishComposingText()
-                    commitText("", 1)
+                    setComposingText("", 0)
                 }
             })
             setOnDeleteButtonSymbolViewClickListener(object : DeleteButtonSymbolViewClickListener {
@@ -2324,7 +2325,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun handleEmptyInputEnterKey(mainView: MainLayoutBinding) {
         if (stringInTail.get().isNotEmpty()) {
             finishComposingText()
-            commitText("", 1)
+            setComposingText("", 0)
             stringInTail.set("")
         } else {
             setEnterKeyPress()
@@ -2368,7 +2369,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun finishInputEnterKey() {
         _inputString.update { "" }
         finishComposingText()
-        commitText("", 1)
+        setComposingText("", 0)
         resetFlagsEnterKeyNotHenkan()
     }
 
@@ -2898,7 +2899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isContinuousTapInputEnabled.set(false)
         if (isHenkan.get()) {
             finishComposingText()
-            commitText("", 1)
+            setComposingText("", 0)
             _inputString.update {
                 key.toString()
             }
