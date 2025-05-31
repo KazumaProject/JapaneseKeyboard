@@ -30,9 +30,6 @@
 * [🛠 ソースからビルド (開発者向け)](#ソースからビルド-開発者向け)
 * [🏗 アーキテクチャ](#アーキテクチャ)
 * [🔐 プライバシーとセキュリティ](#プライバシーとセキュリティ)
-* [🛡 技術スタック](#技術スタック)
-* [📣 ロードマップ](#ロードマップ)
-* [🤝 コントリビュート](#コントリビュート)
 * [📝 謝辞](#謝辞)
 * [📄 ライセンス](#ライセンス)
 
@@ -48,10 +45,14 @@
 
 ### スクリーンショット
 
+#### Smart Phone
+
 <p align="center">
   <img src="images/keyboard-light.png" width="200" alt="ライトテーマ"/>
   <img src="images/keyboard-dark.png" width="200" alt="ダークテーマ"/>
 </p>
+
+#### Tablet
 
 ### 🚀 使い方 (ユーザー向け)
 
@@ -170,9 +171,6 @@ MIT © 2025 Kazuma Naka — See [`LICENSE`](LICENSE).
 * [🛠 Build from Source](#build-from-source)
 * [🏗 Architecture](#architecture)
 * [🔐 Privacy & Security](#privacy--security)
-* [🛡 Tech Stack](#tech-stack)
-* [📣 Roadmap](#roadmap)
-* [🤝 Contributing](#contributing)
 * [📝 Acknowledgements](#acknowledgements)
 * [📄 License](#license)
 
