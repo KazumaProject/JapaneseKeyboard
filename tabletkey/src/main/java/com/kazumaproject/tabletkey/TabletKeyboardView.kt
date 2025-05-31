@@ -2254,13 +2254,367 @@ class TabletKeyboardView @JvmOverloads constructor(
         ),
     )
 
+    private fun buildKeyRectsNumber() = listOf(
+        // ---- Side Keys ----
+        KeyRect(
+            Key.SideKeySymbol,
+            binding.keyKigou.layoutXPosition(),
+            binding.keyKigou.layoutYPosition(),
+            binding.keyKigou.layoutXPosition() + binding.keyKigou.width,
+            binding.keyKigou.layoutYPosition() + binding.keyKigou.height
+        ),
+        KeyRect(
+            Key.SideKeyPreviousChar,
+            binding.keyPrevious.layoutXPosition(),
+            binding.keyPrevious.layoutYPosition(),
+            binding.keyPrevious.layoutXPosition() + binding.keyPrevious.width,
+            binding.keyPrevious.layoutYPosition() + binding.keyPrevious.height
+        ),
+        KeyRect(
+            Key.SideKeyInputMode,
+            binding.keySwitchKeyMode.layoutXPosition(),
+            binding.keySwitchKeyMode.layoutYPosition(),
+            binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
+            binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorLeft,
+            binding.keyLeftCursor.layoutXPosition(),
+            binding.keyLeftCursor.layoutYPosition(),
+            binding.keyLeftCursor.layoutXPosition() + binding.keyLeftCursor.width,
+            binding.keyLeftCursor.layoutYPosition() + binding.keyLeftCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyCursorRight,
+            binding.keyRightCursor.layoutXPosition(),
+            binding.keyRightCursor.layoutYPosition(),
+            binding.keyRightCursor.layoutXPosition() + binding.keyRightCursor.width,
+            binding.keyRightCursor.layoutYPosition() + binding.keyRightCursor.height
+        ),
+        KeyRect(
+            Key.SideKeyDelete,
+            binding.keyDelete.layoutXPosition(),
+            binding.keyDelete.layoutYPosition(),
+            binding.keyDelete.layoutXPosition() + binding.keyDelete.width,
+            binding.keyDelete.layoutYPosition() + binding.keyDelete.height
+        ),
+        KeyRect(
+            Key.SideKeySpace,
+            binding.keySpace.layoutXPosition(),
+            binding.keySpace.layoutYPosition(),
+            binding.keySpace.layoutXPosition() + binding.keySpace.width,
+            binding.keySpace.layoutYPosition() + binding.keySpace.height
+        ),
+        KeyRect(
+            Key.SideKeyEnter,
+            binding.keyEnter.layoutXPosition(),
+            binding.keyEnter.layoutYPosition(),
+            binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
+            binding.keyEnter.layoutYPosition() + binding.keyEnter.height
+        ),
+
+        // ---- Character Keys ----
+        KeyRect(
+            Key.KeyKagikakko,
+            binding.key1.layoutXPosition(),
+            binding.key1.layoutYPosition(),
+            binding.key1.layoutXPosition() + binding.key1.width,
+            binding.key1.layoutYPosition() + binding.key1.height
+        ),
+        KeyRect(
+            Key.KeyQuestion,
+            binding.key2.layoutXPosition(),
+            binding.key2.layoutYPosition(),
+            binding.key2.layoutXPosition() + binding.key2.width,
+            binding.key2.layoutYPosition() + binding.key2.height
+        ),
+        KeyRect(
+            Key.KeyCaution,
+            binding.key3.layoutXPosition(),
+            binding.key3.layoutYPosition(),
+            binding.key3.layoutXPosition() + binding.key3.width,
+            binding.key3.layoutYPosition() + binding.key3.height
+        ),
+        KeyRect(
+            Key.KeyTouten,
+            binding.key4.layoutXPosition(),
+            binding.key4.layoutYPosition(),
+            binding.key4.layoutXPosition() + binding.key4.width,
+            binding.key4.layoutYPosition() + binding.key4.height
+        ),
+        KeyRect(
+            Key.KeyKuten,
+            binding.key5.layoutXPosition(),
+            binding.key5.layoutYPosition(),
+            binding.key5.layoutXPosition() + binding.key5.width,
+            binding.key5.layoutYPosition() + binding.key5.height
+        ),
+        // ら row
+        KeyRect(
+            Key.KeyRA,
+            binding.key11.layoutXPosition(),
+            binding.key11.layoutYPosition(),
+            binding.key11.layoutXPosition() + binding.key11.width,
+            binding.key11.layoutYPosition() + binding.key11.height
+        ),
+        KeyRect(
+            Key.KeyRI,
+            binding.key12.layoutXPosition(),
+            binding.key12.layoutYPosition(),
+            binding.key12.layoutXPosition() + binding.key12.width,
+            binding.key12.layoutYPosition() + binding.key12.height
+        ),
+        KeyRect(
+            Key.KeyRU,
+            binding.key13.layoutXPosition(),
+            binding.key13.layoutYPosition(),
+            binding.key13.layoutXPosition() + binding.key13.width,
+            binding.key13.layoutYPosition() + binding.key13.height
+        ),
+        KeyRect(
+            Key.KeyRE,
+            binding.key14.layoutXPosition(),
+            binding.key14.layoutYPosition(),
+            binding.key14.layoutXPosition() + binding.key14.width,
+            binding.key14.layoutYPosition() + binding.key14.height
+        ),
+        KeyRect(
+            Key.KeyDakutenSmall,
+            binding.key15.layoutXPosition(),
+            binding.key15.layoutYPosition(),
+            binding.key15.layoutXPosition() + binding.key15.width,
+            binding.key15.layoutYPosition() + binding.key15.height
+        ),
+        // は row
+        KeyRect(
+            Key.KeyHA,
+            binding.key26.layoutXPosition(),
+            binding.key26.layoutYPosition(),
+            binding.key26.layoutXPosition() + binding.key26.width,
+            binding.key26.layoutYPosition() + binding.key26.height
+        ),
+        KeyRect(
+            Key.KeyHI,
+            binding.key27.layoutXPosition(),
+            binding.key27.layoutYPosition(),
+            binding.key27.layoutXPosition() + binding.key27.width,
+            binding.key27.layoutYPosition() + binding.key27.height
+        ),
+        KeyRect(
+            Key.KeyFU,
+            binding.key28.layoutXPosition(),
+            binding.key28.layoutYPosition(),
+            binding.key28.layoutXPosition() + binding.key28.width,
+            binding.key28.layoutYPosition() + binding.key28.height
+        ),
+        KeyRect(
+            Key.KeyHE,
+            binding.key29.layoutXPosition(),
+            binding.key29.layoutYPosition(),
+            binding.key29.layoutXPosition() + binding.key29.width,
+            binding.key29.layoutYPosition() + binding.key29.height
+        ),
+        KeyRect(
+            Key.KeyHO,
+            binding.key30.layoutXPosition(),
+            binding.key30.layoutYPosition(),
+            binding.key30.layoutXPosition() + binding.key30.width,
+            binding.key30.layoutYPosition() + binding.key30.height
+        ),
+
+        // な row
+        KeyRect(
+            Key.KeyNA,
+            binding.key31.layoutXPosition(),
+            binding.key31.layoutYPosition(),
+            binding.key31.layoutXPosition() + binding.key31.width,
+            binding.key31.layoutYPosition() + binding.key31.height
+        ),
+        KeyRect(
+            Key.KeyNI,
+            binding.key32.layoutXPosition(),
+            binding.key32.layoutYPosition(),
+            binding.key32.layoutXPosition() + binding.key32.width,
+            binding.key32.layoutYPosition() + binding.key32.height
+        ),
+        KeyRect(
+            Key.KeyNU,
+            binding.key33.layoutXPosition(),
+            binding.key33.layoutYPosition(),
+            binding.key33.layoutXPosition() + binding.key33.width,
+            binding.key33.layoutYPosition() + binding.key33.height
+        ),
+        KeyRect(
+            Key.KeyNE,
+            binding.key34.layoutXPosition(),
+            binding.key34.layoutYPosition(),
+            binding.key34.layoutXPosition() + binding.key34.width,
+            binding.key34.layoutYPosition() + binding.key34.height
+        ),
+        KeyRect(
+            Key.KeyNO,
+            binding.key35.layoutXPosition(),
+            binding.key35.layoutYPosition(),
+            binding.key35.layoutXPosition() + binding.key35.width,
+            binding.key35.layoutYPosition() + binding.key35.height
+        ),
+
+        // た row
+        KeyRect(
+            Key.KeyTA,
+            binding.key36.layoutXPosition(),
+            binding.key36.layoutYPosition(),
+            binding.key36.layoutXPosition() + binding.key36.width,
+            binding.key36.layoutYPosition() + binding.key36.height
+        ),
+        KeyRect(
+            Key.KeyCHI,
+            binding.key37.layoutXPosition(),
+            binding.key37.layoutYPosition(),
+            binding.key37.layoutXPosition() + binding.key37.width,
+            binding.key37.layoutYPosition() + binding.key37.height
+        ),
+        KeyRect(
+            Key.KeyTSU,
+            binding.key38.layoutXPosition(),
+            binding.key38.layoutYPosition(),
+            binding.key38.layoutXPosition() + binding.key38.width,
+            binding.key38.layoutYPosition() + binding.key38.height
+        ),
+        KeyRect(
+            Key.KeyTE,
+            binding.key39.layoutXPosition(),
+            binding.key39.layoutYPosition(),
+            binding.key39.layoutXPosition() + binding.key39.width,
+            binding.key39.layoutYPosition() + binding.key39.height
+        ),
+        KeyRect(
+            Key.KeyTO,
+            binding.key40.layoutXPosition(),
+            binding.key40.layoutYPosition(),
+            binding.key40.layoutXPosition() + binding.key40.width,
+            binding.key40.layoutYPosition() + binding.key40.height
+        ),
+
+        // さ row
+        KeyRect(
+            Key.KeySA,
+            binding.key41.layoutXPosition(),
+            binding.key41.layoutYPosition(),
+            binding.key41.layoutXPosition() + binding.key41.width,
+            binding.key41.layoutYPosition() + binding.key41.height
+        ),
+        KeyRect(
+            Key.KeySHI,
+            binding.key42.layoutXPosition(),
+            binding.key42.layoutYPosition(),
+            binding.key42.layoutXPosition() + binding.key42.width,
+            binding.key42.layoutYPosition() + binding.key42.height
+        ),
+        KeyRect(
+            Key.KeySU,
+            binding.key43.layoutXPosition(),
+            binding.key43.layoutYPosition(),
+            binding.key43.layoutXPosition() + binding.key43.width,
+            binding.key43.layoutYPosition() + binding.key43.height
+        ),
+        KeyRect(
+            Key.KeySE,
+            binding.key44.layoutXPosition(),
+            binding.key44.layoutYPosition(),
+            binding.key44.layoutXPosition() + binding.key44.width,
+            binding.key44.layoutYPosition() + binding.key44.height
+        ),
+        KeyRect(
+            Key.KeySO,
+            binding.key45.layoutXPosition(),
+            binding.key45.layoutYPosition(),
+            binding.key45.layoutXPosition() + binding.key45.width,
+            binding.key45.layoutYPosition() + binding.key45.height
+        ),
+
+        // か row
+        KeyRect(
+            Key.KeyKA,
+            binding.key46.layoutXPosition(),
+            binding.key46.layoutYPosition(),
+            binding.key46.layoutXPosition() + binding.key46.width,
+            binding.key46.layoutYPosition() + binding.key46.height
+        ),
+        KeyRect(
+            Key.KeyKI,
+            binding.key47.layoutXPosition(),
+            binding.key47.layoutYPosition(),
+            binding.key47.layoutXPosition() + binding.key47.width,
+            binding.key47.layoutYPosition() + binding.key47.height
+        ),
+        KeyRect(
+            Key.KeyKU,
+            binding.key48.layoutXPosition(),
+            binding.key48.layoutYPosition(),
+            binding.key48.layoutXPosition() + binding.key48.width,
+            binding.key48.layoutYPosition() + binding.key48.height
+        ),
+        KeyRect(
+            Key.KeyKE,
+            binding.key49.layoutXPosition(),
+            binding.key49.layoutYPosition(),
+            binding.key49.layoutXPosition() + binding.key49.width,
+            binding.key49.layoutYPosition() + binding.key49.height
+        ),
+        KeyRect(
+            Key.KeyKO,
+            binding.key50.layoutXPosition(),
+            binding.key50.layoutYPosition(),
+            binding.key50.layoutXPosition() + binding.key50.width,
+            binding.key50.layoutYPosition() + binding.key50.height
+        ),
+
+        // あ row
+        KeyRect(
+            Key.KeyA,
+            binding.key51.layoutXPosition(),
+            binding.key51.layoutYPosition(),
+            binding.key51.layoutXPosition() + binding.key51.width,
+            binding.key51.layoutYPosition() + binding.key51.height
+        ),
+        KeyRect(
+            Key.KeyI,
+            binding.key52.layoutXPosition(),
+            binding.key52.layoutYPosition(),
+            binding.key52.layoutXPosition() + binding.key52.width,
+            binding.key52.layoutYPosition() + binding.key52.height
+        ),
+        KeyRect(
+            Key.KeyU,
+            binding.key53.layoutXPosition(),
+            binding.key53.layoutYPosition(),
+            binding.key53.layoutXPosition() + binding.key53.width,
+            binding.key53.layoutYPosition() + binding.key53.height
+        ),
+        KeyRect(
+            Key.KeyE,
+            binding.key54.layoutXPosition(),
+            binding.key54.layoutYPosition(),
+            binding.key54.layoutXPosition() + binding.key54.width,
+            binding.key54.layoutYPosition() + binding.key54.height
+        ),
+        KeyRect(
+            Key.KeyO,
+            binding.key55.layoutXPosition(),
+            binding.key55.layoutYPosition(),
+            binding.key55.layoutXPosition() + binding.key55.width,
+            binding.key55.layoutYPosition() + binding.key55.height
+        ),
+    )
+
     private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {
         val (x, y) = getRawCoordinates(event, pointer)
 
         val keyRects = when (currentInputMode.get()) {
             InputMode.ModeEnglish -> buildKeyRectsEnglish()
             InputMode.ModeJapanese -> buildKeyRects()
-            InputMode.ModeNumber -> buildKeyRects()
+            InputMode.ModeNumber -> buildKeyRectsNumber()
         }
 
         keyRects.forEach { rect ->
@@ -2812,7 +3166,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     }
 
     fun resetLayout() {
-        Log.d("resetLayout","called: ${tabletCapsLockState.value} ${currentInputMode.get()}")
+        Log.d("resetLayout", "called: ${tabletCapsLockState.value} ${currentInputMode.get()}")
         when (currentInputMode.get()) {
             InputMode.ModeJapanese -> {
                 binding.apply {

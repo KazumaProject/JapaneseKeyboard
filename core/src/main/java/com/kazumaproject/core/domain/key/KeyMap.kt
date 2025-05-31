@@ -152,23 +152,57 @@ class KeyMap : KeyMapHolder {
         Key.KeyI to KeyInfo.KeyTEnglish,
         Key.KeyU to KeyInfo.KeySquareRightBracket,
         Key.KeyE to KeyInfo.KeyBackQuote,
-        Key.KeyO to KeyInfo.KeyZenkakuEnglish
+        Key.KeyO to KeyInfo.KeyZenkakuEnglish,
 
-    )
+        )
 
     private val listNumber: Map<Key, KeyInfo> = mapOf(
-        Key.KeyA to KeyInfo.Key1Number,
-        Key.KeyKA to KeyInfo.Key2Number,
-        Key.KeySA to KeyInfo.Key3Number,
-        Key.KeyTA to KeyInfo.Key4Number,
-        Key.KeyNA to KeyInfo.Key5Number,
-        Key.KeyHA to KeyInfo.Key6Number,
-        Key.KeyMA to KeyInfo.Key7Number,
-        Key.KeyYA to KeyInfo.Key8Number,
-        Key.KeyRA to KeyInfo.Key9Number,
-        Key.KeyWA to KeyInfo.Key0Number,
-        Key.KeyKutouten to KeyInfo.KeyKigouNumber,
-        Key.KeyDakutenSmall to KeyInfo.KeyDakutenSmallNumber
+        Key.KeyKagikakko to KeyInfo.KeyYearNumber,
+        Key.KeyQuestion to KeyInfo.KeyMultipleNumber,
+        Key.KeyCaution to KeyInfo.KeyMusicNoteNumber,
+        Key.KeyTouten to KeyInfo.KeyRightArrowNumber,
+        Key.KeyKuten to KeyInfo.KeyCommand,
+
+
+        Key.KeyRA to KeyInfo.KeyMonthNumber,
+        Key.KeyRI to KeyInfo.KeyDivideNumber,
+        Key.KeyRU to KeyInfo.KeyStarNumber,
+        Key.KeyRE to KeyInfo.KeyTildaNumber,
+
+        Key.KeyHA to KeyInfo.KeyDayNumber,
+        Key.KeyHI to KeyInfo.KeyPlusNumber,
+        Key.KeyFU to KeyInfo.KeyPercentNumber,
+        Key.KeyHE to KeyInfo.KeyMiddleDotNumber,
+        Key.KeyHO to KeyInfo.KeySlashNumber,
+
+        Key.KeyNA to KeyInfo.KeyHourNumber,
+        Key.KeyNI to KeyInfo.KeyMinusNumber,
+        Key.KeyNU to KeyInfo.KeyYenNumber,
+        Key.KeyNE to KeyInfo.KeyEllipsisNumber,
+        Key.KeyNO to KeyInfo.KeyLeftParenNumber,
+
+        Key.KeyTA to KeyInfo.KeyMinuteNumber,
+        Key.KeyCHI to KeyInfo.KeyEqualNumber,
+        Key.KeyTSU to KeyInfo.KeyPostMarkNumber,
+        Key.KeyTE to KeyInfo.KeyCircleNumber,
+        Key.KeyTO to KeyInfo.KeyRightParenNumber,
+
+        Key.KeySA to KeyInfo.Key1NumberTablet,
+        Key.KeySHI to KeyInfo.Key4NumberTablet,
+        Key.KeySU to KeyInfo.Key7NumberTablet,
+        Key.KeySE to KeyInfo.KeyCommaNumber,
+        Key.KeySO to KeyInfo.KeyColonNumber,
+
+        Key.KeyKA to KeyInfo.Key2NumberTablet,
+        Key.KeyKI to KeyInfo.Key5NumberTablet,
+        Key.KeyKU to KeyInfo.Key8NumberTablet,
+        Key.KeyKE to KeyInfo.Key0NumberTablet,
+
+        Key.KeyA to KeyInfo.Key3NumberTablet,
+        Key.KeyI to KeyInfo.Key6NumberTablet,
+        Key.KeyU to KeyInfo.Key9NumberTablet,
+        Key.KeyE to KeyInfo.KeyPeriodNumber,
+        Key.KeyO to KeyInfo.KeyZenkakuNumber,
     )
 
     override val keysJapanese: Set<Key>
