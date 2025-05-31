@@ -182,7 +182,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         symbolRecyclerView = findViewById(R.id.symbol_candidate_recycler_view)
         gridLayoutManager = GridLayoutManager(
             context,
-            5,
+            3,
             GridLayoutManager.HORIZONTAL,
             false
         )
