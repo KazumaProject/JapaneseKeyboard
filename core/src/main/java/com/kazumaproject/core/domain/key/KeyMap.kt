@@ -197,6 +197,7 @@ class KeyMap : KeyMapHolder {
         Key.KeyKI to KeyInfo.Key5NumberTablet,
         Key.KeyKU to KeyInfo.Key8NumberTablet,
         Key.KeyKE to KeyInfo.Key0NumberTablet,
+        Key.KeyKO to KeyInfo.KeyZenkakuNumber,
 
         Key.KeyA to KeyInfo.Key3NumberTablet,
         Key.KeyI to KeyInfo.Key6NumberTablet,
