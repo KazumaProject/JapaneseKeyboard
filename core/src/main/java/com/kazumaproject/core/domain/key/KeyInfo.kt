@@ -2203,6 +2203,19 @@ sealed class KeyInfo {
         override val flickBottom: Char? get() = null
     }
 
+    object KeyCommand : KeyTapFlickInfo() {
+        override val tap: Char?
+            get() = null
+        override val flickLeft: Char?
+            get() = null
+        override val flickTop: Char?
+            get() = null
+        override val flickRight: Char?
+            get() = null
+        override val flickBottom: Char?
+            get() = null
+    }
+
     object KeyZenkakuNumber : KeyTapFlickInfo() {
         override val tap: Char?
             get() = null
