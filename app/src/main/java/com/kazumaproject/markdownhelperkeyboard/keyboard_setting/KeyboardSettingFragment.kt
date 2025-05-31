@@ -10,7 +10,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
@@ -185,7 +184,7 @@ class KeyboardSettingFragment : Fragment() {
             constraintSet.clear(binding.keyboardView.id, ConstraintSet.START)
 
             binding.keyboardPositionButton.setBackgroundColor(
-                ContextCompat.getColor(requireContext(), R.color.blue)
+                ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue)
             )
             binding.keyboardPositionButton.text = "右寄せ"
             appPreference.keyboard_position = true
@@ -201,7 +200,7 @@ class KeyboardSettingFragment : Fragment() {
             binding.keyboardPositionButton.setBackgroundColor(
                 ContextCompat.getColor(
                     requireContext(),
-                    R.color.qwety_key_bg_color
+                    com.kazumaproject.core.R.color.qwety_key_bg_color
                 )
             )
             binding.keyboardPositionButton.text = "左寄せ"

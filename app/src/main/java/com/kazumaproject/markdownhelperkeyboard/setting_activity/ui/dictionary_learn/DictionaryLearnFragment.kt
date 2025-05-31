@@ -13,7 +13,6 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentLearnDictionaryBinding
 import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionaryAdapter
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
@@ -102,15 +101,15 @@ class DictionaryLearnFragment : Fragment() {
                 }.setNegativeButton("いいえ", null).show()
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-            .setTextColor(ContextCompat.getColor(requireContext(), R.color.enter_key_bg))
+            .setTextColor(ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.enter_key_bg))
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
-            .setTextColor(ContextCompat.getColor(requireContext(), R.color.main_text_color))
+            .setTextColor(ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.main_text_color))
     }
 
     private fun buildSpannableMessage(prefix: String, content: String): SpannableStringBuilder {
         return SpannableStringBuilder().append(prefix).append(
             content, ForegroundColorSpan(
-                ContextCompat.getColor(requireContext(), R.color.enter_key_bg)
+                ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.enter_key_bg)
             ), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
         ).append("を削除します。\n本当に辞書から削除しますか？")
     }

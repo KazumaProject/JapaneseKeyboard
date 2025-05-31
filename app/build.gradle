@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace 'com.kazumaproject.markdownhelperkeyboard'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
-        targetSdk 35
-        versionCode 324
-        versionName "1.0.2"
+        targetSdk 36
+        versionCode 325
+        versionName "1.0.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
@@ -51,11 +51,8 @@ android {
 }
 
 dependencies {
-
-    implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
 
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4'
@@ -64,8 +61,9 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation project(':flexbox')
     implementation project(':tenkey')
-    implementation project(':bl')
+    implementation project(':core')
     implementation project(':symbol_keyboard')
+    implementation project(':tabletkey')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.2'
 

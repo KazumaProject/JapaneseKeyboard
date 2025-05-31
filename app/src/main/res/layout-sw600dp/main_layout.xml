@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom"
+    android:background="@color/keyboard_bg"
+    android:fitsSystemWindows="true">
+
+    <!-- Container for Suggestion List and Visibility Icon -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/suggestionView_parent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/keyboard_height"
+        android:background="@color/keyboard_bg">
+
+        <!-- RecyclerView for Suggestions -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/suggestion_recycler_view"
+            android:layout_width="0dp"
+            android:layout_height="58dp"
+            android:clipToPadding="false"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Visibility Toggle Button -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/suggestion_visibility"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:background="@drawable/recyclerview_size_button_bg"
+            android:scaleType="center"
+            android:src="@drawable/outline_arrow_drop_down_24"
+            android:tint="@color/recycler_view_size_change_button_tint"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Custom Keyboard View -->
+    <com.kazumaproject.tenkey.TenKey
+        android:id="@+id/keyboard_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:clickable="true"
+        android:focusable="true"
+        android:importantForAccessibility="yes"
+        android:visibility="gone" />
+
+    <com.kazumaproject.tabletkey.TabletKeyboardView
+        android:id="@+id/tablet_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:clickable="true"
+        android:focusable="true"
+        android:importantForAccessibility="yes"
+        android:visibility="visible"
+        android:paddingBottom="4dp"/>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/candidates_row_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:visibility="gone" />
+
+    <com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
+        android:id="@+id/keyboard_symbol_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:visibility="gone" />
+</FrameLayout>
