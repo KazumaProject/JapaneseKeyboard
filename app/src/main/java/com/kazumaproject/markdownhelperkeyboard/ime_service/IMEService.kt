@@ -1064,12 +1064,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
             val isInputFinishState = isInputFinished.get()
-            if (!henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed && !isInputFinishState) {
+            val inputStringAfterDelay = _inputString.value
+            if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed && !isInputFinishState) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
                 isInputFinished.set(true)
                 commitAfterEditTextJob = inputStringScope.launch {
-                    setComposingTextAfterEdit(inputString, spannableString)
+                    setComposingTextAfterEdit(inputStringAfterDelay, spannableString)
                 }
             }
         } else {
