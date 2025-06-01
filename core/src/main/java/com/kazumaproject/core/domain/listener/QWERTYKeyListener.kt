@@ -4,6 +4,8 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 
 interface QWERTYKeyListener {
     fun onTouchQWERTYKey(
-        qwertyKey: QWERTYKey
+        qwertyKey: QWERTYKey,
+        tap: Char?,
+        variations: List<Char>?
     )
 }

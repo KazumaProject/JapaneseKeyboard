@@ -246,6 +246,13 @@ sealed class QWERTYKeyInfo {
         override val capVariations: List<Char>? get() = null
     }
 
+    object KeySwitchDefaultLayout : QWERTYVariation() {
+        override val tap: Char? get() = null
+        override val capChar: Char? get() = null
+        override val variations: List<Char>? get() = null
+        override val capVariations: List<Char>? get() = null
+    }
+
     object KeySwitchMode : QWERTYVariation() {
         override val tap: Char? get() = null
         override val capChar: Char? get() = null

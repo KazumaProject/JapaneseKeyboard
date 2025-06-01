@@ -36,6 +36,7 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeyZ to QWERTYKeyInfo.KeyZ,
         QWERTYKey.QWERTYKeyShift to QWERTYKeyInfo.KeyShift,
         QWERTYKey.QWERTYKeyDelete to QWERTYKeyInfo.KeyDelete,
+        QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
         QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
         QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
         QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn

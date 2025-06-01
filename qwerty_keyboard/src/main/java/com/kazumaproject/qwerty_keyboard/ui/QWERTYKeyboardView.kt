@@ -101,6 +101,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             // Side and function keys
             binding.keyShift to QWERTYKey.QWERTYKeyShift,      // AppCompatImageButton
             binding.keyDelete to QWERTYKey.QWERTYKeyDelete,    // AppCompatImageButton
+            binding.keySwitchDefault to QWERTYKey.QWERTYKeySwitchDefaultLayout,
             binding.key123 to QWERTYKey.QWERTYKeySwitchMode,   // AppCompatButton
             binding.keySpace to QWERTYKey.QWERTYKeySpace,      // QWERTYButton
             binding.keyReturn to QWERTYKey.QWERTYKeyReturn     // AppCompatButton
@@ -141,8 +142,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         dismissKeyPreview()
 
                         val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
-                        logVariationIfNeeded(qwertyKey)
-                        qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
+                        logVariationIfNeeded(qwertyKey, qwertyKeyListener)
                     }
                     suppressedPointerId = firstPointerId
                     pointerButtonMap.remove(firstPointerId)
@@ -183,8 +183,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         shiftDoubleTapped = false
                     } else {
                         val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                        logVariationIfNeeded(qwertyKey)
-                        qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
+                        logVariationIfNeeded(qwertyKey, qwertyKeyListener)
                     }
                 }
                 pointerButtonMap.remove(pointerId)
@@ -207,8 +206,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             shiftDoubleTapped = false
                         } else {
                             val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                            logVariationIfNeeded(qwertyKey)
-                            qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
+                            logVariationIfNeeded(qwertyKey, qwertyKeyListener)
+
                         }
                     }
                 }
@@ -257,7 +256,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 it.id != binding.keyDelete.id &&
                 it.id != binding.keyShift.id &&
                 it.id != binding.key123.id &&
-                it.id != binding.keyReturn.id
+                it.id != binding.keyReturn.id &&
+                it.id != binding.keySwitchDefault.id
             ) {
                 showKeyPreview(it)
             }
@@ -286,7 +286,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     it.id != binding.keyDelete.id &&
                     it.id != binding.keyShift.id &&
                     it.id != binding.key123.id &&
-                    it.id != binding.keyReturn.id
+                    it.id != binding.keyReturn.id &&
+                    it.id != binding.keySwitchDefault.id
                 ) {
                     showKeyPreview(it)
                 }
@@ -378,25 +379,53 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Hit-test all direct children that are registered as keys. Return the child View if its bounds contain (x,y).
+     * Hit-test: (1) 直接タッチされているキーを返し、(2) なければ最もタッチ位置に近いキーを返す。
      */
     private fun findButtonUnder(x: Int, y: Int): View? {
+        var nearestView: View? = null
+        var minDistSquared = Int.MAX_VALUE
+
+        // まず、直接ヒットしているかチェック
         for (i in 0 until childCount) {
             val child = getChildAt(i)
-            if (child.isVisible) {
-                child.getHitRect(hitRect)
-                if (hitRect.contains(x, y) && qwertyButtonMap.containsKey(child)) {
-                    return child
-                }
+            if (!child.isVisible || !qwertyButtonMap.containsKey(child)) continue
+
+            child.getHitRect(hitRect)
+            if (hitRect.contains(x, y)) {
+                // 直接タッチされているキーを即時返却
+                return child
             }
         }
-        return null
+
+        // 直接のヒットがなければ、最も近いキーを探す
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            if (!child.isVisible || !qwertyButtonMap.containsKey(child)) continue
+
+            // キーの中心座標を計算
+            val centerX = child.left + child.width / 2
+            val centerY = child.top + child.height / 2
+
+            val dx = x - centerX
+            val dy = y - centerY
+            val distSq = dx * dx + dy * dy
+
+            if (distSq < minDistSquared) {
+                minDistSquared = distSq
+                nearestView = child
+            }
+        }
+
+        return nearestView
     }
 
     /**
      * If the key supports variations, log details for debugging.
      */
-    private fun logVariationIfNeeded(key: QWERTYKey) {
+    private fun logVariationIfNeeded(
+        key: QWERTYKey,
+        qwertyKeyListener: QWERTYKeyListener?
+    ) {
         val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(key)
         if (info is QWERTYKeyInfo.QWERTYVariation) {
             val tap = info.tap
@@ -407,6 +436,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 "KEY_VARIATION",
                 "KEY: $key, tap: $tap, cap: $cap, " +
                         "variations: $variations, capVariations: $capVariations"
+            )
+            qwertyKeyListener?.onTouchQWERTYKey(
+                qwertyKey = key,
+                tap = tap,
+                variations = variations
             )
         }
     }

@@ -44,6 +44,8 @@ import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
+import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -275,6 +277,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
                 setSymbolKeyboard(mainView)
+                setQWERTYKeyboard(mainView)
                 if (isTablet == true) {
                     setTabletKeyListeners(mainView)
                 } else {
@@ -1114,7 +1117,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPersonName,
                         InputTypeForIME.TextPhonetic,
                         InputTypeForIME.TextWebEditText,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1127,7 +1130,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextImeMultiLine,
                         InputTypeForIME.TextShortMessage,
                         InputTypeForIME.TextLongMessage,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1170,7 +1173,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPassword,
                         InputTypeForIME.TextVisiblePassword,
                         InputTypeForIME.TextWebPassword,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeEnglish)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1196,7 +1199,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.Date,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeNumber)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(false)
@@ -1221,7 +1224,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPersonName,
                         InputTypeForIME.TextPhonetic,
                         InputTypeForIME.TextWebEditText,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1234,7 +1237,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextImeMultiLine,
                         InputTypeForIME.TextShortMessage,
                         InputTypeForIME.TextLongMessage,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1277,7 +1280,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPassword,
                         InputTypeForIME.TextVisiblePassword,
                         InputTypeForIME.TextWebPassword,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeEnglish)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1303,7 +1306,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.Date,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeNumber)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(false)
@@ -1417,6 +1420,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     vibrate()
                     commitText(symbol, 1)
                 }
+            })
+        }
+    }
+
+    private fun setQWERTYKeyboard(
+        mainView: MainLayoutBinding
+    ) {
+        mainView.qwertyView.apply {
+            setOnQWERTYKeyListener(object : QWERTYKeyListener {
+                override fun onTouchQWERTYKey(
+                    qwertyKey: QWERTYKey,
+                    tap: Char?,
+                    variations: List<Char>?
+                ) {
+                    val insertString = _inputString.value
+                    val sb = StringBuilder()
+                    val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
+                    when (qwertyKey) {
+                        QWERTYKey.QWERTYKeyNotSelect -> {}
+                        QWERTYKey.QWERTYKeyAtMark -> {}
+                        QWERTYKey.QWERTYKeyShift -> {}
+                        QWERTYKey.QWERTYKeyDelete -> {
+                            if (!deleteKeyLongKeyPressed.get()) {
+                                beginBatchEdit()
+                                handleDeleteKeyTap(insertString, suggestionList)
+                                endBatchEdit()
+                            }
+                            stopDeleteLongPress()
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
+                            switchToTenKey()
+                            _inputString.update { "" }
+                            finishComposingText()
+                            setComposingText("", 0)
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchMode -> {
+
+                        }
+
+                        QWERTYKey.QWERTYKeySpace -> {
+                            if (!isSpaceKeyLongPressed) {
+                                handleSpaceKeyClickInQWERTY(insertString, mainView)
+                            }
+                            isSpaceKeyLongPressed = false
+                        }
+
+                        QWERTYKey.QWERTYKeyReturn -> {
+                            if (insertString.isNotEmpty()) {
+                                handleNonEmptyInputEnterKey(suggestionList, mainView, insertString)
+                            } else {
+                                handleEmptyInputEnterKey(mainView)
+                            }
+                        }
+
+                        else -> {
+                            isContinuousTapInputEnabled.set(true)
+                            lastFlickConvertedNextHiragana.set(true)
+                            handleTap(tap, insertString, sb, mainView)
+                        }
+                    }
+                }
+
             })
         }
     }
@@ -2096,7 +2163,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextImeMultiLine,
             InputTypeForIME.TextShortMessage,
             InputTypeForIME.TextLongMessage,
-            -> {
+                -> {
                 commitText("\n", 1)
             }
 
@@ -2122,7 +2189,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextWebPassword,
             InputTypeForIME.TextNotCursorUpdate,
             InputTypeForIME.TextEditTextInWebView,
-            -> {
+                -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
                     KeyEvent(
@@ -2147,7 +2214,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
@@ -2215,6 +2282,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         resetFlagsKeySpace()
     }
+
+    private fun handleSpaceKeyClickInQWERTY(
+        insertString: String,
+        mainView: MainLayoutBinding
+    ) {
+        if (insertString.isNotBlank()) {
+            mainView.apply {
+                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+            }
+        } else {
+            if (stringInTail.get().isNotEmpty()) return
+            setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+        }
+        resetFlagsKeySpace()
+    }
+
 
     private fun handleJapaneseModeSpaceKey(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
@@ -2688,7 +2771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 sendKeyChar(charToSend)
             }
 
@@ -2726,7 +2809,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 sendKeyChar(charToSend)
             }
 
@@ -2754,6 +2837,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun switchToQWERTY() {
+        mainLayoutBinding?.let { mainView ->
+            mainView.apply {
+                qwertyView.isVisible = true
+                keyboardView.isVisible = false
+                tabletView.isVisible = false
+                keyboardSymbolView.isVisible = false
+            }
+        }
+    }
+
+    private fun switchToTenKey() {
+        mainLayoutBinding?.let { mainView ->
+            mainView.apply {
+                qwertyView.isVisible = false
+                keyboardView.isVisible = true
+            }
+        }
+    }
+
     private fun dakutenSmallLetter(
         sb: StringBuilder, insertString: String
     ) {
@@ -2768,6 +2871,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
+        } else {
+            switchToQWERTY()
         }
     }
 
@@ -2786,6 +2891,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
+        } else {
+            switchToQWERTY()
         }
     }
 
