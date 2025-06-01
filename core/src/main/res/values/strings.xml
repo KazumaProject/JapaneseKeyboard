@@ -95,6 +95,8 @@
     <string name="title_dashboard">設定</string>
     <string name="title_notifications">Notifications</string>
     <string name="kigou_return">戻る</string>
+    <string name="return_english">return</string>
+    <string name="space_english">space</string>
     <string name="_60_62">Aa</string>
     <string name="string_emoji">絵文字</string>
     <string name="string_kaomoji">:-)</string>
