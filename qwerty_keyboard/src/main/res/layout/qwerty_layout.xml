@@ -1,15 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/keyboard_root"
-    android:layout_width="match_parent"
-    android:layout_height="@dimen/keyboard_height"
-    android:layout_gravity="bottom"
-    android:background="@color/keyboard_bg"
-    android:paddingStart="4dp"
-    android:paddingTop="8dp"
-    android:paddingEnd="4dp"
-    android:paddingBottom="8dp">
+<merge xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- ─── Horizontal Guidelines to split into four equal-height rows ─── -->
     <androidx.constraintlayout.widget.Guideline
@@ -34,7 +25,7 @@
         app:layout_constraintGuide_percent="0.75" />
 
     <!-- ─── First Row: q w e r t y u i o p ─── -->
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_q"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -53,7 +44,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_w"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -72,7 +63,7 @@
         app:layout_constraintStart_toEndOf="@id/key_q"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_e"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -91,7 +82,7 @@
         app:layout_constraintStart_toEndOf="@id/key_w"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_r"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -110,7 +101,7 @@
         app:layout_constraintStart_toEndOf="@id/key_e"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_t"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -129,7 +120,7 @@
         app:layout_constraintStart_toEndOf="@id/key_r"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_y"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -148,7 +139,7 @@
         app:layout_constraintStart_toEndOf="@id/key_t"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_u"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -167,7 +158,7 @@
         app:layout_constraintStart_toEndOf="@id/key_y"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_i"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -186,7 +177,7 @@
         app:layout_constraintStart_toEndOf="@id/key_u"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_o"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -205,7 +196,7 @@
         app:layout_constraintStart_toEndOf="@id/key_i"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_p"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -225,7 +216,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- ─── Second Row: a s d f g h j k l ─── -->
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_a"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -245,7 +236,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_s"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -264,7 +255,7 @@
         app:layout_constraintStart_toEndOf="@id/key_a"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_d"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -283,7 +274,7 @@
         app:layout_constraintStart_toEndOf="@id/key_s"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_f"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -302,7 +293,7 @@
         app:layout_constraintStart_toEndOf="@id/key_d"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_g"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -321,7 +312,7 @@
         app:layout_constraintStart_toEndOf="@id/key_f"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_h"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -340,7 +331,7 @@
         app:layout_constraintStart_toEndOf="@id/key_g"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_j"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -359,7 +350,7 @@
         app:layout_constraintStart_toEndOf="@id/key_h"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_k"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -378,7 +369,7 @@
         app:layout_constraintStart_toEndOf="@id/key_j"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_at_mark"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -397,7 +388,7 @@
         app:layout_constraintStart_toEndOf="@id/key_k"
         app:layout_constraintTop_toBottomOf="@id/guideline_row1" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_l"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -434,7 +425,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_z"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -454,7 +445,7 @@
         app:layout_constraintStart_toEndOf="@id/key_shift"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_x"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -474,7 +465,7 @@
         app:layout_constraintStart_toEndOf="@id/key_z"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_c"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -494,7 +485,7 @@
         app:layout_constraintStart_toEndOf="@id/key_x"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_v"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -514,7 +505,7 @@
         app:layout_constraintStart_toEndOf="@id/key_c"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_b"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -534,7 +525,7 @@
         app:layout_constraintStart_toEndOf="@id/key_v"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_n"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -554,7 +545,7 @@
         app:layout_constraintStart_toEndOf="@id/key_b"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_m"
         android:layout_width="0dp"
         android:layout_height="0dp"
@@ -648,4 +639,4 @@
         app:layout_constraintStart_toEndOf="@id/key_space"
         app:layout_constraintTop_toBottomOf="@id/guideline_row3" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</merge>

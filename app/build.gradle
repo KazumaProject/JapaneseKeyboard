@@ -81,6 +81,7 @@ dependencies {
     implementation project(':core')
     implementation project(':symbol_keyboard')
     implementation project(':tabletkey')
+    implementation project(':qwerty_keyboard')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.7'
 
