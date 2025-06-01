@@ -9,11 +9,13 @@
       2) Use adjustViewBounds="true" so the ImageView keeps the proper aspect ratio.
       3) Add padding so there’s breathing room around the character inside the bubble.
     -->
-    <com.google.android.material.imageview.ShapeableImageView
+    <ImageView
         android:id="@+id/preview_bubble_bg"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:adjustViewBounds="true"
+        android:contentDescription="@string/preview_bubble_img"
+        android:elevation="4dp"
         android:padding="8dp"
         android:scaleType="centerInside"
         android:src="@drawable/key_preview_bubble" />
@@ -28,9 +30,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:layout_marginBottom="30dp"
+        android:elevation="4dp"
         android:gravity="center"
-        android:layout_marginBottom="26dp"
         android:text="A"
         android:textColor="@color/keyboard_icon_color"
-        android:textSize="24sp" />
+        android:textSize="28sp"
+        android:textStyle="bold" />
+
 </FrameLayout>

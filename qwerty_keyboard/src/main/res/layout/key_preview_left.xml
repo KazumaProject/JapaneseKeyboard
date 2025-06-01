@@ -1,0 +1,29 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:foregroundGravity="center">
+
+    <ImageView
+        android:id="@+id/preview_bubble_bg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:contentDescription="@string/preview_bubble_img"
+        android:elevation="4dp"
+        android:padding="8dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/key_preview_bubble_left" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/preview_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginBottom="30dp"
+        android:elevation="4dp"
+        android:gravity="center"
+        android:text="A"
+        android:textColor="@color/keyboard_icon_color"
+        android:textSize="28sp"
+        android:textStyle="bold" />
+</FrameLayout>
