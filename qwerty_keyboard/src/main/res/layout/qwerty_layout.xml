@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<merge xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <!-- ─── Horizontal Guidelines to split into four equal-height rows ─── -->
     <androidx.constraintlayout.widget.Guideline
@@ -30,8 +30,8 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
-        android:layout_marginEnd="2dp"
         android:layout_marginStart="9dp"
+        android:layout_marginEnd="2dp"
         android:background="@drawable/ten_keys_center_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:gravity="center"
@@ -415,7 +415,7 @@
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
         android:layout_marginEnd="12dp"
-        android:background="@drawable/ten_keys_side_bg"
+        android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:scaleType="centerInside"
         android:src="@drawable/shift_24px"
@@ -573,24 +573,41 @@
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
         android:layout_marginStart="12dp"
         android:layout_marginEnd="0dp"
-        android:background="@drawable/ten_keys_side_bg"
+        android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:scaleType="centerInside"
-        android:tint="@color/keyboard_icon_color"
         android:src="@drawable/baseline_backspace_24"
+        android:tint="@color/keyboard_icon_color"
         app:layout_constraintBottom_toTopOf="@id/guideline_row3"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/key_m"
         app:layout_constraintTop_toBottomOf="@id/guideline_row2" />
 
-    <!-- ─── Fourth Row: 123, SPACE, RETURN, MIC ─── -->
+    <!-- ─── Fourth Row: (new extra button), 123, SPACE, RETURN ─── -->
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/key_switch_default"
+        android:layout_width="48dp"
+        android:layout_height="0dp"
+        android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
+        android:layout_marginEnd="2dp"
+        android:background="@drawable/qwerty_key_side_bg"
+        android:elevation="@dimen/qwerty_side_key_elevation_size"
+        android:scaleType="centerInside"
+        android:src="@drawable/logo_key"
+        android:tint="@color/keyboard_icon_color"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/key_123"
+        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/guideline_row3" />
+
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/key_123"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
         android:layout_marginEnd="2dp"
-        android:background="@drawable/ten_keys_side_bg"
+        android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:gravity="center"
         android:text="@string/qwety_number_kigou_layout"
@@ -599,9 +616,8 @@
         android:textSize="@dimen/qwerty_side_key_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_space"
-        app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@id/key_switch_default"
         app:layout_constraintTop_toBottomOf="@id/guideline_row3" />
 
     <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
@@ -628,7 +644,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
-        android:background="@drawable/ten_keys_side_bg"
+        android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:gravity="center"
         android:text="@string/return_english"

@@ -31,6 +31,7 @@ sealed class QWERTYKey {
     data object QWERTYKeyAtMark : QWERTYKey()
     data object QWERTYKeyShift : QWERTYKey()
     data object QWERTYKeyDelete : QWERTYKey()
+    data object QWERTYKeySwitchDefaultLayout : QWERTYKey()
     data object QWERTYKeySwitchMode : QWERTYKey()
     data object QWERTYKeySpace : QWERTYKey()
     data object QWERTYKeyReturn : QWERTYKey()
