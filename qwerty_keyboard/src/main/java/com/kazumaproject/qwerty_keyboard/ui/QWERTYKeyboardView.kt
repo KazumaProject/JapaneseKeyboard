@@ -246,7 +246,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         btn?.let {
             it.isPressed = true
             pointerButtonMap.put(pid, it)
-            showKeyPreview(it)
+            if (it.id != binding.keySpace.id) {
+                showKeyPreview(it)
+            }
         }
     }
 
@@ -274,7 +276,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             currentBtn?.let {
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
-                showKeyPreview(it)
+                if (it.id != binding.keySpace.id) {
+                    showKeyPreview(it)
+                }
             } ?: run {
                 // If finger moved off any key entirely, just clear out of the map
                 pointerButtonMap.remove(pointerId)
@@ -300,18 +304,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         // 1) Dismiss any existing preview
         dismissKeyPreview()
 
-        // 2) Inflate the preview layout
+        // 2) レイアウトを切り替える
+        val layoutRes = if (btn.id == binding.keyQ.id) {
+            R.layout.key_preview_left
+        } else if (btn.id == binding.keyP.id) {
+            R.layout.key_preview_right
+        } else {
+            R.layout.key_preview
+        }
+
+        // 3) Inflate the chosen layout
         val popupView = LayoutInflater.from(context).inflate(
-            R.layout.key_preview,
+            layoutRes,
             this,  // parent for inflation (not attached)
             false
         )
 
-        // 3) Copy the button’s text into the preview’s TextView
+        // 4) Copy the button’s text into the preview’s TextView
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
         tv.text = btn.text
 
-        // 4) Create a PopupWindow; make it non‐focusable so it doesn’t steal input
+        // 5) Create a PopupWindow; make it non‐focusable so it doesn’t steal input
         val popup = PopupWindow(
             popupView,
             LayoutParams.WRAP_CONTENT,
@@ -323,7 +336,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             elevation = 6f
         }
 
-        // 5) Measure the content so we know its width/height
+        // 6) Measure the content so we know its width/height
         popupView.measure(
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
@@ -331,17 +344,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val previewWidth = popupView.measuredWidth
         val previewHeight = popupView.measuredHeight
 
-        // 6) Calculate horizontal offset: center the preview above the button
+        // 7) Calculate horizontal offset: center the preview above the button
         val btnWidth = btn.width
         val xOffset = (btnWidth / 2) - (previewWidth / 2)
 
-        // 7) Calculate vertical offset so that popup appears *above* the button.
+        // 8) Calculate vertical offset so that popup appears *above* the button.
         //    showAsDropDown(anchor, xOff, yOff) normally places it below anchor (yOff ≥ 0).
         //    To move it above, use a negative yOff equal to (anchor’s height + preview’s height).
-        val yOffset = -popupView.measuredHeight
+        val yOffset = -(previewHeight - 24)
 
-        // 8) Finally show it
-        //    Note: we call showAsDropDown(btn, xOffset, yOffset) so that it anchors to 'btn'
+        // 9) Finally show it
         popup.showAsDropDown(btn, xOffset, yOffset)
 
         keyPreviewPopup = popup

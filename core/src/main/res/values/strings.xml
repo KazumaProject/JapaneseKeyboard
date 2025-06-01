@@ -215,4 +215,6 @@
     <string name="tablet_less_than">&lt;</string>
     <string name="tablet_code_bigger_than">&gt;</string>
     <string name="tablet_straight_bar">|</string>
+
+    <string name="preview_bubble_img">preview_bubble_img</string>
 </resources>

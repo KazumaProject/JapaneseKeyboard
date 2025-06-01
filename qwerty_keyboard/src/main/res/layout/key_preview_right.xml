@@ -1,14 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?><!-- res/layout/key_preview.xml -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:foregroundGravity="center">
 
-    <!--
-      1) Wrap_content so the view shrinks/grows to match the vector’s intrinsic size.
-      2) Use adjustViewBounds="true" so the ImageView keeps the proper aspect ratio.
-      3) Add padding so there’s breathing room around the character inside the bubble.
-    -->
     <ImageView
         android:id="@+id/preview_bubble_bg"
         android:layout_width="wrap_content"
@@ -18,13 +12,8 @@
         android:elevation="4dp"
         android:padding="8dp"
         android:scaleType="centerInside"
-        android:src="@drawable/key_preview_bubble" />
+        android:src="@drawable/key_preview_bubble_right" />
 
-    <!--
-      1) wrap_content for width/height so the text only takes as much space as it needs.
-      2) layout_gravity="center" makes it sit exactly in the middle of its parent FrameLayout.
-      3) gravity="center" inside the TextView is just in case you ever give it extra width or height.
-    -->
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/preview_text"
         android:layout_width="wrap_content"
@@ -37,5 +26,4 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="28sp"
         android:textStyle="bold" />
-
 </FrameLayout>
