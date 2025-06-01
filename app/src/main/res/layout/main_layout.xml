@@ -51,7 +51,7 @@
         android:clickable="true"
         android:focusable="true"
         android:importantForAccessibility="yes"
-        android:visibility="visible" />
+        android:visibility="gone" />
 
     <com.kazumaproject.tabletkey.TabletKeyboardView
         android:id="@+id/tablet_view"

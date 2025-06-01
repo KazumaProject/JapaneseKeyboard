@@ -31,6 +31,7 @@
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
         android:layout_marginEnd="2dp"
+        android:layout_marginStart="4dp"
         android:background="@drawable/ten_keys_center_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:gravity="center"
@@ -202,7 +203,7 @@
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
         android:layout_marginStart="2dp"
-        android:layout_marginEnd="0dp"
+        android:layout_marginEnd="4dp"
         android:background="@drawable/ten_keys_center_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:gravity="center"
@@ -575,6 +576,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:scaleType="centerInside"
+        android:tint="@color/keyboard_icon_color"
         android:src="@drawable/baseline_backspace_24"
         app:layout_constraintBottom_toTopOf="@id/guideline_row3"
         app:layout_constraintEnd_toEndOf="parent"
@@ -594,7 +596,7 @@
         android:text="@string/qwety_number_kigou_layout"
         android:textAllCaps="true"
         android:textColor="@color/keyboard_icon_color"
-        android:textSize="16sp"
+        android:textSize="@dimen/qwerty_side_key_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_space"
         app:layout_constraintHorizontal_chainStyle="spread"
@@ -602,7 +604,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/guideline_row3" />
 
-    <androidx.appcompat.widget.AppCompatButton
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYButton
         android:id="@+id/key_space"
         android:layout_width="0dp"
         android:layout_height="0dp"
