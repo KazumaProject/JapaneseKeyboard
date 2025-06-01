@@ -3,13 +3,18 @@ package com.kazumaproject.qwerty_keyboard.ui
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Rect
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.Log
 import android.util.SparseArray
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import android.widget.TextView
+import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.util.isNotEmpty
 import androidx.core.util.size
@@ -21,208 +26,192 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
 
+/**
+ * A custom keyboard view that detects touches on multiple key types (QWERTYButton, AppCompatButton, AppCompatImageButton).
+ * It shows a key preview as a PopupWindow above the pressed key, and notifies a QWERTYKeyListener of key events.
+ * It also recognizes a double-tap on the Shift key and suppresses the subsequent single-tap event.
+ */
 class QWERTYKeyboardView @JvmOverloads constructor(
-    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
 
     private val binding: QwertyLayoutBinding
 
-    /** Map each active pointer ID → the QWERTYButton it’s currently “pressing” (or null). */
-    private val pointerButtonMap = SparseArray<QWERTYButton?>()
+    /** Map each active pointer ID → the View (any key type) it’s currently “pressing” (or null). */
+    private val pointerButtonMap = SparseArray<View?>()
 
     /** If a second finger cancels the first, we suppress that first pointer until it actually lifts. */
     private var suppressedPointerId: Int? = null
 
-    private var qwertyKeyListener: QWERTYKeyListener? = null
-
-    /** Reusable Rect for hit‐testing a child’s bounds. */
+    private var keyPreviewPopup: PopupWindow? = null
     private val hitRect = Rect()
 
+    private var qwertyKeyListener: QWERTYKeyListener? = null
     private var qwertyKeyMap: QWERTYKeyMap
+
+    // ① Track the last time Shift was tapped (to detect double-tap)
+    private var lastShiftTapTime = 0L
+    private val doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout().toLong()
+
+    // ② After detecting a double-tap, suppress the next single-tap for Shift.
+    private var shiftDoubleTapped = false
 
     init {
         isClickable = true
         isFocusable = true
+
         val inflater = LayoutInflater.from(context)
         binding = QwertyLayoutBinding.inflate(inflater, this)
+
         qwertyKeyMap = QWERTYKeyMap()
     }
 
-    // ─── Map each Button (any View) to a QWERTYKey ────────────────────────────────
-    private val qwertyButtonMap: Map<Any, QWERTYKey> = mapOf(
-        binding.keyA to QWERTYKey.QWERTYKeyA,
-        binding.keyB to QWERTYKey.QWERTYKeyB,
-        binding.keyC to QWERTYKey.QWERTYKeyC,
-        binding.keyD to QWERTYKey.QWERTYKeyD,
-        binding.keyE to QWERTYKey.QWERTYKeyE,
-        binding.keyF to QWERTYKey.QWERTYKeyF,
-        binding.keyG to QWERTYKey.QWERTYKeyG,
-        binding.keyH to QWERTYKey.QWERTYKeyH,
-        binding.keyI to QWERTYKey.QWERTYKeyI,
-        binding.keyJ to QWERTYKey.QWERTYKeyJ,
-        binding.keyK to QWERTYKey.QWERTYKeyK,
-        binding.keyL to QWERTYKey.QWERTYKeyL,
-        binding.keyM to QWERTYKey.QWERTYKeyM,
-        binding.keyN to QWERTYKey.QWERTYKeyN,
-        binding.keyO to QWERTYKey.QWERTYKeyO,
-        binding.keyP to QWERTYKey.QWERTYKeyP,
-        binding.keyQ to QWERTYKey.QWERTYKeyQ,
-        binding.keyR to QWERTYKey.QWERTYKeyR,
-        binding.keyS to QWERTYKey.QWERTYKeyS,
-        binding.keyT to QWERTYKey.QWERTYKeyT,
-        binding.keyU to QWERTYKey.QWERTYKeyU,
-        binding.keyV to QWERTYKey.QWERTYKeyV,
-        binding.keyW to QWERTYKey.QWERTYKeyW,
-        binding.keyX to QWERTYKey.QWERTYKeyX,
-        binding.keyY to QWERTYKey.QWERTYKeyY,
-        binding.keyZ to QWERTYKey.QWERTYKeyZ,
-        binding.keyShift to QWERTYKey.QWERTYKeyShift,         // e.g. AppCompatImageButton
-        binding.keyDelete to QWERTYKey.QWERTYKeyDelete,       // e.g. AppCompatImageButton
-        binding.key123 to QWERTYKey.QWERTYKeySwitchMode,      // e.g. AppCompatButton
-        binding.keySpace to QWERTYKey.QWERTYKeySpace,         // e.g. AppCompatButton
-        binding.keyReturn to QWERTYKey.QWERTYKeyReturn        // e.g. AppCompatButton
-    )
+    /** Map each key‐View (any type) to its corresponding QWERTYKey. */
+    private val qwertyButtonMap: Map<View, QWERTYKey> by lazy {
+        mapOf(
+            binding.keyA to QWERTYKey.QWERTYKeyA,
+            binding.keyB to QWERTYKey.QWERTYKeyB,
+            binding.keyC to QWERTYKey.QWERTYKeyC,
+            binding.keyD to QWERTYKey.QWERTYKeyD,
+            binding.keyE to QWERTYKey.QWERTYKeyE,
+            binding.keyF to QWERTYKey.QWERTYKeyF,
+            binding.keyG to QWERTYKey.QWERTYKeyG,
+            binding.keyH to QWERTYKey.QWERTYKeyH,
+            binding.keyI to QWERTYKey.QWERTYKeyI,
+            binding.keyJ to QWERTYKey.QWERTYKeyJ,
+            binding.keyK to QWERTYKey.QWERTYKeyK,
+            binding.keyL to QWERTYKey.QWERTYKeyL,
+            binding.keyM to QWERTYKey.QWERTYKeyM,
+            binding.keyN to QWERTYKey.QWERTYKeyN,
+            binding.keyO to QWERTYKey.QWERTYKeyO,
+            binding.keyP to QWERTYKey.QWERTYKeyP,
+            binding.keyQ to QWERTYKey.QWERTYKeyQ,
+            binding.keyR to QWERTYKey.QWERTYKeyR,
+            binding.keyS to QWERTYKey.QWERTYKeyS,
+            binding.keyT to QWERTYKey.QWERTYKeyT,
+            binding.keyU to QWERTYKey.QWERTYKeyU,
+            binding.keyV to QWERTYKey.QWERTYKeyV,
+            binding.keyW to QWERTYKey.QWERTYKeyW,
+            binding.keyX to QWERTYKey.QWERTYKeyX,
+            binding.keyY to QWERTYKey.QWERTYKeyY,
+            binding.keyZ to QWERTYKey.QWERTYKeyZ,
 
-    fun setOnQWERTYKeyListener(qwertyKeyListener: QWERTYKeyListener) {
-        this.qwertyKeyListener = qwertyKeyListener
+            // Side and function keys
+            binding.keyShift to QWERTYKey.QWERTYKeyShift,      // AppCompatImageButton
+            binding.keyDelete to QWERTYKey.QWERTYKeyDelete,    // AppCompatImageButton
+            binding.key123 to QWERTYKey.QWERTYKeySwitchMode,   // AppCompatButton
+            binding.keySpace to QWERTYKey.QWERTYKeySpace,      // QWERTYButton
+            binding.keyReturn to QWERTYKey.QWERTYKeyReturn     // AppCompatButton
+        )
+    }
+
+    /**
+     * Set a listener that will receive QWERTYKey events (onTouchQWERTYKey).
+     */
+    fun setOnQWERTYKeyListener(listener: QWERTYKeyListener) {
+        this.qwertyKeyListener = listener
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+        // Ensure we intercept the initial DOWN so that onTouchEvent receives it
         return event.actionMasked == MotionEvent.ACTION_DOWN
     }
-
-    // ─── A single PopupWindow used to show the “key preview” above whichever QWERTYButton is pressed ───────────────
-    private var keyPreviewPopup: PopupWindow? = null
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                // If multi-touch or leftover map entries exist, clear everything
                 if (event.pointerCount > 1 || pointerButtonMap.isNotEmpty()) {
                     clearAllPressed()
                 }
-                // If a previous pointer was suppressed but never lifted, clear that:
                 suppressedPointerId = null
                 handlePointerDown(event, pointerIndex = 0)
             }
 
             MotionEvent.ACTION_POINTER_DOWN -> {
-                // If exactly one pointer was being tracked so far, “cancel” it now:
-                if (pointerButtonMap.size() == 1) {
+                // Cancel the first tracked pointer if exactly one was active
+                if (pointerButtonMap.size == 1) {
                     val firstPointerId = pointerButtonMap.keyAt(0)
-                    val firstBtn = pointerButtonMap.valueAt(0)
-                    firstBtn?.let { btn ->
-                        // Visually un‐press
-                        btn.isPressed = false
-
-                        // Fire “key‐up” callback on the first finger
-                        val qwertyKey = qwertyButtonMap[btn] ?: QWERTYKey.QWERTYKeyNotSelect
-                        val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(qwertyKey)
-
-                        // (Optional) log the variation data if you like:
-                        if (info is QWERTYKeyInfo.QWERTYVariation) {
-                            val tap = info.tap
-                            val cap = info.capChar
-                            val variations = info.variations
-                            val capVariations = info.capVariations
-                            Log.d(
-                                "SIMULATED_ACTION_UP",
-                                "KEY: $qwertyKey, tap: $tap, cap: $cap, " +
-                                        "variations: $variations, capVariations: $capVariations"
-                            )
-                        }
-                        qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
-
-                        // Dismiss any preview showing on that first key
+                    val firstView = pointerButtonMap.valueAt(0)
+                    firstView?.let { view ->
+                        view.isPressed = false
                         dismissKeyPreview()
+
+                        val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+                        logVariationIfNeeded(qwertyKey)
+                        qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
                     }
-                    // Mark that first pointer as “suppressed” until it actually lifts:
                     suppressedPointerId = firstPointerId
                     pointerButtonMap.remove(firstPointerId)
                 }
-                // Now track the new (second) finger as the only pressed one:
+                // Now track the new (second) finger
                 val newIndex = event.actionIndex
                 handlePointerDown(event, pointerIndex = newIndex)
             }
 
             MotionEvent.ACTION_MOVE -> {
-                // We only track one pointer at a time (after we clear on multi‐touch),
-                // but MOVE will be called for each finger. Skip any “suppressed” one:
+                // On MOVE, process each pointer except any suppressed one
                 for (i in 0 until event.pointerCount) {
                     val pid = event.getPointerId(i)
-                    if (pid == suppressedPointerId) {
-                        continue
-                    }
+                    if (pid == suppressedPointerId) continue
                     handlePointerMove(event, pointerIndex = i, pointerId = pid)
                 }
             }
 
             MotionEvent.ACTION_POINTER_UP -> {
-                // One finger lifted, but another might still be down:
                 val pointerIndex = event.actionIndex
                 val pointerId = event.getPointerId(pointerIndex)
 
-                // If that was our suppressed pointer, let it go now:
+                // If it was suppressed, clear suppression
                 if (suppressedPointerId == pointerId) {
                     suppressedPointerId = null
                 }
 
-                // If that lifted pointer was actually in pointerButtonMap, fire its “UP”
-                val btn = pointerButtonMap[pointerId]
-                btn?.let {
+                // If that pointer was tracked, fire its “key up”
+                val view = pointerButtonMap[pointerId]
+                view?.let {
                     it.isPressed = false
                     dismissKeyPreview()
 
-                    val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                    val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(qwertyKey)
-                    if (info is QWERTYKeyInfo.QWERTYVariation) {
-                        val tap = info.tap
-                        val cap = info.capChar
-                        val variations = info.variations
-                        val capVariations = info.capVariations
-                        Log.d("ACTION_POINTER_UP", "UP: $qwertyKey, tap: $tap, cap: $cap")
-                        Log.d(
-                            "ACTION_POINTER_UP",
-                            "variations: $variations, capVariations: $capVariations"
-                        )
+                    val wasShift = (it.id == binding.keyShift.id)
+                    // ③ If Shift was double-tapped, suppress this single-tap event
+                    if (wasShift && shiftDoubleTapped) {
+                        // Consume the single-tap without notifying listener
+                        shiftDoubleTapped = false
+                    } else {
+                        val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
+                        logVariationIfNeeded(qwertyKey)
+                        qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
                     }
-                    qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
                 }
                 pointerButtonMap.remove(pointerId)
-                // Don’t call clearAllPressed(): another (non‐suppressed) finger may still be down.
             }
 
             MotionEvent.ACTION_UP -> {
-                // The final finger lifted. If it was suppressed, clear suppression; otherwise handle it normally:
                 val liftedId = event.getPointerId(event.actionIndex)
                 if (suppressedPointerId == liftedId) {
                     suppressedPointerId = null
                 }
-
-                // If there is exactly one tracked button, fire its “UP”:
-                if (pointerButtonMap.size() == 1) {
-                    val btn = pointerButtonMap.valueAt(0)
-                    btn?.let {
+                if (pointerButtonMap.size == 1) {
+                    val view = pointerButtonMap.valueAt(0)
+                    view?.let {
                         it.isPressed = false
                         dismissKeyPreview()
 
-                        val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                        val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(qwertyKey)
-                        if (info is QWERTYKeyInfo.QWERTYVariation) {
-                            val tap = info.tap
-                            val cap = info.capChar
-                            val variations = info.variations
-                            val capVariations = info.capVariations
-                            Log.d("ACTION_UP", "UP: $qwertyKey, tap: $tap, cap: $cap")
-                            Log.d(
-                                "ACTION_UP",
-                                "variations: $variations, capVariations: $capVariations"
-                            )
+                        val wasShift = (it.id == binding.keyShift.id)
+                        // ④ If Shift was double-tapped, suppress this single-tap event
+                        if (wasShift && shiftDoubleTapped) {
+                            shiftDoubleTapped = false
+                        } else {
+                            val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
+                            logVariationIfNeeded(qwertyKey)
+                            qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
                         }
-                        qwertyKeyListener?.onTouchQWERTYKey(qwertyKey)
                     }
                 }
-                // Finally, clear everything so a lingering first finger can’t re‐activate:
                 clearAllPressed()
             }
 
@@ -234,7 +223,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Whenever a new pointer goes down (and is not suppressed), press that key and show a preview.
+     * Handle a new pointer DOWN event (when it is not suppressed).
      */
     private fun handlePointerDown(event: MotionEvent, pointerIndex: Int) {
         val pid = event.getPointerId(pointerIndex)
@@ -242,51 +231,75 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         val x = event.getX(pointerIndex).toInt()
         val y = event.getY(pointerIndex).toInt()
-        val btn = findButtonUnder(x, y)
-        btn?.let {
+        val view = findButtonUnder(x, y)
+        view?.let {
             it.isPressed = true
             pointerButtonMap.put(pid, it)
-            if (it.id != binding.keySpace.id) {
+
+            // ⑤ If this is the Shift key, check for double-tap
+            if (it.id == binding.keyShift.id) {
+                val now = SystemClock.uptimeMillis()
+                if (now - lastShiftTapTime <= doubleTapTimeout) {
+                    // Double-tap detected
+                    onShiftDoubleTapped()
+                    // Prevent the next single-tap event
+                    shiftDoubleTapped = true
+                    // Reset so the next tap after this isn’t treated as “second” of a triple
+                    lastShiftTapTime = 0L
+                } else {
+                    // Not a double-tap (yet) – record this tap time
+                    lastShiftTapTime = now
+                }
+            }
+
+            // ⑥ Show preview for non-edge, non-icon keys (same as before)
+            if (it.id != binding.keySpace.id &&
+                it.id != binding.keyDelete.id &&
+                it.id != binding.keyShift.id &&
+                it.id != binding.key123.id &&
+                it.id != binding.keyReturn.id
+            ) {
                 showKeyPreview(it)
             }
         }
     }
 
     /**
-     * Whenever that single (tracked) pointer moves, move the pressed state if necessary.
-     * If the finger has slid off the original button, remove preview from the old key and
-     * show a preview on the new key.
+     * Handle a MOVE event for a tracked pointer. If it slides off its original key, update pressed state.
      */
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
         if (pointerId == suppressedPointerId) return
 
         val x = event.getX(pointerIndex).toInt()
         val y = event.getY(pointerIndex).toInt()
-        val previousBtn = pointerButtonMap[pointerId]
-        val currentBtn = findButtonUnder(x, y)
+        val previousView = pointerButtonMap[pointerId]
+        val currentView = findButtonUnder(x, y)
 
-        if (currentBtn != previousBtn) {
-            // Un‐press the old one
-            previousBtn?.isPressed = false
-
-            // Dismiss its preview
+        if (currentView != previousView) {
+            previousView?.isPressed = false
             dismissKeyPreview()
 
-            // Press the new one and show preview
-            currentBtn?.let {
+            currentView?.let {
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
-                if (it.id != binding.keySpace.id) {
+                if (it.id != binding.keySpace.id &&
+                    it.id != binding.keyDelete.id &&
+                    it.id != binding.keyShift.id &&
+                    it.id != binding.key123.id &&
+                    it.id != binding.keyReturn.id
+                ) {
                     showKeyPreview(it)
                 }
             } ?: run {
-                // If finger moved off any key entirely, just clear out of the map
+                // Finger moved off any key entirely
                 pointerButtonMap.remove(pointerId)
             }
         }
     }
 
-    /** Un‐press any tracked button (and dismiss any preview), then clear everything. */
+    /**
+     * Clear pressed state for all tracked keys, dismiss the preview, and reset suppression.
+     */
     private fun clearAllPressed() {
         for (i in 0 until pointerButtonMap.size) {
             pointerButtonMap.valueAt(i)?.isPressed = false
@@ -297,34 +310,36 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Show a PopupWindow “preview” above the given QWERTYButton.  If one is already visible,
-     * first dismiss it, then create a new PopupWindow anchored to `btn`.
+     * Show a PopupWindow “preview” above the given key-View.
      */
-    private fun showKeyPreview(btn: QWERTYButton) {
+    private fun showKeyPreview(view: View) {
         // 1) Dismiss any existing preview
         dismissKeyPreview()
 
-        // 2) レイアウトを切り替える
-        val layoutRes = if (btn.id == binding.keyQ.id) {
-            R.layout.key_preview_left
-        } else if (btn.id == binding.keyP.id) {
-            R.layout.key_preview_right
-        } else {
-            R.layout.key_preview
+        // 2) Choose layout based on edge keys (example: leftmost and rightmost)
+        val layoutRes = when (view.id) {
+            binding.keyQ.id -> R.layout.key_preview_left
+            binding.keyP.id -> R.layout.key_preview_right
+            else -> R.layout.key_preview
         }
 
         // 3) Inflate the chosen layout
-        val popupView = LayoutInflater.from(context).inflate(
-            layoutRes,
-            this,  // parent for inflation (not attached)
-            false
-        )
-
-        // 4) Copy the button’s text into the preview’s TextView
+        val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
-        tv.text = btn.text
 
-        // 5) Create a PopupWindow; make it non‐focusable so it doesn’t steal input
+        // 4) Copy the key’s label into the preview
+        when (view) {
+            is QWERTYButton -> tv.text = view.text
+            is AppCompatButton -> tv.text = view.text
+            is AppCompatImageButton -> {
+                // If preview should show an icon, adjust your layout accordingly.
+                tv.text = ""
+            }
+
+            else -> tv.text = ""
+        }
+
+        // 5) Create a PopupWindow (non-focusable, non-touchable)
         val popup = PopupWindow(
             popupView,
             LayoutParams.WRAP_CONTENT,
@@ -336,7 +351,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             elevation = 6f
         }
 
-        // 6) Measure the content so we know its width/height
+        // 6) Measure the content
         popupView.measure(
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
@@ -344,41 +359,67 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val previewWidth = popupView.measuredWidth
         val previewHeight = popupView.measuredHeight
 
-        // 7) Calculate horizontal offset: center the preview above the button
-        val btnWidth = btn.width
-        val xOffset = (btnWidth / 2) - (previewWidth / 2)
+        // 7) Calculate horizontal offset: center above the key
+        val viewWidth = view.width
+        val xOffset = (viewWidth / 2) - (previewWidth / 2)
 
-        // 8) Calculate vertical offset so that popup appears *above* the button.
-        //    showAsDropDown(anchor, xOff, yOff) normally places it below anchor (yOff ≥ 0).
-        //    To move it above, use a negative yOff equal to (anchor’s height + preview’s height).
+        // 8) Calculate vertical offset: place above (negative Y)
         val yOffset = -(previewHeight - 24)
 
-        // 9) Finally show it
-        popup.showAsDropDown(btn, xOffset, yOffset)
-
+        // 9) Show the popup
+        popup.showAsDropDown(view, xOffset, yOffset)
         keyPreviewPopup = popup
     }
 
-    /** Dismiss the popup if it’s still showing. */
+    /** Dismiss any visible key preview. */
     private fun dismissKeyPreview() {
         keyPreviewPopup?.dismiss()
         keyPreviewPopup = null
     }
 
     /**
-     * Hit-test across all direct children. If a visible QWERTYButton’s bounds
-     * contain (x,y), return that button. Otherwise return null.
+     * Hit-test all direct children that are registered as keys. Return the child View if its bounds contain (x,y).
      */
-    private fun findButtonUnder(x: Int, y: Int): QWERTYButton? {
+    private fun findButtonUnder(x: Int, y: Int): View? {
         for (i in 0 until childCount) {
             val child = getChildAt(i)
-            if (child is QWERTYButton && child.isVisible) {
+            if (child.isVisible) {
                 child.getHitRect(hitRect)
-                if (hitRect.contains(x, y)) {
+                if (hitRect.contains(x, y) && qwertyButtonMap.containsKey(child)) {
                     return child
                 }
             }
         }
         return null
+    }
+
+    /**
+     * If the key supports variations, log details for debugging.
+     */
+    private fun logVariationIfNeeded(key: QWERTYKey) {
+        val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(key)
+        if (info is QWERTYKeyInfo.QWERTYVariation) {
+            val tap = info.tap
+            val cap = info.capChar
+            val variations = info.variations
+            val capVariations = info.capVariations
+            Log.d(
+                "KEY_VARIATION",
+                "KEY: $key, tap: $tap, cap: $cap, " +
+                        "variations: $variations, capVariations: $capVariations"
+            )
+        }
+    }
+
+    /**
+     * Called when the Shift key is double-tapped.
+     */
+    private fun onShiftDoubleTapped() {
+        // TODO: Do whatever you want on a Shift double-tap.
+        // For example, toggle a caps-lock state or notify your listener:
+        Log.d("QWERTYKEY", "Shift was double-tapped!")
+
+        // If your listener interface has a method for double-tap, you could invoke it here:
+        // qwertyKeyListener?.onShiftDoubleTap()
     }
 }
