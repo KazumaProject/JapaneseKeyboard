@@ -52,4 +52,10 @@
 
     <dimen name="tablet_side_key_portrait_width">52dp</dimen>
     <dimen name="tablet_side_key_width">80dp</dimen>
+
+    <dimen name="qwerty_keyboard_height">280dp</dimen>
+
+    <dimen name="qwerty_key_vertical_margin">7dp</dimen>
+    <dimen name="qwerty_key_text_size">26sp</dimen>
+    <dimen name="qwerty_side_key_text_size">16sp</dimen>
 </resources>
