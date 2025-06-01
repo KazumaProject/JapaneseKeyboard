@@ -1155,7 +1155,7 @@ sealed class KeyInfo {
             get() = null
     }
 
-    /** Tablet Key
+    /** Tablet QWERTYKey
      *
      *  tap: Default
      *  left: Capital Letter

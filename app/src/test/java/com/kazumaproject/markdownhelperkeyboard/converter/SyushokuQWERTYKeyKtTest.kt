@@ -2,7 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter
 
 import org.junit.Test
 
-class SyushokuKeyKtTest {
+class SyushokuQWERTYKeyKtTest {
     @Test
     fun testShushokuKey(){
         val input = "たんこ"
