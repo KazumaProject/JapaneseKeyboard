@@ -1531,6 +1531,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
 
+                override fun onVariationSelected(selectedChar: Char) {
+                    Timber.d("onVariationSelected: $selectedChar")
+                }
+
             })
         }
     }

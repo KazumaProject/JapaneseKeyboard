@@ -19,6 +19,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.util.isNotEmpty
 import androidx.core.util.size
 import androidx.core.view.isVisible
+import com.kazumaproject.core.data.qwerty.VariationInfo
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
@@ -451,22 +452,36 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         key: QWERTYKey,
         qwertyKeyListener: QWERTYKeyListener?
     ) {
-        val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(key)
-        if (info is QWERTYKeyInfo.QWERTYVariation) {
-            val tap = info.tap
-            val cap = info.capChar
-            val variations = info.variations
-            val capVariations = info.capVariations
+        val info = getVariationInfo(key)
+        info?.apply {
             Log.d(
                 "KEY_VARIATION",
-                "KEY: $key, tap: $tap, cap: $cap, " +
-                        "variations: $variations, capVariations: $capVariations"
+                "KEY: $key, tap: ${tap}, cap: ${cap}, " +
+                        "variations: ${variations}, capVariations: $capVariations"
             )
             qwertyKeyListener?.onReleasedQWERTYKey(
                 qwertyKey = key,
                 tap = tap,
                 variations = variations
             )
+        }
+    }
+
+    /**
+     * If `key` supports variations, return its tap/cap/variations/capVariations.
+     * Otherwise return null.
+     */
+    private fun getVariationInfo(key: QWERTYKey): VariationInfo? {
+        val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(key)
+        return if (info is QWERTYKeyInfo.QWERTYVariation) {
+            VariationInfo(
+                tap = info.tap,
+                cap = info.capChar,
+                variations = info.variations,
+                capVariations = info.capVariations
+            )
+        } else {
+            null
         }
     }
 
@@ -500,6 +515,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
                 qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
                 Log.d("QWERTYKEY", "Long‐press detected on $qwertyKey")
+                val info = getVariationInfo(qwertyKey)
+                info?.apply {
+                    Log.d("QWERTYKEY", "Long‐press $variations")
+                }
                 // Note: we do NOT remove the pointer here, so ACTION_UP still triggers normal tap
             }
         }
