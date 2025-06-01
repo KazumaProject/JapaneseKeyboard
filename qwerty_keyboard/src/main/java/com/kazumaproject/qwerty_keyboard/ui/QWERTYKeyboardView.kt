@@ -25,11 +25,20 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
- * A custom keyboard view that detects touches on multiple key types (QWERTYButton, AppCompatButton, AppCompatImageButton).
- * It shows a key preview as a PopupWindow above the pressed key, and notifies a QWERTYKeyListener of key events.
- * It also recognizes a double-tap on the Shift key and suppresses the subsequent single-tap event.
+ * A custom keyboard view that:
+ *  - Detects touches on multiple key types (QWERTYButton, AppCompatButton, AppCompatImageButton).
+ *  - Shows a PopupWindow key‐preview above the pressed key.
+ *  - Notifies a QWERTYKeyListener of key‐tap and key‐long‐press events.
+ *  - Recognizes a double‐tap on the Shift key and suppresses that single‐tap.
+ *  - Uses Kotlin Coroutines for long‐press detection.
  */
 class QWERTYKeyboardView @JvmOverloads constructor(
     context: Context,
@@ -39,10 +48,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private val binding: QwertyLayoutBinding
 
-    /** Map each active pointer ID → the View (any key type) it’s currently “pressing” (or null). */
+    /** Map each active pointer ID → the View (key) it’s currently “pressing” (or null). */
     private val pointerButtonMap = SparseArray<View?>()
 
-    /** If a second finger cancels the first, we suppress that first pointer until it actually lifts. */
+    /** For each pointer, store a coroutine Job to detect long‐press. */
+    private val longPressJobs = SparseArray<Job>()
+
+    /** CoroutineScope on main dispatcher. */
+    private val scope = CoroutineScope(Dispatchers.Main + Job())
+
+    /** If a second finger cancels the first, we suppress that first pointer until it lifts. */
     private var suppressedPointerId: Int? = null
 
     private var keyPreviewPopup: PopupWindow? = null
@@ -51,12 +66,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var qwertyKeyListener: QWERTYKeyListener? = null
     private var qwertyKeyMap: QWERTYKeyMap
 
-    // ① Track the last time Shift was tapped (to detect double-tap)
+    // ① Track the last time Shift was tapped (to detect double‐tap)
     private var lastShiftTapTime = 0L
     private val doubleTapTimeout = ViewConfiguration.getDoubleTapTimeout().toLong()
 
-    // ② After detecting a double-tap, suppress the next single-tap for Shift.
+    // ② After detecting a double‐tap, suppress the next single‐tap for Shift.
     private var shiftDoubleTapped = false
+
+    // Long‐press timeout (system default)
+    private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
 
     init {
         isClickable = true
@@ -68,7 +86,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         qwertyKeyMap = QWERTYKeyMap()
     }
 
-    /** Map each key‐View (any type) to its corresponding QWERTYKey. */
+    /** Map each key View → its corresponding QWERTYKey. */
     private val qwertyButtonMap: Map<View, QWERTYKey> by lazy {
         mapOf(
             binding.keyA to QWERTYKey.QWERTYKeyA,
@@ -109,22 +127,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Set a listener that will receive QWERTYKey events (onTouchQWERTYKey).
+     * Set a listener that will receive:
+     *  - onTouchQWERTYKey(...) on normal key‐up or tap, and
+     *  - onLongPressQWERTYKey(...) on long‐press.
      */
     fun setOnQWERTYKeyListener(listener: QWERTYKeyListener) {
         this.qwertyKeyListener = listener
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-        // Ensure we intercept the initial DOWN so that onTouchEvent receives it
+        // Intercept the initial DOWN so that onTouchEvent receives it
         return event.actionMasked == MotionEvent.ACTION_DOWN
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
+
             MotionEvent.ACTION_DOWN -> {
-                // If multi-touch or leftover map entries exist, clear everything
+                // If multi‐touch or leftover map entries exist, clear everything
                 if (event.pointerCount > 1 || pointerButtonMap.isNotEmpty()) {
                     clearAllPressed()
                 }
@@ -140,6 +161,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     firstView?.let { view ->
                         view.isPressed = false
                         dismissKeyPreview()
+                        cancelLongPressForPointer(firstPointerId)
 
                         val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
                         logVariationIfNeeded(qwertyKey, qwertyKeyListener)
@@ -170,16 +192,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     suppressedPointerId = null
                 }
 
-                // If that pointer was tracked, fire its “key up”
+                // If that pointer was tracked, fire its “key up” or cancel long‐press
                 val view = pointerButtonMap[pointerId]
                 view?.let {
                     it.isPressed = false
                     dismissKeyPreview()
+                    cancelLongPressForPointer(pointerId)
 
                     val wasShift = (it.id == binding.keyShift.id)
-                    // ③ If Shift was double-tapped, suppress this single-tap event
+                    // ③ If Shift was double‐tapped, suppress this single‐tap event
                     if (wasShift && shiftDoubleTapped) {
-                        // Consume the single-tap without notifying listener
+                        // Consume without notifying
                         shiftDoubleTapped = false
                     } else {
                         val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
@@ -199,15 +222,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     view?.let {
                         it.isPressed = false
                         dismissKeyPreview()
+                        cancelLongPressForPointer(liftedId)
 
                         val wasShift = (it.id == binding.keyShift.id)
-                        // ④ If Shift was double-tapped, suppress this single-tap event
+                        // ④ If Shift was double‐tapped, suppress this single‐tap event
                         if (wasShift && shiftDoubleTapped) {
                             shiftDoubleTapped = false
                         } else {
                             val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                             logVariationIfNeeded(qwertyKey, qwertyKeyListener)
-
                         }
                     }
                 }
@@ -232,26 +255,30 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val y = event.getY(pointerIndex).toInt()
         val view = findButtonUnder(x, y)
         view?.let {
+            val qwertyKey = qwertyButtonMap[it]
+            qwertyKey?.let { key ->
+                qwertyKeyListener?.onPressedQWERTYKey(key)
+            }
             it.isPressed = true
             pointerButtonMap.put(pid, it)
 
-            // ⑤ If this is the Shift key, check for double-tap
+            // ⑤ If this is the Shift key, check for double‐tap
             if (it.id == binding.keyShift.id) {
                 val now = SystemClock.uptimeMillis()
                 if (now - lastShiftTapTime <= doubleTapTimeout) {
-                    // Double-tap detected
+                    // Double‐tap detected
                     onShiftDoubleTapped()
-                    // Prevent the next single-tap event
+                    // Prevent the next single‐tap
                     shiftDoubleTapped = true
-                    // Reset so the next tap after this isn’t treated as “second” of a triple
+                    // Reset so the next tap isn’t treated as “second” of a triple
                     lastShiftTapTime = 0L
                 } else {
-                    // Not a double-tap (yet) – record this tap time
+                    // Not a double‐tap (yet) – record this tap time
                     lastShiftTapTime = now
                 }
             }
 
-            // ⑥ Show preview for non-edge, non-icon keys (same as before)
+            // ⑥ Show preview for non‐edge, non‐icon keys
             if (it.id != binding.keySpace.id &&
                 it.id != binding.keyDelete.id &&
                 it.id != binding.keyShift.id &&
@@ -261,6 +288,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             ) {
                 showKeyPreview(it)
             }
+
+            // ⑦ Schedule long‐press detection for this pointer + view
+            scheduleLongPressForPointer(pid, it)
         }
     }
 
@@ -276,10 +306,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val currentView = findButtonUnder(x, y)
 
         if (currentView != previousView) {
-            previousView?.isPressed = false
-            dismissKeyPreview()
+            // Finger moved off previous key
+            previousView?.let {
+                it.isPressed = false
+                dismissKeyPreview()
+                cancelLongPressForPointer(pointerId)
+            }
 
             currentView?.let {
+                val qwertyKey = qwertyButtonMap[it]
+                qwertyKey?.let { key ->
+                    qwertyKeyListener?.onPressedQWERTYKey(key)
+                }
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
                 if (it.id != binding.keySpace.id &&
@@ -291,19 +329,24 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 ) {
                     showKeyPreview(it)
                 }
+                // Schedule a new long‐press for this new key
+                //scheduleLongPressForPointer(pointerId, it)
             } ?: run {
                 // Finger moved off any key entirely
                 pointerButtonMap.remove(pointerId)
+                cancelLongPressForPointer(pointerId)
             }
         }
     }
 
     /**
-     * Clear pressed state for all tracked keys, dismiss the preview, and reset suppression.
+     * Clear pressed state for all tracked keys, dismiss the preview, cancel all long‐press Jobs, and reset suppression.
      */
     private fun clearAllPressed() {
         for (i in 0 until pointerButtonMap.size) {
+            val pid = pointerButtonMap.keyAt(i)
             pointerButtonMap.valueAt(i)?.isPressed = false
+            cancelLongPressForPointer(pid)
         }
         pointerButtonMap.clear()
         dismissKeyPreview()
@@ -311,36 +354,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Show a PopupWindow “preview” above the given key-View.
+     * Show a PopupWindow “preview” above the given key‐View.
      */
     private fun showKeyPreview(view: View) {
-        // 1) Dismiss any existing preview
         dismissKeyPreview()
 
-        // 2) Choose layout based on edge keys (example: leftmost and rightmost)
         val layoutRes = when (view.id) {
             binding.keyQ.id -> R.layout.key_preview_left
             binding.keyP.id -> R.layout.key_preview_right
             else -> R.layout.key_preview
         }
 
-        // 3) Inflate the chosen layout
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
 
-        // 4) Copy the key’s label into the preview
         when (view) {
             is QWERTYButton -> tv.text = view.text
             is AppCompatButton -> tv.text = view.text
-            is AppCompatImageButton -> {
-                // If preview should show an icon, adjust your layout accordingly.
-                tv.text = ""
-            }
-
+            is AppCompatImageButton -> tv.text = ""
             else -> tv.text = ""
         }
 
-        // 5) Create a PopupWindow (non-focusable, non-touchable)
         val popup = PopupWindow(
             popupView,
             LayoutParams.WRAP_CONTENT,
@@ -352,7 +386,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             elevation = 6f
         }
 
-        // 6) Measure the content
         popupView.measure(
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
             MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
@@ -360,14 +393,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val previewWidth = popupView.measuredWidth
         val previewHeight = popupView.measuredHeight
 
-        // 7) Calculate horizontal offset: center above the key
         val viewWidth = view.width
         val xOffset = (viewWidth / 2) - (previewWidth / 2)
-
-        // 8) Calculate vertical offset: place above (negative Y)
         val yOffset = -(previewHeight - 24)
 
-        // 9) Show the popup
         popup.showAsDropDown(view, xOffset, yOffset)
         keyPreviewPopup = popup
     }
@@ -379,37 +408,33 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Hit-test: (1) 直接タッチされているキーを返し、(2) なければ最もタッチ位置に近いキーを返す。
+     * Hit‐test: (1) return the key directly under (x,y), else (2) return the nearest key.
      */
     private fun findButtonUnder(x: Int, y: Int): View? {
         var nearestView: View? = null
         var minDistSquared = Int.MAX_VALUE
 
-        // まず、直接ヒットしているかチェック
+        // 1) Check direct hit first
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             if (!child.isVisible || !qwertyButtonMap.containsKey(child)) continue
 
             child.getHitRect(hitRect)
             if (hitRect.contains(x, y)) {
-                // 直接タッチされているキーを即時返却
                 return child
             }
         }
 
-        // 直接のヒットがなければ、最も近いキーを探す
+        // 2) Otherwise, find the nearest center
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             if (!child.isVisible || !qwertyButtonMap.containsKey(child)) continue
 
-            // キーの中心座標を計算
             val centerX = child.left + child.width / 2
             val centerY = child.top + child.height / 2
-
             val dx = x - centerX
             val dy = y - centerY
             val distSq = dx * dx + dy * dy
-
             if (distSq < minDistSquared) {
                 minDistSquared = distSq
                 nearestView = child
@@ -420,7 +445,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * If the key supports variations, log details for debugging.
+     * If the key supports variations, log details and notify listener for normal tap.
      */
     private fun logVariationIfNeeded(
         key: QWERTYKey,
@@ -437,7 +462,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 "KEY: $key, tap: $tap, cap: $cap, " +
                         "variations: $variations, capVariations: $capVariations"
             )
-            qwertyKeyListener?.onTouchQWERTYKey(
+            qwertyKeyListener?.onReleasedQWERTYKey(
                 qwertyKey = key,
                 tap = tap,
                 variations = variations
@@ -446,14 +471,55 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * Called when the Shift key is double-tapped.
+     * Called when the Shift key is double‐tapped.
      */
     private fun onShiftDoubleTapped() {
-        // TODO: Do whatever you want on a Shift double-tap.
-        // For example, toggle a caps-lock state or notify your listener:
-        Log.d("QWERTYKEY", "Shift was double-tapped!")
+        Log.d("QWERTYKEY", "Shift was double‐tapped!")
+        // For example, toggle a caps‐lock state or notify listener:
+        qwertyKeyListener?.onLongPressQWERTYKey(QWERTYKey.QWERTYKeyShift)
+    }
 
-        // If your listener interface has a method for double-tap, you could invoke it here:
-        // qwertyKeyListener?.onShiftDoubleTap()
+    // ─────────────────────────────────────────────
+    // Long‐press scheduling / cancellation (with coroutines)
+    // ─────────────────────────────────────────────
+
+    /**
+     * Schedule a “long‐press” Job for the given pointer + view.
+     */
+    private fun scheduleLongPressForPointer(pointerId: Int, view: View) {
+        // Cancel any existing Job for this pointer
+        cancelLongPressForPointer(pointerId)
+
+        // Launch a coroutine that waits longPressTimeout ms
+        val job = scope.launch {
+            delay(longPressTimeout)
+            // After the delay, check that this pointer still “owns” the same view
+            val currentView = pointerButtonMap[pointerId]
+            if (currentView == view) {
+                // Long‐press confirmed: just log
+                val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+                qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
+                Log.d("QWERTYKEY", "Long‐press detected on $qwertyKey")
+                // Note: we do NOT remove the pointer here, so ACTION_UP still triggers normal tap
+            }
+        }
+
+        longPressJobs.put(pointerId, job)
+    }
+
+    /**
+     * Cancel any pending “long‐press” Job for this pointer.
+     */
+    private fun cancelLongPressForPointer(pointerId: Int) {
+        longPressJobs[pointerId]?.let { job ->
+            job.cancel()
+            longPressJobs.remove(pointerId)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        // Cancel all coroutines to avoid leaks
+        scope.cancel()
     }
 }

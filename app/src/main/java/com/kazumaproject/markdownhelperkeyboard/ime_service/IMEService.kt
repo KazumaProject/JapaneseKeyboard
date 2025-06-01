@@ -1051,10 +1051,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
             val inputStringAfterDelay = _inputString.value
+            if (inputStringAfterDelay != inputString) return
             if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
-                setComposingTextAfterEdit(inputStringAfterDelay, spannableString)
+                setComposingTextAfterEdit(inputString, spannableString)
             }
         } else {
             if (stringInTail.get().isNotEmpty()) {
@@ -1429,11 +1430,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         mainView.qwertyView.apply {
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
-                override fun onTouchQWERTYKey(
+                override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
+                    Timber.d("Pressed Key: $qwertyKey")
+                    when (vibrationTimingStr) {
+                        "both" -> {
+                            vibrate()
+                        }
+
+                        "press" -> {
+                            vibrate()
+                        }
+
+                        "release" -> {
+
+                        }
+                    }
+                }
+
+                override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey,
                     tap: Char?,
                     variations: List<Char>?
                 ) {
+                    when (vibrationTimingStr) {
+                        "both" -> {
+                            vibrate()
+                        }
+
+                        "press" -> {
+
+                        }
+
+                        "release" -> {
+
+                        }
+                    }
                     val insertString = _inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
@@ -1480,6 +1511,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             isContinuousTapInputEnabled.set(true)
                             lastFlickConvertedNextHiragana.set(true)
                             handleTap(tap, insertString, sb, mainView)
+                        }
+                    }
+                }
+
+                override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
+                    when (qwertyKey) {
+                        QWERTYKey.QWERTYKeyDelete -> {
+                            onDeleteLongPressUp.set(true)
+                            deleteLongPress()
+                            _dakutenPressed.value = false
+                            englishSpaceKeyPressed.set(false)
+                            deleteKeyLongKeyPressed.set(true)
+                        }
+
+                        else -> {
+
                         }
                     }
                 }

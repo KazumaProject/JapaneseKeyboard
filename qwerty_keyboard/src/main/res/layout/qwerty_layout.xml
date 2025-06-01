@@ -589,7 +589,7 @@
         android:layout_width="48dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
-        android:layout_marginEnd="2dp"
+        android:layout_marginEnd="4dp"
         android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:scaleType="centerInside"
@@ -597,7 +597,7 @@
         android:tint="@color/keyboard_icon_color"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/key_123"
-        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintHorizontal_weight="0.5"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/guideline_row3" />
 
@@ -606,7 +606,6 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
-        android:layout_marginEnd="2dp"
         android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:gravity="center"
@@ -616,7 +615,7 @@
         android:textSize="@dimen/qwerty_side_key_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_space"
-        app:layout_constraintHorizontal_weight="1"
+        app:layout_constraintHorizontal_weight="0.5"
         app:layout_constraintStart_toEndOf="@id/key_switch_default"
         app:layout_constraintTop_toBottomOf="@id/guideline_row3" />
 
