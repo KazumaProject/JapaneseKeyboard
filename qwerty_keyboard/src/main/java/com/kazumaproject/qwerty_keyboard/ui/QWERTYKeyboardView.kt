@@ -12,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
@@ -246,7 +247,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keyX to QWERTYKey.QWERTYKeyX,
             binding.keyY to QWERTYKey.QWERTYKeyY,
             binding.keyZ to QWERTYKey.QWERTYKeyZ,
-
+            binding.keyAtMark to QWERTYKey.QWERTYKeyAtMark,
             // Side and function keys
             binding.keyShift to QWERTYKey.QWERTYKeyShift,      // AppCompatImageButton
             binding.keyDelete to QWERTYKey.QWERTYKeyDelete,    // AppCompatImageButton
@@ -532,15 +533,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private fun showKeyPreview(view: View) {
         dismissKeyPreview()
+        val qwertyMode = qwertyMode.value
 
-        val layoutRes = when (view.id) {
-            binding.keyQ.id -> R.layout.key_preview_left
-            binding.keyP.id -> R.layout.key_preview_right
-            else -> R.layout.key_preview
+        val layoutRes = if (qwertyMode == QWERTYMode.Default) {
+            when (view.id) {
+                binding.keyQ.id -> R.layout.key_preview_left
+                binding.keyP.id -> R.layout.key_preview_right
+                else -> R.layout.key_preview
+            }
+        } else {
+            when (view.id) {
+                binding.keyQ.id, binding.keyA.id -> R.layout.key_preview_left
+                binding.keyP.id, binding.keyL.id -> R.layout.key_preview_right
+                else -> R.layout.key_preview
+            }
         }
 
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
+        if (qwertyMode != QWERTYMode.Default &&
+            (
+                    view.id == binding.keyZ.id ||
+                    view.id == binding.keyX.id ||
+                    view.id == binding.keyC.id ||
+                    view.id == binding.keyN.id ||
+                    view.id == binding.keyM.id)
+        ) {
+            val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
+            iv.scaleX = 1.4f
+        }
 
         when (view) {
             is QWERTYButton -> {
