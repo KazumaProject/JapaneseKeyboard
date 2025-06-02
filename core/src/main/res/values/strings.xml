@@ -100,6 +100,8 @@
     <string name="_60_62">Aa</string>
     <string name="string_emoji">絵文字</string>
     <string name="string_kaomoji">:-)</string>
+    <string name="string_123">123</string>
+    <string name="string_abc">ABC</string>
 
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="qwety_kigou_layout"><![CDATA[#+=]]></string>
