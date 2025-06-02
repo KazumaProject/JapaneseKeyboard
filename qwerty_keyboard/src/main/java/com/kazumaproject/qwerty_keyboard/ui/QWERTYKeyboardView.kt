@@ -2,6 +2,7 @@ package com.kazumaproject.qwerty_keyboard.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.SystemClock
 import android.util.AttributeSet
@@ -478,7 +479,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val previewHeight = popupView.measuredHeight
 
         val viewWidth = view.width
-        val xOffset = (viewWidth / 2) - (previewWidth / 2)
+        val xOffset =
+            if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && binding.keyQ.id == view.id) {
+                (viewWidth / 2) - (previewWidth / 2) + 16
+            } else {
+                (viewWidth / 2) - (previewWidth / 2)
+            }
         val yOffset = -(previewHeight - 24)
 
         popup.showAsDropDown(view, xOffset, yOffset)
