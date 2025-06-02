@@ -19,6 +19,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.util.isNotEmpty
 import androidx.core.util.size
 import androidx.core.view.isVisible
+import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.VariationInfo
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
@@ -29,8 +30,14 @@ import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -42,9 +49,7 @@ import kotlinx.coroutines.launch
  *  - Uses Kotlin Coroutines for long‐press detection.
  */
 class QWERTYKeyboardView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
+    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
 
     private val binding: QwertyLayoutBinding
@@ -56,7 +61,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val longPressJobs = SparseArray<Job>()
 
     /** CoroutineScope on main dispatcher. */
-    private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     /** If a second finger cancels the first, we suppress that first pointer until it lifts. */
     private var suppressedPointerId: Int? = null
@@ -77,6 +82,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     // Long‐press timeout (system default)
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
 
+    private val _capsLockState = MutableStateFlow(CapsLockState())
+    private val capsLockState: StateFlow<CapsLockState> = _capsLockState.asStateFlow()
+
     init {
         isClickable = true
         isFocusable = true
@@ -85,6 +93,72 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         binding = QwertyLayoutBinding.inflate(inflater, this)
 
         qwertyKeyMap = QWERTYKeyMap()
+
+        scope.launch {
+            capsLockState.collectLatest { state ->
+                when {
+                    state.shiftOn && state.capsLockOn -> {
+                        qwertyButtonMap.keys.forEach { button ->
+                            if (button is AppCompatButton) {
+                                button.isAllCaps = true
+                            }
+                            if (button is AppCompatImageButton) {
+                                if (button.id == binding.keyShift.id) {
+                                    button.setImageResource(
+                                        com.kazumaproject.core.R.drawable.caps_lock
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    !state.shiftOn && state.capsLockOn -> {
+                        qwertyButtonMap.keys.forEach { button ->
+                            if (button is AppCompatButton) {
+                                button.isAllCaps = true
+                            }
+                            if (button is AppCompatImageButton) {
+                                if (button.id == binding.keyShift.id) {
+                                    button.setImageResource(
+                                        com.kazumaproject.core.R.drawable.caps_lock
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    state.shiftOn && !state.capsLockOn -> {
+                        qwertyButtonMap.keys.forEach { button ->
+                            if (button is AppCompatButton) {
+                                button.isAllCaps = true
+                            }
+                            if (button is AppCompatImageButton) {
+                                if (button.id == binding.keyShift.id) {
+                                    button.setImageResource(
+                                        com.kazumaproject.core.R.drawable.shift_fill_24px
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    else -> {
+                        qwertyButtonMap.keys.forEach { button ->
+                            if (button is AppCompatButton) {
+                                button.isAllCaps = false
+                            }
+                            if (button is AppCompatImageButton) {
+                                if (button.id == binding.keyShift.id) {
+                                    button.setImageResource(
+                                        com.kazumaproject.core.R.drawable.shift_24px
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /** Map each key View → its corresponding QWERTYKey. */
@@ -208,6 +282,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     } else {
                         val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                         logVariationIfNeeded(qwertyKey, qwertyKeyListener)
+                        setToggleShiftState(view)
                     }
                 }
                 pointerButtonMap.remove(pointerId)
@@ -221,6 +296,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (pointerButtonMap.size == 1) {
                     val view = pointerButtonMap.valueAt(0)
                     view?.let {
+                        Log.d("QWERTYKEY", "ACTION_UP: ${capsLockState.value}")
                         it.isPressed = false
                         dismissKeyPreview()
                         cancelLongPressForPointer(liftedId)
@@ -232,6 +308,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         } else {
                             val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                             logVariationIfNeeded(qwertyKey, qwertyKeyListener)
+                            setToggleShiftState(view)
                         }
                     }
                 }
@@ -243,6 +320,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
         }
         return true
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        scope.cancel()
+    }
+
+    private fun setToggleShiftState(view: View) {
+        if (view.id == binding.keyShift.id) {
+            if (capsLockState.value.capsLockOn || capsLockState.value.shiftOn) {
+                clearShiftCaps()
+            } else {
+                toggleShift()
+            }
+        } else if (view.id == binding.keyDelete.id ||
+            view.id == binding.keySpace.id
+        ) {
+            /** empty body **/
+        } else {
+            disableShift()
+        }
     }
 
     /**
@@ -280,13 +378,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             // ⑥ Show preview for non‐edge, non‐icon keys
-            if (it.id != binding.keySpace.id &&
-                it.id != binding.keyDelete.id &&
-                it.id != binding.keyShift.id &&
-                it.id != binding.key123.id &&
-                it.id != binding.keyReturn.id &&
-                it.id != binding.keySwitchDefault.id
-            ) {
+            if (it.id != binding.keySpace.id && it.id != binding.keyDelete.id && it.id != binding.keyShift.id && it.id != binding.key123.id && it.id != binding.keyReturn.id && it.id != binding.keySwitchDefault.id) {
                 showKeyPreview(it)
             }
 
@@ -321,13 +413,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
-                if (it.id != binding.keySpace.id &&
-                    it.id != binding.keyDelete.id &&
-                    it.id != binding.keyShift.id &&
-                    it.id != binding.key123.id &&
-                    it.id != binding.keyReturn.id &&
-                    it.id != binding.keySwitchDefault.id
-                ) {
+                if (it.id != binding.keySpace.id && it.id != binding.keyDelete.id && it.id != binding.keyShift.id && it.id != binding.key123.id && it.id != binding.keyReturn.id && it.id != binding.keySwitchDefault.id) {
                     showKeyPreview(it)
                 }
                 // Schedule a new long‐press for this new key
@@ -377,10 +463,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
 
         val popup = PopupWindow(
-            popupView,
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.WRAP_CONTENT,
-            false
+            popupView, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
         ).apply {
             isTouchable = false
             isFocusable = false
@@ -449,20 +532,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * If the key supports variations, log details and notify listener for normal tap.
      */
     private fun logVariationIfNeeded(
-        key: QWERTYKey,
-        qwertyKeyListener: QWERTYKeyListener?
+        key: QWERTYKey, qwertyKeyListener: QWERTYKeyListener?
     ) {
         val info = getVariationInfo(key)
         info?.apply {
             Log.d(
                 "KEY_VARIATION",
-                "KEY: $key, tap: ${tap}, cap: ${cap}, " +
-                        "variations: ${variations}, capVariations: $capVariations"
+                "KEY: $key, tap: ${tap}, cap: ${cap}, " + "variations: ${variations}, capVariations: $capVariations"
             )
+            val outChar =
+                if (capsLockState.value.capsLockOn || capsLockState.value.shiftOn) cap else tap
             qwertyKeyListener?.onReleasedQWERTYKey(
-                qwertyKey = key,
-                tap = tap,
-                variations = variations
+                qwertyKey = key, tap = outChar, variations = variations
             )
         }
     }
@@ -492,6 +573,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         Log.d("QWERTYKEY", "Shift was double‐tapped!")
         // For example, toggle a caps‐lock state or notify listener:
         qwertyKeyListener?.onLongPressQWERTYKey(QWERTYKey.QWERTYKeyShift)
+        enableCapsLock()
     }
 
     // ─────────────────────────────────────────────
@@ -530,15 +612,40 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * Cancel any pending “long‐press” Job for this pointer.
      */
     private fun cancelLongPressForPointer(pointerId: Int) {
+        Log.d("QWERTYKEY", "Long‐press cancel")
         longPressJobs[pointerId]?.let { job ->
             job.cancel()
             longPressJobs.remove(pointerId)
         }
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        // Cancel all coroutines to avoid leaks
-        scope.cancel()
+    private fun toggleShift() {
+        _capsLockState.update {
+            it.copy(
+                shiftOn = !it.shiftOn, capsLockOn = it.capsLockOn,
+            )
+        }
     }
+
+    private fun disableShift() {
+        _capsLockState.update {
+            it.copy(
+                shiftOn = false, capsLockOn = it.capsLockOn,
+            )
+        }
+    }
+
+
+    private fun enableCapsLock() {
+        _capsLockState.update {
+            it.copy(
+                capsLockOn = true, shiftOn = false,
+            )
+        }
+    }
+
+    private fun clearShiftCaps() {
+        _capsLockState.value = CapsLockState()
+    }
+
 }

@@ -14,6 +14,4 @@ interface QWERTYKeyListener {
     )
 
     fun onLongPressQWERTYKey(qwertyKey: QWERTYKey)
-
-    fun onVariationSelected(selectedChar: Char)
 }
