@@ -457,7 +457,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
 
         when (view) {
-            is QWERTYButton -> tv.text = view.text
+            is QWERTYButton -> {
+                if (capsLockState.value.capsLockOn || capsLockState.value.shiftOn) {
+                    tv.text = view.text.toString().uppercase()
+                } else {
+                    tv.text = view.text
+                }
+            }
+
             is AppCompatButton -> tv.text = view.text
             is AppCompatImageButton -> tv.text = ""
             else -> tv.text = ""
