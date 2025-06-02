@@ -22,6 +22,7 @@ import androidx.core.util.isNotEmpty
 import androidx.core.util.size
 import androidx.core.view.isVisible
 import com.kazumaproject.core.data.qwerty.CapsLockState
+import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
@@ -182,7 +183,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 keyL.setMarginEnd(
                                     23f
                                 )
+                                binding.keyShift.setImageResource(
+                                    com.kazumaproject.core.R.drawable.shift_24px
+                                )
                             }
+                            attachDefaultKeyLabels()
                         }
 
                         QWERTYMode.Number -> {
@@ -196,7 +201,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 keyL.setMarginEnd(
                                     9f
                                 )
+                                binding.keyShift.setImageResource(
+                                    com.kazumaproject.core.R.drawable.qwerty_symbol
+                                )
                             }
+                            attachNumberKeyLabels(false)
                         }
 
                         QWERTYMode.Symbol -> {
@@ -210,7 +219,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 keyL.setMarginEnd(
                                     9f
                                 )
+                                binding.keyShift.setImageResource(
+                                    com.kazumaproject.core.R.drawable.qwerty_number
+                                )
                             }
+                            attachNumberKeyLabels(true)
                         }
                     }
                 }
@@ -258,35 +271,93 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         )
     }
 
-    private val qwertyButtons: List<QWERTYButton> by lazy {
-        listOf(
-            binding.keyA,
-            binding.keyB,
-            binding.keyC,
-            binding.keyD,
+    private val defaultQWERTYButtons: Array<QWERTYButton> by lazy {
+        arrayOf(
+            // Top row (QWERTY)
+            binding.keyQ,
+            binding.keyW,
             binding.keyE,
+            binding.keyR,
+            binding.keyT,
+            binding.keyY,
+            binding.keyU,
+            binding.keyI,
+            binding.keyO,
+            binding.keyP,
+
+            // Middle row (ASDFGHJKL)
+            binding.keyA,
+            binding.keyS,
+            binding.keyD,
             binding.keyF,
             binding.keyG,
             binding.keyH,
-            binding.keyI,
             binding.keyJ,
             binding.keyK,
             binding.keyL,
-            binding.keyM,
+
+            // Bottom row (ZXCVBNM)
+            binding.keyZ,
+            binding.keyX,
+            binding.keyC,
+            binding.keyV,
+            binding.keyB,
             binding.keyN,
+            binding.keyM
+        )
+    }
+
+    private val numberQWERTYButtons: Array<QWERTYButton> by lazy {
+        arrayOf(
+            // Top row (QWERTY)
+            binding.keyQ,
+            binding.keyW,
+            binding.keyE,
+            binding.keyR,
+            binding.keyT,
+            binding.keyY,
+            binding.keyU,
+            binding.keyI,
             binding.keyO,
             binding.keyP,
-            binding.keyQ,
-            binding.keyR,
+
+            // Middle row (ASDFGHJKL)
+            binding.keyA,
             binding.keyS,
-            binding.keyT,
-            binding.keyU,
-            binding.keyV,
-            binding.keyW,
+            binding.keyD,
+            binding.keyF,
+            binding.keyG,
+            binding.keyH,
+            binding.keyJ,
+            binding.keyK,
+            binding.keyAtMark,
+            binding.keyL,
+
+            // Bottom row (ZXCVBNM)
+            binding.keyZ,
             binding.keyX,
-            binding.keyY,
-            binding.keyZ
+            binding.keyC,
+            binding.keyN,
+            binding.keyM
         )
+    }
+
+    private fun attachDefaultKeyLabels() {
+        val chars = QWERTYKeys.DEFAULT_KEYS
+        val buttons = defaultQWERTYButtons
+        for (i in buttons.indices) {
+            // One new length-1 String per button. No List, no boxed Characters, no lambdas.
+            buttons[i].text = chars[i].toString()
+        }
+    }
+
+    private fun attachNumberKeyLabels(isSymbol: Boolean) {
+        val chars = if (isSymbol) QWERTYKeys.SYMBOL_KEYS else QWERTYKeys.NUMBER_KEYS
+        val buttons = numberQWERTYButtons
+        for (i in buttons.indices) {
+            // One new length-1 String per button. No List, no boxed Characters, no lambdas.
+            buttons[i].text = chars[i].toString()
+        }
     }
 
     /**
@@ -389,14 +460,24 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         dismissKeyPreview()
                         cancelLongPressForPointer(liftedId)
 
+
                         val wasShift = (it.id == binding.keyShift.id)
                         // ④ If Shift was double‐tapped, suppress this single‐tap event
                         if (wasShift && shiftDoubleTapped) {
                             shiftDoubleTapped = false
                         } else {
-                            val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                            logVariationIfNeeded(qwertyKey)
-                            setToggleShiftState(view)
+                            val qwertyMode = qwertyMode.value
+                            if (qwertyMode != QWERTYMode.Default && wasShift) {
+                                if (qwertyMode == QWERTYMode.Number) {
+                                    _qwertyMode.update { QWERTYMode.Symbol }
+                                } else {
+                                    _qwertyMode.update { QWERTYMode.Number }
+                                }
+                            } else {
+                                val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
+                                logVariationIfNeeded(qwertyKey)
+                                setToggleShiftState(view)
+                            }
                         }
                     }
                 }
@@ -554,10 +635,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (qwertyMode != QWERTYMode.Default &&
             (
                     view.id == binding.keyZ.id ||
-                    view.id == binding.keyX.id ||
-                    view.id == binding.keyC.id ||
-                    view.id == binding.keyN.id ||
-                    view.id == binding.keyM.id)
+                            view.id == binding.keyX.id ||
+                            view.id == binding.keyC.id ||
+                            view.id == binding.keyN.id ||
+                            view.id == binding.keyM.id)
         ) {
             val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
             iv.scaleX = 1.4f
@@ -656,7 +737,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     ) {
         if (key == QWERTYKey.QWERTYKeySwitchMode) {
             when (qwertyMode.value) {
-                QWERTYMode.Default -> _qwertyMode.update { QWERTYMode.Number }
+                QWERTYMode.Default -> {
+                    clearShiftCaps()
+                    _qwertyMode.update { QWERTYMode.Number }
+                }
+
                 QWERTYMode.Number, QWERTYMode.Symbol -> _qwertyMode.update { QWERTYMode.Default }
             }
             Log.d(
@@ -684,7 +769,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * Otherwise return null.
      */
     private fun getVariationInfo(key: QWERTYKey): VariationInfo? {
-        val info: QWERTYKeyInfo = qwertyKeyMap.getKeyInfoDefault(key)
+        val info: QWERTYKeyInfo = when (qwertyMode.value) {
+            QWERTYMode.Default -> qwertyKeyMap.getKeyInfoDefault(key)
+            QWERTYMode.Number -> qwertyKeyMap.getKeyInfoNumber(key)
+            QWERTYMode.Symbol -> qwertyKeyMap.getKeyInfoSymbol(key)
+        }
         return if (info is QWERTYKeyInfo.QWERTYVariation) {
             VariationInfo(
                 tap = info.tap,
@@ -702,9 +791,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private fun onShiftDoubleTapped() {
         Log.d("QWERTYKEY", "Shift was double‐tapped!")
-        // For example, toggle a caps‐lock state or notify listener:
-        qwertyKeyListener?.onLongPressQWERTYKey(QWERTYKey.QWERTYKeyShift)
-        enableCapsLock()
+        if (qwertyMode.value == QWERTYMode.Default) {
+            enableCapsLock()
+        }
     }
 
     // ─────────────────────────────────────────────

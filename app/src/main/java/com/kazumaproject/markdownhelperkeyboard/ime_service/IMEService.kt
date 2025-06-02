@@ -1497,7 +1497,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyNotSelect -> {}
-                        QWERTYKey.QWERTYKeyAtMark -> {}
                         QWERTYKey.QWERTYKeyShift -> {}
                         QWERTYKey.QWERTYKeyDelete -> {
                             if (!deleteKeyLongKeyPressed.get()) {
