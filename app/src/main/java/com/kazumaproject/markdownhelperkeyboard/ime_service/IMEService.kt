@@ -48,6 +48,7 @@ import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.domain.state.QWERTYMode
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -137,12 +138,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private val _inputString = MutableStateFlow("")
+    private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
     private val suggestionFlag = _suggestionFlag.asSharedFlow()
     private val _suggestionViewStatus = MutableStateFlow(true)
+    private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
     private val _keyboardSymbolViewState = MutableStateFlow(false)
+    private val _qwertyMode = MutableStateFlow<QWERTYMode>(QWERTYMode.Default)
+    private val qwertyMode = _qwertyMode.asStateFlow()
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
@@ -473,7 +478,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         // 5) tail 無し & _inputString が残っている → 後片付け
-        if (_inputString.value.isNotEmpty()) {
+        if (inputString.value.isNotEmpty()) {
             _inputString.update { "" }
             finishComposingText()
             setComposingText("", 0)
@@ -487,7 +492,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
-                    val insertString = _inputString.value
+                    val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     when (gestureType) {
@@ -555,7 +560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
-                    val insertString = _inputString.value
+                    val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     when (gestureType) {
@@ -818,7 +823,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
                     isSpaceKeyLongPressed = true
                     showKeyboardPicker()
@@ -870,7 +875,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun cancelHenkanByLongPressDeleteKey() {
-        val insertString = _inputString.value
+        val insertString = inputString.value
         val selectedSuggestion = suggestionAdapter?.suggestions?.getOrNull(suggestionClickNum)
 
         deleteKeyLongKeyPressed.set(true)
@@ -914,7 +919,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     CandidateShowFlag.Updating -> {
-                        val inputString = _inputString.value
+                        val inputString = inputString.value
                         setSuggestionOnView(mainView, inputString)
                     }
                 }
@@ -923,7 +928,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
-            _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
+            suggestionViewStatus.collectLatest { isVisible ->
                 updateSuggestionViewVisibility(mainView, isVisible)
             }
         }
@@ -953,8 +958,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
-            _inputString.asStateFlow().collectLatest { inputString ->
-                processInputString(inputString, mainView)
+            qwertyMode.collectLatest { state ->
+                when (state) {
+                    QWERTYMode.Default -> {
+                        switchToTenKey()
+                    }
+
+                    QWERTYMode.QWERTY -> {
+                        switchToQWERTY()
+                    }
+                }
+            }
+        }
+
+        launch {
+            inputString.collectLatest { string ->
+                processInputString(string, mainView)
             }
         }
     }
@@ -962,8 +981,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
+        val qwertyMode = qwertyMode.value
         animateViewVisibility(
-            if (isTablet == true) mainView.tabletView else mainView.keyboardView,
+            if (qwertyMode == QWERTYMode.QWERTY) mainView.qwertyView else
+                if (isTablet == true) mainView.tabletView else mainView.keyboardView,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
@@ -1038,24 +1059,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun processInputString(
-        inputString: String, mainView: MainLayoutBinding,
+        string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
-        if (inputString.isNotEmpty()) {
-            val spannableString = SpannableString(inputString + stringInTail.get())
-            setComposingTextPreEdit(inputString, spannableString)
+        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail")
+        if (string.isNotEmpty()) {
+            val spannableString = SpannableString(string + stringInTail.get())
+            val isQwerty = qwertyMode.value
+            if (isQwerty == QWERTYMode.QWERTY) {
+                setComposingTextAfterEdit(string, spannableString)
+                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                return
+            }
+            setComposingTextPreEdit(string, spannableString)
             _suggestionFlag.emit(CandidateShowFlag.Updating)
             delay((delayTime ?: 1000).toLong())
             val henkanValue = isHenkan.get()
             val deleteLongPressUp = onDeleteLongPressUp.get()
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
-            val inputStringAfterDelay = _inputString.value
-            if (inputStringAfterDelay != inputString) return
+            val inputStringAfterDelay = inputString.value
+            if (inputStringAfterDelay != string) return
             if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
-                setComposingTextAfterEdit(inputString, spannableString)
+                setComposingTextAfterEdit(string, spannableString)
             }
         } else {
             if (stringInTail.get().isNotEmpty()) {
@@ -1329,7 +1356,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         suggestionAdapter.apply {
             this?.setOnItemClickListener { candidate, position ->
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 val currentInputMode =
                     if (isTablet == true) mainView.tabletView.currentInputMode else mainView.keyboardView.currentInputMode
                 vibrate()
@@ -1341,7 +1368,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             }
             this?.setOnItemLongClickListener { candidate, _ ->
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 setCandidateClipboardLongClick(candidate, insertString)
             }
         }
@@ -1350,16 +1377,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isFocusable = false
             addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
                 suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && _inputString.value.isNotBlank() && _inputString.value.isNotEmpty()) {
-                        if (_suggestionViewStatus.value) {
+                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
+                        if (suggestionViewStatus.value) {
                             _suggestionViewStatus.update { false }
                         }
                     }
                 }
             }, onSwipeUp = {
                 suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && _inputString.value.isNotBlank() && _inputString.value.isNotEmpty()) {
-                        if (!_suggestionViewStatus.value) {
+                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
+                        if (!suggestionViewStatus.value) {
                             _suggestionViewStatus.update { true }
                         }
                     }
@@ -1466,7 +1493,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                         }
                     }
-                    val insertString = _inputString.value
+                    val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     when (qwertyKey) {
@@ -1483,7 +1510,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
-                            switchToTenKey()
+                            _qwertyMode.update {
+                                QWERTYMode.Default
+                            }
                             _inputString.update { "" }
                             finishComposingText()
                             setComposingText("", 0)
@@ -1759,6 +1788,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { "" }
+        _qwertyMode.update { QWERTYMode.Default }
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
@@ -2166,7 +2196,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (deleteLongPressJob?.isActive == true) return
         deleteLongPressJob = scope.launch {
             while (isActive && deleteKeyLongKeyPressed.get()) {
-                val current = _inputString.value
+                val current = inputString.value
                 val tailIsEmpty = stringInTail.get().isEmpty()
 
                 if (current.isEmpty()) {
@@ -2186,7 +2216,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             enableContinuousTapInput()
 
-            val flag = if (_inputString.value.isEmpty()) CandidateShowFlag.Idle
+            val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
             else CandidateShowFlag.Updating
             _suggestionFlag.emit(flag)
         }
@@ -2560,7 +2590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             while (isActive && leftCursorKeyLongKeyPressed.get() && !onLeftKeyLongPressUp.get()) {
 
-                val insertString = _inputString.value
+                val insertString = inputString.value
 
                 // tail があり composing が空 → Idle で抜ける
                 if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
@@ -2578,7 +2608,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             _suggestionFlag.emit(
                 finalSuggestionFlag
-                    ?: if (_inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
+                    ?: if (inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
             )
         }
     }
@@ -2589,7 +2619,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             var finalSuggestionFlag: CandidateShowFlag? = null
             while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
 
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Updating
                     break
@@ -2599,7 +2629,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             _suggestionFlag.emit(
                 finalSuggestionFlag
-                    ?: if (_inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
+                    ?: if (inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
             )
 
         }
@@ -2919,7 +2949,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            switchToQWERTY()
+            _qwertyMode.update {
+                QWERTYMode.QWERTY
+            }
         }
     }
 
@@ -2939,7 +2971,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            switchToQWERTY()
+            _qwertyMode.update {
+                QWERTYMode.QWERTY
+            }
         }
     }
 
