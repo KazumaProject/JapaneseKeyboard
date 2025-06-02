@@ -480,7 +480,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // 5) tail 無し & _inputString が残っている → 後片付け
         if (inputString.value.isNotEmpty()) {
             _inputString.update { "" }
-            finishComposingText()
             setComposingText("", 0)
         }
     }
