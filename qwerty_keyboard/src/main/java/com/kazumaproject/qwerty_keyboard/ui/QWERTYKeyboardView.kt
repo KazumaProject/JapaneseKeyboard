@@ -22,10 +22,13 @@ import androidx.core.util.size
 import androidx.core.view.isVisible
 import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.VariationInfo
+import com.kazumaproject.core.domain.extensions.setMarginEnd
+import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
+import com.kazumaproject.core.domain.state.QWERTYMode
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
 import kotlinx.coroutines.CoroutineScope
@@ -86,6 +89,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val _capsLockState = MutableStateFlow(CapsLockState())
     private val capsLockState: StateFlow<CapsLockState> = _capsLockState.asStateFlow()
 
+    private val _qwertyMode = MutableStateFlow<QWERTYMode>(QWERTYMode.Default)
+    private val qwertyMode: StateFlow<QWERTYMode> = _qwertyMode.asStateFlow()
+
     init {
         isClickable = true
         isFocusable = true
@@ -96,64 +102,113 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         qwertyKeyMap = QWERTYKeyMap()
 
         scope.launch {
-            capsLockState.collectLatest { state ->
-                when {
-                    state.shiftOn && state.capsLockOn -> {
-                        qwertyButtonMap.keys.forEach { button ->
-                            if (button is AppCompatButton) {
-                                button.isAllCaps = true
+            launch {
+                capsLockState.collectLatest { state ->
+                    when {
+                        state.shiftOn && state.capsLockOn -> {
+                            qwertyButtonMap.keys.forEach { button ->
+                                if (button is AppCompatButton) {
+                                    button.isAllCaps = true
+                                }
+                                if (button is AppCompatImageButton) {
+                                    if (button.id == binding.keyShift.id) {
+                                        button.setImageResource(
+                                            com.kazumaproject.core.R.drawable.caps_lock
+                                        )
+                                    }
+                                }
                             }
-                            if (button is AppCompatImageButton) {
-                                if (button.id == binding.keyShift.id) {
-                                    button.setImageResource(
-                                        com.kazumaproject.core.R.drawable.caps_lock
-                                    )
+                        }
+
+                        !state.shiftOn && state.capsLockOn -> {
+                            qwertyButtonMap.keys.forEach { button ->
+                                if (button is AppCompatButton) {
+                                    button.isAllCaps = true
+                                }
+                                if (button is AppCompatImageButton) {
+                                    if (button.id == binding.keyShift.id) {
+                                        button.setImageResource(
+                                            com.kazumaproject.core.R.drawable.caps_lock
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        state.shiftOn && !state.capsLockOn -> {
+                            qwertyButtonMap.keys.forEach { button ->
+                                if (button is AppCompatButton) {
+                                    button.isAllCaps = true
+                                }
+                                if (button is AppCompatImageButton) {
+                                    if (button.id == binding.keyShift.id) {
+                                        button.setImageResource(
+                                            com.kazumaproject.core.R.drawable.shift_fill_24px
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> {
+                            qwertyButtonMap.keys.forEach { button ->
+                                if (button is AppCompatButton) {
+                                    button.isAllCaps = false
+                                }
+                                if (button is AppCompatImageButton) {
+                                    if (button.id == binding.keyShift.id) {
+                                        button.setImageResource(
+                                            com.kazumaproject.core.R.drawable.shift_24px
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-
-                    !state.shiftOn && state.capsLockOn -> {
-                        qwertyButtonMap.keys.forEach { button ->
-                            if (button is AppCompatButton) {
-                                button.isAllCaps = true
-                            }
-                            if (button is AppCompatImageButton) {
-                                if (button.id == binding.keyShift.id) {
-                                    button.setImageResource(
-                                        com.kazumaproject.core.R.drawable.caps_lock
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    state.shiftOn && !state.capsLockOn -> {
-                        qwertyButtonMap.keys.forEach { button ->
-                            if (button is AppCompatButton) {
-                                button.isAllCaps = true
-                            }
-                            if (button is AppCompatImageButton) {
-                                if (button.id == binding.keyShift.id) {
-                                    button.setImageResource(
-                                        com.kazumaproject.core.R.drawable.shift_fill_24px
-                                    )
-                                }
+                }
+            }
+            launch {
+                qwertyMode.collectLatest { state ->
+                    when (state) {
+                        QWERTYMode.Default -> {
+                            binding.apply {
+                                keyAtMark.isVisible = false
+                                keyV.isVisible = true
+                                keyB.isVisible = true
+                                keyA.setMarginStart(
+                                    23f
+                                )
+                                keyL.setMarginEnd(
+                                    23f
+                                )
                             }
                         }
-                    }
 
-                    else -> {
-                        qwertyButtonMap.keys.forEach { button ->
-                            if (button is AppCompatButton) {
-                                button.isAllCaps = false
+                        QWERTYMode.Number -> {
+                            binding.apply {
+                                keyAtMark.isVisible = true
+                                keyV.isVisible = false
+                                keyB.isVisible = false
+                                keyA.setMarginStart(
+                                    9f
+                                )
+                                keyL.setMarginEnd(
+                                    9f
+                                )
                             }
-                            if (button is AppCompatImageButton) {
-                                if (button.id == binding.keyShift.id) {
-                                    button.setImageResource(
-                                        com.kazumaproject.core.R.drawable.shift_24px
-                                    )
-                                }
+                        }
+
+                        QWERTYMode.Symbol -> {
+                            binding.apply {
+                                keyAtMark.isVisible = true
+                                keyV.isVisible = false
+                                keyB.isVisible = false
+                                keyA.setMarginStart(
+                                    9f
+                                )
+                                keyL.setMarginEnd(
+                                    9f
+                                )
                             }
                         }
                     }
@@ -202,6 +257,37 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         )
     }
 
+    private val qwertyButtons: List<QWERTYButton> by lazy {
+        listOf(
+            binding.keyA,
+            binding.keyB,
+            binding.keyC,
+            binding.keyD,
+            binding.keyE,
+            binding.keyF,
+            binding.keyG,
+            binding.keyH,
+            binding.keyI,
+            binding.keyJ,
+            binding.keyK,
+            binding.keyL,
+            binding.keyM,
+            binding.keyN,
+            binding.keyO,
+            binding.keyP,
+            binding.keyQ,
+            binding.keyR,
+            binding.keyS,
+            binding.keyT,
+            binding.keyU,
+            binding.keyV,
+            binding.keyW,
+            binding.keyX,
+            binding.keyY,
+            binding.keyZ
+        )
+    }
+
     /**
      * Set a listener that will receive:
      *  - onTouchQWERTYKey(...) on normal key‐up or tap, and
@@ -240,7 +326,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         cancelLongPressForPointer(firstPointerId)
 
                         val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
-                        logVariationIfNeeded(qwertyKey, qwertyKeyListener)
+                        logVariationIfNeeded(qwertyKey)
                     }
                     suppressedPointerId = firstPointerId
                     pointerButtonMap.remove(firstPointerId)
@@ -282,7 +368,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         shiftDoubleTapped = false
                     } else {
                         val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                        logVariationIfNeeded(qwertyKey, qwertyKeyListener)
+                        logVariationIfNeeded(qwertyKey)
                         setToggleShiftState(view)
                     }
                 }
@@ -308,7 +394,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             shiftDoubleTapped = false
                         } else {
                             val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                            logVariationIfNeeded(qwertyKey, qwertyKeyListener)
+                            logVariationIfNeeded(qwertyKey)
                             setToggleShiftState(view)
                         }
                     }
@@ -545,8 +631,19 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * If the key supports variations, log details and notify listener for normal tap.
      */
     private fun logVariationIfNeeded(
-        key: QWERTYKey, qwertyKeyListener: QWERTYKeyListener?
+        key: QWERTYKey
     ) {
+        if (key == QWERTYKey.QWERTYKeySwitchMode) {
+            when (qwertyMode.value) {
+                QWERTYMode.Default -> _qwertyMode.update { QWERTYMode.Number }
+                QWERTYMode.Number, QWERTYMode.Symbol -> _qwertyMode.update { QWERTYMode.Default }
+            }
+            Log.d(
+                "KEY_VARIATION",
+                "KEY: $key, ${qwertyMode.value}"
+            )
+            return
+        }
         val info = getVariationInfo(key)
         info?.apply {
             Log.d(
