@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
@@ -632,8 +633,31 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         dismissKeyPreview()
         val previewHeight = dpToPx(view.height)
         val layoutRes = R.layout.key_preview_large
+        val isWideKey = (qwertyMode.value != QWERTYMode.Default &&
+                (
+                        view.id == binding.keyZ.id ||
+                                view.id == binding.keyX.id ||
+                                view.id == binding.keyC.id ||
+                                view.id == binding.keyN.id ||
+                                view.id == binding.keyM.id)
+                )
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
+        val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
+        val drawableResIdForImageView = if (qwertyMode.value == QWERTYMode.Default) {
+            when (view.id) {
+                binding.keyQ.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
+                binding.keyP.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
+                else -> com.kazumaproject.core.R.drawable.key_preview_bubble
+            }
+        } else {
+            when (view.id) {
+                binding.keyQ.id, binding.keyA.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
+                binding.keyP.id, binding.keyL.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
+                else -> com.kazumaproject.core.R.drawable.key_preview_bubble
+            }
+        }
+        iv.setBackgroundResource(drawableResIdForImageView)
         popupView.rootView.layoutParams.height = previewHeight
 
         when (view) {
@@ -653,7 +677,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val popup = PopupWindow(
             popupView,
             view.width * 2,
-            view.height * 2 + 32,
+            view.height * 2 + 64,
             false
         ).apply {
             isTouchable = false
@@ -663,7 +687,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
 
         val xOffset = -(view.width / 2)
-        val yOffset = -(view.height * 2 + 32)
+        val yOffset = -(view.height * 2 + 64)
 
         popup.showAsDropDown(view, xOffset, yOffset)
         keyPreviewPopup = popup
