@@ -48,7 +48,7 @@ import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
-import com.kazumaproject.core.domain.state.QWERTYMode
+import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -146,8 +146,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
     private val _keyboardSymbolViewState = MutableStateFlow(false)
-    private val _qwertyMode = MutableStateFlow<QWERTYMode>(QWERTYMode.Default)
-    private val qwertyMode = _qwertyMode.asStateFlow()
+    private val _TenKey_qwertyMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
+    private val qwertyMode = _TenKey_qwertyMode.asStateFlow()
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
@@ -960,11 +960,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         launch {
             qwertyMode.collectLatest { state ->
                 when (state) {
-                    QWERTYMode.Default -> {
+                    TenKeyQWERTYMode.Default -> {
                         switchToTenKey()
                     }
 
-                    QWERTYMode.QWERTY -> {
+                    TenKeyQWERTYMode.TenKeyQWERTY -> {
                         switchToQWERTY()
                     }
                 }
@@ -983,7 +983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         val qwertyMode = qwertyMode.value
         animateViewVisibility(
-            if (qwertyMode == QWERTYMode.QWERTY) mainView.qwertyView else
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) mainView.qwertyView else
                 if (isTablet == true) mainView.tabletView else mainView.keyboardView,
             isVisible
         )
@@ -1065,7 +1065,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (string.isNotEmpty()) {
             val spannableString = SpannableString(string + stringInTail.get())
             val isQwerty = qwertyMode.value
-            if (isQwerty == QWERTYMode.QWERTY) {
+            if (isQwerty == TenKeyQWERTYMode.TenKeyQWERTY) {
                 setComposingTextAfterEdit(string, spannableString)
                 _suggestionFlag.emit(CandidateShowFlag.Updating)
                 return
@@ -1510,8 +1510,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
-                            _qwertyMode.update {
-                                QWERTYMode.Default
+                            _TenKey_qwertyMode.update {
+                                TenKeyQWERTYMode.Default
                             }
                             _inputString.update { "" }
                             finishComposingText()
@@ -1788,7 +1788,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { "" }
-        _qwertyMode.update { QWERTYMode.Default }
+        _TenKey_qwertyMode.update { TenKeyQWERTYMode.Default }
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
@@ -2951,8 +2951,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            _qwertyMode.update {
-                QWERTYMode.QWERTY
+            _TenKey_qwertyMode.update {
+                TenKeyQWERTYMode.TenKeyQWERTY
             }
         }
     }
@@ -2973,8 +2973,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            _qwertyMode.update {
-                QWERTYMode.QWERTY
+            _TenKey_qwertyMode.update {
+                TenKeyQWERTYMode.TenKeyQWERTY
             }
         }
     }
@@ -3246,7 +3246,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         val qwertyMode = qwertyMode.value
-        val heightPx = if (qwertyMode == QWERTYMode.QWERTY) {
+        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
             if (isPortrait) {
                 (280 * density).toInt()
             } else {
@@ -3257,7 +3257,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         // 5) Compute width in px (or MATCH_PARENT) based on orientation/tablet
         val widthPx = if (isPortrait) {
-            if (qwertyMode == QWERTYMode.QWERTY) {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
                 ViewGroup.LayoutParams.MATCH_PARENT
             } else {
                 if (widthPref == 100) {
@@ -3267,7 +3267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            if (qwertyMode == QWERTYMode.QWERTY) {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
                 screenHeight
             } else {
                 if (isTablet == true) {
