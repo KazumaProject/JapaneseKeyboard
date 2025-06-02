@@ -2,6 +2,7 @@ package com.kazumaproject.qwerty_keyboard.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.SystemClock
 import android.util.AttributeSet
@@ -633,29 +634,28 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         dismissKeyPreview()
         val previewHeight = dpToPx(view.height)
         val layoutRes = R.layout.key_preview_large
-        val isWideKey = (qwertyMode.value != QWERTYMode.Default &&
-                (
-                        view.id == binding.keyZ.id ||
-                                view.id == binding.keyX.id ||
-                                view.id == binding.keyC.id ||
-                                view.id == binding.keyN.id ||
-                                view.id == binding.keyM.id)
-                )
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
         val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
-        val drawableResIdForImageView = if (qwertyMode.value == QWERTYMode.Default) {
-            when (view.id) {
-                binding.keyQ.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
-                binding.keyP.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
-                else -> com.kazumaproject.core.R.drawable.key_preview_bubble
-            }
+        val isLandMode =
+            (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+        // 1. Determine which key-IDs count as “left” vs. “right” bubbles
+        val leftKeyIds: Set<Int> = if (qwertyMode.value == QWERTYMode.Default && !isLandMode) {
+            setOf(binding.keyQ.id)
         } else {
-            when (view.id) {
-                binding.keyQ.id, binding.keyA.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
-                binding.keyP.id, binding.keyL.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
-                else -> com.kazumaproject.core.R.drawable.key_preview_bubble
-            }
+            setOf(binding.keyQ.id, binding.keyA.id)
+        }
+
+        val rightKeyIds: Set<Int> = if (qwertyMode.value == QWERTYMode.Default && !isLandMode) {
+            setOf(binding.keyP.id)
+        } else {
+            setOf(binding.keyP.id, binding.keyL.id)
+        }
+
+        val drawableResIdForImageView = when (view.id) {
+            in leftKeyIds -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
+            in rightKeyIds -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
+            else -> com.kazumaproject.core.R.drawable.key_preview_bubble
         }
         iv.setBackgroundResource(drawableResIdForImageView)
         popupView.rootView.layoutParams.height = previewHeight
