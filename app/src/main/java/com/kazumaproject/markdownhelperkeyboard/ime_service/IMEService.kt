@@ -2915,6 +2915,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun switchToQWERTY() {
+        setKeyboardSize()
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
                 qwertyView.isVisible = true
@@ -2926,6 +2927,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun switchToTenKey() {
+        setKeyboardSize()
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
                 qwertyView.isVisible = false
@@ -3221,108 +3223,111 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setKeyboardSize() {
-        val heightFromPreference = appPreference.keyboard_height ?: 280
-        val widthFromPreference = appPreference.keyboard_width ?: 100
-        val keyboardPositionPreference = appPreference.keyboard_position ?: true
+        // 1) Early-return if there's no binding
+        val binding = mainLayoutBinding ?: return
+
+        // 2) Read preferences (with defaults)
+        val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
+        val positionPref = appPreference.keyboard_position ?: true
+
+        // 3) Screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
-        val orientation = resources.configuration.orientation
-        val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenHeight = resources.displayMetrics.heightPixels
+        val isPortrait =
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-        val maxLandscapeHeight = 200
+        // 4) Clamp height: [210..280] in portrait, ≤ 200 in landscape
         val clampedHeight = if (isPortrait) {
-            heightFromPreference.coerceIn(210, 280)
+            heightPref.coerceIn(210, 280)
         } else {
-            heightFromPreference.coerceAtMost(maxLandscapeHeight)
+            heightPref.coerceAtMost(200)
         }
-        val heightInPx = (clampedHeight * density).toInt()
-        val widthInPx = if (isPortrait) {
-            if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT
-            else (screenWidth * (widthFromPreference / 100f)).toInt()
-        } else {
-            if (isTablet == true) {
-                if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT else (screenWidth * (widthFromPreference / 100f)).toInt()
-            } else {
-                if (widthFromPreference == 100) (screenWidth * 0.8).toInt() else (screenWidth * 0.8 * (widthFromPreference / 100f)).toInt()
-            }
-        }
-        mainLayoutBinding?.apply {
-            if (isTablet == true) {
-                tabletView.apply {
-                    val params = layoutParams as FrameLayout.LayoutParams
-                    params.apply {
-                        height = heightInPx
-                        gravity = if (keyboardPositionPreference) {
-                            Gravity.BOTTOM or Gravity.END
-                        } else {
-                            Gravity.BOTTOM or Gravity.START
-                        }
-                    }
-                    layoutParams = params
-                }
-            } else {
-                keyboardView.apply {
-                    val params = layoutParams as FrameLayout.LayoutParams
-                    params.apply {
-                        height = heightInPx
-                        gravity = if (keyboardPositionPreference) {
-                            Gravity.BOTTOM or Gravity.END
-                        } else {
-                            Gravity.BOTTOM or Gravity.START
-                        }
-                    }
-                    layoutParams = params
-                }
-            }
-            candidatesRowView.apply {
-                val params = layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    height = heightInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
-                    }
-                }
-                layoutParams = params
-            }
-            keyboardSymbolView.apply {
-                val params = layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    height = heightInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
-                    }
-                }
-                layoutParams = params
-            }
-            suggestionViewParent.apply {
-                val params = suggestionViewParent.layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    bottomMargin = heightInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
-                    }
-                }
-                layoutParams = params
-            }
 
-            root.apply {
-                val params = root.layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    width = widthInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
+        val qwertyMode = qwertyMode.value
+        val heightPx = if (qwertyMode == QWERTYMode.QWERTY) {
+            if (isPortrait) {
+                (280 * density).toInt()
+            } else {
+                (200 * density).toInt()
+            }
+        } else {
+            (clampedHeight * density).toInt()
+        }
+        // 5) Compute width in px (or MATCH_PARENT) based on orientation/tablet
+        val widthPx = if (isPortrait) {
+            if (qwertyMode == QWERTYMode.QWERTY) {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            } else {
+                if (widthPref == 100) {
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                } else {
+                    (screenWidth * (widthPref / 100f)).toInt()
+                }
+            }
+        } else {
+            if (qwertyMode == QWERTYMode.QWERTY) {
+                screenHeight
+            } else {
+                if (isTablet == true) {
+                    if (widthPref == 100) {
+                        ViewGroup.LayoutParams.MATCH_PARENT
                     } else {
-                        Gravity.BOTTOM or Gravity.START
+                        (screenWidth * (widthPref / 100f)).toInt()
+                    }
+                } else {
+                    // On non-tablet landscape, base width is 80% of screen
+                    val baseWidth = (screenWidth * 0.8).toInt()
+                    if (widthPref == 100) {
+                        baseWidth
+                    } else {
+                        (baseWidth * (widthPref / 100f)).toInt()
                     }
                 }
-                layoutParams = params
             }
+        }
+
+        // 6) Determine gravity once
+        val gravity = if (positionPref) {
+            Gravity.BOTTOM or Gravity.END
+        } else {
+            Gravity.BOTTOM or Gravity.START
+        }
+
+        // 7) Helper to apply height & gravity to any View whose layoutParams are FrameLayout.LayoutParams
+        fun applySize(view: View) {
+            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                params.height = heightPx
+                params.gravity = gravity
+                view.layoutParams = params
+            }
+        }
+
+        // 8) Update either tabletView or keyboardView (depending on isTablet)
+        if (isTablet == true) {
+            applySize(binding.tabletView)
+        } else {
+            applySize(binding.keyboardView)
+        }
+
+        // 9) The candidates row and symbol view use the same height & gravity
+        applySize(binding.candidatesRowView)
+        applySize(binding.keyboardSymbolView)
+        applySize(binding.qwertyView)
+
+        // 10) suggestionViewParent sits above the keyboard, so we adjust bottomMargin instead of height
+        (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            binding.suggestionViewParent.layoutParams = params
+        }
+
+        // 11) Finally, update root’s width and gravity
+        (binding.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.width = widthPx
+            params.gravity = gravity
+            binding.root.layoutParams = params
         }
     }
 

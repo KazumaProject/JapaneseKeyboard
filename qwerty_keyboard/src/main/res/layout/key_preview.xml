@@ -11,11 +11,9 @@
     -->
     <ImageView
         android:id="@+id/preview_bubble_bg"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:adjustViewBounds="true"
-        android:contentDescription="@string/preview_bubble_img"
-        android:elevation="4dp"
         android:padding="8dp"
         android:scaleType="centerInside"
         android:src="@drawable/key_preview_bubble" />
