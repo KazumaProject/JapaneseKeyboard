@@ -3295,7 +3295,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         } else {
             if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
-                screenHeight
+                ViewGroup.LayoutParams.MATCH_PARENT
             } else {
                 if (isTablet == true) {
                     if (widthPref == 100) {
