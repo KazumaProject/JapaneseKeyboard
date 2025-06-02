@@ -3,10 +3,10 @@ package com.kazumaproject.tenkey.extensions
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
 import android.view.View
 import android.widget.PopupWindow
+import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.ui.key_window.ArrowDirection
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.R
@@ -18,7 +18,7 @@ fun PopupWindow.setPopUpWindowFlickRight(
 ){
     this.width = anchorView.width + (anchorView.width) / 2
     this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.LEFT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.LEFT_CENTER
@@ -61,7 +61,7 @@ fun PopupWindow.setPopUpWindowFlickLeft(
 ){
     this.width = anchorView.width + (anchorView.width) / 2
     this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.RIGHT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.RIGHT_CENTER
@@ -107,7 +107,7 @@ fun PopupWindow.setPopUpWindowFlickBottom(
 ){
     this.width = anchorView.width
     this.height = anchorView.height + (anchorView.height / 2)
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.TOP_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.TOP_CENTER
@@ -170,7 +170,7 @@ fun PopupWindow.setPopUpWindowFlickTop(
 ){
     this.width = anchorView.width
     this.height = anchorView.height + (anchorView.height / 2)
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.BOTTOM_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.BOTTOM_CENTER
@@ -215,7 +215,7 @@ fun PopupWindow.setPopUpWindowCenter(
 ){
     this.width = anchorView.width
     this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.TOP_RIGHT) this.dismiss()
         bubble.arrowDirection = ArrowDirection.TOP_RIGHT
@@ -258,7 +258,7 @@ fun PopupWindow.setPopUpWindowRight(
 ){
     this.width = anchorView.width
     this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.LEFT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.LEFT_CENTER
@@ -301,7 +301,7 @@ fun PopupWindow.setPopUpWindowLeft(
 ){
     this.width = anchorView.width
     this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.RIGHT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.RIGHT_CENTER
@@ -347,7 +347,7 @@ fun PopupWindow.setPopUpWindowBottom(
 ){
     this.width = anchorView.width
     this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.TOP_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.TOP_CENTER
@@ -410,7 +410,7 @@ fun PopupWindow.setPopUpWindowTop(
 ){
     this.width = anchorView.width
     this.height = anchorView.height
-    this.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+    this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.BOTTOM_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.BOTTOM_CENTER
