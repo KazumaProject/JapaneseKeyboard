@@ -611,11 +611,19 @@ class TabletKeyboardView @JvmOverloads constructor(
                                         InputMode.ModeNumber -> {
                                             val capState = tabletCapsLockState.value
                                             val outputChar = keyInfo.getOutputChar(capState)
-                                            flickListener?.onFlick(
-                                                gestureType = gestureType,
-                                                key = pressedKey.key,
-                                                char = outputChar,
-                                            )
+                                            if (pressedKey.key == Key.KeyKuten) {
+                                                flickListener?.onFlick(
+                                                    gestureType = gestureType,
+                                                    key = Key.KeyDakutenSmall,
+                                                    char = outputChar,
+                                                )
+                                            } else {
+                                                flickListener?.onFlick(
+                                                    gestureType = gestureType,
+                                                    key = pressedKey.key,
+                                                    char = outputChar,
+                                                )
+                                            }
                                         }
                                     }
 
