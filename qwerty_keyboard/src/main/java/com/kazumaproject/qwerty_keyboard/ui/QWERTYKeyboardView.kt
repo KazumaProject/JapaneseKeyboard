@@ -2,7 +2,6 @@ package com.kazumaproject.qwerty_keyboard.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Rect
 import android.os.SystemClock
 import android.util.AttributeSet
@@ -24,6 +23,7 @@ import androidx.core.view.isVisible
 import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
+import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
@@ -190,6 +190,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 binding.keyShift.setImageResource(
                                     com.kazumaproject.core.R.drawable.shift_24px
                                 )
+                                binding.key123.text =
+                                    resources.getString(com.kazumaproject.core.R.string.string_123)
                             }
                             attachDefaultKeyLabels()
                         }
@@ -208,6 +210,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 binding.keyShift.setImageResource(
                                     com.kazumaproject.core.R.drawable.qwerty_symbol
                                 )
+                                binding.key123.text =
+                                    resources.getString(com.kazumaproject.core.R.string.string_abc)
                             }
                             attachNumberKeyLabels(false)
                         }
@@ -223,9 +227,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 keyL.setMarginEnd(
                                     9f
                                 )
-                                binding.keyShift.setImageResource(
+                                keyShift.setImageResource(
                                     com.kazumaproject.core.R.drawable.qwerty_number
                                 )
+                                binding.key123.text =
+                                    resources.getString(com.kazumaproject.core.R.string.string_abc)
                             }
                             attachNumberKeyLabels(true)
                         }
@@ -625,35 +631,34 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun showKeyPreview(view: View) {
         if (isTablet) return
         dismissKeyPreview()
-        val qwertyMode = qwertyMode.value
-
-        val layoutRes = if (qwertyMode == QWERTYMode.Default) {
+        val previewHeight = dpToPx(view.height)
+        val layoutRes = R.layout.key_preview_large
+        val isWideKey = (qwertyMode.value != QWERTYMode.Default &&
+                (
+                        view.id == binding.keyZ.id ||
+                                view.id == binding.keyX.id ||
+                                view.id == binding.keyC.id ||
+                                view.id == binding.keyN.id ||
+                                view.id == binding.keyM.id)
+                )
+        val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
+        val tv = popupView.findViewById<TextView>(R.id.preview_text)
+        val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
+        val drawableResIdForImageView = if (qwertyMode.value == QWERTYMode.Default) {
             when (view.id) {
-                binding.keyQ.id -> R.layout.key_preview_left
-                binding.keyP.id -> R.layout.key_preview_right
-                else -> R.layout.key_preview
+                binding.keyQ.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
+                binding.keyP.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
+                else -> com.kazumaproject.core.R.drawable.key_preview_bubble
             }
         } else {
             when (view.id) {
-                binding.keyQ.id, binding.keyA.id -> R.layout.key_preview_left
-                binding.keyP.id, binding.keyL.id -> R.layout.key_preview_right
-                else -> R.layout.key_preview
+                binding.keyQ.id, binding.keyA.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
+                binding.keyP.id, binding.keyL.id -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
+                else -> com.kazumaproject.core.R.drawable.key_preview_bubble
             }
         }
-
-        val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
-        val tv = popupView.findViewById<TextView>(R.id.preview_text)
-        if (qwertyMode != QWERTYMode.Default &&
-            (
-                    view.id == binding.keyZ.id ||
-                            view.id == binding.keyX.id ||
-                            view.id == binding.keyC.id ||
-                            view.id == binding.keyN.id ||
-                            view.id == binding.keyM.id)
-        ) {
-            val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
-            iv.scaleX = 1.4f
-        }
+        iv.setBackgroundResource(drawableResIdForImageView)
+        popupView.rootView.layoutParams.height = previewHeight
 
         when (view) {
             is QWERTYButton -> {
@@ -670,28 +675,19 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
 
         val popup = PopupWindow(
-            popupView, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            popupView,
+            view.width * 2,
+            view.height * 2 + 64,
+            false
         ).apply {
             isTouchable = false
             isFocusable = false
             elevation = 6f
         }
 
-        popupView.measure(
-            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED),
-            MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
-        )
-        val previewWidth = popupView.measuredWidth
-        val previewHeight = popupView.measuredHeight
 
-        val viewWidth = view.width
-        val xOffset =
-            if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && binding.keyQ.id == view.id) {
-                (viewWidth / 2) - (previewWidth / 2) + 16
-            } else {
-                (viewWidth / 2) - (previewWidth / 2)
-            }
-        val yOffset = -(previewHeight - 24)
+        val xOffset = -(view.width / 2)
+        val yOffset = -(view.height * 2 + 64)
 
         popup.showAsDropDown(view, xOffset, yOffset)
         keyPreviewPopup = popup
