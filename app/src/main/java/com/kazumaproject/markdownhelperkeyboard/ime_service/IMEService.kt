@@ -146,8 +146,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
     private val _keyboardSymbolViewState = MutableStateFlow(false)
-    private val _TenKey_qwertyMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
-    private val qwertyMode = _TenKey_qwertyMode.asStateFlow()
+    private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
+    private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
@@ -958,13 +958,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         launch {
             qwertyMode.collectLatest { state ->
+                setKeyboardSize()
                 when (state) {
                     TenKeyQWERTYMode.Default -> {
-                        switchToTenKey()
+                        if (isTablet == true) {
+                            animateViewVisibility(
+                                mainView.tabletView,
+                                true
+                            )
+                        } else {
+                            animateViewVisibility(
+                                mainView.keyboardView,
+                                true
+                            )
+                        }
+                        animateViewVisibility(
+                            mainView.qwertyView,
+                            false
+                        )
                     }
 
                     TenKeyQWERTYMode.TenKeyQWERTY -> {
-                        switchToQWERTY()
+                        animateViewVisibility(
+                            mainView.qwertyView,
+                            true
+                        )
+                        if (isTablet == true) {
+                            animateViewVisibility(
+                                mainView.tabletView,
+                                false
+                            )
+                        } else {
+                            animateViewVisibility(
+                                mainView.keyboardView,
+                                false
+                            )
+                        }
                     }
                 }
             }
@@ -1508,7 +1537,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
-                            _TenKey_qwertyMode.update {
+                            _tenKeyQWERTYMode.update {
                                 TenKeyQWERTYMode.Default
                             }
                             _inputString.update { "" }
@@ -1786,7 +1815,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { "" }
-        _TenKey_qwertyMode.update { TenKeyQWERTYMode.Default }
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
@@ -2934,8 +2963,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun switchToTabletKey() {
+        setKeyboardSize()
+        mainLayoutBinding?.let { mainView ->
+            mainView.apply {
+                tabletView.isVisible = false
+                keyboardView.isVisible = true
+            }
+        }
+    }
+
     private fun dakutenSmallLetter(
-        sb: StringBuilder, insertString: String
+        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)
@@ -2949,14 +2988,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            _TenKey_qwertyMode.update {
+            _tenKeyQWERTYMode.update {
                 TenKeyQWERTYMode.TenKeyQWERTY
             }
+            mainView.qwertyView.resetQWERTYKeyboard()
         }
     }
 
     private fun smallBigLetterConversionEnglish(
-        sb: StringBuilder, insertString: String
+        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)
@@ -2971,9 +3011,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            _TenKey_qwertyMode.update {
+            _tenKeyQWERTYMode.update {
                 TenKeyQWERTYMode.TenKeyQWERTY
             }
+            mainView.qwertyView.resetQWERTYKeyboard()
         }
     }
 
@@ -2988,28 +3029,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.tabletView.let {
                 when (it.currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
-                        dakutenSmallLetter(sb, insertString)
+                        dakutenSmallLetter(sb, insertString, mainView)
                     }
 
                     InputMode.ModeEnglish -> {
-                        smallBigLetterConversionEnglish(sb, insertString)
+                        smallBigLetterConversionEnglish(sb, insertString, mainView)
                     }
 
                     InputMode.ModeNumber -> {
-                        if (isFlick) {
-                            char?.let { c ->
-                                sendCharFlick(
-                                    charToSend = c, insertString = insertString, sb = sb
-                                )
-                            }
-                            isContinuousTapInputEnabled.set(true)
-                            lastFlickConvertedNextHiragana.set(true)
-                        } else {
-                            char?.let { c ->
-                                sendCharTap(
-                                    charToSend = c, insertString = insertString, sb = sb
-                                )
-                            }
+                        _tenKeyQWERTYMode.update {
+                            TenKeyQWERTYMode.TenKeyQWERTY
                         }
                     }
                 }
@@ -3018,11 +3047,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.keyboardView.let {
                 when (it.currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
-                        dakutenSmallLetter(sb, insertString)
+                        dakutenSmallLetter(sb, insertString, mainView)
                     }
 
                     InputMode.ModeEnglish -> {
-                        smallBigLetterConversionEnglish(sb, insertString)
+                        smallBigLetterConversionEnglish(sb, insertString, mainView)
                     }
 
                     InputMode.ModeNumber -> {

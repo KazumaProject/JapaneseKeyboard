@@ -94,6 +94,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val _qwertyMode = MutableStateFlow<QWERTYMode>(QWERTYMode.Default)
     private val qwertyMode: StateFlow<QWERTYMode> = _qwertyMode.asStateFlow()
 
+    private var isTablet = false
+
     init {
         isClickable = true
         isFocusable = true
@@ -102,6 +104,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         binding = QwertyLayoutBinding.inflate(inflater, this)
 
         qwertyKeyMap = QWERTYKeyMap()
+
+        isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
 
         scope.launch {
             launch {
@@ -512,6 +516,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+
+    fun resetQWERTYKeyboard() {
+        clearShiftCaps()
+        _qwertyMode.update { QWERTYMode.Default }
+    }
+
     /**
      * Handle a new pointer DOWN event (when it is not suppressed).
      */
@@ -613,6 +623,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * Show a PopupWindow “preview” above the given key‐View.
      */
     private fun showKeyPreview(view: View) {
+        if (isTablet) return
         dismissKeyPreview()
         val qwertyMode = qwertyMode.value
 
