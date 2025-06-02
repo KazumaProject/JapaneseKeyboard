@@ -44,8 +44,11 @@ import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
+import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -135,12 +138,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private val _inputString = MutableStateFlow("")
+    private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
     private val suggestionFlag = _suggestionFlag.asSharedFlow()
     private val _suggestionViewStatus = MutableStateFlow(true)
+    private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
     private val _keyboardSymbolViewState = MutableStateFlow(false)
+    private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
+    private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
@@ -275,6 +282,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
                 setSymbolKeyboard(mainView)
+                setQWERTYKeyboard(mainView)
                 if (isTablet == true) {
                     setTabletKeyListeners(mainView)
                 } else {
@@ -470,9 +478,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         // 5) tail 無し & _inputString が残っている → 後片付け
-        if (_inputString.value.isNotEmpty()) {
+        if (inputString.value.isNotEmpty()) {
             _inputString.update { "" }
-            finishComposingText()
             setComposingText("", 0)
         }
     }
@@ -484,7 +491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
-                    val insertString = _inputString.value
+                    val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     when (gestureType) {
@@ -552,7 +559,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
-                    val insertString = _inputString.value
+                    val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     when (gestureType) {
@@ -815,7 +822,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
                     isSpaceKeyLongPressed = true
                     showKeyboardPicker()
@@ -867,7 +874,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun cancelHenkanByLongPressDeleteKey() {
-        val insertString = _inputString.value
+        val insertString = inputString.value
         val selectedSuggestion = suggestionAdapter?.suggestions?.getOrNull(suggestionClickNum)
 
         deleteKeyLongKeyPressed.set(true)
@@ -911,7 +918,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     CandidateShowFlag.Updating -> {
-                        val inputString = _inputString.value
+                        val inputString = inputString.value
                         setSuggestionOnView(mainView, inputString)
                     }
                 }
@@ -920,7 +927,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
-            _suggestionViewStatus.asStateFlow().collectLatest { isVisible ->
+            suggestionViewStatus.collectLatest { isVisible ->
                 updateSuggestionViewVisibility(mainView, isVisible)
             }
         }
@@ -950,8 +957,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
-            _inputString.asStateFlow().collectLatest { inputString ->
-                processInputString(inputString, mainView)
+            qwertyMode.collectLatest { state ->
+                setKeyboardSize()
+                when (state) {
+                    TenKeyQWERTYMode.Default -> {
+                        if (isTablet == true) {
+                            animateViewVisibility(
+                                mainView.tabletView,
+                                true
+                            )
+                        } else {
+                            animateViewVisibility(
+                                mainView.keyboardView,
+                                true
+                            )
+                        }
+                        animateViewVisibility(
+                            mainView.qwertyView,
+                            false
+                        )
+                    }
+
+                    TenKeyQWERTYMode.TenKeyQWERTY -> {
+                        animateViewVisibility(
+                            mainView.qwertyView,
+                            true
+                        )
+                        if (isTablet == true) {
+                            animateViewVisibility(
+                                mainView.tabletView,
+                                false
+                            )
+                        } else {
+                            animateViewVisibility(
+                                mainView.keyboardView,
+                                false
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        launch {
+            inputString.collectLatest { string ->
+                processInputString(string, mainView)
             }
         }
     }
@@ -959,8 +1009,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
+        val qwertyMode = qwertyMode.value
         animateViewVisibility(
-            if (isTablet == true) mainView.tabletView else mainView.keyboardView,
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) mainView.qwertyView else
+                if (isTablet == true) mainView.tabletView else mainView.keyboardView,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
@@ -1035,23 +1087,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun processInputString(
-        inputString: String, mainView: MainLayoutBinding,
+        string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $inputString stringTail: $stringInTail")
-        if (inputString.isNotEmpty()) {
-            val spannableString = SpannableString(inputString + stringInTail.get())
-            setComposingTextPreEdit(inputString, spannableString)
+        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail")
+        if (string.isNotEmpty()) {
+            val spannableString = SpannableString(string + stringInTail.get())
+            val isQwerty = qwertyMode.value
+            if (isQwerty == TenKeyQWERTYMode.TenKeyQWERTY) {
+                setComposingTextAfterEdit(string, spannableString)
+                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                return
+            }
+            setComposingTextPreEdit(string, spannableString)
             _suggestionFlag.emit(CandidateShowFlag.Updating)
             delay((delayTime ?: 1000).toLong())
             val henkanValue = isHenkan.get()
             val deleteLongPressUp = onDeleteLongPressUp.get()
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
-            val inputStringAfterDelay = _inputString.value
+            val inputStringAfterDelay = inputString.value
+            if (inputStringAfterDelay != string) return
             if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
-                setComposingTextAfterEdit(inputStringAfterDelay, spannableString)
+                setComposingTextAfterEdit(string, spannableString)
             }
         } else {
             if (stringInTail.get().isNotEmpty()) {
@@ -1114,7 +1173,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPersonName,
                         InputTypeForIME.TextPhonetic,
                         InputTypeForIME.TextWebEditText,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1127,7 +1186,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextImeMultiLine,
                         InputTypeForIME.TextShortMessage,
                         InputTypeForIME.TextLongMessage,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1170,7 +1229,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPassword,
                         InputTypeForIME.TextVisiblePassword,
                         InputTypeForIME.TextWebPassword,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeEnglish)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1196,7 +1255,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.Date,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeNumber)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(false)
@@ -1221,7 +1280,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPersonName,
                         InputTypeForIME.TextPhonetic,
                         InputTypeForIME.TextWebEditText,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1234,7 +1293,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextImeMultiLine,
                         InputTypeForIME.TextShortMessage,
                         InputTypeForIME.TextLongMessage,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1277,7 +1336,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.TextPassword,
                         InputTypeForIME.TextVisiblePassword,
                         InputTypeForIME.TextWebPassword,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeEnglish)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
@@ -1303,7 +1362,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.Date,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
-                        -> {
+                            -> {
                             currentInputMode.set(InputMode.ModeNumber)
                             setInputModeSwitchState()
                             setSideKeyPreviousState(false)
@@ -1325,7 +1384,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         suggestionAdapter.apply {
             this?.setOnItemClickListener { candidate, position ->
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 val currentInputMode =
                     if (isTablet == true) mainView.tabletView.currentInputMode else mainView.keyboardView.currentInputMode
                 vibrate()
@@ -1337,7 +1396,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             }
             this?.setOnItemLongClickListener { candidate, _ ->
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 setCandidateClipboardLongClick(candidate, insertString)
             }
         }
@@ -1346,16 +1405,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isFocusable = false
             addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
                 suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && _inputString.value.isNotBlank() && _inputString.value.isNotEmpty()) {
-                        if (_suggestionViewStatus.value) {
+                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
+                        if (suggestionViewStatus.value) {
                             _suggestionViewStatus.update { false }
                         }
                     }
                 }
             }, onSwipeUp = {
                 suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && _inputString.value.isNotBlank() && _inputString.value.isNotEmpty()) {
-                        if (!_suggestionViewStatus.value) {
+                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
+                        if (!suggestionViewStatus.value) {
                             _suggestionViewStatus.update { true }
                         }
                     }
@@ -1416,6 +1475,117 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 override fun onClick(symbol: String) {
                     vibrate()
                     commitText(symbol, 1)
+                }
+            })
+        }
+    }
+
+    private fun setQWERTYKeyboard(
+        mainView: MainLayoutBinding
+    ) {
+        mainView.qwertyView.apply {
+            setOnQWERTYKeyListener(object : QWERTYKeyListener {
+                override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
+                    Timber.d("Pressed Key: $qwertyKey")
+                    when (vibrationTimingStr) {
+                        "both" -> {
+                            vibrate()
+                        }
+
+                        "press" -> {
+                            vibrate()
+                        }
+
+                        "release" -> {
+
+                        }
+                    }
+                    deleteLongPressJob?.cancel()
+                }
+
+                override fun onReleasedQWERTYKey(
+                    qwertyKey: QWERTYKey,
+                    tap: Char?,
+                    variations: List<Char>?
+                ) {
+                    when (vibrationTimingStr) {
+                        "both" -> {
+                            vibrate()
+                        }
+
+                        "press" -> {
+
+                        }
+
+                        "release" -> {
+
+                        }
+                    }
+                    val insertString = inputString.value
+                    val sb = StringBuilder()
+                    val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
+                    when (qwertyKey) {
+                        QWERTYKey.QWERTYKeyNotSelect -> {}
+                        QWERTYKey.QWERTYKeyShift -> {}
+                        QWERTYKey.QWERTYKeyDelete -> {
+                            if (!deleteKeyLongKeyPressed.get()) {
+                                beginBatchEdit()
+                                handleDeleteKeyTap(insertString, suggestionList)
+                                endBatchEdit()
+                            }
+                            stopDeleteLongPress()
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
+                            _tenKeyQWERTYMode.update {
+                                TenKeyQWERTYMode.Default
+                            }
+                            _inputString.update { "" }
+                            finishComposingText()
+                            setComposingText("", 0)
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchMode -> {
+
+                        }
+
+                        QWERTYKey.QWERTYKeySpace -> {
+                            if (!isSpaceKeyLongPressed) {
+                                handleSpaceKeyClickInQWERTY(insertString, mainView)
+                            }
+                            isSpaceKeyLongPressed = false
+                        }
+
+                        QWERTYKey.QWERTYKeyReturn -> {
+                            if (insertString.isNotEmpty()) {
+                                handleNonEmptyInputEnterKey(suggestionList, mainView, insertString)
+                            } else {
+                                handleEmptyInputEnterKey(mainView)
+                            }
+                        }
+
+                        else -> {
+                            isContinuousTapInputEnabled.set(true)
+                            lastFlickConvertedNextHiragana.set(true)
+                            handleTap(tap, insertString, sb, mainView)
+                        }
+                    }
+                }
+
+                override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
+                    when (qwertyKey) {
+                        QWERTYKey.QWERTYKeyDelete -> {
+                            onDeleteLongPressUp.set(true)
+                            deleteLongPress()
+                            _dakutenPressed.value = false
+                            englishSpaceKeyPressed.set(false)
+                            deleteKeyLongKeyPressed.set(true)
+                        }
+
+                        else -> {
+
+                        }
+                    }
                 }
             })
         }
@@ -1645,6 +1815,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { "" }
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
@@ -2052,7 +2223,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (deleteLongPressJob?.isActive == true) return
         deleteLongPressJob = scope.launch {
             while (isActive && deleteKeyLongKeyPressed.get()) {
-                val current = _inputString.value
+                val current = inputString.value
                 val tailIsEmpty = stringInTail.get().isEmpty()
 
                 if (current.isEmpty()) {
@@ -2072,7 +2243,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             enableContinuousTapInput()
 
-            val flag = if (_inputString.value.isEmpty()) CandidateShowFlag.Idle
+            val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
             else CandidateShowFlag.Updating
             _suggestionFlag.emit(flag)
         }
@@ -2096,7 +2267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextImeMultiLine,
             InputTypeForIME.TextShortMessage,
             InputTypeForIME.TextLongMessage,
-            -> {
+                -> {
                 commitText("\n", 1)
             }
 
@@ -2122,7 +2293,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.TextWebPassword,
             InputTypeForIME.TextNotCursorUpdate,
             InputTypeForIME.TextEditTextInWebView,
-            -> {
+                -> {
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
                     KeyEvent(
@@ -2147,7 +2318,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 performEditorAction(EditorInfo.IME_ACTION_DONE)
             }
 
@@ -2215,6 +2386,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         resetFlagsKeySpace()
     }
+
+    private fun handleSpaceKeyClickInQWERTY(
+        insertString: String,
+        mainView: MainLayoutBinding
+    ) {
+        if (insertString.isNotBlank()) {
+            mainView.apply {
+                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+            }
+        } else {
+            if (stringInTail.get().isNotEmpty()) return
+            setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+        }
+        resetFlagsKeySpace()
+    }
+
 
     private fun handleJapaneseModeSpaceKey(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
@@ -2430,7 +2617,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             while (isActive && leftCursorKeyLongKeyPressed.get() && !onLeftKeyLongPressUp.get()) {
 
-                val insertString = _inputString.value
+                val insertString = inputString.value
 
                 // tail があり composing が空 → Idle で抜ける
                 if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
@@ -2448,7 +2635,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             _suggestionFlag.emit(
                 finalSuggestionFlag
-                    ?: if (_inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
+                    ?: if (inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
             )
         }
     }
@@ -2459,7 +2646,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             var finalSuggestionFlag: CandidateShowFlag? = null
             while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
 
-                val insertString = _inputString.value
+                val insertString = inputString.value
                 if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Updating
                     break
@@ -2469,7 +2656,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             _suggestionFlag.emit(
                 finalSuggestionFlag
-                    ?: if (_inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
+                    ?: if (inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
             )
 
         }
@@ -2688,7 +2875,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 sendKeyChar(charToSend)
             }
 
@@ -2726,7 +2913,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             InputTypeForIME.Date,
             InputTypeForIME.Datetime,
             InputTypeForIME.Time,
-            -> {
+                -> {
                 sendKeyChar(charToSend)
             }
 
@@ -2754,8 +2941,40 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    private fun switchToQWERTY() {
+        setKeyboardSize()
+        mainLayoutBinding?.let { mainView ->
+            mainView.apply {
+                qwertyView.isVisible = true
+                keyboardView.isVisible = false
+                tabletView.isVisible = false
+                keyboardSymbolView.isVisible = false
+            }
+        }
+    }
+
+    private fun switchToTenKey() {
+        setKeyboardSize()
+        mainLayoutBinding?.let { mainView ->
+            mainView.apply {
+                qwertyView.isVisible = false
+                keyboardView.isVisible = true
+            }
+        }
+    }
+
+    private fun switchToTabletKey() {
+        setKeyboardSize()
+        mainLayoutBinding?.let { mainView ->
+            mainView.apply {
+                tabletView.isVisible = false
+                keyboardView.isVisible = true
+            }
+        }
+    }
+
     private fun dakutenSmallLetter(
-        sb: StringBuilder, insertString: String
+        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)
@@ -2768,11 +2987,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
+        } else {
+            _tenKeyQWERTYMode.update {
+                TenKeyQWERTYMode.TenKeyQWERTY
+            }
+            mainView.qwertyView.resetQWERTYKeyboard()
         }
     }
 
     private fun smallBigLetterConversionEnglish(
-        sb: StringBuilder, insertString: String
+        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)
@@ -2786,6 +3010,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
+        } else {
+            _tenKeyQWERTYMode.update {
+                TenKeyQWERTYMode.TenKeyQWERTY
+            }
+            mainView.qwertyView.resetQWERTYKeyboard()
         }
     }
 
@@ -2800,28 +3029,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.tabletView.let {
                 when (it.currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
-                        dakutenSmallLetter(sb, insertString)
+                        dakutenSmallLetter(sb, insertString, mainView)
                     }
 
                     InputMode.ModeEnglish -> {
-                        smallBigLetterConversionEnglish(sb, insertString)
+                        smallBigLetterConversionEnglish(sb, insertString, mainView)
                     }
 
                     InputMode.ModeNumber -> {
-                        if (isFlick) {
-                            char?.let { c ->
-                                sendCharFlick(
-                                    charToSend = c, insertString = insertString, sb = sb
-                                )
-                            }
-                            isContinuousTapInputEnabled.set(true)
-                            lastFlickConvertedNextHiragana.set(true)
-                        } else {
-                            char?.let { c ->
-                                sendCharTap(
-                                    charToSend = c, insertString = insertString, sb = sb
-                                )
-                            }
+                        _tenKeyQWERTYMode.update {
+                            TenKeyQWERTYMode.TenKeyQWERTY
                         }
                     }
                 }
@@ -2830,11 +3047,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.keyboardView.let {
                 when (it.currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
-                        dakutenSmallLetter(sb, insertString)
+                        dakutenSmallLetter(sb, insertString, mainView)
                     }
 
                     InputMode.ModeEnglish -> {
-                        smallBigLetterConversionEnglish(sb, insertString)
+                        smallBigLetterConversionEnglish(sb, insertString, mainView)
                     }
 
                     InputMode.ModeNumber -> {
@@ -3033,108 +3250,111 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setKeyboardSize() {
-        val heightFromPreference = appPreference.keyboard_height ?: 280
-        val widthFromPreference = appPreference.keyboard_width ?: 100
-        val keyboardPositionPreference = appPreference.keyboard_position ?: true
+        // 1) Early-return if there's no binding
+        val binding = mainLayoutBinding ?: return
+
+        // 2) Read preferences (with defaults)
+        val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
+        val positionPref = appPreference.keyboard_position ?: true
+
+        // 3) Screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
-        val orientation = resources.configuration.orientation
-        val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenHeight = resources.displayMetrics.heightPixels
+        val isPortrait =
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-        val maxLandscapeHeight = 200
+        // 4) Clamp height: [210..280] in portrait, ≤ 200 in landscape
         val clampedHeight = if (isPortrait) {
-            heightFromPreference.coerceIn(210, 280)
+            heightPref.coerceIn(210, 280)
         } else {
-            heightFromPreference.coerceAtMost(maxLandscapeHeight)
+            heightPref.coerceAtMost(200)
         }
-        val heightInPx = (clampedHeight * density).toInt()
-        val widthInPx = if (isPortrait) {
-            if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT
-            else (screenWidth * (widthFromPreference / 100f)).toInt()
-        } else {
-            if (isTablet == true) {
-                if (widthFromPreference == 100) ViewGroup.LayoutParams.MATCH_PARENT else (screenWidth * (widthFromPreference / 100f)).toInt()
-            } else {
-                if (widthFromPreference == 100) (screenWidth * 0.8).toInt() else (screenWidth * 0.8 * (widthFromPreference / 100f)).toInt()
-            }
-        }
-        mainLayoutBinding?.apply {
-            if (isTablet == true) {
-                tabletView.apply {
-                    val params = layoutParams as FrameLayout.LayoutParams
-                    params.apply {
-                        height = heightInPx
-                        gravity = if (keyboardPositionPreference) {
-                            Gravity.BOTTOM or Gravity.END
-                        } else {
-                            Gravity.BOTTOM or Gravity.START
-                        }
-                    }
-                    layoutParams = params
-                }
-            } else {
-                keyboardView.apply {
-                    val params = layoutParams as FrameLayout.LayoutParams
-                    params.apply {
-                        height = heightInPx
-                        gravity = if (keyboardPositionPreference) {
-                            Gravity.BOTTOM or Gravity.END
-                        } else {
-                            Gravity.BOTTOM or Gravity.START
-                        }
-                    }
-                    layoutParams = params
-                }
-            }
-            candidatesRowView.apply {
-                val params = layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    height = heightInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
-                    }
-                }
-                layoutParams = params
-            }
-            keyboardSymbolView.apply {
-                val params = layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    height = heightInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
-                    }
-                }
-                layoutParams = params
-            }
-            suggestionViewParent.apply {
-                val params = suggestionViewParent.layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    bottomMargin = heightInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
-                    }
-                }
-                layoutParams = params
-            }
 
-            root.apply {
-                val params = root.layoutParams as FrameLayout.LayoutParams
-                params.apply {
-                    width = widthInPx
-                    gravity = if (keyboardPositionPreference) {
-                        Gravity.BOTTOM or Gravity.END
+        val qwertyMode = qwertyMode.value
+        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+            if (isPortrait) {
+                (280 * density).toInt()
+            } else {
+                (200 * density).toInt()
+            }
+        } else {
+            (clampedHeight * density).toInt()
+        }
+        // 5) Compute width in px (or MATCH_PARENT) based on orientation/tablet
+        val widthPx = if (isPortrait) {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            } else {
+                if (widthPref == 100) {
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                } else {
+                    (screenWidth * (widthPref / 100f)).toInt()
+                }
+            }
+        } else {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+                screenHeight
+            } else {
+                if (isTablet == true) {
+                    if (widthPref == 100) {
+                        ViewGroup.LayoutParams.MATCH_PARENT
                     } else {
-                        Gravity.BOTTOM or Gravity.START
+                        (screenWidth * (widthPref / 100f)).toInt()
+                    }
+                } else {
+                    // On non-tablet landscape, base width is 80% of screen
+                    val baseWidth = (screenWidth * 0.8).toInt()
+                    if (widthPref == 100) {
+                        baseWidth
+                    } else {
+                        (baseWidth * (widthPref / 100f)).toInt()
                     }
                 }
-                layoutParams = params
             }
+        }
+
+        // 6) Determine gravity once
+        val gravity = if (positionPref) {
+            Gravity.BOTTOM or Gravity.END
+        } else {
+            Gravity.BOTTOM or Gravity.START
+        }
+
+        // 7) Helper to apply height & gravity to any View whose layoutParams are FrameLayout.LayoutParams
+        fun applySize(view: View) {
+            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                params.height = heightPx
+                params.gravity = gravity
+                view.layoutParams = params
+            }
+        }
+
+        // 8) Update either tabletView or keyboardView (depending on isTablet)
+        if (isTablet == true) {
+            applySize(binding.tabletView)
+        } else {
+            applySize(binding.keyboardView)
+        }
+
+        // 9) The candidates row and symbol view use the same height & gravity
+        applySize(binding.candidatesRowView)
+        applySize(binding.keyboardSymbolView)
+        applySize(binding.qwertyView)
+
+        // 10) suggestionViewParent sits above the keyboard, so we adjust bottomMargin instead of height
+        (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            binding.suggestionViewParent.layoutParams = params
+        }
+
+        // 11) Finally, update root’s width and gravity
+        (binding.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.width = widthPx
+            params.gravity = gravity
+            binding.root.layoutParams = params
         }
     }
 

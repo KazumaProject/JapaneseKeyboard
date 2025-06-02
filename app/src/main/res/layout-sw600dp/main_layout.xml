@@ -61,8 +61,18 @@
         android:clickable="true"
         android:focusable="true"
         android:importantForAccessibility="yes"
-        android:visibility="visible"
-        android:paddingBottom="4dp"/>
+        android:paddingBottom="4dp"
+        android:visibility="visible" />
+
+    <com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
+        android:id="@+id/qwerty_view"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:clickable="true"
+        android:focusable="true"
+        android:importantForAccessibility="yes"
+        android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/candidates_row_view"

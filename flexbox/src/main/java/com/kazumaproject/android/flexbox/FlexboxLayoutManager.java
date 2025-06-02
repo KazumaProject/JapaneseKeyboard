@@ -2103,12 +2103,22 @@ public class FlexboxLayoutManager extends RecyclerView.LayoutManager implements 
         if (dimension > 0 && childSize != dimension) {
             return true;
         }
-        return !switch (specMode) {
-            case View.MeasureSpec.UNSPECIFIED -> true;
-            case View.MeasureSpec.AT_MOST -> specSize >= childSize;
-            case View.MeasureSpec.EXACTLY -> specSize == childSize;
-            default -> false;
-        };
+        boolean result;
+        switch (specMode) {
+            case View.MeasureSpec.UNSPECIFIED:
+                result = true;
+                break;
+            case View.MeasureSpec.AT_MOST:
+                result = (specSize >= childSize);
+                break;
+            case View.MeasureSpec.EXACTLY:
+                result = (specSize == childSize);
+                break;
+            default:
+                result = false;
+                break;
+        }
+        return !result;
     }
 
     private void clearFlexLines() {
