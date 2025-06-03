@@ -380,8 +380,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainLayoutBinding?.tabletView?.isVisible = true
             mainLayoutBinding?.keyboardView?.isVisible = false
         } else {
-            mainLayoutBinding?.keyboardView?.isVisible = true
-            mainLayoutBinding?.tabletView?.isVisible = false
+            if (qwertyMode.value == TenKeyQWERTYMode.Default) {
+                mainLayoutBinding?.apply {
+                    qwertyView.isVisible = false
+                    keyboardView.isVisible = true
+                    tabletView.isVisible = false
+                }
+            } else {
+                mainLayoutBinding?.apply {
+                    qwertyView.isVisible = true
+                    keyboardView.isVisible = false
+                    tabletView.isVisible = false
+                }
+            }
         }
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
@@ -412,6 +423,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         actionInDestroy()
         System.gc()
         isTablet = null
+    }
+
+    override fun onWindowHidden() {
+        super.onWindowHidden()
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -962,37 +978,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (state) {
                     TenKeyQWERTYMode.Default -> {
                         if (isTablet == true) {
-                            animateViewVisibility(
-                                mainView.tabletView,
-                                true
-                            )
+                            mainView.tabletView.isVisible = true
                         } else {
-                            animateViewVisibility(
-                                mainView.keyboardView,
-                                true
-                            )
+                            mainView.keyboardView.isVisible = true
                         }
-                        animateViewVisibility(
-                            mainView.qwertyView,
-                            false
-                        )
+                        mainView.qwertyView.isVisible = false
                     }
 
                     TenKeyQWERTYMode.TenKeyQWERTY -> {
-                        animateViewVisibility(
-                            mainView.qwertyView,
-                            true
-                        )
+                        mainView.qwertyView.isVisible = true
                         if (isTablet == true) {
-                            animateViewVisibility(
-                                mainView.tabletView,
-                                false
-                            )
+                            mainView.tabletView.isVisible = false
                         } else {
-                            animateViewVisibility(
-                                mainView.keyboardView,
-                                false
-                            )
+                            mainView.keyboardView.isVisible = false
                         }
                     }
                 }
