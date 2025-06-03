@@ -34,6 +34,9 @@ import com.kazumaproject.core.domain.state.PressedKey
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
+import com.kazumaproject.tenkey.databinding.KeyboardLayoutBinding
+import com.kazumaproject.tenkey.databinding.PopupLayoutActiveBinding
+import com.kazumaproject.tenkey.databinding.PopupLayoutBinding
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
 import com.kazumaproject.tenkey.extensions.setPopUpWindowCenter
 import com.kazumaproject.tenkey.extensions.setPopUpWindowFlickBottom
@@ -76,106 +79,163 @@ import kotlin.math.abs
 class TenKey(context: Context, attributeSet: AttributeSet) :
     ConstraintLayout(context, attributeSet), View.OnTouchListener {
 
-    private lateinit var keyA: AppCompatButton
-    private lateinit var keyKA: AppCompatButton
-    private lateinit var keySA: AppCompatButton
-    private lateinit var keyTA: AppCompatButton
-    private lateinit var keyNA: AppCompatButton
-    private lateinit var keyHA: AppCompatButton
-    private lateinit var keyMA: AppCompatButton
-    private lateinit var keyYA: AppCompatButton
-    private lateinit var keyRA: AppCompatButton
-    private lateinit var keyDakutenSmall: AppCompatImageButton
-    private lateinit var keyWA: AppCompatButton
-    private lateinit var keyKutouten: AppCompatButton
+    // ViewBinding for the main keyboard layout
+    private val binding: KeyboardLayoutBinding
 
-    private lateinit var sideKeyPreviousChar: AppCompatImageButton
-    private lateinit var sideKeyCursorLeft: AppCompatImageButton
-    private lateinit var sideKeyCursorRight: AppCompatImageButton
-    private lateinit var sideKeySymbol: AppCompatImageButton
-    private lateinit var sideKeyInputModeSwitch: InputModeSwitch
-    private lateinit var sideKeyDelete: AppCompatImageButton
-    private lateinit var sideKeySpace: AppCompatImageButton
-    private lateinit var sideKeyEnter: AppCompatImageButton
-
-    private lateinit var popupWindowActive: PopupWindow
-    private lateinit var bubbleViewActive: KeyWindowLayout
-    private lateinit var popTextActive: MaterialTextView
-    private lateinit var popupWindowLeft: PopupWindow
-    private lateinit var bubbleViewLeft: KeyWindowLayout
-    private lateinit var popTextLeft: MaterialTextView
-    private lateinit var popupWindowTop: PopupWindow
-    private lateinit var bubbleViewTop: KeyWindowLayout
-    private lateinit var popTextTop: MaterialTextView
-    private lateinit var popupWindowRight: PopupWindow
-    private lateinit var bubbleViewRight: KeyWindowLayout
-    private lateinit var popTextRight: MaterialTextView
-    private lateinit var popupWindowBottom: PopupWindow
-    private lateinit var bubbleViewBottom: KeyWindowLayout
-    private lateinit var popTextBottom: MaterialTextView
-    private lateinit var popupWindowCenter: PopupWindow
-    private lateinit var bubbleViewCenter: KeyWindowLayout
-    private lateinit var popTextCenter: MaterialTextView
-
-    private lateinit var pressedKey: PressedKey
-
-    private var flickListener: FlickListener? = null
-    private var longPressListener: LongPressListener? = null
-
+    // KeyMap to decide which character to send on tap/flick
     private var keyMap: KeyMap
 
+    // For handling long-press detection
     private var longPressJob: Job? = null
     private var isLongPressed = false
 
+    // Track which key is currently pressed
+    private lateinit var pressedKey: PressedKey
+
+    // External listeners
+    private var flickListener: FlickListener? = null
+    private var longPressListener: LongPressListener? = null
+
+    // Current input mode (Japanese / English / Number)
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
 
-    fun setOnFlickListener(flickListener: FlickListener) {
-        this.flickListener = flickListener
-    }
+    // Popups: active (center) and directional
+    private val popupWindowActive: PopupWindow
+    private val bubbleViewActive: KeyWindowLayout
+    private val popTextActive: MaterialTextView
 
-    fun setOnLongPressListener(longPressListener: LongPressListener) {
-        this.longPressListener = longPressListener
-    }
+    private val popupWindowLeft: PopupWindow
+    private val bubbleViewLeft: KeyWindowLayout
+    private val popTextLeft: MaterialTextView
 
-    fun setPaddingToSideKeySymbol(paddingSize: Int) {
-        sideKeySymbol.setPadding(paddingSize)
-    }
+    private val popupWindowTop: PopupWindow
+    private val bubbleViewTop: KeyWindowLayout
+    private val popTextTop: MaterialTextView
 
-    fun setPaddingToSideKeyLeftCursor(paddingSize: Int) {
-        sideKeyCursorLeft.setPadding(paddingSize)
-    }
+    private val popupWindowRight: PopupWindow
+    private val bubbleViewRight: KeyWindowLayout
+    private val popTextRight: MaterialTextView
 
-    fun setPaddingToSideKeyRightCursor(paddingSize: Int) {
-        sideKeyCursorRight.setPadding(paddingSize)
-    }
+    private val popupWindowBottom: PopupWindow
+    private val bubbleViewBottom: KeyWindowLayout
+    private val popTextBottom: MaterialTextView
 
-    fun setPaddingToSideKeyDelete(paddingSize: Int) {
-        sideKeyDelete.setPadding(paddingSize)
-    }
+    private val popupWindowCenter: PopupWindow
+    private val bubbleViewCenter: KeyWindowLayout
+    private val popTextCenter: MaterialTextView
 
-    fun setPaddingToSideKeyEnter(paddingSize: Int) {
-        sideKeyEnter.setPadding(paddingSize)
-    }
-
-    fun setPaddingToSideKeyPreviousChar(paddingSize: Int) {
-        sideKeyPreviousChar.setPadding(paddingSize)
-    }
-
-    private fun release() {
-        flickListener = null
-        longPressListener = null
-        longPressJob?.cancel()
-        longPressJob = null
-    }
+    // Map each Key enum to its corresponding View (Button/ImageButton/Switch)
+    private var listKeys: Map<Key, Any>
 
     init {
-        View.inflate(context, R.layout.keyboard_layout, this)
-        declareKeys()
-        declarePopupWindows()
-        initialKeys()
-        setViewsNotFocusable()
+        // Inflate the keyboard layout with ViewBinding (root is <merge>, so attachToParent = true)
+        val inflater = LayoutInflater.from(context)
+        binding = KeyboardLayoutBinding.inflate(inflater, this)
+
+        // Initialize keyMap
         keyMap = KeyMap()
+
+        // Prepare popups using their own bindings
+        // --- Active popup (center) ---
+        val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
+        popupWindowActive = PopupWindow(
+            activeBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewActive = activeBinding.bubbleLayoutActive
+        popTextActive = activeBinding.popupTextActive
+
+        // --- Left popup ---
+        val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+        popupWindowLeft = PopupWindow(
+            leftBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewLeft = leftBinding.bubbleLayout
+        popTextLeft = leftBinding.popupText
+
+        // --- Top popup ---
+        val topBinding = PopupLayoutBinding.inflate(inflater, null, false)
+        popupWindowTop = PopupWindow(
+            topBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewTop = topBinding.bubbleLayout
+        popTextTop = topBinding.popupText
+
+        // --- Right popup ---
+        val rightBinding = PopupLayoutBinding.inflate(inflater, null, false)
+        popupWindowRight = PopupWindow(
+            rightBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewRight = rightBinding.bubbleLayout
+        popTextRight = rightBinding.popupText
+
+        // --- Bottom popup ---
+        val bottomBinding = PopupLayoutBinding.inflate(inflater, null, false)
+        popupWindowBottom = PopupWindow(
+            bottomBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewBottom = bottomBinding.bubbleLayout
+        popTextBottom = bottomBinding.popupText
+
+        // --- Center popup (for long‐press + flick previews) ---
+        val centerBinding = PopupLayoutBinding.inflate(inflater, null, false)
+        popupWindowCenter = PopupWindow(
+            centerBinding.root,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            false
+        )
+        bubbleViewCenter = centerBinding.bubbleLayout
+        popTextCenter = centerBinding.popupText
+
+        // Build the map from Key enum to actual View references
+        listKeys = mapOf(
+            Key.KeyA to binding.key1,
+            Key.KeyKA to binding.key2,
+            Key.KeySA to binding.key3,
+            Key.KeyTA to binding.key4,
+            Key.KeyNA to binding.key5,
+            Key.KeyHA to binding.key6,
+            Key.KeyMA to binding.key7,
+            Key.KeyYA to binding.key8,
+            Key.KeyRA to binding.key9,
+            Key.KeyWA to binding.key11,
+            Key.KeyKutouten to binding.key12,
+            Key.KeyDakutenSmall to binding.keySmallLetter,
+            Key.SideKeyPreviousChar to binding.keyReturn,
+            Key.SideKeyCursorLeft to binding.keySoftLeft,
+            Key.SideKeyCursorRight to binding.keyMoveCursorRight,
+            Key.SideKeySymbol to binding.sideKeySymbol,
+            Key.SideKeyInputMode to binding.keySwitchKeyMode,
+            Key.SideKeyDelete to binding.keyDelete,
+            Key.SideKeySpace to binding.keySpace,
+            Key.SideKeyEnter to binding.keyEnter
+        )
+
+        // Make all key views non-focusable so touches go directly to onTouch
+        setViewsNotFocusable()
+
+        // Initially display Japanese text on main keys
+        binding.key12.setTenKeyTextJapanese(binding.key12.id)
+
+        // Set default drawable for small/dakuten key
         setBackgroundSmallLetterKey()
+
+        // Attach this view as its own touch listener
         this.setOnTouchListener(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             this.focusable = View.NOT_FOCUSABLE
@@ -184,131 +244,27 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
-    private fun declareKeys() {
-        keyA = findViewById(R.id.key_1)
-        keyKA = findViewById(R.id.key_2)
-        keySA = findViewById(R.id.key_3)
-        keyTA = findViewById(R.id.key_4)
-        keyNA = findViewById(R.id.key_5)
-        keyHA = findViewById(R.id.key_6)
-        keyMA = findViewById(R.id.key_7)
-        keyYA = findViewById(R.id.key_8)
-        keyRA = findViewById(R.id.key_9)
-        keyDakutenSmall = findViewById(R.id.key_small_letter)
-        keyWA = findViewById(R.id.key_11)
-        keyKutouten = findViewById(R.id.key_12)
-
-        sideKeyPreviousChar = findViewById(R.id.key_return)
-        sideKeyCursorLeft = findViewById(R.id.key_soft_left)
-        sideKeyCursorRight = findViewById(R.id.key_move_cursor_right)
-        sideKeyEnter = findViewById(R.id.key_enter)
-        sideKeyDelete = findViewById(R.id.key_delete)
-        sideKeySpace = findViewById(R.id.key_space)
-        sideKeySymbol = findViewById(R.id.sideKey_symbol)
-        sideKeyInputModeSwitch = findViewById(R.id.key_switch_key_mode)
+    /** Allow setting an external FlickListener **/
+    fun setOnFlickListener(flickListener: FlickListener) {
+        this.flickListener = flickListener
     }
 
-    @SuppressLint("InflateParams")
-    private fun declarePopupWindows() {
-        val mPopWindowActive = PopupWindow(context)
-        val popupViewActive =
-            LayoutInflater.from(context).inflate(R.layout.popup_layout_active, null)
-        mPopWindowActive.contentView = popupViewActive
-
-        val mPopWindowLeft = PopupWindow(context)
-        val mPopWindowTop = PopupWindow(context)
-        val mPopWindowRight = PopupWindow(context)
-        val mPopWindowBottom = PopupWindow(context)
-        val mPopWindowCenter = PopupWindow(context)
-
-        val popupViewLeft = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
-        val popupViewTop = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
-        val popupViewRight = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
-        val popupViewBottom = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
-        val popupViewCenter = LayoutInflater.from(context).inflate(R.layout.popup_layout, null)
-
-        mPopWindowLeft.contentView = popupViewLeft
-        mPopWindowTop.contentView = popupViewTop
-        mPopWindowRight.contentView = popupViewRight
-        mPopWindowBottom.contentView = popupViewBottom
-        mPopWindowCenter.contentView = popupViewCenter
-
-        popupWindowActive = mPopWindowActive
-        popupWindowLeft = mPopWindowLeft
-        popupWindowTop = mPopWindowTop
-        popupWindowRight = mPopWindowRight
-        popupWindowBottom = mPopWindowBottom
-        popupWindowCenter = mPopWindowCenter
-
-        bubbleViewActive = mPopWindowActive.contentView.findViewById(R.id.bubble_layout_active)
-        popTextActive = mPopWindowActive.contentView.findViewById(R.id.popup_text_active)
-        bubbleViewLeft = mPopWindowLeft.contentView.findViewById(R.id.bubble_layout)
-        popTextLeft = mPopWindowLeft.contentView.findViewById(R.id.popup_text)
-        bubbleViewTop = mPopWindowTop.contentView.findViewById(R.id.bubble_layout)
-        popTextTop = mPopWindowTop.contentView.findViewById(R.id.popup_text)
-        bubbleViewRight = mPopWindowRight.contentView.findViewById(R.id.bubble_layout)
-        popTextRight = mPopWindowRight.contentView.findViewById(R.id.popup_text)
-        bubbleViewBottom = mPopWindowBottom.contentView.findViewById(R.id.bubble_layout)
-        popTextBottom = mPopWindowBottom.contentView.findViewById(R.id.popup_text)
-        bubbleViewCenter = mPopWindowCenter.contentView.findViewById(R.id.bubble_layout)
-        popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
+    /** Allow setting an external LongPressListener **/
+    fun setOnLongPressListener(longPressListener: LongPressListener) {
+        this.longPressListener = longPressListener
     }
 
-    private fun setViewsNotFocusable() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            keyA.focusable = View.NOT_FOCUSABLE
-            keyKA.focusable = View.NOT_FOCUSABLE
-            keySA.focusable = View.NOT_FOCUSABLE
-            keyTA.focusable = View.NOT_FOCUSABLE
-            keyNA.focusable = View.NOT_FOCUSABLE
-            keyHA.focusable = View.NOT_FOCUSABLE
-            keyMA.focusable = View.NOT_FOCUSABLE
-            keyYA.focusable = View.NOT_FOCUSABLE
-            keyRA.focusable = View.NOT_FOCUSABLE
-            keyDakutenSmall.focusable = View.NOT_FOCUSABLE
-            keyWA.focusable = View.NOT_FOCUSABLE
-            keyKutouten.focusable = View.NOT_FOCUSABLE
-
-            sideKeyPreviousChar.focusable = View.NOT_FOCUSABLE
-            sideKeyCursorLeft.focusable = View.NOT_FOCUSABLE
-            sideKeyCursorRight.focusable = View.NOT_FOCUSABLE
-            sideKeyEnter.focusable = View.NOT_FOCUSABLE
-            sideKeyDelete.focusable = View.NOT_FOCUSABLE
-            sideKeySpace.focusable = View.NOT_FOCUSABLE
-            sideKeySymbol.focusable = View.NOT_FOCUSABLE
-            sideKeyInputModeSwitch.focusable = View.NOT_FOCUSABLE
-        } else {
-            keyA.isFocusable = false
-            keyKA.isFocusable = false
-            keySA.isFocusable = false
-            keyTA.isFocusable = false
-            keyNA.isFocusable = false
-            keyHA.isFocusable = false
-            keyMA.isFocusable = false
-            keyYA.isFocusable = false
-            keyRA.isFocusable = false
-            keyDakutenSmall.isFocusable = false
-            keyWA.isFocusable = false
-            keyKutouten.isFocusable = false
-
-            sideKeyPreviousChar.isFocusable = false
-            sideKeyCursorLeft.isFocusable = false
-            sideKeyCursorRight.isFocusable = false
-            sideKeyEnter.isFocusable = false
-            sideKeyDelete.isFocusable = false
-            sideKeySpace.isFocusable = false
-            sideKeySymbol.isFocusable = false
-            sideKeyInputModeSwitch.isFocusable = false
-        }
-
+    /** Padding setters for side keys (symbol, cursors, delete, enter, previous char) **/
+    fun setPaddingToSideKeySymbol(paddingSize: Int) {
+        binding.sideKeySymbol.setPadding(paddingSize)
     }
 
-    private fun initialKeys() {
-        keyKutouten.setTenKeyTextJapanese(keyKutouten.id)
-    }
-
-    override fun onInterceptTouchEvent(event: MotionEvent?): Boolean {
-        return true
+    /** Clean up references when view is detached **/
+    private fun release() {
+        flickListener = null
+        longPressListener = null
+        longPressJob?.cancel()
+        longPressJob = null
     }
 
     override fun onDetachedFromWindow() {
@@ -316,14 +272,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         release()
     }
 
+    /** Intercept all touch events so we can handle them manually in onTouch **/
+    override fun onInterceptTouchEvent(event: MotionEvent?): Boolean {
+        return true
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
         if (view != null && event != null) {
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
-                    flickListener?.onFlick(
-                        GestureType.Down, key, null
-                    )
+                    flickListener?.onFlick(GestureType.Down, key, null)
+
                     pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         PressedKey(
                             key = key,
@@ -359,7 +320,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
-                                gestureType = gestureType, key = pressedKey.key, char = null
+                                gestureType = gestureType,
+                                key = pressedKey.key,
+                                char = null
                             )
                             if (pressedKey.key == Key.SideKeyInputMode) {
                                 handleClickInputModeSwitch()
@@ -371,31 +334,31 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 GestureType.Tap -> flickListener?.onFlick(
                                     gestureType = gestureType,
                                     key = pressedKey.key,
-                                    char = keyInfo.tap,
+                                    char = keyInfo.tap
                                 )
 
                                 GestureType.FlickLeft -> flickListener?.onFlick(
                                     gestureType = gestureType,
                                     key = pressedKey.key,
-                                    char = keyInfo.flickLeft,
+                                    char = keyInfo.flickLeft
                                 )
 
                                 GestureType.FlickTop -> flickListener?.onFlick(
                                     gestureType = gestureType,
                                     key = pressedKey.key,
-                                    char = keyInfo.flickTop,
+                                    char = keyInfo.flickTop
                                 )
 
                                 GestureType.FlickRight -> flickListener?.onFlick(
                                     gestureType = gestureType,
                                     key = pressedKey.key,
-                                    char = keyInfo.flickRight,
+                                    char = keyInfo.flickRight
                                 )
 
                                 GestureType.FlickBottom -> flickListener?.onFlick(
                                     gestureType = gestureType,
                                     key = pressedKey.key,
-                                    char = keyInfo.flickBottom,
+                                    char = keyInfo.flickBottom
                                 )
                             }
                         }
@@ -405,25 +368,21 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     val button = getButtonFromKey(pressedKey.key)
                     button?.let {
                         if (it is AppCompatButton) {
-                            if (it == sideKeySymbol) return false
+                            if (it == binding.sideKeySymbol) return false
                             when (currentInputMode.get()) {
-                                InputMode.ModeJapanese -> {
-                                    it.setTenKeyTextJapanese(it.id)
-                                }
-
-                                InputMode.ModeEnglish -> {
-                                    it.setTenKeyTextEnglish(it.id)
-                                }
-
-                                InputMode.ModeNumber -> {
-                                    it.setTenKeyTextNumber(it.id)
-                                }
+                                InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
+                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
+                                InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                             }
                         }
-                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
+                        if (it is AppCompatImageButton &&
+                            currentInputMode.get() == InputMode.ModeNumber &&
+                            it == binding.keySmallLetter
+                        ) {
                             it.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context, com.kazumaproject.core.R.drawable.number_small
+                                    context,
+                                    com.kazumaproject.core.R.drawable.number_small
                                 )
                             )
                         }
@@ -432,20 +391,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val gestureType =
-                        if (event.pointerCount == 1) getGestureType(event, 0) else getGestureType(
-                            event, pressedKey.pointer
-                        )
+                    val gestureType = if (event.pointerCount == 1) {
+                        getGestureType(event, 0)
+                    } else {
+                        getGestureType(event, pressedKey.pointer)
+                    }
                     when (gestureType) {
                         GestureType.Null -> {}
                         GestureType.Down -> {}
-                        GestureType.Tap -> {
-                            setTapInActionMove()
-                        }
-
-                        GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
-                            setFlickInActionMove(gestureType)
-                        }
+                        GestureType.Tap -> setTapInActionMove()
+                        GestureType.FlickLeft,
+                        GestureType.FlickTop,
+                        GestureType.FlickRight,
+                        GestureType.FlickBottom -> setFlickInActionMove(gestureType)
                     }
                     return false
                 }
@@ -461,20 +419,27 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         isLongPressed = false
                         val pointer = event.getPointerId(event.actionIndex)
                         val key = pressedKeyByMotionEvent(event, pointer)
-                        val gestureType2 = getGestureType(event, if (pointer == 0) 1 else 0)
-                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.get() == InputMode.ModeNumber) {
-                            keyDakutenSmall.setImageDrawable(
+                        val gestureType2 = getGestureType(
+                            event,
+                            if (pointer == 0) 1 else 0
+                        )
+                        if (pressedKey.key == Key.KeyDakutenSmall &&
+                            currentInputMode.get() == InputMode.ModeNumber
+                        ) {
+                            binding.keySmallLetter.setImageDrawable(
                                 ContextCompat.getDrawable(
-                                    context, com.kazumaproject.core.R.drawable.number_small
+                                    context,
+                                    com.kazumaproject.core.R.drawable.number_small
                                 )
                             )
                         }
-                        val keyInfo =
-                            currentInputMode.get()
-                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                        val keyInfo = currentInputMode.get()
+                            .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
-                                gestureType = gestureType2, key = pressedKey.key, char = null
+                                gestureType = gestureType2,
+                                key = pressedKey.key,
+                                char = null
                             )
                         } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType2) {
@@ -484,27 +449,25 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     flickListener?.onFlick(
                                         gestureType = gestureType2,
                                         key = pressedKey.key,
-                                        char = keyInfo.tap,
+                                        char = keyInfo.tap
                                     )
                                     val button = getButtonFromKey(pressedKey.key)
                                     button?.let {
                                         if (it is AppCompatButton) {
-                                            if (it == sideKeySymbol) return false
+                                            if (it == binding.sideKeySymbol) return false
                                             when (currentInputMode.get()) {
-                                                InputMode.ModeJapanese -> {
-                                                    it.setTenKeyTextJapanese(it.id)
-                                                }
+                                                InputMode.ModeJapanese -> it.setTenKeyTextJapanese(
+                                                    it.id
+                                                )
 
-                                                InputMode.ModeEnglish -> {
-                                                    it.setTenKeyTextEnglish(it.id)
-                                                }
-
-                                                InputMode.ModeNumber -> {
-                                                    it.setTenKeyTextNumber(it.id)
-                                                }
+                                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
+                                                InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                                             }
                                         }
-                                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
+                                        if (it is AppCompatImageButton &&
+                                            currentInputMode.get() == InputMode.ModeNumber &&
+                                            it == binding.keySmallLetter
+                                        ) {
                                             it.setImageDrawable(
                                                 ContextCompat.getDrawable(
                                                     context,
@@ -515,7 +478,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     }
                                 }
 
-                                GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
+                                GestureType.FlickLeft,
+                                GestureType.FlickTop,
+                                GestureType.FlickRight,
+                                GestureType.FlickBottom -> {
                                     setFlickActionPointerDown(keyInfo, gestureType2)
                                 }
                             }
@@ -523,24 +489,32 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         pressedKey = pressedKey.copy(
                             key = key,
                             pointer = pointer,
-                            initialX = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawX(0)
+                            initialX = if (pointer == 0) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    event.getRawX(0)
+                                } else {
+                                    event.getX(0)
+                                }
                             } else {
-                                event.getX(0)
-                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawX(1)
-                            } else {
-                                event.getX(1)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    event.getRawX(1)
+                                } else {
+                                    event.getX(1)
+                                }
                             },
-                            initialY = if (pointer == 0) if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawY(0)
+                            initialY = if (pointer == 0) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    event.getRawY(0)
+                                } else {
+                                    event.getY(0)
+                                }
                             } else {
-                                event.getY(0)
-                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                event.getRawY(1)
-                            } else {
-                                event.getY(1)
-                            },
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                    event.getRawY(1)
+                                } else {
+                                    event.getY(1)
+                                }
+                            }
                         )
                         setKeyPressed()
                         longPressJob = CoroutineScope(Dispatchers.Main).launch {
@@ -559,13 +533,17 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (event.pointerCount == 2) {
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                             resetLongPressAction()
-                            val gestureType =
-                                getGestureType(event, event.getPointerId(event.actionIndex))
+                            val gestureType = getGestureType(
+                                event,
+                                event.getPointerId(event.actionIndex)
+                            )
                             val keyInfo = currentInputMode.get()
                                 .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                             if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
-                                    gestureType = gestureType, key = pressedKey.key, char = null
+                                    gestureType = gestureType,
+                                    key = pressedKey.key,
+                                    char = null
                                 )
                                 if (pressedKey.key == Key.SideKeyInputMode) {
                                     handleClickInputModeSwitch()
@@ -577,248 +555,251 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     GestureType.Tap -> flickListener?.onFlick(
                                         gestureType = gestureType,
                                         key = pressedKey.key,
-                                        char = keyInfo.tap,
+                                        char = keyInfo.tap
                                     )
 
                                     GestureType.FlickLeft -> flickListener?.onFlick(
                                         gestureType = gestureType,
                                         key = pressedKey.key,
-                                        char = keyInfo.flickLeft,
+                                        char = keyInfo.flickLeft
                                     )
 
                                     GestureType.FlickTop -> flickListener?.onFlick(
                                         gestureType = gestureType,
                                         key = pressedKey.key,
-                                        char = keyInfo.flickTop,
+                                        char = keyInfo.flickTop
                                     )
 
                                     GestureType.FlickRight -> flickListener?.onFlick(
                                         gestureType = gestureType,
                                         key = pressedKey.key,
-                                        char = keyInfo.flickRight,
+                                        char = keyInfo.flickRight
                                     )
 
                                     GestureType.FlickBottom -> flickListener?.onFlick(
                                         gestureType = gestureType,
                                         key = pressedKey.key,
-                                        char = keyInfo.flickBottom,
+                                        char = keyInfo.flickBottom
                                     )
                                 }
                             }
                             val button = getButtonFromKey(pressedKey.key)
                             button?.let {
                                 if (it is AppCompatButton) {
-                                    if (it == sideKeySymbol) return false
+                                    if (it == binding.sideKeySymbol) return false
                                     it.isPressed = false
                                     when (currentInputMode.get()) {
-                                        InputMode.ModeJapanese -> {
-                                            it.setTenKeyTextJapanese(it.id)
-                                        }
-
-                                        InputMode.ModeEnglish -> {
-                                            it.setTenKeyTextEnglish(it.id)
-                                        }
-
-                                        InputMode.ModeNumber -> {
-                                            it.setTenKeyTextNumber(it.id)
-                                        }
+                                        InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
+                                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
+                                        InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                                     }
                                 }
                             }
-                            pressedKey = pressedKey.copy(
-                                key = Key.NotSelected,
-                            )
+                            pressedKey = pressedKey.copy(key = Key.NotSelected)
                             popupWindowActive.hide()
                         }
                         return false
-
                     }
                     return false
                 }
 
-                else -> {
-                    return false
-                }
+                else -> return false
             }
         }
         return false
     }
 
+    /** Handle orientation changes by re‐applying text on all keys **/
     override fun onConfigurationChanged(newConfig: Configuration?) {
         super.onConfigurationChanged(newConfig)
         newConfig?.apply {
-            initializeButtonTextOrientationChange(orientation)
-        }
-    }
-
-    private fun initializeButtonTextOrientationChange(orientation: Int) {
-        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-            setTextToAllButtons()
-        } else if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            setTextToAllButtons()
+            if (orientation == Configuration.ORIENTATION_PORTRAIT ||
+                orientation == Configuration.ORIENTATION_LANDSCAPE
+            ) {
+                setTextToAllButtons()
+            }
         }
     }
 
     private fun setTextToAllButtons() {
-        keyA.setTenKeyTextJapanese(keyA.id)
-        keyKA.setTenKeyTextJapanese(keyKA.id)
-        keySA.setTenKeyTextJapanese(keySA.id)
-        keyTA.setTenKeyTextJapanese(keyTA.id)
-        keyNA.setTenKeyTextJapanese(keyNA.id)
-        keyHA.setTenKeyTextJapanese(keyHA.id)
-        keyMA.setTenKeyTextJapanese(keyMA.id)
-        keyYA.setTenKeyTextJapanese(keyYA.id)
-        keyRA.setTenKeyTextJapanese(keyRA.id)
-        keyWA.setTenKeyTextJapanese(keyWA.id)
+        binding.key1.setTenKeyTextJapanese(binding.key1.id)
+        binding.key2.setTenKeyTextJapanese(binding.key2.id)
+        binding.key3.setTenKeyTextJapanese(binding.key3.id)
+        binding.key4.setTenKeyTextJapanese(binding.key4.id)
+        binding.key5.setTenKeyTextJapanese(binding.key5.id)
+        binding.key6.setTenKeyTextJapanese(binding.key6.id)
+        binding.key7.setTenKeyTextJapanese(binding.key7.id)
+        binding.key8.setTenKeyTextJapanese(binding.key8.id)
+        binding.key9.setTenKeyTextJapanese(binding.key9.id)
+        binding.key11.setTenKeyTextJapanese(binding.key11.id)
     }
 
+    /** Determine which Key enum corresponds to the touch coordinates **/
     private fun pressedKeyByMotionEvent(event: MotionEvent, pointer: Int): Key {
         val (x, y) = getRawCoordinates(event, pointer)
 
-        // Define all key rectangles here
         val keyRects = listOf(
             KeyRect(
                 Key.SideKeyPreviousChar,
-                sideKeyPreviousChar.layoutXPosition(),
-                sideKeyPreviousChar.layoutYPosition(),
-                sideKeyPreviousChar.layoutXPosition() + sideKeyPreviousChar.width,
-                sideKeyPreviousChar.layoutYPosition() + sideKeyPreviousChar.height
-            ), KeyRect(
+                binding.keyReturn.layoutXPosition(),
+                binding.keyReturn.layoutYPosition(),
+                binding.keyReturn.layoutXPosition() + binding.keyReturn.width,
+                binding.keyReturn.layoutYPosition() + binding.keyReturn.height
+            ),
+            KeyRect(
                 Key.KeyA,
-                keyA.layoutXPosition(),
-                keyA.layoutYPosition(),
-                keyA.layoutXPosition() + keyA.width,
-                keyA.layoutYPosition() + keyA.height
-            ), KeyRect(
+                binding.key1.layoutXPosition(),
+                binding.key1.layoutYPosition(),
+                binding.key1.layoutXPosition() + binding.key1.width,
+                binding.key1.layoutYPosition() + binding.key1.height
+            ),
+            KeyRect(
                 Key.KeyKA,
-                keyKA.layoutXPosition(),
-                keyKA.layoutYPosition(),
-                keyKA.layoutXPosition() + keyKA.width,
-                keyKA.layoutYPosition() + keyKA.height
-            ), KeyRect(
+                binding.key2.layoutXPosition(),
+                binding.key2.layoutYPosition(),
+                binding.key2.layoutXPosition() + binding.key2.width,
+                binding.key2.layoutYPosition() + binding.key2.height
+            ),
+            KeyRect(
                 Key.KeySA,
-                keySA.layoutXPosition(),
-                keySA.layoutYPosition(),
-                keySA.layoutXPosition() + keySA.width,
-                keySA.layoutYPosition() + keySA.height
-            ), KeyRect(
+                binding.key3.layoutXPosition(),
+                binding.key3.layoutYPosition(),
+                binding.key3.layoutXPosition() + binding.key3.width,
+                binding.key3.layoutYPosition() + binding.key3.height
+            ),
+            KeyRect(
                 Key.SideKeyDelete,
-                sideKeyDelete.layoutXPosition(),
-                sideKeyDelete.layoutYPosition(),
-                sideKeyDelete.layoutXPosition() + sideKeyDelete.width,
-                sideKeyDelete.layoutYPosition() + sideKeyDelete.height
-            ), KeyRect(
+                binding.keyDelete.layoutXPosition(),
+                binding.keyDelete.layoutYPosition(),
+                binding.keyDelete.layoutXPosition() + binding.keyDelete.width,
+                binding.keyDelete.layoutYPosition() + binding.keyDelete.height
+            ),
+            KeyRect(
                 Key.SideKeyCursorLeft,
-                sideKeyCursorLeft.layoutXPosition(),
-                sideKeyCursorLeft.layoutYPosition(),
-                sideKeyCursorLeft.layoutXPosition() + sideKeyCursorLeft.width,
-                sideKeyCursorLeft.layoutYPosition() + sideKeyCursorLeft.height
-            ), KeyRect(
+                binding.keySoftLeft.layoutXPosition(),
+                binding.keySoftLeft.layoutYPosition(),
+                binding.keySoftLeft.layoutXPosition() + binding.keySoftLeft.width,
+                binding.keySoftLeft.layoutYPosition() + binding.keySoftLeft.height
+            ),
+            KeyRect(
                 Key.KeyTA,
-                keyTA.layoutXPosition(),
-                keyTA.layoutYPosition(),
-                keyTA.layoutXPosition() + keyTA.width,
-                keyTA.layoutYPosition() + keyTA.height
-            ), KeyRect(
+                binding.key4.layoutXPosition(),
+                binding.key4.layoutYPosition(),
+                binding.key4.layoutXPosition() + binding.key4.width,
+                binding.key4.layoutYPosition() + binding.key4.height
+            ),
+            KeyRect(
                 Key.KeyNA,
-                keyNA.layoutXPosition(),
-                keyNA.layoutYPosition(),
-                keyNA.layoutXPosition() + keyNA.width,
-                keyNA.layoutYPosition() + keyNA.height
-            ), KeyRect(
+                binding.key5.layoutXPosition(),
+                binding.key5.layoutYPosition(),
+                binding.key5.layoutXPosition() + binding.key5.width,
+                binding.key5.layoutYPosition() + binding.key5.height
+            ),
+            KeyRect(
                 Key.KeyHA,
-                keyHA.layoutXPosition(),
-                keyHA.layoutYPosition(),
-                keyHA.layoutXPosition() + keyHA.width,
-                keyHA.layoutYPosition() + keyHA.height
-            ), KeyRect(
+                binding.key6.layoutXPosition(),
+                binding.key6.layoutYPosition(),
+                binding.key6.layoutXPosition() + binding.key6.width,
+                binding.key6.layoutYPosition() + binding.key6.height
+            ),
+            KeyRect(
                 Key.SideKeyCursorRight,
-                sideKeyCursorRight.layoutXPosition(),
-                sideKeyCursorRight.layoutYPosition(),
-                sideKeyCursorRight.layoutXPosition() + sideKeyCursorRight.width,
-                sideKeyCursorRight.layoutYPosition() + sideKeyCursorRight.height
-            ), KeyRect(
+                binding.keyMoveCursorRight.layoutXPosition(),
+                binding.keyMoveCursorRight.layoutYPosition(),
+                binding.keyMoveCursorRight.layoutXPosition() + binding.keyMoveCursorRight.width,
+                binding.keyMoveCursorRight.layoutYPosition() + binding.keyMoveCursorRight.height
+            ),
+            KeyRect(
                 Key.SideKeySymbol,
-                sideKeySymbol.layoutXPosition(),
-                sideKeySymbol.layoutYPosition(),
-                sideKeySymbol.layoutXPosition() + sideKeySymbol.width,
-                sideKeySymbol.layoutYPosition() + sideKeySymbol.height
-            ), KeyRect(
+                binding.sideKeySymbol.layoutXPosition(),
+                binding.sideKeySymbol.layoutYPosition(),
+                binding.sideKeySymbol.layoutXPosition() + binding.sideKeySymbol.width,
+                binding.sideKeySymbol.layoutYPosition() + binding.sideKeySymbol.height
+            ),
+            KeyRect(
                 Key.KeyMA,
-                keyMA.layoutXPosition(),
-                keyMA.layoutYPosition(),
-                keyMA.layoutXPosition() + keyMA.width,
-                keyMA.layoutYPosition() + keyMA.height
-            ), KeyRect(
+                binding.key7.layoutXPosition(),
+                binding.key7.layoutYPosition(),
+                binding.key7.layoutXPosition() + binding.key7.width,
+                binding.key7.layoutYPosition() + binding.key7.height
+            ),
+            KeyRect(
                 Key.KeyYA,
-                keyYA.layoutXPosition(),
-                keyYA.layoutYPosition(),
-                keyYA.layoutXPosition() + keyYA.width,
-                keyYA.layoutYPosition() + keyYA.height
-            ), KeyRect(
+                binding.key8.layoutXPosition(),
+                binding.key8.layoutYPosition(),
+                binding.key8.layoutXPosition() + binding.key8.width,
+                binding.key8.layoutYPosition() + binding.key8.height
+            ),
+            KeyRect(
                 Key.KeyRA,
-                keyRA.layoutXPosition(),
-                keyRA.layoutYPosition(),
-                keyRA.layoutXPosition() + keyRA.width,
-                keyRA.layoutYPosition() + keyRA.height
-            ), KeyRect(
+                binding.key9.layoutXPosition(),
+                binding.key9.layoutYPosition(),
+                binding.key9.layoutXPosition() + binding.key9.width,
+                binding.key9.layoutYPosition() + binding.key9.height
+            ),
+            KeyRect(
                 Key.SideKeySpace,
-                sideKeySpace.layoutXPosition(),
-                sideKeySpace.layoutYPosition(),
-                sideKeySpace.layoutXPosition() + sideKeySpace.width,
-                sideKeySpace.layoutYPosition() + sideKeySpace.height
-            ), KeyRect(
+                binding.keySpace.layoutXPosition(),
+                binding.keySpace.layoutYPosition(),
+                binding.keySpace.layoutXPosition() + binding.keySpace.width,
+                binding.keySpace.layoutYPosition() + binding.keySpace.height
+            ),
+            KeyRect(
                 Key.SideKeyInputMode,
-                sideKeyInputModeSwitch.layoutXPosition(),
-                sideKeyInputModeSwitch.layoutYPosition(),
-                sideKeyInputModeSwitch.layoutXPosition() + sideKeyInputModeSwitch.width,
-                sideKeyInputModeSwitch.layoutYPosition() + sideKeyInputModeSwitch.height
-            ), KeyRect(
+                binding.keySwitchKeyMode.layoutXPosition(),
+                binding.keySwitchKeyMode.layoutYPosition(),
+                binding.keySwitchKeyMode.layoutXPosition() + binding.keySwitchKeyMode.width,
+                binding.keySwitchKeyMode.layoutYPosition() + binding.keySwitchKeyMode.height
+            ),
+            KeyRect(
                 Key.KeyDakutenSmall,
-                keyDakutenSmall.layoutXPosition(),
-                keyDakutenSmall.layoutYPosition(),
-                keyDakutenSmall.layoutXPosition() + keyDakutenSmall.width,
-                keyDakutenSmall.layoutYPosition() + keyDakutenSmall.height
-            ), KeyRect(
+                binding.keySmallLetter.layoutXPosition(),
+                binding.keySmallLetter.layoutYPosition(),
+                binding.keySmallLetter.layoutXPosition() + binding.keySmallLetter.width,
+                binding.keySmallLetter.layoutYPosition() + binding.keySmallLetter.height
+            ),
+            KeyRect(
                 Key.KeyWA,
-                keyWA.layoutXPosition(),
-                keyWA.layoutYPosition(),
-                keyWA.layoutXPosition() + keyWA.width,
-                keyWA.layoutYPosition() + keyWA.height
-            ), KeyRect(
+                binding.key11.layoutXPosition(),
+                binding.key11.layoutYPosition(),
+                binding.key11.layoutXPosition() + binding.key11.width,
+                binding.key11.layoutYPosition() + binding.key11.height
+            ),
+            KeyRect(
                 Key.KeyKutouten,
-                keyKutouten.layoutXPosition(),
-                keyKutouten.layoutYPosition(),
-                keyKutouten.layoutXPosition() + keyKutouten.width,
-                keyKutouten.layoutYPosition() + keyKutouten.height
-            ), KeyRect(
+                binding.key12.layoutXPosition(),
+                binding.key12.layoutYPosition(),
+                binding.key12.layoutXPosition() + binding.key12.width,
+                binding.key12.layoutYPosition() + binding.key12.height
+            ),
+            KeyRect(
                 Key.SideKeyEnter,
-                sideKeyEnter.layoutXPosition(),
-                sideKeyEnter.layoutYPosition(),
-                sideKeyEnter.layoutXPosition() + sideKeyEnter.width,
-                sideKeyEnter.layoutYPosition() + sideKeyEnter.height
+                binding.keyEnter.layoutXPosition(),
+                binding.keyEnter.layoutYPosition(),
+                binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
+                binding.keyEnter.layoutYPosition() + binding.keyEnter.height
             )
         )
 
-        // First, check if the tap falls within any key rectangle (normal hit test)
+        // If the touch falls inside any key's rectangle, return that enum
         keyRects.forEach { rect ->
             if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
                 return rect.key
             }
         }
 
-        // If not inside any, return the nearest key (prevents NotSelected for edge/gap taps)
+        // Otherwise return the nearest key by Euclidean distance
         val nearest = keyRects.minByOrNull { rect ->
             val centerX = (rect.left + rect.right) / 2
             val centerY = (rect.top + rect.bottom) / 2
             val dx = x - centerX
             val dy = y - centerY
-            dx * dx + dy * dy // Euclidean distance squared
+            dx * dx + dy * dy
         }
         return nearest?.key ?: Key.NotSelected
     }
 
-    // --- Utility to get consistent absolute coordinates ---
+    /** Get absolute coordinates for the given pointer **/
     private fun getRawCoordinates(event: MotionEvent, pointer: Int): Pair<Float, Float> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             event.getRawX(pointer) to event.getRawY(pointer)
@@ -829,6 +810,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
+    /** Determine whether the movement is a tap or a flick in a direction **/
     private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
         val finalX = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             event.getRawX(pointer)
@@ -843,7 +825,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when {
-            abs(distanceX) < DEFAULT_TAP_RANGE_SMART_PHONE && abs(distanceY) < DEFAULT_TAP_RANGE_SMART_PHONE -> GestureType.Tap
+            abs(distanceX) < DEFAULT_TAP_RANGE_SMART_PHONE &&
+                    abs(distanceY) < DEFAULT_TAP_RANGE_SMART_PHONE -> GestureType.Tap
+
             abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
             abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
             abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
@@ -852,113 +836,18 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
+    /** Visually indicate which key is pressed **/
     private fun setKeyPressed() {
-        when (pressedKey.key) {
-            Key.KeyA -> {
-                resetAllKeys()
-                keyA.isPressed = true
+        listKeys.forEach { (keyEnum, viewObj) ->
+            when (viewObj) {
+                is InputModeSwitch -> viewObj.isPressed = (keyEnum == pressedKey.key)
+                is AppCompatButton -> viewObj.isPressed = (keyEnum == pressedKey.key)
+                is AppCompatImageButton -> viewObj.isPressed = (keyEnum == pressedKey.key)
             }
-
-            Key.KeyKA -> {
-                resetAllKeys()
-                keyKA.isPressed = true
-            }
-
-            Key.KeySA -> {
-                resetAllKeys()
-                keySA.isPressed = true
-            }
-
-            Key.KeyTA -> {
-                resetAllKeys()
-                keyTA.isPressed = true
-            }
-
-            Key.KeyNA -> {
-                resetAllKeys()
-                keyNA.isPressed = true
-            }
-
-            Key.KeyHA -> {
-                resetAllKeys()
-                keyHA.isPressed = true
-            }
-
-            Key.KeyMA -> {
-                resetAllKeys()
-                keyMA.isPressed = true
-            }
-
-            Key.KeyYA -> {
-                resetAllKeys()
-                keyYA.isPressed = true
-            }
-
-            Key.KeyRA -> {
-                resetAllKeys()
-                keyRA.isPressed = true
-            }
-
-            Key.KeyWA -> {
-                resetAllKeys()
-                keyWA.isPressed = true
-            }
-
-            Key.KeyKutouten -> {
-                resetAllKeys()
-                keyKutouten.isPressed = true
-            }
-
-            Key.KeyDakutenSmall -> {
-                resetAllKeys()
-                keyDakutenSmall.isPressed = true
-            }
-
-            Key.SideKeyPreviousChar -> {
-                resetAllKeys()
-                sideKeyPreviousChar.isPressed = true
-            }
-
-            Key.SideKeyCursorLeft -> {
-                resetAllKeys()
-                sideKeyCursorLeft.isPressed = true
-            }
-
-            Key.SideKeyCursorRight -> {
-                resetAllKeys()
-                sideKeyCursorRight.isPressed = true
-            }
-
-            Key.SideKeyDelete -> {
-                resetAllKeys()
-                sideKeyDelete.isPressed = true
-            }
-
-            Key.SideKeyEnter -> {
-                resetAllKeys()
-                sideKeyEnter.isPressed = true
-            }
-
-            Key.SideKeyInputMode -> {
-                resetAllKeys()
-                sideKeyInputModeSwitch.isPressed = true
-            }
-
-            Key.SideKeySpace -> {
-                resetAllKeys()
-                sideKeySpace.isPressed = true
-            }
-
-            Key.SideKeySymbol -> {
-                resetAllKeys()
-                sideKeySymbol.isPressed = true
-            }
-
-            Key.NotSelected -> {}
-            else -> {}
         }
     }
 
+    /** Cancel ongoing long‐press visuals and job **/
     private fun resetLongPressAction() {
         if (isLongPressed) {
             hideAllPopWindow()
@@ -968,61 +857,28 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         isLongPressed = false
     }
 
+    /** Un–highlight all keys **/
     private fun resetAllKeys() {
-        keyA.isPressed = false
-        keyKA.isPressed = false
-        keySA.isPressed = false
-        keyTA.isPressed = false
-        keyNA.isPressed = false
-        keyHA.isPressed = false
-        keyMA.isPressed = false
-        keyYA.isPressed = false
-        keyRA.isPressed = false
-        keyWA.isPressed = false
-        keyKutouten.isPressed = false
-        keyDakutenSmall.isPressed = false
-        sideKeyPreviousChar.isPressed = false
-        sideKeyCursorLeft.isPressed = false
-        sideKeyCursorRight.isPressed = false
-        sideKeyDelete.isPressed = false
-        sideKeyEnter.isPressed = false
-        sideKeyInputModeSwitch.isPressed = false
-        sideKeySpace.isPressed = false
-        sideKeySymbol.isPressed = false
+        listKeys.values.forEach { viewObj ->
+            when (viewObj) {
+                is InputModeSwitch -> viewObj.isPressed = false
+                is AppCompatButton -> viewObj.isPressed = false
+                is AppCompatImageButton -> viewObj.isPressed = false
+            }
+        }
     }
 
-    private val listKeys: Map<Key, Any> = mapOf(
-        Key.KeyA to keyA,
-        Key.KeyKA to keyKA,
-        Key.KeySA to keySA,
-        Key.KeyTA to keyTA,
-        Key.KeyNA to keyNA,
-        Key.KeyHA to keyHA,
-        Key.KeyMA to keyMA,
-        Key.KeyYA to keyYA,
-        Key.KeyRA to keyRA,
-        Key.KeyWA to keyWA,
-        Key.KeyKutouten to keyKutouten,
-        Key.KeyDakutenSmall to keyDakutenSmall,
-        Key.SideKeyPreviousChar to sideKeyPreviousChar,
-        Key.SideKeyCursorLeft to sideKeyCursorLeft,
-        Key.SideKeyCursorRight to sideKeyCursorRight,
-        Key.SideKeySymbol to sideKeySymbol,
-        Key.SideKeyInputMode to sideKeyInputModeSwitch,
-        Key.SideKeyDelete to sideKeyDelete,
-        Key.SideKeySpace to sideKeySpace,
-        Key.SideKeyEnter to sideKeyEnter
-    )
-
+    /** Return the underlying view object (Button/ImageButton/Switch) for a given Key **/
     private fun getButtonFromKey(key: Key): Any? {
-        return listKeys.getOrDefault(key, null)
+        return listKeys[key]
     }
 
+    /** Called when a long‐press is detected; show all related popups **/
     private fun onLongPressed() {
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == sideKeySymbol) return
+                if (it == binding.sideKeySymbol) return
 
                 when (currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
@@ -1052,42 +908,34 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
                 popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
                 if (popTextBottom.text.isNotEmpty()) {
-                    popupWindowBottom.setPopUpWindowBottom(
-                        context, bubbleViewBottom, it
-                    )
+                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it)
                 }
                 if (popTextRight.text.isNotEmpty()) {
-                    popupWindowRight.setPopUpWindowRight(
-                        context, bubbleViewRight, it
-                    )
+                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it)
                 }
-                popupWindowActive.setPopUpWindowCenter(
-                    context, bubbleViewActive, it
-                )
+                popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 Blur.applyBlurEffect(this, 8f)
             }
 
-            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
+            if (it is AppCompatImageButton &&
+                currentInputMode.get() == InputMode.ModeNumber &&
+                it == binding.keySmallLetter
+            ) {
                 popTextTop.setTextFlickTopNumber(it.id)
                 popTextLeft.setTextFlickLeftNumber(it.id)
                 popTextBottom.setTextFlickBottomNumber(it.id)
                 popTextRight.setTextFlickRightNumber(it.id)
                 popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
                 popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
-                popupWindowBottom.setPopUpWindowBottom(
-                    context, bubbleViewBottom, it
-                )
-                popupWindowRight.setPopUpWindowRight(
-                    context, bubbleViewRight, it
-                )
-                popupWindowActive.setPopUpWindowCenter(
-                    context, bubbleViewActive, it
-                )
+                popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it)
+                popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it)
+                popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 Blur.applyBlurEffect(this, 8f)
             }
         }
     }
 
+    /** Hide every popup bubble **/
     private fun hideAllPopWindow() {
         popupWindowActive.hide()
         popupWindowLeft.hide()
@@ -1097,12 +945,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         popupWindowCenter.hide()
     }
 
+    /** Called during a “tap” gesture in an ongoing move event **/
     private fun setTapInActionMove() {
         if (!isLongPressed) popupWindowActive.hide()
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == sideKeySymbol) return
+                if (it == binding.sideKeySymbol) return
                 when (currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
                         it.setTenKeyTextWhenTapJapanese(it.id)
@@ -1121,12 +970,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
                 it.isPressed = true
                 if (isLongPressed) {
-                    popupWindowActive.setPopUpWindowCenter(
-                        context, bubbleViewActive, it
-                    )
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 }
             }
-            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
+            if (it is AppCompatImageButton &&
+                currentInputMode.get() == InputMode.ModeNumber &&
+                it == binding.keySmallLetter
+            ) {
                 it.setImageDrawable(
                     ContextCompat.getDrawable(
                         context,
@@ -1136,20 +986,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 it.isPressed = true
                 if (isLongPressed) {
-                    popupWindowActive.setPopUpWindowCenter(
-                        context, bubbleViewActive, it
-                    )
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 }
             }
         }
     }
 
+    /** Called during a “flick” gesture in an ongoing move event **/
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == sideKeySymbol) return
+                if (it == binding.sideKeySymbol) return
                 if (!isLongPressed) it.text = ""
                 when (gestureType) {
                     GestureType.FlickLeft -> {
@@ -1170,16 +1019,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowLeft(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
+                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickLeft(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it)
                         }
                     }
 
@@ -1201,16 +1044,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowTop(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
+                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickTop(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it)
                         }
                     }
 
@@ -1233,17 +1070,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         }
                         if (isLongPressed) {
                             if (popTextActive.text.isNotEmpty()) {
-                                popupWindowActive.setPopUpWindowRight(
-                                    context, bubbleViewActive, it
-                                )
+                                popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it)
                                 popupWindowCenter.setPopUpWindowCenter(
-                                    context, bubbleViewCenter, it
+                                    context,
+                                    bubbleViewCenter,
+                                    it
                                 )
                             }
                         } else {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowFlickRight(
-                                    context, bubbleViewActive, it
+                                    context,
+                                    bubbleViewActive,
+                                    it
                                 )
                             }
                         }
@@ -1269,44 +1108,45 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (isLongPressed) {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowBottom(
-                                    context, bubbleViewActive, it
+                                    context,
+                                    bubbleViewActive,
+                                    it
                                 )
                                 popupWindowCenter.setPopUpWindowCenter(
-                                    context, bubbleViewCenter, it
+                                    context,
+                                    bubbleViewCenter,
+                                    it
                                 )
                             }
                         } else {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowFlickBottom(
-                                    context, bubbleViewActive, it
+                                    context,
+                                    bubbleViewActive,
+                                    it
                                 )
                             }
                         }
                     }
 
-                    else -> {
-
-                    }
+                    else -> {}
                 }
                 it.isPressed = false
             }
-            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == keyDakutenSmall) {
+            if (it is AppCompatImageButton &&
+                currentInputMode.get() == InputMode.ModeNumber &&
+                it == binding.keySmallLetter
+            ) {
                 if (!isLongPressed) it.setImageDrawable(null)
                 when (gestureType) {
                     GestureType.FlickLeft -> {
                         popTextActive.setTextFlickLeftNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowLeft(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
+                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickLeft(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it)
                         }
                     }
 
@@ -1314,16 +1154,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickTopNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowTop(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
+                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickTop(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it)
                         }
                     }
 
@@ -1331,15 +1165,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickRightNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowRight(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
+                            popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it)
                         } else {
                             popupWindowActive.setPopUpWindowFlickRight(
-                                context, bubbleViewActive, it
+                                context,
+                                bubbleViewActive,
+                                it
                             )
                         }
                     }
@@ -1348,28 +1180,25 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickBottomNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(
-                                context, bubbleViewCenter, it
-                            )
-                            popupWindowActive.setPopUpWindowBottom(
-                                context, bubbleViewActive, it
-                            )
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
+                            popupWindowActive.setPopUpWindowBottom(context, bubbleViewActive, it)
                         } else {
                             popupWindowActive.setPopUpWindowFlickBottom(
-                                context, bubbleViewActive, it
+                                context,
+                                bubbleViewActive,
+                                it
                             )
                         }
                     }
 
-                    else -> {
-
-                    }
+                    else -> {}
                 }
                 it.isPressed = false
             }
         }
     }
 
+    /** Handle flick action when second finger goes down **/
     private fun setFlickActionPointerDown(keyInfo: KeyInfo, gestureType: GestureType) {
         if (keyInfo is KeyInfo.KeyTapFlickInfo) {
             val charToSend = when (gestureType) {
@@ -1378,60 +1207,57 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 GestureType.FlickTop -> keyInfo.flickTop
                 GestureType.FlickRight -> keyInfo.flickRight
                 GestureType.FlickBottom -> keyInfo.flickBottom
-                GestureType.Down -> null
-                GestureType.Null -> null
+                else -> null
             }
             flickListener?.onFlick(
                 gestureType = gestureType,
                 key = pressedKey.key,
-                char = charToSend,
+                char = charToSend
             )
             val button = getButtonFromKey(pressedKey.key)
             button?.let {
                 if (it is AppCompatButton) {
-                    if (it == sideKeySymbol) return
+                    if (it == binding.sideKeySymbol) return
                     when (currentInputMode.get()) {
-                        InputMode.ModeJapanese -> {
-                            it.setTenKeyTextJapanese(it.id)
-                        }
-
-                        InputMode.ModeEnglish -> {
-                            it.setTenKeyTextEnglish(it.id)
-                        }
-
-                        InputMode.ModeNumber -> {
-                            it.setTenKeyTextNumber(it.id)
-                        }
+                        InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
+                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
+                        InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                     }
                 }
             }
         }
     }
 
+    /** Set default drawable for the small/dakuten key **/
     fun setBackgroundSmallLetterKey(
         drawable: Drawable? = ContextCompat.getDrawable(
             context, com.kazumaproject.core.R.drawable.logo_key
         )
     ) {
-        keyDakutenSmall.setImageDrawable(drawable)
+        binding.keySmallLetter.setImageDrawable(drawable)
     }
 
+    /** Set custom drawable on the Enter key **/
     fun setSideKeyEnterDrawable(drawable: Drawable?) {
-        sideKeyEnter.setImageDrawable(drawable)
+        binding.keyEnter.setImageDrawable(drawable)
     }
 
+    /** Retrieve current Enter key drawable **/
     fun getCurrentEnterKeyDrawable(): Drawable? {
-        return sideKeyEnter.drawable
+        return binding.keyEnter.drawable
     }
 
+    /** Set custom drawable on the Space key **/
     fun setSideKeySpaceDrawable(drawable: Drawable?) {
-        sideKeySpace.setImageDrawable(drawable)
+        binding.keySpace.setImageDrawable(drawable)
     }
 
+    /** Enable/disable the “previous character” key **/
     fun setSideKeyPreviousState(state: Boolean) {
-        sideKeyPreviousChar.isEnabled = state
+        binding.keyReturn.isEnabled = state
     }
 
+    /** Cycle through input modes when the switch key is clicked **/
     private fun handleClickInputModeSwitch() {
         val newInputMode = when (currentInputMode.get()) {
             InputMode.ModeJapanese -> {
@@ -1450,79 +1276,116 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
         }
         currentInputMode.set(newInputMode)
-        sideKeyInputModeSwitch.setInputMode(newInputMode, false)
+        binding.keySwitchKeyMode.setInputMode(newInputMode, false)
     }
 
+    /** Sync UI to a specified input mode **/
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
         when (inputMode) {
-            InputMode.ModeJapanese -> {
-                setKeysInJapaneseText()
-            }
-
-            InputMode.ModeEnglish -> {
-                setKeysInEnglishText()
-            }
-
-            InputMode.ModeNumber -> {
-                setKeysInNumberText()
-            }
+            InputMode.ModeJapanese -> setKeysInJapaneseText()
+            InputMode.ModeEnglish -> setKeysInEnglishText()
+            InputMode.ModeNumber -> setKeysInNumberText()
         }
     }
 
+    /** Call this if you want the switch and keys to reflect the current input mode **/
     fun setInputModeSwitchState() {
         val inputMode = currentInputMode.get()
-        sideKeyInputModeSwitch.setInputMode(inputMode, false)
+        binding.keySwitchKeyMode.setInputMode(inputMode, false)
         handleCurrentInputModeSwitch(inputMode)
     }
 
+    /** Populate all main keys with Japanese labels **/
     private fun setKeysInJapaneseText() {
-        keyA.setTenKeyTextJapanese(keyA.id)
-        keyKA.setTenKeyTextJapanese(keyKA.id)
-        keySA.setTenKeyTextJapanese(keySA.id)
-        keyTA.setTenKeyTextJapanese(keyTA.id)
-        keyNA.setTenKeyTextJapanese(keyNA.id)
-        keyHA.setTenKeyTextJapanese(keyHA.id)
-        keyMA.setTenKeyTextJapanese(keyMA.id)
-        keyYA.setTenKeyTextJapanese(keyYA.id)
-        keyRA.setTenKeyTextJapanese(keyRA.id)
-        keyWA.setTenKeyTextJapanese(keyWA.id)
-        keyKutouten.setTenKeyTextJapanese(keyKutouten.id)
-        //keyDakutenSmall.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.logo_key))
+        binding.key1.setTenKeyTextJapanese(binding.key1.id)
+        binding.key2.setTenKeyTextJapanese(binding.key2.id)
+        binding.key3.setTenKeyTextJapanese(binding.key3.id)
+        binding.key4.setTenKeyTextJapanese(binding.key4.id)
+        binding.key5.setTenKeyTextJapanese(binding.key5.id)
+        binding.key6.setTenKeyTextJapanese(binding.key6.id)
+        binding.key7.setTenKeyTextJapanese(binding.key7.id)
+        binding.key8.setTenKeyTextJapanese(binding.key8.id)
+        binding.key9.setTenKeyTextJapanese(binding.key9.id)
+        binding.key11.setTenKeyTextJapanese(binding.key11.id)
+        binding.key12.setTenKeyTextJapanese(binding.key12.id)
     }
 
+    /** Populate all main keys with English labels **/
     private fun setKeysInEnglishText() {
-        keyA.setTenKeyTextEnglish(keyA.id)
-        keyKA.setTenKeyTextEnglish(keyKA.id)
-        keySA.setTenKeyTextEnglish(keySA.id)
-        keyTA.setTenKeyTextEnglish(keyTA.id)
-        keyNA.setTenKeyTextEnglish(keyNA.id)
-        keyHA.setTenKeyTextEnglish(keyHA.id)
-        keyMA.setTenKeyTextEnglish(keyMA.id)
-        keyYA.setTenKeyTextEnglish(keyYA.id)
-        keyRA.setTenKeyTextEnglish(keyRA.id)
-        keyWA.setTenKeyTextEnglish(keyWA.id)
-        keyKutouten.setTenKeyTextEnglish(keyKutouten.id)
-        //keyDakutenSmall.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.logo_key))
+        binding.key1.setTenKeyTextEnglish(binding.key1.id)
+        binding.key2.setTenKeyTextEnglish(binding.key2.id)
+        binding.key3.setTenKeyTextEnglish(binding.key3.id)
+        binding.key4.setTenKeyTextEnglish(binding.key4.id)
+        binding.key5.setTenKeyTextEnglish(binding.key5.id)
+        binding.key6.setTenKeyTextEnglish(binding.key6.id)
+        binding.key7.setTenKeyTextEnglish(binding.key7.id)
+        binding.key8.setTenKeyTextEnglish(binding.key8.id)
+        binding.key9.setTenKeyTextEnglish(binding.key9.id)
+        binding.key11.setTenKeyTextEnglish(binding.key11.id)
+        binding.key12.setTenKeyTextEnglish(binding.key12.id)
     }
 
+    /** Populate all main keys with Number labels **/
     private fun setKeysInNumberText() {
-        keyA.setTenKeyTextNumber(keyA.id)
-        keyKA.setTenKeyTextNumber(keyKA.id)
-        keySA.setTenKeyTextNumber(keySA.id)
-        keyTA.setTenKeyTextNumber(keyTA.id)
-        keyNA.setTenKeyTextNumber(keyNA.id)
-        keyHA.setTenKeyTextNumber(keyHA.id)
-        keyMA.setTenKeyTextNumber(keyMA.id)
-        keyYA.setTenKeyTextNumber(keyYA.id)
-        keyRA.setTenKeyTextNumber(keyRA.id)
-        keyWA.setTenKeyTextNumber(keyWA.id)
-        keyKutouten.setTenKeyTextNumber(keyKutouten.id)
-//        keyDakutenSmall.setImageDrawable(
-//            ContextCompat.getDrawable(
-//                context,
-//                R.drawable.number_small
-//            )
-//        )
+        binding.key1.setTenKeyTextNumber(binding.key1.id)
+        binding.key2.setTenKeyTextNumber(binding.key2.id)
+        binding.key3.setTenKeyTextNumber(binding.key3.id)
+        binding.key4.setTenKeyTextNumber(binding.key4.id)
+        binding.key5.setTenKeyTextNumber(binding.key5.id)
+        binding.key6.setTenKeyTextNumber(binding.key6.id)
+        binding.key7.setTenKeyTextNumber(binding.key7.id)
+        binding.key8.setTenKeyTextNumber(binding.key8.id)
+        binding.key9.setTenKeyTextNumber(binding.key9.id)
+        binding.key11.setTenKeyTextNumber(binding.key11.id)
+        binding.key12.setTenKeyTextNumber(binding.key12.id)
     }
 
+    /** Mark all key Views as non‐focusable so touches go directly to onTouch **/
+    private fun setViewsNotFocusable() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            binding.key1.focusable = View.NOT_FOCUSABLE
+            binding.key2.focusable = View.NOT_FOCUSABLE
+            binding.key3.focusable = View.NOT_FOCUSABLE
+            binding.key4.focusable = View.NOT_FOCUSABLE
+            binding.key5.focusable = View.NOT_FOCUSABLE
+            binding.key6.focusable = View.NOT_FOCUSABLE
+            binding.key7.focusable = View.NOT_FOCUSABLE
+            binding.key8.focusable = View.NOT_FOCUSABLE
+            binding.key9.focusable = View.NOT_FOCUSABLE
+            binding.key11.focusable = View.NOT_FOCUSABLE
+            binding.key12.focusable = View.NOT_FOCUSABLE
+            binding.keySmallLetter.focusable = View.NOT_FOCUSABLE
+
+            binding.keyReturn.focusable = View.NOT_FOCUSABLE
+            binding.keySoftLeft.focusable = View.NOT_FOCUSABLE
+            binding.sideKeySymbol.focusable = View.NOT_FOCUSABLE
+            binding.keySwitchKeyMode.focusable = View.NOT_FOCUSABLE
+            binding.keyDelete.focusable = View.NOT_FOCUSABLE
+            binding.keyMoveCursorRight.focusable = View.NOT_FOCUSABLE
+            binding.keySpace.focusable = View.NOT_FOCUSABLE
+            binding.keyEnter.focusable = View.NOT_FOCUSABLE
+        } else {
+            binding.key1.isFocusable = false
+            binding.key2.isFocusable = false
+            binding.key3.isFocusable = false
+            binding.key4.isFocusable = false
+            binding.key5.isFocusable = false
+            binding.key6.isFocusable = false
+            binding.key7.isFocusable = false
+            binding.key8.isFocusable = false
+            binding.key9.isFocusable = false
+            binding.key11.isFocusable = false
+            binding.key12.isFocusable = false
+            binding.keySmallLetter.isFocusable = false
+
+            binding.keyReturn.isFocusable = false
+            binding.keySoftLeft.isFocusable = false
+            binding.sideKeySymbol.isFocusable = false
+            binding.keySwitchKeyMode.isFocusable = false
+            binding.keyDelete.isFocusable = false
+            binding.keyMoveCursorRight.isFocusable = false
+            binding.keySpace.isFocusable = false
+            binding.keyEnter.isFocusable = false
+        }
+    }
 }
