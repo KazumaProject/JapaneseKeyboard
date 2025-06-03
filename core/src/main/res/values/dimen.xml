@@ -48,7 +48,7 @@
     <dimen name="key_number_height">48dp</dimen>
     <dimen name="key_height_number_only_right_column_land">38dp</dimen>
 
-    <dimen name="key_elevation">4dp</dimen>
+    <dimen name="key_elevation">1dp</dimen>
 
     <dimen name="tablet_side_key_portrait_width">52dp</dimen>
     <dimen name="tablet_side_key_width">80dp</dimen>

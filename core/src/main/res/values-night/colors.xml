@@ -32,7 +32,7 @@
     <color name="triangle">#448AFF</color>
 
     <color name="popup_bg_active">#3B5998</color>
-    <color name="popup_bg_stroke">#162C5D</color>
+    <color name="popup_bg_stroke">#80162C5D</color>
 
     <color name="char_in_edit_color">#440099CC</color>
     <color name="green">#770099CC</color>
@@ -44,7 +44,7 @@
     <color name="qwety_bg_color">#000000</color>
     <color name="qwety_key_bg_color">#2D3134</color>
     <color name="qwety_key_bg_color_2">#3B4048</color>
-    <color name="keyShadowColor">#1C1F23</color>
+    <color name="keyShadowColor">#801C1F23</color>
     <color name="specialKeyShadowColor">#1A1D21</color>
     <color name="qwety_suggestion_bg_color">#B8BFC9</color>
 
