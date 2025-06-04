@@ -360,7 +360,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        if (clipboardUtil.isClipboardEmpty()) {
+        if (!clipboardUtil.isClipboardEmpty()) {
             val clipboardText = clipboardUtil.getAllClipboardTexts()
             suggestionAdapter?.setClipboardPreview(clipboardText[0])
         }
@@ -472,7 +472,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         )
 
         Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
-
+        if (!clipboardUtil.isClipboardEmpty()) {
+            val clipboardText = clipboardUtil.getAllClipboardTexts()[0]
+            suggestionAdapter?.apply {
+                setPasteEnabled(true)
+                setClipboardPreview(clipboardText)
+            }
+        }
         // 1) 変換中 (composing) は IME 側の処理対象外
         if (candidatesStart != -1 || candidatesEnd != -1) return
 
@@ -1390,8 +1396,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         flexboxLayoutManagerColumn: FlexboxLayoutManager,
         flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
-        suggestionAdapter.apply {
-            this?.setOnItemClickListener { candidate, position ->
+        suggestionAdapter?.let { adapter ->
+            adapter.setOnItemClickListener { candidate, position ->
                 val insertString = inputString.value
                 val currentInputMode =
                     if (isTablet == true) mainView.tabletView.currentInputMode else mainView.keyboardView.currentInputMode
@@ -1403,11 +1409,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     position = position
                 )
             }
-            this?.setOnItemLongClickListener { candidate, _ ->
+            adapter.setOnItemLongClickListener { candidate, _ ->
                 val insertString = inputString.value
                 setCandidateClipboardLongClick(candidate, insertString)
             }
-            this?.setOnItemHelperIconClickListener { helperIcon ->
+            adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
                         Timber.d("tap undo")
@@ -1418,6 +1424,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         val allClipboardTexts = clipboardUtil.getAllClipboardTexts()
                         if (allClipboardTexts.isNotEmpty()) {
                             commitText(allClipboardTexts[0], 1)
+                        }
+                    }
+                }
+            }
+            adapter.setOnItemHelperIconLongClickListener { helperIcon ->
+                when (helperIcon) {
+                    SuggestionAdapter.HelperIcon.UNDO -> {}
+                    SuggestionAdapter.HelperIcon.PASTE -> {
+                        Timber.d("long tap paste")
+                        clipboardUtil.clearClipboard()
+                        adapter.apply {
+                            setClipboardPreview("")
+                            setPasteEnabled(false)
                         }
                     }
                 }
