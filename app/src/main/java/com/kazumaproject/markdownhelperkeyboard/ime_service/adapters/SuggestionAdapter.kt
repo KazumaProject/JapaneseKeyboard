@@ -176,6 +176,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     setOnClickListener {
                         onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
                     }
+                    setOnLongClickListener {
+                        onItemHelperIconLongClickListener?.invoke(HelperIcon.UNDO)
+                        true
+                    }
                 }
                 clipboardPreviewTextDescription?.isVisible = isPasteEnabled
 
