@@ -21,6 +21,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/undo_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:maxEms="8"
+        android:maxLines="1"
+        android:textColor="@color/keyboard_icon_color"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toBottomOf="@+id/undo_icon"
+        app:layout_constraintStart_toEndOf="@+id/undo_icon"
+        app:layout_constraintTop_toTopOf="@+id/undo_icon" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/paste_icon_patent"
         android:layout_width="wrap_content"
@@ -29,6 +42,7 @@
         android:background="@drawable/ten_keys_center_bg"
         android:paddingStart="0dp"
         android:paddingEnd="8dp"
+        android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -53,7 +67,6 @@
             android:gravity="center"
             android:maxEms="8"
             android:maxLines="1"
-            android:text="aaaaaaaaaaaa"
             android:textColor="@color/keyboard_icon_color"
             android:textSize="14sp"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -73,6 +86,7 @@
         android:text="@string/delete_in_long_press"
         android:textColor="@color/keyboard_icon_color"
         android:textSize="8sp"
+        android:visibility="gone"
         app:layout_constraintStart_toEndOf="@+id/paste_icon_patent"
         app:layout_constraintTop_toTopOf="@+id/paste_icon_patent" />
 

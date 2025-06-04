@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
+import android.text.style.UnderlineSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -95,6 +96,22 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    private var undoText: String = ""
+
+    private var isUndoUnderlined: Boolean = false
+
+    /**
+     * undoPreviewText に表示するテキストと同時に、
+     * “下線を付けるかどうか” を指定できるようにしておく。
+     */
+    fun setUndoPreviewText(text: String, underline: Boolean = false) {
+        undoText = text
+        isUndoUnderlined = underline
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
     // DiffUtil for Candidate list
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
@@ -123,6 +140,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     /** ViewHolder for the “empty” state (showing icons + clipboard preview) **/
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIcon: AppCompatImageButton? = itemView.findViewById(R.id.undo_icon)
+        val undoPreviewText: MaterialTextView? = itemView.findViewById(R.id.undo_text)
         val pasteIcon: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
         val clipboardPreviewText: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_text_preview)
@@ -172,6 +190,34 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 // Update the clipboard preview text
                 clipboardPreviewText?.text = clipboardText
 
+                undoPreviewText?.apply {
+                    if (isUndoEnabled && isUndoUnderlined) {
+                        // undoText はすでに正しい文字列が入っている（例: "削除された文字列"）
+                        val display = undoText.reversed() // 逆順にしているならそのまま
+                        val spannable = SpannableString(display)
+                        spannable.setSpan(
+                            UnderlineSpan(),
+                            0,
+                            display.length,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                        text = spannable
+                    }
+                    // ─── アンダーラインを外したい（または下線ナシ）場合
+                    else if (isUndoEnabled) {
+                        text = undoText.reversed()
+                    } else {
+                        text = ""
+                    }
+                    setOnClickListener {
+                        onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
+                    }
+                    setOnLongClickListener {
+                        onItemHelperIconLongClickListener?.invoke(HelperIcon.UNDO)
+                        true
+                    }
+                }
+
                 undoIcon?.apply {
                     setOnClickListener {
                         onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
@@ -181,7 +227,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         true
                     }
                 }
-                clipboardPreviewTextDescription?.isVisible = isPasteEnabled
+                clipboardPreviewTextDescription?.apply {
+                    isVisible = isPasteEnabled
+                }
 
                 pasteIcon?.apply {
                     setOnClickListener {
