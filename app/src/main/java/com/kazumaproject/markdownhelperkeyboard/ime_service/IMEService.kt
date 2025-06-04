@@ -174,6 +174,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var isTablet: Boolean? = false
 
+    // 1. 削除された文字を蓄積するバッファ
+    private val deletedBuffer = StringBuilder()
+
+    // 2. 現在「長押し削除中」であることを示すフラグ
+    private var isLongPressDeleting = false
+
+    // 3. 直近の削除操作が「長押し削除」で発生したかを示すフラグ
+    private var lastDeleteWasLongPress = false
+
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
@@ -470,8 +479,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
-
         Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
+        // 1) 変換中 (composing) は IME 側の処理対象外
+        if (candidatesStart != -1 || candidatesEnd != -1) return
         if (!clipboardUtil.isClipboardEmpty()) {
             val clipboardText = clipboardUtil.getAllClipboardTexts()[0]
             suggestionAdapter?.apply {
@@ -479,9 +489,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setClipboardPreview(clipboardText)
             }
         }
-        // 1) 変換中 (composing) は IME 側の処理対象外
-        if (candidatesStart != -1 || candidatesEnd != -1) return
-
         // 2) 状態スナップショット
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
@@ -712,9 +719,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyDelete -> {
                 if (!isFlick) {
                     if (!deleteKeyLongKeyPressed.get()) {
-                        beginBatchEdit()
                         handleDeleteKeyTap(insertString, suggestions)
-                        endBatchEdit()
                     }
                 }
                 stopDeleteLongPress()
@@ -842,6 +847,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed.set(false)
                     deleteKeyLongKeyPressed.set(true)
+                    suggestionAdapter?.setUndoEnabled(true)
                 }
             }
 
@@ -1416,7 +1422,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
-                        Timber.d("tap undo")
+                        val deletedText = fetchDeletedText()
+                        deletedText?.let { str ->
+                            if (str.length == 1) {
+                                commitText(str, 1)
+                            } else {
+                                commitText(str.reversed(), 1)
+                            }
+                        }
+                        if (deletedBuffer.isEmpty()) {
+                            suggestionAdapter?.setUndoEnabled(false)
+                        }
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
@@ -1679,6 +1695,65 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetFlagsSuggestionClick()
     }
 
+    /**
+     * 最後の削除操作が「長押し削除」だった場合は
+     *   → バッファ（deletedBuffer）に溜まっているすべての文字をまとめて返し、バッファをクリアする。
+     * そうでなければ
+     *   → （単発削除）deletedBuffer から1文字だけ取り出して返す。
+     * バッファが空の場合は null を返します。
+     */
+    fun fetchDeletedText(): String? {
+        if (deletedBuffer.isEmpty()) return null
+
+        return if (lastDeleteWasLongPress) {
+            // 長押し削除だったら全体を返す
+            val all = deletedBuffer.toString()
+            deletedBuffer.clear()
+            // 次の呼び出しが単発削除扱いにならないようフラグをリセット
+            lastDeleteWasLongPress = false
+            all
+        } else {
+            // 単発削除だったら末尾1文字だけ返す
+            // (末尾=排出順を「直近に削除された文字」順とする場合)
+            val idx = deletedBuffer.lastIndex
+            val c = deletedBuffer[idx].toString()
+            deletedBuffer.deleteCharAt(idx)
+            c
+        }
+    }
+
+    /**
+     * 直近で削除された文字を参照だけしたい場合（バッファはクリアしない）。
+     * 削除バッファが空なら null を返します。
+     */
+    fun peekLastDeletedChar(): Char? {
+        return if (deletedBuffer.isNotEmpty()) {
+            deletedBuffer[deletedBuffer.lastIndex]
+        } else {
+            null
+        }
+    }
+
+    /**
+     * 削除バッファをまるごとクリアしたいときに呼ぶ
+     */
+    fun clearDeletedBuffer() {
+        deletedBuffer.clear()
+        lastDeleteWasLongPress = false
+    }
+
+    /**
+     * 直近で削除された文字を取得しつつ、バッファからも取り除く。
+     * 取り除くとき、新たに最後に削除された文字が変わるので注意。
+     */
+    private fun popLastDeletedChar(): Char? {
+        if (deletedBuffer.isEmpty()) return null
+        val lastIndex = deletedBuffer.lastIndex
+        val c = deletedBuffer[lastIndex]
+        deletedBuffer.deleteCharAt(lastIndex)
+        return c
+    }
+
     private fun setCandidateClipboardLongClick(
         candidate: Candidate, insertString: String,
     ) {
@@ -1876,6 +1951,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _keyboardSymbolViewState.value = false
         learnMultiple.stop()
         stopDeleteLongPress()
+        clearDeletedBuffer()
     }
 
     private fun actionInDestroy() {
@@ -2263,31 +2339,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun deleteLongPress() {
         if (deleteLongPressJob?.isActive == true) return
+
         deleteLongPressJob = scope.launch {
+            // ─── 長押し削除が始まったのでフラグを立てる
+            isLongPressDeleting = true
+            lastDeleteWasLongPress = true
+
             while (isActive && deleteKeyLongKeyPressed.get()) {
                 val current = inputString.value
                 val tailIsEmpty = stringInTail.get().isEmpty()
 
                 if (current.isEmpty()) {
                     if (tailIsEmpty) {
+                        val beforeChar = getTextBeforeCursor(1, 0)?.toString()
+                        if (!beforeChar.isNullOrEmpty()) {
+                            deletedBuffer.append(beforeChar)
+                        }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                     } else {
-                        break          // composing tail left – stop deleting
+                        break
                     }
                 } else {
+                    val deletedChar = current.last()
+                    deletedBuffer.append(deletedChar)
                     val newString = current.dropLast(1)
                     _inputString.update { newString }
-                    if (newString.isEmpty() && tailIsEmpty) setComposingText("", 0)
+                    if (newString.isEmpty() && tailIsEmpty) {
+                        setComposingText("", 0)
+                    }
                 }
 
                 delay(LONG_DELAY_TIME)
             }
 
+            // ─── 長押し削除が終わったらフラグをクリア
+            isLongPressDeleting = false
+
+            // （連続タップ入力解除など）
             enableContinuousTapInput()
 
-            val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
-            else CandidateShowFlag.Updating
+            val flag = if (inputString.value.isEmpty())
+                CandidateShowFlag.Idle
+            else
+                CandidateShowFlag.Updating
             _suggestionFlag.emit(flag)
+
         }
     }
 
@@ -2387,7 +2483,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             else -> {
                 if (stringInTail.get().isNotEmpty()) return
+                // ─── 単発削除なので「長押し中」フラグは立っていない
+                isLongPressDeleting = false
+                // これから実行するのは単発タップ削除なので lastDeleteWasLongPress は false に
+                lastDeleteWasLongPress = false
+                val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
+                if (beforeChar.isNotEmpty()) {
+                    deletedBuffer.append(beforeChar)
+                }
                 sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                suggestionAdapter?.setUndoEnabled(true)
             }
         }
     }
