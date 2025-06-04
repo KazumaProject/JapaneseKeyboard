@@ -104,9 +104,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
      * undoPreviewText に表示するテキストと同時に、
      * “下線を付けるかどうか” を指定できるようにしておく。
      */
-    fun setUndoPreviewText(text: String, underline: Boolean = false) {
+    fun setUndoPreviewText(text: String,) {
         undoText = text
-        isUndoUnderlined = underline
         if (suggestions.isEmpty()) {
             notifyItemChanged(0)
         }

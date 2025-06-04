@@ -177,12 +177,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
 
-    // 2. 現在「長押し削除中」であることを示すフラグ
-    private var isLongPressDeleting = false
-
-    // 3. 直近の削除操作が「長押し削除」で発生したかを示すフラグ
-    private var lastDeleteWasLongPress = false
-
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
@@ -858,7 +852,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                     } else {
                         suggestionAdapter?.apply {
-                            setUndoPreviewText(deletedBuffer.toString(), true)
+                            setUndoPreviewText(deletedBuffer.toString())
                         }
                     }
                     onDeleteLongPressUp.set(true)
@@ -1440,16 +1434,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
-                        val deletedText = fetchDeletedText()
-                        deletedText?.let { str ->
-                            if (str.length == 1) {
-                                commitText(str, 1)
-                                suggestionAdapter?.setUndoPreviewText(
-                                    deletedBuffer.toString()
-                                )
-                            } else {
-                                commitText(str.reversed(), 1)
-                            }
+                        popLastDeletedChar()?.let { c ->
+                            commitText(c.toString(), 1)
+                            suggestionAdapter?.setUndoPreviewText(
+                                deletedBuffer.toString()
+                            )
                         }
                         if (deletedBuffer.isEmpty()) {
                             suggestionAdapter?.setUndoEnabled(false)
@@ -1469,6 +1458,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconLongClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
+                        commitText(deletedBuffer.reverse().toString(), 1)
                         clearDeletedBuffer()
                         suggestionAdapter?.setUndoEnabled(false)
                     }
@@ -1726,51 +1716,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         resetFlagsSuggestionClick()
     }
 
-    /**
-     * 最後の削除操作が「長押し削除」だった場合は
-     *   → バッファ（deletedBuffer）に溜まっているすべての文字をまとめて返し、バッファをクリアする。
-     * そうでなければ
-     *   → （単発削除）deletedBuffer から1文字だけ取り出して返す。
-     * バッファが空の場合は null を返します。
-     */
-    private fun fetchDeletedText(): String? {
-        if (deletedBuffer.isEmpty()) return null
-
-        return if (lastDeleteWasLongPress) {
-            // 長押し削除だったら全体を返す
-            val all = deletedBuffer.toString()
-            deletedBuffer.clear()
-            // 次の呼び出しが単発削除扱いにならないようフラグをリセット
-            lastDeleteWasLongPress = false
-            all
-        } else {
-            // 単発削除だったら末尾1文字だけ返す
-            // (末尾=排出順を「直近に削除された文字」順とする場合)
-            val idx = deletedBuffer.lastIndex
-            val c = deletedBuffer[idx].toString()
-            deletedBuffer.deleteCharAt(idx)
-            c
-        }
-    }
-
-    /**
-     * 直近で削除された文字を参照だけしたい場合（バッファはクリアしない）。
-     * 削除バッファが空なら null を返します。
-     */
-    fun peekLastDeletedChar(): Char? {
-        return if (deletedBuffer.isNotEmpty()) {
-            deletedBuffer[deletedBuffer.lastIndex]
-        } else {
-            null
-        }
-    }
 
     /**
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
     fun clearDeletedBuffer() {
         deletedBuffer.clear()
-        lastDeleteWasLongPress = false
     }
 
     /**
@@ -2373,10 +2324,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (deleteLongPressJob?.isActive == true) return
 
         deleteLongPressJob = scope.launch {
-            // ─── 長押し削除が始まったのでフラグを立てる
-            isLongPressDeleting = true
-            lastDeleteWasLongPress = true
-
             while (isActive && deleteKeyLongKeyPressed.get()) {
                 val current = inputString.value
                 val tailIsEmpty = stringInTail.get().isEmpty()
@@ -2403,10 +2350,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 delay(LONG_DELAY_TIME)
             }
-
-            // ─── 長押し削除が終わったらフラグをクリア
-            isLongPressDeleting = false
-
             // （連続タップ入力解除など）
             enableContinuousTapInput()
 
@@ -2419,7 +2362,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         deleteLongPressJob?.invokeOnCompletion {
             scope.launch(Dispatchers.Main) {
-                suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString(), true)
+                suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
             }
         }
     }
@@ -2520,10 +2463,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             else -> {
                 if (stringInTail.get().isNotEmpty()) return
-                // ─── 単発削除なので「長押し中」フラグは立っていない
-                isLongPressDeleting = false
-                // これから実行するのは単発タップ削除なので lastDeleteWasLongPress は false に
-                lastDeleteWasLongPress = false
                 val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
                 if (beforeChar.isNotEmpty()) {
                     deletedBuffer.append(beforeChar)
@@ -2533,7 +2472,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 } else {
                     suggestionAdapter?.setUndoPreviewText(
-                        deletedBuffer.toString(), false
+                        deletedBuffer.toString()
                     )
                 }
                 sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
