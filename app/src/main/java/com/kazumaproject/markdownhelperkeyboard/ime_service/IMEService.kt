@@ -704,6 +704,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 leftCursorKeyLongKeyPressed.set(false)
                 leftLongPressJob?.cancel()
                 leftLongPressJob = null
+                clearDeletedBuffer()
+                suggestionAdapter?.setUndoEnabled(false)
             }
 
             Key.SideKeyCursorRight -> {
@@ -714,6 +716,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 rightCursorKeyLongKeyPressed.set(false)
                 rightLongPressJob?.cancel()
                 rightLongPressJob = null
+                clearDeletedBuffer()
+                suggestionAdapter?.setUndoEnabled(false)
             }
 
             Key.SideKeyDelete -> {
@@ -831,11 +835,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyCursorLeft -> {
                 handleLeftLongPress()
                 leftCursorKeyLongKeyPressed.set(true)
+                clearDeletedBuffer()
+                suggestionAdapter?.setUndoEnabled(false)
             }
 
             Key.SideKeyCursorRight -> {
                 handleRightLongPress()
                 rightCursorKeyLongKeyPressed.set(true)
+                clearDeletedBuffer()
+                suggestionAdapter?.setUndoEnabled(false)
             }
 
             Key.SideKeyDelete -> {
@@ -1952,6 +1960,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         learnMultiple.stop()
         stopDeleteLongPress()
         clearDeletedBuffer()
+        suggestionAdapter?.setUndoEnabled(false)
     }
 
     private fun actionInDestroy() {
