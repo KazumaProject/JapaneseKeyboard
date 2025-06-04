@@ -219,4 +219,7 @@
     <string name="tablet_straight_bar">|</string>
 
     <string name="preview_bubble_img">preview_bubble_img</string>
+
+    <string name="undo_icon">undo</string>
+    <string name="paste_icon">paste</string>
 </resources>

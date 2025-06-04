@@ -1397,6 +1397,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 val insertString = inputString.value
                 setCandidateClipboardLongClick(candidate, insertString)
             }
+            this?.setOnItemHelperIconClickListener { helperIcon ->
+                when (helperIcon) {
+                    SuggestionAdapter.HelperIcon.UNDO -> {
+                        Timber.d("tap undo")
+                    }
+
+                    SuggestionAdapter.HelperIcon.PASTE -> {
+                        Timber.d("tap paste")
+                    }
+                }
+            }
         }
         mainView.suggestionRecyclerView.apply {
             itemAnimator = null

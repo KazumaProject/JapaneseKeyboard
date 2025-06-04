@@ -6,6 +6,7 @@ import android.text.style.RelativeSizeSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -14,15 +15,40 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 
-class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewHolder>() {
+class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
-        val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
+    companion object {
+        private const val VIEW_TYPE_EMPTY = 0
+        private const val VIEW_TYPE_SUGGESTION = 1
     }
 
-    private var highlightedPosition: Int = RecyclerView.NO_POSITION
+    enum class HelperIcon {
+        UNDO, PASTE
+    }
 
+    // If needed, adjust this listener to do nothing in empty state
+    private var onItemClickListener: ((Candidate, Int) -> Unit)? = null
+    fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
+        this.onItemClickListener = onItemClick
+    }
+
+    private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
+    fun setOnItemLongClickListener(onItemLongClick: (Candidate, Int) -> Unit) {
+        this.onItemLongClickListener = onItemLongClick
+    }
+
+    private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
+    fun setOnItemHelperIconClickListener(onItemHelperIconClickListener: (HelperIcon) -> Unit) {
+        this.onItemHelperIconClickListener = onItemHelperIconClickListener
+    }
+
+    fun release() {
+        onItemClickListener = null
+        onItemLongClickListener = null
+        onItemHelperIconClickListener = null
+    }
+
+    // DiffUtil for Candidate list as before
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
             return false
@@ -32,42 +58,70 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             return false
         }
     }
-
-    private var onItemClickListener: ((Candidate, Int) -> Unit)? = null
-
-    fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
-        this.onItemClickListener = onItemClick
-    }
-
-    private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
-
-    fun release() {
-        onItemClickListener = null
-        onItemLongClickListener = null
-    }
-
-    fun setOnItemLongClickListener(onItemLongClick: (Candidate, Int) -> Unit) {
-        this.onItemLongClickListener = onItemLongClick
-    }
-
     private val differ = AsyncListDiffer(this, diffCallback)
 
     var suggestions: List<Candidate>
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SuggestionViewHolder {
-        val itemView =
-            LayoutInflater.from(parent.context).inflate(R.layout.suggestion_item, parent, false)
-        return SuggestionViewHolder(itemView)
+    // Track which suggestion is highlighted (if applicable)
+    private var highlightedPosition: Int = RecyclerView.NO_POSITION
+
+    /** ViewHolder for a normal suggestion row **/
+    inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
+        val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
-    override fun getItemCount(): Int = suggestions.size
+    /** ViewHolder for the “empty” state (showing icons) **/
+    inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val undoIcon: ImageView? = itemView.findViewById(R.id.undo_icon)
+        val pasteIcon: ImageView? = itemView.findViewById(R.id.paste_icon)
+    }
 
-    override fun getItemId(position: Int): Long = position.toLong()
+    override fun getItemViewType(position: Int): Int {
+        return if (suggestions.isEmpty()) {
+            VIEW_TYPE_EMPTY
+        } else {
+            VIEW_TYPE_SUGGESTION
+        }
+    }
 
-    override fun onBindViewHolder(holder: SuggestionViewHolder, position: Int) {
+    override fun getItemCount(): Int {
+        // If no suggestions, show exactly one “empty” view. Otherwise show all suggestions.
+        return if (suggestions.isEmpty()) 1 else suggestions.size
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return if (viewType == VIEW_TYPE_EMPTY) {
+            val emptyView = LayoutInflater.from(parent.context)
+                .inflate(R.layout.suggestion_empty_icons, parent, false)
+            EmptyViewHolder(emptyView)
+        } else {
+            val itemView = LayoutInflater.from(parent.context)
+                .inflate(R.layout.suggestion_item, parent, false)
+            SuggestionViewHolder(itemView)
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder is EmptyViewHolder) {
+            holder.apply {
+                undoIcon?.setOnClickListener {
+                    onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
+                }
+                pasteIcon?.setOnClickListener {
+                    onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
+                }
+            }
+            return
+        }
+
+        // Otherwise, it's a real suggestion row:
+        val suggestionHolder = holder as SuggestionViewHolder
         val suggestion = suggestions[position]
+
+        // === (Existing padding + text logic) ===
         val paddingLength = when {
             position == 0 -> 4
             suggestion.string.length == 1 -> 4
@@ -80,14 +134,18 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
                 "",
                 ""
             )
-        holder.text.text = if (suggestion.type == (15).toByte()) {
-            readingCorrectionString.first.padStart(readingCorrectionString.first.length + paddingLength)
+
+        suggestionHolder.text.text = if (suggestion.type == (15).toByte()) {
+            readingCorrectionString.first
+                .padStart(readingCorrectionString.first.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
         } else {
-            suggestion.string.padStart(suggestion.string.length + paddingLength)
+            suggestion.string
+                .padStart(suggestion.string.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
         }
-        holder.typeText.text = when (suggestion.type) {
+
+        suggestionHolder.typeText.text = when (suggestion.type) {
             (1).toByte() -> ""
             /** 予測 **/
             (9).toByte() -> ""
@@ -140,21 +198,27 @@ class SuggestionAdapter : RecyclerView.Adapter<SuggestionAdapter.SuggestionViewH
             (29).toByte() -> ""
             else -> ""
         }
-        holder.itemView.isPressed = position == highlightedPosition
-        holder.itemView.setOnClickListener {
+
+        // Highlight logic (if you want to show the highlighted background for one row):
+        suggestionHolder.itemView.isPressed = position == highlightedPosition
+
+        suggestionHolder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion, position)
         }
-        holder.itemView.setOnLongClickListener {
+        suggestionHolder.itemView.setOnLongClickListener {
             onItemLongClickListener?.invoke(suggestion, position)
             true
         }
     }
 
+    /**
+     * Call this to move the highlight to a new position; previous highlighted row will repaint.
+     */
     fun updateHighlightPosition(newPosition: Int) {
-        val previousPosition = highlightedPosition
+        val previous = highlightedPosition
         highlightedPosition = newPosition
-        if (previousPosition != RecyclerView.NO_POSITION) {
-            notifyItemChanged(previousPosition)
+        if (previous != RecyclerView.NO_POSITION) {
+            notifyItemChanged(previous)
         }
         notifyItemChanged(highlightedPosition)
     }
