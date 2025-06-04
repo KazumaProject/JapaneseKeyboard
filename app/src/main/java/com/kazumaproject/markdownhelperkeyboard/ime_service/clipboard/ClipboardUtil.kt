@@ -4,7 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
-import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 
 class ClipboardUtil(private val context: Context) {
     fun isClipboardEmpty(): Boolean {
@@ -21,7 +20,7 @@ class ClipboardUtil(private val context: Context) {
         }
     }
 
-    fun getAllClipboardTexts(): List<Candidate> {
+    fun getAllClipboardTexts(): List<String> {
         val clipboardManager =
             context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val texts = mutableListOf<String>()
@@ -36,13 +35,6 @@ class ClipboardUtil(private val context: Context) {
                 }
             }
         }
-        return texts.map {
-            Candidate(
-                string = it,
-                type = (28).toByte(),
-                it.length.toUByte(),
-                0
-            )
-        }
+        return texts
     }
 }

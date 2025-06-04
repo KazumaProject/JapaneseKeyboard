@@ -6,7 +6,8 @@ import android.text.style.RelativeSizeSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
+import androidx.appcompat.widget.AppCompatImageButton
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -26,18 +27,19 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         UNDO, PASTE
     }
 
-    // If needed, adjust this listener to do nothing in empty state
+    // Listeners for clicks
     private var onItemClickListener: ((Candidate, Int) -> Unit)? = null
+    private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
+    private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
+
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
     }
 
-    private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
     fun setOnItemLongClickListener(onItemLongClick: (Candidate, Int) -> Unit) {
         this.onItemLongClickListener = onItemLongClick
     }
 
-    private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
     fun setOnItemHelperIconClickListener(onItemHelperIconClickListener: (HelperIcon) -> Unit) {
         this.onItemHelperIconClickListener = onItemHelperIconClickListener
     }
@@ -48,7 +50,45 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onItemHelperIconClickListener = null
     }
 
-    // DiffUtil for Candidate list as before
+    // Internal flags to track enable/disable state
+    private var isUndoEnabled: Boolean = true
+    private var isPasteEnabled: Boolean = true
+
+    /**
+     * Enable or disable the undo icon in the empty state.
+     */
+    fun setUndoEnabled(enabled: Boolean) {
+        isUndoEnabled = enabled
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
+    /**
+     * Enable or disable the paste icon in the empty state.
+     */
+    fun setPasteEnabled(enabled: Boolean) {
+        isPasteEnabled = enabled
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
+    // Holds the text to show in the clipboard preview inside the empty state.
+    private var clipboardText: String = ""
+
+    /**
+     * Public function to set the text of clipboardPreviewText in the empty state.
+     * If currently showing empty state, forces a re‐bind to update the preview text.
+     */
+    fun setClipboardPreview(text: String) {
+        clipboardText = text
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
+    // DiffUtil for Candidate list
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
             return false
@@ -64,7 +104,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
-    // Track which suggestion is highlighted (if applicable)
+    // Track which suggestion is highlighted
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
 
     /** ViewHolder for a normal suggestion row **/
@@ -73,10 +113,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
-    /** ViewHolder for the “empty” state (showing icons) **/
+    /** ViewHolder for the “empty” state (showing icons + clipboard preview) **/
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val undoIcon: ImageView? = itemView.findViewById(R.id.undo_icon)
-        val pasteIcon: ImageView? = itemView.findViewById(R.id.paste_icon)
+        val undoIcon: AppCompatImageButton? = itemView.findViewById(R.id.undo_icon)
+        val pasteIcon: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
+        val clipboardPreviewText: MaterialTextView? =
+            itemView.findViewById(R.id.clipboard_text_preview)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -88,7 +130,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun getItemCount(): Int {
-        // If no suggestions, show exactly one “empty” view. Otherwise show all suggestions.
         return if (suggestions.isEmpty()) 1 else suggestions.size
     }
 
@@ -106,13 +147,18 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is EmptyViewHolder) {
-            holder.apply {
-                undoIcon?.setOnClickListener {
-                    onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
-                }
-                pasteIcon?.setOnClickListener {
-                    onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
-                }
+            // Set enabled/disabled state on icons
+            holder.undoIcon?.isEnabled = isUndoEnabled
+            holder.pasteIcon?.isEnabled = isPasteEnabled
+
+            // Update the clipboard preview text
+            holder.clipboardPreviewText?.text = clipboardText
+
+            holder.undoIcon?.setOnClickListener {
+                onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
+            }
+            holder.pasteIcon?.setOnClickListener {
+                onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
             }
             return
         }
@@ -199,7 +245,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             else -> ""
         }
 
-        // Highlight logic (if you want to show the highlighted background for one row):
+        // Highlight logic:
         suggestionHolder.itemView.isPressed = position == highlightedPosition
 
         suggestionHolder.itemView.setOnClickListener {

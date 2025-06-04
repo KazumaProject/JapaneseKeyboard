@@ -360,9 +360,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        if (!clipboardUtil.isClipboardEmpty()) {
-            suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
+        if (clipboardUtil.isClipboardEmpty()) {
+            val clipboardText = clipboardUtil.getAllClipboardTexts()
+            suggestionAdapter?.setClipboardPreview(clipboardText[0])
         }
+        suggestionAdapter?.setPasteEnabled(
+            !clipboardUtil.isClipboardEmpty()
+        )
         setKeyboardSize()
         resetKeyboard()
     }
@@ -928,8 +932,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         animateSuggestionImageViewVisibility(
                             mainView.suggestionVisibility, false
                         )
-                        if (!clipboardUtil.isClipboardEmpty()) {
-                            suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
+                        if (clipboardUtil.isClipboardEmpty()) {
+                            //suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
+                            suggestionAdapter?.setPasteEnabled(false)
+                        } else {
+                            suggestionAdapter?.apply {
+                                setPasteEnabled(true)
+                                setClipboardPreview(clipboardUtil.getAllClipboardTexts()[0])
+                            }
                         }
                     }
 
@@ -1405,6 +1415,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         Timber.d("tap paste")
+                        val allClipboardTexts = clipboardUtil.getAllClipboardTexts()
+                        if (allClipboardTexts.isNotEmpty()) {
+                            commitText(allClipboardTexts[0], 1)
+                        }
                     }
                 }
             }
