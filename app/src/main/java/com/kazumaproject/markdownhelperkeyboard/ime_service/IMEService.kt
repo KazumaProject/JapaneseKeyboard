@@ -852,7 +852,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 } else {
                     val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
                     if (beforeChar.isNotEmpty()) {
-                        suggestionAdapter?.setUndoEnabled(true)
+                        suggestionAdapter?.apply {
+                            setUndoPreviewText("")
+                            setUndoEnabled(true)
+                        }
+                    } else {
+                        suggestionAdapter?.apply {
+                            setUndoPreviewText(deletedBuffer.toString(), true)
+                        }
                     }
                     onDeleteLongPressUp.set(true)
                     deleteLongPress()
@@ -1437,6 +1444,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         deletedText?.let { str ->
                             if (str.length == 1) {
                                 commitText(str, 1)
+                                suggestionAdapter?.setUndoPreviewText(
+                                    deletedBuffer.toString()
+                                )
                             } else {
                                 commitText(str.reversed(), 1)
                             }
@@ -1462,6 +1472,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         clearDeletedBuffer()
                         suggestionAdapter?.setUndoEnabled(false)
                     }
+
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         clipboardUtil.clearClipboard()
                         adapter.apply {
@@ -1722,7 +1733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      *   → （単発削除）deletedBuffer から1文字だけ取り出して返す。
      * バッファが空の場合は null を返します。
      */
-    fun fetchDeletedText(): String? {
+    private fun fetchDeletedText(): String? {
         if (deletedBuffer.isEmpty()) return null
 
         return if (lastDeleteWasLongPress) {
@@ -2406,6 +2417,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _suggestionFlag.emit(flag)
 
         }
+        deleteLongPressJob?.invokeOnCompletion {
+            scope.launch(Dispatchers.Main) {
+                suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString(), true)
+            }
+        }
     }
 
     private fun stopDeleteLongPress() {
@@ -2511,7 +2527,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
                 if (beforeChar.isNotEmpty()) {
                     deletedBuffer.append(beforeChar)
-                    suggestionAdapter?.setUndoEnabled(true)
+                    suggestionAdapter?.apply {
+                        setUndoEnabled(true)
+                        setUndoPreviewText(deletedBuffer.toString())
+                    }
+                } else {
+                    suggestionAdapter?.setUndoPreviewText(
+                        deletedBuffer.toString(), false
+                    )
                 }
                 sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
             }
