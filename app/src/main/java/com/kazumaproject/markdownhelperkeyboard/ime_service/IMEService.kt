@@ -174,6 +174,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var isTablet: Boolean? = false
 
+    private var isSpaceKeyLongPressed = false
+
     // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
 
@@ -877,8 +879,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             else -> {}
         }
     }
-
-    private var isSpaceKeyLongPressed = false
 
     private fun showKeyboardPicker() {
         val inputMethodManager =
