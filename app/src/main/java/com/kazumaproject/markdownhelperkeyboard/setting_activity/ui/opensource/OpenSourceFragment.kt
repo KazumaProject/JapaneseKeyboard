@@ -8,6 +8,7 @@ import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentOpenSourceBinding
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.LicenseDialogLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NeologdLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiLicense
@@ -86,7 +87,7 @@ class OpenSourceFragment : Fragment() {
         )
         binding.openSourceLicenseList.apply {
             adapter = arrayAdapter
-            setOnItemClickListener { parent, view, position, id ->
+            setOnItemClickListener { _, _, position, _ ->
                 when (position) {
                     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 -> {
                         val name = OPEN_SOURCE_LICENSES[position]
@@ -113,8 +114,19 @@ class OpenSourceFragment : Fragment() {
                     }
 
                     20 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright = "Apache License"
+                        val license = LicenseDialogLicense()
+                        val notice =
+                            Notice(
+                                name,
+                                "https://github.com/PSDev/LicensesDialog.git",
+                                copyright,
+                                license
+                            )
                         LicensesDialog.Builder(requireContext())
-                            .setIncludeOwnLicense(true)
+                            .setTitle("Apache License")
+                            .setNotices(notice)
                             .build()
                             .show()
                     }
