@@ -111,14 +111,14 @@ fun AppCompatButton.setTenKeyTextWhenTapEnglish(
 ) {
     when (keyId) {
         R.id.key_1 -> this.text = "@"
-        R.id.key_2 -> this.text = "A"
-        R.id.key_3 -> this.text = "D"
-        R.id.key_4 -> this.text = "G"
-        R.id.key_5 -> this.text = "J"
-        R.id.key_6 -> this.text = "M"
-        R.id.key_7 -> this.text = "P"
-        R.id.key_8 -> this.text = "T"
-        R.id.key_9 -> this.text = "W"
+        R.id.key_2 -> this.text = "a"
+        R.id.key_3 -> this.text = "d"
+        R.id.key_4 -> this.text = "g"
+        R.id.key_5 -> this.text = "j"
+        R.id.key_6 -> this.text = "m"
+        R.id.key_7 -> this.text = "p"
+        R.id.key_8 -> this.text = "t"
+        R.id.key_9 -> this.text = "w"
         R.id.key_11 -> this.text = "\'"
         R.id.key_12 -> this.text = "."
     }
