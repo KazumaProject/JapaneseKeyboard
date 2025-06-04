@@ -1458,9 +1458,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
             adapter.setOnItemHelperIconLongClickListener { helperIcon ->
                 when (helperIcon) {
-                    SuggestionAdapter.HelperIcon.UNDO -> {}
+                    SuggestionAdapter.HelperIcon.UNDO -> {
+                        clearDeletedBuffer()
+                        suggestionAdapter?.setUndoEnabled(false)
+                    }
                     SuggestionAdapter.HelperIcon.PASTE -> {
-                        Timber.d("long tap paste")
                         clipboardUtil.clearClipboard()
                         adapter.apply {
                             setClipboardPreview("")
