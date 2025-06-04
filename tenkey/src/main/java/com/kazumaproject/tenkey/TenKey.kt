@@ -3,6 +3,7 @@ package com.kazumaproject.tenkey
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
@@ -969,6 +970,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
                 }
                 it.isPressed = true
+                it.setTextColor(Color.WHITE)
                 if (isLongPressed) {
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 }
