@@ -676,6 +676,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 vibrate()
             }
         }
+        if (key != Key.SideKeyDelete) {
+            clearDeletedBuffer()
+            suggestionAdapter?.setUndoEnabled(false)
+        }
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {
@@ -704,8 +708,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 leftCursorKeyLongKeyPressed.set(false)
                 leftLongPressJob?.cancel()
                 leftLongPressJob = null
-                clearDeletedBuffer()
-                suggestionAdapter?.setUndoEnabled(false)
             }
 
             Key.SideKeyCursorRight -> {
@@ -716,8 +718,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 rightCursorKeyLongKeyPressed.set(false)
                 rightLongPressJob?.cancel()
                 rightLongPressJob = null
-                clearDeletedBuffer()
-                suggestionAdapter?.setUndoEnabled(false)
             }
 
             Key.SideKeyDelete -> {
@@ -850,12 +850,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (isHenkan.get()) {
                     cancelHenkanByLongPressDeleteKey()
                 } else {
+                    val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
+                    if (beforeChar.isNotEmpty()) {
+                        suggestionAdapter?.setUndoEnabled(true)
+                    }
                     onDeleteLongPressUp.set(true)
                     deleteLongPress()
                     _dakutenPressed.value = false
                     englishSpaceKeyPressed.set(false)
                     deleteKeyLongKeyPressed.set(true)
-                    suggestionAdapter?.setUndoEnabled(true)
                 }
             }
 
@@ -1444,10 +1447,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
-                        Timber.d("tap paste")
                         val allClipboardTexts = clipboardUtil.getAllClipboardTexts()
                         if (allClipboardTexts.isNotEmpty()) {
                             commitText(allClipboardTexts[0], 1)
+                            clearDeletedBuffer()
+                            suggestionAdapter?.setUndoEnabled(false)
                         }
                     }
                 }
@@ -1590,14 +1594,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
+                    if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
+                        clearDeletedBuffer()
+                        suggestionAdapter?.setUndoEnabled(false)
+                    }
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyNotSelect -> {}
                         QWERTYKey.QWERTYKeyShift -> {}
                         QWERTYKey.QWERTYKeyDelete -> {
                             if (!deleteKeyLongKeyPressed.get()) {
-                                beginBatchEdit()
                                 handleDeleteKeyTap(insertString, suggestionList)
-                                endBatchEdit()
                             }
                             stopDeleteLongPress()
                         }
@@ -1641,6 +1647,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyDelete -> {
+                            val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
+                            if (beforeChar.isNotEmpty()) {
+                                suggestionAdapter?.setUndoEnabled(true)
+                            }
                             onDeleteLongPressUp.set(true)
                             deleteLongPress()
                             _dakutenPressed.value = false
@@ -2499,9 +2509,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
                 if (beforeChar.isNotEmpty()) {
                     deletedBuffer.append(beforeChar)
+                    suggestionAdapter?.setUndoEnabled(true)
                 }
                 sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                suggestionAdapter?.setUndoEnabled(true)
             }
         }
     }
