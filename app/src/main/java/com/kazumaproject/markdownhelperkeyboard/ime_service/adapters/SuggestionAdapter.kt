@@ -58,7 +58,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     // Internal flags to track enable/disable state
-    private var isUndoEnabled: Boolean = true
+    private var isUndoEnabled: Boolean = false
     private var isPasteEnabled: Boolean = true
 
     /**
@@ -159,8 +159,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             holder.apply {
                 // Set enabled/disabled state on icons
                 undoIcon?.apply {
-                    isEnabled = isUndoEnabled
-                    isVisible = false
+                    isVisible = isUndoEnabled
                 }
                 pasteIcon?.apply {
                     isEnabled = isPasteEnabled
