@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
@@ -31,6 +32,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onItemClickListener: ((Candidate, Int) -> Unit)? = null
     private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
     private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
+    private var onItemHelperIconLongClickListener: ((HelperIcon) -> Unit)? = null
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -44,10 +46,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.onItemHelperIconClickListener = onItemHelperIconClickListener
     }
 
+    fun setOnItemHelperIconLongClickListener(onItemHelperIconLongClickListener: (HelperIcon) -> Unit) {
+        this.onItemHelperIconLongClickListener = onItemHelperIconLongClickListener
+    }
+
     fun release() {
         onItemClickListener = null
         onItemLongClickListener = null
         onItemHelperIconClickListener = null
+        onItemHelperIconLongClickListener = null
     }
 
     // Internal flags to track enable/disable state
@@ -119,6 +126,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val pasteIcon: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
         val clipboardPreviewText: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_text_preview)
+        val clipboardPreviewTextDescription: MaterialTextView? =
+            itemView.findViewById(R.id.clipboard_preview_text_description)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -147,18 +156,39 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is EmptyViewHolder) {
-            // Set enabled/disabled state on icons
-            holder.undoIcon?.isEnabled = isUndoEnabled
-            holder.pasteIcon?.isEnabled = isPasteEnabled
+            holder.apply {
+                // Set enabled/disabled state on icons
+                undoIcon?.apply {
+                    isEnabled = isUndoEnabled
+                    isVisible = false
+                }
+                pasteIcon?.apply {
+                    isEnabled = isPasteEnabled
+                    visibility = if (isPasteEnabled) {
+                        View.VISIBLE
+                    } else {
+                        View.INVISIBLE
+                    }
+                }
+                // Update the clipboard preview text
+                clipboardPreviewText?.text = clipboardText
 
-            // Update the clipboard preview text
-            holder.clipboardPreviewText?.text = clipboardText
+                undoIcon?.apply {
+                    setOnClickListener {
+                        onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
+                    }
+                }
+                clipboardPreviewTextDescription?.isVisible = isPasteEnabled
 
-            holder.undoIcon?.setOnClickListener {
-                onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
-            }
-            holder.pasteIcon?.setOnClickListener {
-                onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
+                pasteIcon?.apply {
+                    setOnClickListener {
+                        onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
+                    }
+                    setOnLongClickListener {
+                        onItemHelperIconLongClickListener?.invoke(HelperIcon.PASTE)
+                        true
+                    }
+                }
             }
             return
         }

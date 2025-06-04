@@ -16,6 +16,7 @@
         android:scaleType="centerInside"
         android:src="@drawable/undo_24px"
         android:tint="@color/keyboard_icon_color"
+        android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -26,8 +27,11 @@
         android:layout_height="40dp"
         android:layout_marginStart="16dp"
         android:background="@drawable/ten_keys_center_bg"
+        android:paddingStart="0dp"
+        android:paddingEnd="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/undo_icon"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
@@ -47,17 +51,29 @@
             android:layout_height="match_parent"
             android:ellipsize="end"
             android:gravity="center"
+            android:maxEms="8"
             android:maxLines="1"
+            android:text="aaaaaaaaaaaa"
             android:textColor="@color/keyboard_icon_color"
             android:textSize="14sp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toEndOf="@+id/paste_icon"
+            app:layout_constraintStart_toEndOf="@id/paste_icon"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_bias="0.0" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/clipboard_preview_text_description"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/delete_in_long_press"
+        android:textColor="@color/keyboard_icon_color"
+        android:textSize="8sp"
+        android:layout_marginStart="4dp"
+        app:layout_constraintStart_toEndOf="@+id/paste_icon_patent"
+        app:layout_constraintTop_toTopOf="@+id/paste_icon_patent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
