@@ -11,6 +11,12 @@ class ClipboardUtil(private val context: Context) {
         return !clipboard.hasPrimaryClip() || clipboard.primaryClip?.itemCount == 0
     }
 
+    fun setClipBoard(text: String) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("copied text", text)
+        clipboard.setPrimaryClip(clip)
+    }
+
     fun clearClipboard() {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

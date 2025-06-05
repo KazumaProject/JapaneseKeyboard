@@ -768,15 +768,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     when (key) {
                         /** コピー **/
                         Key.KeyA -> {
-
+                            val selectedText = getSelectedText(0)
+                            if (!selectedText.isNullOrEmpty()) {
+                                clipboardUtil.setClipBoard(selectedText.toString())
+                                suggestionAdapter?.apply {
+                                    setPasteEnabled(true)
+                                    setClipboardPreview(selectedText.toString())
+                                }
+                            }
                         }
                         /** 切り取り **/
                         Key.KeySA -> {
-
+                            val selectedText = getSelectedText(0)
+                            if (!selectedText.isNullOrEmpty()) {
+                                clipboardUtil.setClipBoard(selectedText.toString())
+                                suggestionAdapter?.apply {
+                                    setPasteEnabled(true)
+                                    setClipboardPreview(selectedText.toString())
+                                    sendKeyEvent(
+                                        KeyEvent(
+                                            KeyEvent.ACTION_DOWN,
+                                            KeyEvent.KEYCODE_DEL
+                                        )
+                                    )
+                                }
+                            }
                         }
                         /** 全て選択 **/
                         Key.KeyMA -> {
-
+                            setAllTextSelect()
                         }
                         /** 戻る **/
                         Key.KeyRA -> {
@@ -1056,6 +1076,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 endBatchEdit()
             }
         }
+    }
+
+    private fun setAllTextSelect() {
+        val request = ExtractedTextRequest()
+        // 必要に応じて request.flags を設定（デフォルトで OK）
+        val extracted: ExtractedText? = getExtractedText(request, 0)
+        val fullText: CharSequence = extracted?.text ?: return
+        // 3. テキスト長を取得
+        val textLen = fullText.length
+        if (textLen == 0) return
+        // 4. 選択開始：先頭(0) → 選択終了：全文長
+        // ※ beginBatchEdit() / endBatchEdit() で一連の編集をまとめると滑らか
+        beginBatchEdit()
+        finishComposingText() // もし変換中の文字列があれば確定しておく
+        setSelection(0, textLen)
+        endBatchEdit()
     }
 
     private fun cancelHenkanByLongPressDeleteKey() {
@@ -2074,6 +2110,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         stopDeleteLongPress()
         clearDeletedBuffer()
         suggestionAdapter?.setUndoEnabled(false)
+        _selectMode.update { false }
     }
 
     private fun actionInDestroy() {
@@ -3674,8 +3711,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         return currentInputConnection?.getTextAfterCursor(p0, p1)
     }
 
-    override fun getSelectedText(p0: Int): CharSequence {
-        return currentInputConnection.getSelectedText(p0)
+    override fun getSelectedText(p0: Int): CharSequence? {
+        return currentInputConnection?.getSelectedText(p0)
     }
 
     override fun getCursorCapsMode(p0: Int): Int {
