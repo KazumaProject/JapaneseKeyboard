@@ -193,7 +193,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         )
     }
     private val cachedLogoDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.logo_key)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.language_24dp
+        )
     }
     private val cachedKanaDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.kana_small)
@@ -922,15 +925,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (isHenkan.get()) {
                     cancelHenkanByLongPressDeleteKey()
                 } else {
-                    if (!selectMode.value) {
-                        val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
-                        if (beforeChar.isNotEmpty()) {
-                            suggestionAdapter?.apply {
-                                setUndoPreviewText("")
-                                setUndoEnabled(true)
-                            }
-                        }
-                    }
                     onDeleteLongPressUp.set(true)
                     deleteLongPress()
                     _dakutenPressed.value = false
@@ -2592,11 +2586,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         if (!selectMode.value) {
             deleteLongPressJob?.invokeOnCompletion {
-                scope.launch(Dispatchers.Main) {
-                    if (inputStringInBeginning.isEmpty()) {
-                        suggestionAdapter?.apply {
-                            suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
-                        }
+                if (inputStringInBeginning.isEmpty()) {
+                    suggestionAdapter?.apply {
+                        suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
+                        setUndoEnabled(true)
                     }
                 }
             }

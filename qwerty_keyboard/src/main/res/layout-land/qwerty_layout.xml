@@ -593,7 +593,7 @@
         android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:scaleType="centerInside"
-        android:src="@drawable/logo_key"
+        android:src="@drawable/language_24dp"
         android:tint="@color/keyboard_icon_color"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/key_123"
