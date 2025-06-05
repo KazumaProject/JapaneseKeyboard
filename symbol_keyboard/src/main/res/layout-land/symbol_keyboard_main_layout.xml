@@ -1,53 +1,67 @@
-<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/symbol_keyboard_main_layout.xml -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/keyboard_height_land">
+    android:layout_height="match_parent">
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/category_tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="@color/suggestion_view_bg"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tabGravity="fill"
+        app:tabIndicatorHeight="0dp"
+        app:tabMode="scrollable" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/symbol_candidate_recycler_view"
         android:layout_width="match_parent"
-        android:layout_height="230dp"
-        app:layout_constraintBottom_toTopOf="@+id/linearLayout" />
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/bottom_bar"
+        app:layout_constraintTop_toBottomOf="@id/category_tab_layout" />
 
     <LinearLayout
-        android:id="@+id/linearLayout"
+        android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="58dp"
+        android:layout_height="64dp"
         android:orientation="horizontal"
         android:weightSum="5"
-        app:layout_constraintBottom_toBottomOf="parent">
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/return_jp_keyboard_button"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:background="@drawable/symbol_keyboard_buttons_bg"
             android:scaleType="center"
             android:src="@drawable/language_japanese_kana_24px"
-            android:tint="@color/tab_unselected"
-            android:background="@drawable/symbol_keyboard_buttons_bg"/>
+            android:tint="@color/tab_unselected" />
 
+        <!-- ★ モード切替用 TabLayout -->
         <com.google.android.material.tabs.TabLayout
-            android:id="@+id/bottom_tab_layout"
+            android:id="@+id/mode_tab_layout"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="3"
+            android:backgroundTint="@color/suggestion_view_bg"
             app:tabGravity="fill"
             app:tabIndicatorHeight="0dp"
-            app:tabMode="fixed"
-            android:backgroundTint="@color/suggestion_view_bg"/>
+            app:tabMode="fixed" />
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/symbol_keyboard_delete_key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:background="@drawable/symbol_keyboard_buttons_bg"
             android:scaleType="center"
             android:src="@drawable/backspace_24px"
-            android:tint="@color/tab_unselected"
-            android:background="@drawable/symbol_keyboard_buttons_bg"/>
-
+            android:tint="@color/tab_unselected" />
     </LinearLayout>
-
 </androidx.constraintlayout.widget.ConstraintLayout>
