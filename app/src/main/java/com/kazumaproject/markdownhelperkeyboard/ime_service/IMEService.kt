@@ -85,6 +85,7 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -175,7 +176,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isTablet: Boolean? = false
 
     private var isSpaceKeyLongPressed = false
-    private var isSelectMode = false
+    private val _selectMode = MutableStateFlow(false)
+    private val selectMode: StateFlow<Boolean> = _selectMode
 
     // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
@@ -761,10 +763,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             else -> {
-                if (isFlick) {
-                    handleFlick(char, insertString, sb, mainView)
+                /** 選択モード **/
+                if (selectMode.value) {
+                    when (key) {
+                        /** コピー **/
+                        Key.KeyA -> {
+
+                        }
+                        /** 切り取り **/
+                        Key.KeySA -> {
+
+                        }
+                        /** 全て選択 **/
+                        Key.KeyMA -> {
+
+                        }
+                        /** 戻る **/
+                        Key.KeyRA -> {
+                            _selectMode.update { false }
+                        }
+
+                        else -> {
+
+                        }
+                    }
                 } else {
-                    handleTap(char, insertString, sb, mainView)
+                    if (isFlick) {
+                        handleFlick(char, insertString, sb, mainView)
+                    } else {
+                        handleTap(char, insertString, sb, mainView)
+                    }
                 }
             }
         }
@@ -847,7 +875,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (isHenkan.get()) {
                     cancelHenkanByLongPressDeleteKey()
                 } else {
-                    if (!isSelectMode) {
+                    if (!selectMode.value) {
                         val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
                         if (beforeChar.isNotEmpty()) {
                             suggestionAdapter?.apply {
@@ -871,7 +899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
                     isSpaceKeyLongPressed = true
                     //showKeyboardPicker()
-                    isSelectMode = true
+                    _selectMode.update { true }
                 }
             }
 
@@ -913,7 +941,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
-        if (isSelectMode) {
+        if (selectMode.value) {
             extendOrShrinkLeftOneChar()
         } else {
             handleLeftKeyPress(gestureType, insertString)
@@ -1141,6 +1169,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                     }
                 }
+            }
+        }
+
+        launch {
+            selectMode.collectLatest { selectMode ->
+                mainView.keyboardView.setTextToAllButtons(selectMode)
             }
         }
 
@@ -2465,7 +2499,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _suggestionFlag.emit(flag)
 
         }
-        if (!isSelectMode) {
+        if (!selectMode.value) {
             deleteLongPressJob?.invokeOnCompletion {
                 scope.launch(Dispatchers.Main) {
                     suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
@@ -2570,7 +2604,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             else -> {
                 if (stringInTail.get().isNotEmpty()) return
-                if (!isSelectMode) {
+                if (!selectMode.value) {
                     val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
                     if (beforeChar.isNotEmpty()) {
                         deletedBuffer.append(beforeChar)
@@ -2863,7 +2897,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (insertString.isNotEmpty()) {
                     updateLeftInputString(insertString)
                 } else if (stringInTail.get().isEmpty() && !isCursorAtBeginning()) {
-                    if (isSelectMode) {
+                    if (selectMode.value) {
                         extendOrShrinkLeftOneChar()
                     } else {
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
@@ -2917,7 +2951,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun actionInRightKeyPressed(gestureType: GestureType, insertString: String) {
         when {
             insertString.isEmpty() -> {
-                if (isSelectMode) {
+                if (selectMode.value) {
                     extendOrShrinkSelectionRight()
                 } else {
                     handleEmptyInputString(gestureType)
@@ -2998,7 +3032,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleEmptyInputString() {
         if (stringInTail.get().isEmpty()) {
-            if (isSelectMode) {
+            if (selectMode.value) {
                 extendOrShrinkSelectionRight()
             } else {
                 if (!isCursorAtEnd()) {
