@@ -5,7 +5,10 @@ import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.convertFullWidthToHalfWidth
+import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.domain.categorizeEmoji
+import com.kazumaproject.domain.sortByEmojiCategory
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -13,7 +16,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.sortByEmojiCategory
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
 import com.kazumaproject.toFullWidthDigitsEfficient
@@ -967,11 +969,22 @@ class KanaKanjiEngine {
 
     }
 
-    fun getSymbolEmojiCandidates(): List<String> = emojiTokenArray.getNodeIds().map {
-        emojiTangoTrie.getLetterShortArray(
-            it, emojiSuccinctBitVectorTangoLBS
-        )
-    }.distinct().sortByEmojiCategory()
+    fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray
+        .getNodeIds()
+        .map { nodeId ->
+            // nodeId から絵文字（String）を取得
+            emojiTangoTrie.getLetterShortArray(nodeId, emojiSuccinctBitVectorTangoLBS)
+        }
+        .distinct()
+        // String → Emoji オブジェクトに変換
+        .map { symbol ->
+            Emoji(
+                symbol = symbol,
+                category = categorizeEmoji(symbol)
+            )
+        }
+        // EmojiCategory の順序＋文字列順でソート
+        .sortByEmojiCategory()
 
     fun getSymbolEmoticonCandidates(): List<String> = emoticonTokenArray.getNodeIds().map {
         emoticonTangoTrie.getLetterShortArray(

@@ -52,6 +52,7 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -133,7 +134,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private var emojiList: List<String> = emptyList()
+    private var emojiList: List<Emoji> = emptyList()
 
     private var emoticonList: List<String> = emptyList()
 
@@ -782,7 +783,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 stringInTail.set("")
                 finishComposingText()
                 setComposingText("", 0)
-                mainView.keyboardSymbolView.setTabPosition(0)
+//                mainView.keyboardSymbolView.setTabPosition(0)
             }
 
             else -> {
@@ -1923,7 +1924,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             kanaKanjiEngine.getSymbolCandidates()
         }
         mainView.keyboardSymbolView.setSymbolLists(
-            emojiList, emoticonList, symbolList, mainView.keyboardSymbolView.getTabPosition()
+            emojiList, emoticonList, symbolList,
         )
     }
 
@@ -3787,6 +3788,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
 
+        fun applySymbolViewSize(view: View) {
+            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                params.height = (280 * density).toInt()
+                params.gravity = gravity
+                view.layoutParams = params
+            }
+        }
+
         // 8) Update either tabletView or keyboardView (depending on isTablet)
         if (isTablet == true) {
             applySize(binding.tabletView)
@@ -3796,7 +3805,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         // 9) The candidates row and symbol view use the same height & gravity
         applySize(binding.candidatesRowView)
-        applySize(binding.keyboardSymbolView)
+        applySymbolViewSize(binding.keyboardSymbolView)
         applySize(binding.qwertyView)
 
         // 10) suggestionViewParent sits above the keyboard, so we adjust bottomMargin instead of height
