@@ -71,9 +71,13 @@ import com.kazumaproject.tenkey.extensions.setTextTapNumber
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 @SuppressLint("ClickableViewAccessibility")
@@ -97,8 +101,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
 
-    // Current input mode (Japanese / English / Number)
-    val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
+    /** ← REPLACED AtomicReference with StateFlow **/
+    private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
+    val currentInputMode: StateFlow<InputMode> = _currentInputMode
 
     // Popups: active (center) and directional
     private val popupWindowActive: PopupWindow
@@ -127,6 +132,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     // Map each Key enum to its corresponding View (Button/ImageButton/Switch)
     private var listKeys: Map<Key, Any>
+
+    /** ← NEW: scope tied to this view; cancel it on detach **/
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     init {
         // Inflate the keyboard layout with ViewBinding (root is <merge>, so attachToParent = true)
@@ -225,6 +233,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         } else {
             this.isFocusable = false
         }
+
+        // ← NEW: launch a coroutine to observe changes to currentInputMode
+        scope.launch {
+            currentInputMode.collect { inputMode ->
+                // Whenever inputMode changes, update all keys and switch UI
+                handleCurrentInputModeSwitch(inputMode)
+                binding.keySwitchKeyMode.setInputMode(inputMode, false)
+            }
+        }
+    }
+
+    fun setCurrentMode(inputMode: InputMode) {
+        _currentInputMode.update { inputMode }
     }
 
     /** Allow setting an external FlickListener **/
@@ -248,6 +269,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         longPressListener = null
         longPressJob?.cancel()
         longPressJob = null
+
+        // ← CANCEL the observing coroutine when the view is detached
+        scope.coroutineContext.cancelChildren()
     }
 
     override fun onDetachedFromWindow() {
@@ -299,8 +323,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     resetLongPressAction()
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
-                        val keyInfo = currentInputMode.get()
+                        // ← READING the state flow's current value:
+                        val keyInfo = currentInputMode.value
                             .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
                                 gestureType = gestureType, key = pressedKey.key, char = null
@@ -350,13 +376,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     button?.let {
                         if (it is AppCompatButton) {
                             if (it == binding.sideKeySymbol) return false
-                            when (currentInputMode.get()) {
+                            // ← UPDATE: use state flow's value to set text after finger-up
+                            when (currentInputMode.value) {
                                 InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
                                 InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
                                 InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                             }
                         }
-                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.keySmallLetter) {
+                        if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                             it.setImageDrawable(
                                 ContextCompat.getDrawable(
                                     context, com.kazumaproject.core.R.drawable.number_small
@@ -398,14 +425,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         val gestureType2 = getGestureType(
                             event, if (pointer == 0) 1 else 0
                         )
-                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.get() == InputMode.ModeNumber) {
+                        if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
                             binding.keySmallLetter.setImageDrawable(
                                 ContextCompat.getDrawable(
                                     context, com.kazumaproject.core.R.drawable.number_small
                                 )
                             )
                         }
-                        val keyInfo = currentInputMode.get()
+                        val keyInfo = currentInputMode.value
                             .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
@@ -425,7 +452,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     button?.let {
                                         if (it is AppCompatButton) {
                                             if (it == binding.sideKeySymbol) return false
-                                            when (currentInputMode.get()) {
+                                            when (currentInputMode.value) {
                                                 InputMode.ModeJapanese -> it.setTenKeyTextJapanese(
                                                     it.id
                                                 )
@@ -434,7 +461,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                                 InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                                             }
                                         }
-                                        if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.keySmallLetter) {
+                                        if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                                             it.setImageDrawable(
                                                 ContextCompat.getDrawable(
                                                     context,
@@ -497,7 +524,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             val gestureType = getGestureType(
                                 event, event.getPointerId(event.actionIndex)
                             )
-                            val keyInfo = currentInputMode.get()
+                            val keyInfo = currentInputMode.value
                                 .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
                             if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
@@ -546,7 +573,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 if (it is AppCompatButton) {
                                     if (it == binding.sideKeySymbol) return false
                                     it.isPressed = false
-                                    when (currentInputMode.get()) {
+                                    when (currentInputMode.value) {
                                         InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
                                         InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
                                         InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
@@ -763,7 +790,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val distanceY = finalY - pressedKey.initialY
         return when {
             abs(distanceX) < DEFAULT_TAP_RANGE_SMART_PHONE && abs(distanceY) < DEFAULT_TAP_RANGE_SMART_PHONE -> GestureType.Tap
-
             abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
             abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
             abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
@@ -816,7 +842,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             if (it is AppCompatButton) {
                 if (it == binding.sideKeySymbol) return
 
-                when (currentInputMode.get()) {
+                when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         popTextTop.setTextFlickTopJapanese(it.id)
                         popTextLeft.setTextFlickLeftJapanese(it.id)
@@ -854,7 +880,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
 
             if (it is AppCompatImageButton) {
-                if (currentInputMode.get() == InputMode.ModeNumber && it == binding.keySmallLetter) {
+                if (currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                     popTextTop.setTextFlickTopNumber(it.id)
                     popTextLeft.setTextFlickLeftNumber(it.id)
                     popTextBottom.setTextFlickBottomNumber(it.id)
@@ -891,7 +917,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         button?.let {
             if (it is AppCompatButton) {
                 if (it == binding.sideKeySymbol) return
-                when (currentInputMode.get()) {
+                when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         it.setTenKeyTextWhenTapJapanese(it.id)
                         if (isLongPressed) popTextActive.setTextTapJapanese(it.id)
@@ -913,7 +939,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 }
             }
-            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.keySmallLetter) {
+            if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                 it.setImageDrawable(
                     ContextCompat.getDrawable(
                         context, com.kazumaproject.core.R.drawable.open_bracket
@@ -938,7 +964,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 if (!isLongPressed) it.text = ""
                 when (gestureType) {
                     GestureType.FlickLeft -> {
-                        when (currentInputMode.get()) {
+                        when (currentInputMode.value) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickLeftJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -963,7 +989,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
 
                     GestureType.FlickTop -> {
-                        when (currentInputMode.get()) {
+                        when (currentInputMode.value) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickTopJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -988,7 +1014,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
 
                     GestureType.FlickRight -> {
-                        when (currentInputMode.get()) {
+                        when (currentInputMode.value) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickRightJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -1021,7 +1047,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
 
                     GestureType.FlickBottom -> {
-                        when (currentInputMode.get()) {
+                        when (currentInputMode.value) {
                             InputMode.ModeJapanese -> {
                                 popTextActive.setTextFlickBottomJapanese(it.id)
                                 if (isLongPressed) popTextCenter.setTextTapJapanese(it.id)
@@ -1059,7 +1085,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
                 it.isPressed = false
             }
-            if (it is AppCompatImageButton && currentInputMode.get() == InputMode.ModeNumber && it == binding.keySmallLetter) {
+            if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                 if (!isLongPressed) it.setImageDrawable(null)
                 when (gestureType) {
                     GestureType.FlickLeft -> {
@@ -1135,7 +1161,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             button?.let {
                 if (it is AppCompatButton) {
                     if (it == binding.sideKeySymbol) return
-                    when (currentInputMode.get()) {
+                    when (currentInputMode.value) {
                         InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
                         InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
                         InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
@@ -1176,40 +1202,26 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Cycle through input modes when the switch key is clicked **/
     private fun handleClickInputModeSwitch() {
-        val newInputMode = when (currentInputMode.get()) {
-            InputMode.ModeJapanese -> {
-                setKeysInEnglishText()
-                InputMode.ModeEnglish
-            }
-
-            InputMode.ModeEnglish -> {
-                setKeysInNumberText()
-                InputMode.ModeNumber
-            }
-
-            InputMode.ModeNumber -> {
-                setKeysInJapaneseText()
-                InputMode.ModeJapanese
-            }
+        // ← READ from StateFlow.value:
+        val newInputMode = when (currentInputMode.value) {
+            InputMode.ModeJapanese -> InputMode.ModeEnglish
+            InputMode.ModeEnglish -> InputMode.ModeNumber
+            InputMode.ModeNumber -> InputMode.ModeJapanese
         }
-        currentInputMode.set(newInputMode)
-        binding.keySwitchKeyMode.setInputMode(newInputMode, false)
+        // ← WRITE to MutableStateFlow:
+        _currentInputMode.update { newInputMode }
+        // We don’t need to manually call setKeysInXXX or setInputMode(...) here,
+        // because our collector in init { … } already calls `handleCurrentInputModeSwitch(...)`
+        // and `binding.keySwitchKeyMode.setInputMode(...)`.
     }
 
-    /** Sync UI to a specified input mode **/
+    /** Sync UI to a specified input mode (called from collector) **/
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
         when (inputMode) {
             InputMode.ModeJapanese -> setKeysInJapaneseText()
             InputMode.ModeEnglish -> setKeysInEnglishText()
             InputMode.ModeNumber -> setKeysInNumberText()
         }
-    }
-
-    /** Call this if you want the switch and keys to reflect the current input mode **/
-    fun setInputModeSwitchState() {
-        val inputMode = currentInputMode.get()
-        binding.keySwitchKeyMode.setInputMode(inputMode, false)
-        handleCurrentInputModeSwitch(inputMode)
     }
 
     /** Populate all main keys with Japanese labels **/
