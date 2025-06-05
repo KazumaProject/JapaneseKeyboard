@@ -1276,6 +1276,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.keyReturn.isEnabled = state
     }
 
+    /** Enable/disable the “previous character” key **/
+    fun setSideKeyPreviousDrawable(drawable: Drawable?) {
+        binding.keyReturn.setImageDrawable(drawable)
+    }
+
     /** Cycle through input modes when the switch key is clicked **/
     private fun handleClickInputModeSwitch() {
         // ← READ from StateFlow.value:
@@ -1329,11 +1334,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
         }
 
-        val returnIcon = ContextCompat.getDrawable(
+        val shareIcon = ContextCompat.getDrawable(
             context,
-            com.kazumaproject.core.R.drawable.undo_24px
+            com.kazumaproject.core.R.drawable.baseline_share_24
         )
-        returnIcon?.apply {
+        shareIcon?.apply {
             setBounds(
                 0,
                 0,
@@ -1377,19 +1382,25 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             key8.text = ""
             key9.apply {
-                text = "戻る"
+                text = "共有"
                 textSize = 12f
-                setCompoundDrawables(returnIcon, null, null, null)
+                setCompoundDrawables(shareIcon, null, null, null)
             }
-            keyReturn.visibility = View.INVISIBLE
-            sideKeySymbol.visibility = View.INVISIBLE
-            keySpace.visibility = View.INVISIBLE
 
             keyEnter.visibility = View.INVISIBLE
             keySwitchKeyMode.visibility = View.INVISIBLE
             key11.visibility = View.INVISIBLE
             key12.visibility = View.INVISIBLE
             keySmallLetter.visibility = View.INVISIBLE
+
+            keyReturn.setImageDrawable(null)
+            sideKeySymbol.setImageDrawable(null)
+            keySpace.setImageDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.undo_24px
+                )
+            )
         }
     }
 
@@ -1419,14 +1430,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             key11.setTenKeyTextJapanese(key11.id)
             key12.setTenKeyTextJapanese(key12.id)
-            keyReturn.visibility = View.VISIBLE
-            sideKeySymbol.visibility = View.VISIBLE
-            keySpace.visibility = View.VISIBLE
-            keyEnter.visibility = View.VISIBLE
-            keySwitchKeyMode.visibility = View.VISIBLE
-            key11.visibility = View.VISIBLE
-            key12.visibility = View.VISIBLE
-            keySmallLetter.visibility = View.VISIBLE
+            resetFromSelectMode(binding)
         }
     }
 
@@ -1456,14 +1460,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             key11.setTenKeyTextEnglish(key11.id)
             key12.setTenKeyTextEnglish(key12.id)
-            keyReturn.visibility = View.VISIBLE
-            sideKeySymbol.visibility = View.VISIBLE
-            keySpace.visibility = View.VISIBLE
-            keyEnter.visibility = View.VISIBLE
-            keySwitchKeyMode.visibility = View.VISIBLE
-            key11.visibility = View.VISIBLE
-            key12.visibility = View.VISIBLE
-            keySmallLetter.visibility = View.VISIBLE
+            resetFromSelectMode(binding)
         }
     }
 
@@ -1493,9 +1490,40 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             key11.setTenKeyTextNumber(key11.id)
             key12.setTenKeyTextNumber(key12.id)
-            keyReturn.visibility = View.VISIBLE
-            sideKeySymbol.visibility = View.VISIBLE
-            keySpace.visibility = View.VISIBLE
+
+            resetFromSelectMode(binding)
+        }
+    }
+
+    private fun resetFromSelectMode(binding: KeyboardLayoutBinding) {
+        binding.apply {
+            keyReturn.apply {
+                visibility = View.VISIBLE
+                setImageDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        com.kazumaproject.core.R.drawable.undo_24px
+                    )
+                )
+            }
+            sideKeySymbol.apply {
+                visibility = View.VISIBLE
+                setImageDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        com.kazumaproject.core.R.drawable.symbol
+                    )
+                )
+            }
+            keySpace.apply {
+                visibility = View.VISIBLE
+                setImageDrawable(
+                    ContextCompat.getDrawable(
+                        context,
+                        com.kazumaproject.core.R.drawable.baseline_space_bar_24
+                    )
+                )
+            }
             keyEnter.visibility = View.VISIBLE
             keySwitchKeyMode.visibility = View.VISIBLE
             key11.visibility = View.VISIBLE

@@ -4,35 +4,51 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Undo アイコン -->
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/undo_icon"
-        android:layout_width="42dp"
-        android:layout_height="42dp"
-        android:layout_marginVertical="2dp"
-        android:layout_marginStart="16dp"
-        android:background="@drawable/suggestion_icon_bg"
-        android:contentDescription="@string/undo_symbol"
-        android:scaleType="centerInside"
-        android:src="@drawable/undo_24px"
-        android:tint="@color/keyboard_icon_color"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/undo_text"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/undo_icon_parent"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:maxEms="8"
-        android:maxLines="1"
-        android:textColor="@color/keyboard_icon_color"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="@+id/undo_icon"
-        app:layout_constraintStart_toEndOf="@+id/undo_icon"
-        app:layout_constraintTop_toTopOf="@+id/undo_icon" />
+        android:background="@drawable/ten_keys_center_bg"
+        android:paddingVertical="4dp"
+        android:paddingEnd="7dp"
+        android:paddingStart="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginStart="16dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/imageView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:contentDescription="@string/undo_symbol"
+            android:src="@drawable/history_24dp"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+
+        <!-- Undo Text -->
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/undo_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxEms="12"
+            android:maxLines="1"
+            android:scaleType="centerInside"
+            android:textColor="@color/keyboard_icon_color"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.1"
+            app:layout_constraintStart_toEndOf="@+id/imageView"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/paste_icon_patent"

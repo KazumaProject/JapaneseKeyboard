@@ -3,11 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
-import android.text.style.UnderlineSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.AsyncListDiffer
@@ -35,6 +33,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
     private var onItemHelperIconLongClickListener: ((HelperIcon) -> Unit)? = null
 
+    // Holds the text to show in the clipboard preview inside the empty state.
+    private var clipboardText: String = ""
+    private var undoText: String = ""
+
+    // Internal flags to track enable/disable state
+    private var isUndoEnabled: Boolean = false
+    private var isPasteEnabled: Boolean = true
+
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
     }
@@ -58,10 +64,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onItemHelperIconLongClickListener = null
     }
 
-    // Internal flags to track enable/disable state
-    private var isUndoEnabled: Boolean = false
-    private var isPasteEnabled: Boolean = true
-
     /**
      * Enable or disable the undo icon in the empty state.
      */
@@ -82,9 +84,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    // Holds the text to show in the clipboard preview inside the empty state.
-    private var clipboardText: String = ""
-
     /**
      * Public function to set the text of clipboardPreviewText in the empty state.
      * If currently showing empty state, forces a re‐bind to update the preview text.
@@ -96,15 +95,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private var undoText: String = ""
 
-    private var isUndoUnderlined: Boolean = false
-
-    /**
-     * undoPreviewText に表示するテキストと同時に、
-     * “下線を付けるかどうか” を指定できるようにしておく。
-     */
-    fun setUndoPreviewText(text: String,) {
+    fun setUndoPreviewText(text: String) {
         undoText = text
         if (suggestions.isEmpty()) {
             notifyItemChanged(0)
@@ -138,8 +130,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     /** ViewHolder for the “empty” state (showing icons + clipboard preview) **/
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val undoIcon: AppCompatImageButton? = itemView.findViewById(R.id.undo_icon)
-        val undoPreviewText: MaterialTextView? = itemView.findViewById(R.id.undo_text)
+        val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
+        val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
         val pasteIcon: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
         val clipboardPreviewText: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_text_preview)
@@ -162,7 +154,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return if (viewType == VIEW_TYPE_EMPTY) {
             val emptyView = LayoutInflater.from(parent.context)
-                .inflate(R.layout.suggestion_empty_icons, parent, false)
+                .inflate(R.layout.suggestion_empty_layout, parent, false)
             EmptyViewHolder(emptyView)
         } else {
             val itemView = LayoutInflater.from(parent.context)
@@ -177,6 +169,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 // Set enabled/disabled state on icons
                 undoIcon?.apply {
                     isVisible = isUndoEnabled
+                    isFocusable = false
+                    text = undoText.reversed()
                 }
                 pasteIcon?.apply {
                     isEnabled = isPasteEnabled
@@ -185,29 +179,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     } else {
                         View.INVISIBLE
                     }
+                    isFocusable = false
                 }
                 // Update the clipboard preview text
                 clipboardPreviewText?.text = clipboardText
 
-                undoPreviewText?.apply {
-                    if (isUndoEnabled && isUndoUnderlined) {
-                        // undoText はすでに正しい文字列が入っている（例: "削除された文字列"）
-                        val display = undoText.reversed() // 逆順にしているならそのまま
-                        val spannable = SpannableString(display)
-                        spannable.setSpan(
-                            UnderlineSpan(),
-                            0,
-                            display.length,
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                        )
-                        text = spannable
-                    }
-                    // ─── アンダーラインを外したい（または下線ナシ）場合
-                    else if (isUndoEnabled) {
-                        text = undoText.reversed()
-                    } else {
-                        text = ""
-                    }
+                undoIconParent?.apply {
+                    isVisible = isUndoEnabled
                     setOnClickListener {
                         onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
                     }
@@ -217,15 +195,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     }
                 }
 
-                undoIcon?.apply {
-                    setOnClickListener {
-                        onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
-                    }
-                    setOnLongClickListener {
-                        onItemHelperIconLongClickListener?.invoke(HelperIcon.UNDO)
-                        true
-                    }
-                }
                 clipboardPreviewTextDescription?.apply {
                     isVisible = isPasteEnabled
                 }
