@@ -133,6 +133,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     // Map each Key enum to its corresponding View (Button/ImageButton/Switch)
     private var listKeys: Map<Key, Any>
 
+    private var isSelectMode = false
+
     /** ← NEW: scope tied to this view; cancel it on detach **/
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -263,6 +265,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbol.setPadding(paddingSize)
     }
 
+    fun setTextToAllButtons(isSelecMode: Boolean) {
+        if (isSelecMode) {
+            setKeysInEmptyText()
+        } else {
+            handleCurrentInputModeSwitch(currentInputMode.value)
+        }
+        this.isSelectMode = isSelecMode
+    }
+
     /** Clean up references when view is detached **/
     private fun release() {
         flickListener = null
@@ -270,6 +281,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         longPressJob?.cancel()
         longPressJob = null
 
+        isSelectMode = false
         // ← CANCEL the observing coroutine when the view is detached
         scope.coroutineContext.cancelChildren()
     }
@@ -307,6 +319,47 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             initialY = event.getY(event.actionIndex),
                         )
                     }
+                    if (isSelectMode) {
+                        // 1️⃣ Key→View のマッピングだけ行う
+                        val viewToPress: View? = when (key) {
+                            Key.KeyA -> binding.key1
+                            Key.KeySA -> binding.key3
+                            Key.KeyMA -> binding.key7
+                            Key.KeyRA -> binding.key9
+                            Key.SideKeyDelete -> binding.keyDelete
+                            Key.SideKeyCursorRight -> binding.keyMoveCursorRight
+                            Key.SideKeyCursorLeft -> binding.keySoftLeft
+                            else -> null
+                        }
+
+                        // 2️⃣ 該当する View があれば isPressed を設定
+                        viewToPress?.let { keyButton ->
+                            keyButton.isPressed = true
+
+                            // 3️⃣ 長押しをサポートするキーであれば、ジョブを立ち上げる
+                            when (key) {
+                                Key.SideKeyDelete,
+                                Key.SideKeyCursorRight,
+                                Key.SideKeyCursorLeft -> {
+                                    longPressJob?.cancel()  // 必要に応じて previous job をキャンセル
+                                    longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                                        delay(ViewConfiguration.getLongPressTimeout().toLong())
+                                        if (pressedKey.key != Key.NotSelected) {
+                                            longPressListener?.onLongPress(pressedKey.key)
+                                            isLongPressed = true
+                                            onLongPressed()
+                                        }
+                                    }
+                                }
+
+                                else -> {
+                                    // 長押しなしのキーはここでは何もしない
+                                }
+                            }
+                        }
+
+                        return true
+                    }
                     setKeyPressed()
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
@@ -321,6 +374,30 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                 MotionEvent.ACTION_UP -> {
                     resetLongPressAction()
+                    if (isSelectMode) {
+                        // Map each Key to its corresponding button/view
+                        val viewToRelease: View? = when (pressedKey.key) {
+                            Key.KeyA -> binding.key1
+                            Key.KeySA -> binding.key3
+                            Key.KeyMA -> binding.key7
+                            Key.KeyRA -> binding.key9
+                            Key.SideKeyDelete -> binding.keyDelete
+                            Key.SideKeyCursorRight -> binding.keyMoveCursorRight
+                            Key.SideKeyCursorLeft -> binding.keySoftLeft
+                            else -> null
+                        }
+
+                        viewToRelease?.let { key ->
+                            key.isPressed = false
+                            flickListener?.onFlick(
+                                gestureType = GestureType.Tap,
+                                key = pressedKey.key,
+                                char = null
+                            )
+                        }
+
+                        return false
+                    }
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         // ← READING the state flow's current value:
@@ -395,6 +472,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    if (isSelectMode) return false
                     val gestureType = if (event.pointerCount == 1) {
                         getGestureType(event, 0)
                     } else {
@@ -418,6 +496,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
                     popupWindowActive.hide()
                     longPressJob?.cancel()
+                    if (isSelectMode) return true
                     if (event.pointerCount == 2) {
                         isLongPressed = false
                         val pointer = event.getPointerId(event.actionIndex)
@@ -521,6 +600,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (event.pointerCount == 2) {
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                             resetLongPressAction()
+                            if (isSelectMode) return true
                             val gestureType = getGestureType(
                                 event, event.getPointerId(event.actionIndex)
                             )
@@ -892,10 +972,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                     Blur.applyBlurEffect(this, 8f)
                 }
-
-                if (it == binding.keySpace) {
-                    setKeysInEmptyText()
-                }
             }
         }
     }
@@ -1230,37 +1306,90 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             context,
             com.kazumaproject.core.R.drawable.content_copy_24dp
         )
-        copyIcon?.setBounds(0, 0, copyIcon.intrinsicWidth, copyIcon.intrinsicHeight)
+        copyIcon?.apply {
+            setBounds(
+                0,
+                0,
+                intrinsicWidth,
+                intrinsicHeight
+            )
+        }
 
         val cutIcon = ContextCompat.getDrawable(
             context,
             com.kazumaproject.core.R.drawable.content_cut_24dp
         )
-        cutIcon?.setBounds(0, 0, cutIcon.intrinsicWidth, cutIcon.intrinsicHeight)
+
+        cutIcon?.apply {
+            setBounds(
+                0,
+                0,
+                intrinsicWidth,
+                intrinsicHeight
+            )
+        }
+
+        val returnIcon = ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.undo_24px
+        )
+        returnIcon?.apply {
+            setBounds(
+                0,
+                0,
+                intrinsicWidth,
+                intrinsicHeight
+            )
+        }
+
+        val selectAllIcon = ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.text_select_start_24dp
+        )
+        selectAllIcon?.apply {
+            setBounds(
+                0,
+                0,
+                intrinsicWidth,
+                intrinsicHeight
+            )
+        }
+
         binding.apply {
             key1.apply {
                 text = "コピー"
+                textSize = 12f
                 setCompoundDrawables(copyIcon, null, null, null)
             }
             key2.text = ""
             key3.apply {
-                text = "カット"
+                text = "切り取り"
+                textSize = 12f
                 setCompoundDrawables(cutIcon, null, null, null)
             }
             key4.text = ""
             key5.text = ""
             key6.text = ""
-            key7.text = ""
+            key7.apply {
+                text = "全て選択"
+                textSize = 12f
+                setCompoundDrawables(selectAllIcon, null, null, null)
+            }
             key8.text = ""
-            key9.text = ""
-            key11.text = ""
-            key12.text = ""
-            keySmallLetter.setImageDrawable(null)
+            key9.apply {
+                text = "戻る"
+                textSize = 12f
+                setCompoundDrawables(returnIcon, null, null, null)
+            }
             keyReturn.visibility = View.INVISIBLE
             sideKeySymbol.visibility = View.INVISIBLE
             keySpace.visibility = View.INVISIBLE
+
             keyEnter.visibility = View.INVISIBLE
             keySwitchKeyMode.visibility = View.INVISIBLE
+            key11.visibility = View.INVISIBLE
+            key12.visibility = View.INVISIBLE
+            keySmallLetter.visibility = View.INVISIBLE
         }
     }
 
@@ -1279,9 +1408,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key4.setTenKeyTextJapanese(key4.id)
             key5.setTenKeyTextJapanese(key5.id)
             key6.setTenKeyTextJapanese(key6.id)
-            key7.setTenKeyTextJapanese(key7.id)
+            key7.apply {
+                setTenKeyTextJapanese(key7.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key8.setTenKeyTextJapanese(key8.id)
-            key9.setTenKeyTextJapanese(key9.id)
+            key9.apply {
+                setTenKeyTextJapanese(key9.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key11.setTenKeyTextJapanese(key11.id)
             key12.setTenKeyTextJapanese(key12.id)
             keyReturn.visibility = View.VISIBLE
@@ -1289,6 +1424,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySpace.visibility = View.VISIBLE
             keyEnter.visibility = View.VISIBLE
             keySwitchKeyMode.visibility = View.VISIBLE
+            key11.visibility = View.VISIBLE
+            key12.visibility = View.VISIBLE
+            keySmallLetter.visibility = View.VISIBLE
         }
     }
 
@@ -1307,9 +1445,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key4.setTenKeyTextEnglish(key4.id)
             key5.setTenKeyTextEnglish(key5.id)
             key6.setTenKeyTextEnglish(key6.id)
-            key7.setTenKeyTextEnglish(key7.id)
+            key7.apply {
+                setTenKeyTextEnglish(key7.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key8.setTenKeyTextEnglish(key8.id)
-            key9.setTenKeyTextEnglish(key9.id)
+            key9.apply {
+                setTenKeyTextEnglish(key9.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key11.setTenKeyTextEnglish(key11.id)
             key12.setTenKeyTextEnglish(key12.id)
             keyReturn.visibility = View.VISIBLE
@@ -1317,21 +1461,36 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySpace.visibility = View.VISIBLE
             keyEnter.visibility = View.VISIBLE
             keySwitchKeyMode.visibility = View.VISIBLE
+            key11.visibility = View.VISIBLE
+            key12.visibility = View.VISIBLE
+            keySmallLetter.visibility = View.VISIBLE
         }
     }
 
     /** Populate all main keys with Number labels **/
     private fun setKeysInNumberText() {
         binding.apply {
-            key1.setTenKeyTextNumber(key1.id)
+            key1.apply {
+                setTenKeyTextNumber(key1.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key2.setTenKeyTextNumber(key2.id)
-            key3.setTenKeyTextNumber(key3.id)
+            key3.apply {
+                setTenKeyTextNumber(key3.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key4.setTenKeyTextNumber(key4.id)
             key5.setTenKeyTextNumber(key5.id)
             key6.setTenKeyTextNumber(key6.id)
-            key7.setTenKeyTextNumber(key7.id)
+            key7.apply {
+                setTenKeyTextNumber(key7.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key8.setTenKeyTextNumber(key8.id)
-            key9.setTenKeyTextNumber(key9.id)
+            key9.apply {
+                setTenKeyTextNumber(key9.id)
+                setCompoundDrawables(null, null, null, null)
+            }
             key11.setTenKeyTextNumber(key11.id)
             key12.setTenKeyTextNumber(key12.id)
             keyReturn.visibility = View.VISIBLE
@@ -1339,6 +1498,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySpace.visibility = View.VISIBLE
             keyEnter.visibility = View.VISIBLE
             keySwitchKeyMode.visibility = View.VISIBLE
+            key11.visibility = View.VISIBLE
+            key12.visibility = View.VISIBLE
+            keySmallLetter.visibility = View.VISIBLE
         }
     }
 
