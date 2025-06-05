@@ -846,15 +846,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (isHenkan.get()) {
                     cancelHenkanByLongPressDeleteKey()
                 } else {
-                    val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
-                    if (beforeChar.isNotEmpty()) {
-                        suggestionAdapter?.apply {
-                            setUndoPreviewText("")
-                            setUndoEnabled(true)
-                        }
-                    } else {
-                        suggestionAdapter?.apply {
-                            setUndoPreviewText(deletedBuffer.toString())
+                    if (!isSelectMode) {
+                        val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
+                        if (beforeChar.isNotEmpty()) {
+                            suggestionAdapter?.apply {
+                                setUndoPreviewText("")
+                                setUndoEnabled(true)
+                            }
                         }
                     }
                     onDeleteLongPressUp.set(true)
@@ -872,6 +870,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
                     isSpaceKeyLongPressed = true
                     showKeyboardPicker()
+                    isSelectMode = true
                 }
             }
 
@@ -879,6 +878,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             else -> {}
         }
     }
+
+    private var isSelectMode = false
 
     private fun showKeyboardPicker() {
         val inputMethodManager =
@@ -913,8 +914,121 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
-        handleLeftKeyPress(gestureType, insertString)
+        if (isSelectMode) {
+            extendOrShrinkLeftOneChar()
+        } else {
+            handleLeftKeyPress(gestureType, insertString)
+        }
         onLeftKeyLongPressUp.set(true)
+    }
+
+    /** 選択開始時の固定端（アンカー）。-1 は「未設定」を示す */
+    private var anchorPos = -1
+
+    /**
+     * Shift + ← 相当：左へ 1 文字分だけ「伸ばす or 縮める」
+     *   - まだ選択が無い       → キャレットの左 1 文字を選択開始
+     *   - カーソルが左端にある → さらに左へ 1 文字伸ばす
+     *   - カーソルが右端にある → 右端を 1 文字分戻して縮める
+     */
+    private fun extendOrShrinkLeftOneChar() {
+        val extracted = getExtractedText(ExtractedTextRequest(), 0) ?: return
+        val selStart = extracted.selectionStart
+        val selEnd = extracted.selectionEnd
+
+        // ---- 0) 選択が無い（キャレットのみ）
+        if (selStart == selEnd) {
+            if (selStart == 0) return               // 先頭なら何もしない
+            anchorPos = selStart                    // 基点を保存
+            beginBatchEdit()
+            finishComposingText()
+            setSelection(selStart - 1, selEnd)      // 左 1 文字を選択
+            endBatchEdit()
+            return
+        }
+
+        // ---- 1) 既に選択がある
+        val cursorOnLeft = (anchorPos == selEnd)   // true: カーソル=左端
+        val cursorOnRight = (anchorPos == selStart) // true: カーソル=右端
+
+        when {
+            cursorOnLeft -> {  // さらに左へ伸ばす
+                if (selStart == 0) return
+                beginBatchEdit()
+                finishComposingText()
+                setSelection(selStart - 1, selEnd)
+                endBatchEdit()
+            }
+
+            cursorOnRight -> { // 右端から 1 文字戻して縮める
+                if (selEnd - 1 <= selStart) {
+                    // 選択が無くなるので解除＋アンカーリセット
+                    beginBatchEdit()
+                    finishComposingText()
+                    setSelection(selStart, selStart)
+                    endBatchEdit()
+                    anchorPos = -1
+                } else {
+                    beginBatchEdit()
+                    finishComposingText()
+                    setSelection(selStart, selEnd - 1)
+                    endBatchEdit()
+                }
+            }
+
+            else -> {
+                // 不整合時はアンカーをリセット
+                anchorPos = -1
+            }
+        }
+    }
+
+    /** Shift+→ を押した（あるいは同等の操作が来た）ときに呼ぶ */
+    private fun extendOrShrinkSelectionRight() {
+        val extracted = getExtractedText(ExtractedTextRequest(), 0) ?: return
+        val selStart = extracted.selectionStart
+        val selEnd = extracted.selectionEnd
+        val textLen = extracted.text?.length ?: return
+
+        // ----- 0) 選択が無い（カーソルだけ）の状態 -----
+        if (selStart == selEnd) {
+            anchorPos = selStart                    // ここを基点として保存
+            if (selEnd < textLen) {
+                beginBatchEdit()
+                finishComposingText()
+                setSelection(selStart, selEnd + 1)  // 1 文字だけ選択開始
+                endBatchEdit()
+            }
+            return
+        }
+
+        // ----- 1) 既に選択がある状態 -----
+        // アンカーがどちら側かで分岐
+        val cursorIsOnRight = (anchorPos == selStart)   // true: カーソル=右端
+        if (cursorIsOnRight) {
+            // ---- 1-A カーソルが右端 → さらに右へ伸ばす ----
+            if (selEnd < textLen) {
+                beginBatchEdit()
+                finishComposingText()
+                setSelection(anchorPos, selEnd + 1)
+                endBatchEdit()
+            }
+        } else {
+            // ---- 1-B カーソルが左端 → 左から 1 文字詰めて縮める ----
+            if (selStart + 1 >= selEnd) {
+                // 縮め切ったので選択解除
+                beginBatchEdit()
+                finishComposingText()
+                setSelection(selEnd, selEnd)        // キャレットを右端に
+                endBatchEdit()
+                anchorPos = -1                      // アンカーもクリア
+            } else {
+                beginBatchEdit()
+                finishComposingText()
+                setSelection(selStart + 1, selEnd)  // 左端だけ +1
+                endBatchEdit()
+            }
+        }
     }
 
     private fun cancelHenkanByLongPressDeleteKey() {
@@ -2360,9 +2474,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             _suggestionFlag.emit(flag)
 
         }
-        deleteLongPressJob?.invokeOnCompletion {
-            scope.launch(Dispatchers.Main) {
-                suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
+        if (!isSelectMode) {
+            deleteLongPressJob?.invokeOnCompletion {
+                scope.launch(Dispatchers.Main) {
+                    suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
+                }
             }
         }
     }
@@ -2463,17 +2579,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             else -> {
                 if (stringInTail.get().isNotEmpty()) return
-                val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
-                if (beforeChar.isNotEmpty()) {
-                    deletedBuffer.append(beforeChar)
-                    suggestionAdapter?.apply {
-                        setUndoEnabled(true)
-                        setUndoPreviewText(deletedBuffer.toString())
+                if (!isSelectMode) {
+                    val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
+                    if (beforeChar.isNotEmpty()) {
+                        deletedBuffer.append(beforeChar)
+                        suggestionAdapter?.apply {
+                            setUndoEnabled(true)
+                            setUndoPreviewText(deletedBuffer.toString())
+                        }
                     }
-                } else {
-                    suggestionAdapter?.setUndoPreviewText(
-                        deletedBuffer.toString()
-                    )
                 }
                 sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
             }
@@ -2758,7 +2872,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (insertString.isNotEmpty()) {
                     updateLeftInputString(insertString)
                 } else if (stringInTail.get().isEmpty() && !isCursorAtBeginning()) {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                    if (isSelectMode) {
+                        extendOrShrinkLeftOneChar()
+                    } else {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                    }
                 }
 
                 delay(LONG_DELAY_TIME)
@@ -2807,7 +2925,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun actionInRightKeyPressed(gestureType: GestureType, insertString: String) {
         when {
-            insertString.isEmpty() -> handleEmptyInputString(gestureType)
+            insertString.isEmpty() -> {
+                if (isSelectMode) {
+                    extendOrShrinkSelectionRight()
+                } else {
+                    handleEmptyInputString(gestureType)
+                }
+            }
+
             !isHenkan.get() -> handleNonHenkanTap(insertString)
         }
     }
@@ -2882,12 +3007,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun handleEmptyInputString() {
         if (stringInTail.get().isEmpty()) {
-            if (!isCursorAtEnd()) {
-                sendKeyEvent(
-                    KeyEvent(
-                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+            if (isSelectMode) {
+                extendOrShrinkSelectionRight()
+            } else {
+                if (!isCursorAtEnd()) {
+                    sendKeyEvent(
+                        KeyEvent(
+                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                        )
                     )
-                )
+                }
             }
         } else {
             val dropString = stringInTail.get().first()
