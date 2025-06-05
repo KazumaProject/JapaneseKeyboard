@@ -329,6 +329,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             Key.SideKeyDelete -> binding.keyDelete
                             Key.SideKeyCursorRight -> binding.keyMoveCursorRight
                             Key.SideKeyCursorLeft -> binding.keySoftLeft
+                            Key.SideKeySpace -> binding.keySpace
                             else -> null
                         }
 
@@ -384,6 +385,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             Key.SideKeyDelete -> binding.keyDelete
                             Key.SideKeyCursorRight -> binding.keyMoveCursorRight
                             Key.SideKeyCursorLeft -> binding.keySoftLeft
+                            Key.SideKeySpace -> binding.keySpace
                             else -> null
                         }
 
