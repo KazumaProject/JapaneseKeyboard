@@ -70,6 +70,9 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
+import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
+import com.kazumaproject.tenkey.extensions.getDakutenFlickTop
 import com.kazumaproject.tenkey.extensions.getDakutenSmallChar
 import com.kazumaproject.tenkey.extensions.getNextInputChar
 import com.kazumaproject.tenkey.extensions.getNextReturnInputChar
@@ -566,6 +569,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             )
                         }
 
+
                         else -> {
                             handleTapAndFlick(
                                 key = key,
@@ -702,7 +706,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     isFlick = isFlick,
                     char = char,
                     insertString = insertString,
-                    mainView = mainView
+                    mainView = mainView,
+                    gestureType = gestureType
                 )
             }
 
@@ -3346,7 +3351,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun dakutenSmallLetter(
-        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
+        sb: StringBuilder,
+        insertString: String,
+        mainView: MainLayoutBinding,
+        gestureType: GestureType
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)
@@ -3354,8 +3362,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val insertPosition = insertString.last()
             insertPosition.let { c ->
                 if (c.isHiragana()) {
-                    c.getDakutenSmallChar()?.let { dakutenChar ->
-                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
+                    when (gestureType) {
+                        GestureType.Tap, GestureType.FlickBottom -> {
+                            c.getDakutenSmallChar()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar,
+                                    sb,
+                                    insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickLeft -> {
+                            c.getDakutenFlickLeft()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar,
+                                    sb,
+                                    insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickRight -> {
+                            c.getDakutenFlickRight()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar,
+                                    sb,
+                                    insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickTop -> {
+                            c.getDakutenFlickTop()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar,
+                                    sb,
+                                    insertString
+                                )
+                            }
+                        }
+
+                        else -> {}
                     }
                 }
             }
@@ -3395,13 +3443,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isFlick: Boolean,
         char: Char?,
         insertString: String,
-        mainView: MainLayoutBinding
+        mainView: MainLayoutBinding,
+        gestureType: GestureType
     ) {
         if (isTablet == true) {
             mainView.tabletView.let {
                 when (it.currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
-                        dakutenSmallLetter(sb, insertString, mainView)
+                        dakutenSmallLetter(
+                            sb,
+                            insertString,
+                            mainView,
+                            gestureType
+                        )
                     }
 
                     InputMode.ModeEnglish -> {
@@ -3419,7 +3473,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.keyboardView.let {
                 when (it.currentInputMode.value) {
                     InputMode.ModeJapanese -> {
-                        dakutenSmallLetter(sb, insertString, mainView)
+                        dakutenSmallLetter(
+                            sb,
+                            insertString,
+                            mainView,
+                            gestureType
+                        )
                     }
 
                     InputMode.ModeEnglish -> {
