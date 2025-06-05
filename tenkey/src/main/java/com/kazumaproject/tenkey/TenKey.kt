@@ -1252,7 +1252,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Set default drawable for the small/dakuten key **/
     fun setBackgroundSmallLetterKey(
         drawable: Drawable? = ContextCompat.getDrawable(
-            context, com.kazumaproject.core.R.drawable.logo_key
+            context, com.kazumaproject.core.R.drawable.language_24dp
         )
     ) {
         binding.keySmallLetter.setImageDrawable(drawable)
