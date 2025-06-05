@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.content.Context
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
@@ -371,13 +372,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        if (!clipboardUtil.isClipboardTextEmpty()) {
-            val clipboardText = clipboardUtil.getAllClipboardTexts()
-            suggestionAdapter?.setClipboardPreview(clipboardText[0])
-        }
-        suggestionAdapter?.setPasteEnabled(
-            !clipboardUtil.isClipboardTextEmpty()
-        )
+        setClipboardText()
         setKeyboardSize()
         resetKeyboard()
     }
@@ -491,7 +486,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setPasteEnabled(true)
                 setClipboardPreview(clipboardText)
             }
-        }else{
+        } else {
             suggestionAdapter?.apply {
                 setPasteEnabled(false)
             }
@@ -686,6 +681,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (key != Key.SideKeyDelete) {
             clearDeletedBuffer()
             suggestionAdapter?.setUndoEnabled(false)
+            setClipboardText()
         }
         when (key) {
             Key.NotSelected -> {}
@@ -755,8 +751,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySpace -> {
-                if (!isSpaceKeyLongPressed) {
-                    handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                if (selectMode.value) {
+                    if (!isSpaceKeyLongPressed) {
+                        _selectMode.update { false }
+                        clearSelection()
+                    }
+
+                } else {
+                    if (!isSpaceKeyLongPressed) {
+                        handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                    }
                 }
                 isSpaceKeyLongPressed = false
             }
@@ -806,12 +810,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         Key.KeyMA -> {
                             selectAllText()
                         }
-                        /** 戻る **/
-                        Key.KeyRA -> {
-                            _selectMode.update { false }
-                            clearSelection()
-                        }
 
+                        /** 共有 **/
+                        Key.KeyRA -> {
+                            val selectedText = getSelectedText(0)
+                            if (!selectedText.isNullOrEmpty()) {
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, selectedText.toString())
+                                }
+                                val chooser: Intent =
+                                    Intent.createChooser(sendIntent, "Share text via").apply {
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                startActivity(chooser)
+                                clearSelection()
+                            }
+                        }
+                        /** その他 **/
                         else -> {
 
                         }
@@ -891,6 +907,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 leftCursorKeyLongKeyPressed.set(true)
                 clearDeletedBuffer()
                 suggestionAdapter?.setUndoEnabled(false)
+                setClipboardText()
             }
 
             Key.SideKeyCursorRight -> {
@@ -898,6 +915,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 rightCursorKeyLongKeyPressed.set(true)
                 clearDeletedBuffer()
                 suggestionAdapter?.setUndoEnabled(false)
+                setClipboardText()
             }
 
             Key.SideKeyDelete -> {
@@ -1106,7 +1124,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         endBatchEdit()
     }
 
-    fun clearSelection() {
+    private fun clearSelection() {
         // 1. Get the current InputConnection
         val ic = currentInputConnection ?: return
 
@@ -1649,6 +1667,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                         if (deletedBuffer.isEmpty()) {
                             suggestionAdapter?.setUndoEnabled(false)
+                            setClipboardText()
                         }
                     }
 
@@ -1658,6 +1677,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             commitText(allClipboardTexts[0], 1)
                             clearDeletedBuffer()
                             suggestionAdapter?.setUndoEnabled(false)
+                            setClipboardText()
                         }
                     }
                 }
@@ -1668,6 +1688,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         commitText(deletedBuffer.reverse().toString(), 1)
                         clearDeletedBuffer()
                         suggestionAdapter?.setUndoEnabled(false)
+                        setClipboardText()
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
@@ -2142,6 +2163,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         stopDeleteLongPress()
         clearDeletedBuffer()
         suggestionAdapter?.setUndoEnabled(false)
+        setClipboardText()
         _selectMode.update { false }
     }
 
@@ -3431,6 +3453,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         }
+    }
+
+    private fun setClipboardText() {
+        if (!clipboardUtil.isClipboardTextEmpty()) {
+            val clipboardText = clipboardUtil.getAllClipboardTexts()
+            suggestionAdapter?.setClipboardPreview(clipboardText[0])
+        }
+        suggestionAdapter?.setPasteEnabled(
+            !clipboardUtil.isClipboardTextEmpty()
+        )
     }
 
     private fun setKeyTouch(
