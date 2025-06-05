@@ -175,6 +175,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isTablet: Boolean? = false
 
     private var isSpaceKeyLongPressed = false
+    private var isSelectMode = false
 
     // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
@@ -869,7 +870,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 val insertString = inputString.value
                 if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
                     isSpaceKeyLongPressed = true
-                    showKeyboardPicker()
+                    //showKeyboardPicker()
                     isSelectMode = true
                 }
             }
@@ -878,8 +879,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             else -> {}
         }
     }
-
-    private var isSelectMode = false
 
     private fun showKeyboardPicker() {
         val inputMethodManager =
@@ -3520,7 +3519,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // 3) Screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
         val isPortrait =
             resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
