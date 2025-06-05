@@ -409,7 +409,7 @@
         android:background="@drawable/ten_keys_side_bg"
         android:contentDescription="@string/space_key"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="center"
+        android:scaleType="centerInside"
         android:src="@drawable/baseline_space_bar_24"
         app:layout_constraintBottom_toTopOf="@id/key_enter"
         app:layout_constraintEnd_toEndOf="parent"

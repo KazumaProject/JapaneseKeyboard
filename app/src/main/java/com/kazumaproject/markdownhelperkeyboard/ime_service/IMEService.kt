@@ -186,7 +186,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
     private val cachedSpaceDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.space_bar)
+        ContextCompat.getDrawable(
+            applicationContext,
+            com.kazumaproject.core.R.drawable.baseline_space_bar_24
+        )
     }
     private val cachedLogoDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(applicationContext, com.kazumaproject.core.R.drawable.logo_key)
@@ -368,12 +371,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        if (!clipboardUtil.isClipboardEmpty()) {
+        if (!clipboardUtil.isClipboardTextEmpty()) {
             val clipboardText = clipboardUtil.getAllClipboardTexts()
             suggestionAdapter?.setClipboardPreview(clipboardText[0])
         }
         suggestionAdapter?.setPasteEnabled(
-            !clipboardUtil.isClipboardEmpty()
+            !clipboardUtil.isClipboardTextEmpty()
         )
         setKeyboardSize()
         resetKeyboard()
@@ -481,11 +484,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
         // 1) 変換中 (composing) は IME 側の処理対象外
         if (candidatesStart != -1 || candidatesEnd != -1) return
-        if (!clipboardUtil.isClipboardEmpty()) {
+
+        if (deletedBuffer.isEmpty() && !clipboardUtil.isClipboardTextEmpty()) {
             val clipboardText = clipboardUtil.getAllClipboardTexts()[0]
             suggestionAdapter?.apply {
                 setPasteEnabled(true)
                 setClipboardPreview(clipboardText)
+            }
+        }else{
+            suggestionAdapter?.apply {
+                setPasteEnabled(false)
             }
         }
         // 2) 状態スナップショット
@@ -796,11 +804,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                         /** 全て選択 **/
                         Key.KeyMA -> {
-                            setAllTextSelect()
+                            selectAllText()
                         }
                         /** 戻る **/
                         Key.KeyRA -> {
                             _selectMode.update { false }
+                            clearSelection()
                         }
 
                         else -> {
@@ -1078,7 +1087,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setAllTextSelect() {
+    /**
+     * 入力フィールドの全文を全選択する
+     */
+    private fun selectAllText() {
         val request = ExtractedTextRequest()
         // 必要に応じて request.flags を設定（デフォルトで OK）
         val extracted: ExtractedText? = getExtractedText(request, 0)
@@ -1091,6 +1103,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         beginBatchEdit()
         finishComposingText() // もし変換中の文字列があれば確定しておく
         setSelection(0, textLen)
+        endBatchEdit()
+    }
+
+    fun clearSelection() {
+        // 1. Get the current InputConnection
+        val ic = currentInputConnection ?: return
+
+        // 2. Request the extracted text so we know where the selection is
+        val extracted = ic.getExtractedText(ExtractedTextRequest(), 0) ?: return
+
+        // 3. Determine where to collapse the cursor.
+        //    If there is a selection, `selectionEnd` is the index after the last selected char.
+        //    If there is no selection, selStart == selEnd, so this just keeps the cursor where it is.
+        val collapsePos = extracted.selectionEnd
+
+        if (collapsePos < 0) return
+
+        // 4. Do a batch edit: finish any composing text, then collapse
+        beginBatchEdit()
+        finishComposingText()
+        ic.setSelection(collapsePos, collapsePos)
         endBatchEdit()
     }
 
@@ -1133,8 +1166,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         animateSuggestionImageViewVisibility(
                             mainView.suggestionVisibility, false
                         )
-                        if (clipboardUtil.isClipboardEmpty()) {
-                            //suggestionAdapter?.suggestions = clipboardUtil.getAllClipboardTexts()
+                        if (clipboardUtil.isClipboardTextEmpty()) {
                             suggestionAdapter?.setPasteEnabled(false)
                         } else {
                             suggestionAdapter?.apply {
@@ -2498,7 +2530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun deleteLongPress() {
         if (deleteLongPressJob?.isActive == true) return
-
+        val inputStringInBeginning = inputString.value
         deleteLongPressJob = scope.launch {
             while (isActive && deleteKeyLongKeyPressed.get()) {
                 val current = inputString.value
@@ -2539,7 +2571,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!selectMode.value) {
             deleteLongPressJob?.invokeOnCompletion {
                 scope.launch(Dispatchers.Main) {
-                    suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
+                    if (inputStringInBeginning.isEmpty()) {
+                        suggestionAdapter?.apply {
+                            suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
+                        }
+                    }
                 }
             }
         }
