@@ -7,10 +7,10 @@ import timber.log.Timber
 import java.io.File
 
 @HiltAndroidApp
-class Application : Application(){
+class Application : Application() {
     override fun onCreate() {
         super.onCreate()
-        if (BuildConfig.DEBUG){
+        if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
         val dexOutputDir: File = codeCacheDir
