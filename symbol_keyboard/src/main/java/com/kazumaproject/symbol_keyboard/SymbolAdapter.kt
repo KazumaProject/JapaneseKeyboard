@@ -1,6 +1,5 @@
 package com.kazumaproject.symbol_keyboard
 
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,9 +9,10 @@ import com.google.android.material.textview.MaterialTextView
 
 class SymbolAdapter : PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(DIFF_CALLBACK) {
 
-    var symbolTextSize: Float = 32f
+    var symbolTextSize: Float = 16f
 
-    inner class SymbolViewHolder(itemView: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
+    inner class SymbolViewHolder(itemView: View) :
+        androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
         val symbolTextView: MaterialTextView = itemView.findViewById(R.id.symbol_text)
 
         init {
@@ -55,7 +55,7 @@ class SymbolAdapter : PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(
         val symbol = getItem(position)
         symbol?.let {
             holder.symbolTextView.text = it
-            holder.symbolTextView.setTextSize(TypedValue.COMPLEX_UNIT_PX, symbolTextSize)
+            holder.symbolTextView.textSize = symbolTextSize
         }
     }
 }
