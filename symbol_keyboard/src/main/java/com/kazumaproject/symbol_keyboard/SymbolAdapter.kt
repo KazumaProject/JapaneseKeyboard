@@ -16,7 +16,7 @@ class SymbolAdapter :
     private var onItemClickListener: ((String) -> Unit)? = null
 
     /** シンボル文字列を長押ししたとき */
-    private var onItemLongClickListener: ((String) -> Unit)? = null
+    private var onItemLongClickListener: ((String, Int) -> Unit)? = null
 
     // 外部から設定するためのメソッド
     fun setOnItemClickListener(onItemClick: (String) -> Unit) {
@@ -24,7 +24,7 @@ class SymbolAdapter :
     }
 
     // 外部から設定するためのメソッド（長押し用）
-    fun setOnItemLongClickListener(onItemLongClick: (String) -> Unit) {
+    fun setOnItemLongClickListener(onItemLongClick: (String, Int) -> Unit) {
         this.onItemLongClickListener = onItemLongClick
     }
 
@@ -47,7 +47,7 @@ class SymbolAdapter :
             itemView.setOnLongClickListener {
                 val pos = bindingAdapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
-                    getItem(pos)?.let { onItemLongClickListener?.invoke(it) }
+                    getItem(pos)?.let { onItemLongClickListener?.invoke(it, pos) }
                 }
                 true
             }

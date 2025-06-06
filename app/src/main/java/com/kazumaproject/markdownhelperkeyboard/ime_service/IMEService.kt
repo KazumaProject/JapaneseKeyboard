@@ -1866,7 +1866,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             })
             setOnSymbolRecyclerViewItemLongClickListener(object :
                 SymbolRecyclerViewItemLongClickListener {
-                override fun onLongClick(symbol: ClickedSymbol) {
+                override fun onLongClick(symbol: ClickedSymbol, position: Int) {
                     vibrate()
                     CoroutineScope(Dispatchers.IO).launch {
                         clickedSymbolRepository.delete(
