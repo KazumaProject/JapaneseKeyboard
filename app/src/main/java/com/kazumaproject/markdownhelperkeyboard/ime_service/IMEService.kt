@@ -66,6 +66,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionA
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -1968,15 +1969,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     /**
-     * 直近で削除された文字を取得しつつ、バッファからも取り除く。
-     * 取り除くとき、新たに最後に削除された文字が変わるので注意。
+     * サロゲートペア（絵文字）を考慮して、削除バッファの最後の「文字（コードポイント）」を取り出す。
+     * 絵文字の場合は2コードユニット、その他は1コードユニットを削除して返す。
      */
-    private fun popLastDeletedChar(): Char? {
+    private fun popLastDeletedChar(): String? {
         if (deletedBuffer.isEmpty()) return null
+
         val lastIndex = deletedBuffer.lastIndex
-        val c = deletedBuffer[lastIndex]
-        deletedBuffer.deleteCharAt(lastIndex)
-        return c
+        val lastChar = deletedBuffer[lastIndex]
+
+        return if (Character.isLowSurrogate(lastChar) && lastIndex >= 1) {
+            val prev = deletedBuffer[lastIndex - 1]
+            if (Character.isHighSurrogate(prev)) {
+                // サロゲートペアなら2文字分を取り出す
+                val emoji = deletedBuffer.substring(lastIndex - 1, lastIndex + 1)
+                deletedBuffer.delete(lastIndex - 1, lastIndex + 1)
+                emoji
+            } else {
+                // 前に高サロゲートがないなら単一文字として扱う
+                deletedBuffer.deleteCharAt(lastIndex)
+                lastChar.toString()
+            }
+        } else {
+            // 低サロゲートでないなら単一文字として扱う
+            deletedBuffer.deleteCharAt(lastIndex)
+            lastChar.toString()
+        }
     }
 
     private fun setCandidateClipboardLongClick(
@@ -2576,8 +2594,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 if (current.isEmpty()) {
                     if (tailIsEmpty) {
-                        val beforeChar = getTextBeforeCursor(1, 0)?.toString()
-                        if (!beforeChar.isNullOrEmpty()) {
+                        val beforeChar = getLastCharacterAsString(currentInputConnection)
+                        if (beforeChar.isNotEmpty()) {
                             deletedBuffer.append(beforeChar)
                         }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
@@ -2715,7 +2733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             else -> {
                 if (stringInTail.get().isNotEmpty()) return
                 if (!selectMode.value) {
-                    val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
+                    val beforeChar = getLastCharacterAsString(currentInputConnection)
                     if (beforeChar.isNotEmpty()) {
                         deletedBuffer.append(beforeChar)
                         suggestionAdapter?.apply {

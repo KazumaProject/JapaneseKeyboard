@@ -160,7 +160,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 // 選択されたタブに応じてモードを設定
-                currentMode = Mode.values()[tab?.position ?: 0]
+                currentMode = Mode.entries.toTypedArray()[tab?.position ?: 0]
                 buildCategoryTabs()
                 // 上段カテゴリタブは必ず先頭を選択し直す
                 categoryTab.getTabAt(0)?.select()
@@ -259,7 +259,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
             Mode.EMOTICON -> emoticons
             Mode.SYMBOL -> symbols
-        } ?: emptyList()
+        }
 
         // (2) シンボル表示サイズを切り替え
         symbolAdapter.symbolTextSize = if (currentMode == Mode.EMOJI) 36f else 16f

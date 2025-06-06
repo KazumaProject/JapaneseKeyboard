@@ -15,6 +15,8 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
+import timber.log.Timber
 
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -163,26 +165,17 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is EmptyViewHolder) {
-            var hasMissingGlyph = false
             holder.apply {
                 // Set enabled/disabled state on icons
                 undoIcon?.apply {
+                    isVisible = isUndoEnabled
                     isFocusable = false
-                    undoText.codePoints().forEach { codePoint ->
-                        val charStr = String(Character.toChars(codePoint))
-                        if (!this.paint.hasGlyph(charStr)) {
-                            hasMissingGlyph = true
-                            return@forEach
-                        }
-                    }
-                    if (!hasMissingGlyph) {
-                        text = undoText.reversed()
-                        isVisible = isUndoEnabled
-                    } else {
-                        undoText = ""
-                    }
+                    Timber.d("undo text: $undoText")
+                    debugPrintCodePoints(undoText)
+                    text = undoText.reversed()
                 }
                 pasteIcon?.apply {
                     isEnabled = isPasteEnabled
@@ -197,9 +190,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 clipboardPreviewText?.text = clipboardText
 
                 undoIconParent?.apply {
-                    if (!hasMissingGlyph) {
-                        isVisible = isUndoEnabled
-                    }
+                    isVisible = isUndoEnabled
                     setOnClickListener {
                         onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
                     }
