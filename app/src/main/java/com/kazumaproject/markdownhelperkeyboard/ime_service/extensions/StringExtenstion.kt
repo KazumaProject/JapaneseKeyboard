@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
 import android.view.inputmethod.InputConnection
 import timber.log.Timber
 import java.text.BreakIterator
+import java.text.Normalizer
 
 fun String.correctReading(): Pair<String, String> {
     val readingCorrectionString = this.split("\t")
@@ -44,25 +45,32 @@ fun debugPrintCodePoints(text: String) {
     while (i < text.length) {
         val cp = text.codePointAt(i)
         // 16進数で出してみれば、サロゲートペアが壊れていないかも確認できる
-        Timber.d("index=%d, codePoint=0x%04X (%s)", i, cp, Character.charCount(cp).let { if (it == 2) "サロゲートペア" else "単一" })
+        Timber.d(
+            "index=%d, codePoint=0x%04X (%s)",
+            i,
+            cp,
+            Character.charCount(cp).let { if (it == 2) "サロゲートペア" else "単一" })
         i += Character.charCount(cp)
     }
 }
 
 fun getLastCharacterAsString(ic: InputConnection): String {
-    // Try to read two code units, so that if the last character is a surrogate pair
-    // we can grab both halves. If it’s just a BMP character, we'll end up with length=1.
-    val twoChars = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
-    if (twoChars.length >= 2) {
-        val lastIndex = twoChars.length - 1
-        val low = twoChars[lastIndex]
-        val high = twoChars[lastIndex - 1]
-        // if it really is a valid surrogate pair:
-        if (Character.isLowSurrogate(low) && Character.isHighSurrogate(high)) {
-            // return exactly those two code units as a String
-            return twoChars.substring(lastIndex - 1, lastIndex + 1)
-        }
-    }
-    // otherwise, just return the single code unit (could be a normal letter or an unpaired surrogate)
-    return twoChars.takeLast(1)
+    // ① カーソル前 8 コードユニットを取得しておく
+    val maxLookback = 8
+    val rawBefore = ic.getTextBeforeCursor(maxLookback, 0)?.toString() ?: ""
+    if (rawBefore.isEmpty()) return ""
+
+    // ② 互換分解＋合成（NFKC）：半角カタカナ＋半角濁点 などもまとめる
+    val beforeText = Normalizer.normalize(rawBefore, Normalizer.Form.NFKC)
+    Timber.d("beforeText: $beforeText $rawBefore")
+    if (beforeText == "ゥ゙") return "゙"
+
+    // ③ BreakIterator で最後のグラフェムクラスタの開始位置を探す
+    val bi = BreakIterator.getCharacterInstance()
+    bi.setText(beforeText)
+    val end = beforeText.length
+    val start = bi.preceding(end).let { if (it == BreakIterator.DONE) 0 else it }
+    Timber.d("beforeText: $start $end")
+    // ④ その範囲を丸ごと取り出す
+    return beforeText.substring(start, end)
 }

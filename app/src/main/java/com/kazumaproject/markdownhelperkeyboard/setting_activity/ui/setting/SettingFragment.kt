@@ -14,7 +14,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
-import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
