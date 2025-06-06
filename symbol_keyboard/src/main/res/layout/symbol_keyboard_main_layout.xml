@@ -13,9 +13,10 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:tabGravity="fill"
+        app:tabIconTint="@color/tab_icon_color_selector"
         app:tabIndicatorHeight="0dp"
         app:tabMode="scrollable"
-        app:tabIndicatorColor="@color/selectedTabColor"/>
+        app:tabRippleColor="@null" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/symbol_candidate_recycler_view"
@@ -52,8 +53,10 @@
             android:layout_weight="3"
             android:backgroundTint="@color/suggestion_view_bg"
             app:tabGravity="fill"
+            app:tabIconTint="@color/tab_icon_color_selector"
             app:tabIndicatorHeight="0dp"
-            app:tabMode="fixed" />
+            app:tabMode="fixed"
+            app:tabRippleColor="@null" />
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/symbol_keyboard_delete_key"
