@@ -53,7 +53,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var emoticons: List<String> = emptyList()
     private var symbols: List<String> = emptyList()
 
-    private var historyEmojiList: List<String> = emptyList()
+    // 履歴を可変リストに変更
+    private var historyEmojiList: MutableList<String> = mutableListOf()
     private var symbolsHistory: List<ClickedSymbol> = emptyList()
 
     private var currentMode: SymbolMode = SymbolMode.EMOJI
@@ -91,6 +92,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         itemLongClickListener = l
     }
 
+    /**
+     * 絵文字・顔文字・記号・履歴 をセット
+     */
     fun setSymbolLists(
         emojiList: List<Emoji>,
         emoticons: List<String>,
@@ -99,8 +103,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         defaultMode: SymbolMode = SymbolMode.EMOJI
     ) {
         this.symbolsHistory = symbolsHistory
-        historyEmojiList = symbolsHistory.filter { it.mode == SymbolMode.EMOJI }
+
+        // 履歴から EMOJI のものだけ取り出し、可変リストにする
+        historyEmojiList = symbolsHistory
+            .filter { it.mode == SymbolMode.EMOJI }
             .map { it.symbol }
+            .toMutableList()
 
         this.emoticons = emoticons
         this.symbols = symbols
@@ -135,32 +143,49 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         symbolAdapter.setOnItemClickListener { str ->
             itemClickListener?.onClick(ClickedSymbol(mode = currentMode, symbol = str))
         }
-        symbolAdapter.setOnItemLongClickListener { str ->
-            if (categoryTab.selectedTabPosition == 0) {
-                itemLongClickListener?.onLongClick(ClickedSymbol(mode = currentMode, symbol = str))
+
+        symbolAdapter.setOnItemLongClickListener { str, pos ->
+            // ← 修正：historyEmojiList を直接変更せず、新しいリストを構築して再代入する
+            if (currentMode == SymbolMode.EMOJI
+                && historyEmojiList.isNotEmpty()
+                && categoryTab.selectedTabPosition == 0
+                && pos in 0 until historyEmojiList.size
+            ) {
+                itemLongClickListener?.onLongClick(
+                    ClickedSymbol(mode = currentMode, symbol = str),
+                    position = pos
+                )
+
+                // 1) 一度コピーしてから削除し、新リストで置き換える
+                val newHistory = historyEmojiList.toMutableList().apply {
+                    removeAt(pos)
+                }
+                historyEmojiList = newHistory
+
+                // 2) カテゴリ0を再読み込み（PagingSource生成→先頭スクロール）
+                updateSymbolsForCategory(0)
+
             }
         }
 
-        // 加えた変更：LoadStateListenerで「初回読み込み後に先頭へスクロール」処理を追加
+        // LoadStateListener: 読み込み中・完了後のスクロール制御
         symbolAdapter.addLoadStateListener { state ->
             when (state.refresh) {
                 is LoadState.Loading -> {
-                    // データ読み込み中は先頭へスクロール
-                    recycler.post {
-                        recycler.scrollToPosition(0)
-                    }
+                    // データ読み込み中は先頭に
+                    recycler.post { recycler.scrollToPosition(0) }
                 }
 
                 is LoadState.NotLoading -> {
                     if (scrollToEndOnNextLoad) {
-                        // 「前へ」ボタンの場合は末尾にスクロール
+                        // 「前へ」ボタンの遷移後は末尾に
                         val lastIndex = symbolAdapter.itemCount - 1
                         if (lastIndex >= 0) {
                             recycler.post { recycler.scrollToPosition(lastIndex) }
                         }
                         scrollToEndOnNextLoad = false
                     } else {
-                        // 新しいカテゴリ／履歴→絵文字切り替えの場合は必ず先頭にスクロール
+                        // 「次へ」やカテゴリ切り替え時は先頭に
                         recycler.post { recycler.scrollToPosition(0) }
                     }
                 }
