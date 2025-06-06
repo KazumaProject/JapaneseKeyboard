@@ -783,7 +783,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 stringInTail.set("")
                 finishComposingText()
                 setComposingText("", 0)
-//                mainView.keyboardSymbolView.setTabPosition(0)
             }
 
             else -> {
