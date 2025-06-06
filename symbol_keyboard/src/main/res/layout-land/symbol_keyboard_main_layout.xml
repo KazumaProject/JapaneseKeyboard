@@ -4,28 +4,64 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- カテゴリタブ（既存） -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/category_tab_layout"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:backgroundTint="@color/suggestion_view_bg"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:tabGravity="fill"
+        app:tabIconTint="@color/tab_icon_color_selector"
         app:tabIndicatorHeight="0dp"
-        app:tabMode="scrollable" />
+        app:tabMode="scrollable"
+        app:tabRippleColor="@null" />
 
+    <!-- 左の「前へ」ボタン -->
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/button_prev_category"
+        android:layout_width="16dp"
+        android:layout_height="0dp"
+        android:background="@drawable/ten_keys_center_bg"
+        android:focusable="false"
+        android:src="@drawable/baseline_arrow_left_24"
+        android:tint="@color/tab_unselected"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/category_tab_layout" />
+
+    <!-- 右の「次へ」ボタン -->
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/button_next_category"
+        android:layout_width="16dp"
+        android:layout_height="0dp"
+        android:background="@drawable/ten_keys_center_bg"
+        android:focusable="false"
+        android:src="@drawable/baseline_arrow_right_24"
+        android:tint="@color/tab_unselected"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/category_tab_layout" />
+
+    <!-- 中央の RecyclerView を左右ボタンの間に挟む -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/symbol_candidate_recycler_view"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="0dp"
+        android:overScrollMode="never"
         app:layout_constraintBottom_toTopOf="@id/bottom_bar"
+        app:layout_constraintEnd_toStartOf="@id/button_next_category"
+        app:layout_constraintStart_toEndOf="@id/button_prev_category"
         app:layout_constraintTop_toBottomOf="@id/category_tab_layout" />
 
+    <!-- 既存の BottomBar（戻る / モード切替 / 削除） -->
     <LinearLayout
         android:id="@+id/bottom_bar"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="64dp"
         android:orientation="horizontal"
         android:weightSum="5"
@@ -43,7 +79,6 @@
             android:src="@drawable/language_japanese_kana_24px"
             android:tint="@color/tab_unselected" />
 
-        <!-- ★ モード切替用 TabLayout -->
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/mode_tab_layout"
             android:layout_width="0dp"
@@ -51,8 +86,10 @@
             android:layout_weight="3"
             android:backgroundTint="@color/suggestion_view_bg"
             app:tabGravity="fill"
+            app:tabIconTint="@color/tab_icon_color_selector"
             app:tabIndicatorHeight="0dp"
-            app:tabMode="fixed" />
+            app:tabMode="fixed"
+            app:tabRippleColor="@null" />
 
         <com.google.android.material.imageview.ShapeableImageView
             android:id="@+id/symbol_keyboard_delete_key"
