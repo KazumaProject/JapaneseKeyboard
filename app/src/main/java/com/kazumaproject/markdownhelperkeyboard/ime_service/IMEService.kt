@@ -52,6 +52,7 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -65,6 +66,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionA
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -133,7 +135,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private var emojiList: List<String> = emptyList()
+    private var emojiList: List<Emoji> = emptyList()
 
     private var emoticonList: List<String> = emptyList()
 
@@ -782,7 +784,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 stringInTail.set("")
                 finishComposingText()
                 setComposingText("", 0)
-                mainView.keyboardSymbolView.setTabPosition(0)
             }
 
             else -> {
@@ -1224,6 +1225,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         launch {
             _keyboardSymbolViewState.asStateFlow().collectLatest { isSymbolKeyboardShow ->
+                setKeyboardSize()
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
                         animateViewVisibility(
@@ -1923,7 +1925,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             kanaKanjiEngine.getSymbolCandidates()
         }
         mainView.keyboardSymbolView.setSymbolLists(
-            emojiList, emoticonList, symbolList, mainView.keyboardSymbolView.getTabPosition()
+            emojiList, emoticonList, symbolList,
         )
     }
 
@@ -1967,15 +1969,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     /**
-     * 直近で削除された文字を取得しつつ、バッファからも取り除く。
-     * 取り除くとき、新たに最後に削除された文字が変わるので注意。
+     * サロゲートペア（絵文字）を考慮して、削除バッファの最後の「文字（コードポイント）」を取り出す。
+     * 絵文字の場合は2コードユニット、その他は1コードユニットを削除して返す。
      */
-    private fun popLastDeletedChar(): Char? {
+    private fun popLastDeletedChar(): String? {
         if (deletedBuffer.isEmpty()) return null
+
         val lastIndex = deletedBuffer.lastIndex
-        val c = deletedBuffer[lastIndex]
-        deletedBuffer.deleteCharAt(lastIndex)
-        return c
+        val lastChar = deletedBuffer[lastIndex]
+
+        return if (Character.isLowSurrogate(lastChar) && lastIndex >= 1) {
+            val prev = deletedBuffer[lastIndex - 1]
+            if (Character.isHighSurrogate(prev)) {
+                // サロゲートペアなら2文字分を取り出す
+                val emoji = deletedBuffer.substring(lastIndex - 1, lastIndex + 1)
+                deletedBuffer.delete(lastIndex - 1, lastIndex + 1)
+                emoji
+            } else {
+                // 前に高サロゲートがないなら単一文字として扱う
+                deletedBuffer.deleteCharAt(lastIndex)
+                lastChar.toString()
+            }
+        } else {
+            // 低サロゲートでないなら単一文字として扱う
+            deletedBuffer.deleteCharAt(lastIndex)
+            lastChar.toString()
+        }
     }
 
     private fun setCandidateClipboardLongClick(
@@ -2575,8 +2594,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 if (current.isEmpty()) {
                     if (tailIsEmpty) {
-                        val beforeChar = getTextBeforeCursor(1, 0)?.toString()
-                        if (!beforeChar.isNullOrEmpty()) {
+                        val beforeChar = getLastCharacterAsString(currentInputConnection)
+                        if (beforeChar.isNotEmpty()) {
                             deletedBuffer.append(beforeChar)
                         }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
@@ -2714,7 +2733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             else -> {
                 if (stringInTail.get().isNotEmpty()) return
                 if (!selectMode.value) {
-                    val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
+                    val beforeChar = getLastCharacterAsString(currentInputConnection)
                     if (beforeChar.isNotEmpty()) {
                         deletedBuffer.append(beforeChar)
                         suggestionAdapter?.apply {
@@ -3729,7 +3748,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         val qwertyMode = qwertyMode.value
-        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+        val emojiKeyboardState = _keyboardSymbolViewState.value
+        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
             if (isPortrait) {
                 (280 * density).toInt()
             } else {
@@ -3740,7 +3760,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         // 5) Compute width in px (or MATCH_PARENT) based on orientation/tablet
         val widthPx = if (isPortrait) {
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
                 ViewGroup.LayoutParams.MATCH_PARENT
             } else {
                 if (widthPref == 100) {
@@ -3750,7 +3770,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
                 ViewGroup.LayoutParams.MATCH_PARENT
             } else {
                 if (isTablet == true) {
@@ -3786,7 +3806,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 view.layoutParams = params
             }
         }
-
         // 8) Update either tabletView or keyboardView (depending on isTablet)
         if (isTablet == true) {
             applySize(binding.tabletView)

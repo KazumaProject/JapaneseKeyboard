@@ -43,3 +43,4 @@ fun String.katakanaToHiragana(): String = buildString {
         }
     }
 }
+
