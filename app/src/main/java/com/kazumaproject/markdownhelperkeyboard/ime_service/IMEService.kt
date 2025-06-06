@@ -3875,11 +3875,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         val qwertyMode = qwertyMode.value
         val emojiKeyboardState = _keyboardSymbolViewState.value
-        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
+        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
             if (isPortrait) {
                 (280 * density).toInt()
             } else {
                 (200 * density).toInt()
+            }
+        } else if (emojiKeyboardState) {
+            if (isPortrait) {
+                (320 * density).toInt()
+            } else {
+                (220 * density).toInt()
             }
         } else {
             (clampedHeight * density).toInt()

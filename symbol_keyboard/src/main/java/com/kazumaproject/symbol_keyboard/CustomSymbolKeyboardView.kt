@@ -4,18 +4,16 @@ package com.kazumaproject.symbol_keyboard
 import android.content.Context
 import android.content.res.Configuration
 import android.util.AttributeSet
-import android.view.Gravity
-import android.view.ViewGroup
-import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.LoadState
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
@@ -43,37 +41,32 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private var scrollToEndOnNextLoad = false
 
-    /* UI 部品 */
     private val categoryTab: TabLayout
     private val modeTab: TabLayout
     private val recycler: RecyclerView
+    private val prevButton: AppCompatImageButton
+    private val nextButton: AppCompatImageButton
     private val symbolAdapter = SymbolAdapter()
-
     private val gridLM = GridLayoutManager(context, 3, RecyclerView.HORIZONTAL, false)
 
-    /* データ保持 */
     private var emojiMap: Map<EmojiCategory, List<Emoji>> = emptyMap()
     private var emoticons: List<String> = emptyList()
     private var symbols: List<String> = emptyList()
 
-    // 履歴用
     private var historyEmojiList: List<String> = emptyList()
     private var symbolsHistory: List<ClickedSymbol> = emptyList()
 
     private var currentMode: SymbolMode = SymbolMode.EMOJI
 
-    /* others */
     private var pagingJob: Job? = null
     private var lifecycleOwner: LifecycleOwner? = null
 
-    /* リスナ登録用 */
     private var returnListener: ReturnToTenKeyButtonClickListener? = null
     private var deleteClickListener: DeleteButtonSymbolViewClickListener? = null
     private var deleteLongListener: DeleteButtonSymbolViewLongClickListener? = null
     private var itemClickListener: SymbolRecyclerViewItemClickListener? = null
     private var itemLongClickListener: SymbolRecyclerViewItemLongClickListener? = null
 
-    /** ライフサイクルオーナーを渡す */
     fun setLifecycleOwner(owner: LifecycleOwner) {
         lifecycleOwner = owner
     }
@@ -98,17 +91,13 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         itemLongClickListener = l
     }
 
-    /**
-     * 絵文字・顔文字・記号をセット（必須）
-     */
     fun setSymbolLists(
         emojiList: List<Emoji>,
         emoticons: List<String>,
         symbols: List<String>,
         symbolsHistory: List<ClickedSymbol>,
-        defaultMode: SymbolMode = SymbolMode.EMOJI,
+        defaultMode: SymbolMode = SymbolMode.EMOJI
     ) {
-        // 履歴から EMOJI のものだけ取り出し
         this.symbolsHistory = symbolsHistory
         historyEmojiList = symbolsHistory.filter { it.mode == SymbolMode.EMOJI }
             .map { it.symbol }
@@ -124,6 +113,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         modeTab.getTabAt(defaultMode.ordinal)?.select()
         categoryTab.getTabAt(0)?.select()
         updateSymbolsForCategory(0)
+        updatePrevNextButtons()
     }
 
     init {
@@ -132,6 +122,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         categoryTab = findViewById(R.id.category_tab_layout)
         modeTab = findViewById(R.id.mode_tab_layout)
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
+        prevButton = findViewById(R.id.button_prev_category)
+        nextButton = findViewById(R.id.button_next_category)
 
         recycler.apply {
             layoutManager = gridLM
@@ -140,33 +132,60 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             isSaveEnabled = false
         }
 
-        // ① 通常クリック
         symbolAdapter.setOnItemClickListener { str ->
             itemClickListener?.onClick(ClickedSymbol(mode = currentMode, symbol = str))
         }
-
-        // ② 長押しクリック → DB から削除も行う
         symbolAdapter.setOnItemLongClickListener { str ->
             if (categoryTab.selectedTabPosition == 0) {
                 itemLongClickListener?.onLongClick(ClickedSymbol(mode = currentMode, symbol = str))
             }
         }
 
+        // 加えた変更：LoadStateListenerで「初回読み込み後に先頭へスクロール」処理を追加
         symbolAdapter.addLoadStateListener { state ->
-            if (state.refresh is LoadState.Loading) {
-                recycler.post {
-                    for (i in 0 until symbolAdapter.itemCount) {
-                        symbolAdapter.notifyItemChanged(i)
+            when (state.refresh) {
+                is LoadState.Loading -> {
+                    // データ読み込み中は先頭へスクロール
+                    recycler.post {
+                        recycler.scrollToPosition(0)
                     }
-                    recycler.scrollToPosition(0)
+                }
+
+                is LoadState.NotLoading -> {
+                    if (scrollToEndOnNextLoad) {
+                        // 「前へ」ボタンの場合は末尾にスクロール
+                        val lastIndex = symbolAdapter.itemCount - 1
+                        if (lastIndex >= 0) {
+                            recycler.post { recycler.scrollToPosition(lastIndex) }
+                        }
+                        scrollToEndOnNextLoad = false
+                    } else {
+                        // 新しいカテゴリ／履歴→絵文字切り替えの場合は必ず先頭にスクロール
+                        recycler.post { recycler.scrollToPosition(0) }
+                    }
+                }
+
+                else -> {
+                    // エラー時などは特に何もしない
                 }
             }
-            if (state.refresh is LoadState.NotLoading && scrollToEndOnNextLoad) {
-                val lastIndex = symbolAdapter.itemCount - 1
-                if (lastIndex >= 0) {
-                    recycler.post { recycler.scrollToPosition(lastIndex) }
-                }
+        }
+
+        prevButton.setOnClickListener {
+            val currentTab = categoryTab.selectedTabPosition
+            if (currentTab > 0) {
+                // 「前へ」ボタンでは読み込み後に末尾へスクロールしたい
+                scrollToEndOnNextLoad = true
+                categoryTab.getTabAt(currentTab - 1)?.select()
+            }
+        }
+        nextButton.setOnClickListener {
+            val currentTab = categoryTab.selectedTabPosition
+            val lastIndex = categoryTab.tabCount - 1
+            if (currentTab < lastIndex) {
+                // 「次へ」ボタンでは先頭にスクロールするので scrollToEndOnNextLoad=false のまま
                 scrollToEndOnNextLoad = false
+                categoryTab.getTabAt(currentTab + 1)?.select()
             }
         }
 
@@ -174,6 +193,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 currentMode = SymbolMode.entries.toTypedArray()[tab?.position ?: 0]
                 buildCategoryTabs()
+                updatePrevNextButtons()
                 categoryTab.getTabAt(0)?.select()
                 updateSymbolsForCategory(0)
             }
@@ -184,7 +204,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         categoryTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
-                tab?.let { updateSymbolsForCategory(it.position) }
+                tab?.let {
+                    // タブを選んだ瞬間にスクロール制御をリセット
+                    scrollToEndOnNextLoad = false
+                    updateSymbolsForCategory(it.position)
+                    updatePrevNextButtons()
+                }
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -252,7 +277,22 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun updatePrevNextButtons() {
+        val current = categoryTab.selectedTabPosition
+        val last = categoryTab.tabCount - 1
+        prevButton.isVisible = (current > 0)
+        nextButton.isVisible = (current < last)
+        prevButton.isEnabled = (current > 0)
+        nextButton.isEnabled = (current < last)
+        prevButton.alpha = if (prevButton.isEnabled) 1f else 0.3f
+        nextButton.alpha = if (nextButton.isEnabled) 1f else 0.3f
+    }
+
     private fun updateSymbolsForCategory(index: Int) {
+        // 新しいカテゴリを選択した瞬間にRecyclerViewを先頭へスクロールしておく
+        recycler.scrollToPosition(0)
+
+        // 既存データをクリア
         CoroutineScope(Dispatchers.IO).launch {
             symbolAdapter.submitData(PagingData.from(emptyList()))
         }
@@ -272,29 +312,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             SymbolMode.SYMBOL -> symbols
         }
 
-        symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) 36f else 16f
-        gridLM.orientation =
-            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
-                RecyclerView.HORIZONTAL else RecyclerView.VERTICAL
+        symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 20f
+        } else {
+            16f
+        }
+        gridLM.orientation = RecyclerView.HORIZONTAL
+
+        recycler.adapter = symbolAdapter
 
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
-            val showPrevButton = index > 0
-            val showNextButton = index < categoryTab.tabCount - 1
-
-            val prevAdapter = if (showPrevButton) ButtonAdapter(isNext = false) else null
-            val nextAdapter = if (showNextButton) ButtonAdapter(isNext = true) else null
-            val concatConfig = ConcatAdapter.Config.Builder()
-                .setIsolateViewTypes(true)
-                .build()
-            val adaptersList = mutableListOf<RecyclerView.Adapter<out RecyclerView.ViewHolder>>()
-            prevAdapter?.let { adaptersList.add(it) }
-            adaptersList.add(symbolAdapter)
-            nextAdapter?.let { adaptersList.add(it) }
-
-            val concatAdapter = ConcatAdapter(concatConfig, adaptersList)
-            recycler.adapter = concatAdapter
-
             symbolAdapter.refresh()
             pagingJob = owner.lifecycleScope.launch {
                 Pager(
@@ -322,53 +350,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         deleteLongListener = null
         itemClickListener = null
         itemLongClickListener = null
-    }
-
-    private inner class ButtonAdapter(private val isNext: Boolean) :
-        RecyclerView.Adapter<ButtonAdapter.ButtonViewHolder>() {
-
-        inner class ButtonViewHolder(val button: AppCompatButton) :
-            RecyclerView.ViewHolder(button)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ButtonViewHolder {
-            val button = AppCompatButton(parent.context).apply {
-                layoutParams = RecyclerView.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                text = if (isNext) ">" else "<"
-                textSize = 18f
-                gravity = Gravity.CENTER
-                textAlignment = AppCompatButton.TEXT_ALIGNMENT_CENTER
-                background = ContextCompat.getDrawable(
-                    this.context,
-                    com.kazumaproject.core.R.drawable.ten_keys_center_bg
-                )
-            }
-            return ButtonViewHolder(button)
-        }
-
-        override fun onBindViewHolder(holder: ButtonViewHolder, position: Int) {
-            holder.button.setOnClickListener {
-                val currentTab = categoryTab.selectedTabPosition
-                val tabCount = categoryTab.tabCount
-                if (isNext) {
-                    val nextTab = currentTab + 1
-                    if (nextTab < tabCount) {
-                        categoryTab.getTabAt(nextTab)?.select()
-                    }
-                } else {
-                    val prevTab = currentTab - 1
-                    if (prevTab >= 0) {
-                        scrollToEndOnNextLoad = true
-                        categoryTab.getTabAt(prevTab)?.select()
-                    }
-                }
-            }
-        }
-
-        override fun getItemCount(): Int = 1
-        override fun getItemViewType(position: Int): Int = Int.MAX_VALUE
     }
 
     private val categoryIconRes = mapOf(
