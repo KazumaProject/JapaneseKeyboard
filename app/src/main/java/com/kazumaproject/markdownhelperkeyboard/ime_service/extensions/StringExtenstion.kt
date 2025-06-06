@@ -44,25 +44,30 @@ fun debugPrintCodePoints(text: String) {
     while (i < text.length) {
         val cp = text.codePointAt(i)
         // 16進数で出してみれば、サロゲートペアが壊れていないかも確認できる
-        Timber.d("index=%d, codePoint=0x%04X (%s)", i, cp, Character.charCount(cp).let { if (it == 2) "サロゲートペア" else "単一" })
+        Timber.d(
+            "index=%d, codePoint=0x%04X (%s)",
+            i,
+            cp,
+            Character.charCount(cp).let { if (it == 2) "サロゲートペア" else "単一" })
         i += Character.charCount(cp)
     }
 }
 
 fun getLastCharacterAsString(ic: InputConnection): String {
-    // Try to read two code units, so that if the last character is a surrogate pair
-    // we can grab both halves. If it’s just a BMP character, we'll end up with length=1.
-    val twoChars = ic.getTextBeforeCursor(2, 0)?.toString() ?: ""
-    if (twoChars.length >= 2) {
-        val lastIndex = twoChars.length - 1
-        val low = twoChars[lastIndex]
-        val high = twoChars[lastIndex - 1]
-        // if it really is a valid surrogate pair:
-        if (Character.isLowSurrogate(low) && Character.isHighSurrogate(high)) {
-            // return exactly those two code units as a String
-            return twoChars.substring(lastIndex - 1, lastIndex + 1)
-        }
-    }
-    // otherwise, just return the single code unit (could be a normal letter or an unpaired surrogate)
-    return twoChars.takeLast(1)
+    // ① カーソル前 8 コードユニットを取得しておく（ZWJ＋性別＋VS16≒6 コードユニットを想定し、余裕を持って 8）
+    val maxLookback = 8
+    val beforeText = ic.getTextBeforeCursor(maxLookback, 0)?.toString() ?: ""
+    if (beforeText.isEmpty()) return ""
+
+    // ② BreakIterator で「最後のグラフェムクラスタ」の開始位置を探す
+    val bi = BreakIterator.getCharacterInstance()
+    bi.setText(beforeText)
+
+    // 「カーソルから見て最後の位置」は beforeText.length
+    val end = beforeText.length
+    // preceding() で、末尾直前のグラフェム境界を得る
+    val start = bi.preceding(end).let { if (it == BreakIterator.DONE) 0 else it }
+
+    // ③ substring でその範囲を丸ごと取り出す
+    return beforeText.substring(start, end)
 }
