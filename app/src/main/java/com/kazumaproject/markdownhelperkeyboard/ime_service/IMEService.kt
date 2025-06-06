@@ -42,6 +42,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
+import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.katakanaToHiragana
 import com.kazumaproject.core.domain.key.Key
@@ -1856,11 +1857,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 override fun onClick(symbol: ClickedSymbol) {
                     vibrate()
                     commitText(symbol.symbol, 1)
-                    CoroutineScope(Dispatchers.IO).launch {
-                        clickedSymbolRepository.insert(
-                            mode = symbol.mode,
-                            symbol = symbol.symbol
-                        )
+                    if (symbol.mode == SymbolMode.EMOJI) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            clickedSymbolRepository.insert(
+                                mode = symbol.mode,
+                                symbol = symbol.symbol
+                            )
+                        }
                     }
                 }
             })
