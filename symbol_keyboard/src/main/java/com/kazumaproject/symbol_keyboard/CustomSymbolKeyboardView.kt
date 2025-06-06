@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.tabs.TabLayout
+import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoji.EmojiCategory
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -37,9 +38,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
 
-    /* ───────────────── モード定義 ─────────────── */
-    enum class Mode { EMOJI, EMOTICON, SYMBOL }
-
     private var scrollToEndOnNextLoad = false
 
     /* ───────────────── UI 部品 ──────────────── */
@@ -55,7 +53,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var emojiMap: Map<EmojiCategory, List<Emoji>> = emptyMap()
     private var emoticons: List<String> = emptyList()
     private var symbols: List<String> = emptyList()
-    private var currentMode: Mode = Mode.EMOJI
+    private var currentMode: SymbolMode = SymbolMode.EMOJI
 
     /* ───────────────── others ────────────────── */
     private var pagingJob: Job? = null
@@ -95,7 +93,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         emojiList: List<Emoji>,
         emoticons: List<String>,
         symbols: List<String>,
-        defaultMode: Mode = Mode.EMOJI
+        defaultMode: SymbolMode = SymbolMode.EMOJI
     ) {
         // カテゴリごとにグループ化し、所定の順番でソートした Map を用意
         emojiMap = emojiList.groupBy { it.category }.toSortedMap(categoryOrder)
@@ -160,7 +158,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 // 選択されたタブに応じてモードを設定
-                currentMode = Mode.entries.toTypedArray()[tab?.position ?: 0]
+                currentMode = SymbolMode.entries.toTypedArray()[tab?.position ?: 0]
                 buildCategoryTabs()
                 // 上段カテゴリタブは必ず先頭を選択し直す
                 categoryTab.getTabAt(0)?.select()
@@ -211,7 +209,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private fun buildCategoryTabs() {
         categoryTab.removeAllTabs()
         when (currentMode) {
-            Mode.EMOJI -> {
+            SymbolMode.EMOJI -> {
                 emojiMap.keys.forEach { cat ->
                     categoryTab.addTab(
                         categoryTab.newTab()
@@ -222,7 +220,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            Mode.EMOTICON -> {
+            SymbolMode.EMOTICON -> {
                 val tabColor = ContextCompat.getColor(
                     this.context,
                     com.kazumaproject.core.R.color.keyboard_icon_color
@@ -231,7 +229,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 categoryTab.addTab(categoryTab.newTab().setText("顔文字"))
             }
 
-            Mode.SYMBOL -> {
+            SymbolMode.SYMBOL -> {
                 val tabColor = ContextCompat.getColor(
                     this.context,
                     com.kazumaproject.core.R.color.keyboard_icon_color
@@ -252,17 +250,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         // (1) カテゴリに応じた文字列リストを取得
         val listForPaging: List<String> = when (currentMode) {
-            Mode.EMOJI -> {
+            SymbolMode.EMOJI -> {
                 val key = emojiMap.keys.elementAtOrNull(index)
                 key?.let { emojiMap[it]?.map { e -> e.symbol } } ?: emptyList()
             }
 
-            Mode.EMOTICON -> emoticons
-            Mode.SYMBOL -> symbols
+            SymbolMode.EMOTICON -> emoticons
+            SymbolMode.SYMBOL -> symbols
         }
 
         // (2) シンボル表示サイズを切り替え
-        symbolAdapter.symbolTextSize = if (currentMode == Mode.EMOJI) 36f else 16f
+        symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) 36f else 16f
 
         // (3) 画面の向きに応じて GridLayoutManager の向きを切り替え
         gridLM.orientation =

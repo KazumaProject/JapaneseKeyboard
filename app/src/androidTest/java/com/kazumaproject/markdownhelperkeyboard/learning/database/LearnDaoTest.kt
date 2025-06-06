@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.learning.database
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -13,7 +14,7 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class LearnDaoTest {
 
-    private lateinit var database: LearnDatabase
+    private lateinit var database: AppDatabase
     private lateinit var dao: LearnDao
 
     @Before
@@ -21,7 +22,7 @@ class LearnDaoTest {
         // Create in-memory database for testing
         database = Room.inMemoryDatabaseBuilder(
             ApplicationProvider.getApplicationContext(),
-            LearnDatabase::class.java
+            AppDatabase::class.java
         ).allowMainThreadQueries().build()
 
         dao = database.learnDao()
