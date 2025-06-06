@@ -15,7 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentLearnDictionaryBinding
 import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionaryAdapter
-import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch

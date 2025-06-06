@@ -42,13 +42,4 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
-
-    // Room
-    implementation "androidx.room:room-runtime:2.6.1"
-    ksp "androidx.room:room-compiler:2.6.1"
-    // Kotlin Extensions and Coroutines support for Room
-    implementation "androidx.room:room-ktx:2.6.1"
-
-    // Room testing
-    testImplementation "androidx.room:room-testing:2.6.1"
 }

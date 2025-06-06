@@ -1,3 +1,4 @@
+// CustomSymbolKeyboardView.kt
 package com.kazumaproject.symbol_keyboard
 
 import android.content.Context
@@ -20,12 +21,14 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoji.EmojiCategory
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
+import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,32 +43,37 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private var scrollToEndOnNextLoad = false
 
-    /* ───────────────── UI 部品 ──────────────── */
+    /* UI 部品 */
     private val categoryTab: TabLayout
     private val modeTab: TabLayout
     private val recycler: RecyclerView
     private val symbolAdapter = SymbolAdapter()
 
-    // 1行あたり3列（横スクロール時は1行3列、縦スクロール時は縦に3列）に設定
     private val gridLM = GridLayoutManager(context, 3, RecyclerView.HORIZONTAL, false)
 
-    /* ───────────────── データ保持 ─────────────── */
+    /* データ保持 */
     private var emojiMap: Map<EmojiCategory, List<Emoji>> = emptyMap()
     private var emoticons: List<String> = emptyList()
     private var symbols: List<String> = emptyList()
+
+    // 履歴用
+    private var historyEmojiList: List<String> = emptyList()
+    private var symbolsHistory: List<ClickedSymbol> = emptyList()
+
     private var currentMode: SymbolMode = SymbolMode.EMOJI
 
-    /* ───────────────── others ────────────────── */
+    /* others */
     private var pagingJob: Job? = null
     private var lifecycleOwner: LifecycleOwner? = null
 
-    /* ───────────────── リスナ登録用 ───────────── */
+    /* リスナ登録用 */
     private var returnListener: ReturnToTenKeyButtonClickListener? = null
     private var deleteClickListener: DeleteButtonSymbolViewClickListener? = null
     private var deleteLongListener: DeleteButtonSymbolViewLongClickListener? = null
     private var itemClickListener: SymbolRecyclerViewItemClickListener? = null
+    private var itemLongClickListener: SymbolRecyclerViewItemLongClickListener? = null
 
-    /* ───────────────── public API ─────────────── */
+    /** ライフサイクルオーナーを渡す */
     fun setLifecycleOwner(owner: LifecycleOwner) {
         lifecycleOwner = owner
     }
@@ -86,6 +94,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         itemClickListener = l
     }
 
+    fun setOnSymbolRecyclerViewItemLongClickListener(l: SymbolRecyclerViewItemLongClickListener) {
+        itemLongClickListener = l
+    }
+
     /**
      * 絵文字・顔文字・記号をセット（必須）
      */
@@ -93,58 +105,62 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         emojiList: List<Emoji>,
         emoticons: List<String>,
         symbols: List<String>,
-        defaultMode: SymbolMode = SymbolMode.EMOJI
+        symbolsHistory: List<ClickedSymbol>,
+        defaultMode: SymbolMode = SymbolMode.EMOJI,
     ) {
-        // カテゴリごとにグループ化し、所定の順番でソートした Map を用意
-        emojiMap = emojiList.groupBy { it.category }.toSortedMap(categoryOrder)
+        // 履歴から EMOJI のものだけ取り出し
+        this.symbolsHistory = symbolsHistory
+        historyEmojiList = symbolsHistory.filter { it.mode == SymbolMode.EMOJI }
+            .map { it.symbol }
+
         this.emoticons = emoticons
         this.symbols = symbols
+        emojiMap = emojiList.groupBy { it.category }.toSortedMap(categoryOrder)
 
         currentMode = defaultMode
-        buildModeTabs()              // 下段モードタブ
-        buildCategoryTabs()          // 上段カテゴリタブ
+        buildModeTabs()
+        buildCategoryTabs()
 
-        // デフォルトで選択するタブをセット
         modeTab.getTabAt(defaultMode.ordinal)?.select()
         categoryTab.getTabAt(0)?.select()
-        // 初期表示：必ず最初のカテゴリ（index=0）をロード
         updateSymbolsForCategory(0)
     }
 
-    /* ─────────────────── init ─────────────────── */
     init {
         inflate(context, R.layout.symbol_keyboard_main_layout, this)
 
-        // find views
         categoryTab = findViewById(R.id.category_tab_layout)
         modeTab = findViewById(R.id.mode_tab_layout)
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
 
-        // RecyclerView 設定
         recycler.apply {
             layoutManager = gridLM
-            // 最初はシンボルアダプタを直接セットしておく（あとで ConcatAdapter に置き換える）
             adapter = symbolAdapter
             itemAnimator = null
             isSaveEnabled = false
         }
-        // クリックリスナは Adapter に設定
-        symbolAdapter.setOnItemClickListener { itemClickListener?.onClick(it) }
 
-        /* ── LoadStateListener でデータ切り替え後にスクロールと再描画 ── */
+        // ① 通常クリック
+        symbolAdapter.setOnItemClickListener { str ->
+            itemClickListener?.onClick(ClickedSymbol(mode = currentMode, symbol = str))
+        }
+
+        // ② 長押しクリック → DB から削除も行う
+        symbolAdapter.setOnItemLongClickListener { str ->
+            if (categoryTab.selectedTabPosition == 0) {
+                itemLongClickListener?.onLongClick(ClickedSymbol(mode = currentMode, symbol = str))
+            }
+        }
+
         symbolAdapter.addLoadStateListener { state ->
-            // 「データロード中（新しいカテゴリの先頭を読み込む際）」は先頭へスクロール
             if (state.refresh is LoadState.Loading) {
                 recycler.post {
-                    // 新ロード中の間も旧セルをnotifyして見栄えを整える
                     for (i in 0 until symbolAdapter.itemCount) {
                         symbolAdapter.notifyItemChanged(i)
                     }
                     recycler.scrollToPosition(0)
                 }
             }
-
-            // 「前のカテゴリに戻る」ボタンが押されていた場合は末尾へスクロール
             if (state.refresh is LoadState.NotLoading && scrollToEndOnNextLoad) {
                 val lastIndex = symbolAdapter.itemCount - 1
                 if (lastIndex >= 0) {
@@ -154,15 +170,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             }
         }
 
-        /* ── 下段モードタブのリスナ ── */
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
-                // 選択されたタブに応じてモードを設定
                 currentMode = SymbolMode.entries.toTypedArray()[tab?.position ?: 0]
                 buildCategoryTabs()
-                // 上段カテゴリタブは必ず先頭を選択し直す
                 categoryTab.getTabAt(0)?.select()
-                // 再度ロード
                 updateSymbolsForCategory(0)
             }
 
@@ -170,7 +182,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
 
-        /* ── 上段カテゴリタブのリスナ ── */
         categoryTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 tab?.let { updateSymbolsForCategory(it.position) }
@@ -180,7 +191,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
 
-        /* ── 戻る／削除ボタン ── */
         findViewById<ShapeableImageView>(R.id.return_jp_keyboard_button).setOnClickListener {
             returnListener?.onClick()
         }
@@ -193,7 +203,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /* ────────────────── 下段モードタブ ───────────────── */
     private fun buildModeTabs() {
         modeTab.removeAllTabs()
         listOf(
@@ -205,17 +214,20 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /* ────────────────── 上段カテゴリタブ ──────────────── */
     private fun buildCategoryTabs() {
         categoryTab.removeAllTabs()
         when (currentMode) {
             SymbolMode.EMOJI -> {
+                if (historyEmojiList.isNotEmpty()) {
+                    categoryTab.addTab(
+                        categoryTab.newTab().setIcon(com.kazumaproject.core.R.drawable.history_24dp)
+                    )
+                }
                 emojiMap.keys.forEach { cat ->
                     categoryTab.addTab(
-                        categoryTab.newTab()
-                            .setIcon(
-                                categoryIconRes[cat] ?: com.kazumaproject.core.R.drawable.logo_key
-                            )
+                        categoryTab.newTab().setIcon(
+                            categoryIconRes[cat] ?: com.kazumaproject.core.R.drawable.logo_key
+                        )
                     )
                 }
             }
@@ -240,61 +252,49 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /* ───────────── RecyclerView データ更新 ───────────── */
     private fun updateSymbolsForCategory(index: Int) {
-        // ────────── ここで旧データをクリア ──────────
-        // PagingDataAdapter に空のデータを即時流し込んで、旧モードのアイテムを消す
         CoroutineScope(Dispatchers.IO).launch {
             symbolAdapter.submitData(PagingData.from(emptyList()))
         }
 
-        // (1) カテゴリに応じた文字列リストを取得
         val listForPaging: List<String> = when (currentMode) {
             SymbolMode.EMOJI -> {
-                val key = emojiMap.keys.elementAtOrNull(index)
-                key?.let { emojiMap[it]?.map { e -> e.symbol } } ?: emptyList()
+                if (historyEmojiList.isNotEmpty() && index == 0) {
+                    historyEmojiList
+                } else {
+                    val adjustedIndex = index - if (historyEmojiList.isNotEmpty()) 1 else 0
+                    val key = emojiMap.keys.elementAtOrNull(adjustedIndex)
+                    key?.let { emojiMap[it]?.map { e -> e.symbol } } ?: emptyList()
+                }
             }
 
             SymbolMode.EMOTICON -> emoticons
             SymbolMode.SYMBOL -> symbols
         }
 
-        // (2) シンボル表示サイズを切り替え
         symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) 36f else 16f
-
-        // (3) 画面の向きに応じて GridLayoutManager の向きを切り替え
         gridLM.orientation =
             if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
                 RecyclerView.HORIZONTAL else RecyclerView.VERTICAL
 
-        // (4) 既存の Flow をキャンセル
         pagingJob?.cancel()
-
         lifecycleOwner?.let { owner ->
-            // (5) 「前のカテゴリ」「次のカテゴリ」ボタン表示判定
             val showPrevButton = index > 0
             val showNextButton = index < categoryTab.tabCount - 1
 
-            // (6) ボタン用 Adapter を作成
             val prevAdapter = if (showPrevButton) ButtonAdapter(isNext = false) else null
             val nextAdapter = if (showNextButton) ButtonAdapter(isNext = true) else null
-
-            // (7) ConcatAdapter 用 Config を作成（ViewType 衝突防止）
             val concatConfig = ConcatAdapter.Config.Builder()
                 .setIsolateViewTypes(true)
                 .build()
-
-            // (8) ConcatAdapter に渡す子アダプタのリストを準備
             val adaptersList = mutableListOf<RecyclerView.Adapter<out RecyclerView.ViewHolder>>()
             prevAdapter?.let { adaptersList.add(it) }
             adaptersList.add(symbolAdapter)
             nextAdapter?.let { adaptersList.add(it) }
 
-            // (9) ConcatAdapter を構築して RecyclerView にセット
             val concatAdapter = ConcatAdapter(concatConfig, adaptersList)
             recycler.adapter = concatAdapter
 
-            // (10) PagingDataAdapter のリフレッシュと新 Flow の購読開始
             symbolAdapter.refresh()
             pagingJob = owner.lifecycleScope.launch {
                 Pager(
@@ -312,16 +312,18 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /* ───────────── cleanup ───────────── */
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         pagingJob?.cancel()
+        pagingJob = null
         lifecycleOwner = null
+        returnListener = null
+        deleteClickListener = null
+        deleteLongListener = null
+        itemClickListener = null
+        itemLongClickListener = null
     }
 
-    /**
-     * 「前のカテゴリ」「次のカテゴリ」に切り替えるためのボタン用 Adapter
-     */
     private inner class ButtonAdapter(private val isNext: Boolean) :
         RecyclerView.Adapter<ButtonAdapter.ButtonViewHolder>() {
 
@@ -329,18 +331,15 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             RecyclerView.ViewHolder(button)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ButtonViewHolder {
-            // ボタンをプログラムで作成。高さは RecyclerView の高さに合わせ、幅は WRAP_CONTENT。
             val button = AppCompatButton(parent.context).apply {
                 layoutParams = RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                // ボタン文字列（">" または "<"）
                 text = if (isNext) ">" else "<"
                 textSize = 18f
                 gravity = Gravity.CENTER
                 textAlignment = AppCompatButton.TEXT_ALIGNMENT_CENTER
-                // 背景や色を設定
                 background = ContextCompat.getDrawable(
                     this.context,
                     com.kazumaproject.core.R.drawable.ten_keys_center_bg
@@ -354,16 +353,13 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 val currentTab = categoryTab.selectedTabPosition
                 val tabCount = categoryTab.tabCount
                 if (isNext) {
-                    // 次のカテゴリに移動
                     val nextTab = currentTab + 1
                     if (nextTab < tabCount) {
                         categoryTab.getTabAt(nextTab)?.select()
                     }
                 } else {
-                    // 前のカテゴリに移動
                     val prevTab = currentTab - 1
                     if (prevTab >= 0) {
-                        // 「前のカテゴリに戻る」ので、ロード完了後に末尾へスクロールさせる
                         scrollToEndOnNextLoad = true
                         categoryTab.getTabAt(prevTab)?.select()
                     }
@@ -372,13 +368,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         override fun getItemCount(): Int = 1
-        private val BUTTON_VIEW_TYPE = Int.MAX_VALUE  // 大きめの定数を指定
-
-        // ButtonAdapter はシンプルなボタンのみなので、ViewType は固定値でOK
-        override fun getItemViewType(position: Int): Int = BUTTON_VIEW_TYPE
+        override fun getItemViewType(position: Int): Int = Int.MAX_VALUE
     }
 
-    /* ───────────── アイコン対応表 & 並び順 ───────────── */
     private val categoryIconRes = mapOf(
         EmojiCategory.EMOTICONS to com.kazumaproject.core.R.drawable.mood_24px,
         EmojiCategory.GESTURES to com.kazumaproject.core.R.drawable.thumb_up_24dp,
