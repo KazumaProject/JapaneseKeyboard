@@ -15,6 +15,8 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
+import timber.log.Timber
 
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -163,6 +165,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is EmptyViewHolder) {
             holder.apply {
@@ -170,6 +173,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 undoIcon?.apply {
                     isVisible = isUndoEnabled
                     isFocusable = false
+                    Timber.d("undo text: $undoText")
+                    debugPrintCodePoints(undoText)
                     text = undoText.reversed()
                 }
                 pasteIcon?.apply {
