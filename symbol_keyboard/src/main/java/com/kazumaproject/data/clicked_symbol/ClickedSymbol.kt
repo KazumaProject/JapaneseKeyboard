@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database
+package com.kazumaproject.data.clicked_symbol
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

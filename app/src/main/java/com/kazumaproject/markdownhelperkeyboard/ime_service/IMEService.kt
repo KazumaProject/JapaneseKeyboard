@@ -52,11 +52,13 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
+import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
@@ -72,7 +74,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
-import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
@@ -127,6 +130,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var learnRepository: LearnRepository
+
+    @Inject
+    lateinit var clickedSymbolRepository: ClickedSymbolRepository
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
@@ -1847,9 +1853,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             })
             /** ここで絵文字を追加 **/
             setOnSymbolRecyclerViewItemClickListener(object : SymbolRecyclerViewItemClickListener {
-                override fun onClick(symbol: String) {
+                override fun onClick(symbol: ClickedSymbol) {
                     vibrate()
-                    commitText(symbol, 1)
+                    commitText(symbol.symbol, 1)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        clickedSymbolRepository.insert(
+                            mode = symbol.mode,
+                            symbol = symbol.symbol
+                        )
+                    }
+                }
+            })
+            setOnSymbolRecyclerViewItemLongClickListener(object :
+                SymbolRecyclerViewItemLongClickListener {
+                override fun onLongClick(symbol: ClickedSymbol) {
+                    vibrate()
+                    CoroutineScope(Dispatchers.IO).launch {
+                        clickedSymbolRepository.delete(
+                            mode = symbol.mode,
+                            symbol = symbol.symbol
+                        )
+                    }
                 }
             })
         }
@@ -1969,6 +1993,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
+        val symbolsHistory: List<ClickedSymbol> = withContext(Dispatchers.IO) {
+            clickedSymbolRepository.getAll()
+        }
         emojiList = withContext(Dispatchers.Default) {
             kanaKanjiEngine.getSymbolEmojiCandidates()
         }
@@ -1979,7 +2006,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             kanaKanjiEngine.getSymbolCandidates()
         }
         mainView.keyboardSymbolView.setSymbolLists(
-            emojiList, emoticonList, symbolList,
+            emojiList = emojiList,
+            emoticons = emoticonList,
+            symbols = symbolList,
+            symbolsHistory = symbolsHistory.sortedByDescending {
+                it.timestamp
+            }.distinctBy { it.symbol }
         )
     }
 
