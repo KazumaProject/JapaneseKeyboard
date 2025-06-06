@@ -42,6 +42,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
+import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.katakanaToHiragana
 import com.kazumaproject.core.domain.key.Key
@@ -52,11 +53,13 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
+import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
@@ -72,7 +75,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShow
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
-import com.kazumaproject.markdownhelperkeyboard.learning.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
@@ -102,6 +106,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.text.BreakIterator
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
@@ -126,6 +131,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var learnRepository: LearnRepository
+
+    @Inject
+    lateinit var clickedSymbolRepository: ClickedSymbolRepository
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
@@ -690,8 +698,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 vibrate()
             }
         }
-        if (key != Key.SideKeyDelete) {
+        if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
+            suggestionAdapter?.setUndoEnabled(false)
+            setClipboardText()
+        } else if (deletedBuffer.isNotEmpty() && selectMode.value && key == Key.SideKeySpace) {
+            clearDeletedBufferWithoutResetLayout()
             suggestionAdapter?.setUndoEnabled(false)
             setClipboardText()
         }
@@ -1010,47 +1022,87 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         onLeftKeyLongPressUp.set(true)
     }
 
+    /**
+     * テキスト中の「offset」位置から見て、一つ前のグラフェムクラスタ開始位置を返す。
+     * 文字列先頭または取得失敗時は 0 を返す。
+     */
+    private fun previousGraphemeOffset(text: String, offset: Int): Int {
+        if (offset <= 0) return 0
+        val it = BreakIterator.getCharacterInstance()
+        it.setText(text)
+        val pos = it.preceding(offset)
+        return if (pos == BreakIterator.DONE) 0 else pos
+    }
+
+    /**
+     * テキスト中の「offset」位置から見て、一つ次のグラフェムクラスタ開始位置を返す。
+     * 文字列末尾または取得失敗時は text.length を返す。
+     */
+    private fun nextGraphemeOffset(text: String, offset: Int): Int {
+        if (offset >= text.length) return text.length
+        val it = BreakIterator.getCharacterInstance()
+        it.setText(text)
+        val pos = it.following(offset)
+        return if (pos == BreakIterator.DONE) text.length else pos
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+// ─────────────────────────────────────────────────────────────────────────────
+//    extendOrShrinkLeftOneChar / extendOrShrinkSelectionRight の修正版
+//    （グラフェムクラスタ単位で選択範囲を伸縮）
+// ─────────────────────────────────────────────────────────────────────────────
+////////////////////////////////////////////////////////////////////////////////
+
     /** 選択開始時の固定端（アンカー）。-1 は「未設定」を示す */
     private var anchorPos = -1
 
     /**
-     * Shift + ← 相当：左へ 1 文字分だけ「伸ばす or 縮める」
-     *   - まだ選択が無い       → キャレットの左 1 文字を選択開始
-     *   - カーソルが左端にある → さらに左へ 1 文字伸ばす
-     *   - カーソルが右端にある → 右端を 1 文字分戻して縮める
+     * Shift + ← 相当：左へ「拡張グラフェムクラスタ」1つ分だけ伸ばす／縮める
      */
     private fun extendOrShrinkLeftOneChar() {
         val extracted = getExtractedText(ExtractedTextRequest(), 0) ?: return
+        val textStr = extracted.text?.toString() ?: return
         val selStart = extracted.selectionStart
         val selEnd = extracted.selectionEnd
 
-        // ---- 0) 選択が無い（キャレットのみ）
+        // 0) まだ選択がない（キャレットのみ）
         if (selStart == selEnd) {
-            if (selStart == 0) return               // 先頭なら何もしない
-            anchorPos = selStart                    // 基点を保存
+            // キャレットが先頭なら何もしない
+            if (selStart == 0) return
+
+            // アンカーを現在位置に固定
+            anchorPos = selStart
+
+            // 前のグラフェムクラスタ開始位置を取得して選択開始
+            val newStart = previousGraphemeOffset(textStr, selStart)
+
             beginBatchEdit()
             finishComposingText()
-            setSelection(selStart - 1, selEnd)      // 左 1 文字を選択
+            setSelection(newStart, selEnd)
             endBatchEdit()
             return
         }
 
-        // ---- 1) 既に選択がある
-        val cursorOnLeft = (anchorPos == selEnd)   // true: カーソル=左端
-        val cursorOnRight = (anchorPos == selStart) // true: カーソル=右端
+        // 1) すでに選択がある
+        val cursorOnLeft = (anchorPos == selEnd)   // カーソルが選択範囲の左端にあるか
+        val cursorOnRight = (anchorPos == selStart) // カーソルが選択範囲の右端にあるか
 
         when {
-            cursorOnLeft -> {  // さらに左へ伸ばす
+            // 1-A: カーソルが左端 → さらに左へ1文字（グラフェム）分伸ばす
+            cursorOnLeft -> {
                 if (selStart == 0) return
+                val newStart = previousGraphemeOffset(textStr, selStart)
                 beginBatchEdit()
                 finishComposingText()
-                setSelection(selStart - 1, selEnd)
+                setSelection(newStart, selEnd)
                 endBatchEdit()
             }
 
-            cursorOnRight -> { // 右端から 1 文字戻して縮める
-                if (selEnd - 1 <= selStart) {
-                    // 選択が無くなるので解除＋アンカーリセット
+            // 1-B: カーソルが右端 → 右端を1文字（グラフェム）分縮める
+            cursorOnRight -> {
+                val newEnd = previousGraphemeOffset(textStr, selEnd)
+                if (newEnd <= selStart) {
+                    // 選択範囲がなくなるのでキャレットのみの状態に戻す
                     beginBatchEdit()
                     finishComposingText()
                     setSelection(selStart, selStart)
@@ -1059,61 +1111,66 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 } else {
                     beginBatchEdit()
                     finishComposingText()
-                    setSelection(selStart, selEnd - 1)
+                    setSelection(selStart, newEnd)
                     endBatchEdit()
                 }
             }
 
             else -> {
-                // 不整合時はアンカーをリセット
+                // 状態不整合ならアンカーをリセット
                 anchorPos = -1
             }
         }
     }
 
-    /** Shift+→ を押した（あるいは同等の操作が来た）ときに呼ぶ */
+    /**
+     * Shift + → 相当：右へ「拡張グラフェムクラスタ」1つ分だけ伸ばす／縮める
+     */
     private fun extendOrShrinkSelectionRight() {
         val extracted = getExtractedText(ExtractedTextRequest(), 0) ?: return
+        val textStr = extracted.text?.toString() ?: return
         val selStart = extracted.selectionStart
         val selEnd = extracted.selectionEnd
-        val textLen = extracted.text?.length ?: return
+        val textLen = textStr.length
 
-        // ----- 0) 選択が無い（カーソルだけ）の状態 -----
+        // 0) まだ選択がない（キャレットのみ）
         if (selStart == selEnd) {
-            anchorPos = selStart                    // ここを基点として保存
+            anchorPos = selStart
             if (selEnd < textLen) {
+                val newEnd = nextGraphemeOffset(textStr, selEnd)
                 beginBatchEdit()
                 finishComposingText()
-                setSelection(selStart, selEnd + 1)  // 1 文字だけ選択開始
+                setSelection(selStart, newEnd)
                 endBatchEdit()
             }
             return
         }
 
-        // ----- 1) 既に選択がある状態 -----
-        // アンカーがどちら側かで分岐
-        val cursorIsOnRight = (anchorPos == selStart)   // true: カーソル=右端
+        // 1) すでに選択がある
+        val cursorIsOnRight = (anchorPos == selStart)
         if (cursorIsOnRight) {
-            // ---- 1-A カーソルが右端 → さらに右へ伸ばす ----
+            // 1-A: カーソルが右端 → さらに右へ1文字（グラフェム）分伸ばす
             if (selEnd < textLen) {
+                val newEnd = nextGraphemeOffset(textStr, selEnd)
                 beginBatchEdit()
                 finishComposingText()
-                setSelection(anchorPos, selEnd + 1)
+                setSelection(anchorPos, newEnd)
                 endBatchEdit()
             }
         } else {
-            // ---- 1-B カーソルが左端 → 左から 1 文字詰めて縮める ----
-            if (selStart + 1 >= selEnd) {
-                // 縮め切ったので選択解除
+            // 1-B: カーソルが左端 → 左端を1文字（グラフェム）分縮める
+            val newStart = nextGraphemeOffset(textStr, selStart)
+            if (newStart >= selEnd) {
+                // 選択範囲がなくなるのでキャレットのみの状態に戻す
                 beginBatchEdit()
                 finishComposingText()
-                setSelection(selEnd, selEnd)        // キャレットを右端に
+                setSelection(selEnd, selEnd)
                 endBatchEdit()
-                anchorPos = -1                      // アンカーもクリア
+                anchorPos = -1
             } else {
                 beginBatchEdit()
                 finishComposingText()
-                setSelection(selStart + 1, selEnd)  // 左端だけ +1
+                setSelection(newStart, selEnd)
                 endBatchEdit()
             }
         }
@@ -1676,7 +1733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
                         popLastDeletedChar()?.let { c ->
-                            commitText(c.toString(), 1)
+                            commitText(c, 1)
                             suggestionAdapter?.setUndoPreviewText(
                                 deletedBuffer.toString()
                             )
@@ -1684,6 +1741,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         if (deletedBuffer.isEmpty()) {
                             suggestionAdapter?.setUndoEnabled(false)
                             setClipboardText()
+                            mainView.keyboardView.setSideKeyPreviousDrawable(
+                                ContextCompat.getDrawable(
+                                    this,
+                                    com.kazumaproject.core.R.drawable.undo_24px
+                                )
+                            )
                         }
                     }
 
@@ -1701,7 +1764,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconLongClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
-                        commitText(deletedBuffer.reverse().toString(), 1)
+                        val textToCommit = reverseByGrapheme(deletedBuffer.toString())
+                        commitText(textToCommit, 1)
                         clearDeletedBuffer()
                         suggestionAdapter?.setUndoEnabled(false)
                         setClipboardText()
@@ -1788,10 +1852,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     deleteKeyLongKeyPressed.set(true)
                 }
             })
+            /** ここで絵文字を追加 **/
             setOnSymbolRecyclerViewItemClickListener(object : SymbolRecyclerViewItemClickListener {
-                override fun onClick(symbol: String) {
+                override fun onClick(symbol: ClickedSymbol) {
                     vibrate()
-                    commitText(symbol, 1)
+                    commitText(symbol.symbol, 1)
+                    if (symbol.mode == SymbolMode.EMOJI) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            clickedSymbolRepository.insert(
+                                mode = symbol.mode,
+                                symbol = symbol.symbol
+                            )
+                        }
+                    }
+                }
+            })
+            setOnSymbolRecyclerViewItemLongClickListener(object :
+                SymbolRecyclerViewItemLongClickListener {
+                override fun onLongClick(symbol: ClickedSymbol, position: Int) {
+                    vibrate()
+                    CoroutineScope(Dispatchers.IO).launch {
+                        clickedSymbolRepository.delete(
+                            mode = symbol.mode,
+                            symbol = symbol.symbol
+                        )
+                    }
                 }
             })
         }
@@ -1894,10 +1979,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyDelete -> {
-                            val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
-                            if (beforeChar.isNotEmpty()) {
-                                suggestionAdapter?.setUndoEnabled(true)
-                            }
                             onDeleteLongPressUp.set(true)
                             deleteLongPress()
                             _dakutenPressed.value = false
@@ -1915,6 +1996,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
+        val symbolsHistory: List<ClickedSymbol> = withContext(Dispatchers.IO) {
+            clickedSymbolRepository.getAll()
+        }
         emojiList = withContext(Dispatchers.Default) {
             kanaKanjiEngine.getSymbolEmojiCandidates()
         }
@@ -1925,7 +2009,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             kanaKanjiEngine.getSymbolCandidates()
         }
         mainView.keyboardSymbolView.setSymbolLists(
-            emojiList, emoticonList, symbolList,
+            emojiList = emojiList,
+            emoticons = emoticonList,
+            symbols = symbolList,
+            symbolsHistory = symbolsHistory.sortedByDescending {
+                it.timestamp
+            }.distinctBy { it.symbol }
         )
     }
 
@@ -1964,8 +2053,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     /**
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
-    fun clearDeletedBuffer() {
+    private fun clearDeletedBuffer() {
         deletedBuffer.clear()
+        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+            ContextCompat.getDrawable(
+                this,
+                com.kazumaproject.core.R.drawable.undo_24px
+            )
+        )
+    }
+
+    private fun clearDeletedBufferWithoutResetLayout() {
+        deletedBuffer.clear()
+    }
+
+    private fun reverseByGrapheme(input: String): String {
+        if (input.isEmpty()) return input
+
+        // BreakIterator を文字（グラフェム）単位で作成
+        val it = BreakIterator.getCharacterInstance().also { it.setText(input) }
+
+        // まずはすべてのグラフェムの開始位置をリストに集める
+        val boundaries = mutableListOf<Int>()
+        var pos = it.first()
+        while (pos != BreakIterator.DONE) {
+            boundaries.add(pos)
+            pos = it.next()
+        }
+        // boundaries: [0, nextBoundary1, nextBoundary2, ..., input.length]
+
+        // グラフェム単位で部分文字列を取り出し、逆順に連結する
+        val sb = StringBuilder(input.length)
+        for (i in boundaries.size - 2 downTo 0) {
+            val start = boundaries[i]
+            val end = boundaries[i + 1]
+            sb.append(input.substring(start, end))
+        }
+        return sb.toString()
     }
 
     /**
@@ -1975,26 +2099,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun popLastDeletedChar(): String? {
         if (deletedBuffer.isEmpty()) return null
 
-        val lastIndex = deletedBuffer.lastIndex
-        val lastChar = deletedBuffer[lastIndex]
+        // バッファ全体を String として扱う
+        val full = deletedBuffer.toString()
+        val endIndex = full.length
 
-        return if (Character.isLowSurrogate(lastChar) && lastIndex >= 1) {
-            val prev = deletedBuffer[lastIndex - 1]
-            if (Character.isHighSurrogate(prev)) {
-                // サロゲートペアなら2文字分を取り出す
-                val emoji = deletedBuffer.substring(lastIndex - 1, lastIndex + 1)
-                deletedBuffer.delete(lastIndex - 1, lastIndex + 1)
-                emoji
-            } else {
-                // 前に高サロゲートがないなら単一文字として扱う
-                deletedBuffer.deleteCharAt(lastIndex)
-                lastChar.toString()
-            }
-        } else {
-            // 低サロゲートでないなら単一文字として扱う
-            deletedBuffer.deleteCharAt(lastIndex)
-            lastChar.toString()
-        }
+        // 最後のグラフェムクラスタ開始位置を BreakIterator で得る
+        val startIndex = previousGraphemeOffset(full, endIndex)
+
+        // 「最後の1文字（＝拡張グラフェムクラスタ）」を substring で取り出す
+        val lastGrapheme = full.substring(startIndex, endIndex)
+
+        // バッファからその部分を丸ごと削除
+        deletedBuffer.delete(startIndex, endIndex)
+        return lastGrapheme
     }
 
     private fun setCandidateClipboardLongClick(
@@ -2631,6 +2748,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
                         setUndoEnabled(true)
                     }
+                    mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                        ContextCompat.getDrawable(
+                            this@IMEService,
+                            com.kazumaproject.core.R.drawable.baseline_delete_24
+                        )
+                    )
                 }
             }
         }
@@ -2736,6 +2859,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     val beforeChar = getLastCharacterAsString(currentInputConnection)
                     if (beforeChar.isNotEmpty()) {
                         deletedBuffer.append(beforeChar)
+                        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                            ContextCompat.getDrawable(
+                                this@IMEService,
+                                com.kazumaproject.core.R.drawable.baseline_delete_24
+                            )
+                        )
                         suggestionAdapter?.apply {
                             setUndoEnabled(true)
                             setUndoPreviewText(deletedBuffer.toString())
@@ -3749,11 +3878,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         val qwertyMode = qwertyMode.value
         val emojiKeyboardState = _keyboardSymbolViewState.value
-        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
+        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
             if (isPortrait) {
                 (280 * density).toInt()
             } else {
                 (200 * density).toInt()
+            }
+        } else if (emojiKeyboardState) {
+            if (isPortrait) {
+                (320 * density).toInt()
+            } else {
+                (220 * density).toInt()
             }
         } else {
             (clampedHeight * density).toInt()

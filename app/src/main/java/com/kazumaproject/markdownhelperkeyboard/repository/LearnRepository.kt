@@ -1,11 +1,13 @@
-package com.kazumaproject.markdownhelperkeyboard.learning.repository
+package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
+import javax.inject.Singleton
 
+@Singleton
 class LearnRepository @Inject constructor(
     private val learnDao: LearnDao
 ) {

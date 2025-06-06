@@ -3,8 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.learning.repository
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
-import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDatabase
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -15,14 +16,14 @@ import org.junit.Test
 
 class LearnRepositoryTest {
 
-    private lateinit var database: LearnDatabase
+    private lateinit var database: AppDatabase
     private lateinit var learnDao: LearnDao
     private lateinit var repository: LearnRepository
 
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        database = Room.inMemoryDatabaseBuilder(context, LearnDatabase::class.java)
+        database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
         learnDao = database.learnDao()
