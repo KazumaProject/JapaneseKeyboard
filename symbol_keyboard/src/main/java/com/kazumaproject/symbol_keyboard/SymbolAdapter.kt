@@ -5,22 +5,24 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.textview.MaterialTextView
 
-class SymbolAdapter : PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(DIFF_CALLBACK) {
+class SymbolAdapter :
+    PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(DIFF_CALLBACK) {
 
+    // 外部から文字サイズを設定できるようにプロパティ化
     var symbolTextSize: Float = 16f
 
     inner class SymbolViewHolder(itemView: View) :
-        androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
+        RecyclerView.ViewHolder(itemView) {
         val symbolTextView: MaterialTextView = itemView.findViewById(R.id.symbol_text)
 
         init {
             itemView.setOnClickListener {
-                val position = bindingAdapterPosition
-                if (position != androidx.recyclerview.widget.RecyclerView.NO_POSITION) {
-                    val symbol = getItem(position)
-                    symbol?.let { onItemClickListener?.invoke(it) }
+                val pos = bindingAdapterPosition
+                if (pos != RecyclerView.NO_POSITION) {
+                    getItem(pos)?.let { onItemClickListener?.invoke(it) }
                 }
             }
         }
@@ -29,7 +31,7 @@ class SymbolAdapter : PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(
     companion object {
         private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<String>() {
             override fun areItemsTheSame(oldItem: String, newItem: String): Boolean {
-                // Assuming each symbol is unique
+                // 文字列自体がユニークと仮定
                 return oldItem == newItem
             }
 
@@ -52,10 +54,21 @@ class SymbolAdapter : PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(
     }
 
     override fun onBindViewHolder(holder: SymbolViewHolder, position: Int) {
-        val symbol = getItem(position)
-        symbol?.let {
-            holder.symbolTextView.text = it
+        // getItem(pos) はロード前や空のとき null を返す
+        val symbol = try {
+            getItem(position)
+        } catch (e: IndexOutOfBoundsException) {
+            // 本来 PagingDataAdapter では発生しづらいはずですが、
+            // 万が一アダプタ内部で不整合が起きた場合をキャッチして null にする
+            null
+        }
+        if (symbol != null) {
+            holder.symbolTextView.text = symbol
             holder.symbolTextView.textSize = symbolTextSize
+        } else {
+            // null のときは空状態にしておく（バインドしない）
+            holder.symbolTextView.text = ""
         }
     }
+
 }
