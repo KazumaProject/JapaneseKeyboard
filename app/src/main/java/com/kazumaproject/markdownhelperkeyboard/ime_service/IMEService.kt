@@ -1224,6 +1224,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         launch {
             _keyboardSymbolViewState.asStateFlow().collectLatest { isSymbolKeyboardShow ->
+                setKeyboardSize()
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
                         animateViewVisibility(
@@ -3729,7 +3730,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         val qwertyMode = qwertyMode.value
-        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+        val emojiKeyboardState = _keyboardSymbolViewState.value
+        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
             if (isPortrait) {
                 (280 * density).toInt()
             } else {
@@ -3740,7 +3742,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         // 5) Compute width in px (or MATCH_PARENT) based on orientation/tablet
         val widthPx = if (isPortrait) {
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
                 ViewGroup.LayoutParams.MATCH_PARENT
             } else {
                 if (widthPref == 100) {
@@ -3750,7 +3752,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
                 ViewGroup.LayoutParams.MATCH_PARENT
             } else {
                 if (isTablet == true) {
@@ -3786,15 +3788,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 view.layoutParams = params
             }
         }
-
-        fun applySymbolViewSize(view: View) {
-            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                params.height = (280 * density).toInt()
-                params.gravity = gravity
-                view.layoutParams = params
-            }
-        }
-
         // 8) Update either tabletView or keyboardView (depending on isTablet)
         if (isTablet == true) {
             applySize(binding.tabletView)
@@ -3804,7 +3797,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         // 9) The candidates row and symbol view use the same height & gravity
         applySize(binding.candidatesRowView)
-        applySymbolViewSize(binding.keyboardSymbolView)
+        applySize(binding.keyboardSymbolView)
         applySize(binding.qwertyView)
 
         // 10) suggestionViewParent sits above the keyboard, so we adjust bottomMargin instead of height
