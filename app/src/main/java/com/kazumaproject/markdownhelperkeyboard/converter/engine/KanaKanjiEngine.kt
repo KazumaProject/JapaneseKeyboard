@@ -972,18 +972,15 @@ class KanaKanjiEngine {
     fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray
         .getNodeIds()
         .map { nodeId ->
-            // nodeId から絵文字（String）を取得
             emojiTangoTrie.getLetterShortArray(nodeId, emojiSuccinctBitVectorTangoLBS)
         }
         .distinct()
-        // String → Emoji オブジェクトに変換
         .map { symbol ->
             Emoji(
                 symbol = symbol,
                 category = categorizeEmoji(symbol)
             )
         }
-        // EmojiCategory の順序＋文字列順でソート
         .sortByEmojiCategory()
 
     fun getSymbolEmoticonCandidates(): List<String> = emoticonTokenArray.getNodeIds().map {
