@@ -2,7 +2,6 @@
     <item android:state_selected="true">
         <shape android:shape="oval">
             <solid android:color="@color/selectedTabColor" />
-
         </shape>
     </item>
 

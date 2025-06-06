@@ -10,7 +10,7 @@ import com.google.android.material.textview.MaterialTextView
 
 class SymbolAdapter : PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(DIFF_CALLBACK) {
 
-    var symbolTextSize: Float = 28f
+    var symbolTextSize: Float = 32f
 
     inner class SymbolViewHolder(itemView: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {
         val symbolTextView: MaterialTextView = itemView.findViewById(R.id.symbol_text)

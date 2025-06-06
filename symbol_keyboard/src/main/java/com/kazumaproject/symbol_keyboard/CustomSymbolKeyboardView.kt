@@ -120,9 +120,12 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
          * 「スクロールしないと中身が変わらない」症状を根絶します。
          * =============================================================== */
         adapter.addLoadStateListener { state ->
-            if (state.refresh is LoadState.NotLoading) {
+            if (state.refresh is LoadState.Loading) {
                 recycler.post {
-                    adapter.notifyDataSetChanged()   // 表示中 item を即再バインド
+                    for (i in 0..<adapter.itemCount) {
+                        adapter.notifyItemChanged(i)
+                    }
+                    // 表示中 item を即再バインド
                     recycler.scrollToPosition(0)
                 }
             }

@@ -15,6 +15,7 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isEmoji
 
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -170,7 +171,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 undoIcon?.apply {
                     isVisible = isUndoEnabled
                     isFocusable = false
-                    text = undoText.reversed()
+                    if (!undoText.isEmoji()){
+                        text = undoText.reversed()
+                    }
                 }
                 pasteIcon?.apply {
                     isEnabled = isPasteEnabled

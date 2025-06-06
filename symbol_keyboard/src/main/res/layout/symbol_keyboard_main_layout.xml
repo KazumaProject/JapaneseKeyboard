@@ -14,7 +14,8 @@
         app:layout_constraintTop_toTopOf="parent"
         app:tabGravity="fill"
         app:tabIndicatorHeight="0dp"
-        app:tabMode="scrollable" />
+        app:tabMode="scrollable"
+        app:tabIndicatorColor="@color/selectedTabColor"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/symbol_candidate_recycler_view"
