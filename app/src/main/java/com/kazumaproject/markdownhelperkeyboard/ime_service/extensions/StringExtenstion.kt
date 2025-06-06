@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
 import android.view.inputmethod.InputConnection
 import timber.log.Timber
 import java.text.BreakIterator
+import java.text.Normalizer
 
 fun String.correctReading(): Pair<String, String> {
     val readingCorrectionString = this.split("\t")
@@ -54,20 +55,22 @@ fun debugPrintCodePoints(text: String) {
 }
 
 fun getLastCharacterAsString(ic: InputConnection): String {
-    // ① カーソル前 8 コードユニットを取得しておく（ZWJ＋性別＋VS16≒6 コードユニットを想定し、余裕を持って 8）
+    // ① カーソル前 8 コードユニットを取得しておく
     val maxLookback = 8
-    val beforeText = ic.getTextBeforeCursor(maxLookback, 0)?.toString() ?: ""
-    if (beforeText.isEmpty()) return ""
+    val rawBefore = ic.getTextBeforeCursor(maxLookback, 0)?.toString() ?: ""
+    if (rawBefore.isEmpty()) return ""
 
-    // ② BreakIterator で「最後のグラフェムクラスタ」の開始位置を探す
+    // ② 互換分解＋合成（NFKC）：半角カタカナ＋半角濁点 などもまとめる
+    val beforeText = Normalizer.normalize(rawBefore, Normalizer.Form.NFKC)
+    Timber.d("beforeText: $beforeText $rawBefore")
+    if (beforeText == "ゥ゙") return "゙"
+
+    // ③ BreakIterator で最後のグラフェムクラスタの開始位置を探す
     val bi = BreakIterator.getCharacterInstance()
     bi.setText(beforeText)
-
-    // 「カーソルから見て最後の位置」は beforeText.length
     val end = beforeText.length
-    // preceding() で、末尾直前のグラフェム境界を得る
     val start = bi.preceding(end).let { if (it == BreakIterator.DONE) 0 else it }
-
-    // ③ substring でその範囲を丸ごと取り出す
+    Timber.d("beforeText: $start $end")
+    // ④ その範囲を丸ごと取り出す
     return beforeText.substring(start, end)
 }

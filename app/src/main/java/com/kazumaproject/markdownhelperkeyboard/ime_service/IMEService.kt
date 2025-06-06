@@ -691,8 +691,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 vibrate()
             }
         }
-        if (key != Key.SideKeyDelete) {
+        if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
+            suggestionAdapter?.setUndoEnabled(false)
+            setClipboardText()
+        } else if (deletedBuffer.isNotEmpty() && selectMode.value && key == Key.SideKeySpace) {
+            clearDeletedBufferWithoutResetLayout()
             suggestionAdapter?.setUndoEnabled(false)
             setClipboardText()
         }
@@ -1722,7 +1726,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
                         popLastDeletedChar()?.let { c ->
-                            commitText(c.toString(), 1)
+                            commitText(c, 1)
                             suggestionAdapter?.setUndoPreviewText(
                                 deletedBuffer.toString()
                             )
@@ -1730,6 +1734,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         if (deletedBuffer.isEmpty()) {
                             suggestionAdapter?.setUndoEnabled(false)
                             setClipboardText()
+                            mainView.keyboardView.setSideKeyPreviousDrawable(
+                                ContextCompat.getDrawable(
+                                    this,
+                                    com.kazumaproject.core.R.drawable.undo_24px
+                                )
+                            )
                         }
                     }
 
@@ -1747,7 +1757,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconLongClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
-                        commitText(deletedBuffer.reverse().toString(), 1)
+                        val textToCommit = reverseByGrapheme(deletedBuffer.toString())
+                        commitText(textToCommit, 1)
                         clearDeletedBuffer()
                         suggestionAdapter?.setUndoEnabled(false)
                         setClipboardText()
@@ -1941,10 +1952,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyDelete -> {
-                            val beforeChar = getTextBeforeCursor(1, 0)?.toString() ?: ""
-                            if (beforeChar.isNotEmpty()) {
-                                suggestionAdapter?.setUndoEnabled(true)
-                            }
                             onDeleteLongPressUp.set(true)
                             deleteLongPress()
                             _dakutenPressed.value = false
@@ -2011,8 +2018,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     /**
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
-    fun clearDeletedBuffer() {
+    private fun clearDeletedBuffer() {
         deletedBuffer.clear()
+        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+            ContextCompat.getDrawable(
+                this,
+                com.kazumaproject.core.R.drawable.undo_24px
+            )
+        )
+    }
+
+    private fun clearDeletedBufferWithoutResetLayout() {
+        deletedBuffer.clear()
+    }
+
+    private fun reverseByGrapheme(input: String): String {
+        if (input.isEmpty()) return input
+
+        // BreakIterator を文字（グラフェム）単位で作成
+        val it = BreakIterator.getCharacterInstance().also { it.setText(input) }
+
+        // まずはすべてのグラフェムの開始位置をリストに集める
+        val boundaries = mutableListOf<Int>()
+        var pos = it.first()
+        while (pos != BreakIterator.DONE) {
+            boundaries.add(pos)
+            pos = it.next()
+        }
+        // boundaries: [0, nextBoundary1, nextBoundary2, ..., input.length]
+
+        // グラフェム単位で部分文字列を取り出し、逆順に連結する
+        val sb = StringBuilder(input.length)
+        for (i in boundaries.size - 2 downTo 0) {
+            val start = boundaries[i]
+            val end = boundaries[i + 1]
+            sb.append(input.substring(start, end))
+        }
+        return sb.toString()
     }
 
     /**
@@ -2671,6 +2713,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
                         setUndoEnabled(true)
                     }
+                    mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                        ContextCompat.getDrawable(
+                            this@IMEService,
+                            com.kazumaproject.core.R.drawable.baseline_delete_24
+                        )
+                    )
                 }
             }
         }
@@ -2776,6 +2824,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     val beforeChar = getLastCharacterAsString(currentInputConnection)
                     if (beforeChar.isNotEmpty()) {
                         deletedBuffer.append(beforeChar)
+                        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                            ContextCompat.getDrawable(
+                                this@IMEService,
+                                com.kazumaproject.core.R.drawable.baseline_delete_24
+                            )
+                        )
                         suggestionAdapter?.apply {
                             setUndoEnabled(true)
                             setUndoPreviewText(deletedBuffer.toString())
