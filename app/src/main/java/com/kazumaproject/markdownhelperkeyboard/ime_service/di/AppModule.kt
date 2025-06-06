@@ -7,16 +7,17 @@ import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.connection_id.ConnectionIdBuilder
-import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
-import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDatabase
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.viterbi.FindPath
@@ -41,14 +42,15 @@ object AppModule {
     ) = Room
         .databaseBuilder(
             context,
-            LearnDatabase::class.java,
+            AppDatabase::class.java,
             "learn_database"
         )
+        .addMigrations(MIGRATION_1_2)
         .build()
 
     @Singleton
     @Provides
-    fun providesLearnDao(db: LearnDatabase): LearnDao = db.learnDao()
+    fun providesLearnDao(db: AppDatabase): LearnDao = db.learnDao()
 
     @Singleton
     @Provides
