@@ -134,7 +134,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             layoutManager = gridLM
             adapter = symbolAdapter
             itemAnimator = null
-            isSaveEnabled = false
+            isSaveEnabled = true
         }
 
         symbolAdapter.setOnItemClickListener { str ->
