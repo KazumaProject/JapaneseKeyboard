@@ -13,7 +13,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
-import androidx.paging.PagingData
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
@@ -27,8 +26,6 @@ import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -282,9 +279,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         recycler.scrollToPosition(0)
 
         // 既存データをクリア
-        CoroutineScope(Dispatchers.IO).launch {
-            symbolAdapter.submitData(PagingData.from(emptyList()))
-        }
+        symbolAdapter.refresh()
 
         val listForPaging: List<String> = when (currentMode) {
             SymbolMode.EMOJI -> {
@@ -316,7 +311,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
-            symbolAdapter.refresh()
             pagingJob = owner.lifecycleScope.launch {
                 Pager(
                     config = PagingConfig(
