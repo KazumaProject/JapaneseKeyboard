@@ -2714,6 +2714,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         val beforeChar = getLastCharacterAsString(currentInputConnection)
                         if (beforeChar.isNotEmpty()) {
                             deletedBuffer.append(beforeChar)
+                            if (beforeChar == "ゥ゙"){
+                                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                            }
                         }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                     } else {
@@ -2868,6 +2871,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         suggestionAdapter?.apply {
                             setUndoEnabled(true)
                             setUndoPreviewText(deletedBuffer.toString())
+                        }
+                        if (beforeChar == "ゥ゙"){
+                            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                         }
                     }
                 }
