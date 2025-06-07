@@ -163,6 +163,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
     private val _keyboardSymbolViewState = MutableStateFlow(false)
+    private val keyboardSymbolViewState: StateFlow<Boolean> = _keyboardSymbolViewState.asStateFlow()
     private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
     private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
@@ -457,6 +458,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onWindowHidden() {
         super.onWindowHidden()
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+        _keyboardSymbolViewState.update { false }
+        _selectMode.update { false }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -929,7 +932,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyCursorLeft -> {
                 handleLeftLongPress()
                 leftCursorKeyLongKeyPressed.set(true)
-                clearDeletedBuffer()
+                if (selectMode.value) {
+                    clearDeletedBufferWithoutResetLayout()
+                } else {
+                    clearDeletedBuffer()
+                }
                 suggestionAdapter?.setUndoEnabled(false)
                 setClipboardText()
             }
@@ -937,7 +944,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyCursorRight -> {
                 handleRightLongPress()
                 rightCursorKeyLongKeyPressed.set(true)
-                clearDeletedBuffer()
+                if (selectMode.value) {
+                    clearDeletedBufferWithoutResetLayout()
+                } else {
+                    clearDeletedBuffer()
+                }
                 suggestionAdapter?.setUndoEnabled(false)
                 setClipboardText()
             }
@@ -1281,7 +1292,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
-            _keyboardSymbolViewState.asStateFlow().collectLatest { isSymbolKeyboardShow ->
+            keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 setKeyboardSize()
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
@@ -1754,7 +1765,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         val allClipboardTexts = clipboardUtil.getAllClipboardTexts()
                         if (allClipboardTexts.isNotEmpty()) {
                             commitText(allClipboardTexts[0], 1)
-                            clearDeletedBuffer()
+                            clearDeletedBufferWithoutResetLayout()
                             suggestionAdapter?.setUndoEnabled(false)
                             setClipboardText()
                         }
@@ -2308,7 +2319,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         resetKeyboard()
-        _keyboardSymbolViewState.value = false
+        _keyboardSymbolViewState.update { false }
         learnMultiple.stop()
         stopDeleteLongPress()
         clearDeletedBuffer()
@@ -2714,7 +2725,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         val beforeChar = getLastCharacterAsString(currentInputConnection)
                         if (beforeChar.isNotEmpty()) {
                             deletedBuffer.append(beforeChar)
-                            if (beforeChar == "ゥ゙"){
+                            if (beforeChar == "ゥ゙") {
                                 sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                             }
                         }
@@ -2872,7 +2883,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             setUndoEnabled(true)
                             setUndoPreviewText(deletedBuffer.toString())
                         }
-                        if (beforeChar == "ゥ゙"){
+                        if (beforeChar == "ゥ゙") {
                             sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
                         }
                     }
@@ -3883,7 +3894,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         val qwertyMode = qwertyMode.value
-        val emojiKeyboardState = _keyboardSymbolViewState.value
+        val emojiKeyboardState = keyboardSymbolViewState.value
         val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
             if (isPortrait) {
                 (280 * density).toInt()

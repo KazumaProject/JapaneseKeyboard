@@ -332,11 +332,15 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
-            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 20f
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 28f else 20f
         } else {
             16f
         }
-        gridLM.orientation = RecyclerView.HORIZONTAL
+        if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            gridLM.spanCount = 3
+        } else {
+            gridLM.spanCount = 5
+        }
 
         recycler.adapter = symbolAdapter
 
