@@ -171,10 +171,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         // LoadStateListener: 読み込み中・完了後のスクロール制御
         symbolAdapter.addLoadStateListener { state ->
             when (state.refresh) {
-                is LoadState.Loading -> {
-                    // データ読み込み中は先頭に
-                    recycler.post { recycler.scrollToPosition(0) }
-                }
+                is LoadState.Loading -> {}
 
                 is LoadState.NotLoading -> {
                     if (scrollToEndOnNextLoad) {
@@ -184,9 +181,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             recycler.post { recycler.scrollToPosition(lastIndex) }
                         }
                         scrollToEndOnNextLoad = false
-                    } else {
-                        // 「次へ」やカテゴリ切り替え時は先頭に
-                        recycler.post { recycler.scrollToPosition(0) }
                     }
                 }
 
