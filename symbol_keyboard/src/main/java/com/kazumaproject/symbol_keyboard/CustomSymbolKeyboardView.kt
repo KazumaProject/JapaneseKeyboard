@@ -4,6 +4,7 @@ package com.kazumaproject.symbol_keyboard
 import android.content.Context
 import android.content.res.Configuration
 import android.util.AttributeSet
+import android.util.Log
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -38,9 +39,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : ConstraintLayout(context, attrs, defStyleAttr) {
-
-    private var scrollToEndOnNextLoad = false
-
     private val categoryTab: TabLayout
     private val modeTab: TabLayout
     private val recycler: RecyclerView
@@ -174,14 +172,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 is LoadState.Loading -> {}
 
                 is LoadState.NotLoading -> {
-                    if (scrollToEndOnNextLoad) {
-                        // 「前へ」ボタンの遷移後は末尾に
-                        val lastIndex = symbolAdapter.itemCount - 1
-                        if (lastIndex >= 0) {
-                            recycler.post { recycler.scrollToPosition(lastIndex) }
-                        }
-                        scrollToEndOnNextLoad = false
-                    }
+                    recycler.scrollToPosition(0)
                 }
 
                 else -> {
@@ -193,17 +184,14 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         prevButton.setOnClickListener {
             val currentTab = categoryTab.selectedTabPosition
             if (currentTab > 0) {
-                // 「前へ」ボタンでは読み込み後に末尾へスクロールしたい
-                scrollToEndOnNextLoad = true
                 categoryTab.getTabAt(currentTab - 1)?.select()
             }
         }
         nextButton.setOnClickListener {
             val currentTab = categoryTab.selectedTabPosition
             val lastIndex = categoryTab.tabCount - 1
+            Log.d("nextButton", "$currentTab $lastIndex")
             if (currentTab < lastIndex) {
-                // 「次へ」ボタンでは先頭にスクロールするので scrollToEndOnNextLoad=false のまま
-                scrollToEndOnNextLoad = false
                 categoryTab.getTabAt(currentTab + 1)?.select()
             }
         }
@@ -224,8 +212,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         categoryTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 tab?.let {
-                    // タブを選んだ瞬間にスクロール制御をリセット
-                    scrollToEndOnNextLoad = false
                     updateSymbolsForCategory(it.position)
                     updatePrevNextButtons()
                 }
@@ -332,11 +318,15 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
-            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 20f
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 24f else 20f
         } else {
             16f
         }
-        gridLM.orientation = RecyclerView.HORIZONTAL
+        if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            gridLM.spanCount = 3
+        } else {
+            gridLM.spanCount = 5
+        }
 
         recycler.adapter = symbolAdapter
 
