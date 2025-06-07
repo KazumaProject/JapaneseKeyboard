@@ -11,7 +11,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
-import androidx.paging.LoadState
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -163,21 +162,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 // 2) カテゴリ0を再読み込み（PagingSource生成→先頭スクロール）
                 updateSymbolsForCategory(0)
 
-            }
-        }
-
-        // LoadStateListener: 読み込み中・完了後のスクロール制御
-        symbolAdapter.addLoadStateListener { state ->
-            when (state.refresh) {
-                is LoadState.Loading -> {}
-
-                is LoadState.NotLoading -> {
-                    recycler.scrollToPosition(0)
-                }
-
-                else -> {
-                    // エラー時などは特に何もしない
-                }
             }
         }
 
