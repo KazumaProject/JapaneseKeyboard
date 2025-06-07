@@ -92,8 +92,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -143,11 +145,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private var emojiList: List<Emoji> = emptyList()
-
-    private var emoticonList: List<String> = emptyList()
-
-    private var symbolList: List<String> = emptyList()
+    private var cachedEmoji: List<Emoji>? = null
+    private var cachedEmoticons: List<String>? = null
+    private var cachedSymbols: List<String>? = null
+    private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
 
     private var deleteLongPressJob: Job? = null
     private var rightLongPressJob: Job? = null
@@ -434,6 +435,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         suggestionAdapter = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
+        clearSymbols()
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
         if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
         if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
@@ -2007,38 +2009,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
-        val symbolsHistory: List<ClickedSymbol> = withContext(Dispatchers.IO) {
-            clickedSymbolRepository.getAll()
-        }
-        emojiList = withContext(Dispatchers.Default) {
-            kanaKanjiEngine.getSymbolEmojiCandidates()
-        }
-        emoticonList = withContext(Dispatchers.Default) {
-            kanaKanjiEngine.getSymbolEmoticonCandidates()
-        }
-        symbolList = withContext(Dispatchers.Default) {
-            kanaKanjiEngine.getSymbolCandidates()
+        if (cachedEmoji == null ||
+            cachedEmoticons == null ||
+            cachedSymbols == null ||
+            cachedClickedSymbolHistory == null
+        ) {
+            coroutineScope {
+                val historyDeferred = async(Dispatchers.IO) { clickedSymbolRepository.getAll() }
+                val emojiDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
+                val emoticonDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmoticonCandidates() }
+                val symbolDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolCandidates() }
+
+                cachedClickedSymbolHistory = historyDeferred.await()
+                    .sortedByDescending { it.timestamp }
+                    .distinctBy { it.symbol }
+                cachedEmoji = emojiDeferred.await()
+                cachedEmoticons = emoticonDeferred.await()
+                cachedSymbols = symbolDeferred.await()
+            }
         }
         mainView.keyboardSymbolView.setSymbolLists(
-            emojiList = emojiList,
-            emoticons = emoticonList,
-            symbols = symbolList,
-            symbolsHistory = symbolsHistory.sortedByDescending {
-                it.timestamp
-            }.distinctBy { it.symbol }
+            emojiList = cachedEmoji ?: emptyList(),
+            emoticons = cachedEmoticons ?: emptyList(),
+            symbols = cachedSymbols ?: emptyList(),
+            symbolsHistory = cachedClickedSymbolHistory ?: emptyList()
         )
     }
 
-    private suspend fun clearSymbols() {
-        emojiList = withContext(Dispatchers.Default) {
-            emptyList()
-        }
-        emoticonList = withContext(Dispatchers.Default) {
-            emptyList()
-        }
-        symbolList = withContext(Dispatchers.Default) {
-            emptyList()
-        }
+    private fun clearSymbols() {
+        cachedEmoji = null
+        cachedEmoticons = null
+        cachedSymbols = null
+        cachedClickedSymbolHistory = null
     }
 
     private fun setCandidateClick(
