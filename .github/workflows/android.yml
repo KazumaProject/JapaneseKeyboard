@@ -86,8 +86,9 @@ jobs:
           draft: false
           prerelease: false
           body: |
+            # ${{ github.ref_name }} リリースノート
             • このリリースには署名済みのAPKが含まれます。
-            • バージョン: ${{ github.ref_name }}
+            ## 変更・追加された機能
 
       # 9. リネーム後のファイルをアップロード
       - name: Upload APK to Release

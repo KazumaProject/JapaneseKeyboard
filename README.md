@@ -58,6 +58,18 @@
   <img src="images/tablet_dark_j.png" width="200" alt="ダークテーマ"/>
 </p>
 
+#### QWERTY
+<p align="center">
+  <img src="images/qwerty_light.png" width="200" alt="ライトテーマ"/>
+  <img src="images/qwerty_dark.png" width="200" alt="ダークテーマ"/>
+</p>
+
+#### Emoji
+<p align="center">
+  <img src="images/emoji_light.png" width="200" alt="ライトテーマ"/>
+  <img src="images/emoji_dark.png" width="200" alt="ダークテーマ"/>
+</p>
+
 
 ### 🚀 使い方 (ユーザー向け)
 
@@ -200,6 +212,18 @@ MIT © 2025 Kazuma Naka — See [`LICENSE`](LICENSE).
 <p align="center">
   <img src="images/tablet_light_j.png" width="200" alt="ライトテーマ"/>
   <img src="images/tablet_dark_j.png" width="200" alt="ダークテーマ"/>
+</p>
+
+#### QWERTY
+<p align="center">
+  <img src="images/qwerty_light.png" width="200" alt="ライトテーマ"/>
+  <img src="images/qwerty_dark.png" width="200" alt="ダークテーマ"/>
+</p>
+
+#### Emoji
+<p align="center">
+  <img src="images/emoji_light.png" width="200" alt="ライトテーマ"/>
+  <img src="images/emoji_dark.png" width="200" alt="ダークテーマ"/>
 </p>
 
 ### 🚀 Get Started
