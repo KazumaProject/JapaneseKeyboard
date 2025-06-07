@@ -318,7 +318,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
-            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 26f else 20f
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 24f else 20f
         } else {
             16f
         }
