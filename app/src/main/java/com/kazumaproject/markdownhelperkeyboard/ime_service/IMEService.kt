@@ -2737,7 +2737,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         if (beforeChar.isNotEmpty()) {
                             deletedBuffer.append(beforeChar)
                             if (beforeChar == "ゥ゙") {
-                                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                                deleteSurroundingTextInCodePoints(2, 0)
+                                continue
                             }
                         }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
@@ -2894,8 +2895,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             setUndoEnabled(true)
                             setUndoPreviewText(deletedBuffer.toString())
                         }
+                        Timber.d("beforeChar: $beforeChar")
                         if (beforeChar == "ゥ゙") {
-                            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                            deleteSurroundingTextInCodePoints(2, 0)
+                            return
                         }
                     }
                 }
