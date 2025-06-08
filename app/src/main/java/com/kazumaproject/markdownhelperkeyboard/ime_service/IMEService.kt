@@ -500,46 +500,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
+
         Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
-        // 1) 変換中 (composing) は IME 側の処理対象外
+
+        // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) return
 
-        if (deletedBuffer.isEmpty() && !clipboardUtil.isClipboardTextEmpty()) {
-            val clipboardText = clipboardUtil.getAllClipboardTexts()[0]
-            suggestionAdapter?.apply {
-                setPasteEnabled(true)
-                setClipboardPreview(clipboardText)
-            }
-        } else {
-            suggestionAdapter?.apply {
+        // Show clipboard preview only if nothing was deleted and clipboard has data
+        suggestionAdapter?.apply {
+            if (deletedBuffer.isEmpty() && !clipboardUtil.isClipboardTextEmpty()) {
+                clipboardUtil.getFirstClipboardTextOrNull()?.let {
+                    setPasteEnabled(true)
+                    setClipboardPreview(it)
+                }
+            } else {
                 setPasteEnabled(false)
             }
         }
-        // 2) 状態スナップショット
+
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
-        val caretTop = (newSelStart == 0 && newSelEnd == 0)
+        val caretTop = newSelStart == 0 && newSelEnd == 0
 
-        // 3) caret が先頭かつ tail を抱えている → キャンセル＆リセット
-        if (hasTail && caretTop) {
-            stringInTail.set("")
-            _inputString.update { "" }
-            suggestionAdapter?.suggestions = emptyList()
-            setComposingText("", 0)
-            return
-        }
+        when {
+            // Caret at top and tail exists → clear everything
+            hasTail && caretTop -> {
+                stringInTail.set("")
+                if (_inputString.value.isNotEmpty()) {
+                    _inputString.value = ""
+                    setComposingText("", 0)
+                }
+                suggestionAdapter?.suggestions =
+                    emptyList() // avoid unnecessary allocations elsewhere
+            }
 
-        // 4) caret が移動済みで tail を抱えている → tail を確定
-        if (hasTail) {
-            _inputString.update { tail }
-            stringInTail.set("")
-            return
-        }
+            // Caret moved while tail exists → commit tail
+            hasTail -> {
+                _inputString.value = tail
+                stringInTail.set("")
+            }
 
-        // 5) tail 無し & _inputString が残っている → 後片付け
-        if (inputString.value.isNotEmpty()) {
-            _inputString.update { "" }
-            setComposingText("", 0)
+            // No tail but still holding input → cleanup
+            _inputString.value.isNotEmpty() -> {
+                _inputString.value = ""
+                setComposingText("", 0)
+            }
         }
     }
 
@@ -1273,7 +1278,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         } else {
                             suggestionAdapter?.apply {
                                 setPasteEnabled(true)
-                                setClipboardPreview(clipboardUtil.getAllClipboardTexts()[0])
+                                setClipboardPreview(
+                                    clipboardUtil.getFirstClipboardTextOrNull() ?: ""
+                                )
                             }
                         }
                     }
@@ -1763,9 +1770,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
-                        val allClipboardTexts = clipboardUtil.getAllClipboardTexts()
-                        if (allClipboardTexts.isNotEmpty()) {
-                            commitText(allClipboardTexts[0], 1)
+                        val allClipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
+                        if (allClipboardText.isNotEmpty()) {
+                            commitText(allClipboardText, 1)
                             clearDeletedBufferWithoutResetLayout()
                             suggestionAdapter?.setUndoEnabled(false)
                             setClipboardText()
@@ -3694,8 +3701,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private fun setClipboardText() {
         if (!clipboardUtil.isClipboardTextEmpty()) {
-            val clipboardText = clipboardUtil.getAllClipboardTexts()
-            suggestionAdapter?.setClipboardPreview(clipboardText[0])
+            val clipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
+            suggestionAdapter?.setClipboardPreview(clipboardText)
         }
         suggestionAdapter?.setPasteEnabled(
             !clipboardUtil.isClipboardTextEmpty()

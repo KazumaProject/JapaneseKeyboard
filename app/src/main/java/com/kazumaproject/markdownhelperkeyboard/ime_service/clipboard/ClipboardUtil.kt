@@ -38,22 +38,16 @@ class ClipboardUtil(private val context: Context) {
         }
     }
 
-    fun getAllClipboardTexts(): List<String> {
+    fun getFirstClipboardTextOrNull(): String? {
         val clipboardManager =
             context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val texts = mutableListOf<String>()
+        val clipData = clipboardManager.primaryClip ?: return null
 
-        if (clipboardManager.hasPrimaryClip()) {
-            val clipData = clipboardManager.primaryClip
-            if (clipData != null) {
-                for (i in 0 until clipData.itemCount) {
-                    clipData.getItemAt(i).text?.let {
-                        if (it.isNotBlank() && it.isNotEmpty()) texts.add(it.toString())
-                    }
-                }
-            }
+        for (i in 0 until clipData.itemCount) {
+            val text = clipData.getItemAt(i).text?.toString()
+            if (!text.isNullOrBlank()) return text
         }
-        return texts
+        return null
     }
 
     fun getClipboardImageBitmap(): Bitmap? {
