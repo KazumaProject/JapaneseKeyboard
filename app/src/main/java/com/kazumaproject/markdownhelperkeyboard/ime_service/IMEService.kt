@@ -1312,7 +1312,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         )
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
-                        clearSymbols()
                     }
                 }
             }
