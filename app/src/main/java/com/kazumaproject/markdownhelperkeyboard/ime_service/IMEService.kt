@@ -2015,27 +2015,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
-        if (cachedEmoji == null ||
-            cachedEmoticons == null ||
-            cachedSymbols == null ||
-            cachedClickedSymbolHistory == null
-        ) {
-            coroutineScope {
-                val historyDeferred = async(Dispatchers.IO) { clickedSymbolRepository.getAll() }
+        coroutineScope {
+            if (cachedEmoji == null ||
+                cachedEmoticons == null ||
+                cachedSymbols == null
+            ) {
                 val emojiDeferred =
                     async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
                 val emoticonDeferred =
                     async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmoticonCandidates() }
                 val symbolDeferred =
                     async(Dispatchers.Default) { kanaKanjiEngine.getSymbolCandidates() }
-
-                cachedClickedSymbolHistory = historyDeferred.await()
-                    .sortedByDescending { it.timestamp }
-                    .distinctBy { it.symbol }
                 cachedEmoji = emojiDeferred.await()
                 cachedEmoticons = emoticonDeferred.await()
                 cachedSymbols = symbolDeferred.await()
             }
+            val historyDeferred = async(Dispatchers.IO) { clickedSymbolRepository.getAll() }
+            cachedClickedSymbolHistory = historyDeferred.await()
+                .sortedByDescending { it.timestamp }
+                .distinctBy { it.symbol }
         }
         mainView.keyboardSymbolView.setSymbolLists(
             emojiList = cachedEmoji ?: emptyList(),
@@ -2737,7 +2735,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         if (beforeChar.isNotEmpty()) {
                             deletedBuffer.append(beforeChar)
                             if (beforeChar == "ゥ゙") {
-                                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                                deleteSurroundingTextInCodePoints(2, 0)
+                                continue
                             }
                         }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
@@ -2894,8 +2893,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             setUndoEnabled(true)
                             setUndoPreviewText(deletedBuffer.toString())
                         }
+                        Timber.d("beforeChar: $beforeChar")
                         if (beforeChar == "ゥ゙") {
-                            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                            deleteSurroundingTextInCodePoints(2, 0)
+                            return
                         }
                     }
                 }
