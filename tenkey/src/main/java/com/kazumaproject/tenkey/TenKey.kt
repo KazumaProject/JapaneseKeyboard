@@ -130,10 +130,104 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private val bubbleViewCenter: KeyWindowLayout
     private val popTextCenter: MaterialTextView
 
+    private val cachedArrowRightDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+        )
+    }
+
+    private val cachedArrowLeftDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+        )
+    }
+
+    private val cachedSymbolDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.symbol
+        )
+    }
+
+    private val cachedUndoDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.undo_24px
+        )
+    }
+
+    private val cachedBackSpaceDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.baseline_backspace_24
+        )
+    }
+
+    private val cachedSpaceDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.baseline_space_bar_24
+        )
+    }
+
+    private val cachedNumberSmallDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.number_small
+        )
+    }
+
+    private val cachedOpenBracketDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.open_bracket
+        )
+    }
+
+    private val cachedLanguageDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.language_24dp
+        )
+    }
+
+    private val cachedContentCopyDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.content_copy_24dp
+        )
+    }
+
+    private val cachedContentCutDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.content_cut_24dp
+        )
+    }
+
+    private val cachedContentShareDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.baseline_share_24
+        )
+    }
+
+    private val cachedContentSelectDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.text_select_start_24dp
+        )
+    }
+
+
     // Map each Key enum to its corresponding View (Button/ImageButton/Switch)
     private var listKeys: Map<Key, Any>
 
     private var isSelectMode = false
+
+    private var isCursorMode = false
 
     /** ← NEW: scope tied to this view; cancel it on detach **/
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -265,9 +359,18 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbol.setPadding(paddingSize)
     }
 
-    fun setTextToAllButtons(isSelecMode: Boolean) {
+    fun setTextToMoveCursorMode(cursorMode: Boolean) {
+        if (cursorMode) {
+            setKeysCursorMoveMode()
+        } else {
+            handleCurrentInputModeSwitch(currentInputMode.value)
+        }
+        this.isCursorMode = cursorMode
+    }
+
+    fun setTextToAllButtonsFromSelectMode(isSelecMode: Boolean) {
         if (isSelecMode) {
-            setKeysInEmptyText()
+            setKeysTextsInSelectMode()
         } else {
             handleCurrentInputModeSwitch(currentInputMode.value)
         }
@@ -280,8 +383,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         longPressListener = null
         longPressJob?.cancel()
         longPressJob = null
-
         isSelectMode = false
+        isCursorMode = false
         // ← CANCEL the observing coroutine when the view is detached
         scope.coroutineContext.cancelChildren()
     }
@@ -318,6 +421,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             initialX = event.getX(event.actionIndex),
                             initialY = event.getY(event.actionIndex),
                         )
+                    }
+                    if (isCursorMode) {
+                        return true
                     }
                     if (isSelectMode) {
                         // 1️⃣ Key→View のマッピングだけ行う
@@ -400,6 +506,25 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                         return false
                     }
+
+                    if (isCursorMode) {
+                        val viewToRelease: View? = when (pressedKey.key) {
+                            Key.SideKeySpace -> binding.keySpace
+                            else -> null
+                        }
+                        viewToRelease?.let { key ->
+                            key.isPressed = false
+                            flickListener?.onFlick(
+                                gestureType = GestureType.Tap,
+                                key = pressedKey.key,
+                                char = null
+                            )
+                        }
+                        handleCurrentInputModeSwitch(currentInputMode.value)
+                        isCursorMode = false
+                        return false
+                    }
+
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
                         // ← READING the state flow's current value:
@@ -464,9 +589,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         }
                         if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                             it.setImageDrawable(
-                                ContextCompat.getDrawable(
-                                    context, com.kazumaproject.core.R.drawable.number_small
-                                )
+                                cachedNumberSmallDrawable
                             )
                         }
                     }
@@ -474,7 +597,57 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    if (isSelectMode) return false
+                    if (isSelectMode) return true
+                    if (isCursorMode) {
+                        // sensitivity threshold in pixels
+                        val threshold = 16f
+
+                        // 1) get the tracked pointer index
+                        val pointer = pressedKey.pointer
+
+                        // 2) read its current raw X–Y
+                        val (currentX, currentY) = getRawCoordinates(event, pointer)
+
+                        // 3) compute delta since last origin
+                        val dx = currentX - pressedKey.initialX
+                        val dy = currentY - pressedKey.initialY
+
+                        // 4) only handle if movement exceeds threshold and one axis dominates
+                        if (abs(dx) > abs(dy) && abs(dx) > threshold) {
+                            // horizontal move
+                            if (dx < 0f) {
+                                flickListener?.onFlick(GestureType.Tap, Key.SideKeyCursorLeft, null)
+                            } else {
+                                flickListener?.onFlick(
+                                    GestureType.Tap,
+                                    Key.SideKeyCursorRight,
+                                    null
+                                )
+                            }
+                            // reset origin to avoid repeated triggers
+                            pressedKey = pressedKey.copy(initialX = currentX, initialY = currentY)
+                        } else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
+                            // vertical move
+                            if (dy < 0f) {
+                                flickListener?.onFlick(
+                                    GestureType.FlickTop,
+                                    Key.SideKeyCursorLeft,
+                                    null
+                                )
+                            } else {
+                                flickListener?.onFlick(
+                                    GestureType.FlickBottom,
+                                    Key.SideKeyCursorRight,
+                                    null
+                                )
+                            }
+                            // reset origin
+                            pressedKey = pressedKey.copy(initialX = currentX, initialY = currentY)
+                        }
+
+                        return true
+                    }
+
                     val gestureType = if (event.pointerCount == 1) {
                         getGestureType(event, 0)
                     } else {
@@ -499,6 +672,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popupWindowActive.hide()
                     longPressJob?.cancel()
                     if (isSelectMode) return true
+                    if (isCursorMode) return true
                     if (event.pointerCount == 2) {
                         isLongPressed = false
                         val pointer = event.getPointerId(event.actionIndex)
@@ -508,9 +682,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                         if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
                             binding.keySmallLetter.setImageDrawable(
-                                ContextCompat.getDrawable(
-                                    context, com.kazumaproject.core.R.drawable.number_small
-                                )
+                                cachedNumberSmallDrawable
                             )
                         }
                         val keyInfo = currentInputMode.value
@@ -544,10 +716,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                         }
                                         if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                                             it.setImageDrawable(
-                                                ContextCompat.getDrawable(
-                                                    context,
-                                                    com.kazumaproject.core.R.drawable.number_small
-                                                )
+                                                cachedNumberSmallDrawable
                                             )
                                         }
                                     }
@@ -603,6 +772,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                             resetLongPressAction()
                             if (isSelectMode) return true
+                            if (isCursorMode) return true
                             val gestureType = getGestureType(
                                 event, event.getPointerId(event.actionIndex)
                             )
@@ -1019,9 +1189,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                 it.setImageDrawable(
-                    ContextCompat.getDrawable(
-                        context, com.kazumaproject.core.R.drawable.open_bracket
-                    )
+                    cachedOpenBracketDrawable
                 )
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 it.isPressed = true
@@ -1251,9 +1419,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Set default drawable for the small/dakuten key **/
     fun setBackgroundSmallLetterKey(
-        drawable: Drawable? = ContextCompat.getDrawable(
-            context, com.kazumaproject.core.R.drawable.language_24dp
-        )
+        drawable: Drawable? = cachedLanguageDrawable
     ) {
         binding.keySmallLetter.setImageDrawable(drawable)
     }
@@ -1307,12 +1473,34 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
+    private fun setKeysCursorMoveMode() {
+        binding.apply {
+            key1.text = ""
+            key2.text = ""
+            key3.text = ""
+            key4.text = ""
+            key5.text = ""
+            key6.text = ""
+            key7.text = ""
+            key8.text = ""
+            key9.text = ""
+            keyEnter.visibility = View.INVISIBLE
+            keySwitchKeyMode.visibility = View.INVISIBLE
+            key11.visibility = View.INVISIBLE
+            key12.visibility = View.INVISIBLE
+            keySmallLetter.visibility = View.INVISIBLE
+            keyReturn.setImageDrawable(null)
+            sideKeySymbol.setImageDrawable(null)
+            keySpace.setImageDrawable(null)
+            keyMoveCursorRight.setImageDrawable(null)
+            keySoftLeft.setImageDrawable(null)
+            keyDelete.setImageDrawable(null)
+        }
+    }
+
     /** Populate all main keys with Japanese labels **/
-    private fun setKeysInEmptyText() {
-        val copyIcon = ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.content_copy_24dp
-        )
+    private fun setKeysTextsInSelectMode() {
+        val copyIcon = cachedContentCopyDrawable
         copyIcon?.apply {
             setBounds(
                 0,
@@ -1322,10 +1510,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
         }
 
-        val cutIcon = ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.content_cut_24dp
-        )
+        val cutIcon = cachedContentCutDrawable
 
         cutIcon?.apply {
             setBounds(
@@ -1336,10 +1521,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
         }
 
-        val shareIcon = ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.baseline_share_24
-        )
+        val shareIcon = cachedContentShareDrawable
         shareIcon?.apply {
             setBounds(
                 0,
@@ -1349,10 +1531,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
         }
 
-        val selectAllIcon = ContextCompat.getDrawable(
-            context,
-            com.kazumaproject.core.R.drawable.text_select_start_24dp
-        )
+        val selectAllIcon = cachedContentSelectDrawable
         selectAllIcon?.apply {
             setBounds(
                 0,
@@ -1398,10 +1577,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keyReturn.setImageDrawable(null)
             sideKeySymbol.setImageDrawable(null)
             keySpace.setImageDrawable(
-                ContextCompat.getDrawable(
-                    context,
-                    com.kazumaproject.core.R.drawable.undo_24px
-                )
+                cachedUndoDrawable
+            )
+            keyMoveCursorRight.setImageDrawable(
+                cachedArrowRightDrawable
+            )
+            keySoftLeft.setImageDrawable(
+                cachedArrowLeftDrawable
+            )
+            keyDelete.setImageDrawable(
+                cachedBackSpaceDrawable
             )
         }
     }
@@ -1433,6 +1618,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key11.setTenKeyTextJapanese(key11.id)
             key12.setTenKeyTextJapanese(key12.id)
             resetFromSelectMode(binding)
+            keyMoveCursorRight.setImageDrawable(
+                cachedArrowRightDrawable
+            )
+            keySoftLeft.setImageDrawable(
+                cachedArrowLeftDrawable
+            )
+            keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }
     }
 
@@ -1463,6 +1655,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key11.setTenKeyTextEnglish(key11.id)
             key12.setTenKeyTextEnglish(key12.id)
             resetFromSelectMode(binding)
+            keyMoveCursorRight.setImageDrawable(
+                cachedArrowRightDrawable
+            )
+            keySoftLeft.setImageDrawable(
+                cachedArrowLeftDrawable
+            )
+            keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }
     }
 
@@ -1494,6 +1693,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key12.setTenKeyTextNumber(key12.id)
 
             resetFromSelectMode(binding)
+            keyMoveCursorRight.setImageDrawable(
+                cachedArrowRightDrawable
+            )
+            keySoftLeft.setImageDrawable(
+                cachedArrowLeftDrawable
+            )
+            keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }
     }
 
@@ -1502,28 +1708,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keyReturn.apply {
                 visibility = View.VISIBLE
                 setImageDrawable(
-                    ContextCompat.getDrawable(
-                        context,
-                        com.kazumaproject.core.R.drawable.undo_24px
-                    )
+                    cachedUndoDrawable
                 )
             }
             sideKeySymbol.apply {
                 visibility = View.VISIBLE
                 setImageDrawable(
-                    ContextCompat.getDrawable(
-                        context,
-                        com.kazumaproject.core.R.drawable.symbol
-                    )
+                    cachedSymbolDrawable
                 )
             }
             keySpace.apply {
                 visibility = View.VISIBLE
                 setImageDrawable(
-                    ContextCompat.getDrawable(
-                        context,
-                        com.kazumaproject.core.R.drawable.baseline_space_bar_24
-                    )
+                    cachedSpaceDrawable
                 )
             }
             keyEnter.visibility = View.VISIBLE
