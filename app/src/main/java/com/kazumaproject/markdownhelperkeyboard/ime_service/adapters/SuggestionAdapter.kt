@@ -292,8 +292,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (26).toByte() -> ""
             /** Mozc UT Web **/
             (27).toByte() -> ""
-            /** クリップボード **/
-            (28).toByte() -> "[タップでペースト] [長押しで削除]"
             /** 英語 **/
             (29).toByte() -> ""
             else -> ""

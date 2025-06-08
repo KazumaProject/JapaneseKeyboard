@@ -1745,8 +1745,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             }
             adapter.setOnItemLongClickListener { candidate, _ ->
-                val insertString = inputString.value
-                setCandidateClipboardLongClick(candidate, insertString)
+                /** Candidate Long Click **/
             }
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
@@ -2060,11 +2059,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 currentInputMode = currentInputMode,
                 position = position
             )
-        } else {
-            commitClipboardText(
-                candidate = candidate,
-                insertString = insertString,
-            )
         }
         resetFlagsSuggestionClick()
     }
@@ -2132,25 +2126,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // バッファからその部分を丸ごと削除
         deletedBuffer.delete(startIndex, endIndex)
         return lastGrapheme
-    }
-
-    private fun setCandidateClipboardLongClick(
-        candidate: Candidate, insertString: String,
-    ) {
-        if (insertString.isEmpty() && candidate.type.toInt() == 28) {
-            clipboardUtil.clearClipboard()
-            suggestionAdapter?.suggestions = emptyList()
-        }
-        resetFlagsSuggestionClick()
-    }
-
-    private fun commitClipboardText(
-        candidate: Candidate, insertString: String,
-    ) {
-        processClipboardCandidate(
-            candidate = candidate,
-            insertString = insertString,
-        )
     }
 
     private fun handleExactLengthMatch(
@@ -2239,20 +2214,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     )
                 }
             }
-        }
-    }
-
-    private fun processClipboardCandidate(
-        candidate: Candidate, insertString: String,
-    ) {
-        if (candidate.type.toInt() == 28) {
-            handlePartialOrExcessLength(
-                insertString = insertString,
-                candidateString = candidate.string,
-                candidateLength = candidate.length.toInt()
-            )
-            clipboardUtil.clearClipboard()
-            suggestionAdapter?.suggestions = emptyList()
         }
     }
 
