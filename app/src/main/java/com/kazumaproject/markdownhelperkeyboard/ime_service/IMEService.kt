@@ -196,6 +196,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isSpaceKeyLongPressed = false
     private val _selectMode = MutableStateFlow(false)
     private val selectMode: StateFlow<Boolean> = _selectMode
+
+    private val _cursorMoveMode = MutableStateFlow(false)
+    private val cursorMoveMode: StateFlow<Boolean> = _cursorMoveMode
     private var hasConvertedKatakana = false
 
     // 1. 削除された文字を蓄積するバッファ
@@ -462,6 +465,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         _keyboardSymbolViewState.update { false }
         _selectMode.update { false }
+        _cursorMoveMode.update { false }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -786,12 +790,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySpace -> {
-                if (selectMode.value) {
-                    if (!isSpaceKeyLongPressed) {
-                        _selectMode.update { false }
-                        clearSelection()
-                    }
-
+                if (cursorMoveMode.value) {
+                    _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
                         handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
@@ -975,6 +975,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
+                Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
                 val insertString = inputString.value
                 if (insertString.isNotEmpty()) {
                     mainLayoutBinding?.let {
@@ -989,9 +990,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                     }
                 } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                    _cursorMoveMode.update { true }
                     isSpaceKeyLongPressed = true
-                    _selectMode.update { true }
                 }
+                Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
             }
 
             Key.SideKeySymbol -> {}
@@ -1351,7 +1353,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         launch {
             selectMode.collectLatest { selectMode ->
-                mainView.keyboardView.setTextToAllButtons(selectMode)
+                mainView.keyboardView.setTextToAllButtonsFromSelectMode(selectMode)
+            }
+        }
+
+        launch {
+            cursorMoveMode.collect { isCursorMoveMode ->
+                mainView.keyboardView.setTextToMoveCursorMode(isCursorMoveMode)
             }
         }
 
