@@ -258,9 +258,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     private fun updateSymbolsForCategory(index: Int) {
-        recycler.scrollToPosition(0)
         symbolAdapter.refresh()
-
         val listForPaging = when (currentMode) {
             SymbolMode.EMOJI -> {
                 if (historyEmojiList.isNotEmpty() && index == 0) historyEmojiList
@@ -276,7 +274,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
-            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 40f else 30f
+            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
         } else 16f
 
         gridLM.spanCount = when (currentMode) {
@@ -292,6 +290,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
+            symbolAdapter.refresh()
+            recycler.scrollToPosition(0)
             pagingJob = owner.lifecycleScope.launch {
                 Pager(
                     config = PagingConfig(
