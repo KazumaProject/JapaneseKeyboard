@@ -1,6 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
-import RomajiKanaConverter
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -74,6 +73,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurren
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
+import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
@@ -142,6 +142,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
+    @Inject
+    lateinit var romajiConverter: RomajiKanaConverter
+
     private var suggestionAdapter: SuggestionAdapter? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -206,7 +209,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
 
-    private val romajiConverter = RomajiKanaConverter()
 
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
