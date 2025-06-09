@@ -388,9 +388,8 @@ class RomajiKanaConverter {
     )
 
     private val maxKeyLength = romajiToKana.keys.maxOf { it.length }
-    private val validPrefixes: Set<String> = romajiToKana.keys
-        .flatMap { key -> (1..key.length).map { key.substring(0, it) } }
-        .toSet()
+    private val validPrefixes: Set<String> =
+        romajiToKana.keys.flatMap { key -> (1..key.length).map { key.substring(0, it) } }.toSet()
 
     /**
      * @return Pair( toShow, toDelete )
@@ -398,7 +397,13 @@ class RomajiKanaConverter {
      *   - toDelete: 画面上で“直前に”消すべき文字数
      */
     fun handleKeyEvent(event: KeyEvent): Pair<String, Int> {
-        val unicode = event.unicodeChar
+
+        val unicode = if (event.keyCode == KeyEvent.KEYCODE_MINUS) {
+            '–'.code
+        } else {
+            event.unicodeChar
+        }
+
         if (unicode == 0) return Pair("", 0)
 
         val c = unicode.toChar().lowercaseChar()
@@ -438,10 +443,7 @@ class RomajiKanaConverter {
                     buffer.clear()
                     Log.d("core tail:", "$tail $surface $buffer")
                     when (tail) {
-                        "qq", "vv", "ww", "ll", "xx",
-                        "kk", "gg", "ss", "zz", "jj",
-                        "tt", "dd", "hh", "ff", "bb",
-                        "pp", "mm", "yy", "rr", "cc" -> {
+                        "qq", "vv", "ww", "ll", "xx", "kk", "gg", "ss", "zz", "jj", "tt", "dd", "hh", "ff", "bb", "pp", "mm", "yy", "rr", "cc" -> {
                             val charToAdd = tail[0]
                             buffer.append(charToAdd)
                             return Pair("$kana$charToAdd", toDelete)
@@ -482,6 +484,28 @@ class RomajiKanaConverter {
         surface.append(str)
         buffer.clear()
         return Pair(str, 0)
+    }
+
+    fun handleDelete(event: KeyEvent): Pair<String, Int> {
+        if (event.keyCode == KeyEvent.KEYCODE_DEL) {
+            // 0-a) If you’re in the middle of composing (buffer not empty),
+            // remove the last romaji char and tell the UI to delete one char
+            if (buffer.isNotEmpty()) {
+                buffer.deleteCharAt(buffer.length - 1)
+                // Show the remaining buffer as “toShow” so the UI can redisplay it,
+                // and delete just 1 character on screen
+                return Pair(buffer.toString(), 1)
+            }
+            // 0-b) If buffer is empty but surface has committed kana/text,
+            // remove the last committed char from surface and delete it on screen
+            if (surface.isNotEmpty()) {
+                surface.deleteCharAt(surface.length - 1)
+                return Pair("", 1)
+            }
+            // Nothing to delete
+            return Pair("", 0)
+        }
+        return Pair("", 0)
     }
 
     fun isBufferEmpty() = buffer.isEmpty()
