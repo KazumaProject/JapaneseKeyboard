@@ -50,6 +50,7 @@ import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.physical_shift_key.PhysicalShiftKeyCodeMap
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -548,15 +549,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding?.let { mainView ->
             when (mainView.keyboardView.currentInputMode.value) {
                 InputMode.ModeJapanese -> {
+                    val insertString = inputString.value
+                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                    val sb = StringBuilder()
+
                     event?.let { e ->
                         if (e.isShiftPressed) {
-                            finishComposingText()
+                            val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+                            char?.let { c ->
+                                if (insertString.isNotEmpty()) {
+                                    sb.append(
+                                        insertString
+                                    ).append(c)
+                                    _inputString.update {
+                                        sb.toString()
+                                    }
+                                } else {
+                                    _inputString.update {
+                                        c.toString()
+                                    }
+                                }
+                                return true
+                            }
                             return super.onKeyDown(keyCode, event)
                         }
                     }
-
-                    val insertString = inputString.value
-                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
 
                     Timber.d("onKeyDown: $event")
 
@@ -615,8 +632,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     event?.let { e ->
                         romajiConverter.handleKeyEvent(e).let { romajiResult ->
-                            val sb = StringBuilder()
-                            Timber.d("romajiConverter: $romajiResult")
                             if (insertString.isNotEmpty()) {
                                 sb.append(
                                     insertString.dropLast((romajiResult.second))
