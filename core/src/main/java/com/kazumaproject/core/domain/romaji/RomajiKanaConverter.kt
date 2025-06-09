@@ -398,10 +398,90 @@ class RomajiKanaConverter {
      */
     fun handleKeyEvent(event: KeyEvent): Pair<String, Int> {
 
-        val unicode = if (event.keyCode == KeyEvent.KEYCODE_MINUS) {
-            '–'.code
-        } else {
-            event.unicodeChar
+        val unicode = when (event.keyCode) {
+            KeyEvent.KEYCODE_COMMA -> {
+                '、'.code
+            }
+
+            KeyEvent.KEYCODE_PERIOD -> {
+                '。'.code
+            }
+
+            KeyEvent.KEYCODE_BACKSLASH -> {
+                '￥'.code
+            }
+
+            KeyEvent.KEYCODE_LEFT_BRACKET -> {
+                '「'.code
+            }
+
+            KeyEvent.KEYCODE_RIGHT_BRACKET -> {
+                '」'.code
+            }
+
+            KeyEvent.KEYCODE_SEMICOLON -> {
+                '；'.code
+            }
+
+            KeyEvent.KEYCODE_APOSTROPHE -> {
+                '\u2019'.code
+            }
+
+            KeyEvent.KEYCODE_MINUS -> {
+                'ー'.code
+            }
+
+            KeyEvent.KEYCODE_EQUALS -> {
+                '＝'.code
+            }
+
+            KeyEvent.KEYCODE_1 -> {
+                '１'.code
+            }
+
+            KeyEvent.KEYCODE_2 -> {
+                '２'.code
+            }
+
+            KeyEvent.KEYCODE_3 -> {
+                '３'.code
+            }
+
+            KeyEvent.KEYCODE_4 -> {
+                '４'.code
+            }
+
+            KeyEvent.KEYCODE_5 -> {
+                '５'.code
+            }
+
+            KeyEvent.KEYCODE_6 -> {
+                '６'.code
+            }
+
+            KeyEvent.KEYCODE_7 -> {
+                '７'.code
+            }
+
+            KeyEvent.KEYCODE_8 -> {
+                '８'.code
+            }
+
+            KeyEvent.KEYCODE_9 -> {
+                '９'.code
+            }
+
+            KeyEvent.KEYCODE_0 -> {
+                '０'.code
+            }
+
+            KeyEvent.KEYCODE_GRAVE -> {
+                '｀'.code
+            }
+
+            else -> {
+                event.unicodeChar
+            }
         }
 
         if (unicode == 0) return Pair("", 0)

@@ -60,14 +60,15 @@ fun getLastCharacterAsString(ic: InputConnection): String {
     val rawBefore = ic.getTextBeforeCursor(maxLookback, 0)?.toString() ?: ""
     if (rawBefore.isEmpty()) return ""
 
-    // ② 互換分解＋合成（NFKC）：半角カタカナ＋半角濁点 などもまとめる
-    val beforeText = Normalizer.normalize(rawBefore, Normalizer.Form.NFKC)
+    // ② Canonical 分解＋合成（NFC）で、全角記号はそのまま保持
+    val beforeText = Normalizer.normalize(rawBefore, Normalizer.Form.NFC)
 
     // ③ BreakIterator で最後のグラフェムクラスタの開始位置を探す
     val bi = BreakIterator.getCharacterInstance()
     bi.setText(beforeText)
     val end = beforeText.length
     val start = bi.preceding(end).let { if (it == BreakIterator.DONE) 0 else it }
+
     // ④ その範囲を丸ごと取り出す
     return beforeText.substring(start, end)
 }
