@@ -569,6 +569,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                     } else {
                                         deleteStringCommon(insertString)
                                         resetFlagsDeleteKey()
+                                        event?.let { e ->
+                                            romajiConverter.handleDelete(e)
+                                        }
                                         return true
                                     }
                                 }
