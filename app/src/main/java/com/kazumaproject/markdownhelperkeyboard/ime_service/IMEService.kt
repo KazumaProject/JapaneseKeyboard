@@ -553,6 +553,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                     val sb = StringBuilder()
 
+                    Timber.d("onKeyDown: $event")
+
                     event?.let { e ->
                         if (e.isShiftPressed) {
                             val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
@@ -574,8 +576,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             return super.onKeyDown(keyCode, event)
                         }
                     }
-
-                    Timber.d("onKeyDown: $event")
 
                     when (keyCode) {
                         KeyEvent.KEYCODE_DEL -> {
