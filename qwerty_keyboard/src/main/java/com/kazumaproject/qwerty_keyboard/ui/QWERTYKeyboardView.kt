@@ -250,6 +250,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 resources.getString(com.kazumaproject.core.R.string.space_japanese)
                             keyReturn.text =
                                 resources.getString(com.kazumaproject.core.R.string.return_japanese)
+                            keyA.setMarginStart(9f)
+                            keyL.setMarginEnd(9f)
                         }
                     } else {
                         binding.apply {
@@ -257,6 +259,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 resources.getString(com.kazumaproject.core.R.string.space_english)
                             keyReturn.text =
                                 resources.getString(com.kazumaproject.core.R.string.return_english)
+                            keyA.setMarginStart(23f)
+                            keyL.setMarginEnd(23f)
                         }
                     }
                 }
@@ -662,17 +666,19 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val isLandMode =
             (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
         // 1. Determine which key-IDs count as “left” vs. “right” bubbles
-        val leftKeyIds: Set<Int> = if (qwertyMode.value == QWERTYMode.Default && !isLandMode) {
-            setOf(binding.keyQ.id)
-        } else {
-            setOf(binding.keyQ.id, binding.keyA.id)
-        }
+        val leftKeyIds: Set<Int> =
+            if (qwertyMode.value == QWERTYMode.Default && !isLandMode && !romajiModeState.value) {
+                setOf(binding.keyQ.id)
+            } else {
+                setOf(binding.keyQ.id, binding.keyA.id)
+            }
 
-        val rightKeyIds: Set<Int> = if (qwertyMode.value == QWERTYMode.Default && !isLandMode) {
-            setOf(binding.keyP.id)
-        } else {
-            setOf(binding.keyP.id, binding.keyL.id)
-        }
+        val rightKeyIds: Set<Int> =
+            if (qwertyMode.value == QWERTYMode.Default && !isLandMode && !romajiModeState.value) {
+                setOf(binding.keyP.id)
+            } else {
+                setOf(binding.keyP.id, binding.keyL.id)
+            }
 
         val drawableResIdForImageView = when (view.id) {
             in leftKeyIds -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
