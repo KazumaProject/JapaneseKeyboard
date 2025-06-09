@@ -589,6 +589,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             return super.onKeyDown(keyCode, event)
                         }
 
+                        KeyEvent.KEYCODE_SPACE -> {
+                            handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            return true
+                        }
+
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
                             handleLeftKeyPress(
                                 GestureType.Tap,
@@ -602,6 +607,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 GestureType.Tap,
                                 insertString
                             )
+                            return true
+                        }
+
+                        KeyEvent.KEYCODE_ENTER -> {
+                            if (insertString.isNotEmpty()) {
+                                handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                            } else {
+                                handleEmptyInputEnterKey(mainView)
+                            }
                             return true
                         }
                     }
@@ -618,7 +632,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 }
                             } else {
                                 _inputString.update {
-                                    romajiResult.first ?: ""
+                                    romajiResult.first
                                 }
                             }
                         }
