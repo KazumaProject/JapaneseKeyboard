@@ -595,6 +595,10 @@ class RomajiKanaConverter {
      *   convert("shi") == "し"
      *   convert("konnichiwa") == "こんにちは"
      */
+    /**
+     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
+     * 二重子音（qq,vv,ww,…,tch など）は「っ+子音」に。
+     */
     fun convert(text: String): String {
         val result = StringBuilder()
         var i = 0
@@ -606,15 +610,20 @@ class RomajiKanaConverter {
             for (len in maxKeyLength downTo 1) {
                 if (i + len > text.length) continue
                 val segment = text.substring(i, i + len)
-
-                // 「n」一文字だけで末尾の場合は nn にマッチさせたいならスキップ
-                if (segment == "n" && i + len == text.length) continue
-
                 val mapping = romajiToKana[segment]
                 if (mapping != null) {
-                    // mapping.first = 変換後文字列, mapping.second = 消費するローマ字長
-                    result.append(mapping.first)
-                    i += mapping.second
+                    val (kana, consume) = mapping
+
+                    // ─── 促音（っ）が返ってきたら、末尾の子音を付け足す ───
+                    if (kana == "っ" && segment.length >= 2) {
+                        // segment[0] が子音なので、"っ"+子音 を出力
+                        result.append("っ").append(segment[0])
+                    } else {
+                        // 普通のマッピング結果
+                        result.append(kana)
+                    }
+
+                    i += consume
                     matched = true
                     break
                 }
