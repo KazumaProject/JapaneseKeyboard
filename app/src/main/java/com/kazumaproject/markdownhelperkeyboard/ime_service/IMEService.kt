@@ -622,12 +622,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         } else {
                             if (romajiOut.first !in vowels) {
                                 if (romajiOut.second == 3) {
-                                    romajiOut.first.forEach {
-                                        sendCharFlick(
-                                            charToSend = it,
-                                            insertString = insertString,
-                                            sb = sb
-                                        )
+                                    if (romajiOut.second == romajiOut.first.length) {
+                                        if (insertString.isNotEmpty()) {
+                                            sb.append(insertString.dropLast(3))
+                                                .append(romajiOut.first)
+                                            _inputString.update {
+                                                sb.toString()
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                romajiOut.first
+                                            }
+                                        }
+                                    } else {
+                                        if (insertString.isNotEmpty()) {
+                                            if (romajiOut.first.length == 1) {
+                                                sb.append(insertString.dropLast(2))
+                                                    .append(romajiOut.first)
+                                                _inputString.update {
+                                                    sb.toString()
+                                                }
+                                            } else {
+                                                sb.append(insertString.dropLast(3))
+                                                    .append(romajiOut.first)
+                                                _inputString.update {
+                                                    sb.toString()
+                                                }
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                romajiOut.first
+                                            }
+                                        }
                                     }
                                 } else if (romajiOut.second == 2) {
                                     if (romajiOut.second == romajiOut.first.length) {
@@ -1648,6 +1674,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!isHenkan.get()) {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
+        if (!romajiConverter.isBufferEmpty()) romajiConverter.clearBuffer()
     }
 
     private fun setCurrentInputType(attribute: EditorInfo?) {
