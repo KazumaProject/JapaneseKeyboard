@@ -1,4 +1,5 @@
-import android.util.Log
+package com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana
+
 import android.view.KeyEvent
 
 class RomajiKanaConverter {
@@ -521,7 +522,6 @@ class RomajiKanaConverter {
 
                     // ③ buffer をクリア
                     buffer.clear()
-                    Log.d("core tail:", "$tail $surface $buffer")
                     when (tail) {
                         "qq", "vv", "ww", "ll", "xx", "kk", "gg", "ss", "zz", "jj", "tt", "dd", "hh", "ff", "bb", "pp", "mm", "yy", "rr", "cc" -> {
                             val charToAdd = tail[0]
@@ -594,6 +594,4 @@ class RomajiKanaConverter {
         buffer.clear()
         surface.clear()
     }
-
-
 }
