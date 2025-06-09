@@ -590,6 +590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             handleLeftKeyPress(
                                 GestureType.Tap, insertString
                             )
+                            romajiConverter.clear()
                             return true
                         }
 
@@ -597,6 +598,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             actionInRightKeyPressed(
                                 GestureType.Tap, insertString
                             )
+                            romajiConverter.clear()
                             return true
                         }
 
@@ -606,6 +608,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             } else {
                                 handleEmptyInputEnterKey(mainView)
                             }
+                            romajiConverter.clear()
                             return true
                         }
                     }
@@ -1600,7 +1603,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!isHenkan.get()) {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
-        if (!romajiConverter.isBufferEmpty()) romajiConverter.clear()
     }
 
     private fun setCurrentInputType(attribute: EditorInfo?) {
