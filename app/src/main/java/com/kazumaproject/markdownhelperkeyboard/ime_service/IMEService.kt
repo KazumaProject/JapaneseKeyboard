@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import RomajiKanaConverter
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -49,6 +50,7 @@ import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.physical_key.PhysicalKeyCodeMap
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -203,6 +205,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
+
+    private val romajiConverter = RomajiKanaConverter()
 
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
@@ -550,6 +554,132 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setComposingText("", 0)
             }
         }
+    }
+
+    private val vowels = setOf("あ", "い", "う", "え", "お")
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        mainLayoutBinding?.let { mainView ->
+            when (mainView.keyboardView.currentInputMode.value) {
+                InputMode.ModeJapanese -> {
+                    event?.let { e ->
+                        if (e.isShiftPressed) {
+                            finishComposingText()
+                            return super.onKeyDown(keyCode, event)
+                        }
+                    }
+
+                    val insertString = inputString.value
+                    val sb = StringBuilder()
+                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+
+                    Timber.d("onKeyDown: $event")
+
+                    when (keyCode) {
+                        KeyEvent.KEYCODE_DEL -> {
+                            when {
+                                insertString.isNotEmpty() -> {
+                                    if (isHenkan.get()) {
+                                        handleDeleteKeyInHenkan(suggestions, insertString)
+                                    } else {
+                                        deleteStringCommon(insertString)
+                                        resetFlagsDeleteKey()
+                                        return true
+                                    }
+                                }
+
+                                else -> return super.onKeyDown(keyCode, event)
+                            }
+                            return super.onKeyDown(keyCode, event)
+                        }
+
+                        KeyEvent.KEYCODE_DPAD_LEFT -> {
+                            handleLeftKeyPress(
+                                GestureType.Tap,
+                                insertString
+                            )
+                            return true
+                        }
+
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                            actionInRightKeyPressed(
+                                GestureType.Tap,
+                                insertString
+                            )
+                            return true
+                        }
+                    }
+                    event?.let { e ->
+                        val romajiOut = romajiConverter.inputKeyEvent(e)
+                        Timber.d("romajiConverter: $romajiOut")
+                        if (romajiOut == null) {
+                            val charFromKey = PhysicalKeyCodeMap.keymap[keyCode]
+                            charFromKey?.let { c ->
+                                sendCharFlick(
+                                    charToSend = c, insertString = insertString, sb = sb
+                                )
+                            }
+                        } else {
+                            if (romajiOut.first !in vowels) {
+                                if (romajiOut.second == 3) {
+                                    romajiOut.first.forEach {
+                                        sendCharFlick(
+                                            charToSend = it,
+                                            insertString = insertString,
+                                            sb = sb
+                                        )
+                                    }
+                                } else if (romajiOut.second == 2) {
+                                    if (romajiOut.second == romajiOut.first.length) {
+                                        if (insertString.isNotEmpty()) {
+                                            sb.append(insertString.dropLast(2))
+                                                .append(romajiOut.first)
+                                            _inputString.update {
+                                                sb.toString()
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                romajiOut.first
+                                            }
+                                        }
+                                    } else {
+                                        romajiOut.first.forEach {
+                                            sendCharFlick(
+                                                charToSend = it,
+                                                insertString = insertString.dropLast(romajiOut.second - romajiOut.first.length),
+                                                sb = sb
+                                            )
+                                        }
+                                    }
+                                } else if (romajiOut.second == 1) {
+                                    sendCharFlick(
+                                        charToSend = romajiOut.first[0],
+                                        insertString = insertString,
+                                        sb = sb
+                                    )
+                                }
+                            } else {
+                                romajiOut.first.forEach {
+                                    sendCharFlick(
+                                        charToSend = it,
+                                        insertString = insertString,
+                                        sb = sb
+                                    )
+                                }
+                            }
+                            isContinuousTapInputEnabled.set(true)
+                            lastFlickConvertedNextHiragana.set(true)
+                        }
+                    }
+                    return true
+                }
+
+                else -> {
+                    return super.onKeyDown(keyCode, event)
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     private fun setTenKeyListeners(
