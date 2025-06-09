@@ -50,7 +50,6 @@ import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
-import com.kazumaproject.core.domain.physical_key.PhysicalKeyCodeMap
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -556,8 +555,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private val vowels = setOf("あ", "い", "う", "え", "お")
-
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
             when (mainView.keyboardView.currentInputMode.value) {
@@ -570,7 +567,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     val insertString = inputString.value
-                    val sb = StringBuilder()
                     val suggestions = suggestionAdapter?.suggestions ?: emptyList()
 
                     Timber.d("onKeyDown: $event")
@@ -609,92 +605,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             return true
                         }
                     }
+
                     event?.let { e ->
-                        val romajiOut = romajiConverter.inputKeyEvent(e)
-                        Timber.d("romajiConverter: $romajiOut")
-                        if (romajiOut == null) {
-                            val charFromKey = PhysicalKeyCodeMap.keymap[keyCode]
-                            charFromKey?.let { c ->
-                                sendCharFlick(
-                                    charToSend = c, insertString = insertString, sb = sb
-                                )
-                            }
-                        } else {
-                            if (romajiOut.first !in vowels) {
-                                if (romajiOut.second == 3) {
-                                    if (romajiOut.second == romajiOut.first.length) {
-                                        if (insertString.isNotEmpty()) {
-                                            sb.append(insertString.dropLast(3))
-                                                .append(romajiOut.first)
-                                            _inputString.update {
-                                                sb.toString()
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                romajiOut.first
-                                            }
-                                        }
-                                    } else {
-                                        if (insertString.isNotEmpty()) {
-                                            if (romajiOut.first.length == 1) {
-                                                sb.append(insertString.dropLast(2))
-                                                    .append(romajiOut.first)
-                                                _inputString.update {
-                                                    sb.toString()
-                                                }
-                                            } else {
-                                                sb.append(insertString.dropLast(3))
-                                                    .append(romajiOut.first)
-                                                _inputString.update {
-                                                    sb.toString()
-                                                }
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                romajiOut.first
-                                            }
-                                        }
-                                    }
-                                } else if (romajiOut.second == 2) {
-                                    if (romajiOut.second == romajiOut.first.length) {
-                                        if (insertString.isNotEmpty()) {
-                                            sb.append(insertString.dropLast(2))
-                                                .append(romajiOut.first)
-                                            _inputString.update {
-                                                sb.toString()
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                romajiOut.first
-                                            }
-                                        }
-                                    } else {
-                                        romajiOut.first.forEach {
-                                            sendCharFlick(
-                                                charToSend = it,
-                                                insertString = insertString.dropLast(romajiOut.second - romajiOut.first.length),
-                                                sb = sb
-                                            )
-                                        }
-                                    }
-                                } else if (romajiOut.second == 1) {
-                                    sendCharFlick(
-                                        charToSend = romajiOut.first[0],
-                                        insertString = insertString,
-                                        sb = sb
-                                    )
+                        romajiConverter.handleKeyEvent(e).let { romajiResult ->
+                            val sb = StringBuilder()
+                            Timber.d("romajiConverter: $romajiResult")
+                            if (insertString.isNotEmpty()) {
+                                sb.append(insertString.dropLast(romajiResult.second))
+                                    .append(romajiResult.first)
+                                _inputString.update {
+                                    sb.toString()
                                 }
                             } else {
-                                romajiOut.first.forEach {
-                                    sendCharFlick(
-                                        charToSend = it,
-                                        insertString = insertString,
-                                        sb = sb
-                                    )
+                                _inputString.update {
+                                    romajiResult.first ?: ""
                                 }
                             }
-                            isContinuousTapInputEnabled.set(true)
-                            lastFlickConvertedNextHiragana.set(true)
                         }
                     }
                     return true
@@ -1674,7 +1600,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!isHenkan.get()) {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
-        if (!romajiConverter.isBufferEmpty()) romajiConverter.clearBuffer()
     }
 
     private fun setCurrentInputType(attribute: EditorInfo?) {

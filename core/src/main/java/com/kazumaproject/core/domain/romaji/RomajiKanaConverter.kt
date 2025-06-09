@@ -390,55 +390,53 @@ class RomajiKanaConverter {
         .flatMap { key -> (1..key.length).map { key.substring(0, it) } }
         .toSet()
 
-    /**
-     * 押下イベントに応じて「出力すべき 文字列」を返す。
-     * 出力不要なら null を返す。
-     */
-    fun inputKeyEvent(event: KeyEvent): Pair<String, Int>? {
+    fun handleKeyEvent(event: KeyEvent): Pair<String, Int> {
         val unicode = event.unicodeChar
-        if (unicode == 0) return null
+        if (unicode == 0) return Pair("", 0)
 
         val c = unicode.toChar().lowercaseChar()
+        // 英字以外は即確定
         if (c !in 'a'..'z') {
-            if (buffer.isNotEmpty()) {
-                val out = buffer[0].toString()
-                buffer.deleteCharAt(0)
-                return Pair(out, 1)
-            }
-            return Pair(c.toString(), 1)
-        }
-
-        buffer.append(c)
-        if (buffer.length == 1 && buffer.toString() !in validPrefixes) {
-            val out = buffer[0].toString()
             buffer.clear()
-            return Pair(out, 1)
+            return Pair(c.toString(), 0)
         }
 
+        // 英字ならバッファに追加
+        buffer.append(c)
+
+        // 「確定文字」の判定（長さ1かつどのキー列にもマッチしない）
+        if (buffer.length == 1 && buffer.toString() !in validPrefixes) {
+            val str = buffer.toString()
+            buffer.clear()
+            return Pair(str, 0)
+        }
+
+        // マッピング確定チェック
         for (len in maxKeyLength downTo 1) {
             if (buffer.length >= len) {
                 val tail = buffer.takeLast(len).toString()
-                romajiToKana[tail]?.let { (kana, consume) ->
-                    buffer.setLength(buffer.length - consume)
-                    return Pair(kana, consume)
+                val mapping = romajiToKana[tail]
+                if (mapping != null) {
+                    val (kana, consume) = mapping
+                    buffer.clear()
+                    // 前回表示分を (consume-1) 文字消して新しいかなを出す
+                    return Pair(kana, consume - 1)
                 }
             }
         }
 
-        // after: emit entire buffer
-        if (buffer.toString() !in validPrefixes) {
-            val full = buffer.toString()
-            val len = buffer.length
-            buffer.clear()
-            return Pair(full, len)
+        // プレフィックスにはマッチしているがまだ確定できない → buffer そのまま、前回分を消す
+        if (buffer.toString() in validPrefixes) {
+            val str = buffer.toString()
+            // 例えば "sh" のときは前回返した "s" を1文字消す
+            val deleteCount = buffer.length - 1
+            return Pair(str, deleteCount)
         }
 
-        return null
-    }
-
-    fun isBufferEmpty(): Boolean = buffer.isEmpty()
-
-    fun clearBuffer() {
+        // それ以外（万が一プレフィックスにも映らない）は確定扱い
+        val str = buffer.toString()
         buffer.clear()
+        return Pair(str, 0)
     }
+
 }
