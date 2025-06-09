@@ -1597,6 +1597,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (!isHenkan.get()) {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
+        if (!romajiConverter.isBufferEmpty()) romajiConverter.clear()
     }
 
     private fun setCurrentInputType(attribute: EditorInfo?) {
@@ -2367,6 +2368,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setClipboardText()
         _selectMode.update { false }
         hasConvertedKatakana = false
+        romajiConverter.clear()
     }
 
     private fun actionInDestroy() {

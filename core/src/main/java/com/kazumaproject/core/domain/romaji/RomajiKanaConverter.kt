@@ -1,3 +1,4 @@
+import android.util.Log
 import android.view.KeyEvent
 
 class RomajiKanaConverter {
@@ -42,28 +43,28 @@ class RomajiKanaConverter {
         "vyo" to Pair("ゔょ", 3),
 
         // gemination (small tsu + consonant)
-        "qq" to Pair("っq", 2),
-        "vv" to Pair("っv", 2),
-        "ll" to Pair("っl", 2),
-        "xx" to Pair("っx", 2),
-        "kk" to Pair("っk", 2),
-        "gg" to Pair("っg", 2),
-        "ss" to Pair("っs", 2),
-        "zz" to Pair("っz", 2),
-        "jj" to Pair("っj", 2),
-        "tt" to Pair("っt", 2),
-        "tch" to Pair("っch", 3),
-        "dd" to Pair("っd", 2),
-        "hh" to Pair("っh", 2),
-        "ff" to Pair("っf", 2),
-        "bb" to Pair("っb", 2),
-        "pp" to Pair("っp", 2),
-        "mm" to Pair("っm", 2),
-        "yy" to Pair("っy", 2),
-        "rr" to Pair("っr", 2),
-        "ww" to Pair("っw", 2),
+        "qq" to Pair("っ", 2),
+        "vv" to Pair("っ", 2),
+        "ll" to Pair("っ", 2),
+        "xx" to Pair("っ", 2),
+        "kk" to Pair("っ", 2),
+        "gg" to Pair("っ", 2),
+        "ss" to Pair("っ", 2),
+        "zz" to Pair("っ", 2),
+        "jj" to Pair("っ", 2),
+        "tt" to Pair("っ", 2),
+        "tch" to Pair("っ", 3),
+        "dd" to Pair("っ", 2),
+        "hh" to Pair("っ", 2),
+        "ff" to Pair("っ", 2),
+        "bb" to Pair("っ", 2),
+        "pp" to Pair("っ", 2),
+        "mm" to Pair("っ", 2),
+        "yy" to Pair("っ", 2),
+        "rr" to Pair("っ", 2),
+        "ww" to Pair("っ", 2),
         "www" to Pair("www", 3),
-        "cc" to Pair("っc", 2),
+        "cc" to Pair("っ", 2),
 
         // k-row youon
         "kya" to Pair("きゃ", 3),
@@ -430,20 +431,34 @@ class RomajiKanaConverter {
                     //    → 前回 buffer の内容(長さ=consume) を消す
                     //    （consume が 2 なら "ka" の 'k','a'分を2文字消す）
                     val toDelete = (consume - 1).coerceAtLeast(0)
-
                     // ② surface に確定かなを追加
                     surface.append(kana)
 
                     // ③ buffer をクリア
                     buffer.clear()
+                    Log.d("core tail:", "$tail $surface $buffer")
+                    when (tail) {
+                        "qq", "vv", "ww", "ll", "xx",
+                        "kk", "gg", "ss", "zz", "jj",
+                        "tt", "dd", "hh", "ff", "bb",
+                        "pp", "mm", "yy", "rr", "cc" -> {
+                            val charToAdd = tail[0]
+                            buffer.append(charToAdd)
+                            return Pair("$kana$charToAdd", toDelete)
+                        }
 
+                        "tch" -> {
+                            buffer.append("ch")
+                            return Pair("${kana}ch", toDelete)
+                        }
+                    }
                     return Pair(kana, toDelete)
                 }
             }
         }
 
         // ────────── 4) プレフィックスマッチのみ（未確定） ──────────
-        // たとえば "s" → "sh" → ここに入る
+        // たとえば "s" → "sh" → ここに入るa
         if (buffer.toString() in validPrefixes) {
             val str = buffer.toString()
             // 前回表示した str.dropLast(1) を消す
@@ -467,6 +482,13 @@ class RomajiKanaConverter {
         surface.append(str)
         buffer.clear()
         return Pair(str, 0)
+    }
+
+    fun isBufferEmpty() = buffer.isEmpty()
+
+    fun clear() {
+        buffer.clear()
+        surface.clear()
     }
 
 
