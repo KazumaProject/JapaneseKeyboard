@@ -547,6 +547,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
+
             when (mainView.keyboardView.currentInputMode.value) {
                 InputMode.ModeJapanese -> {
                     val insertString = inputString.value
@@ -582,7 +583,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             when {
                                 insertString.isNotEmpty() -> {
                                     if (isHenkan.get()) {
-                                        handleDeleteKeyInHenkan(suggestions, insertString)
+                                        cancelHenkanByLongPressDeleteKey()
+                                        return true
                                     } else {
                                         deleteStringCommon(insertString)
                                         resetFlagsDeleteKey()
@@ -595,7 +597,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                                 else -> return super.onKeyDown(keyCode, event)
                             }
-                            return super.onKeyDown(keyCode, event)
                         }
 
                         KeyEvent.KEYCODE_SPACE -> {
@@ -604,18 +605,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            handleLeftKeyPress(
-                                GestureType.Tap, insertString
-                            )
-                            romajiConverter.clear()
+                            if (isHenkan.get()) {
+                                handleDeleteKeyInHenkan(suggestions, insertString)
+                                return true
+                            } else {
+                                handleLeftKeyPress(
+                                    GestureType.Tap, insertString
+                                )
+                                romajiConverter.clear()
+                            }
                             return true
                         }
 
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            actionInRightKeyPressed(
-                                GestureType.Tap, insertString
-                            )
-                            romajiConverter.clear()
+                            if (isHenkan.get() && suggestions.isNotEmpty()) {
+                                handleJapaneseModeSpaceKey(
+                                    mainView, suggestions, insertString
+                                )
+                                return true
+                            } else {
+                                actionInRightKeyPressed(
+                                    GestureType.Tap, insertString
+                                )
+                                romajiConverter.clear()
+                            }
                             return true
                         }
 
