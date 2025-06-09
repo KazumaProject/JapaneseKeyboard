@@ -588,7 +588,47 @@ class RomajiKanaConverter {
         return Pair("", 0)
     }
 
-    fun isBufferEmpty() = buffer.isEmpty()
+    /**
+     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
+     * 例:
+     *   convert("a")   == "あ"
+     *   convert("shi") == "し"
+     *   convert("konnichiwa") == "こんにちは"
+     */
+    fun convert(text: String): String {
+        val result = StringBuilder()
+        var i = 0
+
+        while (i < text.length) {
+            var matched = false
+
+            // できるだけ長いキーからマッチを試みる
+            for (len in maxKeyLength downTo 1) {
+                if (i + len > text.length) continue
+                val segment = text.substring(i, i + len)
+
+                // 「n」一文字だけで末尾の場合は nn にマッチさせたいならスキップ
+                if (segment == "n" && i + len == text.length) continue
+
+                val mapping = romajiToKana[segment]
+                if (mapping != null) {
+                    // mapping.first = 変換後文字列, mapping.second = 消費するローマ字長
+                    result.append(mapping.first)
+                    i += mapping.second
+                    matched = true
+                    break
+                }
+            }
+
+            if (!matched) {
+                // マップにない文字はそのまま
+                result.append(text[i])
+                i++
+            }
+        }
+
+        return result.toString()
+    }
 
     fun clear() {
         buffer.clear()

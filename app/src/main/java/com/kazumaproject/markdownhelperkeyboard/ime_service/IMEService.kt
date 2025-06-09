@@ -2077,8 +2077,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
-                            _tenKeyQWERTYMode.update {
-                                TenKeyQWERTYMode.Default
+                            if (!mainView.qwertyView.getRomajiMode()) {
+                                mainView.qwertyView.setRomajiMode(true)
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                            } else {
+                                _tenKeyQWERTYMode.update {
+                                    TenKeyQWERTYMode.Default
+                                }
+                                mainView.qwertyView.setRomajiMode(false)
                             }
                             _inputString.update { "" }
                             finishComposingText()
@@ -2105,9 +2111,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         else -> {
+                            if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                                if (insertString.isNotEmpty()) {
+                                    sb.append(insertString).append(tap)
+                                    _inputString.update {
+                                        romajiConverter.convert(sb.toString())
+                                    }
+                                } else {
+                                    tap?.let { c ->
+                                        _inputString.update {
+                                            romajiConverter.convert(c.toString())
+                                        }
+                                    }
+                                }
+                            } else {
+                                handleTap(tap, insertString, sb, mainView)
+                            }
                             isContinuousTapInputEnabled.set(true)
                             lastFlickConvertedNextHiragana.set(true)
-                            handleTap(tap, insertString, sb, mainView)
                         }
                     }
                 }
@@ -3661,6 +3682,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 TenKeyQWERTYMode.TenKeyQWERTY
             }
             mainView.qwertyView.resetQWERTYKeyboard()
+            mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
         }
     }
 
