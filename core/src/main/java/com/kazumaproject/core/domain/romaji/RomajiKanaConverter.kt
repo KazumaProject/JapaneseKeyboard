@@ -208,6 +208,7 @@ class RomajiKanaConverter {
         "nyu" to Pair("にゅ", 3),
         "nye" to Pair("にぇ", 3),
         "nyo" to Pair("にょ", 3),
+        "n" to Pair("n", 1),
         "nn" to Pair("ん", 2),
         "xn" to Pair("ん", 2),
 
@@ -390,53 +391,83 @@ class RomajiKanaConverter {
         .flatMap { key -> (1..key.length).map { key.substring(0, it) } }
         .toSet()
 
+    /**
+     * @return Pair( toShow, toDelete )
+     *   - toShow: 新たに“追加”表示する文字列
+     *   - toDelete: 画面上で“直前に”消すべき文字数
+     */
     fun handleKeyEvent(event: KeyEvent): Pair<String, Int> {
         val unicode = event.unicodeChar
         if (unicode == 0) return Pair("", 0)
 
         val c = unicode.toChar().lowercaseChar()
-        // 英字以外は即確定
+
+        // ────────── 1) 英字以外は確定 ──────────
         if (c !in 'a'..'z') {
-            buffer.clear()
+            // ① buffer に残っている未確定ローマ字を確定して surface に積む
+            if (buffer.isNotEmpty()) {
+                surface.append(buffer.toString())
+                buffer.clear()
+            }
+            // ② この文字を確定して画面に表示
+            surface.append(c)
             return Pair(c.toString(), 0)
         }
 
-        // 英字ならバッファに追加
+        // ────────── 2) 英字はまず buffer に貯める ──────────
         buffer.append(c)
 
-        // 「確定文字」の判定（長さ1かつどのキー列にもマッチしない）
-        if (buffer.length == 1 && buffer.toString() !in validPrefixes) {
-            val str = buffer.toString()
-            buffer.clear()
-            return Pair(str, 0)
-        }
-
-        // マッピング確定チェック
+        // ────────── 3) マッピング確定チェック ──────────
         for (len in maxKeyLength downTo 1) {
             if (buffer.length >= len) {
                 val tail = buffer.takeLast(len).toString()
+                // 「'n' 一文字だけ」は nn のためにスキップ
+                if (tail == "n" && buffer.length == 1) continue
                 val mapping = romajiToKana[tail]
                 if (mapping != null) {
                     val (kana, consume) = mapping
+                    // ① 画面上の「未確定分」を消す
+                    //    → 前回 buffer の内容(長さ=consume) を消す
+                    //    （consume が 2 なら "ka" の 'k','a'分を2文字消す）
+                    val toDelete = (consume - 1).coerceAtLeast(0)
+
+                    // ② surface に確定かなを追加
+                    surface.append(kana)
+
+                    // ③ buffer をクリア
                     buffer.clear()
-                    // 前回表示分を (consume-1) 文字消して新しいかなを出す
-                    return Pair(kana, consume - 1)
+
+                    return Pair(kana, toDelete)
                 }
             }
         }
 
-        // プレフィックスにはマッチしているがまだ確定できない → buffer そのまま、前回分を消す
+        // ────────── 4) プレフィックスマッチのみ（未確定） ──────────
+        // たとえば "s" → "sh" → ここに入る
         if (buffer.toString() in validPrefixes) {
             val str = buffer.toString()
-            // 例えば "sh" のときは前回返した "s" を1文字消す
-            val deleteCount = buffer.length - 1
-            return Pair(str, deleteCount)
+            // 前回表示した str.dropLast(1) を消す
+            val toDelete = buffer.length - 1
+            return Pair(str, toDelete)
         }
 
-        // それ以外（万が一プレフィックスにも映らない）は確定扱い
+        // ────────── 5) それ以外（プレフィックスにも乗らない） ──────────
+        // たとえば "nk" のように、2文字以上・マップ外
+        if (buffer.length >= 2) {
+            val str = buffer.toString()
+            val toDelete = buffer.length - 1
+            // buffer の先頭以外を画面に残して、先頭だけ確定とみなすなら……
+            // surface.append(str.dropLast(1))
+            // buffer.delete(0, str.length-1)
+            return Pair(str, toDelete)
+        }
+
+        // ────────── 6) 最後の手段：1文字だけ確定扱い ──────────
         val str = buffer.toString()
+        surface.append(str)
         buffer.clear()
         return Pair(str, 0)
     }
+
 
 }

@@ -212,14 +212,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private val cachedSpaceDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            applicationContext, com.kazumaproject.core.R.drawable.baseline_space_bar_24
         )
     }
     private val cachedLogoDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.language_24dp
+            applicationContext, com.kazumaproject.core.R.drawable.language_24dp
         )
     }
     private val cachedKanaDrawable: Drawable? by lazy {
@@ -231,64 +229,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private val cachedNumberDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.number_small
+            applicationContext, com.kazumaproject.core.R.drawable.number_small
         )
     }
 
     private val cachedArrowDropDownDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
+            applicationContext, com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
         )
     }
 
     private val cachedArrowDropUpDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
+            applicationContext, com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
         )
     }
 
     private val cachedArrowRightDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.baseline_arrow_right_alt_24
+            applicationContext, com.kazumaproject.core.R.drawable.baseline_arrow_right_alt_24
         )
     }
 
     private val cachedReturnDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            applicationContext, com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
         )
     }
 
     private val cachedTabDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.keyboard_tab_24px
+            applicationContext, com.kazumaproject.core.R.drawable.keyboard_tab_24px
         )
     }
 
     private val cachedCheckDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.baseline_check_24
+            applicationContext, com.kazumaproject.core.R.drawable.baseline_check_24
         )
     }
 
     private val cachedSearchDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.baseline_search_24
+            applicationContext, com.kazumaproject.core.R.drawable.baseline_search_24
         )
     }
 
     private val cachedEnglishDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
-            applicationContext,
-            com.kazumaproject.core.R.drawable.english_small
+            applicationContext, com.kazumaproject.core.R.drawable.english_small
         )
     }
 
@@ -596,16 +585,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
                             handleLeftKeyPress(
-                                GestureType.Tap,
-                                insertString
+                                GestureType.Tap, insertString
                             )
                             return true
                         }
 
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             actionInRightKeyPressed(
-                                GestureType.Tap,
-                                insertString
+                                GestureType.Tap, insertString
                             )
                             return true
                         }
@@ -625,8 +612,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             val sb = StringBuilder()
                             Timber.d("romajiConverter: $romajiResult")
                             if (insertString.isNotEmpty()) {
-                                sb.append(insertString.dropLast(romajiResult.second))
-                                    .append(romajiResult.first)
+                                sb.append(
+                                    insertString.dropLast((romajiResult.second))
+                                ).append(romajiResult.first)
                                 _inputString.update {
                                     sb.toString()
                                 }
@@ -929,8 +917,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                     setClipboardPreview(selectedText.toString())
                                     sendKeyEvent(
                                         KeyEvent(
-                                            KeyEvent.ACTION_DOWN,
-                                            KeyEvent.KEYCODE_DEL
+                                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL
                                         )
                                     )
                                 }
@@ -1106,8 +1093,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetKeyboard() {
         mainLayoutBinding?.apply {
             animateViewVisibility(
-                if (isTablet == true) this.tabletView else this.keyboardView,
-                true
+                if (isTablet == true) this.tabletView else this.keyboardView, true
             )
             animateViewVisibility(this.candidatesRowView, false)
             suggestionRecyclerView.isVisible = true
@@ -1404,16 +1390,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
                         animateViewVisibility(
-                            if (isTablet == true) this.tabletView else this.keyboardView,
-                            false
+                            if (isTablet == true) this.tabletView else this.keyboardView, false
                         )
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
                         setSymbols(mainView)
                     } else {
                         animateViewVisibility(
-                            if (isTablet == true) this.tabletView else this.keyboardView,
-                            true
+                            if (isTablet == true) this.tabletView else this.keyboardView, true
                         )
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
@@ -1471,8 +1455,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         val qwertyMode = qwertyMode.value
         animateViewVisibility(
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) mainView.qwertyView else
-                if (isTablet == true) mainView.tabletView else mainView.keyboardView,
+            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) mainView.qwertyView else if (isTablet == true) mainView.tabletView else mainView.keyboardView,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
@@ -1865,8 +1848,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             setClipboardText()
                             mainView.keyboardView.setSideKeyPreviousDrawable(
                                 ContextCompat.getDrawable(
-                                    this,
-                                    com.kazumaproject.core.R.drawable.undo_24px
+                                    this, com.kazumaproject.core.R.drawable.undo_24px
                                 )
                             )
                         }
@@ -1982,8 +1964,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     if (symbol.mode == SymbolMode.EMOJI) {
                         CoroutineScope(Dispatchers.IO).launch {
                             clickedSymbolRepository.insert(
-                                mode = symbol.mode,
-                                symbol = symbol.symbol
+                                mode = symbol.mode, symbol = symbol.symbol
                             )
                         }
                     }
@@ -1995,8 +1976,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     vibrate()
                     CoroutineScope(Dispatchers.IO).launch {
                         clickedSymbolRepository.delete(
-                            mode = symbol.mode,
-                            symbol = symbol.symbol
+                            mode = symbol.mode, symbol = symbol.symbol
                         )
                     }
                 }
@@ -2028,9 +2008,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 override fun onReleasedQWERTYKey(
-                    qwertyKey: QWERTYKey,
-                    tap: Char?,
-                    variations: List<Char>?
+                    qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
                     when (vibrationTimingStr) {
                         "both" -> {
@@ -2119,10 +2097,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
         coroutineScope {
-            if (cachedEmoji == null ||
-                cachedEmoticons == null ||
-                cachedSymbols == null
-            ) {
+            if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
                 val emojiDeferred =
                     async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
                 val emoticonDeferred =
@@ -2134,9 +2109,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 cachedSymbols = symbolDeferred.await()
             }
             val historyDeferred = async(Dispatchers.IO) { clickedSymbolRepository.getAll() }
-            cachedClickedSymbolHistory = historyDeferred.await()
-                .sortedByDescending { it.timestamp }
-                .distinctBy { it.symbol }
+            cachedClickedSymbolHistory =
+                historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
         }
         mainView.keyboardSymbolView.setSymbolLists(
             emojiList = cachedEmoji ?: emptyList(),
@@ -2175,8 +2149,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         deletedBuffer.clear()
         mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
             ContextCompat.getDrawable(
-                this,
-                com.kazumaproject.core.R.drawable.undo_24px
+                this, com.kazumaproject.core.R.drawable.undo_24px
             )
         )
     }
@@ -2322,16 +2295,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun upsertLearnDictionaryWhenTapCandidate(
-        currentInputMode: InputMode,
-        insertString: String,
-        candidate: Candidate,
-        position: Int
+        currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        if (currentInputMode == InputMode.ModeJapanese
-            && isLearnDictionaryMode == true
-            && position != 0
-        ) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
@@ -2360,8 +2327,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     learnRepository.upsertLearnedData(LearnEntity(input = input, out = output))
                     learnRepository.upsertLearnedData(
                         LearnEntity(
-                            input = insertString,
-                            out = candidate.string
+                            input = insertString, out = candidate.string
                         )
                     )
                 } catch (e: Exception) {
@@ -2823,10 +2789,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             // （連続タップ入力解除など）
             enableContinuousTapInput()
 
-            val flag = if (inputString.value.isEmpty())
-                CandidateShowFlag.Idle
-            else
-                CandidateShowFlag.Updating
+            val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
+            else CandidateShowFlag.Updating
             _suggestionFlag.emit(flag)
 
         }
@@ -2839,8 +2803,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                     mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
                         ContextCompat.getDrawable(
-                            this@IMEService,
-                            com.kazumaproject.core.R.drawable.baseline_delete_24
+                            this@IMEService, com.kazumaproject.core.R.drawable.baseline_delete_24
                         )
                     )
                 }
@@ -3008,8 +2971,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleSpaceKeyClickInQWERTY(
-        insertString: String,
-        mainView: MainLayoutBinding
+        insertString: String, mainView: MainLayoutBinding
     ) {
         if (insertString.isNotBlank()) {
             mainView.apply {
@@ -3624,9 +3586,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         GestureType.Tap, GestureType.FlickBottom -> {
                             c.getDakutenSmallChar()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar,
-                                    sb,
-                                    insertString
+                                    dakutenChar, sb, insertString
                                 )
                             }
                         }
@@ -3634,9 +3594,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         GestureType.FlickLeft -> {
                             c.getDakutenFlickLeft()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar,
-                                    sb,
-                                    insertString
+                                    dakutenChar, sb, insertString
                                 )
                             }
                         }
@@ -3644,9 +3602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         GestureType.FlickRight -> {
                             c.getDakutenFlickRight()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar,
-                                    sb,
-                                    insertString
+                                    dakutenChar, sb, insertString
                                 )
                             }
                         }
@@ -3654,9 +3610,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         GestureType.FlickTop -> {
                             c.getDakutenFlickTop()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar,
-                                    sb,
-                                    insertString
+                                    dakutenChar, sb, insertString
                                 )
                             }
                         }
@@ -3709,10 +3663,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (it.currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
                         dakutenSmallLetter(
-                            sb,
-                            insertString,
-                            mainView,
-                            gestureType
+                            sb, insertString, mainView, gestureType
                         )
                     }
 
@@ -3732,10 +3683,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (it.currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         dakutenSmallLetter(
-                            sb,
-                            insertString,
-                            mainView,
-                            gestureType
+                            sb, insertString, mainView, gestureType
                         )
                     }
 
@@ -3960,8 +3908,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // 3) Screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
-        val isPortrait =
-            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
         // 4) Clamp height: [210..280] in portrait, ≤ 200 in landscape
         val clampedHeight = if (isPortrait) {
