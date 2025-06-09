@@ -92,6 +92,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val _capsLockState = MutableStateFlow(CapsLockState())
     private val capsLockState: StateFlow<CapsLockState> = _capsLockState.asStateFlow()
 
+    private val _romajiModeState = MutableStateFlow(false)
+    private val romajiModeState = _romajiModeState.asStateFlow()
+
     private val _qwertyMode = MutableStateFlow<QWERTYMode>(QWERTYMode.Default)
     private val qwertyMode: StateFlow<QWERTYMode> = _qwertyMode.asStateFlow()
 
@@ -235,6 +238,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     resources.getString(com.kazumaproject.core.R.string.string_abc)
                             }
                             attachNumberKeyLabels(true)
+                        }
+                    }
+                }
+            }
+            launch {
+                romajiModeState.collectLatest { romajiMode ->
+                    if (romajiMode) {
+                        binding.apply {
+                            keySpace.text =
+                                resources.getString(com.kazumaproject.core.R.string.space_japanese)
+                            keyReturn.text =
+                                resources.getString(com.kazumaproject.core.R.string.return_japanese)
+                        }
+                    } else {
+                        binding.apply {
+                            keySpace.text =
+                                resources.getString(com.kazumaproject.core.R.string.space_english)
+                            keyReturn.text =
+                                resources.getString(com.kazumaproject.core.R.string.return_english)
                         }
                     }
                 }
@@ -874,5 +896,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun clearShiftCaps() {
         _capsLockState.value = CapsLockState()
     }
+
+    fun setRomajiMode(state: Boolean) {
+        _romajiModeState.update { state }
+    }
+
+    fun getRomajiMode() = romajiModeState.value
 
 }
