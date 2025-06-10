@@ -913,12 +913,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySpace -> {
-                if (cursorMoveMode.value) {
-                    _cursorMoveMode.update { false }
-                } else {
-                    if (!isSpaceKeyLongPressed) {
-                        handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                when (gestureType) {
+                    GestureType.FlickLeft -> {
+                        val keyboardWidth = appPreference.keyboard_width
+                        if (keyboardWidth == null) {
+                            handleSwitchMode(mainView)
+                        } else {
+                            if (keyboardWidth < 100 && insertString.isEmpty()) {
+                                if (!isSpaceKeyLongPressed) {
+                                    appPreference.keyboard_position = false
+                                    setKeyboardSize()
+                                }
+                            } else {
+                                if (!isSpaceKeyLongPressed) {
+                                    handleSpaceKeyClick(
+                                        isFlick,
+                                        insertString,
+                                        suggestions,
+                                        mainView
+                                    )
+                                }
+                            }
+                        }
                     }
+
+                    GestureType.FlickRight -> {
+                        val keyboardWidth = appPreference.keyboard_width
+                        if (keyboardWidth == null) {
+                            handleSwitchMode(mainView)
+                        } else {
+                            if (keyboardWidth < 100 && insertString.isEmpty()) {
+                                if (!isSpaceKeyLongPressed) {
+                                    appPreference.keyboard_position = true
+                                    setKeyboardSize()
+                                }
+                            } else {
+                                if (!isSpaceKeyLongPressed) {
+                                    handleSpaceKeyClick(
+                                        isFlick,
+                                        insertString,
+                                        suggestions,
+                                        mainView
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    GestureType.Tap,
+                    GestureType.FlickTop,
+                    GestureType.FlickBottom -> {
+                        if (!isSpaceKeyLongPressed) {
+                            handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                        }
+                    }
+
+                    GestureType.Null, GestureType.Down -> {}
                 }
                 isSpaceKeyLongPressed = false
             }
@@ -3746,41 +3796,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            when (gestureType) {
-                GestureType.FlickLeft -> {
-                    val keyboardWidth = appPreference.keyboard_width
-                    if (keyboardWidth == null) {
-                        handleSwitchMode(mainView)
-                    } else {
-                        if (keyboardWidth < 100) {
-                            appPreference.keyboard_position = false
-                            setKeyboardSize()
-                        } else {
-                            handleSwitchMode(mainView)
-                        }
-                    }
-                }
-
-                GestureType.FlickRight -> {
-                    val keyboardWidth = appPreference.keyboard_width
-                    if (keyboardWidth == null) {
-                        handleSwitchMode(mainView)
-                    } else {
-                        if (keyboardWidth < 100) {
-                            appPreference.keyboard_position = true
-                            setKeyboardSize()
-                        } else {
-                            handleSwitchMode(mainView)
-                        }
-                    }
-                }
-
-                GestureType.Tap, GestureType.FlickBottom, GestureType.FlickTop -> {
-                    handleSwitchMode(mainView)
-                }
-
-                GestureType.Null, GestureType.Down -> {}
-            }
+            handleSwitchMode(mainView)
         }
     }
 
