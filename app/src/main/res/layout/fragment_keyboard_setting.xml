@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".keyboard_setting.KeyboardSettingFragment">
+    tools:context=".setting_activity.ui.keyboard_size_setting.KeyboardSizeSettingFragment">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/keyboard_setting_constraint"

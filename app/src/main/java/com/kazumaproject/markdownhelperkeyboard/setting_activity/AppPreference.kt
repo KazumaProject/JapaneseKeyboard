@@ -3,10 +3,14 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 
 object AppPreference {
 
     private lateinit var preferences: SharedPreferences
+    private val gson = Gson()
 
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
@@ -24,6 +28,11 @@ object AppPreference {
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
 
+    private val defaultKeyboardOrderJson = gson.toJson(
+        listOf(KeyboardType.TENKEY, KeyboardType.QWERTY, KeyboardType.ROMAJI)
+    )
+    private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -33,6 +42,17 @@ object AppPreference {
         operation(editor)
         editor.apply()
     }
+
+    var keyboard_order: List<KeyboardType>
+        get() {
+            val json = preferences.getString(KEYBOARD_ORDER.first, KEYBOARD_ORDER.second)
+            val type = object : TypeToken<List<KeyboardType>>() {}.type
+            return gson.fromJson(json, type)
+        }
+        set(value) = preferences.edit {
+            val json = gson.toJson(value)
+            it.putString(KEYBOARD_ORDER.first, json)
+        }
 
     var vibration_preference: Boolean?
         get() = preferences.getBoolean(VIBRATION_PREFERENCE.first, VIBRATION_PREFERENCE.second)

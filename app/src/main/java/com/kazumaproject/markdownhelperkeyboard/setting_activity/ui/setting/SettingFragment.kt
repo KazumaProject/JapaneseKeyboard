@@ -92,6 +92,16 @@ class SettingFragment : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.setting_preference, rootKey)
 
+        val keyboardSelectionPreference =
+            findPreference<Preference>("keyboard_selection_preference")
+
+        keyboardSelectionPreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_keyboardSelectionFragment
+            )
+            true
+        }
+
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {

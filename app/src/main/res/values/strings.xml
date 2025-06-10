@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="delete_in_long_press">長押しで削除</string>
+    <string name="edit_text">編集</string>
 </resources>
