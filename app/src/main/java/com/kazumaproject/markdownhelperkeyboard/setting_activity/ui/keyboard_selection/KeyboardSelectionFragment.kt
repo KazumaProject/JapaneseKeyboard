@@ -112,8 +112,10 @@ class KeyboardSelectionFragment : Fragment() {
             },
             onDeleteClick = { position ->
                 val currentList = viewModel.uiState.value.keyboards.toMutableList()
-                currentList.removeAt(position)
-                viewModel.updateKeyboardOrder(currentList)
+                if (currentList.size > 1) {
+                    currentList.removeAt(position)
+                    viewModel.updateKeyboardOrder(currentList)
+                }
             }
         )
 
