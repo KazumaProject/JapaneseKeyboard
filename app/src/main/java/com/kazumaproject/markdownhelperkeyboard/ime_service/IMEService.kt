@@ -75,6 +75,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestur
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
@@ -209,6 +210,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
 
+    private var keyboardOrder: List<KeyboardType> = emptyList()
 
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
@@ -338,6 +340,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         _suggestionViewStatus.update { true }
         appPreference.apply {
+            keyboardOrder = keyboard_order
             mozcUTPersonName = mozc_ut_person_names_preference ?: false
             mozcUTPlaces = mozc_ut_places_preference ?: false
             mozcUTWiki = mozc_ut_wiki_preference ?: false
@@ -1127,27 +1130,69 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun resetKeyboard() {
+        if (keyboardOrder.isEmpty()) return
         mainLayoutBinding?.apply {
-            animateViewVisibility(
-                if (isTablet == true) this.tabletView else this.keyboardView, true
-            )
-            animateViewVisibility(this.candidatesRowView, false)
-            suggestionRecyclerView.isVisible = true
-            if (isTablet == true) {
-                tabletView.resetLayout()
-            } else {
-                keyboardView.apply {
-                    if (currentInputMode.value == InputMode.ModeNumber) {
-                        setBackgroundSmallLetterKey(
-                            cachedNumberDrawable
-                        )
+            when (keyboardOrder[0]) {
+                KeyboardType.TENKEY -> {
+                    if (isTablet == true) {
+                        tabletView.apply {
+                            isVisible = true
+                            resetLayout()
+                        }
+                        qwertyView.isVisible = false
+                        keyboardSymbolView.isVisible = false
                     } else {
-                        setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
-                        )
+                        keyboardView.apply {
+                            isVisible = true
+                            if (currentInputMode.value == InputMode.ModeNumber) {
+                                setBackgroundSmallLetterKey(
+                                    cachedNumberDrawable
+                                )
+                            } else {
+                                setBackgroundSmallLetterKey(
+                                    cachedLogoDrawable
+                                )
+                            }
+                        }
+                        qwertyView.isVisible = false
+                        keyboardSymbolView.isVisible = false
                     }
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                }
+
+                KeyboardType.QWERTY -> {
+                    if (isTablet == true) {
+                        qwertyView.isVisible = true
+                        tabletView.isVisible = false
+                        keyboardSymbolView.isVisible = false
+                    } else {
+                        qwertyView.isVisible = true
+                        keyboardView.isVisible = false
+                        keyboardSymbolView.isVisible = false
+                    }
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                    qwertyView.setRomajiMode(false)
+                }
+
+                KeyboardType.ROMAJI -> {
+                    if (isTablet == true) {
+                        qwertyView.isVisible = true
+                        tabletView.isVisible = false
+                        keyboardSymbolView.isVisible = false
+                    } else {
+                        qwertyView.isVisible = true
+                        keyboardView.isVisible = false
+                        keyboardSymbolView.isVisible = false
+                    }
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    qwertyView.setRomajiMode(true)
                 }
             }
+            candidatesRowView.isVisible = false
+            suggestionRecyclerView.isVisible = true
+
         }
     }
 

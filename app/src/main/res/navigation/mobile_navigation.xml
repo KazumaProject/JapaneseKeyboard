@@ -34,7 +34,7 @@
         android:label="学習辞書" />
     <fragment
         android:id="@+id/keyboardSettingFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.KeyboardSizeSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.KeyboardSettingFragment"
         android:label="キーボードの設定"
         tools:layout="@layout/fragment_keyboard_setting" />
     <fragment
