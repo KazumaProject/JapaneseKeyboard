@@ -225,4 +225,12 @@
 
     <string name="undo_icon">undo</string>
     <string name="paste_icon">paste</string>
+
+    <string name="drag_handle_description">Drag to reorder</string>
+    <string name="delete_item_description">Delete Keyboard</string>
+    <string name="add_keyboard_dialog_title">キーボードを追加</string>
+    <string name="add_new_keyboard_text">キーボードを追加</string>
+    <string name="delete_in_long_press">ロングプレスで削除</string>
+
+    <string name="done_text">完了</string>
 </resources>

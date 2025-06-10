@@ -34,6 +34,9 @@
     <color name="popup_bg_active">#A3C7FF</color>
     <color name="popup_bg_stroke">#805487D1</color>
 
+    <color name="red">#ff7961</color>
+    <color name="red_dark">#80162C5D</color>
+
     <color name="char_in_edit_color">#4433B5E5</color>
     <color name="green">#7733B5E5</color>
     <color name="blue">#7733B5E5</color>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".setting_activity.ui.keyboard_selection.KeyboardSelectionFragment">
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/keyboard_selection_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/add_new_keyboard_dialog_trigger"
+        android:layout_width="match_parent"
+        android:layout_height="?actionBarSize"
+        android:layout_marginTop="32dp"
+        android:background="@drawable/ten_keys_center_bg"
+        android:text="@string/add_new_keyboard_text"
+        android:textAlignment="center"
+        app:layout_constraintTop_toBottomOf="@id/keyboard_selection_view" />
+</androidx.constraintlayout.widget.ConstraintLayout>
