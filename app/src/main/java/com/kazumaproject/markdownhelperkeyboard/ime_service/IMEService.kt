@@ -3746,36 +3746,74 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            var nextOrder = currentKeyboardOrder + 1
-            if (nextOrder == keyboardOrder.size) {
-                if (keyboardOrder.isNotEmpty()) {
-                    nextOrder = 0
-                } else {
-                    return
-                }
-            }
-            keyboardOrder[nextOrder].let { keyboardType ->
-                when (keyboardType) {
-                    KeyboardType.TENKEY -> {}
-                    KeyboardType.QWERTY -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                        _tenKeyQWERTYMode.update {
-                            TenKeyQWERTYMode.TenKeyQWERTY
+            when (gestureType) {
+                GestureType.FlickLeft -> {
+                    val keyboardWidth = appPreference.keyboard_width
+                    if (keyboardWidth == null) {
+                        handleSwitchMode(mainView)
+                    } else {
+                        if (keyboardWidth < 100) {
+                            appPreference.keyboard_position = false
+                            setKeyboardSize()
+                        } else {
+                            handleSwitchMode(mainView)
                         }
-                        mainView.qwertyView.resetQWERTYKeyboard()
                     }
+                }
 
-                    KeyboardType.ROMAJI -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                        _tenKeyQWERTYMode.update {
-                            TenKeyQWERTYMode.TenKeyQWERTY
+                GestureType.FlickRight -> {
+                    val keyboardWidth = appPreference.keyboard_width
+                    if (keyboardWidth == null) {
+                        handleSwitchMode(mainView)
+                    } else {
+                        if (keyboardWidth < 100) {
+                            appPreference.keyboard_position = true
+                            setKeyboardSize()
+                        } else {
+                            handleSwitchMode(mainView)
                         }
-                        mainView.qwertyView.setRomajiKeyboard()
                     }
                 }
+
+                GestureType.Tap, GestureType.FlickBottom, GestureType.FlickTop -> {
+                    handleSwitchMode(mainView)
+                }
+
+                GestureType.Null, GestureType.Down -> {}
             }
-            currentKeyboardOrder = nextOrder
         }
+    }
+
+    private fun handleSwitchMode(mainView: MainLayoutBinding) {
+        var nextOrder = currentKeyboardOrder + 1
+        if (nextOrder == keyboardOrder.size) {
+            if (keyboardOrder.isNotEmpty()) {
+                nextOrder = 0
+            } else {
+                return
+            }
+        }
+        keyboardOrder[nextOrder].let { keyboardType ->
+            when (keyboardType) {
+                KeyboardType.TENKEY -> {}
+                KeyboardType.QWERTY -> {
+                    mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                    _tenKeyQWERTYMode.update {
+                        TenKeyQWERTYMode.TenKeyQWERTY
+                    }
+                    mainView.qwertyView.resetQWERTYKeyboard()
+                }
+
+                KeyboardType.ROMAJI -> {
+                    mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    _tenKeyQWERTYMode.update {
+                        TenKeyQWERTYMode.TenKeyQWERTY
+                    }
+                    mainView.qwertyView.setRomajiKeyboard()
+                }
+            }
+        }
+        currentKeyboardOrder = nextOrder
     }
 
     private fun smallBigLetterConversionEnglish(
