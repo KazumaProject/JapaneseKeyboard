@@ -595,7 +595,7 @@
         android:text="@string/qwety_number_kigou_layout"
         android:textAllCaps="true"
         android:textColor="@color/keyboard_icon_color"
-        android:textSize="@dimen/qwerty_side_key_text_size"
+        android:textSize="@dimen/qwerty_side_key_switch_mode_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_switch_default"
         app:layout_constraintHorizontal_weight="0.5"
