@@ -913,12 +913,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySpace -> {
-                if (cursorMoveMode.value) {
-                    _cursorMoveMode.update { false }
-                } else {
-                    if (!isSpaceKeyLongPressed) {
-                        handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                when (gestureType) {
+                    GestureType.FlickLeft -> {
+                        val keyboardWidth = appPreference.keyboard_width
+                        if (keyboardWidth == null) {
+                            handleSwitchMode(mainView)
+                        } else {
+                            if (keyboardWidth < 100 && insertString.isEmpty()) {
+                                if (!isSpaceKeyLongPressed) {
+                                    appPreference.keyboard_position = false
+                                    setKeyboardSize()
+                                }
+                            } else {
+                                if (!isSpaceKeyLongPressed) {
+                                    handleSpaceKeyClick(
+                                        isFlick,
+                                        insertString,
+                                        suggestions,
+                                        mainView
+                                    )
+                                }
+                            }
+                        }
                     }
+
+                    GestureType.FlickRight -> {
+                        val keyboardWidth = appPreference.keyboard_width
+                        if (keyboardWidth == null) {
+                            handleSwitchMode(mainView)
+                        } else {
+                            if (keyboardWidth < 100 && insertString.isEmpty()) {
+                                if (!isSpaceKeyLongPressed) {
+                                    appPreference.keyboard_position = true
+                                    setKeyboardSize()
+                                }
+                            } else {
+                                if (!isSpaceKeyLongPressed) {
+                                    handleSpaceKeyClick(
+                                        isFlick,
+                                        insertString,
+                                        suggestions,
+                                        mainView
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    GestureType.Tap,
+                    GestureType.FlickTop,
+                    GestureType.FlickBottom -> {
+                        if (!isSpaceKeyLongPressed) {
+                            handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                        }
+                    }
+
+                    GestureType.Null, GestureType.Down -> {}
                 }
                 isSpaceKeyLongPressed = false
             }
@@ -3746,6 +3796,58 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
+            handleSwitchMode(mainView)
+        }
+    }
+
+    private fun handleSwitchMode(mainView: MainLayoutBinding) {
+        var nextOrder = currentKeyboardOrder + 1
+        if (nextOrder == keyboardOrder.size) {
+            if (keyboardOrder.isNotEmpty()) {
+                nextOrder = 0
+            } else {
+                return
+            }
+        }
+        keyboardOrder[nextOrder].let { keyboardType ->
+            when (keyboardType) {
+                KeyboardType.TENKEY -> {}
+                KeyboardType.QWERTY -> {
+                    mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                    _tenKeyQWERTYMode.update {
+                        TenKeyQWERTYMode.TenKeyQWERTY
+                    }
+                    mainView.qwertyView.resetQWERTYKeyboard()
+                }
+
+                KeyboardType.ROMAJI -> {
+                    mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    _tenKeyQWERTYMode.update {
+                        TenKeyQWERTYMode.TenKeyQWERTY
+                    }
+                    mainView.qwertyView.setRomajiKeyboard()
+                }
+            }
+        }
+        currentKeyboardOrder = nextOrder
+    }
+
+    private fun smallBigLetterConversionEnglish(
+        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
+    ) {
+        _dakutenPressed.value = true
+        englishSpaceKeyPressed.set(false)
+
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
+            insertPosition.let { c ->
+                if (!c.isHiragana()) {
+                    c.getDakutenSmallChar()?.let { dakutenChar ->
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
+                    }
+                }
+            }
+        } else {
             var nextOrder = currentKeyboardOrder + 1
             if (nextOrder == keyboardOrder.size) {
                 if (keyboardOrder.isNotEmpty()) {
@@ -3775,29 +3877,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
             currentKeyboardOrder = nextOrder
-        }
-    }
-
-    private fun smallBigLetterConversionEnglish(
-        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
-    ) {
-        _dakutenPressed.value = true
-        englishSpaceKeyPressed.set(false)
-
-        if (insertString.isNotEmpty()) {
-            val insertPosition = insertString.last()
-            insertPosition.let { c ->
-                if (!c.isHiragana()) {
-                    c.getDakutenSmallChar()?.let { dakutenChar ->
-                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
-                    }
-                }
-            }
-        } else {
-            _tenKeyQWERTYMode.update {
-                TenKeyQWERTYMode.TenKeyQWERTY
-            }
-            mainView.qwertyView.resetQWERTYKeyboard()
         }
     }
 
@@ -4048,111 +4127,91 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun setKeyboardSize() {
-        // 1) Early-return if there's no binding
+        // 1) Early-return if the binding isn't available
         val binding = mainLayoutBinding ?: return
 
-        // 2) Read preferences (with defaults)
+        // 2) Read preferences with the same defaults as the settings screen
         val heightPref = appPreference.keyboard_height ?: 280
         val widthPref = appPreference.keyboard_width ?: 100
         val positionPref = appPreference.keyboard_position ?: true
 
-        // 3) Screen metrics
+        // 3) Get screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-        // 4) Clamp height: [210..280] in portrait, ≤ 200 in landscape
-        val clampedHeight = if (isPortrait) {
-            heightPref.coerceIn(210, 280)
-        } else {
-            heightPref.coerceAtMost(200)
-        }
+        // --- REFACTORED LOGIC ---
 
-        val qwertyMode = qwertyMode.value
-        val emojiKeyboardState = keyboardSymbolViewState.value
-        val heightPx = if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) {
-            if (isPortrait) {
-                (280 * density).toInt()
-            } else {
-                (200 * density).toInt()
+        // 4) Determine the final height in pixels
+        // This now respects the user's preference for the default keyboard,
+        // while still allowing overrides for special keyboards like Emoji or full QWERTY.
+        val heightPx = when {
+            // For special keyboards, use specific, fixed heights
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY -> {
+                val height = if (isPortrait) 280 else 200
+                (height * density).toInt()
             }
-        } else if (emojiKeyboardState) {
-            if (isPortrait) {
-                (320 * density).toInt()
-            } else {
-                (220 * density).toInt()
+
+            keyboardSymbolViewState.value -> { // Emoji keyboard state
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
             }
-        } else {
-            (clampedHeight * density).toInt()
-        }
-        // 5) Compute width in px (or MATCH_PARENT) based on orientation/tablet
-        val widthPx = if (isPortrait) {
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            } else {
-                if (widthPref == 100) {
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                } else {
-                    (screenWidth * (widthPref / 100f)).toInt()
-                }
-            }
-        } else {
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY || emojiKeyboardState) {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            } else {
-                if (isTablet == true) {
-                    if (widthPref == 100) {
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    } else {
-                        (screenWidth * (widthPref / 100f)).toInt()
-                    }
-                } else {
-                    // On non-tablet landscape, base width is 80% of screen
-                    val baseWidth = (screenWidth * 0.8).toInt()
-                    if (widthPref == 100) {
-                        baseWidth
-                    } else {
-                        (baseWidth * (widthPref / 100f)).toInt()
-                    }
-                }
+            // For the default keyboard, use the user's preference.
+            // **FIXED**: Clamp the height to the same range as the settings UI (180-280).
+            else -> {
+                val clampedHeight = heightPref.coerceIn(180, 280)
+                (clampedHeight * density).toInt()
             }
         }
 
-        // 6) Determine gravity once
+        // 5) Determine the final width in pixels
+        // **FIXED**: This logic is now simplified and directly reflects the user's percentage
+        // choice, removing the complex and incorrect landscape calculation.
+        val widthPx = when {
+            // Special keyboards and 100% width setting should match the parent
+            widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+            // Otherwise, calculate the width based on the screen percentage
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        // 6) Determine gravity for alignment
         val gravity = if (positionPref) {
             Gravity.BOTTOM or Gravity.END
         } else {
             Gravity.BOTTOM or Gravity.START
         }
 
-        // 7) Helper to apply height & gravity to any View whose layoutParams are FrameLayout.LayoutParams
-        fun applySize(view: View) {
+        // 7) Apply size and gravity to all relevant views
+        fun applyHeightAndGravity(view: View) {
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                 params.height = heightPx
                 params.gravity = gravity
                 view.layoutParams = params
             }
         }
-        // 8) Update either tabletView or keyboardView (depending on isTablet)
+
+        // Apply to keyboard views
         if (isTablet == true) {
-            applySize(binding.tabletView)
+            applyHeightAndGravity(binding.tabletView)
         } else {
-            applySize(binding.keyboardView)
+            applyHeightAndGravity(binding.keyboardView)
         }
+        applyHeightAndGravity(binding.candidatesRowView)
+        applyHeightAndGravity(binding.keyboardSymbolView)
+        applyHeightAndGravity(binding.qwertyView)
 
-        // 9) The candidates row and symbol view use the same height & gravity
-        applySize(binding.candidatesRowView)
-        applySize(binding.keyboardSymbolView)
-        applySize(binding.qwertyView)
-
-        // 10) suggestionViewParent sits above the keyboard, so we adjust bottomMargin instead of height
+        // Adjust the margin for the suggestion view parent
         (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.bottomMargin = heightPx
             params.gravity = gravity
             binding.suggestionViewParent.layoutParams = params
         }
 
-        // 11) Finally, update root’s width and gravity
+        // Finally, update the root view's width and gravity
         (binding.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.width = widthPx
             params.gravity = gravity
