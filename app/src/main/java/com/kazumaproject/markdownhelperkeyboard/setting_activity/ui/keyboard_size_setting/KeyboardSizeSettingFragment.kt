@@ -1,13 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
@@ -18,7 +19,9 @@ import androidx.window.layout.WindowMetricsCalculator
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
+import timber.log.Timber
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @AndroidEntryPoint
 class KeyboardSettingFragment : Fragment() {
@@ -28,7 +31,14 @@ class KeyboardSettingFragment : Fragment() {
 
     private var _binding: FragmentKeyboardSettingBinding? = null
     private val binding get() = _binding!!
+
     private var isRightAligned = true
+
+    // Define min/max dimensions for the keyboard
+    private val minHeightDp = 170
+    private val maxHeightDp = 280
+    private val minWidthPercent = 74
+    private val maxWidthPercent = 100
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -41,35 +51,26 @@ class KeyboardSettingFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // The modern, lifecycle-aware way to handle the "Up" button
         setupMenu()
-
-        // Load initial state
         isRightAligned = appPreference.keyboard_position ?: true
 
-        // Setup UI components
-        setupKeyboardHeightSeekBar()
-        setupKeyboardWidthSeekBar()
-        setupKeyboardPositionButton()
-
-        // Set initial view state from preferences
+        // Set initial state and setup listeners
         setInitialKeyboardView()
-
+        setupKeyboardPositionButton()
+        setupResetButton() // Call the new setup function here
         updateKeyboardAlignment()
+        setupResizeHandles()
     }
 
+    /**
+     * Sets up the modern, lifecycle-aware MenuProvider to handle the "Up" button.
+     */
     private fun setupMenu() {
-        // Show the "Up" button
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
         val menuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                // No new menu items to add
-            }
-
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {}
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // Handle the "Up" button click
                 if (menuItem.itemId == android.R.id.home) {
                     parentFragmentManager.popBackStack()
                     return true
@@ -79,105 +80,171 @@ class KeyboardSettingFragment : Fragment() {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
+    /**
+     * Applies the saved dimensions from preferences to the keyboard container on startup.
+     */
+    @SuppressLint("ClickableViewAccessibility")
     private fun setInitialKeyboardView() {
-        val heightFromPreference = appPreference.keyboard_height ?: 280
-        val widthFromPreference = appPreference.keyboard_width ?: 100
+        val heightFromPreference = appPreference.keyboard_height ?: maxHeightDp
+        val widthFromPreference = appPreference.keyboard_width ?: maxWidthPercent
         val density = resources.displayMetrics.density
         val heightInPx = (heightFromPreference * density).toInt()
 
         val screenWidth = WindowMetricsCalculator.getOrCreate()
             .computeCurrentWindowMetrics(requireActivity()).bounds.width()
 
-        binding.keyboardView.layoutParams = binding.keyboardView.layoutParams.apply {
+        binding.keyboardContainer.layoutParams = binding.keyboardContainer.layoutParams.apply {
             height = heightInPx
-            width = if (widthFromPreference == 100) {
+            width = if (widthFromPreference == maxWidthPercent) {
                 ViewGroup.LayoutParams.MATCH_PARENT
             } else {
                 (screenWidth * (widthFromPreference / 100f)).toInt()
             }
         }
-    }
+        binding.keyboardContainer.requestLayout()
 
-    private fun setupKeyboardHeightSeekBar() {
-        binding.keyboardHeightSeekbar.apply {
-            max = 100
-            progress = (appPreference.keyboard_height ?: 280) - 180
 
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
-                    val actualProgress = progress + 180
-                    appPreference.keyboard_height = actualProgress
-
-                    val density = resources.displayMetrics.density
-                    val heightInPx = (actualProgress * density).toInt()
-
-                    binding.keyboardView.layoutParams = binding.keyboardView.layoutParams.apply {
-                        height = heightInPx
-                    }
-
-                    val padding = calculateSideKeyPadding(actualProgress, density)
-                    binding.keyboardView.setPaddingToSideKeySymbol(padding.toInt())
-                }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-            })
+        binding.keyboardView.setOnTouchListener { _, _ ->
+            true
         }
     }
 
-    private fun calculateSideKeyPadding(progress: Int, density: Float): Float {
-        return when {
-            progress in 210..280 -> {
-                val startPadding = 12 * density
-                val endPadding = 21 * density
-                val normalizedProgress = (progress - 210) / 70f
-                startPadding + (endPadding - startPadding) * normalizedProgress
+    /**
+     * Initializes touch listeners for all four resize handles.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupResizeHandles() {
+        var initialY = 0f
+        var initialHeight = 0
+        var initialX = 0f
+        var initialWidth = 0
+
+        val density = resources.displayMetrics.density
+        val screenWidth = WindowMetricsCalculator.getOrCreate()
+            .computeCurrentWindowMetrics(requireActivity()).bounds.width()
+        val minHeightPx = minHeightDp * density
+        val maxHeightPx = maxHeightDp * density
+        val minWidthPx = screenWidth * (minWidthPercent / 100f)
+
+        // Common function to save preferences on ACTION_UP
+        fun savePreferences() {
+            val finalHeightPx = (binding.keyboardContainer.height / density).roundToInt()
+            val finalWidthPx =
+                ((binding.keyboardContainer.width.toFloat() / screenWidth) * 100).roundToInt()
+
+            appPreference.keyboard_height = finalHeightPx
+            appPreference.keyboard_width = if (finalWidthPx >= 90) {
+                100
+            } else {
+                finalWidthPx
             }
 
-            progress < 210 -> 12 * density
-            else -> 21 * density
+            Timber.d("savePreferences: $finalWidthPx $finalHeightPx")
         }
-    }
 
-    private fun setupKeyboardWidthSeekBar() {
-        binding.keyboardWidthSeekbar.apply {
-            max = 30
-            progress = (appPreference.keyboard_width ?: 100) - 70
-
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
-                    val actualProgress = progress + 70
-                    appPreference.keyboard_width = actualProgress
-
-                    val screenWidth = WindowMetricsCalculator.getOrCreate()
-                        .computeCurrentWindowMetrics(requireActivity()).bounds.width()
-
-                    binding.keyboardView.layoutParams = binding.keyboardView.layoutParams.apply {
-                        width = if (actualProgress == 100) {
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        } else {
-                            (screenWidth * (actualProgress / 100f)).toInt()
-                        }
-                    }
+        // Top Handle
+        binding.handleTop.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialY = event.rawY
+                    initialHeight = binding.keyboardContainer.height
                 }
 
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-            })
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaY = event.rawY - initialY
+                    val newHeight = (initialHeight - deltaY).coerceIn(minHeightPx, maxHeightPx)
+                    binding.keyboardContainer.layoutParams.height = newHeight.toInt()
+                    binding.keyboardContainer.requestLayout()
+                }
+
+                MotionEvent.ACTION_UP -> savePreferences()
+            }
+            true
+        }
+
+        // Bottom Handle
+        binding.handleBottom.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialY = event.rawY
+                    initialHeight = binding.keyboardContainer.height
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaY = event.rawY - initialY
+                    val newHeight = (initialHeight + deltaY).coerceIn(minHeightPx, maxHeightPx)
+                    binding.keyboardContainer.layoutParams.height = newHeight.toInt()
+                    binding.keyboardContainer.requestLayout()
+                }
+
+                MotionEvent.ACTION_UP -> savePreferences()
+            }
+            true
+        }
+
+        // Left Handle
+        binding.handleLeft.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = event.rawX
+                    initialWidth = binding.keyboardContainer.width
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaX = event.rawX - initialX
+                    val newWidth =
+                        (initialWidth - deltaX).coerceIn(minWidthPx, screenWidth.toFloat())
+                    binding.keyboardContainer.layoutParams.width = newWidth.toInt()
+                    binding.keyboardContainer.requestLayout()
+                }
+
+                MotionEvent.ACTION_UP -> savePreferences()
+            }
+            true
+        }
+
+        // Right Handle
+        binding.handleRight.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialX = event.rawX
+                    initialWidth = binding.keyboardContainer.width
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaX = event.rawX - initialX
+                    val newWidth =
+                        (initialWidth + deltaX).coerceIn(minWidthPx, screenWidth.toFloat())
+                    binding.keyboardContainer.layoutParams.width = newWidth.toInt()
+                    binding.keyboardContainer.requestLayout()
+                }
+
+                MotionEvent.ACTION_UP -> savePreferences()
+            }
+            true
         }
     }
 
     private fun setupKeyboardPositionButton() {
         binding.keyboardPositionButton.setOnClickListener {
             isRightAligned = !isRightAligned
+            updateKeyboardAlignment()
+        }
+    }
+
+    /**
+     * Sets up the listener for the new reset button.
+     */
+    private fun setupResetButton() {
+        binding.resetLayoutButton.setOnClickListener {
+            // Set preferences to default values
+            appPreference.keyboard_height = maxHeightDp
+            appPreference.keyboard_width = maxWidthPercent
+            appPreference.keyboard_position = true // Default to right-aligned
+
+            // Update local state and UI
+            isRightAligned = true
+            setInitialKeyboardView()
             updateKeyboardAlignment()
         }
     }
@@ -190,27 +257,30 @@ class KeyboardSettingFragment : Fragment() {
         constraintSet.clone(constraintLayout)
 
         if (isRightAligned) {
+            // Align container to the right
             constraintSet.connect(
-                binding.keyboardView.id,
+                binding.keyboardContainer.id,
                 ConstraintSet.END,
                 ConstraintSet.PARENT_ID,
                 ConstraintSet.END
             )
-            constraintSet.clear(binding.keyboardView.id, ConstraintSet.START)
-
+            constraintSet.clear(binding.keyboardContainer.id, ConstraintSet.START)
             binding.keyboardPositionButton.setBackgroundColor(
-                ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue)
+                ContextCompat.getColor(
+                    requireContext(),
+                    com.kazumaproject.core.R.color.blue
+                )
             )
             binding.keyboardPositionButton.text = "右寄せ"
         } else {
+            // Align container to the left
             constraintSet.connect(
-                binding.keyboardView.id,
+                binding.keyboardContainer.id,
                 ConstraintSet.START,
                 ConstraintSet.PARENT_ID,
                 ConstraintSet.START
             )
-            constraintSet.clear(binding.keyboardView.id, ConstraintSet.END)
-
+            constraintSet.clear(binding.keyboardContainer.id, ConstraintSet.END)
             binding.keyboardPositionButton.setBackgroundColor(
                 ContextCompat.getColor(
                     requireContext(),
@@ -224,7 +294,6 @@ class KeyboardSettingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Hide the "Up" button when the fragment is destroyed
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(false)
         _binding = null
     }
