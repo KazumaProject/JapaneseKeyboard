@@ -614,6 +614,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    fun setRomajiKeyboard() {
+        clearShiftCaps()
+        _qwertyMode.update { QWERTYMode.Default }
+        _romajiModeState.update { true }
+        binding.apply {
+            keySpace.text =
+                resources.getString(com.kazumaproject.core.R.string.space_japanese)
+            keyReturn.text =
+                resources.getString(com.kazumaproject.core.R.string.return_japanese)
+        }
+    }
+
     /**
      * Handle a new pointer DOWN event (when it is not suppressed).
      */
