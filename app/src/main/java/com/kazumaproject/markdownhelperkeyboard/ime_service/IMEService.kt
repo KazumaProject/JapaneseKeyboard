@@ -3015,7 +3015,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
                                 this, suggestions, insertString
                             )
-
                             else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
                         }
                     }
@@ -3592,38 +3591,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             sb.append(insertString).deleteAt(insertString.length - 1).append(inputChar)
             _inputString.update {
                 sb.toString()
-            }
-        }
-    }
-
-    private fun switchToQWERTY() {
-        setKeyboardSize()
-        mainLayoutBinding?.let { mainView ->
-            mainView.apply {
-                qwertyView.isVisible = true
-                keyboardView.isVisible = false
-                tabletView.isVisible = false
-                keyboardSymbolView.isVisible = false
-            }
-        }
-    }
-
-    private fun switchToTenKey() {
-        setKeyboardSize()
-        mainLayoutBinding?.let { mainView ->
-            mainView.apply {
-                qwertyView.isVisible = false
-                keyboardView.isVisible = true
-            }
-        }
-    }
-
-    private fun switchToTabletKey() {
-        setKeyboardSize()
-        mainLayoutBinding?.let { mainView ->
-            mainView.apply {
-                tabletView.isVisible = false
-                keyboardView.isVisible = true
             }
         }
     }

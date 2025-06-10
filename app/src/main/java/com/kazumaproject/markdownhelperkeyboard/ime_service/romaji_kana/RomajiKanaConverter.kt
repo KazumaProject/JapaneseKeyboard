@@ -604,6 +604,21 @@ class RomajiKanaConverter {
         var i = 0
 
         while (i < text.length) {
+
+            when (text[i]) {
+                '.' -> {
+                    result.append('.')
+                    i++
+                    continue
+                }
+
+                ',' -> {
+                    result.append(',')
+                    i++
+                    continue
+                }
+            }
+
             var matched = false
 
             // できるだけ長いキーからマッチを試みる
