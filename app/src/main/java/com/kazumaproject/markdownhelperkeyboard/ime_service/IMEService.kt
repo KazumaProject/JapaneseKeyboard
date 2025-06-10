@@ -1129,8 +1129,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         inputMethodManager.showInputMethodPicker()
     }
 
+    private var currentKeyboardOrder = 0
+
     private fun resetKeyboard() {
         if (keyboardOrder.isEmpty()) return
+        currentKeyboardOrder = 0
         mainLayoutBinding?.apply {
             when (keyboardOrder[0]) {
                 KeyboardType.TENKEY -> {
@@ -2134,18 +2137,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
-                            if (!mainView.qwertyView.getRomajiMode()) {
-                                mainView.qwertyView.setRomajiMode(true)
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                            } else {
-                                _tenKeyQWERTYMode.update {
-                                    TenKeyQWERTYMode.Default
+                            var nextOrder = currentKeyboardOrder + 1
+                            if (nextOrder == keyboardOrder.size) {
+                                if (keyboardOrder.isNotEmpty()) {
+                                    nextOrder = 0
+                                } else {
+                                    return
                                 }
-                                mainView.qwertyView.setRomajiMode(false)
                             }
+                            keyboardOrder[nextOrder].let { keyboardType ->
+                                when (keyboardType) {
+                                    KeyboardType.TENKEY -> {
+                                        _tenKeyQWERTYMode.update {
+                                            TenKeyQWERTYMode.Default
+                                        }
+                                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                        mainView.qwertyView.setRomajiMode(false)
+                                    }
+
+                                    KeyboardType.QWERTY -> {
+                                        mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                                        _tenKeyQWERTYMode.update {
+                                            TenKeyQWERTYMode.TenKeyQWERTY
+                                        }
+                                        mainView.qwertyView.resetQWERTYKeyboard()
+                                    }
+
+                                    KeyboardType.ROMAJI -> {
+                                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                        _tenKeyQWERTYMode.update {
+                                            TenKeyQWERTYMode.TenKeyQWERTY
+                                        }
+                                        mainView.qwertyView.setRomajiKeyboard()
+                                    }
+                                }
+                            }
+
                             _inputString.update { "" }
                             finishComposingText()
                             setComposingText("", 0)
+                            currentKeyboardOrder = nextOrder
                         }
 
                         QWERTYKey.QWERTYKeySwitchMode -> {
@@ -3715,11 +3746,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            _tenKeyQWERTYMode.update {
-                TenKeyQWERTYMode.TenKeyQWERTY
+            var nextOrder = currentKeyboardOrder + 1
+            if (nextOrder == keyboardOrder.size) {
+                if (keyboardOrder.isNotEmpty()) {
+                    nextOrder = 0
+                } else {
+                    return
+                }
             }
-            mainView.qwertyView.resetQWERTYKeyboard()
-            mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+            keyboardOrder[nextOrder].let { keyboardType ->
+                when (keyboardType) {
+                    KeyboardType.TENKEY -> {}
+                    KeyboardType.QWERTY -> {
+                        mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                        _tenKeyQWERTYMode.update {
+                            TenKeyQWERTYMode.TenKeyQWERTY
+                        }
+                        mainView.qwertyView.resetQWERTYKeyboard()
+                    }
+
+                    KeyboardType.ROMAJI -> {
+                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                        _tenKeyQWERTYMode.update {
+                            TenKeyQWERTYMode.TenKeyQWERTY
+                        }
+                        mainView.qwertyView.setRomajiKeyboard()
+                    }
+                }
+            }
+            currentKeyboardOrder = nextOrder
         }
     }
 
