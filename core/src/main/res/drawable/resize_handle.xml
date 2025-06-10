@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- A solid blue fill for the handle -->
+    <!-- You should replace @color/blue with your app's actual color resource -->
+    <solid android:color="@color/blue" />
+
+    <!-- Rounded corners to make the handles look like pills -->
+    <corners android:radius="12dp" />
+
+</shape>

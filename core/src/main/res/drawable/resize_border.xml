@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- A transparent fill for the shape -->
+    <solid android:color="@android:color/transparent" />
+
+    <!-- A 2dp wide blue stroke for the border -->
+    <!-- You should replace @color/blue with your app's actual color resource -->
+    <stroke
+        android:width="2dp"
+        android:color="@color/blue" />
+
+</shape>
