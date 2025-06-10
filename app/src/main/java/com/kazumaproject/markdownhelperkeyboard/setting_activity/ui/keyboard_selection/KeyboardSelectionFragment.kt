@@ -46,7 +46,7 @@ class KeyboardSelectionFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(false)
+            setDisplayHomeAsUpEnabled(true)
         }
     }
 
@@ -94,6 +94,11 @@ class KeyboardSelectionFragment : Fragment() {
                         if (!viewModel.uiState.value.isEditing) {
                             appPreferences.keyboard_order = viewModel.uiState.value.keyboards
                         }
+                        true
+                    }
+
+                    android.R.id.home -> {
+                        parentFragmentManager.popBackStack()
                         true
                     }
 
