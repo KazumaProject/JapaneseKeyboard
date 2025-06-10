@@ -2097,7 +2097,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                         QWERTYKey.QWERTYKeySpace -> {
                             if (!isSpaceKeyLongPressed) {
-                                handleSpaceKeyClickInQWERTY(insertString, mainView)
+                                handleSpaceKeyClickInQWERTY(insertString, mainView, suggestionList)
                             }
                             isSpaceKeyLongPressed = false
                         }
@@ -3015,6 +3015,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
                                 this, suggestions, insertString
                             )
+
                             else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
                         }
                     }
@@ -3028,11 +3029,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleSpaceKeyClickInQWERTY(
-        insertString: String, mainView: MainLayoutBinding
+        insertString: String,
+        mainView: MainLayoutBinding,
+        suggestions: List<Candidate>
     ) {
         if (insertString.isNotBlank()) {
             mainView.apply {
-                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                when (mainView.keyboardView.currentInputMode.value) {
+                    InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
+                        this, suggestions, insertString
+                    )
+
+                    else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                }
             }
         } else {
             if (stringInTail.get().isNotEmpty()) return
