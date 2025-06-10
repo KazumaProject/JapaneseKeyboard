@@ -10,15 +10,16 @@
     <!-- NEW: Delete Icon -->
     <ImageView
         android:id="@+id/delete_icon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:background="@drawable/keyboard_selection_delete_icon_bg"
         android:contentDescription="@string/delete_key"
         android:padding="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/baseline_delete_24" />
+        app:srcCompat="@drawable/remove"
+        app:tint="@color/white" />
 
     <TextView
         android:id="@+id/keyboard_name"

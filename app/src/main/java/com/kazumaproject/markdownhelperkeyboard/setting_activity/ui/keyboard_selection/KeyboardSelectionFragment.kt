@@ -8,6 +8,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
@@ -41,6 +42,13 @@ class KeyboardSelectionFragment : Fragment() {
 
     private lateinit var keyboardSelectionAdapter: KeyboardSelectionAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        (activity as AppCompatActivity).supportActionBar?.apply {
+            setDisplayHomeAsUpEnabled(false)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -123,8 +131,8 @@ class KeyboardSelectionFragment : Fragment() {
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ): Boolean {
-                val fromPosition = viewHolder.adapterPosition
-                val toPosition = target.adapterPosition
+                val fromPosition = viewHolder.bindingAdapterPosition
+                val toPosition = target.bindingAdapterPosition
                 val currentList = viewModel.uiState.value.keyboards.toMutableList()
                 Collections.swap(currentList, fromPosition, toPosition)
                 viewModel.updateKeyboardOrder(currentList)
