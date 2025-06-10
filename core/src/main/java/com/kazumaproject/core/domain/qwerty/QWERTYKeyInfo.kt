@@ -582,4 +582,39 @@ sealed class QWERTYKeyInfo {
         override val capVariations: List<Char>? get() = null
     }
 
+    object KeyBracketLeftJP : QWERTYVariation() {
+        override val tap: Char get() = '「'
+        override val capChar: Char? get() = null
+        override val variations: List<Char>? get() = null
+        override val capVariations: List<Char>? get() = null
+    }
+
+    object KeyBracketRightJP : QWERTYVariation() {
+        override val tap: Char get() = '」'
+        override val capChar: Char? get() = null
+        override val variations: List<Char>? get() = null
+        override val capVariations: List<Char>? get() = null
+    }
+
+    object KeyVerticalBarJP : QWERTYVariation() {
+        override val tap: Char get() = '|'
+        override val capChar: Char? get() = null
+        override val variations: List<Char>? get() = null
+        override val capVariations: List<Char>? get() = null
+    }
+
+    object KeyDotJP : QWERTYVariation() {
+        override val tap: Char get() = '。'
+        override val capChar: Char? get() = null
+        override val variations: List<Char>? get() = null
+        override val capVariations: List<Char>? get() = null
+    }
+
+    object KeyCommaJP : QWERTYVariation() {
+        override val tap: Char get() = '、'
+        override val capChar: Char? get() = null
+        override val variations: List<Char>? get() = null
+        override val capVariations: List<Char>? get() = null
+    }
+
 }

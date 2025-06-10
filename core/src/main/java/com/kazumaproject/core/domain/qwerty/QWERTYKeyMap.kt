@@ -9,6 +9,12 @@ interface QWERTYKeyMapHolder {
 
     val keysSymbol: Set<QWERTYKey>
     fun getKeyInfoSymbol(key: QWERTYKey): QWERTYKeyInfo
+
+    val keysNumberJP: Set<QWERTYKey>
+    fun getKeyInfoNumberJP(key: QWERTYKey): QWERTYKeyInfo
+
+    val keysSymbolJP: Set<QWERTYKey>
+    fun getKeyInfoSymbolJP(key: QWERTYKey): QWERTYKeyInfo
 }
 
 class QWERTYKeyMap : QWERTYKeyMapHolder {
@@ -130,6 +136,88 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn
     )
 
+    private val listNumberJP: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
+        // ─── Top row (Q W E R T Y U I O P) ───
+        QWERTYKey.QWERTYKeyQ to QWERTYKeyInfo.Key1,
+        QWERTYKey.QWERTYKeyW to QWERTYKeyInfo.Key2,
+        QWERTYKey.QWERTYKeyE to QWERTYKeyInfo.Key3,
+        QWERTYKey.QWERTYKeyR to QWERTYKeyInfo.Key4,
+        QWERTYKey.QWERTYKeyT to QWERTYKeyInfo.Key5,
+        QWERTYKey.QWERTYKeyY to QWERTYKeyInfo.Key6,
+        QWERTYKey.QWERTYKeyU to QWERTYKeyInfo.Key7,
+        QWERTYKey.QWERTYKeyI to QWERTYKeyInfo.Key8,
+        QWERTYKey.QWERTYKeyO to QWERTYKeyInfo.Key9,
+        QWERTYKey.QWERTYKeyP to QWERTYKeyInfo.Key0,
+
+        // ─── Middle row (A S D F G H J K L) ───
+        QWERTYKey.QWERTYKeyA to QWERTYKeyInfo.KeyMinus,
+        QWERTYKey.QWERTYKeyS to QWERTYKeyInfo.KeySlash,
+        QWERTYKey.QWERTYKeyD to QWERTYKeyInfo.KeyColon,
+        QWERTYKey.QWERTYKeyF to QWERTYKeyInfo.KeyAtMark,
+        QWERTYKey.QWERTYKeyG to QWERTYKeyInfo.KeyParenOpen,
+        QWERTYKey.QWERTYKeyH to QWERTYKeyInfo.KeyParenClose,
+        QWERTYKey.QWERTYKeyJ to QWERTYKeyInfo.KeyBracketLeftJP,
+        QWERTYKey.QWERTYKeyK to QWERTYKeyInfo.KeyBracketRightJP,
+        QWERTYKey.QWERTYKeyAtMark to QWERTYKeyInfo.KeyYen,
+        QWERTYKey.QWERTYKeyL to QWERTYKeyInfo.KeyAmpersand,
+
+        // ─── Bottom row (Z X C N M) ───
+        QWERTYKey.QWERTYKeyZ to QWERTYKeyInfo.KeyDotJP,
+        QWERTYKey.QWERTYKeyX to QWERTYKeyInfo.KeyCommaJP,
+        QWERTYKey.QWERTYKeyC to QWERTYKeyInfo.KeyQuestion,
+        QWERTYKey.QWERTYKeyN to QWERTYKeyInfo.KeyExclamation,
+        QWERTYKey.QWERTYKeyM to QWERTYKeyInfo.KeyApostrophe,
+
+        // ─── Other function keys ───
+        QWERTYKey.QWERTYKeyShift to QWERTYKeyInfo.KeyShift,
+        QWERTYKey.QWERTYKeyDelete to QWERTYKeyInfo.KeyDelete,
+        QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
+        QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
+        QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
+        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn
+    )
+
+    private val listSymbolJP: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
+        // ─── Top row (Q W E R T Y U I O P) ───
+        QWERTYKey.QWERTYKeyQ to QWERTYKeyInfo.KeyBracketOpen,    // '['
+        QWERTYKey.QWERTYKeyW to QWERTYKeyInfo.KeyBracketClose,   // ']'
+        QWERTYKey.QWERTYKeyE to QWERTYKeyInfo.KeyBraceOpen,      // '{'
+        QWERTYKey.QWERTYKeyR to QWERTYKeyInfo.KeyBraceClose,     // '}'
+        QWERTYKey.QWERTYKeyT to QWERTYKeyInfo.KeyHash,           // '#'
+        QWERTYKey.QWERTYKeyY to QWERTYKeyInfo.KeyPercent,        // '%'
+        QWERTYKey.QWERTYKeyU to QWERTYKeyInfo.KeyCaret,          // '^'
+        QWERTYKey.QWERTYKeyI to QWERTYKeyInfo.KeyAsterisk,       // '*'
+        QWERTYKey.QWERTYKeyO to QWERTYKeyInfo.KeyPlus,
+        QWERTYKey.QWERTYKeyP to QWERTYKeyInfo.KeyEqual,          // '='
+
+        // ─── Middle row (A S D F G H J K L) ───
+        QWERTYKey.QWERTYKeyA to QWERTYKeyInfo.KeyUnderscore,     // '_'
+        QWERTYKey.QWERTYKeyS to QWERTYKeyInfo.KeySlash,          // '/'
+        QWERTYKey.QWERTYKeyD to QWERTYKeyInfo.KeySemicolon,      // ';'
+        QWERTYKey.QWERTYKeyF to QWERTYKeyInfo.KeyVerticalBarJP,  // '|'
+        QWERTYKey.QWERTYKeyG to QWERTYKeyInfo.KeyLessThan,       // '<'
+        QWERTYKey.QWERTYKeyH to QWERTYKeyInfo.KeyGreaterThan,    // '>'
+        QWERTYKey.QWERTYKeyJ to QWERTYKeyInfo.KeyQuote,          // '"'
+        QWERTYKey.QWERTYKeyK to QWERTYKeyInfo.KeyApostrophe,     // '
+        QWERTYKey.QWERTYKeyAtMark to QWERTYKeyInfo.KeyDollar,     // '£'
+        QWERTYKey.QWERTYKeyL to QWERTYKeyInfo.KeyEuro,
+
+        // ─── Bottom row (Z X C N M) ───
+        QWERTYKey.QWERTYKeyZ to QWERTYKeyInfo.KeyDot,
+        QWERTYKey.QWERTYKeyX to QWERTYKeyInfo.KeyComma,
+        QWERTYKey.QWERTYKeyC to QWERTYKeyInfo.KeyQuestion,
+        QWERTYKey.QWERTYKeyN to QWERTYKeyInfo.KeyExclamation,
+        QWERTYKey.QWERTYKeyM to QWERTYKeyInfo.KeyMiddleDot,
+
+        // ─── Other function keys ───
+        QWERTYKey.QWERTYKeyShift to QWERTYKeyInfo.KeyShift,
+        QWERTYKey.QWERTYKeyDelete to QWERTYKeyInfo.KeyDelete,
+        QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
+        QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
+        QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
+        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn
+    )
+
     override val keysDefault: Set<QWERTYKey>
         get() = listDefault.keys
 
@@ -149,6 +237,20 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
 
     override fun getKeyInfoSymbol(key: QWERTYKey): QWERTYKeyInfo {
         return listSymbol.getOrDefault(key, QWERTYKeyInfo.Null)
+    }
+
+    override val keysNumberJP: Set<QWERTYKey>
+        get() = listNumberJP.keys
+
+    override fun getKeyInfoNumberJP(key: QWERTYKey): QWERTYKeyInfo {
+        return listNumberJP.getOrDefault(key, QWERTYKeyInfo.Null)
+    }
+
+    override val keysSymbolJP: Set<QWERTYKey>
+        get() = listSymbolJP.keys
+
+    override fun getKeyInfoSymbolJP(key: QWERTYKey): QWERTYKeyInfo {
+        return listSymbolJP.getOrDefault(key, QWERTYKeyInfo.Null)
     }
 
 }
