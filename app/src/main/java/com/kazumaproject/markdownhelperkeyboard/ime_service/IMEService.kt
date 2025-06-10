@@ -1386,6 +1386,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                    if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                        mainView.qwertyView.apply {
+                            setSpaceKeyText("変換")
+                            setReturnKeyText("確定")
+                        }
+                    }
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
@@ -1401,6 +1407,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 setClipboardPreview(
                                     clipboardUtil.getFirstClipboardTextOrNull() ?: ""
                                 )
+                            }
+                        }
+                        if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                            mainView.qwertyView.apply {
+                                setSpaceKeyText("空白")
+                                setReturnKeyText("改行")
                             }
                         }
                     }
@@ -2136,11 +2148,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyDelete -> {
-                            onDeleteLongPressUp.set(true)
-                            deleteLongPress()
-                            _dakutenPressed.value = false
-                            englishSpaceKeyPressed.set(false)
-                            deleteKeyLongKeyPressed.set(true)
+                            if (isHenkan.get()) {
+                                cancelHenkanByLongPressDeleteKey()
+                            } else {
+                                onDeleteLongPressUp.set(true)
+                                deleteLongPress()
+                                _dakutenPressed.value = false
+                                englishSpaceKeyPressed.set(false)
+                                deleteKeyLongKeyPressed.set(true)
+                            }
                         }
 
                         else -> {

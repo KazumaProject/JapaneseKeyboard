@@ -280,6 +280,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 keyAtMark.text = "￥"
                                 keyL.text = "€"
                             }
+                            key123.text =
+                                resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                         }
                     } else {
                         binding.apply {
@@ -289,11 +291,21 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 resources.getString(com.kazumaproject.core.R.string.return_english)
                             keyA.setMarginStart(23f)
                             keyL.setMarginEnd(23f)
+                            key123.text =
+                                resources.getString(com.kazumaproject.core.R.string.string_abc)
                         }
                     }
                 }
             }
         }
+    }
+
+    fun setSpaceKeyText(text: String) {
+        binding.keySpace.text = text
+    }
+
+    fun setReturnKeyText(text: String) {
+        binding.keyReturn.text = text
     }
 
     /** Map each key View → its corresponding QWERTYKey. */

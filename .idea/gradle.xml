@@ -19,6 +19,7 @@
             <option value="$PROJECT_DIR$/tenkey" />
           </set>
         </option>
+        <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
     </option>
   </component>
