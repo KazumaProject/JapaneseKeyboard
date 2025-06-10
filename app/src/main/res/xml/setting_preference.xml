@@ -4,6 +4,11 @@
 
     <PreferenceCategory android:title="キーボード">
         <Preference
+            android:key="keyboard_selection_preference"
+            android:title="キーボード"
+            android:summary="キーボードの追加、削除ができます"/>
+
+        <Preference
             android:key="keyboard_screen_preference"
             android:summary="キーボードのサイズの設定を変更できます"
             android:title="サイズの設定" />

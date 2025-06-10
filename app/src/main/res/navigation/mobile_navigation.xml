@@ -19,6 +19,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_keyboardSettingFragment"
             app:destination="@id/keyboardSettingFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_keyboardSelectionFragment"
+            app:destination="@id/keyboardSelectionFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -31,8 +34,13 @@
         android:label="学習辞書" />
     <fragment
         android:id="@+id/keyboardSettingFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.keyboard_setting.KeyboardSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.KeyboardSizeSettingFragment"
         android:label="キーボードの設定"
         tools:layout="@layout/fragment_keyboard_setting" />
+    <fragment
+        android:id="@+id/keyboardSelectionFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.KeyboardSelectionFragment"
+        android:label="キーボード"
+        tools:layout="@layout/fragment_keyboard_selection" />
 
 </navigation>

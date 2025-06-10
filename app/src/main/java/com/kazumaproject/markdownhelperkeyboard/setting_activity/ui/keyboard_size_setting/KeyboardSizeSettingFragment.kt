@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.keyboard_setting
+package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting
 
 import android.content.res.Resources
 import android.os.Bundle

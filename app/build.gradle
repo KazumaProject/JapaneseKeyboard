@@ -127,5 +127,7 @@ dependencies {
 
     testImplementation 'androidx.test.ext:junit-ktx:1.2.1'
 
+    implementation 'com.google.code.gson:gson:2.13.1'
+
 //    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }
