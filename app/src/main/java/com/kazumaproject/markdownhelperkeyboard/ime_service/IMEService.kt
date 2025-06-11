@@ -17,7 +17,6 @@ import android.text.SpannableString
 import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
-import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -39,6 +38,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.color.DynamicColors
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
@@ -299,7 +299,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onCreateInputView(): View? {
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-        val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
+        val ctx = DynamicColors.wrapContextIfAvailable(
+            applicationContext,
+            R.style.Theme_MarkdownKeyboard
+        )
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
@@ -311,6 +314,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 justifyContent = JustifyContent.FLEX_START
             }
             mainLayoutBinding?.let { mainView ->
+                mainView.root.setBackgroundResource(
+                    com.kazumaproject.core.R.drawable.keyboard_root_material
+                )
+                mainView.suggestionViewParent.setBackgroundResource(
+                    com.kazumaproject.core.R.drawable.keyboard_root_material
+                )
                 setSuggestionRecyclerView(
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
