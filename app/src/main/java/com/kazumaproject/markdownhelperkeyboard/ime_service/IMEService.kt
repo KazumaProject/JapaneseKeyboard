@@ -913,13 +913,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
 
             Key.SideKeySpace -> {
-                if (!isSpaceKeyLongPressed) {
-                    handleSpaceKeyClick(
-                        isFlick,
-                        insertString,
-                        suggestions,
-                        mainView
-                    )
+                if (cursorMoveMode.value) {
+                    _cursorMoveMode.update { false }
+                } else {
+                    if (!isSpaceKeyLongPressed) {
+                        handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                    }
                 }
                 isSpaceKeyLongPressed = false
             }
