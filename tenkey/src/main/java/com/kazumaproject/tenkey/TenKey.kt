@@ -3,7 +3,6 @@ package com.kazumaproject.tenkey
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
@@ -330,6 +329,131 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             this.isFocusable = false
         }
 
+        val isDarkMode = context.isDarkThemeOn()
+
+        binding.apply {
+            key1.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key2.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key3.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key4.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key5.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key6.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key7.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key8.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key9.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            keySmallLetter.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key11.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            key12.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                )
+            )
+            keyReturn.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+            keySoftLeft.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+            sideKeySymbol.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+            keyDelete.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+            keyMoveCursorRight.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+            keySpace.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+            keySwitchKeyMode.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+            keyEnter.setBackgroundDrawable(
+                ContextCompat.getDrawable(
+                    context,
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                )
+            )
+        }
+
         // ← NEW: launch a coroutine to observe changes to currentInputMode
         scope.launch {
             currentInputMode.collect { inputMode ->
@@ -337,6 +461,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 handleCurrentInputModeSwitch(inputMode)
                 binding.keySwitchKeyMode.setInputMode(inputMode, false)
             }
+        }
+    }
+
+    private fun Context.isDarkThemeOn(): Boolean {
+        return when (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
+            Configuration.UI_MODE_NIGHT_YES -> true   // ダークモード
+            Configuration.UI_MODE_NIGHT_NO -> false  // ライトモード
+            else -> false  // 不定（デフォルトをライト扱い）
         }
     }
 
@@ -1182,7 +1314,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
                 }
                 it.isPressed = true
-                it.setTextColor(Color.WHITE)
                 if (isLongPressed) {
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 }
