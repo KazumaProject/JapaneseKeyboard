@@ -2916,7 +2916,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         val beforeChar = getLastCharacterAsString(currentInputConnection)
                         if (beforeChar.isNotEmpty()) {
                             deletedBuffer.append(beforeChar)
-                            if (beforeChar == "ゥ゙") {
+                            if (
+                                beforeChar == "ァ゙" ||
+                                beforeChar == "ィ゙" ||
+                                beforeChar == "ゥ゙" ||
+                                beforeChar == "ェ゙" ||
+                                beforeChar == "ォ゙" ||
+                                beforeChar == "ッ゙" ||
+                                beforeChar == "ャ゙" ||
+                                beforeChar == "ュ゙" ||
+                                beforeChar == "ョ゙"
+                            ) {
                                 deleteSurroundingTextInCodePoints(2, 0)
                                 continue
                             }
@@ -3073,7 +3083,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             setUndoPreviewText(deletedBuffer.toString())
                         }
                         Timber.d("beforeChar: $beforeChar")
-                        if (beforeChar == "ゥ゙") {
+                        if (beforeChar == "ァ゙" ||
+                            beforeChar == "ィ゙" ||
+                            beforeChar == "ゥ゙" ||
+                            beforeChar == "ェ゙" ||
+                            beforeChar == "ォ゙" ||
+                            beforeChar == "ッ゙" ||
+                            beforeChar == "ャ゙" ||
+                            beforeChar == "ュ゙" ||
+                            beforeChar == "ョ゙"
+                        ) {
                             deleteSurroundingTextInCodePoints(2, 0)
                             return
                         }
