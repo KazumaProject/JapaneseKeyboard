@@ -2137,46 +2137,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
-                            var nextOrder = currentKeyboardOrder + 1
-                            if (nextOrder == keyboardOrder.size) {
-                                if (keyboardOrder.isNotEmpty()) {
-                                    nextOrder = 0
-                                } else {
-                                    return
-                                }
-                            }
-                            keyboardOrder[nextOrder].let { keyboardType ->
-                                when (keyboardType) {
-                                    KeyboardType.TENKEY -> {
-                                        _tenKeyQWERTYMode.update {
-                                            TenKeyQWERTYMode.Default
-                                        }
-                                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                                        mainView.qwertyView.setRomajiMode(false)
-                                    }
-
-                                    KeyboardType.QWERTY -> {
-                                        mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                                        _tenKeyQWERTYMode.update {
-                                            TenKeyQWERTYMode.TenKeyQWERTY
-                                        }
-                                        mainView.qwertyView.resetQWERTYKeyboard()
-                                    }
-
-                                    KeyboardType.ROMAJI -> {
-                                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                                        _tenKeyQWERTYMode.update {
-                                            TenKeyQWERTYMode.TenKeyQWERTY
-                                        }
-                                        mainView.qwertyView.setRomajiKeyboard()
-                                    }
-                                }
-                            }
+                            switchNextKeyboard()
 
                             _inputString.update { "" }
                             finishComposingText()
                             setComposingText("", 0)
-                            currentKeyboardOrder = nextOrder
                         }
 
                         QWERTYKey.QWERTYKeySwitchMode -> {
@@ -3718,7 +3683,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun dakutenSmallLetter(
         sb: StringBuilder,
         insertString: String,
-        mainView: MainLayoutBinding,
         gestureType: GestureType
     ) {
         _dakutenPressed.value = true
@@ -3765,44 +3729,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            handleSwitchMode(mainView)
+            switchNextKeyboard()
         }
     }
 
-    private fun handleSwitchMode(mainView: MainLayoutBinding) {
-        var nextOrder = currentKeyboardOrder + 1
-        if (nextOrder == keyboardOrder.size) {
-            if (keyboardOrder.isNotEmpty()) {
-                nextOrder = 0
-            } else {
-                return
-            }
+    /**  1) 各キーボード切替時の処理をマップにまとめる **/
+    private val keyboardHandlers: Map<KeyboardType, () -> Unit> = mapOf(
+        KeyboardType.TENKEY to {
+            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+            mainLayoutBinding?.qwertyView?.setRomajiMode(false)
+        },
+        KeyboardType.QWERTY to {
+            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeEnglish)
+            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+            mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
+        },
+        KeyboardType.ROMAJI to {
+            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+            mainLayoutBinding?.qwertyView?.setRomajiKeyboard()
         }
-        keyboardOrder[nextOrder].let { keyboardType ->
-            when (keyboardType) {
-                KeyboardType.TENKEY -> {}
-                KeyboardType.QWERTY -> {
-                    mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                    _tenKeyQWERTYMode.update {
-                        TenKeyQWERTYMode.TenKeyQWERTY
-                    }
-                    mainView.qwertyView.resetQWERTYKeyboard()
-                }
+        // 新しい KeyboardType を追加するときはここに entry を追加するだけ
+    )
 
-                KeyboardType.ROMAJI -> {
-                    mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    _tenKeyQWERTYMode.update {
-                        TenKeyQWERTYMode.TenKeyQWERTY
-                    }
-                    mainView.qwertyView.setRomajiKeyboard()
-                }
-            }
-        }
-        currentKeyboardOrder = nextOrder
+    // 2) 次のモードに切り替える関数
+    fun switchNextKeyboard() {
+        if (keyboardOrder.isEmpty()) return
+
+        // モジュール演算で自動的に 0 に戻る
+        val nextIndex = (currentKeyboardOrder + 1) % keyboardOrder.size
+        val nextType = keyboardOrder[nextIndex]
+
+        // マップから処理を呼び出し
+        keyboardHandlers[nextType]?.invoke()
+
+        currentKeyboardOrder = nextIndex
     }
 
     private fun smallBigLetterConversionEnglish(
-        sb: StringBuilder, insertString: String, mainView: MainLayoutBinding
+        sb: StringBuilder, insertString: String,
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)
@@ -3817,35 +3783,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         } else {
-            var nextOrder = currentKeyboardOrder + 1
-            if (nextOrder == keyboardOrder.size) {
-                if (keyboardOrder.isNotEmpty()) {
-                    nextOrder = 0
-                } else {
-                    return
-                }
-            }
-            keyboardOrder[nextOrder].let { keyboardType ->
-                when (keyboardType) {
-                    KeyboardType.TENKEY -> {}
-                    KeyboardType.QWERTY -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                        _tenKeyQWERTYMode.update {
-                            TenKeyQWERTYMode.TenKeyQWERTY
-                        }
-                        mainView.qwertyView.resetQWERTYKeyboard()
-                    }
-
-                    KeyboardType.ROMAJI -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                        _tenKeyQWERTYMode.update {
-                            TenKeyQWERTYMode.TenKeyQWERTY
-                        }
-                        mainView.qwertyView.setRomajiKeyboard()
-                    }
-                }
-            }
-            currentKeyboardOrder = nextOrder
+            switchNextKeyboard()
         }
     }
 
@@ -3862,12 +3800,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (it.currentInputMode.get()) {
                     InputMode.ModeJapanese -> {
                         dakutenSmallLetter(
-                            sb, insertString, mainView, gestureType
+                            sb, insertString, gestureType
                         )
                     }
 
                     InputMode.ModeEnglish -> {
-                        smallBigLetterConversionEnglish(sb, insertString, mainView)
+                        smallBigLetterConversionEnglish(sb, insertString)
                     }
 
                     InputMode.ModeNumber -> {
@@ -3882,12 +3820,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (it.currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         dakutenSmallLetter(
-                            sb, insertString, mainView, gestureType
+                            sb, insertString, gestureType
                         )
                     }
 
                     InputMode.ModeEnglish -> {
-                        smallBigLetterConversionEnglish(sb, insertString, mainView)
+                        smallBigLetterConversionEnglish(sb, insertString)
                     }
 
                     InputMode.ModeNumber -> {
