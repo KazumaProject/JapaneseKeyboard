@@ -475,6 +475,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             else
                 com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
 
+            val roundRes = if (isDarkMode)
+                com.kazumaproject.core.R.drawable.round_key_bg_material
+            else
+                com.kazumaproject.core.R.drawable.round_key_bg_material_light
             // 中央キー
             listOf(
                 key1, key2, key3, key4, key5, key6,
@@ -490,12 +494,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             listOf(
                 keyReturn, keySoftLeft, sideKeySymbol,
                 keyDelete, keyMoveCursorRight, keySpace,
-                keySwitchKeyMode, keyEnter
-            ).forEach { btn ->
+
+                ).forEach { btn ->
                 btn.background = ContextCompat
                     .getDrawable(context, sideRes)
                     ?.mutate()
             }
+
+            keyEnter.background = ContextCompat
+                .getDrawable(context, roundRes)
+
+            keySwitchKeyMode.background = ContextCompat
+                .getDrawable(context, roundRes)
+
         }
     }
 

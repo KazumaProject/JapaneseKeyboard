@@ -16,6 +16,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_TABLET
 import com.kazumaproject.core.data.tablet.TabletCapsLockState
@@ -284,11 +285,15 @@ class TabletKeyboardView @JvmOverloads constructor(
         _tabletCapsLockState.asStateFlow()
     private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    private var isDynamicColorsEnable = false
+
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
         declarePopupWindows()
         handleCurrentInputModeSwitch(inputMode = currentInputMode.get())
+
+        setMaterialYouTheme()
 
         uiScope.launch {
             tabletCapsLockState.collectLatest { state ->
@@ -311,6 +316,29 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
                 }
             }
+        }
+    }
+
+    private fun setMaterialYouTheme() {
+        isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+        if (isDynamicColorsEnable) {
+            allButtonKeys.forEach {
+                it.setBackgroundDrawable(
+                    ContextCompat.getDrawable(
+                        this.context,
+                        com.kazumaproject.core.R.drawable.tablet_keyboard_center_bg_material
+                    )
+                )
+            }
+            allImageButtonKeys.forEach {
+                it.setBackgroundDrawable(
+                    ContextCompat.getDrawable(
+                        this.context,
+                        com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    )
+                )
+            }
+            return
         }
     }
 
@@ -413,9 +441,13 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("InflateParams")
     private fun declarePopupWindows() {
+        isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
         val mPopWindowActive = PopupWindow(context)
         val popupViewActive =
-            LayoutInflater.from(context).inflate(R.layout.popup_layout_active, null)
+            if (isDynamicColorsEnable) LayoutInflater.from(context)
+                .inflate(R.layout.popup_layout_active_material, null) else LayoutInflater.from(
+                context
+            ).inflate(R.layout.popup_layout_active, null)
         mPopWindowActive.contentView = popupViewActive
 
         val mPopWindowLeft = PopupWindow(context)
@@ -3119,17 +3151,31 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key40.setMarginEnd(2f)
 
                     if (tabletCapsLockState.value.capsLockOn || tabletCapsLockState.value.shiftOn) {
-                        binding.key5.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left
-                        )
+                        if (isDynamicColorsEnable) {
+                            binding.key5.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                            )
+                        } else {
+                            binding.key5.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left
+                            )
+                        }
                     }
 
                     if (tabletCapsLockState.value.zenkakuOn) {
-                        binding.key55.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                        )
+                        if (isDynamicColorsEnable) {
+                            binding.key55.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        } else {
+                            binding.key55.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                            )
+                        }
                     }
                 }
                 clearShiftCaps()
@@ -3199,10 +3245,12 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key39.setMarginEnd(0f)
                     key40.setMarginEnd(0f)
 
-                    key55.background = ContextCompat.getDrawable(
-                        this@TabletKeyboardView.context,
-                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                    )
+                    if (isDynamicColorsEnable) {
+                        key55.background = ContextCompat.getDrawable(
+                            this@TabletKeyboardView.context,
+                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                        )
+                    }
                 }
                 clearShiftCaps()
                 InputMode.ModeJapanese
@@ -3276,15 +3324,16 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key38.setMarginEnd(0f)
                     key39.setMarginEnd(0f)
                     key40.setMarginEnd(0f)
-
-                    key5.background = ContextCompat.getDrawable(
-                        this@TabletKeyboardView.context,
-                        com.kazumaproject.core.R.drawable.selector_corner_bottom_left
-                    )
-                    key55.background = ContextCompat.getDrawable(
-                        this@TabletKeyboardView.context,
-                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                    )
+                    if (isDynamicColorsEnable) {
+                        key5.background = ContextCompat.getDrawable(
+                            this@TabletKeyboardView.context,
+                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                        )
+                        key55.background = ContextCompat.getDrawable(
+                            this@TabletKeyboardView.context,
+                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                        )
+                    }
                 }
                 clearShiftCaps()
             }
@@ -3339,14 +3388,16 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key55.setStartToEndOf(key45)
                     key45.setEndToStartOf(key55)
 
-                    key5.background = ContextCompat.getDrawable(
-                        this@TabletKeyboardView.context,
-                        com.kazumaproject.core.R.drawable.selector_corner_bottom_left
-                    )
-                    key55.background = ContextCompat.getDrawable(
-                        this@TabletKeyboardView.context,
-                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                    )
+                    if (isDynamicColorsEnable) {
+                        key5.background = ContextCompat.getDrawable(
+                            this@TabletKeyboardView.context,
+                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                        )
+                        key55.background = ContextCompat.getDrawable(
+                            this@TabletKeyboardView.context,
+                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                        )
+                    }
                 }
                 clearShiftCaps()
             }
@@ -3371,15 +3422,17 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key39.setMarginEnd(2f)
                     key40.setMarginEnd(2f)
 
-                    key5.background = ContextCompat.getDrawable(
-                        this@TabletKeyboardView.context,
-                        com.kazumaproject.core.R.drawable.selector_corner_bottom_left
-                    )
+                    if (isDynamicColorsEnable) {
+                        key5.background = ContextCompat.getDrawable(
+                            this@TabletKeyboardView.context,
+                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                        )
 
-                    key55.background = ContextCompat.getDrawable(
-                        this@TabletKeyboardView.context,
-                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                    )
+                        key55.background = ContextCompat.getDrawable(
+                            this@TabletKeyboardView.context,
+                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                        )
+                    }
                 }
                 clearShiftCaps()
             }
@@ -3413,15 +3466,23 @@ class TabletKeyboardView @JvmOverloads constructor(
                     else com.kazumaproject.core.R.string.shift_symbol
                 ), scaleX = 1.618f
             )
-            background = ContextCompat.getDrawable(
-                ctx, com.kazumaproject.core.R.drawable.selector_corner_bottom_left
-            )
+            if (isDynamicColorsEnable) {
+                background = ContextCompat.getDrawable(
+                    ctx, com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                )
+            }
         }
         key20.setLargeUnicodeIcon(
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
         val zenkakuBg = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-        else com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+        else {
+            if (isDynamicColorsEnable) {
+                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+            } else {
+                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+            }
+        }
 
         key55.background = ContextCompat.getDrawable(ctx, zenkakuBg)
     }
@@ -3444,7 +3505,13 @@ class TabletKeyboardView @JvmOverloads constructor(
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
         val bgRes = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-        else com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+        else {
+            if (isDynamicColorsEnable) {
+                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+            } else {
+                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+            }
+        }
         key55.background = ContextCompat.getDrawable(ctx, bgRes)
     }
 
@@ -3467,7 +3534,13 @@ class TabletKeyboardView @JvmOverloads constructor(
         )
 
         val bgRes = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-        else com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+        else {
+            if (isDynamicColorsEnable) {
+                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+            } else {
+                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+            }
+        }
         key55.background = ContextCompat.getDrawable(ctx, bgRes)
     }
 
@@ -3481,7 +3554,13 @@ class TabletKeyboardView @JvmOverloads constructor(
                 icon = resources.getString(com.kazumaproject.core.R.string.tablet_number_command),
             )
             val zenkakuBg = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-            else com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+            else {
+                if (isDynamicColorsEnable) {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                } else {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                }
+            }
 
             key55.background = ContextCompat.getDrawable(ctx, zenkakuBg)
         }

@@ -96,7 +96,7 @@
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
         android:layout_marginBottom="4dp"
-        android:background="@drawable/mode_key_bg"
+        android:background="@drawable/round_key_bg_material"
         android:contentDescription="@string/keyboard_japanese"
         android:elevation="@dimen/key_elevation"
         android:scaleType="centerInside"

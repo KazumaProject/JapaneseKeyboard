@@ -107,7 +107,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/key_kigou"
         app:layout_constraintVertical_weight="1"
-        app:tint="@color/black" />
+        app:tint="@color/keyboard_icon_color" />
 
     <!-- Column 1: key_1–key_5 -->
 
