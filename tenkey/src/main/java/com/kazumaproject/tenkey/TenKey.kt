@@ -2,6 +2,7 @@ package com.kazumaproject.tenkey
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -16,6 +17,7 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
+import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_SMART_PHONE
@@ -456,6 +458,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         isDynamicColorEnable: Boolean
     ) {
         if (!isDynamicColorEnable) {
+            val tint = ColorStateList.valueOf(
+                ContextCompat.getColor(context, com.kazumaproject.core.R.color.black)
+            )
+            ImageViewCompat.setImageTintList(binding.keyEnter, tint)
             return
         }
         binding.apply {
