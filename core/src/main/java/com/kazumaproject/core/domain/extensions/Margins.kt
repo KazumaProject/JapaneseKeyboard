@@ -21,3 +21,22 @@ fun View.setMarginEnd(dp: Float) {
     params.marginEnd = px
     layoutParams = params
 }
+
+fun View.setMarginTop(dp: Float) {
+    val px = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics
+    ).toInt()
+    val params = layoutParams as? ViewGroup.MarginLayoutParams ?: return
+    params.topMargin = px
+    layoutParams = params
+}
+
+fun View.setMarginBottom(dp: Float) {
+    val px = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics
+    ).toInt()
+    val params = layoutParams as? ViewGroup.MarginLayoutParams ?: return
+    params.bottomMargin = px
+    layoutParams = params
+}
+
