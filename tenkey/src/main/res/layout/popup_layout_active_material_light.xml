@@ -9,10 +9,10 @@
     app:bl_arrowHeight="0dp"
     app:bl_arrowPosition="16dp"
     app:bl_arrowWidth="0dp"
-    app:bl_bubbleColor="@color/popup_bg_active"
+    app:bl_bubbleColor="?attr/colorSurface"
     app:bl_cornersRadius="8dp"
-    app:bl_strokeColor="@color/popup_bg_stroke"
-    app:bl_strokeWidth="1dp">
+    app:bl_strokeColor="?attr/colorSurfaceContainerHigh"
+    app:bl_strokeWidth="1.618dp">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/popup_text_active"
@@ -21,7 +21,7 @@
         android:layout_gravity="center"
         android:ems="4"
         android:textAlignment="center"
-        android:textColor="@color/white"
+        android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/pop_view_size"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

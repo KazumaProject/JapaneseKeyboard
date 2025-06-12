@@ -35,7 +35,7 @@
             android:background="@drawable/recyclerview_size_button_bg"
             android:scaleType="center"
             android:src="@drawable/outline_arrow_drop_down_24"
-            android:tint="@color/recycler_view_size_change_button_tint"
+            android:tint="@color/keyboard_icon_color"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

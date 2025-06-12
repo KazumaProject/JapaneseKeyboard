@@ -23,7 +23,7 @@ object AppPreference {
     private val MOZCUT_NEOLOGD = Pair("mozc_ut_neologd_preference", false)
     private val MOZCUT_WEB = Pair("mozc_ut_web_preference", false)
 
-    private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 280)
+    private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
