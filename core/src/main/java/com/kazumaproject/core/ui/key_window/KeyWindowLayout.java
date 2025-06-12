@@ -158,8 +158,8 @@ public class KeyWindowLayout extends FrameLayout {
                 break;
         }
         if (mStrokeWidth > 0) {
-            paddingLeft -= mStrokeWidth;
-            paddingRight -= mStrokeWidth;
+            paddingLeft -= (int) mStrokeWidth;
+            paddingRight -= (int) mStrokeWidth;
             paddingTop -= mStrokeWidth;
             paddingBottom -= mStrokeWidth;
         }
@@ -168,7 +168,7 @@ public class KeyWindowLayout extends FrameLayout {
 
     static float convertDpToPixel(float dp, Context context) {
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
-        return dp * (metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
+        return dp * ((float) metrics.densityDpi / DisplayMetrics.DENSITY_DEFAULT);
     }
 
     public KeyWindowLayout setArrowDirection(ArrowDirection arrowDirection) {

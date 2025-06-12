@@ -22,8 +22,9 @@ fun PopupWindow.setPopUpWindowFlickRight(
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.LEFT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.LEFT_CENTER
-        bubble.arrowHeight = anchorView.height - 11f
+        bubble.arrowHeight = anchorView.height.toFloat()
         bubble.arrowWidth = (anchorView.width / 2).toFloat()
+        bubble.cornersRadius = 0f
     }
     when (context.resources.configuration.orientation) {
         Configuration.ORIENTATION_PORTRAIT -> {
@@ -68,8 +69,9 @@ fun PopupWindow.setPopUpWindowFlickLeft(
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.RIGHT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.RIGHT_CENTER
-        bubble.arrowHeight = anchorView.height - 11f
+        bubble.arrowHeight = anchorView.height.toFloat()
         bubble.arrowWidth = (anchorView.width / 2).toFloat()
+        bubble.cornersRadius = 0f
     }
     when (context.resources.configuration.orientation) {
         Configuration.ORIENTATION_PORTRAIT -> {
@@ -118,7 +120,8 @@ fun PopupWindow.setPopUpWindowFlickBottom(
         if (bubble.arrowDirection != ArrowDirection.TOP_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.TOP_CENTER
         bubble.arrowHeight = (anchorView.height / 2).toFloat()
-        bubble.arrowWidth = anchorView.width - 12f
+        bubble.arrowWidth = anchorView.width.toFloat()
+        bubble.cornersRadius = 0f
     }
     when (context.resources.configuration.orientation) {
         Configuration.ORIENTATION_PORTRAIT -> {
@@ -186,7 +189,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
         if (bubble.arrowDirection != ArrowDirection.BOTTOM_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.BOTTOM_CENTER
         bubble.arrowHeight = (anchorView.height / 2).toFloat()
-        bubble.arrowWidth = anchorView.width - 12f
+        bubble.arrowWidth = anchorView.width.toFloat()
+        bubble.cornersRadius = 0f
     }
     when (context.resources.configuration.orientation) {
         Configuration.ORIENTATION_PORTRAIT -> {
