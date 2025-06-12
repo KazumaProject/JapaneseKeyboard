@@ -38,6 +38,8 @@ import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.databinding.KeyboardLayoutBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutActiveBinding
+import com.kazumaproject.tenkey.databinding.PopupLayoutActiveMaterialBinding
+import com.kazumaproject.tenkey.databinding.PopupLayoutActiveMaterialLightBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutMaterialLightBinding
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
@@ -244,16 +246,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val isDarkMode = context.isDarkThemeOn()
         // Prepare popups using their own bindings
         // --- Active popup (center) ---
-        val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
-        popupWindowActive = PopupWindow(
-            activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-        )
-        bubbleViewActive = activeBinding.bubbleLayoutActive
-        popTextActive = activeBinding.popupTextActive
 
         // --- Left popup ---
         if (isDynamicColorsEnable) {
             if (isDarkMode) {
+                val activeBinding = PopupLayoutActiveMaterialBinding.inflate(inflater, null, false)
+                popupWindowActive = PopupWindow(
+                    activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewActive = activeBinding.bubbleLayoutActive
+                popTextActive = activeBinding.popupTextActive
                 val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
                 popupWindowLeft = PopupWindow(
                     leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
@@ -261,6 +263,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 bubbleViewLeft = leftBinding.bubbleLayout
                 popTextLeft = leftBinding.popupText
             } else {
+                val activeBinding =
+                    PopupLayoutActiveMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowActive = PopupWindow(
+                    activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewActive = activeBinding.bubbleLayoutActive
+                popTextActive = activeBinding.popupTextActive
                 val leftBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
                 popupWindowLeft = PopupWindow(
                     leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
@@ -269,6 +278,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 popTextLeft = leftBinding.popupText
             }
         } else {
+            val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
+            popupWindowActive = PopupWindow(
+                activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            )
+            bubbleViewActive = activeBinding.bubbleLayoutActive
+            popTextActive = activeBinding.popupTextActive
+
             val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
             popupWindowLeft = PopupWindow(
                 leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
@@ -1464,7 +1480,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                     else -> {}
                 }
-                it.isPressed = false
+                it.isPressed = true
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                 if (!isLongPressed) it.setImageDrawable(null)

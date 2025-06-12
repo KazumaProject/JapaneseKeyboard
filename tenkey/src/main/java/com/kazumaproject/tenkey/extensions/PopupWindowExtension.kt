@@ -15,18 +15,18 @@ fun PopupWindow.setPopUpWindowFlickRight(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width + (anchorView.width) / 2
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.LEFT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.LEFT_CENTER
-        bubble.arrowHeight = anchorView.height - 12f
+        bubble.arrowHeight = anchorView.height - 11f
         bubble.arrowWidth = (anchorView.width / 2).toFloat()
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
                 anchorView.width - (anchorView.width) / 2,
@@ -34,7 +34,8 @@ fun PopupWindow.setPopUpWindowFlickRight(
                 Gravity.CENTER
             )
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 anchorView.width - (anchorView.width) / 2,
@@ -42,6 +43,7 @@ fun PopupWindow.setPopUpWindowFlickRight(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
@@ -50,7 +52,8 @@ fun PopupWindow.setPopUpWindowFlickRight(
                 Gravity.CENTER
             )
         }
-        else ->{}
+
+        else -> {}
     }
 }
 
@@ -58,18 +61,18 @@ fun PopupWindow.setPopUpWindowFlickLeft(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width + (anchorView.width) / 2
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.RIGHT_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.RIGHT_CENTER
-        bubble.arrowHeight = anchorView.height - 12f
+        bubble.arrowHeight = anchorView.height - 11f
         bubble.arrowWidth = (anchorView.width / 2).toFloat()
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
                 -(anchorView.width),
@@ -77,7 +80,8 @@ fun PopupWindow.setPopUpWindowFlickLeft(
                 Gravity.CENTER
             )
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 -(anchorView.width),
@@ -85,6 +89,7 @@ fun PopupWindow.setPopUpWindowFlickLeft(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
@@ -93,7 +98,8 @@ fun PopupWindow.setPopUpWindowFlickLeft(
                 Gravity.CENTER
             )
         }
-        else ->{
+
+        else -> {
 
         }
     }
@@ -104,7 +110,7 @@ fun PopupWindow.setPopUpWindowFlickBottom(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width
     this.height = anchorView.height + (anchorView.height / 2)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -114,50 +120,55 @@ fun PopupWindow.setPopUpWindowFlickBottom(
         bubble.arrowHeight = (anchorView.height / 2).toFloat()
         bubble.arrowWidth = anchorView.width - 12f
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
-            when(anchorView.id){
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
+            when (anchorView.id) {
                 R.id.key_small_letter,
                 R.id.key_11,
-                R.id.key_12 ->{
+                R.id.key_12 -> {
 
                 }
-                else ->{
+
+                else -> {
                     showAsDropDown(
                         anchorView,
                         0,
-                        - (anchorView.height / 2),
+                        -(anchorView.height / 2),
                         Gravity.CENTER
                     )
                 }
             }
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 0,
-                - (anchorView.height / 2),
+                -(anchorView.height / 2),
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
-            when(anchorView.id){
+            when (anchorView.id) {
                 R.id.key_small_letter,
                 R.id.key_11,
-                R.id.key_12 ->{
+                R.id.key_12 -> {
 
                 }
-                else ->{
+
+                else -> {
                     showAsDropDown(
                         anchorView,
                         0,
-                        - (anchorView.height / 2),
+                        -(anchorView.height / 2),
                         Gravity.CENTER
                     )
                 }
             }
         }
-        else ->{
+
+        else -> {
 
         }
     }
@@ -167,7 +178,7 @@ fun PopupWindow.setPopUpWindowFlickTop(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width
     this.height = anchorView.height + (anchorView.height / 2)
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -177,8 +188,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
         bubble.arrowHeight = (anchorView.height / 2).toFloat()
         bubble.arrowWidth = anchorView.width - 12f
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
                 0,
@@ -186,7 +197,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
                 Gravity.CENTER
             )
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 0,
@@ -194,6 +206,7 @@ fun PopupWindow.setPopUpWindowFlickTop(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
@@ -202,7 +215,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
                 Gravity.CENTER
             )
         }
-        else ->{
+
+        else -> {
 
         }
     }
@@ -212,7 +226,7 @@ fun PopupWindow.setPopUpWindowCenter(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -222,8 +236,8 @@ fun PopupWindow.setPopUpWindowCenter(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
                 0,
@@ -231,7 +245,8 @@ fun PopupWindow.setPopUpWindowCenter(
                 Gravity.CENTER
             )
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 0,
@@ -239,6 +254,7 @@ fun PopupWindow.setPopUpWindowCenter(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
@@ -247,7 +263,8 @@ fun PopupWindow.setPopUpWindowCenter(
                 Gravity.CENTER
             )
         }
-        else ->{}
+
+        else -> {}
     }
 }
 
@@ -255,7 +272,7 @@ fun PopupWindow.setPopUpWindowRight(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -265,8 +282,8 @@ fun PopupWindow.setPopUpWindowRight(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
                 anchorView.width,
@@ -274,7 +291,8 @@ fun PopupWindow.setPopUpWindowRight(
                 Gravity.CENTER
             )
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 anchorView.width,
@@ -282,6 +300,7 @@ fun PopupWindow.setPopUpWindowRight(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
@@ -290,7 +309,8 @@ fun PopupWindow.setPopUpWindowRight(
                 Gravity.CENTER
             )
         }
-        else ->{}
+
+        else -> {}
     }
 }
 
@@ -298,7 +318,7 @@ fun PopupWindow.setPopUpWindowLeft(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -308,8 +328,8 @@ fun PopupWindow.setPopUpWindowLeft(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
                 -(anchorView.width),
@@ -317,7 +337,8 @@ fun PopupWindow.setPopUpWindowLeft(
                 Gravity.CENTER
             )
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 -(anchorView.width),
@@ -325,6 +346,7 @@ fun PopupWindow.setPopUpWindowLeft(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
@@ -333,7 +355,8 @@ fun PopupWindow.setPopUpWindowLeft(
                 Gravity.CENTER
             )
         }
-        else ->{
+
+        else -> {
 
         }
     }
@@ -344,7 +367,7 @@ fun PopupWindow.setPopUpWindowBottom(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -354,15 +377,16 @@ fun PopupWindow.setPopUpWindowBottom(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
-            when(anchorView.id){
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
+            when (anchorView.id) {
                 R.id.key_small_letter,
                 R.id.key_11,
-                R.id.key_12 ->{
+                R.id.key_12 -> {
 
                 }
-                else ->{
+
+                else -> {
                     showAsDropDown(
                         anchorView,
                         0,
@@ -372,7 +396,8 @@ fun PopupWindow.setPopUpWindowBottom(
                 }
             }
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 0,
@@ -380,14 +405,16 @@ fun PopupWindow.setPopUpWindowBottom(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
-            when(anchorView.id){
+            when (anchorView.id) {
                 R.id.key_small_letter,
                 R.id.key_11,
-                R.id.key_12 ->{
+                R.id.key_12 -> {
 
                 }
-                else ->{
+
+                else -> {
                     showAsDropDown(
                         anchorView,
                         0,
@@ -397,7 +424,8 @@ fun PopupWindow.setPopUpWindowBottom(
                 }
             }
         }
-        else ->{
+
+        else -> {
 
         }
     }
@@ -407,7 +435,7 @@ fun PopupWindow.setPopUpWindowTop(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
-){
+) {
     this.width = anchorView.width
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -417,8 +445,8 @@ fun PopupWindow.setPopUpWindowTop(
         bubble.arrowWidth = 0f
         bubble.arrowHeight = 0f
     }
-    when(context.resources.configuration.orientation){
-        Configuration.ORIENTATION_PORTRAIT ->{
+    when (context.resources.configuration.orientation) {
+        Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
                 0,
@@ -426,7 +454,8 @@ fun PopupWindow.setPopUpWindowTop(
                 Gravity.CENTER
             )
         }
-        Configuration.ORIENTATION_LANDSCAPE ->{
+
+        Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
                 0,
@@ -434,6 +463,7 @@ fun PopupWindow.setPopUpWindowTop(
                 Gravity.CENTER
             )
         }
+
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
@@ -442,7 +472,8 @@ fun PopupWindow.setPopUpWindowTop(
                 Gravity.CENTER
             )
         }
-        else ->{
+
+        else -> {
 
         }
     }

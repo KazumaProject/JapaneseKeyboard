@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -172,6 +173,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         if (holder is EmptyViewHolder) {
             holder.apply {
                 // Set enabled/disabled state on icons
@@ -195,6 +197,17 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 clipboardPreviewText?.text = clipboardText
 
                 undoIconParent?.apply {
+                    if (isDynamicColorEnable) {
+                        if (this.context.isDarkThemeOn()) {
+                            setBackgroundResource(
+                                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                            )
+                        } else {
+                            setBackgroundResource(
+                                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                            )
+                        }
+                    }
                     isVisible = isUndoEnabled
                     setOnClickListener {
                         onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)

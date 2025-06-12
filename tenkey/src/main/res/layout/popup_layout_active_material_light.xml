@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.kazumaproject.core.ui.key_window.KeyWindowLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/bubble_layout_active"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="@null"
+    android:elevation="8dp"
+    app:bl_arrowHeight="0dp"
+    app:bl_arrowPosition="16dp"
+    app:bl_arrowWidth="0dp"
+    app:bl_bubbleColor="?attr/colorSurface"
+    app:bl_cornersRadius="8dp"
+    app:bl_strokeColor="?attr/colorOutline"
+    app:bl_strokeWidth="1.618dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/popup_text_active"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:ems="4"
+        android:textAlignment="center"
+        android:textColor="@color/keyboard_icon_color"
+        android:textSize="@dimen/pop_view_size"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</com.kazumaproject.core.ui.key_window.KeyWindowLayout>
