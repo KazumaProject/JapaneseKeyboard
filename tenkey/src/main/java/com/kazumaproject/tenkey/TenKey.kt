@@ -41,6 +41,7 @@ import com.kazumaproject.tenkey.databinding.PopupLayoutActiveBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutActiveMaterialBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutActiveMaterialLightBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutBinding
+import com.kazumaproject.tenkey.databinding.PopupLayoutMaterialBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutMaterialLightBinding
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
 import com.kazumaproject.tenkey.extensions.setPopUpWindowCenter
@@ -256,7 +257,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 )
                 bubbleViewActive = activeBinding.bubbleLayoutActive
                 popTextActive = activeBinding.popupTextActive
-                val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                val leftBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
                 popupWindowLeft = PopupWindow(
                     leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
                 )
@@ -296,7 +297,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // --- Top popup ---
         if (isDynamicColorsEnable) {
             if (isDarkMode) {
-                val topBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                val topBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
                 popupWindowTop = PopupWindow(
                     topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
                 )
@@ -322,7 +323,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // --- Right popup ---
         if (isDynamicColorsEnable) {
             if (isDarkMode) {
-                val rightBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                val rightBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
                 popupWindowRight = PopupWindow(
                     rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
                 )
@@ -348,7 +349,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // --- Bottom popup ---
         if (isDynamicColorsEnable) {
             if (isDarkMode) {
-                val bottomBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                val bottomBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
                 popupWindowBottom = PopupWindow(
                     bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
                 )
@@ -374,7 +375,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // --- Center popup (for long‐press + flick previews) ---
         if (isDynamicColorsEnable) {
             if (isDarkMode) {
-                val centerBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                val centerBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
                 popupWindowCenter = PopupWindow(
                     centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
                 )

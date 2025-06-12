@@ -8,10 +8,10 @@
     android:elevation="4dp"
     app:bl_arrowHeight="0dp"
     app:bl_arrowWidth="0dp"
-    app:bl_bubbleColor="?attr/colorSurface"
+    app:bl_bubbleColor="?attr/colorSecondaryContainer"
     app:bl_cornersRadius="12dp"
-    app:bl_strokeColor="?attr/colorSurfaceContainerHigh"
-    app:bl_strokeWidth="1dp">
+    app:bl_strokeColor="?attr/colorOutline"
+    app:bl_strokeWidth="0.8dp">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/popup_text"
