@@ -12,7 +12,7 @@
     app:bl_bubbleColor="?attr/colorSecondaryContainer"
     app:bl_cornersRadius="8dp"
     app:bl_strokeColor="?attr/colorOutline"
-    app:bl_strokeWidth="0.81dp">
+    app:bl_strokeWidth="0.5dp">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/popup_text_active"

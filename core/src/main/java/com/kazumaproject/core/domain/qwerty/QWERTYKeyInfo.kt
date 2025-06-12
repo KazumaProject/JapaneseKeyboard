@@ -617,4 +617,11 @@ sealed class QWERTYKeyInfo {
         override val capVariations: List<Char>? get() = null
     }
 
+    object KeyMinusJP : QWERTYVariation() {
+        override val tap: Char get() = 'ー'
+        override val capChar: Char get() = '-'
+        override val variations: List<Char>? get() = null
+        override val capVariations: List<Char>? get() = null
+    }
+
 }
