@@ -28,6 +28,15 @@ object QWERTYKeys {
         '.', ',', '?', '!', '\'',
     )
 
+    val DEFAULT_KEYS_JP = listOf(
+        // Top row
+        'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+        // Middle row
+        'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l','ー',
+        // Bottom row
+        'z', 'x', 'c', 'v', 'b', 'n', 'm'
+    )
+
     val NUMBER_KEYS_JP = listOf(
         // Top row
         '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',

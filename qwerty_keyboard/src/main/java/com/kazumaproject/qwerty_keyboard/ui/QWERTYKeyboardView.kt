@@ -191,7 +191,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     when (state) {
                         QWERTYMode.Default -> {
                             binding.apply {
-                                keyAtMark.isVisible = false
+                                if (!romajiModeState.value) {
+                                    keyAtMark.isVisible = false
+                                }
                                 keyV.isVisible = true
                                 keyB.isVisible = true
                                 if (!romajiModeState.value) {
@@ -269,36 +271,55 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 resources.getString(com.kazumaproject.core.R.string.return_japanese)
                             keyA.setMarginStart(9f)
                             keyL.setMarginEnd(9f)
-                            if (qwertyMode.value == QWERTYMode.Number) {
-                                keyF.text = "@"
-                                keyJ.text = "「"
-                                keyK.text = "」"
-                                keyAtMark.text = "￥"
-                                keyL.text = "&"
-                                keyZ.text = "。"
-                                keyX.text = "、"
-                            } else if (qwertyMode.value == QWERTYMode.Symbol) {
-                                keyA.text = "_"
-                                keyS.text = "/"
-                                keyD.text = ";"
-                                keyF.text = "|"
-                                keyH.text = "|"
-                                keyJ.text = "\""
-                                keyK.text = "\'"
-                                keyAtMark.text = "￥"
-                                keyL.text = "€"
+                            keyAtMark.apply {
+                                isVisible = true
+                                text = "l"
+                            }
+                            when (qwertyMode.value) {
+                                QWERTYMode.Number -> {
+                                    keyF.text = "@"
+                                    keyJ.text = "「"
+                                    keyK.text = "」"
+                                    keyAtMark.text = "￥"
+                                    keyL.text = "&"
+                                    keyZ.text = "。"
+                                    keyX.text = "、"
+                                }
+
+                                QWERTYMode.Symbol -> {
+                                    keyA.text = "_"
+                                    keyS.text = "/"
+                                    keyD.text = ";"
+                                    keyF.text = "|"
+                                    keyH.text = "|"
+                                    keyJ.text = "\""
+                                    keyK.text = "\'"
+                                    keyAtMark.text = "￥"
+                                    keyL.text = "€"
+                                }
+
+                                else -> {
+                                    keyL.text = "ー"
+                                }
                             }
                             key123.text =
                                 resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                         }
                     } else {
                         binding.apply {
+                            keyAtMark.apply {
+                                isVisible = false
+                                text = "@"
+                            }
                             keySpace.text =
                                 resources.getString(com.kazumaproject.core.R.string.space_english)
                             keyReturn.text =
                                 resources.getString(com.kazumaproject.core.R.string.return_english)
                             keyA.setMarginStart(23f)
-                            keyL.setMarginEnd(23f)
+                            keyL.apply {
+                                setMarginEnd(23f)
+                                text = "l"
+                            }
                             key123.text =
                                 resources.getString(com.kazumaproject.core.R.string.string_abc)
                         }
@@ -443,6 +464,43 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         )
     }
 
+    private val defaultQWERTYButtonsRoman: Array<QWERTYButton> by lazy {
+        arrayOf(
+            // Top row (QWERTY)
+            binding.keyQ,
+            binding.keyW,
+            binding.keyE,
+            binding.keyR,
+            binding.keyT,
+            binding.keyY,
+            binding.keyU,
+            binding.keyI,
+            binding.keyO,
+            binding.keyP,
+
+            // Middle row (ASDFGHJKL)
+            binding.keyA,
+            binding.keyS,
+            binding.keyD,
+            binding.keyF,
+            binding.keyG,
+            binding.keyH,
+            binding.keyJ,
+            binding.keyK,
+            binding.keyAtMark,
+            binding.keyL,
+
+            // Bottom row (ZXCVBNM)
+            binding.keyZ,
+            binding.keyX,
+            binding.keyC,
+            binding.keyV,
+            binding.keyB,
+            binding.keyN,
+            binding.keyM
+        )
+    }
+
     private val numberQWERTYButtons: Array<QWERTYButton> by lazy {
         arrayOf(
             // Top row (QWERTY)
@@ -479,8 +537,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun attachDefaultKeyLabels() {
-        val chars = QWERTYKeys.DEFAULT_KEYS
-        val buttons = defaultQWERTYButtons
+        val chars = if (romajiModeState.value) {
+            QWERTYKeys.DEFAULT_KEYS_JP
+        } else {
+            QWERTYKeys.DEFAULT_KEYS
+        }
+        val buttons = if (romajiModeState.value) {
+            defaultQWERTYButtonsRoman
+        } else {
+            defaultQWERTYButtons
+        }
         for (i in buttons.indices) {
             // One new length-1 String per button. No List, no boxed Characters, no lambdas.
             buttons[i].text = chars[i].toString()
@@ -925,7 +991,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private fun getVariationInfo(key: QWERTYKey): VariationInfo? {
         val info: QWERTYKeyInfo = when (qwertyMode.value) {
-            QWERTYMode.Default -> qwertyKeyMap.getKeyInfoDefault(key)
+            QWERTYMode.Default -> if (romajiModeState.value) {
+                qwertyKeyMap.getKeyInfoDefaultJP(key)
+            } else {
+                qwertyKeyMap.getKeyInfoDefault(key)
+            }
+
             QWERTYMode.Number -> {
                 if (romajiModeState.value) {
                     qwertyKeyMap.getKeyInfoNumberJP(key)
