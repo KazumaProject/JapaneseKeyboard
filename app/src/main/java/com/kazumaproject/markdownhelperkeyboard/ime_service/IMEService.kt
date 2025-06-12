@@ -32,6 +32,7 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -299,10 +300,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onCreateInputView(): View? {
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-        val ctx = DynamicColors.wrapContextIfAvailable(
-            applicationContext,
-            R.style.Theme_MarkdownKeyboard
-        )
+        val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+        val ctx = if (isDynamicColorsEnable) {
+            DynamicColors.wrapContextIfAvailable(
+                applicationContext,
+                R.style.Theme_MarkdownKeyboard
+            )
+        } else {
+            ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
+        }
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
@@ -314,12 +320,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 justifyContent = JustifyContent.FLEX_START
             }
             mainLayoutBinding?.let { mainView ->
-                mainView.root.setBackgroundResource(
-                    com.kazumaproject.core.R.drawable.keyboard_root_material
-                )
-                mainView.suggestionViewParent.setBackgroundResource(
-                    com.kazumaproject.core.R.drawable.keyboard_root_material
-                )
+                if (isDynamicColorsEnable) {
+                    mainView.apply {
+                        root.setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.keyboard_root_material
+                        )
+                        suggestionViewParent.setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.keyboard_root_material
+                        )
+                        suggestionVisibility.setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
+                        )
+                    }
+                }
                 setSuggestionRecyclerView(
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
