@@ -6,8 +6,8 @@
     <dimen name="key_text_size">18sp</dimen>
     <dimen name="key__number_text_size">20sp</dimen>
     <dimen name="key_text_land_size">16sp</dimen>
-    <dimen name="key_margin_horizontal_size">1dp</dimen>
-    <dimen name="key_margin_vertical_size">1dp</dimen>
+    <dimen name="key_margin_horizontal_size">2.9dp</dimen>
+    <dimen name="key_margin_vertical_size">2.9dp</dimen>
     <dimen name="key_margin_start_size">2dp</dimen>
     <dimen name="key_margin_end_size">2dp</dimen>
     <dimen name="key_height_number_only_right_column">55dp</dimen>

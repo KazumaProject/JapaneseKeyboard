@@ -238,7 +238,7 @@ class KeyboardSettingFragment : Fragment() {
     private fun setupResetButton() {
         binding.resetLayoutButton.setOnClickListener {
             // Set preferences to default values
-            appPreference.keyboard_height = maxHeightDp
+            appPreference.keyboard_height = 220
             appPreference.keyboard_width = maxWidthPercent
             appPreference.keyboard_position = true // Default to right-aligned
 

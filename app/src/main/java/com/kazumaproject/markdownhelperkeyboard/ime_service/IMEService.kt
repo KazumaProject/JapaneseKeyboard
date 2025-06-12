@@ -17,7 +17,6 @@ import android.text.SpannableString
 import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
-import android.view.ContextThemeWrapper
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -33,12 +32,14 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.color.DynamicColors
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
@@ -299,7 +300,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onCreateInputView(): View? {
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-        val ctx = ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
+        val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+        val ctx = if (isDynamicColorsEnable) {
+            DynamicColors.wrapContextIfAvailable(
+                applicationContext,
+                R.style.Theme_MarkdownKeyboard
+            )
+        } else {
+            ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
+        }
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
         return mainLayoutBinding?.root.apply {
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
@@ -311,6 +320,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 justifyContent = JustifyContent.FLEX_START
             }
             mainLayoutBinding?.let { mainView ->
+                if (isDynamicColorsEnable) {
+                    mainView.apply {
+                        root.setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.keyboard_root_material
+                        )
+                        suggestionViewParent.setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.keyboard_root_material
+                        )
+                        suggestionVisibility.setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
+                        )
+                    }
+                }
                 setSuggestionRecyclerView(
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
@@ -4055,7 +4077,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val heightPx = when {
             // For special keyboards, use specific, fixed heights
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY -> {
-                val height = if (isPortrait) 280 else 200
+                val height = if (isPortrait) 230 else 200
                 (height * density).toInt()
             }
 

@@ -18,13 +18,16 @@ import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.util.isNotEmpty
 import androidx.core.util.size
 import androidx.core.view.isVisible
+import com.google.android.material.color.DynamicColors
 import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
 import com.kazumaproject.core.domain.extensions.dpToPx
+import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
@@ -100,9 +103,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var isTablet = false
 
+    private var isDynamicColorsEnable = false
+
     init {
         isClickable = true
         isFocusable = true
+        isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
 
         val inflater = LayoutInflater.from(context)
         binding = QwertyLayoutBinding.inflate(inflater, this)
@@ -110,6 +116,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         qwertyKeyMap = QWERTYKeyMap()
 
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
+        val isDarkMode = this.context.isDarkThemeOn()
+        setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
 
         scope.launch {
             launch {
@@ -297,6 +305,57 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     }
                 }
             }
+        }
+    }
+
+    private fun setMaterialYouTheme(
+        isDarkMode: Boolean, isDynamicColorEnable: Boolean
+    ) {
+        if (!isDynamicColorEnable) return
+        val bgRes = if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material
+        else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+
+        val bgSideRes = if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+        else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+
+        binding.apply {
+            keyQ.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyW.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyE.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyR.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyT.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyY.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyU.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyI.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyO.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyP.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+
+            keyA.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyS.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyD.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyF.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyG.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyH.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyJ.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyK.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyAtMark.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyL.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+
+            keyZ.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyX.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyC.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyV.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyB.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyN.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+            keyM.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+
+            keySpace.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+
+            keyShift.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+            keyDelete.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+            keySwitchDefault.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+            keyReturn.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+            key123.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
         }
     }
 
@@ -592,9 +651,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             } else {
                 toggleShift()
             }
-        } else if (view.id == binding.keyDelete.id ||
-            view.id == binding.keySpace.id
-        ) {
+        } else if (view.id == binding.keyDelete.id || view.id == binding.keySpace.id) {
             /** empty body **/
         } else {
             disableShift()
@@ -607,10 +664,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
         binding.apply {
-            keySpace.text =
-                resources.getString(com.kazumaproject.core.R.string.space_english)
-            keyReturn.text =
-                resources.getString(com.kazumaproject.core.R.string.return_english)
+            keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
+            keyReturn.text = resources.getString(com.kazumaproject.core.R.string.return_english)
         }
     }
 
@@ -619,10 +674,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { true }
         binding.apply {
-            keySpace.text =
-                resources.getString(com.kazumaproject.core.R.string.space_japanese)
-            keyReturn.text =
-                resources.getString(com.kazumaproject.core.R.string.return_japanese)
+            keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_japanese)
+            keyReturn.text = resources.getString(com.kazumaproject.core.R.string.return_japanese)
         }
     }
 
@@ -752,9 +805,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
         val drawableResIdForImageView = when (view.id) {
-            in leftKeyIds -> com.kazumaproject.core.R.drawable.key_preview_bubble_left
-            in rightKeyIds -> com.kazumaproject.core.R.drawable.key_preview_bubble_right
-            else -> com.kazumaproject.core.R.drawable.key_preview_bubble
+            in leftKeyIds -> if (isDynamicColorsEnable) com.kazumaproject.core.R.drawable.key_preview_bubble_left_material else com.kazumaproject.core.R.drawable.key_preview_bubble_left
+            in rightKeyIds -> if (isDynamicColorsEnable) com.kazumaproject.core.R.drawable.key_preview_bubble_right_material else com.kazumaproject.core.R.drawable.key_preview_bubble_right
+            else -> if (isDynamicColorsEnable) com.kazumaproject.core.R.drawable.key_preview_bubble_material else com.kazumaproject.core.R.drawable.key_preview_bubble
         }
         iv.setBackgroundResource(drawableResIdForImageView)
         popupView.rootView.layoutParams.height = previewHeight
@@ -774,10 +827,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
 
         val popup = PopupWindow(
-            popupView,
-            view.width * 2,
-            view.height * 2 + 64,
-            false
+            popupView, view.width * 2, view.height * 2 + 64, false
         ).apply {
             isTouchable = false
             isFocusable = false
@@ -851,8 +901,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 QWERTYMode.Number, QWERTYMode.Symbol -> _qwertyMode.update { QWERTYMode.Default }
             }
             Log.d(
-                "KEY_VARIATION",
-                "KEY: $key, ${qwertyMode.value}"
+                "KEY_VARIATION", "KEY: $key, ${qwertyMode.value}"
             )
             return
         }
