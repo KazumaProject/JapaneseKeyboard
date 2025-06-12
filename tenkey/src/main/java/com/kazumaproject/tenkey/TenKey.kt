@@ -16,9 +16,11 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.setPadding
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_SMART_PHONE
 import com.kazumaproject.core.domain.extensions.hide
+import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
 import com.kazumaproject.core.domain.key.Key
@@ -37,6 +39,7 @@ import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.databinding.KeyboardLayoutBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutActiveBinding
 import com.kazumaproject.tenkey.databinding.PopupLayoutBinding
+import com.kazumaproject.tenkey.databinding.PopupLayoutMaterialLightBinding
 import com.kazumaproject.tenkey.extensions.setPopUpWindowBottom
 import com.kazumaproject.tenkey.extensions.setPopUpWindowCenter
 import com.kazumaproject.tenkey.extensions.setPopUpWindowFlickBottom
@@ -235,10 +238,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // Inflate the keyboard layout with ViewBinding (root is <merge>, so attachToParent = true)
         val inflater = LayoutInflater.from(context)
         binding = KeyboardLayoutBinding.inflate(inflater, this)
-
         // Initialize keyMap
         keyMap = KeyMap()
-
+        val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+        val isDarkMode = context.isDarkThemeOn()
         // Prepare popups using their own bindings
         // --- Active popup (center) ---
         val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
@@ -249,44 +252,134 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         popTextActive = activeBinding.popupTextActive
 
         // --- Left popup ---
-        val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
-        popupWindowLeft = PopupWindow(
-            leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-        )
-        bubbleViewLeft = leftBinding.bubbleLayout
-        popTextLeft = leftBinding.popupText
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                popupWindowLeft = PopupWindow(
+                    leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewLeft = leftBinding.bubbleLayout
+                popTextLeft = leftBinding.popupText
+            } else {
+                val leftBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowLeft = PopupWindow(
+                    leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewLeft = leftBinding.bubbleLayout
+                popTextLeft = leftBinding.popupText
+            }
+        } else {
+            val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowLeft = PopupWindow(
+                leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            )
+            bubbleViewLeft = leftBinding.bubbleLayout
+            popTextLeft = leftBinding.popupText
+        }
 
         // --- Top popup ---
-        val topBinding = PopupLayoutBinding.inflate(inflater, null, false)
-        popupWindowTop = PopupWindow(
-            topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-        )
-        bubbleViewTop = topBinding.bubbleLayout
-        popTextTop = topBinding.popupText
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val topBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                popupWindowTop = PopupWindow(
+                    topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewTop = topBinding.bubbleLayout
+                popTextTop = topBinding.popupText
+            } else {
+                val topBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowTop = PopupWindow(
+                    topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewTop = topBinding.bubbleLayout
+                popTextTop = topBinding.popupText
+            }
+        } else {
+            val topBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowTop = PopupWindow(
+                topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            )
+            bubbleViewTop = topBinding.bubbleLayout
+            popTextTop = topBinding.popupText
+        }
 
         // --- Right popup ---
-        val rightBinding = PopupLayoutBinding.inflate(inflater, null, false)
-        popupWindowRight = PopupWindow(
-            rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-        )
-        bubbleViewRight = rightBinding.bubbleLayout
-        popTextRight = rightBinding.popupText
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val rightBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                popupWindowRight = PopupWindow(
+                    rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewRight = rightBinding.bubbleLayout
+                popTextRight = rightBinding.popupText
+            } else {
+                val rightBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowRight = PopupWindow(
+                    rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewRight = rightBinding.bubbleLayout
+                popTextRight = rightBinding.popupText
+            }
+        } else {
+            val rightBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowRight = PopupWindow(
+                rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            )
+            bubbleViewRight = rightBinding.bubbleLayout
+            popTextRight = rightBinding.popupText
+        }
 
         // --- Bottom popup ---
-        val bottomBinding = PopupLayoutBinding.inflate(inflater, null, false)
-        popupWindowBottom = PopupWindow(
-            bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-        )
-        bubbleViewBottom = bottomBinding.bubbleLayout
-        popTextBottom = bottomBinding.popupText
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val bottomBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                popupWindowBottom = PopupWindow(
+                    bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewBottom = bottomBinding.bubbleLayout
+                popTextBottom = bottomBinding.popupText
+            } else {
+                val bottomBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowBottom = PopupWindow(
+                    bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewBottom = bottomBinding.bubbleLayout
+                popTextBottom = bottomBinding.popupText
+            }
+        } else {
+            val bottomBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowBottom = PopupWindow(
+                bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            )
+            bubbleViewBottom = bottomBinding.bubbleLayout
+            popTextBottom = bottomBinding.popupText
+        }
 
         // --- Center popup (for long‐press + flick previews) ---
-        val centerBinding = PopupLayoutBinding.inflate(inflater, null, false)
-        popupWindowCenter = PopupWindow(
-            centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-        )
-        bubbleViewCenter = centerBinding.bubbleLayout
-        popTextCenter = centerBinding.popupText
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val centerBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                popupWindowCenter = PopupWindow(
+                    centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewCenter = centerBinding.bubbleLayout
+                popTextCenter = centerBinding.popupText
+            } else {
+                val centerBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowCenter = PopupWindow(
+                    centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewCenter = centerBinding.bubbleLayout
+                popTextCenter = centerBinding.popupText
+            }
+        } else {
+            val centerBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowCenter = PopupWindow(
+                centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            )
+            bubbleViewCenter = centerBinding.bubbleLayout
+            popTextCenter = centerBinding.popupText
+        }
 
         // Build the map from Key enum to actual View references
         listKeys = mapOf(
@@ -329,8 +422,25 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             this.isFocusable = false
         }
 
-        val isDarkMode = context.isDarkThemeOn()
+        setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
 
+        // ← NEW: launch a coroutine to observe changes to currentInputMode
+        scope.launch {
+            currentInputMode.collect { inputMode ->
+                // Whenever inputMode changes, update all keys and switch UI
+                handleCurrentInputModeSwitch(inputMode)
+                binding.keySwitchKeyMode.setInputMode(inputMode, false)
+            }
+        }
+    }
+
+    private fun setMaterialYouTheme(
+        isDarkMode: Boolean,
+        isDynamicColorEnable: Boolean
+    ) {
+        if (!isDynamicColorEnable) {
+            return
+        }
         binding.apply {
             key1.setBackgroundDrawable(
                 ContextCompat.getDrawable(
@@ -407,68 +517,51 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keyReturn.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
             keySoftLeft.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
             sideKeySymbol.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
             keyDelete.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
             keyMoveCursorRight.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
             keySpace.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
             keySwitchKeyMode.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
             keyEnter.setBackgroundDrawable(
                 ContextCompat.getDrawable(
                     context,
-                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    if (isDarkMode) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
             )
-        }
-
-        // ← NEW: launch a coroutine to observe changes to currentInputMode
-        scope.launch {
-            currentInputMode.collect { inputMode ->
-                // Whenever inputMode changes, update all keys and switch UI
-                handleCurrentInputModeSwitch(inputMode)
-                binding.keySwitchKeyMode.setInputMode(inputMode, false)
-            }
-        }
-    }
-
-    private fun Context.isDarkThemeOn(): Boolean {
-        return when (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
-            Configuration.UI_MODE_NIGHT_YES -> true   // ダークモード
-            Configuration.UI_MODE_NIGHT_NO -> false  // ライトモード
-            else -> false  // 不定（デフォルトをライト扱い）
         }
     }
 

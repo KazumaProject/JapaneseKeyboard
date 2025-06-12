@@ -11,6 +11,7 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -154,6 +155,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         return if (viewType == VIEW_TYPE_EMPTY) {
             val emptyView = LayoutInflater.from(parent.context)
                 .inflate(R.layout.suggestion_empty_layout, parent, false)
@@ -161,6 +163,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         } else {
             val itemView = LayoutInflater.from(parent.context)
                 .inflate(R.layout.suggestion_item, parent, false)
+            itemView.setBackgroundResource(
+                if (isDynamicColorEnable) com.kazumaproject.core.R.drawable.recyclerview_item_bg_material else com.kazumaproject.core.R.drawable.recyclerview_item_bg
+            )
             SuggestionViewHolder(itemView)
         }
     }
