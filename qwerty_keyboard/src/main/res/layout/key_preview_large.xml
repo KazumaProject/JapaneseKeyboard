@@ -21,7 +21,7 @@
         android:layout_marginTop="18dp"
         android:elevation="4dp"
         android:gravity="center"
-        android:textColor="@color/white"
+        android:textColor="@color/keyboard_icon_color"
         android:textSize="28sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
