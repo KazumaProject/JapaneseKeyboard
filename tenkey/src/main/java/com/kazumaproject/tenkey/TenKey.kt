@@ -1260,6 +1260,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         button?.let {
             if (it is AppCompatButton) {
                 if (it == binding.sideKeySymbol) return
+                it.isPressed = true
                 when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         it.setTenKeyTextWhenTapJapanese(it.id)
@@ -1282,11 +1283,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
+                it.isPressed = true
                 it.setImageDrawable(
                     cachedOpenBracketDrawable
                 )
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
-                it.isPressed = true
                 if (isLongPressed) {
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 }
@@ -1301,6 +1302,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         button?.let {
             if (it is AppCompatButton) {
                 if (it == binding.sideKeySymbol) return
+                it.isPressed = true
                 if (!isLongPressed) it.text = ""
                 when (gestureType) {
                     GestureType.FlickLeft -> {
@@ -1425,6 +1427,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
+                it.isPressed = true
                 if (!isLongPressed) it.setImageDrawable(null)
                 when (gestureType) {
                     GestureType.FlickLeft -> {
@@ -1477,7 +1480,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                     else -> {}
                 }
-                //it.isPressed = false
             }
         }
     }

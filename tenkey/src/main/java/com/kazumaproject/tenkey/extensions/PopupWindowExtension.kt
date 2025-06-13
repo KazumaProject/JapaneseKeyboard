@@ -11,14 +11,12 @@ import com.kazumaproject.core.ui.key_window.ArrowDirection
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
 import com.kazumaproject.tenkey.R
 
-private const val OFFSET = 16
-
 fun PopupWindow.setPopUpWindowFlickRight(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
-    this.width = anchorView.width + (anchorView.width) / 2 + 20
+    this.width = anchorView.width + (anchorView.width) / 2 + 24
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
@@ -41,7 +39,7 @@ fun PopupWindow.setPopUpWindowFlickRight(
         Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
-                anchorView.width - (anchorView.width) / 2,
+                (anchorView.width - (anchorView.width) / 2) - 10,
                 -(anchorView.height),
                 Gravity.CENTER
             )
@@ -50,7 +48,7 @@ fun PopupWindow.setPopUpWindowFlickRight(
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
-                anchorView.width - (anchorView.width) / 2,
+                (anchorView.width - (anchorView.width) / 2) - 10,
                 -(anchorView.height),
                 Gravity.CENTER
             )
@@ -65,7 +63,7 @@ fun PopupWindow.setPopUpWindowFlickLeft(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
-    this.width = anchorView.width + (anchorView.width) / 2 + 20
+    this.width = anchorView.width + (anchorView.width) / 2 + 24
     this.height = anchorView.height
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
@@ -79,7 +77,7 @@ fun PopupWindow.setPopUpWindowFlickLeft(
         Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
-                -(anchorView.width + 10),
+                -(anchorView.width + 14),
                 -(anchorView.height),
                 Gravity.CENTER
             )
@@ -88,7 +86,7 @@ fun PopupWindow.setPopUpWindowFlickLeft(
         Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
-                -(anchorView.width + 10),
+                -(anchorView.width + 14),
                 -(anchorView.height),
                 Gravity.CENTER
             )
@@ -97,7 +95,7 @@ fun PopupWindow.setPopUpWindowFlickLeft(
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
-                -(anchorView.width + 10),
+                -(anchorView.width + 14),
                 -(anchorView.height),
                 Gravity.CENTER
             )
@@ -115,14 +113,14 @@ fun PopupWindow.setPopUpWindowFlickBottom(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
-    this.width = anchorView.width + OFFSET
-    this.height = anchorView.height + (anchorView.height / 2) + 16
+    this.width = anchorView.width
+    this.height = anchorView.height + (anchorView.height / 2) + 24
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.TOP_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.TOP_CENTER
         bubble.arrowHeight = (anchorView.height / 2).toFloat() - 8
-        bubble.arrowWidth = anchorView.width.toFloat()
+        bubble.arrowWidth = anchorView.width.toFloat() - 10
         bubble.cornersRadius = 20f
     }
     when (context.resources.configuration.orientation) {
@@ -137,8 +135,8 @@ fun PopupWindow.setPopUpWindowFlickBottom(
                 else -> {
                     showAsDropDown(
                         anchorView,
-                        -OFFSET / 2,
-                        -(anchorView.height / 2 + 8),
+                        0,
+                        -(anchorView.height / 2) - 8,
                         Gravity.CENTER
                     )
                 }
@@ -148,8 +146,8 @@ fun PopupWindow.setPopUpWindowFlickBottom(
         Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
-                -OFFSET / 2,
-                -(anchorView.height / 2 + 8),
+                0,
+                -(anchorView.height / 2) - 8,
                 Gravity.CENTER
             )
         }
@@ -165,8 +163,8 @@ fun PopupWindow.setPopUpWindowFlickBottom(
                 else -> {
                     showAsDropDown(
                         anchorView,
-                        -OFFSET / 2,
-                        -(anchorView.height / 2 + 8),
+                        0,
+                        -(anchorView.height / 2) - 8,
                         Gravity.CENTER
                     )
                 }
@@ -184,22 +182,22 @@ fun PopupWindow.setPopUpWindowFlickTop(
     keyWindowLayout: KeyWindowLayout,
     anchorView: View
 ) {
-    this.width = anchorView.width + OFFSET
-    this.height = anchorView.height + (anchorView.height / 2) + 16
+    this.width = anchorView.width
+    this.height = anchorView.height + (anchorView.height / 2) + 24
     this.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     keyWindowLayout.let { bubble ->
         if (bubble.arrowDirection != ArrowDirection.BOTTOM_CENTER) this.dismiss()
         bubble.arrowDirection = ArrowDirection.BOTTOM_CENTER
         bubble.arrowHeight = (anchorView.height / 2).toFloat() - 8
-        bubble.arrowWidth = anchorView.width.toFloat()
+        bubble.arrowWidth = anchorView.width.toFloat() - 10
         bubble.cornersRadius = 20f
     }
     when (context.resources.configuration.orientation) {
         Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
-                -OFFSET / 2,
-                -(anchorView.height * 2 + 8),
+                0,
+                -(anchorView.height * 2) - 16,
                 Gravity.CENTER
             )
         }
@@ -207,8 +205,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
         Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
-                -OFFSET,
-                -(anchorView.height * 2 + 8),
+                0,
+                -(anchorView.height * 2) - 16,
                 Gravity.CENTER
             )
         }
@@ -216,8 +214,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
-                -OFFSET,
-                -(anchorView.height * 2 + 8),
+                0,
+                -(anchorView.height * 2) - 16,
                 Gravity.CENTER
             )
         }
