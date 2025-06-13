@@ -232,8 +232,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     // Map each Key enum to its corresponding View (Button/ImageButton/Switch)
     private var listKeys: Map<Key, Any>
 
-    private var isSelectMode = false
-
     private var isCursorMode = false
 
     /** ← NEW: scope tied to this view; cancel it on detach **/
@@ -544,7 +542,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         } else {
             handleCurrentInputModeSwitch(currentInputMode.value)
         }
-        this.isSelectMode = isSelecMode
     }
 
     /** Clean up references when view is detached **/
@@ -553,7 +550,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         longPressListener = null
         longPressJob?.cancel()
         longPressJob = null
-        isSelectMode = false
         isCursorMode = false
         // ← CANCEL the observing coroutine when the view is detached
         scope.coroutineContext.cancelChildren()
@@ -595,48 +591,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (isCursorMode) {
                         return true
                     }
-                    if (isSelectMode) {
-                        // 1️⃣ Key→View のマッピングだけ行う
-                        val viewToPress: View? = when (key) {
-                            Key.KeyA -> binding.key1
-                            Key.KeySA -> binding.key3
-                            Key.KeyMA -> binding.key7
-                            Key.KeyRA -> binding.key9
-                            Key.SideKeyDelete -> binding.keyDelete
-                            Key.SideKeyCursorRight -> binding.keyMoveCursorRight
-                            Key.SideKeyCursorLeft -> binding.keySoftLeft
-                            Key.SideKeySpace -> binding.keySpace
-                            else -> null
-                        }
-
-                        // 2️⃣ 該当する View があれば isPressed を設定
-                        viewToPress?.let { keyButton ->
-                            keyButton.isPressed = true
-
-                            // 3️⃣ 長押しをサポートするキーであれば、ジョブを立ち上げる
-                            when (key) {
-                                Key.SideKeyDelete,
-                                Key.SideKeyCursorRight,
-                                Key.SideKeyCursorLeft -> {
-                                    longPressJob?.cancel()  // 必要に応じて previous job をキャンセル
-                                    longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                                        delay(ViewConfiguration.getLongPressTimeout().toLong())
-                                        if (pressedKey.key != Key.NotSelected) {
-                                            longPressListener?.onLongPress(pressedKey.key)
-                                            isLongPressed = true
-                                            onLongPressed()
-                                        }
-                                    }
-                                }
-
-                                else -> {
-                                    // 長押しなしのキーはここでは何もしない
-                                }
-                            }
-                        }
-
-                        return true
-                    }
                     setKeyPressed()
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
@@ -651,32 +605,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                 MotionEvent.ACTION_UP -> {
                     resetLongPressAction()
-                    if (isSelectMode) {
-                        // Map each Key to its corresponding button/view
-                        val viewToRelease: View? = when (pressedKey.key) {
-                            Key.KeyA -> binding.key1
-                            Key.KeySA -> binding.key3
-                            Key.KeyMA -> binding.key7
-                            Key.KeyRA -> binding.key9
-                            Key.SideKeyDelete -> binding.keyDelete
-                            Key.SideKeyCursorRight -> binding.keyMoveCursorRight
-                            Key.SideKeyCursorLeft -> binding.keySoftLeft
-                            Key.SideKeySpace -> binding.keySpace
-                            else -> null
-                        }
-
-                        viewToRelease?.let { key ->
-                            key.isPressed = false
-                            flickListener?.onFlick(
-                                gestureType = GestureType.Tap,
-                                key = pressedKey.key,
-                                char = null
-                            )
-                        }
-
-                        return false
-                    }
-
                     if (isCursorMode) {
                         val viewToRelease: View? = when (pressedKey.key) {
                             Key.SideKeySpace -> binding.keySpace
@@ -767,7 +695,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    if (isSelectMode) return true
                     if (isCursorMode) {
                         // sensitivity threshold in pixels
                         val threshold = 16f
@@ -841,7 +768,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
                     popupWindowActive.hide()
                     longPressJob?.cancel()
-                    if (isSelectMode) return true
                     if (isCursorMode) return true
                     if (event.pointerCount == 2) {
                         isLongPressed = false
@@ -941,7 +867,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (event.pointerCount == 2) {
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                             resetLongPressAction()
-                            if (isSelectMode) return true
                             if (isCursorMode) return true
                             val gestureType = getGestureType(
                                 event, event.getPointerId(event.actionIndex)
@@ -1351,7 +1276,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                     }
                 }
-                it.isPressed = true
+
                 if (isLongPressed) {
                     popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
                 }
@@ -1498,7 +1423,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                     else -> {}
                 }
-                it.isPressed = true
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
                 if (!isLongPressed) it.setImageDrawable(null)
@@ -1553,7 +1477,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                     else -> {}
                 }
-                it.isPressed = false
+                //it.isPressed = false
             }
         }
     }
