@@ -234,8 +234,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private var isCursorMode = false
 
-    private var isCircleInputMode = false
-
     /** ← NEW: scope tied to this view; cancel it on detach **/
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -529,10 +527,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbol.setPadding(paddingSize)
     }
 
-    fun setCircleInputMode(circleInputMode: Boolean) {
-        this.isCircleInputMode = circleInputMode
-    }
-
     fun setTextToMoveCursorMode(cursorMode: Boolean) {
         if (cursorMode) {
             setKeysCursorMoveMode()
@@ -598,9 +592,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         return true
                     }
 
-                    if (isCircleInputMode) {
-                        return true
-                    }
                     setKeyPressed()
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
@@ -615,7 +606,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                 MotionEvent.ACTION_UP -> {
                     resetLongPressAction()
-                    if (isCircleInputMode) return true
                     if (isCursorMode) {
                         val viewToRelease: View? = when (pressedKey.key) {
                             Key.SideKeySpace -> binding.keySpace
@@ -780,7 +770,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popupWindowActive.hide()
                     longPressJob?.cancel()
                     if (isCursorMode) return true
-                    if (isCircleInputMode) return true
                     if (event.pointerCount == 2) {
                         isLongPressed = false
                         val pointer = event.getPointerId(event.actionIndex)
@@ -880,7 +869,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                             resetLongPressAction()
                             if (isCursorMode) return true
-                            if (isCircleInputMode) return true
                             val gestureType = getGestureType(
                                 event, event.getPointerId(event.actionIndex)
                             )
@@ -1269,7 +1257,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Called during a “tap” gesture in an ongoing move event **/
     private fun setTapInActionMove() {
         if (!isLongPressed) popupWindowActive.hide()
-        if (isCircleInputMode) return
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
@@ -1312,7 +1299,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Called during a “flick” gesture in an ongoing move event **/
     private fun setFlickInActionMove(gestureType: GestureType) {
         longPressJob?.cancel()
-        if (isCircleInputMode) return
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
