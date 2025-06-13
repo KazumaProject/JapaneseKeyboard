@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.view.FlickCirclePopupView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +20,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.sqrt
+
+// ▼▼▼【追加】ポップアップの表示位置を定義するenum ▼▼▼
+enum class PopupPosition {
+    CENTER,
+    TOP
+}
 
 class FlickInputController(context: Context) {
 
@@ -54,6 +61,21 @@ class FlickInputController(context: Context) {
     private var isLongPressModeActive = false
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
+
+    // ▼▼▼【追加】表示位置を保持する変数。デフォルトは中央。 ▼▼▼
+    private var popupPosition: PopupPosition = PopupPosition.CENTER
+
+    /**
+     * ▼▼▼【追加】ポップアップの表示位置を設定する関数 ▼▼▼
+     * @param position 表示したい位置 (CENTER or TOP)
+     */
+    fun setPopupPosition(position: PopupPosition) {
+        this.popupPosition = position
+    }
+
+    fun setPopupColors(theme: FlickPopupColorTheme) {
+        popupView.setColors(theme)
+    }
 
     fun setPopupViewSize(center: Float, target: Float, orbit: Float, textSize: Float) {
         popupView.setUiSize(center, target, orbit, textSize)
@@ -127,12 +149,10 @@ class FlickInputController(context: Context) {
                     popupView.setFullUIMode(true)
                 }
 
-                // ▼▼▼ CHANGE ▼▼▼ Notify the listener when the state (dakuten, etc.) changes
                 if (currentCalculatedDirection == FlickDirection.DOWN && previousDirection != FlickDirection.DOWN) {
                     currentMapIndex = (currentMapIndex + 1) % keyMaps.size
                     val newMap = keyMaps[currentMapIndex]
                     popupView.setCharacterMap(newMap)
-                    // Notify the view to update its text
                     listener?.onStateChanged(view, newMap)
                 }
 
@@ -151,8 +171,6 @@ class FlickInputController(context: Context) {
                     lastValidFlickDirection
                 }
 
-                // Only input a character if the final direction is not DOWN
-                // (DOWN is reserved for state changes)
                 if (finalDirectionToInput != FlickDirection.DOWN) {
                     val currentMap = keyMaps[currentMapIndex]
                     val character = currentMap[finalDirectionToInput] ?: ""
@@ -170,6 +188,7 @@ class FlickInputController(context: Context) {
         return false
     }
 
+    // ▼▼▼【ロジック更新】表示位置設定に応じて座標を計算するように変更 ▼▼▼
     private fun showPopup() {
         val currentAnchor = anchorView ?: return
         popupWindow.width = popupView.preferredWidth
@@ -178,8 +197,19 @@ class FlickInputController(context: Context) {
         val location = IntArray(2)
         currentAnchor.getLocationInWindow(location)
 
-        val x = location[0] + (currentAnchor.width / 2) - (popupWindow.width / 2)
-        val y = location[1] + (currentAnchor.height / 2) - (popupWindow.height / 2)
+        val anchorX = location[0]
+        val anchorY = location[1]
+
+        // ポップアップの左上のX座標を計算 (これは常に中央)
+        val x = anchorX + (currentAnchor.width / 2) - (popupWindow.width / 2)
+
+        // ポップアップの左上のY座標を、設定に応じて計算
+        val y = when (popupPosition) {
+            // ボタンの中央にポップアップの中央を合わせる
+            PopupPosition.CENTER -> anchorY + (currentAnchor.height / 2) - (popupWindow.height / 2)
+            // ボタンの上辺にポップアップの中央を合わせる（結果、少し上部に表示される）
+            PopupPosition.TOP -> anchorY - (popupWindow.height / 2)
+        }
 
         if (!popupWindow.isShowing) {
             popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
@@ -202,15 +232,19 @@ class FlickInputController(context: Context) {
             return FlickDirection.TAP
         }
 
+        // Angle is calculated from 0-360, starting East (3 o'clock) and going counter-clockwise
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360
 
         return when (angle) {
-            in 0.0..60.0 -> FlickDirection.UP_RIGHT_FAR
-            in 60.0..120.0 -> FlickDirection.DOWN
-            in 120.0..180.0 -> FlickDirection.UP_LEFT_FAR
-            in 180.0..240.0 -> FlickDirection.UP_LEFT
-            in 240.0..300.0 -> FlickDirection.UP
-            else -> FlickDirection.UP_RIGHT
+            // DOWN is now a 140° segment (20° to 160°)
+            in 20.0..160.0 -> FlickDirection.DOWN
+            // The other 5 directions get a 44° segment each (220° / 5)
+            in 160.0..204.0 -> FlickDirection.UP_LEFT_FAR
+            in 204.0..248.0 -> FlickDirection.UP_LEFT
+            in 248.0..292.0 -> FlickDirection.UP
+            in 292.0..336.0 -> FlickDirection.UP_RIGHT
+            // else covers the remaining segment (336° to 360° and 0° to 20°)
+            else -> FlickDirection.UP_RIGHT_FAR
         }
     }
 }

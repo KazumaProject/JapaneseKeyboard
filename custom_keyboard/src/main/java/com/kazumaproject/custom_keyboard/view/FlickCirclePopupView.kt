@@ -15,12 +15,14 @@ import android.util.Log
 import android.view.View
 import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
  * 切れ目のない完全な円形フリックUIを描画する専用ビュー。
  * 全てのフリック領域が均等な大きさ（60度）になるように修正済み。
+ * ▼▼▼【改修】指が中央に戻った際に円の色が変わるように修正 ▼▼▼
  */
 class FlickCirclePopupView @JvmOverloads constructor(
     context: Context,
@@ -28,29 +30,57 @@ class FlickCirclePopupView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    // --- Drawing Paints ---
-    private val targetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = "#424242".toColorInt()
-        style = Paint.Style.FILL
-    }
-    private val targetHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        setShadowLayer(30f, 0f, 0f, "#00BCD4".toColorInt())
-    }
-    private val centerCirclePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
+    // --- ▼▼▼【ロジック更新】Paintの初期化方法を変更 ▼▼▼ ---
+    private val targetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val targetHighlightPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val centerCirclePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val centerHighlightPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        textSize = 50f
         textAlign = Paint.Align.CENTER
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
     private val separatorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.BLACK
-        alpha = 80
         style = Paint.Style.STROKE
         strokeWidth = 2f
+    }
+
+    // デフォルトのカラーテーマを適用
+    private var colorTheme: FlickPopupColorTheme = FlickPopupColorTheme(
+        segmentColor = "#424242".toColorInt(),
+        segmentHighlightGradientStartColor = "#00BCD4".toColorInt(),
+        segmentHighlightGradientEndColor = "#80DEEA".toColorInt(),
+        centerGradientStartColor = "#3F51B5".toColorInt(),
+        centerGradientEndColor = "#7986CB".toColorInt(),
+        centerHighlightGradientStartColor = "#00E676".toColorInt(),
+        centerHighlightGradientEndColor = "#69F0AE".toColorInt(),
+        separatorColor = Color.BLACK,
+        textColor = Color.WHITE
+    )
+
+    init {
+        // 初期色をPaintに適用
+        applyThemeToPaints()
+    }
+
+    // ▼▼▼【更新】setColorsメソッドを更新 ▼▼▼
+    fun setColors(theme: FlickPopupColorTheme) {
+        this.colorTheme = theme
+        applyThemeToPaints()
+        // サイズが既に確定している場合はShaderも更新する
+        if (width > 0 && height > 0) {
+            updateShaders()
+        }
+        invalidate()
+    }
+
+    // ▼▼▼【追加】テーマの色をPaintオブジェクトに適用するヘルパー関数 ▼▼▼
+    private fun applyThemeToPaints() {
+        targetPaint.color = colorTheme.segmentColor
+        separatorPaint.color = colorTheme.separatorColor
+        separatorPaint.alpha = 80
+        textPaint.color = colorTheme.textColor
     }
 
     // --- State and Characters/Paths ---
@@ -102,24 +132,45 @@ class FlickCirclePopupView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+        updateShaders() // Shaderを更新
+
+        val centerX = w / 2f
+        val centerY = h / 2f
+        calculateTargetPositions(centerX, centerY)
+        createSegmentPaths(centerX, centerY)
+    }
+
+    private fun updateShaders() {
+        val w = width.toFloat()
+        val h = height.toFloat()
         val centerX = w / 2f
         val centerY = h / 2f
 
-        val highlightShader = LinearGradient(
-            0f, 0f, w.toFloat(), h.toFloat(),
-            "#00BCD4".toColorInt(), "#80DEEA".toColorInt(), Shader.TileMode.CLAMP
+        // テーマの色を使ってハイライト用のShaderを生成
+        targetHighlightPaint.shader = LinearGradient(
+            0f, 0f, w, h,
+            colorTheme.segmentHighlightGradientStartColor,
+            colorTheme.segmentHighlightGradientEndColor,
+            Shader.TileMode.CLAMP
         )
-        targetHighlightPaint.shader = highlightShader
 
-        val centerShader = LinearGradient(
+        // テーマの色を使って中央の円用のShaderを生成
+        centerCirclePaint.shader = LinearGradient(
             centerX - centerCircleRadius, centerY - centerCircleRadius,
             centerX + centerCircleRadius, centerY + centerCircleRadius,
-            "#3F51B5".toColorInt(), "#7986CB".toColorInt(), Shader.TileMode.CLAMP
+            colorTheme.centerGradientStartColor,
+            colorTheme.centerGradientEndColor,
+            Shader.TileMode.CLAMP
         )
-        centerCirclePaint.shader = centerShader
 
-        calculateTargetPositions(centerX, centerY)
-        createSegmentPaths(centerX, centerY)
+        // テーマの色を使って中央のハイライト用のShaderを生成
+        centerHighlightPaint.shader = LinearGradient(
+            centerX - centerCircleRadius, centerY - centerCircleRadius,
+            centerX + centerCircleRadius, centerY + centerCircleRadius,
+            colorTheme.centerHighlightGradientStartColor,
+            colorTheme.centerHighlightGradientEndColor,
+            Shader.TileMode.CLAMP
+        )
     }
 
     fun updateFlickDirection(direction: FlickDirection) {
@@ -160,7 +211,14 @@ class FlickCirclePopupView @JvmOverloads constructor(
         }
 
         val centerPoint = targetPositions[FlickDirection.TAP] ?: PointF(width / 2f, height / 2f)
-        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, centerCirclePaint)
+
+        // ▼▼▼【ロジック更新】現在の選択方向に応じて中央の円のPaintを切り替える ▼▼▼
+        val currentCenterPaint = if (currentFlickDirection == FlickDirection.TAP) {
+            centerHighlightPaint
+        } else {
+            centerCirclePaint
+        }
+        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, currentCenterPaint)
 
         characterMap.forEach { (direction, text) ->
             if (direction != FlickDirection.TAP) {
@@ -174,7 +232,14 @@ class FlickCirclePopupView @JvmOverloads constructor(
 
     private fun drawSingleTargetUI(canvas: Canvas) {
         val centerPoint = targetPositions[FlickDirection.TAP] ?: PointF(width / 2f, height / 2f)
-        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, centerCirclePaint)
+
+        // ▼▼▼【ロジック更新】現在の選択方向に応じて中央の円のPaintを切り替える ▼▼▼
+        val currentCenterPaint = if (currentFlickDirection == FlickDirection.TAP) {
+            centerHighlightPaint
+        } else {
+            centerCirclePaint
+        }
+        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, currentCenterPaint)
 
         if (currentFlickDirection != FlickDirection.TAP) {
             val path = segmentPaths[currentFlickDirection]
@@ -197,31 +262,26 @@ class FlickCirclePopupView @JvmOverloads constructor(
         segmentPaths.clear()
         val innerRadius = centerCircleRadius
 
-        // 360度を6分割 = 各60度
-        val sweepAngle = 60f
-
         // UPを-90度（真上）に配置し、そこから時計回りに各セグメントを定義
         val segmentDefinitions = mapOf(
-            // UPは-90度中心なので、-120度から-60度まで
-            FlickDirection.UP to Pair(-120f, sweepAngle),
-            // UP_RIGHTは-60度から0度まで
-            FlickDirection.UP_RIGHT to Pair(-60f, sweepAngle),
-            // UP_RIGHT_FARは0度から60度まで
-            FlickDirection.UP_RIGHT_FAR to Pair(0f, sweepAngle),
-            // DOWNは60度から120度まで
-            FlickDirection.DOWN to Pair(60f, sweepAngle),
-            // UP_LEFT_FARは120度から180度まで
-            FlickDirection.UP_LEFT_FAR to Pair(120f, sweepAngle),
-            // UP_LEFTは180度から240度まで
-            FlickDirection.UP_LEFT to Pair(180f, sweepAngle)
+            // DOWN: Starts at 20°, sweeps 140°
+            FlickDirection.DOWN to Pair(20f, 140f),
+            // The remaining 5 segments each sweep 44°
+            FlickDirection.UP_LEFT_FAR to Pair(160f, 44f),
+            FlickDirection.UP_LEFT to Pair(204f, 44f),
+            FlickDirection.UP to Pair(248f, 44f),
+            FlickDirection.UP_RIGHT to Pair(292f, 44f),
+            FlickDirection.UP_RIGHT_FAR to Pair(336f, 44f)
         )
 
         segmentDefinitions.forEach { (direction, angles) ->
+            // ... (The rest of the function remains the same)
             val outerRadius = when (direction) {
                 FlickDirection.DOWN -> orbitRadius
                 else -> upperOrbitRadius ?: orbitRadius
             }
             val startAngle = angles.first
+            val sweepAngle = angles.second // Use the new sweep angle from the map
 
             val path = Path()
             val outerRect = RectF(
@@ -276,12 +336,12 @@ class FlickCirclePopupView @JvmOverloads constructor(
      */
     private fun getAngleForDirection(direction: FlickDirection): Double {
         return when (direction) {
-            FlickDirection.UP -> -90.0           // -120度と-60度の中心
-            FlickDirection.UP_RIGHT -> -30.0     // -60度と0度の中心
-            FlickDirection.UP_RIGHT_FAR -> 30.0  // 0度と60度の中心
-            FlickDirection.DOWN -> 90.0          // 60度と120度の中心
-            FlickDirection.UP_LEFT_FAR -> 150.0  // 120度と180度の中心
-            FlickDirection.UP_LEFT -> -150.0     // 180度と240度の中心 (=-150度)
+            FlickDirection.DOWN -> 90.0           // Center of 20-160
+            FlickDirection.UP_LEFT_FAR -> 182.0   // Center of 160-204
+            FlickDirection.UP_LEFT -> 226.0       // Center of 204-248
+            FlickDirection.UP -> 270.0            // Center of 248-292
+            FlickDirection.UP_RIGHT -> 314.0      // Center of 292-336
+            FlickDirection.UP_RIGHT_FAR -> 358.0  // Center of 336-20 (same as -2.0)
             FlickDirection.TAP -> 0.0
         }
     }
