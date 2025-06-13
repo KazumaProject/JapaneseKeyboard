@@ -55,6 +55,8 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -333,6 +335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         )
                     }
                 }
+                setupCustomKeyboardListeners(mainView)
                 setSuggestionRecyclerView(
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
@@ -351,6 +354,63 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         }
+
+    }
+
+    // ▼▼▼ ADD THIS VARIABLE ▼▼▼
+    private var customKeyboardMode = KeyboardInputMode.HIRAGANA
+
+    private fun setupCustomKeyboardListeners(mainView: MainLayoutBinding) {
+        mainView.customLayoutDefault.setOnKeyboardActionListener(object :
+            com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
+
+            override fun onKey(text: String) {
+                // 通常の文字が入力された場合
+                commitText(text, 1)
+            }
+
+            override fun onSpecialKeyLongPress(action: String) {
+                // 特殊キーが長押しされた場合 (今回は何もしない)
+            }
+
+            override fun onSpecialKey(action: String) {
+                // 特殊キーがタップされた場合
+                when (action) {
+                    "モード" -> {
+                        // ▼▼▼ HERE IS THE MODE SWITCHING LOGIC ▼▼▼
+                        // 現在のモードに応じて次のモードを決定
+                        customKeyboardMode = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                        }
+                        // 新しいモードに基づいてレイアウトを再生成
+                        val newLayout = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> KeyboardDefaultLayouts.createHiraganaLayout()
+                            KeyboardInputMode.ENGLISH -> KeyboardDefaultLayouts.createEnglishLayout(
+                                false
+                            ) // false for lowercase
+                            KeyboardInputMode.SYMBOLS -> KeyboardDefaultLayouts.createSymbolLayout()
+                        }
+                        // 新しいレイアウトをキーボードビューにセットして再描画させる
+                        mainView.customLayoutDefault.setKeyboard(newLayout)
+                    }
+
+                    "Del" -> {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    }
+
+                    "改行" -> {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                    }
+
+                    "空白" -> {
+                        commitText(" ", 1)
+                    }
+                    // 他の特殊キーの処理もここに追加...
+                }
+            }
+        })
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -1145,6 +1205,65 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    /**
+     * 全てのキーボードビューを確実に非表示にする
+     */
+    private fun hideAllKeyboards() {
+        mainLayoutBinding?.apply {
+            keyboardView.isVisible = false
+            qwertyView.isVisible = false
+            tabletView.isVisible = false
+            customLayoutDefault.isVisible = false
+            keyboardSymbolView.isVisible = false
+            candidatesRowView.isVisible = false
+        }
+    }
+
+    /**
+     * 指定されたキーボードを表示するための統一された関数
+     */
+    private fun showKeyboard(type: KeyboardType) {
+        hideAllKeyboards() // ★最重要：まず他の全てのキーボードを隠す
+
+        mainLayoutBinding?.apply {
+            when (type) {
+                KeyboardType.TENKEY -> {
+                    if (isTablet == true) {
+                        tabletView.isVisible = true
+                        tabletView.resetLayout()
+                    } else {
+                        keyboardView.isVisible = true
+                        keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    }
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                }
+
+                KeyboardType.QWERTY -> {
+                    qwertyView.isVisible = true
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                    qwertyView.setRomajiMode(false)
+                }
+
+                KeyboardType.ROMAJI -> {
+                    qwertyView.isVisible = true
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    qwertyView.setRomajiMode(true)
+                }
+
+                KeyboardType.SUMIRE -> {
+                    // SUMIREキーボードの表示はここだけで行う
+                    customKeyboardMode = KeyboardInputMode.HIRAGANA
+                    val hiraganaLayout = KeyboardDefaultLayouts.createHiraganaLayout()
+                    customLayoutDefault.setKeyboard(hiraganaLayout)
+                    customLayoutDefault.isVisible = true
+                }
+            }
+            suggestionRecyclerView.isVisible = true
+        }
+    }
+
     private fun showKeyboardPicker() {
         val inputMethodManager =
             getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -1156,69 +1275,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetKeyboard() {
         if (keyboardOrder.isEmpty()) return
         currentKeyboardOrder = 0
-        mainLayoutBinding?.apply {
-            when (keyboardOrder[0]) {
-                KeyboardType.TENKEY -> {
-                    if (isTablet == true) {
-                        tabletView.apply {
-                            isVisible = true
-                            resetLayout()
-                        }
-                        qwertyView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    } else {
-                        keyboardView.apply {
-                            isVisible = true
-                            if (currentInputMode.value == InputMode.ModeNumber) {
-                                setBackgroundSmallLetterKey(
-                                    cachedNumberDrawable
-                                )
-                            } else {
-                                setBackgroundSmallLetterKey(
-                                    cachedLogoDrawable
-                                )
-                            }
-                        }
-                        qwertyView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    }
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                }
-
-                KeyboardType.QWERTY -> {
-                    if (isTablet == true) {
-                        qwertyView.isVisible = true
-                        tabletView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    } else {
-                        qwertyView.isVisible = true
-                        keyboardView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    }
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                    qwertyView.setRomajiMode(false)
-                }
-
-                KeyboardType.ROMAJI -> {
-                    if (isTablet == true) {
-                        qwertyView.isVisible = true
-                        tabletView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    } else {
-                        qwertyView.isVisible = true
-                        keyboardView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    }
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    qwertyView.setRomajiMode(true)
-                }
-            }
-            candidatesRowView.isVisible = false
-            suggestionRecyclerView.isVisible = true
-
-        }
+        showKeyboard(keyboardOrder[0])
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
@@ -3755,26 +3812,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    /**  1) 各キーボード切替時の処理をマップにまとめる **/
-    private val keyboardHandlers: Map<KeyboardType, () -> Unit> = mapOf(
-        KeyboardType.TENKEY to {
-            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
-            mainLayoutBinding?.qwertyView?.setRomajiMode(false)
-        },
-        KeyboardType.QWERTY to {
-            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeEnglish)
-            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-            mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
-        },
-        KeyboardType.ROMAJI to {
-            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
-            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-            mainLayoutBinding?.qwertyView?.setRomajiKeyboard()
-        }
-        // 新しい KeyboardType を追加するときはここに entry を追加するだけ
-    )
-
     // 2) 次のモードに切り替える関数
     fun switchNextKeyboard() {
         if (keyboardOrder.isEmpty()) return
@@ -3783,8 +3820,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val nextIndex = (currentKeyboardOrder + 1) % keyboardOrder.size
         val nextType = keyboardOrder[nextIndex]
 
-        // マップから処理を呼び出し
-        keyboardHandlers[nextType]?.invoke()
+        // 統一された showKeyboard 関数を呼び出す
+        showKeyboard(nextType)
 
         currentKeyboardOrder = nextIndex
     }
