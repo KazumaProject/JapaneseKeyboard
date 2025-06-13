@@ -701,9 +701,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.apply {
-            val inputStyle = appPreference.input_style_preference ?: "flick"
-            val isCircle = inputStyle == "circle"
-            setCircleInputMode(isCircle)
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
