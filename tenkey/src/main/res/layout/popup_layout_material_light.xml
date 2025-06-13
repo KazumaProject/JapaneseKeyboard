@@ -5,13 +5,13 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:background="@null"
-    android:elevation="4dp"
+    android:elevation="2dp"
     app:bl_arrowHeight="0dp"
     app:bl_arrowWidth="0dp"
     app:bl_bubbleColor="?attr/colorSurface"
-    app:bl_cornersRadius="13dp"
+    app:bl_cornersRadius="12dp"
     app:bl_strokeColor="?attr/colorOutline"
-    app:bl_strokeWidth="0.8dp">
+    app:bl_strokeWidth="1dp">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/popup_text"

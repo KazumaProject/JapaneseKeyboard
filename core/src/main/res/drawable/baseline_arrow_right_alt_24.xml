@@ -3,8 +3,8 @@
     android:height="24dp"
     android:viewportWidth="960"
     android:viewportHeight="960"
-    android:tint="?attr/colorControlNormal">
+    android:tint="@color/keyboard_icon_color">
   <path
-      android:fillColor="@android:color/white"
+      android:fillColor="@color/keyboard_icon_color"
       android:pathData="M600,760L543,704L727,520L80,520L80,440L727,440L544,256L600,200L880,480L600,760Z"/>
 </vector>
