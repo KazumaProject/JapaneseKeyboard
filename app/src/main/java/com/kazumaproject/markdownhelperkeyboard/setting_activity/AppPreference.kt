@@ -28,6 +28,8 @@ object AppPreference {
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
 
+    private val INPUT_STYLE = Pair("input_style_preference", "flick")
+
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(KeyboardType.TENKEY, KeyboardType.QWERTY, KeyboardType.ROMAJI)
     )
@@ -149,5 +151,11 @@ object AppPreference {
         get() = preferences.getBoolean(FLICK_INPUT_ONLY.first, FLICK_INPUT_ONLY.second)
         set(value) = preferences.edit {
             it.putBoolean(FLICK_INPUT_ONLY.first, value ?: false)
+        }
+
+    var input_style_preference: String?
+        get() = preferences.getString(INPUT_STYLE.first, INPUT_STYLE.second)
+        set(value) = preferences.edit {
+            it.putString(INPUT_STYLE.first, value ?: "flick")
         }
 }

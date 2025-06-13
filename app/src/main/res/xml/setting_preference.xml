@@ -5,13 +5,22 @@
     <PreferenceCategory android:title="キーボード">
         <Preference
             android:key="keyboard_selection_preference"
-            android:title="キーボード"
-            android:summary="キーボードの追加、削除ができます"/>
+            android:summary="キーボードの追加、削除ができます"
+            android:title="キーボード" />
 
         <Preference
             android:key="keyboard_screen_preference"
             android:summary="キーボードのサイズの設定を変更できます"
             android:title="サイズの設定" />
+
+        <ListPreference
+            android:defaultValue="flick"
+            android:dialogTitle="選択してください"
+            android:entries="@array/input_style_array"
+            android:entryValues="@array/input_style_array_values"
+            android:key="input_style_preference"
+            android:summary="フリック入力、サークル入力から選択"
+            android:title="入力" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
