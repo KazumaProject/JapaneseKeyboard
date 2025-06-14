@@ -18,6 +18,13 @@
             android:key="flick_input_only_preference"
             android:summary="フリック入力のみを使用し、ケータイ打ちを無効にする"
             android:title="フリックのみ" />
+
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="undo_enable_preference"
+            android:title="元に戻す機能"
+            android:summary="元に戻す機能を無効にする" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="操作">
