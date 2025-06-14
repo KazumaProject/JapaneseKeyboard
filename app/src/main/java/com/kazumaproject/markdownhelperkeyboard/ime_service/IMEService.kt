@@ -1281,12 +1281,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     // ▼▼▼ ADD THIS VARIABLE ▼▼▼
     private var customKeyboardMode = KeyboardInputMode.HIRAGANA
 
+    private fun clearDeleteBufferWithView() {
+        if (deletedBuffer.isNotEmpty()) {
+            clearDeletedBufferWithoutResetLayout()
+            suggestionAdapter?.setUndoEnabled(false)
+            setClipboardText()
+        }
+    }
+
     private fun setupCustomKeyboardListeners(mainView: MainLayoutBinding) {
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
             override fun onKey(text: String) {
                 // 通常の文字が入力された場合（変更なし）
+                clearDeleteBufferWithView()
                 Timber.d("onKey: $text")
                 vibrate()
                 val insertString = inputString.value
@@ -1300,6 +1309,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             override fun onActionLongPress(action: KeyAction) {
                 // 特殊キーが長押しされた場合
                 // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
+                clearDeleteBufferWithView()
                 Timber.d("onActionLongPress: $action")
                 when (action) {
                     KeyAction.Backspace -> {}
@@ -1375,6 +1385,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 vibrate()
 
                 Timber.d("onAction: $action")
+                if (action != KeyAction.Delete) {
+                    clearDeleteBufferWithView()
+                }
                 // 特殊キーがタップされた場合
                 // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
                 when (action) {
@@ -1890,6 +1903,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mainView.candidatesRowView.scrollToPosition(0)
         }
 
+        if (isVisible) {
+            mainLayoutBinding?.apply {
+                if (customLayoutDefault.isInvisible) {
+                    animateViewVisibility(
+                        customLayoutDefault, isVisible = true, true
+                    )
+                }
+            }
+        } else {
+            mainLayoutBinding?.apply {
+                if (customLayoutDefault.isVisible) customLayoutDefault.visibility = View.INVISIBLE
+            }
+        }
+
         mainView.suggestionVisibility.apply {
             this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
         }
@@ -2263,6 +2290,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
+                        appPreference.undo_enable_preference?.let {
+                            if (!it) return@setOnItemHelperIconClickListener
+                        }
                         popLastDeletedChar()?.let { c ->
                             commitText(c, 1)
                             suggestionAdapter?.setUndoPreviewText(
@@ -2294,6 +2324,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconLongClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
+                        appPreference.undo_enable_preference?.let {
+                            if (!it) return@setOnItemHelperIconLongClickListener
+                        }
                         val textToCommit = reverseByGrapheme(deletedBuffer.toString())
                         commitText(textToCommit, 1)
                         clearDeletedBuffer()
@@ -2590,19 +2623,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
     private fun clearDeletedBuffer() {
-        deletedBuffer.clear()
-        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-            ContextCompat.getDrawable(
-                this, com.kazumaproject.core.R.drawable.undo_24px
-            )
-        )
+        appPreference.undo_enable_preference?.let {
+            if (it) {
+                deletedBuffer.clear()
+                mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                    ContextCompat.getDrawable(
+                        this, com.kazumaproject.core.R.drawable.undo_24px
+                    )
+                )
+            }
+        }
     }
 
     private fun clearDeletedBufferWithoutResetLayout() {
-        deletedBuffer.clear()
+        appPreference.undo_enable_preference?.let {
+            if (it) {
+                deletedBuffer.clear()
+            }
+        }
     }
 
     private fun reverseByGrapheme(input: String): String {
+        appPreference.undo_enable_preference?.let {
+            if (!it) return@let
+        }
         if (input.isEmpty()) return input
 
         // BreakIterator を文字（グラフェム）単位で作成
@@ -2632,6 +2676,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * 絵文字の場合は2コードユニット、その他は1コードユニットを削除して返す。
      */
     private fun popLastDeletedChar(): String? {
+        appPreference.undo_enable_preference?.let {
+            if (!it) return@let
+        }
         if (deletedBuffer.isEmpty()) return null
 
         // バッファ全体を String として扱う
@@ -3208,22 +3255,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 if (current.isEmpty()) {
                     if (tailIsEmpty) {
-                        val beforeChar = getLastCharacterAsString(currentInputConnection)
-                        if (beforeChar.isNotEmpty()) {
-                            deletedBuffer.append(beforeChar)
-                            if (
-                                beforeChar == "ァ゙" ||
-                                beforeChar == "ィ゙" ||
-                                beforeChar == "ゥ゙" ||
-                                beforeChar == "ェ゙" ||
-                                beforeChar == "ォ゙" ||
-                                beforeChar == "ッ゙" ||
-                                beforeChar == "ャ゙" ||
-                                beforeChar == "ュ゙" ||
-                                beforeChar == "ョ゙"
-                            ) {
-                                deleteSurroundingTextInCodePoints(2, 0)
-                                continue
+                        appPreference.undo_enable_preference?.let {
+                            if (it) {
+                                val beforeChar = getLastCharacterAsString(currentInputConnection)
+                                if (beforeChar.isNotEmpty()) {
+                                    deletedBuffer.append(beforeChar)
+                                    if (
+                                        beforeChar == "ァ゙" ||
+                                        beforeChar == "ィ゙" ||
+                                        beforeChar == "ゥ゙" ||
+                                        beforeChar == "ェ゙" ||
+                                        beforeChar == "ォ゙" ||
+                                        beforeChar == "ッ゙" ||
+                                        beforeChar == "ャ゙" ||
+                                        beforeChar == "ュ゙" ||
+                                        beforeChar == "ョ゙"
+                                    ) {
+                                        deleteSurroundingTextInCodePoints(2, 0)
+                                    }
+                                }
                             }
                         }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
@@ -3231,8 +3281,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         break
                     }
                 } else {
-                    val deletedChar = current.last()
-                    deletedBuffer.append(deletedChar)
+                    appPreference.undo_enable_preference?.let {
+                        if (it) {
+                            val deletedChar = current.last()
+                            deletedBuffer.append(deletedChar)
+                        }
+                    }
                     val newString = current.dropLast(1)
                     _inputString.update { newString }
                     if (newString.isEmpty() && tailIsEmpty) {
@@ -3252,16 +3306,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         if (!selectMode.value) {
             deleteLongPressJob?.invokeOnCompletion {
-                if (inputStringInBeginning.isEmpty()) {
-                    suggestionAdapter?.apply {
-                        suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
-                        setUndoEnabled(true)
+                appPreference.undo_enable_preference?.let {
+                    if (it) {
+                        if (inputStringInBeginning.isEmpty()) {
+                            suggestionAdapter?.apply {
+                                suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
+                                setUndoEnabled(true)
+                            }
+                            mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                                ContextCompat.getDrawable(
+                                    this@IMEService,
+                                    com.kazumaproject.core.R.drawable.baseline_delete_24
+                                )
+                            )
+                        }
                     }
-                    mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-                        ContextCompat.getDrawable(
-                            this@IMEService, com.kazumaproject.core.R.drawable.baseline_delete_24
-                        )
-                    )
                 }
             }
         }
@@ -3366,30 +3425,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (!selectMode.value) {
                     val beforeChar = getLastCharacterAsString(currentInputConnection)
                     if (beforeChar.isNotEmpty()) {
-                        deletedBuffer.append(beforeChar)
-                        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-                            ContextCompat.getDrawable(
-                                this@IMEService,
-                                com.kazumaproject.core.R.drawable.baseline_delete_24
-                            )
-                        )
-                        suggestionAdapter?.apply {
-                            setUndoEnabled(true)
-                            setUndoPreviewText(deletedBuffer.toString())
-                        }
-                        Timber.d("beforeChar: $beforeChar")
-                        if (beforeChar == "ァ゙" ||
-                            beforeChar == "ィ゙" ||
-                            beforeChar == "ゥ゙" ||
-                            beforeChar == "ェ゙" ||
-                            beforeChar == "ォ゙" ||
-                            beforeChar == "ッ゙" ||
-                            beforeChar == "ャ゙" ||
-                            beforeChar == "ュ゙" ||
-                            beforeChar == "ョ゙"
-                        ) {
-                            deleteSurroundingTextInCodePoints(2, 0)
-                            return
+                        appPreference.undo_enable_preference?.let {
+                            if (it) {
+                                deletedBuffer.append(beforeChar)
+                                mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                                    ContextCompat.getDrawable(
+                                        this@IMEService,
+                                        com.kazumaproject.core.R.drawable.baseline_delete_24
+                                    )
+                                )
+                                suggestionAdapter?.apply {
+                                    setUndoEnabled(true)
+                                    setUndoPreviewText(deletedBuffer.toString())
+                                }
+                                if (beforeChar == "ァ゙" ||
+                                    beforeChar == "ィ゙" ||
+                                    beforeChar == "ゥ゙" ||
+                                    beforeChar == "ェ゙" ||
+                                    beforeChar == "ォ゙" ||
+                                    beforeChar == "ッ゙" ||
+                                    beforeChar == "ャ゙" ||
+                                    beforeChar == "ュ゙" ||
+                                    beforeChar == "ョ゙"
+                                ) {
+                                    deleteSurroundingTextInCodePoints(2, 0)
+                                    return
+                                }
+                            }
                         }
                     }
                 }

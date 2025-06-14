@@ -102,6 +102,26 @@ class SettingFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val keyboardUndoEnablePreference =
+            findPreference<SwitchPreferenceCompat>("undo_enable_preference")
+        keyboardUndoEnablePreference?.apply {
+            appPreference.undo_enable_preference?.let {
+                this.summary = if (it) {
+                    "確定した文字を削除したときに、元に戻せる機能を有効にします"
+                } else {
+                    "確定した文字を削除したときに、元に戻せる機能を無効にします"
+                }
+            }
+            this.setOnPreferenceChangeListener { _, newValue ->
+                this.summary = if (newValue == true) {
+                    "確定した文字を削除したときに、元に戻せる機能を有効にします"
+                } else {
+                    "確定した文字を削除したときに、元に戻せる機能を無効にします"
+                }
+                true
+            }
+        }
+
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {
