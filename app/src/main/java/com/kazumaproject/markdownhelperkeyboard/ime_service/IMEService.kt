@@ -946,7 +946,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
-                        handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                        val hankakuPreference = appPreference.space_hankaku_preference ?: false
+                        val isHankaku = isFlick || hankakuPreference
+                        handleSpaceKeyClick(isHankaku, insertString, suggestions, mainView)
                     }
                 }
                 isSpaceKeyLongPressed = false
@@ -1212,6 +1214,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    qwertyView.isVisible = false
+                    keyboardView.isVisible = false
                 }
             }
             suggestionRecyclerView.isVisible = true
@@ -1309,13 +1313,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             override fun onActionLongPress(action: KeyAction) {
                 // 特殊キーが長押しされた場合
                 // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
+                vibrate()
                 clearDeleteBufferWithView()
                 Timber.d("onActionLongPress: $action")
                 when (action) {
                     KeyAction.Backspace -> {}
-                    KeyAction.ChangeInputMode -> {}
-                    KeyAction.Confirm -> {}
-                    KeyAction.Convert -> {}
+                    KeyAction.ChangeInputMode -> {
+                        // 現在のモードに応じて次のモードを決定
+                        customKeyboardMode = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                        }
+                        updateKeyboardLayout()
+                    }
+
+                    KeyAction.Convert, KeyAction.Space -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (cursorMoveMode.value) {
+                            _cursorMoveMode.update { false }
+                        } else {
+                            if (!isSpaceKeyLongPressed) {
+                                val hankakuPreference =
+                                    appPreference.space_hankaku_preference ?: false
+                                handleSpaceKeyClick(
+                                    hankakuPreference,
+                                    insertString,
+                                    suggestions,
+                                    mainView
+                                )
+                            }
+                        }
+                        isSpaceKeyLongPressed = false
+                    }
+
                     KeyAction.Copy -> {
 
                     }
@@ -1332,18 +1364,40 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                     }
 
-                    KeyAction.Enter -> {}
-                    is KeyAction.InputText -> {}
+                    KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (insertString.isNotEmpty()) {
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        } else {
+                            handleEmptyInputEnterKey(mainView)
+                        }
+                    }
+
+                    is KeyAction.InputText -> {
+                        if (action.text == "^_^") {
+                            _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                            stringInTail.set("")
+                            finishComposingText()
+                            setComposingText("", 0)
+                        }
+                    }
+
                     KeyAction.MoveCursorLeft -> {}
                     KeyAction.MoveCursorRight -> {}
-                    KeyAction.NewLine -> {}
                     KeyAction.Paste -> {}
                     KeyAction.SelectAll -> {}
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.Space -> {}
-                    KeyAction.SwitchToNextIme -> {}
+
+                    KeyAction.SwitchToNextIme -> {
+                        switchNextKeyboard()
+                        _inputString.update { "" }
+                        finishComposingText()
+                        setComposingText("", 0)
+                    }
+
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
                 }
@@ -1381,6 +1435,107 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 vibrate()
             }
 
+            override fun onFlickActionLongPress(action: KeyAction) {
+                Timber.d("onFlickActionLongPress: $action")
+                vibrate()
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {}
+                    KeyAction.Confirm -> {}
+                    KeyAction.Convert -> {}
+                    KeyAction.Copy -> {
+                        val selectedText = getSelectedText(0)
+                        if (!selectedText.isNullOrEmpty()) {
+                            clipboardUtil.setClipBoard(selectedText.toString())
+                            suggestionAdapter?.apply {
+                                setPasteEnabled(true)
+                                setClipboardPreview(selectedText.toString())
+                            }
+                        }
+                    }
+
+                    KeyAction.Delete -> {}
+                    KeyAction.Enter -> {}
+                    is KeyAction.InputText -> {}
+                    KeyAction.MoveCursorLeft -> {
+                        handleLeftLongPress()
+                        leftCursorKeyLongKeyPressed.set(true)
+                        if (selectMode.value) {
+                            clearDeletedBufferWithoutResetLayout()
+                        } else {
+                            clearDeletedBuffer()
+                        }
+                        suggestionAdapter?.setUndoEnabled(false)
+                        setClipboardText()
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        handleRightLongPress()
+                        rightCursorKeyLongKeyPressed.set(true)
+                        if (selectMode.value) {
+                            clearDeletedBufferWithoutResetLayout()
+                        } else {
+                            clearDeletedBuffer()
+                        }
+                        suggestionAdapter?.setUndoEnabled(false)
+                        setClipboardText()
+                    }
+
+                    KeyAction.NewLine -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {
+                        selectAllText()
+                    }
+
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.Space -> {}
+                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
+            }
+
+            override fun onFlickActionUpAfterLongPress(action: KeyAction) {
+                vibrate()
+                Timber.d("onFlickActionUpAfterLongPress: $action")
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {}
+                    KeyAction.Confirm -> {}
+                    KeyAction.Convert -> {}
+                    KeyAction.Copy -> {}
+                    KeyAction.Delete -> {}
+                    KeyAction.Enter -> {}
+                    is KeyAction.InputText -> {}
+                    KeyAction.MoveCursorLeft -> {
+                        onLeftKeyLongPressUp.set(true)
+                        leftCursorKeyLongKeyPressed.set(false)
+                        leftLongPressJob?.cancel()
+                        leftLongPressJob = null
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        onRightKeyLongPressUp.set(true)
+                        rightCursorKeyLongKeyPressed.set(false)
+                        rightLongPressJob?.cancel()
+                        rightLongPressJob = null
+                    }
+
+                    KeyAction.NewLine -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {}
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.Space -> {}
+                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
+            }
+
             override fun onAction(action: KeyAction) {
                 vibrate()
 
@@ -1392,7 +1547,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
                 when (action) {
                     is KeyAction.InputText -> {
-                        //commitText(action.text, 1)
                         if (action.text == "^_^") {
                             _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
                             stringInTail.set("")
@@ -1403,6 +1557,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     KeyAction.SwitchToNextIme -> {
                         switchNextKeyboard()
+                        _inputString.update { "" }
+                        finishComposingText()
+                        setComposingText("", 0)
                     }
 
                     KeyAction.ChangeInputMode -> {
@@ -1439,7 +1596,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             _cursorMoveMode.update { false }
                         } else {
                             if (!isSpaceKeyLongPressed) {
-                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                                val hankakuPreference =
+                                    appPreference.space_hankaku_preference ?: false
+                                handleSpaceKeyClick(
+                                    hankakuPreference,
+                                    insertString,
+                                    suggestions,
+                                    mainView
+                                )
                             }
                         }
                         isSpaceKeyLongPressed = false
@@ -1840,31 +2004,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         suggestionRecyclerView.isVisible = true
                         if (customLayoutDefault.isInvisible) customLayoutDefault.visibility =
                             View.VISIBLE
-                    }
-                }
-            }
-        }
-
-        launch {
-            qwertyMode.collectLatest { state ->
-                setKeyboardSize()
-                when (state) {
-                    TenKeyQWERTYMode.Default -> {
-                        if (isTablet == true) {
-                            mainView.tabletView.isVisible = true
-                        } else {
-                            mainView.keyboardView.isVisible = true
-                        }
-                        mainView.qwertyView.isVisible = false
-                    }
-
-                    TenKeyQWERTYMode.TenKeyQWERTY -> {
-                        mainView.qwertyView.isVisible = true
-                        if (isTablet == true) {
-                            mainView.tabletView.isVisible = false
-                        } else {
-                            mainView.keyboardView.isVisible = false
-                        }
                     }
                 }
             }
@@ -3766,7 +3905,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         rightLongPressJob = scope.launch {
             var finalSuggestionFlag: CandidateShowFlag? = null
             while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
-
                 val insertString = inputString.value
                 if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Updating
