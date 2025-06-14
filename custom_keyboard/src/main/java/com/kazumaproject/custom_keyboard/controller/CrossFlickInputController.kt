@@ -22,9 +22,16 @@ import kotlin.math.abs
 
 class CrossFlickInputController(private val context: Context) {
 
+    /**
+     * ▼▼▼ 修正 ▼▼▼
+     * ロングプレス後の指離しイベント用のリスナーメソッドを追加
+     */
     interface CrossFlickListener {
         fun onFlick(flickAction: FlickAction)
+        fun onFlickLongPress(flickAction: FlickAction)
+        fun onFlickUpAfterLongPress(flickAction: FlickAction)
     }
+    // ▲▲▲ 修正 ▲▲▲
 
     var listener: CrossFlickListener? = null
 
@@ -52,6 +59,7 @@ class CrossFlickInputController(private val context: Context) {
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
     private var isLongPressMode = false
+    private var isLongPressTriggered = false
 
     fun cancel() {
         controllerScope.cancel()
@@ -70,6 +78,7 @@ class CrossFlickInputController(private val context: Context) {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 isLongPressMode = false
+                isLongPressTriggered = false
                 anchorView = view
                 initialTouchPoint.set(event.rawX, event.rawY)
                 currentDirection = CrossDirection.TAP
@@ -77,8 +86,20 @@ class CrossFlickInputController(private val context: Context) {
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
                     delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    isLongPressTriggered = true
                     isLongPressMode = true
+
+                    val directionToCommit = if (currentDirection != CrossDirection.TAP) {
+                        directionMapping[currentDirection]
+                    } else {
+                        FlickDirection.TAP
+                    }
+                    val longPressAction = flickActionMap[directionToCommit]
+
+                    longPressAction?.let { listener?.onFlickLongPress(it) }
+
                     showAllPopups()
+                    highlightPopup(currentDirection)
                 }
                 return true
             }
@@ -86,11 +107,6 @@ class CrossFlickInputController(private val context: Context) {
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.rawX - initialTouchPoint.x
                 val dy = event.rawY - initialTouchPoint.y
-                val distance = kotlin.math.sqrt(dx * dx + dy * dy)
-
-                if (distance > ViewConfiguration.get(context).scaledTouchSlop) {
-                    longPressJob?.cancel()
-                }
 
                 val newDirection = calculateDirection(dx, dy)
                 if (newDirection != currentDirection) {
@@ -108,13 +124,25 @@ class CrossFlickInputController(private val context: Context) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressJob?.cancel()
 
+                /**
+                 * ▼▼▼ 修正 ▼▼▼
+                 * ロングプレスが発火したか否かで、呼び出すリスナーを分岐させる
+                 */
+                // 指を離した時点での最終的なアクションを決定
                 val flickActionToCommit = if (currentDirection != CrossDirection.TAP) {
                     flickActionMap[directionMapping[currentDirection]]
                 } else {
                     flickActionMap[FlickDirection.TAP]
                 }
 
-                flickActionToCommit?.let { listener?.onFlick(it) }
+                if (isLongPressTriggered) {
+                    // ロングプレスが発火済みの場合は、UpAfterLongPress を呼び出す
+                    flickActionToCommit?.let { listener?.onFlickUpAfterLongPress(it) }
+                } else {
+                    // ロングプレスが発火していない場合は、通常の onFlick を呼び出す
+                    flickActionToCommit?.let { listener?.onFlick(it) }
+                }
+                // ▲▲▲ 修正 ▲▲▲
 
                 dismissAllPopups()
                 return true
@@ -123,6 +151,7 @@ class CrossFlickInputController(private val context: Context) {
         return false
     }
 
+    // ... (calculateDirection, showPopup, showAllPopups, highlightPopup, dismissAllPopups は変更なし)
     private fun calculateDirection(dx: Float, dy: Float): CrossDirection {
         val absDx = abs(dx)
         val absDy = abs(dy)

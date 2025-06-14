@@ -29,13 +29,20 @@ class FlickKeyboardView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
+    /**
+     * ▼▼▼ 修正 ▼▼▼
+     * 十字フリックのロングプレス後の指離しイベントを処理するメソッドを追加
+     */
     interface OnKeyboardActionListener {
         fun onKey(text: String)
         fun onAction(action: KeyAction)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
         fun onFlickDirectionChanged(direction: FlickDirection)
+        fun onFlickActionLongPress(action: KeyAction)
+        fun onFlickActionUpAfterLongPress(action: KeyAction)
     }
+    // ▲▲▲ 修正 ▲▲▲
 
     private var listener: OnKeyboardActionListener? = null
     private val flickControllers = mutableListOf<FlickInputController>()
@@ -57,18 +64,18 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.rowCount = layout.rowCount
 
         layout.keys.forEach { keyData ->
-            // ▼▼▼ 修正 ▼▼▼ isSpecialKeyの判定を、KeyDataのプロパティを直接参照するように変更 ▼▼▼
-            // val isSpecialKey = keyData.action != null // この行を削除！
             val isDarkTheme = context.isDarkThemeOn()
 
             val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
                 AppCompatImageButton(context).apply {
+                    isFocusable = false
                     setImageResource(keyData.drawableResId)
                     contentDescription = keyData.label
                     setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
                 }
             } else {
                 Button(context).apply {
+                    isFocusable = false
                     text = keyData.label
                     if (keyData.isSpecialKey) {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
@@ -77,15 +84,17 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
             }
-            // ▲▲▲ 修正 ▲▲▲
 
             val params = LayoutParams().apply {
                 rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
                 width = 0
                 height = 0
-                // ▼▼▼ 修正 ▼▼▼ ここも同様に KeyData のプロパティを直接参照
-                setMargins(if (keyData.isSpecialKey) 8 else 8)
+                if (keyData.isSpecialKey) {
+                    setMargins(6,7,6,5)
+                } else {
+                    setMargins(7)
+                }
             }
             keyView.layoutParams = params
 
@@ -168,6 +177,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null) {
                         val controller = CrossFlickInputController(context).apply {
+                            /**
+                             * ▼▼▼ 修正 ▼▼▼
+                             * 新しい onFlickUpAfterLongPress メソッドを実装
+                             */
                             this.listener = object : CrossFlickInputController.CrossFlickListener {
                                 override fun onFlick(flickAction: FlickAction) {
                                     when (flickAction) {
@@ -180,7 +193,36 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         }
                                     }
                                 }
+
+                                override fun onFlickLongPress(flickAction: FlickAction) {
+                                    when (flickAction) {
+                                        is FlickAction.Action -> {
+                                            this@FlickKeyboardView.listener?.onFlickActionLongPress(
+                                                flickAction.action
+                                            )
+                                        }
+
+                                        is FlickAction.Input -> {
+                                            // 必要であれば、文字入力のロングプレスに対する処理をここに記述
+                                        }
+                                    }
+                                }
+
+                                override fun onFlickUpAfterLongPress(flickAction: FlickAction) {
+                                    when (flickAction) {
+                                        is FlickAction.Action -> {
+                                            this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                                flickAction.action
+                                            )
+                                        }
+
+                                        is FlickAction.Input -> {
+                                            // 必要であれば、文字入力のロングプレス後の指離しに対する処理をここに記述
+                                        }
+                                    }
+                                }
                             }
+                            // ▲▲▲ 修正 ▲▲▲
                             attach(keyView, flickActionMap)
                         }
                         crossFlickControllers.add(controller)

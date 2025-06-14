@@ -122,6 +122,36 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val spaceHankakuPreference =
+            findPreference<SwitchPreferenceCompat>("space_key_preference")
+        spaceHankakuPreference?.apply {
+            appPreference.space_hankaku_preference?.let {
+                this.title = if (it) {
+                    "空白を半角入力"
+                } else {
+                    "空白を全角入力"
+                }
+                this.summary = if (it) {
+                    "現在、半角入力です"
+                } else {
+                    "現在、全角入力です"
+                }
+            }
+            this.setOnPreferenceChangeListener { _, newValue ->
+                this.title = if (newValue == true) {
+                    "空白を半角入力"
+                } else {
+                    "空白を全角入力"
+                }
+                this.summary = if (newValue == true) {
+                    "現在、半角入力です"
+                } else {
+                    "現在、全角入力です"
+                }
+                true
+            }
+        }
+
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {

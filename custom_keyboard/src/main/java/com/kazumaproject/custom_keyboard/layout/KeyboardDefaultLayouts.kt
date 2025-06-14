@@ -370,7 +370,19 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("、"),
             FlickDirection.UP_LEFT to FlickAction.Input("。"),
             FlickDirection.UP to FlickAction.Input("？"),
-            FlickDirection.UP_RIGHT to FlickAction.Input("！")
+            FlickDirection.UP_RIGHT to FlickAction.Input("！"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
+            FlickDirection.DOWN to FlickAction.Input("")
+        )
+
+        val kuten_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT to FlickAction.Input("_"),
+            FlickDirection.UP to FlickAction.Input("「"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("」"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
+            FlickDirection.DOWN to FlickAction.Input("")
         )
 
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
@@ -386,7 +398,7 @@ object KeyboardDefaultLayouts {
             "や" to listOf(ya, ya_small),
             "ら" to listOf(ra),
             "わ" to listOf(wa, wa_small),
-            "、。?!" to listOf(kuten)
+            "、。?!" to listOf(kuten, kuten_small)
         )
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
@@ -396,10 +408,18 @@ object KeyboardDefaultLayouts {
     //region English Layout
     private fun createEnglishLayout(isUpperCase: Boolean): KeyboardLayout {
         val keys = listOf(
-            KeyData("モード", 0, 0, false, KeyAction.ChangeInputMode),
-            KeyData("a/A", 1, 0, false, KeyAction.ToggleCase),
-            KeyData("顔文字", 2, 0, false, KeyAction.ShowEmojiKeyboard),
-            KeyData("記号", 3, 0, false, KeyAction.ChangeInputMode),
+            KeyData("顔文字", 0, 0, false, KeyAction.ShowEmojiKeyboard, isSpecialKey = true),
+            KeyData("a/A", 1, 0, false, KeyAction.ToggleCase, isSpecialKey = true),
+            KeyData(
+                "モード",
+                2,
+                0,
+                false,
+                KeyAction.ChangeInputMode,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+            ),
+            KeyData("記号", 3, 0, false, KeyAction.ChangeInputMode, isSpecialKey = true),
             KeyData("ABC", 0, 1, true), KeyData("DEF", 0, 2, true), KeyData("GHI", 0, 3, true),
             KeyData("JKL", 1, 1, true), KeyData("MNO", 1, 2, true), KeyData("PQRS", 1, 3, true),
             KeyData("TUV", 2, 1, true), KeyData("WXYZ", 2, 2, true), KeyData("'", 2, 3, true),
