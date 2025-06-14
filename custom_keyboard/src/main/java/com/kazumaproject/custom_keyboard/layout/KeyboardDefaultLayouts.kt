@@ -21,13 +21,27 @@ object KeyboardDefaultLayouts {
             ),
             KeyData("←", 1, 0, false, action = KeyAction.MoveCursorLeft, isSpecialKey = true),
             KeyData("モード", 2, 0, false, action = KeyAction.ChangeInputMode, isSpecialKey = true),
-            KeyData("→", 3, 0, false, action = KeyAction.MoveCursorRight, isSpecialKey = true),
+            KeyData(
+                "",
+                3,
+                0,
+                false,
+                action = KeyAction.SwitchToNextIme,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+            ),
 
             // 1-3列目 (ひらがなフリックキー)
             KeyData("あ", 0, 1, true), KeyData("か", 0, 2, true), KeyData("さ", 0, 3, true),
             KeyData("た", 1, 1, true), KeyData("な", 1, 2, true), KeyData("は", 1, 3, true),
             KeyData("ま", 2, 1, true), KeyData("や", 2, 2, true), KeyData("ら", 2, 3, true),
-            KeyData("^_^", 3, 1, false, action = KeyAction.InputText("^_^")), // 特殊な文字列入力
+            KeyData(
+                "^_^",
+                3,
+                1,
+                false,
+                isSpecialKey = false
+            ),
             KeyData("わ", 3, 2, true), KeyData("、。?!", 3, 3, true),
 
             // 4列目（右端の特殊キー）

@@ -1232,15 +1232,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             override fun onActionLongPress(action: KeyAction) {
                 // 特殊キーが長押しされた場合
                 // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
+                Timber.d("onActionLongPress: $action")
             }
 
             override fun onAction(action: KeyAction) {
+
+                Timber.d("onAction: $action")
                 // 特殊キーがタップされた場合
                 // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
                 when (action) {
                     is KeyAction.InputText -> {
                         // ^_^ のようなキーのための処理
                         commitText(action.text, 1)
+                    }
+
+                    KeyAction.SwitchToNextIme -> {
+                        switchNextKeyboard()
                     }
 
                     KeyAction.ChangeInputMode -> {

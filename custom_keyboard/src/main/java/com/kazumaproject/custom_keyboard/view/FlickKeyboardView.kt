@@ -74,7 +74,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
                 width = 0
                 height = 0
-                setMargins(if (isSpecialKey) 16 else 6)
+                setMargins(if (isSpecialKey) 16 else 8)
             }
             keyView.layoutParams = params
 
