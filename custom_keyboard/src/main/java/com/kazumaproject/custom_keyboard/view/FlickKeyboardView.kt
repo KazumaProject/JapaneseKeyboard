@@ -1,8 +1,10 @@
 package com.kazumaproject.custom_keyboard.view
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
@@ -24,11 +26,12 @@ class FlickKeyboardView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
-    // OnKeyboardActionListenerインターフェースをKeyActionベースに修正
+    // ▼▼▼ 変更 ▼▼▼ 新しいメソッドを追加
     interface OnKeyboardActionListener {
         fun onKey(text: String)
         fun onAction(action: KeyAction)
         fun onActionLongPress(action: KeyAction)
+        fun onActionUpAfterLongPress(action: KeyAction)
     }
 
     private var listener: OnKeyboardActionListener? = null
@@ -38,6 +41,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.listener = listener
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
         this.removeAllViews()
         flickControllers.forEach { it.cancel() }
@@ -47,9 +51,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.rowCount = layout.rowCount
 
         layout.keys.forEach { keyData ->
-            // isSpecialKeyの代わりにactionの有無で判定
             val isSpecialKey = keyData.action != null
-
             val isDarkTheme = context.isDarkThemeOn()
 
             val keyView: View = if (isSpecialKey && keyData.drawableResId != null) {
@@ -74,33 +76,27 @@ class FlickKeyboardView @JvmOverloads constructor(
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
                 width = 0
                 height = 0
-                setMargins(if (isSpecialKey) 16 else 8)
+                setMargins(if (isSpecialKey) 8 else 8)
             }
             keyView.layoutParams = params
 
             if (keyData.isFlickable) {
-                // フリック可能なキーの処理
+                // (フリック可能なキーの処理は変更なし)
                 val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
                 if (!flickKeyMapsList.isNullOrEmpty()) {
                     val controller = FlickInputController(context).apply {
-
-                        // --- ここからが省略されていた部分です ---
-                        // 1. Dynamic Colorsの役割（属性）を定義
                         val primaryColor =
                             context.getColorFromAttr(com.google.android.material.R.attr.colorPrimary)
                         val secondaryColor =
                             context.getColorFromAttr(com.google.android.material.R.attr.colorSecondary)
                         val tertiaryColor =
                             context.getColorFromAttr(com.google.android.material.R.attr.colorTertiary)
-
                         val surfaceContainerLow =
                             context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerLow)
                         val surfaceContainerHighest =
                             context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerHighest)
-
                         val outline =
                             context.getColorFromAttr(com.google.android.material.R.attr.colorOutline)
-
                         val dynamicColorTheme = FlickPopupColorTheme(
                             segmentColor = surfaceContainerLow,
                             segmentHighlightGradientStartColor = primaryColor,
@@ -112,17 +108,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                             separatorColor = outline,
                             textColor = outline
                         )
-
-                        // 3. コントローラーにカラーテーマを設定
                         setPopupColors(dynamicColorTheme)
-                        // --- ここまでが省略されていた部分です ---
-
                         this.listener = object : FlickInputController.FlickListener {
                             override fun onStateChanged(
                                 view: View,
                                 newMap: Map<FlickDirection, String>
                             ) {
-                                // 必要であれば実装
                             }
 
                             override fun onFlick(direction: FlickDirection, character: String) {
@@ -133,36 +124,55 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     flickKeyMapsList.firstOrNull()?.get(FlickDirection.TAP)
                             }
                         }
-
                         setPopupPosition(PopupPosition.TOP)
                         attach(keyView, flickKeyMapsList)
-
-                        // --- ここからが省略されていた部分です ---
                         val scaleFactor = 1.3f
-
                         val newCenter = 80f * scaleFactor
                         val newOrbit = 180f * scaleFactor
                         val newTextSize = 55f * scaleFactor
-
                         setPopupViewSize(
                             center = newCenter,
                             target = newOrbit,
                             orbit = newOrbit,
                             textSize = newTextSize
                         )
-                        // --- ここまでが省略されていた部分です ---
                     }
                     flickControllers.add(controller)
                 }
             } else {
-                // フリック不可キーのクリック/長押し処理
+                // ▼▼▼ 変更箇所 ▼▼▼
+                // フリック不可キーのクリック/長押し/指離し処理
                 keyData.action?.let { action ->
+                    // 長押しがトリガーされたかを追跡するフラグ
+                    var isLongPressTriggered = false
+
+                    // 通常のクリックイベント
                     keyView.setOnClickListener {
+                        // isLongPressTriggeredがfalseの場合のみ実行される（LongClickがtrueを返すため）
                         this@FlickKeyboardView.listener?.onAction(action)
                     }
+
+                    // 長押し開始イベント
                     keyView.setOnLongClickListener {
+                        isLongPressTriggered = true
                         this@FlickKeyboardView.listener?.onActionLongPress(action)
-                        true
+                        true // trueを返し、クリックイベントの発生を防ぐ
+                    }
+
+                    // 指の動きを監視するタッチイベント
+                    keyView.setOnTouchListener { _, event ->
+                        // 指が離れた (UP) またはジェスチャーがキャンセルされた場合
+                        if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
+                            // もし長押しがトリガーされていたなら
+                            if (isLongPressTriggered) {
+                                // 「長押し後の指離し」イベントを通知
+                                this@FlickKeyboardView.listener?.onActionUpAfterLongPress(action)
+                                // フラグをリセットして次の操作に備える
+                                isLongPressTriggered = false
+                            }
+                        }
+                        // falseを返すことで、他のリスナー(onClick, onLongClick)の邪魔をしない
+                        false
                     }
                 }
             }
