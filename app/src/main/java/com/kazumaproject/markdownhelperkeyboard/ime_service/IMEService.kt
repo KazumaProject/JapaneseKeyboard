@@ -1214,6 +1214,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
                 }
@@ -1330,22 +1331,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     KeyAction.Convert, KeyAction.Space -> {
                         val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (cursorMoveMode.value) {
-                            _cursorMoveMode.update { false }
-                        } else {
-                            if (!isSpaceKeyLongPressed) {
-                                val hankakuPreference =
-                                    appPreference.space_hankaku_preference ?: false
-                                handleSpaceKeyClick(
-                                    hankakuPreference,
-                                    insertString,
-                                    suggestions,
-                                    mainView
-                                )
+                        if (insertString.isNotEmpty()) {
+                            mainLayoutBinding?.let {
+                                if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                                    isSpaceKeyLongPressed = true
+                                    if (hasConvertedKatakana) {
+                                        _inputString.update { str -> str.katakanaToHiragana() }
+                                    } else {
+                                        _inputString.update { str -> str.hiraganaToKatakana() }
+                                    }
+                                    hasConvertedKatakana = !hasConvertedKatakana
+                                }
                             }
+                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                            _cursorMoveMode.update { true }
+                            isSpaceKeyLongPressed = true
                         }
-                        isSpaceKeyLongPressed = false
                     }
 
                     KeyAction.Copy -> {
@@ -1408,7 +1409,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
-                    KeyAction.Convert -> {}
+                    KeyAction.Convert, KeyAction.Space -> {
+                        isSpaceKeyLongPressed = false
+                    }
+
                     KeyAction.Copy -> {}
                     KeyAction.Delete -> {
                         stopDeleteLongPress()
@@ -1424,7 +1428,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.Space -> {}
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
@@ -1859,6 +1862,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * 入力フィールドの全文を全選択する
      */
     private fun selectAllText() {
+        if (inputString.value.isNotEmpty()) return
         val request = ExtractedTextRequest()
         // 必要に応じて request.flags を設定（デフォルトで OK）
         val extracted: ExtractedText? = getExtractedText(request, 0)
