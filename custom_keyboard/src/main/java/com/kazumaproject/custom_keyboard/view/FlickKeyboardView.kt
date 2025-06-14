@@ -63,6 +63,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.columnCount = layout.columnCount
         this.rowCount = layout.rowCount
 
+        this.isFocusable = false
+
         layout.keys.forEach { keyData ->
             val isDarkTheme = context.isDarkThemeOn()
 
@@ -91,7 +93,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 width = 0
                 height = 0
                 if (keyData.isSpecialKey) {
-                    setMargins(6,7,6,5)
+                    setMargins(6, 7, 6, 5)
                 } else {
                     setMargins(7)
                 }
