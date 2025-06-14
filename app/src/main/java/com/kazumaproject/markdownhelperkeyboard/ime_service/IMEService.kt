@@ -34,6 +34,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
+import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -55,6 +56,10 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -333,6 +338,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         )
                     }
                 }
+                setupCustomKeyboardListeners(mainView)
                 setSuggestionRecyclerView(
                     mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
                 )
@@ -351,6 +357,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         }
+
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -939,7 +946,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
-                        handleSpaceKeyClick(isFlick, insertString, suggestions, mainView)
+                        val hankakuPreference = appPreference.space_hankaku_preference ?: false
+                        val isHankaku = isFlick || hankakuPreference
+                        handleSpaceKeyClick(isHankaku, insertString, suggestions, mainView)
                     }
                 }
                 isSpaceKeyLongPressed = false
@@ -1145,10 +1154,544 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
+    /**
+     * 全てのキーボードビューを確実に非表示にする
+     */
+    private fun hideAllKeyboards() {
+        mainLayoutBinding?.apply {
+            keyboardView.isVisible = false
+            qwertyView.isVisible = false
+            tabletView.isVisible = false
+            customLayoutDefault.isVisible = false
+            keyboardSymbolView.isVisible = false
+            candidatesRowView.isVisible = false
+        }
+    }
+
+    /**
+     * 指定されたキーボードを表示するための統一された関数
+     */
+    private fun showKeyboard(type: KeyboardType) {
+        hideAllKeyboards() // ★最重要：まず他の全てのキーボードを隠す
+
+        mainLayoutBinding?.apply {
+            when (type) {
+                KeyboardType.TENKEY -> {
+                    if (isTablet == true) {
+                        tabletView.isVisible = true
+                        tabletView.resetLayout()
+                    } else {
+                        keyboardView.isVisible = true
+                        keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    }
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                }
+
+                KeyboardType.QWERTY -> {
+                    qwertyView.isVisible = true
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                    qwertyView.setRomajiMode(false)
+                }
+
+                KeyboardType.ROMAJI -> {
+                    qwertyView.isVisible = true
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    qwertyView.setRomajiMode(true)
+                }
+
+                KeyboardType.SUMIRE -> {
+                    // SUMIREキーボードの表示はここだけで行う
+                    customKeyboardMode = KeyboardInputMode.HIRAGANA
+                    val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
+                        KeyboardInputMode.HIRAGANA,
+                        dynamicKeyStates = mapOf(
+                            "enter_key" to 0,
+                            "dakuten_toggle_key" to 0
+                        )
+                    )
+                    customLayoutDefault.setKeyboard(hiraganaLayout)
+                    customLayoutDefault.isVisible = true
+                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                    qwertyView.isVisible = false
+                    keyboardView.isVisible = false
+                }
+            }
+            suggestionRecyclerView.isVisible = true
+        }
+    }
+
+    private var currentEnterKeyIndex: Int = 0 // 0:改行, 1:実行, 2:確定, 3:変換
+    private var currentDakutenKeyIndex: Int = 0 // 0:^_^, 1:゛゜
+    private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
+
+    private fun updateKeyboardLayout() {
+        // ▼▼▼ 変更後 ▼▼▼
+        // 管理している全ての動的キーの状態をマップに詰めて渡す
+        val dynamicStates = mapOf(
+            "enter_key" to currentEnterKeyIndex,
+            "dakuten_toggle_key" to currentDakutenKeyIndex,
+            "space_convert_key" to currentSpaceKeyIndex
+        )
+
+        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+            mode = customKeyboardMode,
+            dynamicKeyStates = dynamicStates
+        )
+        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+    }
+
+    /**
+     * 濁点モードを切り替えてキーボードを更新するメソッドの例
+     */
+    private fun setSumireKeyboardDakutenKey() {
+        // 0と1を交互に切り替える
+        currentDakutenKeyIndex = 1
+        updateKeyboardLayout()
+    }
+
+    private fun setSumireKeyboardDakutenKeyEmpty() {
+        // 0と1を交互に切り替える
+        currentDakutenKeyIndex = 0
+        updateKeyboardLayout()
+    }
+
+    private fun setSumireKeyboardEnterKey(index: Int) {
+        // 0と1を交互に切り替える
+        currentEnterKeyIndex = index
+        updateKeyboardLayout()
+    }
+
+    private fun setSumireKeyboardSpaceKey(index: Int) {
+        // 0と1を交互に切り替える
+        currentSpaceKeyIndex = index
+        updateKeyboardLayout()
+    }
+
+    private fun resetSumireKeyboardDakutenMode() {
+        currentDakutenKeyIndex = 0
+        currentEnterKeyIndex = 0
+        currentSpaceKeyIndex = 0
+        updateKeyboardLayout()
+    }
+
     private fun showKeyboardPicker() {
         val inputMethodManager =
             getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.showInputMethodPicker()
+    }
+
+    // ▼▼▼ ADD THIS VARIABLE ▼▼▼
+    private var customKeyboardMode = KeyboardInputMode.HIRAGANA
+
+    private fun clearDeleteBufferWithView() {
+        if (deletedBuffer.isNotEmpty()) {
+            clearDeletedBufferWithoutResetLayout()
+            suggestionAdapter?.setUndoEnabled(false)
+            setClipboardText()
+        }
+    }
+
+    private fun setupCustomKeyboardListeners(mainView: MainLayoutBinding) {
+        mainView.customLayoutDefault.setOnKeyboardActionListener(object :
+            com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
+
+            override fun onKey(text: String) {
+                // 通常の文字が入力された場合（変更なし）
+                clearDeleteBufferWithView()
+                Timber.d("onKey: $text")
+                vibrate()
+                val insertString = inputString.value
+                val sb = StringBuilder()
+                text.forEach {
+                    handleFlick(char = it, insertString, sb, mainView)
+                }
+            }
+
+            // ▼▼▼ 変更 ▼▼▼ onSpecialKey と onSpecialKeyLongPress は onAction と onActionLongPress になります
+            override fun onActionLongPress(action: KeyAction) {
+                // 特殊キーが長押しされた場合
+                // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
+                vibrate()
+                clearDeleteBufferWithView()
+                Timber.d("onActionLongPress: $action")
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {
+                        // 現在のモードに応じて次のモードを決定
+                        customKeyboardMode = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                        }
+                        updateKeyboardLayout()
+                    }
+
+                    KeyAction.Convert, KeyAction.Space -> {
+                        val insertString = inputString.value
+                        if (insertString.isNotEmpty()) {
+                            mainLayoutBinding?.let {
+                                if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                                    isSpaceKeyLongPressed = true
+                                    if (hasConvertedKatakana) {
+                                        _inputString.update { str -> str.katakanaToHiragana() }
+                                    } else {
+                                        _inputString.update { str -> str.hiraganaToKatakana() }
+                                    }
+                                    hasConvertedKatakana = !hasConvertedKatakana
+                                }
+                            }
+                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                            _cursorMoveMode.update { true }
+                            isSpaceKeyLongPressed = true
+                        }
+                    }
+
+                    KeyAction.Copy -> {
+
+                    }
+
+                    KeyAction.Delete -> {
+                        if (isHenkan.get()) {
+                            cancelHenkanByLongPressDeleteKey()
+                        } else {
+                            onDeleteLongPressUp.set(true)
+                            deleteLongPress()
+                            _dakutenPressed.value = false
+                            englishSpaceKeyPressed.set(false)
+                            deleteKeyLongKeyPressed.set(true)
+                        }
+                    }
+
+                    KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (insertString.isNotEmpty()) {
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        } else {
+                            handleEmptyInputEnterKey(mainView)
+                        }
+                    }
+
+                    is KeyAction.InputText -> {
+                        if (action.text == "^_^") {
+                            _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                            stringInTail.set("")
+                            finishComposingText()
+                            setComposingText("", 0)
+                        }
+                    }
+
+                    KeyAction.MoveCursorLeft -> {}
+                    KeyAction.MoveCursorRight -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {}
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+
+                    KeyAction.SwitchToNextIme -> {
+                        switchNextKeyboard()
+                        _inputString.update { "" }
+                        finishComposingText()
+                        setComposingText("", 0)
+                    }
+
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
+            }
+
+            override fun onActionUpAfterLongPress(action: KeyAction) {
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {}
+                    KeyAction.Confirm -> {}
+                    KeyAction.Convert, KeyAction.Space -> {
+                        isSpaceKeyLongPressed = false
+                    }
+
+                    KeyAction.Copy -> {}
+                    KeyAction.Delete -> {
+                        stopDeleteLongPress()
+                    }
+
+                    KeyAction.Enter -> {}
+                    is KeyAction.InputText -> {}
+                    KeyAction.MoveCursorLeft -> {}
+                    KeyAction.MoveCursorRight -> {}
+                    KeyAction.NewLine -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {}
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
+            }
+
+            override fun onFlickDirectionChanged(direction: FlickDirection) {
+                vibrate()
+            }
+
+            override fun onFlickActionLongPress(action: KeyAction) {
+                Timber.d("onFlickActionLongPress: $action")
+                vibrate()
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {}
+                    KeyAction.Confirm -> {}
+                    KeyAction.Convert -> {}
+                    KeyAction.Copy -> {
+                        val selectedText = getSelectedText(0)
+                        if (!selectedText.isNullOrEmpty()) {
+                            clipboardUtil.setClipBoard(selectedText.toString())
+                            suggestionAdapter?.apply {
+                                setPasteEnabled(true)
+                                setClipboardPreview(selectedText.toString())
+                            }
+                        }
+                    }
+
+                    KeyAction.Delete -> {}
+                    KeyAction.Enter -> {}
+                    is KeyAction.InputText -> {}
+                    KeyAction.MoveCursorLeft -> {
+                        handleLeftLongPress()
+                        leftCursorKeyLongKeyPressed.set(true)
+                        if (selectMode.value) {
+                            clearDeletedBufferWithoutResetLayout()
+                        } else {
+                            clearDeletedBuffer()
+                        }
+                        suggestionAdapter?.setUndoEnabled(false)
+                        setClipboardText()
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        handleRightLongPress()
+                        rightCursorKeyLongKeyPressed.set(true)
+                        if (selectMode.value) {
+                            clearDeletedBufferWithoutResetLayout()
+                        } else {
+                            clearDeletedBuffer()
+                        }
+                        suggestionAdapter?.setUndoEnabled(false)
+                        setClipboardText()
+                    }
+
+                    KeyAction.NewLine -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {
+                        selectAllText()
+                    }
+
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.Space -> {}
+                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
+            }
+
+            override fun onFlickActionUpAfterLongPress(action: KeyAction) {
+                vibrate()
+                Timber.d("onFlickActionUpAfterLongPress: $action")
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {}
+                    KeyAction.Confirm -> {}
+                    KeyAction.Convert -> {}
+                    KeyAction.Copy -> {}
+                    KeyAction.Delete -> {}
+                    KeyAction.Enter -> {}
+                    is KeyAction.InputText -> {}
+                    KeyAction.MoveCursorLeft -> {
+                        onLeftKeyLongPressUp.set(true)
+                        leftCursorKeyLongKeyPressed.set(false)
+                        leftLongPressJob?.cancel()
+                        leftLongPressJob = null
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        onRightKeyLongPressUp.set(true)
+                        rightCursorKeyLongKeyPressed.set(false)
+                        rightLongPressJob?.cancel()
+                        rightLongPressJob = null
+                    }
+
+                    KeyAction.NewLine -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {}
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.Space -> {}
+                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
+            }
+
+            override fun onAction(action: KeyAction) {
+                vibrate()
+
+                Timber.d("onAction: $action")
+                if (action != KeyAction.Delete) {
+                    clearDeleteBufferWithView()
+                }
+                // 特殊キーがタップされた場合
+                // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
+                when (action) {
+                    is KeyAction.InputText -> {
+                        if (action.text == "^_^") {
+                            _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                            stringInTail.set("")
+                            finishComposingText()
+                            setComposingText("", 0)
+                        }
+                    }
+
+                    KeyAction.SwitchToNextIme -> {
+                        switchNextKeyboard()
+                        _inputString.update { "" }
+                        finishComposingText()
+                        setComposingText("", 0)
+                    }
+
+                    KeyAction.ChangeInputMode -> {
+                        // 現在のモードに応じて次のモードを決定
+                        customKeyboardMode = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                        }
+                        updateKeyboardLayout()
+
+                        val inputMode = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+                            KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+                            KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+                        }
+                        mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
+                    KeyAction.Delete -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        handleDeleteKeyTap(insertString, suggestions)
+                        stopDeleteLongPress()
+                    }
+
+                    KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (insertString.isNotEmpty()) {
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        } else {
+                            handleEmptyInputEnterKey(mainView)
+                        }
+                    }
+
+                    KeyAction.Convert, KeyAction.Space -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (cursorMoveMode.value) {
+                            _cursorMoveMode.update { false }
+                        } else {
+                            if (!isSpaceKeyLongPressed) {
+                                val hankakuPreference =
+                                    appPreference.space_hankaku_preference ?: false
+                                handleSpaceKeyClick(
+                                    hankakuPreference,
+                                    insertString,
+                                    suggestions,
+                                    mainView
+                                )
+                            }
+                        }
+                        isSpaceKeyLongPressed = false
+                    }
+
+                    KeyAction.MoveCursorLeft -> {
+                        val insertString = inputString.value
+                        if (!leftCursorKeyLongKeyPressed.get()) {
+                            handleLeftCursor(GestureType.Tap, insertString)
+                        }
+                        onLeftKeyLongPressUp.set(true)
+                        leftCursorKeyLongKeyPressed.set(false)
+                        leftLongPressJob?.cancel()
+                        leftLongPressJob = null
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        val insertString = inputString.value
+                        if (!rightCursorKeyLongKeyPressed.get()) {
+                            actionInRightKeyPressed(GestureType.Tap, insertString)
+                        }
+                        onRightKeyLongPressUp.set(true)
+                        rightCursorKeyLongKeyPressed.set(false)
+                        rightLongPressJob?.cancel()
+                        rightLongPressJob = null
+                    }
+
+                    KeyAction.Backspace -> {}
+                    KeyAction.Copy -> {
+                        val selectedText = getSelectedText(0)
+                        if (!selectedText.isNullOrEmpty()) {
+                            clipboardUtil.setClipBoard(selectedText.toString())
+                            suggestionAdapter?.apply {
+                                setPasteEnabled(true)
+                                setClipboardPreview(selectedText.toString())
+                            }
+                        }
+                    }
+
+                    KeyAction.Paste -> {
+
+                    }
+
+                    KeyAction.SelectAll -> {
+                        selectAllText()
+                    }
+
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {
+                        val insertString = inputString.value
+                        mainLayoutBinding?.let { mainView ->
+                            mainView.keyboardView.let {
+                                Timber.d("onAction: $action ${it.currentInputMode.value}")
+                                val sb = StringBuilder()
+                                when (it.currentInputMode.value) {
+                                    InputMode.ModeJapanese -> {
+                                        dakutenSmallLetter(
+                                            sb, insertString, GestureType.Tap
+                                        )
+                                    }
+
+                                    InputMode.ModeEnglish -> {
+                                        smallBigLetterConversionEnglish(sb, insertString)
+                                    }
+
+                                    InputMode.ModeNumber -> {
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        })
     }
 
     private var currentKeyboardOrder = 0
@@ -1156,69 +1699,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private fun resetKeyboard() {
         if (keyboardOrder.isEmpty()) return
         currentKeyboardOrder = 0
-        mainLayoutBinding?.apply {
-            when (keyboardOrder[0]) {
-                KeyboardType.TENKEY -> {
-                    if (isTablet == true) {
-                        tabletView.apply {
-                            isVisible = true
-                            resetLayout()
-                        }
-                        qwertyView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    } else {
-                        keyboardView.apply {
-                            isVisible = true
-                            if (currentInputMode.value == InputMode.ModeNumber) {
-                                setBackgroundSmallLetterKey(
-                                    cachedNumberDrawable
-                                )
-                            } else {
-                                setBackgroundSmallLetterKey(
-                                    cachedLogoDrawable
-                                )
-                            }
-                        }
-                        qwertyView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    }
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                }
-
-                KeyboardType.QWERTY -> {
-                    if (isTablet == true) {
-                        qwertyView.isVisible = true
-                        tabletView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    } else {
-                        qwertyView.isVisible = true
-                        keyboardView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    }
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                    qwertyView.setRomajiMode(false)
-                }
-
-                KeyboardType.ROMAJI -> {
-                    if (isTablet == true) {
-                        qwertyView.isVisible = true
-                        tabletView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    } else {
-                        qwertyView.isVisible = true
-                        keyboardView.isVisible = false
-                        keyboardSymbolView.isVisible = false
-                    }
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    qwertyView.setRomajiMode(true)
-                }
-            }
-            candidatesRowView.isVisible = false
-            suggestionRecyclerView.isVisible = true
-
-        }
+        showKeyboard(keyboardOrder[0])
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
@@ -1388,6 +1869,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * 入力フィールドの全文を全選択する
      */
     private fun selectAllText() {
+        if (inputString.value.isNotEmpty()) return
         val request = ExtractedTextRequest()
         // 必要に応じて request.flags を設定（デフォルトで OK）
         val extracted: ExtractedText? = getExtractedText(request, 0)
@@ -1462,13 +1944,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             setReturnKeyText("確定")
                         }
                     }
+                    if (mainView.customLayoutDefault.isVisible) {
+                        setSumireKeyboardDakutenKey()
+                        setSumireKeyboardEnterKey(1)
+                        setSumireKeyboardSpaceKey(1)
+                    }
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         animateSuggestionImageViewVisibility(
                             mainView.suggestionVisibility, false
+
                         )
+                        if (mainView.customLayoutDefault.isVisible) {
+                            resetSumireKeyboardDakutenMode()
+                            setSumireKeyboardSpaceKey(0)
+                        }
                         if (clipboardUtil.isClipboardTextEmpty()) {
                             suggestionAdapter?.setPasteEnabled(false)
                         } else {
@@ -1513,37 +2005,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
                         setSymbols(mainView)
+                        if (customLayoutDefault.isVisible) customLayoutDefault.visibility =
+                            View.INVISIBLE
                     } else {
                         animateViewVisibility(
                             if (isTablet == true) this.tabletView else this.keyboardView, true
                         )
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
-                    }
-                }
-            }
-        }
-
-        launch {
-            qwertyMode.collectLatest { state ->
-                setKeyboardSize()
-                when (state) {
-                    TenKeyQWERTYMode.Default -> {
-                        if (isTablet == true) {
-                            mainView.tabletView.isVisible = true
-                        } else {
-                            mainView.keyboardView.isVisible = true
-                        }
-                        mainView.qwertyView.isVisible = false
-                    }
-
-                    TenKeyQWERTYMode.TenKeyQWERTY -> {
-                        mainView.qwertyView.isVisible = true
-                        if (isTablet == true) {
-                            mainView.tabletView.isVisible = false
-                        } else {
-                            mainView.keyboardView.isVisible = false
-                        }
+                        if (customLayoutDefault.isInvisible) customLayoutDefault.visibility =
+                            View.VISIBLE
                     }
                 }
             }
@@ -1580,6 +2051,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         if (mainView.candidatesRowView.isVisible) {
             mainView.candidatesRowView.scrollToPosition(0)
+        }
+
+        if (isVisible) {
+            mainLayoutBinding?.apply {
+                if (customLayoutDefault.isInvisible) {
+                    animateViewVisibility(
+                        customLayoutDefault, isVisible = true, true
+                    )
+                }
+            }
+        } else {
+            mainLayoutBinding?.apply {
+                if (customLayoutDefault.isVisible) customLayoutDefault.visibility = View.INVISIBLE
+            }
         }
 
         mainView.suggestionVisibility.apply {
@@ -1955,6 +2440,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
+                        appPreference.undo_enable_preference?.let {
+                            if (!it) return@setOnItemHelperIconClickListener
+                        }
                         popLastDeletedChar()?.let { c ->
                             commitText(c, 1)
                             suggestionAdapter?.setUndoPreviewText(
@@ -1986,6 +2474,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             adapter.setOnItemHelperIconLongClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
+                        appPreference.undo_enable_preference?.let {
+                            if (!it) return@setOnItemHelperIconLongClickListener
+                        }
                         val textToCommit = reverseByGrapheme(deletedBuffer.toString())
                         commitText(textToCommit, 1)
                         clearDeletedBuffer()
@@ -2282,19 +2773,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
     private fun clearDeletedBuffer() {
-        deletedBuffer.clear()
-        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-            ContextCompat.getDrawable(
-                this, com.kazumaproject.core.R.drawable.undo_24px
-            )
-        )
+        appPreference.undo_enable_preference?.let {
+            if (it) {
+                deletedBuffer.clear()
+                mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                    ContextCompat.getDrawable(
+                        this, com.kazumaproject.core.R.drawable.undo_24px
+                    )
+                )
+            }
+        }
     }
 
     private fun clearDeletedBufferWithoutResetLayout() {
-        deletedBuffer.clear()
+        appPreference.undo_enable_preference?.let {
+            if (it) {
+                deletedBuffer.clear()
+            }
+        }
     }
 
     private fun reverseByGrapheme(input: String): String {
+        appPreference.undo_enable_preference?.let {
+            if (!it) return@let
+        }
         if (input.isEmpty()) return input
 
         // BreakIterator を文字（グラフェム）単位で作成
@@ -2324,6 +2826,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * 絵文字の場合は2コードユニット、その他は1コードユニットを削除して返す。
      */
     private fun popLastDeletedChar(): String? {
+        appPreference.undo_enable_preference?.let {
+            if (!it) return@let
+        }
         if (deletedBuffer.isEmpty()) return null
 
         // バッファ全体を String として扱う
@@ -2504,6 +3009,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _selectMode.update { false }
         hasConvertedKatakana = false
         romajiConverter.clear()
+        resetSumireKeyboardDakutenMode()
     }
 
     private fun actionInDestroy() {
@@ -2899,22 +3405,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 if (current.isEmpty()) {
                     if (tailIsEmpty) {
-                        val beforeChar = getLastCharacterAsString(currentInputConnection)
-                        if (beforeChar.isNotEmpty()) {
-                            deletedBuffer.append(beforeChar)
-                            if (
-                                beforeChar == "ァ゙" ||
-                                beforeChar == "ィ゙" ||
-                                beforeChar == "ゥ゙" ||
-                                beforeChar == "ェ゙" ||
-                                beforeChar == "ォ゙" ||
-                                beforeChar == "ッ゙" ||
-                                beforeChar == "ャ゙" ||
-                                beforeChar == "ュ゙" ||
-                                beforeChar == "ョ゙"
-                            ) {
-                                deleteSurroundingTextInCodePoints(2, 0)
-                                continue
+                        appPreference.undo_enable_preference?.let {
+                            if (it) {
+                                val beforeChar = getLastCharacterAsString(currentInputConnection)
+                                if (beforeChar.isNotEmpty()) {
+                                    deletedBuffer.append(beforeChar)
+                                    if (
+                                        beforeChar == "ァ゙" ||
+                                        beforeChar == "ィ゙" ||
+                                        beforeChar == "ゥ゙" ||
+                                        beforeChar == "ェ゙" ||
+                                        beforeChar == "ォ゙" ||
+                                        beforeChar == "ッ゙" ||
+                                        beforeChar == "ャ゙" ||
+                                        beforeChar == "ュ゙" ||
+                                        beforeChar == "ョ゙"
+                                    ) {
+                                        deleteSurroundingTextInCodePoints(2, 0)
+                                    }
+                                }
                             }
                         }
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
@@ -2922,8 +3431,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         break
                     }
                 } else {
-                    val deletedChar = current.last()
-                    deletedBuffer.append(deletedChar)
+                    appPreference.undo_enable_preference?.let {
+                        if (it) {
+                            val deletedChar = current.last()
+                            deletedBuffer.append(deletedChar)
+                        }
+                    }
                     val newString = current.dropLast(1)
                     _inputString.update { newString }
                     if (newString.isEmpty() && tailIsEmpty) {
@@ -2943,16 +3456,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         if (!selectMode.value) {
             deleteLongPressJob?.invokeOnCompletion {
-                if (inputStringInBeginning.isEmpty()) {
-                    suggestionAdapter?.apply {
-                        suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
-                        setUndoEnabled(true)
+                appPreference.undo_enable_preference?.let {
+                    if (it) {
+                        if (inputStringInBeginning.isEmpty()) {
+                            suggestionAdapter?.apply {
+                                suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
+                                setUndoEnabled(true)
+                            }
+                            mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                                ContextCompat.getDrawable(
+                                    this@IMEService,
+                                    com.kazumaproject.core.R.drawable.baseline_delete_24
+                                )
+                            )
+                        }
                     }
-                    mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-                        ContextCompat.getDrawable(
-                            this@IMEService, com.kazumaproject.core.R.drawable.baseline_delete_24
-                        )
-                    )
                 }
             }
         }
@@ -3057,30 +3575,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 if (!selectMode.value) {
                     val beforeChar = getLastCharacterAsString(currentInputConnection)
                     if (beforeChar.isNotEmpty()) {
-                        deletedBuffer.append(beforeChar)
-                        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-                            ContextCompat.getDrawable(
-                                this@IMEService,
-                                com.kazumaproject.core.R.drawable.baseline_delete_24
-                            )
-                        )
-                        suggestionAdapter?.apply {
-                            setUndoEnabled(true)
-                            setUndoPreviewText(deletedBuffer.toString())
-                        }
-                        Timber.d("beforeChar: $beforeChar")
-                        if (beforeChar == "ァ゙" ||
-                            beforeChar == "ィ゙" ||
-                            beforeChar == "ゥ゙" ||
-                            beforeChar == "ェ゙" ||
-                            beforeChar == "ォ゙" ||
-                            beforeChar == "ッ゙" ||
-                            beforeChar == "ャ゙" ||
-                            beforeChar == "ュ゙" ||
-                            beforeChar == "ョ゙"
-                        ) {
-                            deleteSurroundingTextInCodePoints(2, 0)
-                            return
+                        appPreference.undo_enable_preference?.let {
+                            if (it) {
+                                deletedBuffer.append(beforeChar)
+                                mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+                                    ContextCompat.getDrawable(
+                                        this@IMEService,
+                                        com.kazumaproject.core.R.drawable.baseline_delete_24
+                                    )
+                                )
+                                suggestionAdapter?.apply {
+                                    setUndoEnabled(true)
+                                    setUndoPreviewText(deletedBuffer.toString())
+                                }
+                                if (beforeChar == "ァ゙" ||
+                                    beforeChar == "ィ゙" ||
+                                    beforeChar == "ゥ゙" ||
+                                    beforeChar == "ェ゙" ||
+                                    beforeChar == "ォ゙" ||
+                                    beforeChar == "ッ゙" ||
+                                    beforeChar == "ャ゙" ||
+                                    beforeChar == "ュ゙" ||
+                                    beforeChar == "ョ゙"
+                                ) {
+                                    deleteSurroundingTextInCodePoints(2, 0)
+                                    return
+                                }
+                            }
                         }
                     }
                 }
@@ -3395,7 +3916,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         rightLongPressJob = scope.launch {
             var finalSuggestionFlag: CandidateShowFlag? = null
             while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
-
                 val insertString = inputString.value
                 if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Updating
@@ -3755,26 +4275,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    /**  1) 各キーボード切替時の処理をマップにまとめる **/
-    private val keyboardHandlers: Map<KeyboardType, () -> Unit> = mapOf(
-        KeyboardType.TENKEY to {
-            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
-            mainLayoutBinding?.qwertyView?.setRomajiMode(false)
-        },
-        KeyboardType.QWERTY to {
-            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeEnglish)
-            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-            mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
-        },
-        KeyboardType.ROMAJI to {
-            mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
-            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-            mainLayoutBinding?.qwertyView?.setRomajiKeyboard()
-        }
-        // 新しい KeyboardType を追加するときはここに entry を追加するだけ
-    )
-
     // 2) 次のモードに切り替える関数
     fun switchNextKeyboard() {
         if (keyboardOrder.isEmpty()) return
@@ -3783,8 +4283,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val nextIndex = (currentKeyboardOrder + 1) % keyboardOrder.size
         val nextType = keyboardOrder[nextIndex]
 
-        // マップから処理を呼び出し
-        keyboardHandlers[nextType]?.invoke()
+        // 統一された showKeyboard 関数を呼び出す
+        showKeyboard(nextType)
 
         currentKeyboardOrder = nextIndex
     }
@@ -4132,6 +4632,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         applyHeightAndGravity(binding.candidatesRowView)
         applyHeightAndGravity(binding.keyboardSymbolView)
         applyHeightAndGravity(binding.qwertyView)
+        applyHeightAndGravity(binding.customLayoutDefault)
 
         // Adjust the margin for the suggestion view parent
         (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
