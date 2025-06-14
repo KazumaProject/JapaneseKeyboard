@@ -591,6 +591,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     if (isCursorMode) {
                         return true
                     }
+
                     setKeyPressed()
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
                         delay(ViewConfiguration.getLongPressTimeout().toLong())
