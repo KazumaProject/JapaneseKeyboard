@@ -12,12 +12,13 @@ object KeyboardDefaultLayouts {
         val keys = listOf(
             // 0列目
             KeyData(
-                "絵文字",
+                "貼り付け",
                 0,
                 0,
                 false,
-                action = KeyAction.ShowEmojiKeyboard,
-                isSpecialKey = true
+                action = KeyAction.Paste,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
             ),
             KeyData("←", 1, 0, false, action = KeyAction.MoveCursorLeft, isSpecialKey = true),
             KeyData("モード", 2, 0, false, action = KeyAction.ChangeInputMode, isSpecialKey = true),

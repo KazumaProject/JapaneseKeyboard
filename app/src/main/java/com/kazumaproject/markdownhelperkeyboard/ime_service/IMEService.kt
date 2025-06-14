@@ -1225,7 +1225,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             override fun onKey(text: String) {
                 // 通常の文字が入力された場合（変更なし）
-                commitText(text, 1)
+                Timber.d("onKey: $text")
+                vibrate()
+                val insertString = inputString.value
+                val sb = StringBuilder()
+                text.forEach {
+                    handleFlick(char = it, insertString, sb, mainView)
+                }
             }
 
             // ▼▼▼ 変更 ▼▼▼ onSpecialKey と onSpecialKeyLongPress は onAction と onActionLongPress になります
@@ -1233,17 +1239,81 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 // 特殊キーが長押しされた場合
                 // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
                 Timber.d("onActionLongPress: $action")
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {}
+                    KeyAction.Confirm -> {}
+                    KeyAction.Convert -> {}
+                    KeyAction.Copy -> {
+
+                    }
+
+                    KeyAction.Delete -> {
+                        if (isHenkan.get()) {
+                            cancelHenkanByLongPressDeleteKey()
+                        } else {
+                            onDeleteLongPressUp.set(true)
+                            deleteLongPress()
+                            _dakutenPressed.value = false
+                            englishSpaceKeyPressed.set(false)
+                            deleteKeyLongKeyPressed.set(true)
+                        }
+                    }
+
+                    KeyAction.Enter -> {}
+                    is KeyAction.InputText -> {}
+                    KeyAction.MoveCursorLeft -> {}
+                    KeyAction.MoveCursorRight -> {}
+                    KeyAction.NewLine -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {}
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.Space -> {}
+                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
+            }
+
+            override fun onActionUpAfterLongPress(action: KeyAction) {
+                when (action) {
+                    KeyAction.Backspace -> {}
+                    KeyAction.ChangeInputMode -> {}
+                    KeyAction.Confirm -> {}
+                    KeyAction.Convert -> {}
+                    KeyAction.Copy -> {}
+                    KeyAction.Delete -> {
+                        stopDeleteLongPress()
+                    }
+
+                    KeyAction.Enter -> {}
+                    is KeyAction.InputText -> {}
+                    KeyAction.MoveCursorLeft -> {}
+                    KeyAction.MoveCursorRight -> {}
+                    KeyAction.NewLine -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {}
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.Space -> {}
+                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
+                }
             }
 
             override fun onAction(action: KeyAction) {
+                vibrate()
 
                 Timber.d("onAction: $action")
                 // 特殊キーがタップされた場合
                 // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
                 when (action) {
                     is KeyAction.InputText -> {
-                        // ^_^ のようなキーのための処理
-                        commitText(action.text, 1)
+                        //commitText(action.text, 1)
                     }
 
                     KeyAction.SwitchToNextIme -> {
@@ -1262,28 +1332,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.Delete -> {
-                        // sendDownUpKeyEvents は非推奨のため、deleteSurroundingText を使うのが一般的
-                        deleteSurroundingText(1, 0)
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        handleDeleteKeyTap(insertString, suggestions)
+                        stopDeleteLongPress()
                     }
 
                     KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
-                        // Enterキーのアクションを一括で処理
-                        // IMEオプションに基づいて動作を変えるのが一般的
-                        val inputConnection = currentInputConnection
-                        val editorInfo = currentInputEditorInfo
-                        if (inputConnection != null && editorInfo != null) {
-                            val imeOptions = editorInfo.imeOptions
-                            // エディタのアクション（検索、実行など）を実行
-                            inputConnection.performEditorAction(imeOptions and EditorInfo.IME_MASK_ACTION)
-                        }
-                        // performEditorActionが改行を処理しない場合、手動で改行を送る
-                        if (action == KeyAction.NewLine) {
-                            commitText("\n", 1)
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (insertString.isNotEmpty()) {
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        } else {
+                            handleEmptyInputEnterKey(mainView)
                         }
                     }
 
                     KeyAction.Space -> {
-                        commitText(" ", 1)
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (cursorMoveMode.value) {
+                            _cursorMoveMode.update { false }
+                        } else {
+                            if (!isSpaceKeyLongPressed) {
+                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                            }
+                        }
+                        isSpaceKeyLongPressed = false
                     }
 
                     KeyAction.MoveCursorLeft -> {
@@ -1296,13 +1371,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT))
                     }
 
-                    // ここに他のKeyActionの処理を追加していく
-                    // 例:
-                    // KeyAction.ToggleCase -> { /* 英語の大文字/小文字を切り替える処理 */ }
-                    // KeyAction.ShowEmojiKeyboard -> { /* 絵文字キーボードに切り替える処理 */ }
-                    else -> {
-                        // 未実装のアクション
-                    }
+                    KeyAction.Backspace -> {}
+                    KeyAction.Convert -> {}
+                    KeyAction.Copy -> {}
+                    KeyAction.Paste -> {}
+                    KeyAction.SelectAll -> {}
+                    KeyAction.SelectLeft -> {}
+                    KeyAction.SelectRight -> {}
+                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleDakuten -> {}
                 }
             }
         })
@@ -4276,6 +4354,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         applyHeightAndGravity(binding.candidatesRowView)
         applyHeightAndGravity(binding.keyboardSymbolView)
         applyHeightAndGravity(binding.qwertyView)
+        applyHeightAndGravity(binding.customLayoutDefault)
 
         // Adjust the margin for the suggestion view parent
         (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
