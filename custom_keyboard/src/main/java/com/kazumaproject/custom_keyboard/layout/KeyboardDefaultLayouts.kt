@@ -348,16 +348,18 @@ object KeyboardDefaultLayouts {
         val wa = mapOf(
             FlickDirection.TAP to FlickAction.Input("わ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("わ"),
-            FlickDirection.UP to FlickAction.Input("を"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ん"),
+            FlickDirection.UP_LEFT to FlickAction.Input("を"),
+            FlickDirection.UP to FlickAction.Input("ん"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("ー"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
             FlickDirection.DOWN to FlickAction.Input("小")
         )
 
         val wa_small = mapOf(
             FlickDirection.TAP to FlickAction.Input("ゎ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ゎ"),
-            FlickDirection.UP to FlickAction.Input("ー"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
+            FlickDirection.UP to FlickAction.Input("-"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("~"),
             FlickDirection.DOWN to FlickAction.Input("大")
 
         )
@@ -994,6 +996,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.UP_LEFT to FlickAction.Input("…"),
                     FlickDirection.UP to FlickAction.Input("零"),
                     FlickDirection.UP_RIGHT to FlickAction.Input("０"),
+                    FlickDirection.UP_RIGHT to FlickAction.Input("∞"),
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
