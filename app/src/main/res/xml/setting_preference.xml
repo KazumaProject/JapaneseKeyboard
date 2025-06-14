@@ -5,8 +5,8 @@
     <PreferenceCategory android:title="キーボード">
         <Preference
             android:key="keyboard_selection_preference"
-            android:title="キーボード"
-            android:summary="キーボードの追加、削除ができます"/>
+            android:summary="キーボードの追加、削除ができます"
+            android:title="キーボード" />
 
         <Preference
             android:key="keyboard_screen_preference"
@@ -18,6 +18,18 @@
             android:key="flick_input_only_preference"
             android:summary="フリック入力のみを使用し、ケータイ打ちを無効にする"
             android:title="フリックのみ" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="undo_enable_preference"
+            android:summary="元に戻す機能を無効にする"
+            android:title="元に戻す機能" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="space_key_preference"
+            android:summary="空白を半角入力"
+            android:title="空白を半角入力" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="操作">
