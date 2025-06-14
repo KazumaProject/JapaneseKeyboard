@@ -308,7 +308,7 @@ class FlickCirclePopupView @JvmOverloads constructor(
         targetPositions.clear()
         val upperEffectiveOrbit = this.upperOrbitRadius ?: this.orbitRadius
 
-        FlickDirection.values().forEach { dir ->
+        FlickDirection.entries.forEach { dir ->
             val point = when (dir) {
                 FlickDirection.TAP -> PointF(centerX, centerY)
                 FlickDirection.DOWN -> {
