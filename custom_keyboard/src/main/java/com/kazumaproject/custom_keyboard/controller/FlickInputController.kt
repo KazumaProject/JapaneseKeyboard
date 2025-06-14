@@ -21,7 +21,6 @@ import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
-// ▼▼▼【追加】ポップアップの表示位置を定義するenum ▼▼▼
 enum class PopupPosition {
     CENTER,
     TOP
@@ -29,10 +28,16 @@ enum class PopupPosition {
 
 class FlickInputController(context: Context) {
 
-    // ▼▼▼ CHANGE ▼▼▼ Added onStateChanged to the listener interface
+    // ▼▼▼ 変更 ▼▼▼ FlickListenerインターフェースに新しいメソッドを追加 ▼▼▼
     interface FlickListener {
         fun onFlick(direction: FlickDirection, character: String)
         fun onStateChanged(view: View, newMap: Map<FlickDirection, String>)
+
+        /**
+         * ユーザーの指が動いて、ハイライトされるフリック方向が変更されたときに呼ばれます。
+         * @param newDirection 新しくハイライトされた方向
+         */
+        fun onFlickDirectionChanged(newDirection: FlickDirection)
     }
 
     var listener: FlickListener? = null
@@ -62,13 +67,8 @@ class FlickInputController(context: Context) {
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
 
-    // ▼▼▼【追加】表示位置を保持する変数。デフォルトは中央。 ▼▼▼
     private var popupPosition: PopupPosition = PopupPosition.CENTER
 
-    /**
-     * ▼▼▼【追加】ポップアップの表示位置を設定する関数 ▼▼▼
-     * @param position 表示したい位置 (CENTER or TOP)
-     */
     fun setPopupPosition(position: PopupPosition) {
         this.popupPosition = position
     }
@@ -136,6 +136,12 @@ class FlickInputController(context: Context) {
             MotionEvent.ACTION_MOVE -> {
                 val currentCalculatedDirection = calculateDirection(event.rawX, event.rawY)
 
+                // ▼▼▼ 追加 ▼▼▼ 方向が変化した時にリスナーを呼び出す ▼▼▼
+                if (currentCalculatedDirection != previousDirection) {
+                    listener?.onFlickDirectionChanged(currentCalculatedDirection)
+                }
+                // ▲▲▲ 追加 ▲▲▲
+
                 if (currentCalculatedDirection != FlickDirection.TAP) {
                     longPressJob?.cancel()
                 }
@@ -188,7 +194,6 @@ class FlickInputController(context: Context) {
         return false
     }
 
-    // ▼▼▼【ロジック更新】表示位置設定に応じて座標を計算するように変更 ▼▼▼
     private fun showPopup() {
         val currentAnchor = anchorView ?: return
         popupWindow.width = popupView.preferredWidth
@@ -200,14 +205,10 @@ class FlickInputController(context: Context) {
         val anchorX = location[0]
         val anchorY = location[1]
 
-        // ポップアップの左上のX座標を計算 (これは常に中央)
         val x = anchorX + (currentAnchor.width / 2) - (popupWindow.width / 2)
 
-        // ポップアップの左上のY座標を、設定に応じて計算
         val y = when (popupPosition) {
-            // ボタンの中央にポップアップの中央を合わせる
             PopupPosition.CENTER -> anchorY + (currentAnchor.height / 2) - (popupWindow.height / 2)
-            // ボタンの上辺にポップアップの中央を合わせる（結果、少し上部に表示される）
             PopupPosition.TOP -> anchorY - (popupWindow.height / 2)
         }
 
@@ -232,18 +233,14 @@ class FlickInputController(context: Context) {
             return FlickDirection.TAP
         }
 
-        // Angle is calculated from 0-360, starting East (3 o'clock) and going counter-clockwise
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360
 
         return when (angle) {
-            // DOWN is now a 140° segment (20° to 160°)
             in 20.0..160.0 -> FlickDirection.DOWN
-            // The other 5 directions get a 44° segment each (220° / 5)
             in 160.0..204.0 -> FlickDirection.UP_LEFT_FAR
             in 204.0..248.0 -> FlickDirection.UP_LEFT
             in 248.0..292.0 -> FlickDirection.UP
             in 292.0..336.0 -> FlickDirection.UP_RIGHT
-            // else covers the remaining segment (336° to 360° and 0° to 20°)
             else -> FlickDirection.UP_RIGHT_FAR
         }
     }

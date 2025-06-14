@@ -51,20 +51,35 @@ data class KeyData(
     val label: String,
     val row: Int,
     val column: Int,
-    val isFlickable: Boolean,
-    val isSpecialKey: Boolean = false,
-    val colSpan: Int = 1,
-    val rowSpan: Int = 1,
-    @DrawableRes val drawableResId: Int? = null,
+    @Deprecated("Use keyType instead") val isFlickable: Boolean, // isFlickableは将来的に削除を検討
     val action: KeyAction? = null,
+    val rowSpan: Int = 1,
+    val colSpan: Int = 1,
+    @DrawableRes val drawableResId: Int? = null,
+    val isSpecialKey: Boolean = false,
+    val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL
 )
 
 
 data class KeyboardLayout(
     val keys: List<KeyData>,
-    val flickKeyMaps: Map<String, List<Map<FlickDirection, String>>>,
+    val flickKeyMaps: Map<String, List<Map<FlickDirection, FlickAction>>>,
     val columnCount: Int,
     val rowCount: Int
 )
+
+/**
+ * キーの種類を定義する
+ */
+enum class KeyType {
+    /** 通常のクリック/長押しキー */
+    NORMAL,
+
+    /** 円形フリックキー */
+    CIRCULAR_FLICK,
+
+    /** 十字フリックキー */
+    CROSS_FLICK
+}
 
 
