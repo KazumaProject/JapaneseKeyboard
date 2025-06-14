@@ -58,7 +58,6 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
-import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
@@ -1202,13 +1201,73 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 KeyboardType.SUMIRE -> {
                     // SUMIREキーボードの表示はここだけで行う
                     customKeyboardMode = KeyboardInputMode.HIRAGANA
-                    val hiraganaLayout = KeyboardDefaultLayouts.createHiraganaLayout()
+                    val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
+                        KeyboardInputMode.HIRAGANA,
+                        dynamicKeyStates = mapOf(
+                            "enter_key" to 0,
+                            "dakuten_toggle_key" to 0
+                        )
+                    )
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
                 }
             }
             suggestionRecyclerView.isVisible = true
         }
+    }
+
+    private var currentEnterKeyIndex: Int = 0 // 0:改行, 1:実行, 2:確定, 3:変換
+    private var currentDakutenKeyIndex: Int = 0 // 0:^_^, 1:゛゜
+    private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
+
+    private fun updateKeyboardLayout() {
+        // ▼▼▼ 変更後 ▼▼▼
+        // 管理している全ての動的キーの状態をマップに詰めて渡す
+        val dynamicStates = mapOf(
+            "enter_key" to currentEnterKeyIndex,
+            "dakuten_toggle_key" to currentDakutenKeyIndex,
+            "space_convert_key" to currentSpaceKeyIndex
+        )
+
+        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+            mode = customKeyboardMode,
+            dynamicKeyStates = dynamicStates
+        )
+        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+    }
+
+    /**
+     * 濁点モードを切り替えてキーボードを更新するメソッドの例
+     */
+    private fun setSumireKeyboardDakutenKey() {
+        // 0と1を交互に切り替える
+        currentDakutenKeyIndex = 1
+        updateKeyboardLayout()
+    }
+
+    private fun setSumireKeyboardDakutenKeyEmpty() {
+        // 0と1を交互に切り替える
+        currentDakutenKeyIndex = 0
+        updateKeyboardLayout()
+    }
+
+    private fun setSumireKeyboardEnterKey(index: Int) {
+        // 0と1を交互に切り替える
+        currentEnterKeyIndex = index
+        updateKeyboardLayout()
+    }
+
+    private fun setSumireKeyboardSpaceKey(index: Int) {
+        // 0と1を交互に切り替える
+        currentSpaceKeyIndex = index
+        updateKeyboardLayout()
+    }
+
+    private fun resetSumireKeyboardDakutenMode() {
+        currentDakutenKeyIndex = 0
+        currentEnterKeyIndex = 0
+        currentSpaceKeyIndex = 0
+        updateKeyboardLayout()
     }
 
     private fun showKeyboardPicker() {
@@ -1332,8 +1391,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
                             KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
                         }
-                        // 新しいモードのレイアウトをセット
-                        updateKeyboardLayout()
                     }
 
                     KeyAction.Delete -> {
@@ -1353,7 +1410,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                     }
 
-                    KeyAction.Space -> {
+                    KeyAction.Convert, KeyAction.Space -> {
                         val insertString = inputString.value
                         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         if (cursorMoveMode.value) {
@@ -1367,81 +1424,78 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.MoveCursorLeft -> {
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
+                        val insertString = inputString.value
+                        if (!leftCursorKeyLongKeyPressed.get()) {
+                            handleLeftCursor(GestureType.Tap, insertString)
+                        }
+                        onLeftKeyLongPressUp.set(true)
+                        leftCursorKeyLongKeyPressed.set(false)
+                        leftLongPressJob?.cancel()
+                        leftLongPressJob = null
                     }
 
                     KeyAction.MoveCursorRight -> {
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT))
+                        val insertString = inputString.value
+                        if (!rightCursorKeyLongKeyPressed.get()) {
+                            actionInRightKeyPressed(GestureType.Tap, insertString)
+                        }
+                        onRightKeyLongPressUp.set(true)
+                        rightCursorKeyLongKeyPressed.set(false)
+                        rightLongPressJob?.cancel()
+                        rightLongPressJob = null
                     }
 
                     KeyAction.Backspace -> {}
-                    KeyAction.Convert -> {}
-                    KeyAction.Copy -> {}
-                    KeyAction.Paste -> {}
-                    KeyAction.SelectAll -> {}
+                    KeyAction.Copy -> {
+                        val selectedText = getSelectedText(0)
+                        if (!selectedText.isNullOrEmpty()) {
+                            clipboardUtil.setClipBoard(selectedText.toString())
+                            suggestionAdapter?.apply {
+                                setPasteEnabled(true)
+                                setClipboardPreview(selectedText.toString())
+                            }
+                        }
+                    }
+
+                    KeyAction.Paste -> {
+
+                    }
+
+                    KeyAction.SelectAll -> {
+                        selectAllText()
+                    }
+
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.ToggleCase -> {}
-                    KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleDakuten -> {
+                        val insertString = inputString.value
+                        if (insertString.isEmpty()) return
+                        mainLayoutBinding?.let { mainView ->
+                            mainView.keyboardView.let {
+                                val sb = StringBuilder()
+                                when (it.currentInputMode.value) {
+                                    InputMode.ModeJapanese -> {
+                                        dakutenSmallLetter(
+                                            sb, insertString, GestureType.Tap
+                                        )
+                                    }
+
+                                    InputMode.ModeEnglish -> {
+                                        smallBigLetterConversionEnglish(sb, insertString)
+                                    }
+
+                                    InputMode.ModeNumber -> {
+                                        
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         })
-    }
-
-    private fun updateKeyboardLayout() {
-        val newLayout = when (customKeyboardMode) {
-            KeyboardInputMode.HIRAGANA -> KeyboardDefaultLayouts.createHiraganaLayout()
-            KeyboardInputMode.ENGLISH -> KeyboardDefaultLayouts.createEnglishLayout(false) // false for lowercase
-            KeyboardInputMode.SYMBOLS -> KeyboardDefaultLayouts.createSymbolLayout()
-        }
-        // ここで、改行キーの動的変更処理を呼び出す
-        val finalLayout = getLayoutWithManualEnterKey(newLayout)
-        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
-    }
-
-    private fun getLayoutWithManualEnterKey(baseLayout: KeyboardLayout): KeyboardLayout {
-
-        // 新しいEnterキーのラベルとアクションを、保持している状態変数から決定
-        val (enterLabel, enterAction) = when (currentEnterKeyAction) {
-            is KeyAction.NewLine -> "改行" to KeyAction.NewLine
-            is KeyAction.Enter -> "実行" to KeyAction.Enter   // 「実行」「確定」など文脈で変えても良い
-            is KeyAction.Confirm -> "確定" to KeyAction.Confirm
-            is KeyAction.Convert -> "変換" to KeyAction.Convert
-            // 他にEnterキーに割り当てたいアクションがあればここに追加
-            else -> {
-                // 想定外のアクションが設定された場合は、デフォルト（改行）に戻す
-                "改行" to KeyAction.NewLine
-            }
-        }
-
-        // レイアウト内の既存のEnterキー(NewLine, Enter, Confirm, Convert のいずれか)を探す
-        val oldEnterKeyIndex = baseLayout.keys.indexOfFirst {
-            it.action is KeyAction.NewLine || it.action is KeyAction.Enter || it.action is KeyAction.Confirm || it.action is KeyAction.Convert
-        }
-
-        // Enterキーが見つからなければ、元のレイアウトをそのまま返す
-        if (oldEnterKeyIndex == -1) {
-            return baseLayout
-        }
-
-        val oldEnterKey = baseLayout.keys[oldEnterKeyIndex]
-
-        // 新しいEnterキーのデータを作成 (元のキーの座標やサイズは引き継ぐ)
-        val newEnterKey = oldEnterKey.copy(
-            label = enterLabel,
-            action = enterAction
-        )
-
-        // 新しいキーリストを作成
-        val newKeys = baseLayout.keys.toMutableList().apply {
-            this[oldEnterKeyIndex] = newEnterKey
-        }
-
-        // 新しいキーリストでKeyboardLayoutを再生成して返す
-        return baseLayout.copy(keys = newKeys)
     }
 
     private var currentKeyboardOrder = 0
@@ -1693,13 +1747,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             setReturnKeyText("確定")
                         }
                     }
+                    if (mainView.customLayoutDefault.isVisible) {
+                        setSumireKeyboardDakutenKey()
+                        setSumireKeyboardEnterKey(1)
+                        setSumireKeyboardSpaceKey(1)
+                    }
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         animateSuggestionImageViewVisibility(
                             mainView.suggestionVisibility, false
+
                         )
+                        if (mainView.customLayoutDefault.isVisible) {
+                            resetSumireKeyboardDakutenMode()
+                            setSumireKeyboardSpaceKey(0)
+                        }
                         if (clipboardUtil.isClipboardTextEmpty()) {
                             suggestionAdapter?.setPasteEnabled(false)
                         } else {
@@ -2735,6 +2799,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         _selectMode.update { false }
         hasConvertedKatakana = false
         romajiConverter.clear()
+        resetSumireKeyboardDakutenMode()
     }
 
     private fun actionInDestroy() {
@@ -2891,22 +2956,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             position = index
         )
         resetFlagsEnterKey()
-    }
-
-    private var currentEnterKeyAction: KeyAction = KeyAction.NewLine // デフォルトは「改行
-
-    /**
-     * Enterキーのアクションを外部から手動で設定する関数。
-     *
-     * @param newAction 設定したい新しいアクション (例: KeyAction.Enter, KeyAction.Convert)
-     */
-    fun setEnterKeyActionSumireView(newAction: KeyAction) {
-        // 設定したいアクションが現在のアクションと異なる場合のみ、更新と再描画を行う
-        if (currentEnterKeyAction != newAction) {
-            currentEnterKeyAction = newAction
-            // キーボードの見た目を即座に更新する
-            updateKeyboardLayout()
-        }
     }
 
     private fun setTenkeyIconsInHenkan(insertString: String, mainView: MainLayoutBinding) {

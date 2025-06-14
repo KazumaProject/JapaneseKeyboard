@@ -2,7 +2,7 @@ package com.kazumaproject.custom_keyboard.data
 
 import androidx.annotation.DrawableRes
 
-open class FlickAction {
+sealed class FlickAction {
     /**
      * 文字入力を表現する
      * @param char 入力する文字
@@ -16,6 +16,7 @@ open class FlickAction {
      */
     data class Action(
         val action: KeyAction,
+        val label: String? = null,
         @DrawableRes val drawableResId: Int? = null
     ) : FlickAction()
 }
