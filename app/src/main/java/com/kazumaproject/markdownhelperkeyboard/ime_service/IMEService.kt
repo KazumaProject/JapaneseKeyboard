@@ -1573,6 +1573,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
                         }
                         updateKeyboardLayout()
+
+                        val inputMode = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+                            KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+                            KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+                        }
+                        mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
                     KeyAction.Delete -> {

@@ -211,6 +211,6 @@ fun getKeyboardDisplayName(keyboardType: KeyboardType): String {
         KeyboardType.TENKEY -> "日本語 - かな"
         KeyboardType.QWERTY -> "英語(QWERTY)"
         KeyboardType.ROMAJI -> "日本語 - ローマ字"
-        KeyboardType.SUMIRE -> "日本語 - スミレ入力"
+        KeyboardType.SUMIRE -> "日本語 - スミレ入力 β"
     }
 }
