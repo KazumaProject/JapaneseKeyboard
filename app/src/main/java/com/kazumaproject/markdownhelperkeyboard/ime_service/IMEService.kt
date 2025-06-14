@@ -55,6 +55,7 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -1303,6 +1304,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
                 }
+            }
+
+            override fun onFlickDirectionChanged(direction: FlickDirection) {
+                vibrate()
             }
 
             override fun onAction(action: KeyAction) {
