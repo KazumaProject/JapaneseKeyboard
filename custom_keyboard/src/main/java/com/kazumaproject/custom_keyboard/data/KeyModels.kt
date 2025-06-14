@@ -53,10 +53,12 @@ data class KeyData(
     val column: Int,
     @Deprecated("Use keyType instead") val isFlickable: Boolean, // isFlickableは将来的に削除を検討
     val action: KeyAction? = null,
+    val dynamicStates: List<FlickAction.Action>? = null,
     val rowSpan: Int = 1,
     val colSpan: Int = 1,
     @DrawableRes val drawableResId: Int? = null,
     val isSpecialKey: Boolean = false,
+    val keyId: String? = null,
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL
 )
 
