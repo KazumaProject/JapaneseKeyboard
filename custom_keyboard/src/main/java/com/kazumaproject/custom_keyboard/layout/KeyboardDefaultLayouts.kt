@@ -41,13 +41,12 @@ object KeyboardDefaultLayouts {
     // All dynamic key states are managed centrally here
     private val enterKeyStates = listOf(
         FlickAction.Action(KeyAction.NewLine, "改行"),
+        FlickAction.Action(KeyAction.Confirm, "確定"),
         FlickAction.Action(
             KeyAction.Enter,
             "実行",
             com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
         ),
-        FlickAction.Action(KeyAction.Confirm, "確定"),
-        FlickAction.Action(KeyAction.Convert, "変換")
     )
 
     private val dakutenToggleStates = listOf(

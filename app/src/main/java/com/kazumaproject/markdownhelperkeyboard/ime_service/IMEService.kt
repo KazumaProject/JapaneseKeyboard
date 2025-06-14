@@ -34,6 +34,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
+import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -1210,6 +1211,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     )
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
+                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
                 }
             }
             suggestionRecyclerView.isVisible = true
@@ -1378,6 +1380,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 when (action) {
                     is KeyAction.InputText -> {
                         //commitText(action.text, 1)
+                        if (action.text == "^_^") {
+                            _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                            stringInTail.set("")
+                            finishComposingText()
+                            setComposingText("", 0)
+                        }
                     }
 
                     KeyAction.SwitchToNextIme -> {
@@ -1391,6 +1399,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
                             KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
                         }
+                        updateKeyboardLayout()
                     }
 
                     KeyAction.Delete -> {
@@ -1471,9 +1480,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {
                         val insertString = inputString.value
-                        if (insertString.isEmpty()) return
                         mainLayoutBinding?.let { mainView ->
                             mainView.keyboardView.let {
+                                Timber.d("onAction: $action ${it.currentInputMode.value}")
                                 val sb = StringBuilder()
                                 when (it.currentInputMode.value) {
                                     InputMode.ModeJapanese -> {
@@ -1487,7 +1496,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                     }
 
                                     InputMode.ModeNumber -> {
-                                        
+
                                     }
                                 }
                             }
@@ -1808,12 +1817,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
                         setSymbols(mainView)
+                        if (customLayoutDefault.isVisible) customLayoutDefault.visibility =
+                            View.INVISIBLE
                     } else {
                         animateViewVisibility(
                             if (isTablet == true) this.tabletView else this.keyboardView, true
                         )
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
+                        if (customLayoutDefault.isInvisible) customLayoutDefault.visibility =
+                            View.VISIBLE
                     }
                 }
             }
