@@ -55,7 +55,9 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
@@ -355,62 +357,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
 
-    }
-
-    // ▼▼▼ ADD THIS VARIABLE ▼▼▼
-    private var customKeyboardMode = KeyboardInputMode.HIRAGANA
-
-    private fun setupCustomKeyboardListeners(mainView: MainLayoutBinding) {
-        mainView.customLayoutDefault.setOnKeyboardActionListener(object :
-            com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
-
-            override fun onKey(text: String) {
-                // 通常の文字が入力された場合
-                commitText(text, 1)
-            }
-
-            override fun onSpecialKeyLongPress(action: String) {
-                // 特殊キーが長押しされた場合 (今回は何もしない)
-            }
-
-            override fun onSpecialKey(action: String) {
-                // 特殊キーがタップされた場合
-                when (action) {
-                    "モード" -> {
-                        // ▼▼▼ HERE IS THE MODE SWITCHING LOGIC ▼▼▼
-                        // 現在のモードに応じて次のモードを決定
-                        customKeyboardMode = when (customKeyboardMode) {
-                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
-                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
-                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
-                        }
-                        // 新しいモードに基づいてレイアウトを再生成
-                        val newLayout = when (customKeyboardMode) {
-                            KeyboardInputMode.HIRAGANA -> KeyboardDefaultLayouts.createHiraganaLayout()
-                            KeyboardInputMode.ENGLISH -> KeyboardDefaultLayouts.createEnglishLayout(
-                                false
-                            ) // false for lowercase
-                            KeyboardInputMode.SYMBOLS -> KeyboardDefaultLayouts.createSymbolLayout()
-                        }
-                        // 新しいレイアウトをキーボードビューにセットして再描画させる
-                        mainView.customLayoutDefault.setKeyboard(newLayout)
-                    }
-
-                    "Del" -> {
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                    }
-
-                    "改行" -> {
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                    }
-
-                    "空白" -> {
-                        commitText(" ", 1)
-                    }
-                    // 他の特殊キーの処理もここに追加...
-                }
-            }
-        })
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -1268,6 +1214,144 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val inputMethodManager =
             getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.showInputMethodPicker()
+    }
+
+    // ▼▼▼ ADD THIS VARIABLE ▼▼▼
+    private var customKeyboardMode = KeyboardInputMode.HIRAGANA
+
+    private fun setupCustomKeyboardListeners(mainView: MainLayoutBinding) {
+        mainView.customLayoutDefault.setOnKeyboardActionListener(object :
+            com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
+
+            override fun onKey(text: String) {
+                // 通常の文字が入力された場合（変更なし）
+                commitText(text, 1)
+            }
+
+            // ▼▼▼ 変更 ▼▼▼ onSpecialKey と onSpecialKeyLongPress は onAction と onActionLongPress になります
+            override fun onActionLongPress(action: KeyAction) {
+                // 特殊キーが長押しされた場合
+                // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
+            }
+
+            override fun onAction(action: KeyAction) {
+                // 特殊キーがタップされた場合
+                // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
+                when (action) {
+                    is KeyAction.InputText -> {
+                        // ^_^ のようなキーのための処理
+                        commitText(action.text, 1)
+                    }
+
+                    KeyAction.ChangeInputMode -> {
+                        // 現在のモードに応じて次のモードを決定
+                        customKeyboardMode = when (customKeyboardMode) {
+                            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                        }
+                        // 新しいモードのレイアウトをセット
+                        updateKeyboardLayout()
+                    }
+
+                    KeyAction.Delete -> {
+                        // sendDownUpKeyEvents は非推奨のため、deleteSurroundingText を使うのが一般的
+                        deleteSurroundingText(1, 0)
+                    }
+
+                    KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
+                        // Enterキーのアクションを一括で処理
+                        // IMEオプションに基づいて動作を変えるのが一般的
+                        val inputConnection = currentInputConnection
+                        val editorInfo = currentInputEditorInfo
+                        if (inputConnection != null && editorInfo != null) {
+                            val imeOptions = editorInfo.imeOptions
+                            // エディタのアクション（検索、実行など）を実行
+                            inputConnection.performEditorAction(imeOptions and EditorInfo.IME_MASK_ACTION)
+                        }
+                        // performEditorActionが改行を処理しない場合、手動で改行を送る
+                        if (action == KeyAction.NewLine) {
+                            commitText("\n", 1)
+                        }
+                    }
+
+                    KeyAction.Space -> {
+                        commitText(" ", 1)
+                    }
+
+                    KeyAction.MoveCursorLeft -> {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT))
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT))
+                    }
+
+                    // ここに他のKeyActionの処理を追加していく
+                    // 例:
+                    // KeyAction.ToggleCase -> { /* 英語の大文字/小文字を切り替える処理 */ }
+                    // KeyAction.ShowEmojiKeyboard -> { /* 絵文字キーボードに切り替える処理 */ }
+                    else -> {
+                        // 未実装のアクション
+                    }
+                }
+            }
+        })
+    }
+
+    private fun updateKeyboardLayout() {
+        val newLayout = when (customKeyboardMode) {
+            KeyboardInputMode.HIRAGANA -> KeyboardDefaultLayouts.createHiraganaLayout()
+            KeyboardInputMode.ENGLISH -> KeyboardDefaultLayouts.createEnglishLayout(false) // false for lowercase
+            KeyboardInputMode.SYMBOLS -> KeyboardDefaultLayouts.createSymbolLayout()
+        }
+        // ここで、改行キーの動的変更処理を呼び出す
+        val finalLayout = getLayoutWithManualEnterKey(newLayout)
+        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+    }
+
+    private fun getLayoutWithManualEnterKey(baseLayout: KeyboardLayout): KeyboardLayout {
+
+        // 新しいEnterキーのラベルとアクションを、保持している状態変数から決定
+        val (enterLabel, enterAction) = when (currentEnterKeyAction) {
+            is KeyAction.NewLine -> "改行" to KeyAction.NewLine
+            is KeyAction.Enter -> "実行" to KeyAction.Enter   // 「実行」「確定」など文脈で変えても良い
+            is KeyAction.Confirm -> "確定" to KeyAction.Confirm
+            is KeyAction.Convert -> "変換" to KeyAction.Convert
+            // 他にEnterキーに割り当てたいアクションがあればここに追加
+            else -> {
+                // 想定外のアクションが設定された場合は、デフォルト（改行）に戻す
+                "改行" to KeyAction.NewLine
+            }
+        }
+
+        // レイアウト内の既存のEnterキー(NewLine, Enter, Confirm, Convert のいずれか)を探す
+        val oldEnterKeyIndex = baseLayout.keys.indexOfFirst {
+            it.action is KeyAction.NewLine || it.action is KeyAction.Enter || it.action is KeyAction.Confirm || it.action is KeyAction.Convert
+        }
+
+        // Enterキーが見つからなければ、元のレイアウトをそのまま返す
+        if (oldEnterKeyIndex == -1) {
+            return baseLayout
+        }
+
+        val oldEnterKey = baseLayout.keys[oldEnterKeyIndex]
+
+        // 新しいEnterキーのデータを作成 (元のキーの座標やサイズは引き継ぐ)
+        val newEnterKey = oldEnterKey.copy(
+            label = enterLabel,
+            action = enterAction
+        )
+
+        // 新しいキーリストを作成
+        val newKeys = baseLayout.keys.toMutableList().apply {
+            this[oldEnterKeyIndex] = newEnterKey
+        }
+
+        // 新しいキーリストでKeyboardLayoutを再生成して返す
+        return baseLayout.copy(keys = newKeys)
     }
 
     private var currentKeyboardOrder = 0
@@ -2717,6 +2801,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             position = index
         )
         resetFlagsEnterKey()
+    }
+
+    private var currentEnterKeyAction: KeyAction = KeyAction.NewLine // デフォルトは「改行
+
+    /**
+     * Enterキーのアクションを外部から手動で設定する関数。
+     *
+     * @param newAction 設定したい新しいアクション (例: KeyAction.Enter, KeyAction.Convert)
+     */
+    fun setEnterKeyActionSumireView(newAction: KeyAction) {
+        // 設定したいアクションが現在のアクションと異なる場合のみ、更新と再描画を行う
+        if (currentEnterKeyAction != newAction) {
+            currentEnterKeyAction = newAction
+            // キーボードの見た目を即座に更新する
+            updateKeyboardLayout()
+        }
     }
 
     private fun setTenkeyIconsInHenkan(insertString: String, mainView: MainLayoutBinding) {
