@@ -28,15 +28,9 @@ enum class PopupPosition {
 
 class FlickInputController(context: Context) {
 
-    // ▼▼▼ 変更 ▼▼▼ FlickListenerインターフェースに新しいメソッドを追加 ▼▼▼
     interface FlickListener {
         fun onFlick(direction: FlickDirection, character: String)
         fun onStateChanged(view: View, newMap: Map<FlickDirection, String>)
-
-        /**
-         * ユーザーの指が動いて、ハイライトされるフリック方向が変更されたときに呼ばれます。
-         * @param newDirection 新しくハイライトされた方向
-         */
         fun onFlickDirectionChanged(newDirection: FlickDirection)
     }
 
@@ -136,11 +130,9 @@ class FlickInputController(context: Context) {
             MotionEvent.ACTION_MOVE -> {
                 val currentCalculatedDirection = calculateDirection(event.rawX, event.rawY)
 
-                // ▼▼▼ 追加 ▼▼▼ 方向が変化した時にリスナーを呼び出す ▼▼▼
                 if (currentCalculatedDirection != previousDirection) {
                     listener?.onFlickDirectionChanged(currentCalculatedDirection)
                 }
-                // ▲▲▲ 追加 ▲▲▲
 
                 if (currentCalculatedDirection != FlickDirection.TAP) {
                     longPressJob?.cancel()
@@ -174,7 +166,8 @@ class FlickInputController(context: Context) {
                 val finalDirectionToInput = if (isDownModeActive || isLongPressModeActive) {
                     calculateDirection(event.rawX, event.rawY)
                 } else {
-                    lastValidFlickDirection
+                    // ACTION_DOWN -> ACTION_UP のみの単純なタップ操作の場合
+                    FlickDirection.TAP
                 }
 
                 if (finalDirectionToInput != FlickDirection.DOWN) {
@@ -224,24 +217,21 @@ class FlickInputController(context: Context) {
         anchorView = null
     }
 
+    // ▼▼▼【ロジック更新】ハードコーディングされた角度判定をやめ、popupViewに問い合わせる ▼▼▼
     private fun calculateDirection(currentX: Float, currentY: Float): FlickDirection {
         val dx = currentX - initialTouchX
         val dy = currentY - initialTouchY
         val distance = sqrt(dx * dx + dy * dy)
 
+        // 指が中央の閾値内にある場合は、常にTAPとする
         if (distance < flickThreshold) {
             return FlickDirection.TAP
         }
 
+        // 角度を計算（0〜360度）
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360
 
-        return when (angle) {
-            in 20.0..160.0 -> FlickDirection.DOWN
-            in 160.0..204.0 -> FlickDirection.UP_LEFT_FAR
-            in 204.0..248.0 -> FlickDirection.UP_LEFT
-            in 248.0..292.0 -> FlickDirection.UP
-            in 292.0..336.0 -> FlickDirection.UP_RIGHT
-            else -> FlickDirection.UP_RIGHT_FAR
-        }
+        // popupViewに、その角度がどの方向に該当するかを問い合わせる
+        return popupView.getDirectionForAngle(angle)
     }
 }
