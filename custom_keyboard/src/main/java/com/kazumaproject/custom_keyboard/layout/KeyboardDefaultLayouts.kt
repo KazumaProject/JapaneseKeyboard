@@ -287,7 +287,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT to FlickAction.Input("に"),
             FlickDirection.UP to FlickAction.Input("ぬ"),
             FlickDirection.UP_RIGHT to FlickAction.Input("ね"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("の")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("の"),
+            FlickDirection.DOWN to FlickAction.Input("")
         )
         val ha = mapOf(
             FlickDirection.TAP to FlickAction.Input("は"),
@@ -322,7 +323,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT to FlickAction.Input("み"),
             FlickDirection.UP to FlickAction.Input("む"),
             FlickDirection.UP_RIGHT to FlickAction.Input("め"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("も")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("も"),
+            FlickDirection.DOWN to FlickAction.Input("")
         )
         val ya = mapOf(
             FlickDirection.TAP to FlickAction.Input("や"),
@@ -344,14 +346,24 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT to FlickAction.Input("り"),
             FlickDirection.UP to FlickAction.Input("る"),
             FlickDirection.UP_RIGHT to FlickAction.Input("れ"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ろ")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ろ"),
+            FlickDirection.DOWN to FlickAction.Input("")
         )
         val wa = mapOf(
             FlickDirection.TAP to FlickAction.Input("わ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("わ"),
-            FlickDirection.UP_LEFT to FlickAction.Input("を"),
-            FlickDirection.UP to FlickAction.Input("ん"),
-            FlickDirection.UP_RIGHT to FlickAction.Input("ー")
+            FlickDirection.UP to FlickAction.Input("を"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ん"),
+            FlickDirection.DOWN to FlickAction.Input("小")
+        )
+
+        val wa_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゎ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ゎ"),
+            FlickDirection.UP to FlickAction.Input("ー"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
+            FlickDirection.DOWN to FlickAction.Input("大")
+
         )
         val kuten = mapOf(
             FlickDirection.TAP to FlickAction.Input("、"),
@@ -373,7 +385,7 @@ object KeyboardDefaultLayouts {
             "ま" to listOf(ma),
             "や" to listOf(ya, ya_small),
             "ら" to listOf(ra),
-            "わ" to listOf(wa),
+            "わ" to listOf(wa, wa_small),
             "、。?!" to listOf(kuten)
         )
 
