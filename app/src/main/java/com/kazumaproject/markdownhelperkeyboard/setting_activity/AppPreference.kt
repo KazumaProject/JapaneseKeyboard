@@ -27,9 +27,11 @@ object AppPreference {
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
+    private val UNDO_ENABLE = Pair("undo_enable_preference", false)
+    private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
 
     private val defaultKeyboardOrderJson = gson.toJson(
-        listOf(KeyboardType.TENKEY, KeyboardType.QWERTY, KeyboardType.ROMAJI)
+        listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE, KeyboardType.QWERTY, KeyboardType.ROMAJI)
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
 
@@ -149,5 +151,17 @@ object AppPreference {
         get() = preferences.getBoolean(FLICK_INPUT_ONLY.first, FLICK_INPUT_ONLY.second)
         set(value) = preferences.edit {
             it.putBoolean(FLICK_INPUT_ONLY.first, value ?: false)
+        }
+
+    var undo_enable_preference: Boolean?
+        get() = preferences.getBoolean(UNDO_ENABLE.first, UNDO_ENABLE.second)
+        set(value) = preferences.edit {
+            it.putBoolean(UNDO_ENABLE.first, value ?: false)
+        }
+
+    var space_hankaku_preference: Boolean?
+        get() = preferences.getBoolean(SPACE_HANKAKU_ENABLE.first, SPACE_HANKAKU_ENABLE.second)
+        set(value) = preferences.edit {
+            it.putBoolean(SPACE_HANKAKU_ENABLE.first, value ?: false)
         }
 }
