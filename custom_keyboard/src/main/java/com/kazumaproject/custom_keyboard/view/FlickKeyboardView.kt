@@ -57,10 +57,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.rowCount = layout.rowCount
 
         layout.keys.forEach { keyData ->
-            val isSpecialKey = keyData.action != null
+            // ▼▼▼ 修正 ▼▼▼ isSpecialKeyの判定を、KeyDataのプロパティを直接参照するように変更 ▼▼▼
+            // val isSpecialKey = keyData.action != null // この行を削除！
             val isDarkTheme = context.isDarkThemeOn()
 
-            val keyView: View = if (isSpecialKey && keyData.drawableResId != null) {
+            val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
                 AppCompatImageButton(context).apply {
                     setImageResource(keyData.drawableResId)
                     contentDescription = keyData.label
@@ -69,28 +70,27 @@ class FlickKeyboardView @JvmOverloads constructor(
             } else {
                 Button(context).apply {
                     text = keyData.label
-                    if (isSpecialKey) {
+                    if (keyData.isSpecialKey) {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
                     } else {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light)
                     }
                 }
             }
+            // ▲▲▲ 修正 ▲▲▲
 
             val params = LayoutParams().apply {
                 rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
                 width = 0
                 height = 0
-                setMargins(if (isSpecialKey) 8 else 8)
+                // ▼▼▼ 修正 ▼▼▼ ここも同様に KeyData のプロパティを直接参照
+                setMargins(if (keyData.isSpecialKey) 8 else 8)
             }
             keyView.layoutParams = params
 
             when (keyData.keyType) {
                 KeyType.CIRCULAR_FLICK -> {
-                    // This part for circular flick keys remains mostly the same,
-                    // but it also needs to be updated to handle FlickAction if you want to mix them.
-                    // For now, assuming circular flicks are only for text input.
                     val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
                     if (!flickKeyMapsList.isNullOrEmpty()) {
                         val controller = FlickInputController(context).apply {
@@ -118,8 +118,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 textColor = outline
                             )
                             setPopupColors(dynamicColorTheme)
-                            // This listener needs a way to convert FlickAction back to String for the old controller
-                            // This is a simplification; a full implementation might merge the controllers' logic
                             this.listener = object : FlickInputController.FlickListener {
                                 override fun onStateChanged(
                                     view: View,
@@ -145,8 +143,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             setPopupPosition(PopupPosition.TOP)
-
-                            // A temporary conversion from Map<FlickDirection, FlickAction> to Map<FlickDirection, String>
                             val stringMaps = flickKeyMapsList.map { actionMap ->
                                 actionMap.mapValues { (_, flickAction) ->
                                     (flickAction as? FlickAction.Input)?.char ?: ""
@@ -195,7 +191,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                     keyData.action?.let { action ->
                         var isLongPressTriggered = false
                         keyView.setOnClickListener {
-                            this@FlickKeyboardView.listener?.onAction(action)
+                            this@FlickKeyboardView.listener?.onAction(
+                                action
+                            )
                         }
                         keyView.setOnLongClickListener {
                             isLongPressTriggered = true

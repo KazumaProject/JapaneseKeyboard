@@ -5,79 +5,211 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 
 object KeyboardDefaultLayouts {
 
-    //region ひらがなレイアウト
-    fun createHiraganaLayout(): KeyboardLayout {
+    // --- Public Method ---
+
+    /**
+     * Creates the final keyboard layout based on the mode and dynamic key states.
+     * @param mode The keyboard input mode (HIRAGANA, ENGLISH, etc.).
+     * @param dynamicKeyStates A map of dynamic key states [keyId: String, stateIndex: Int].
+     * @return The final, state-applied KeyboardLayout.
+     */
+    fun createFinalLayout(
+        mode: KeyboardInputMode,
+        dynamicKeyStates: Map<String, Int>
+    ): KeyboardLayout {
+        val baseLayout = when (mode) {
+            KeyboardInputMode.HIRAGANA -> createHiraganaLayout()
+            KeyboardInputMode.ENGLISH -> createEnglishLayout(false) // isUpperCase is managed separately
+            KeyboardInputMode.SYMBOLS -> createSymbolLayout()
+        }
+
+        var finalLayout = baseLayout
+        dynamicKeyStates.forEach { (keyId, stateIndex) ->
+            finalLayout = applyKeyState(finalLayout, keyId, stateIndex)
+        }
+
+        return finalLayout
+    }
+
+    // --- Private Helpers and Layout Definitions ---
+
+    // All dynamic key states are managed centrally here
+    private val enterKeyStates = listOf(
+        FlickAction.Action(KeyAction.NewLine, "改行"),
+        FlickAction.Action(
+            KeyAction.Enter,
+            "実行",
+            com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+        ),
+        FlickAction.Action(KeyAction.Confirm, "確定"),
+        FlickAction.Action(KeyAction.Convert, "変換")
+    )
+
+    private val dakutenToggleStates = listOf(
+        FlickAction.Action(KeyAction.InputText("^_^"), label = "^_^"),
+        FlickAction.Action(
+            KeyAction.ToggleDakuten,
+            label = "゛゜",
+            drawableResId = com.kazumaproject.core.R.drawable.kana_small
+        )
+    )
+
+    // ▼▼▼ NEW: Define states for the Space/Convert key ▼▼▼
+    private val spaceConvertStates = listOf(
+        FlickAction.Action(KeyAction.Space, "空白"),
+        FlickAction.Action(KeyAction.Convert, "変換")
+    )
+
+    /**
+     * A generic helper to update the state of a specific key.
+     */
+    private fun applyKeyState(
+        baseLayout: KeyboardLayout,
+        keyId: String,
+        stateIndex: Int
+    ): KeyboardLayout {
+        val keyIndex = baseLayout.keys.indexOfFirst { it.keyId == keyId }
+        if (keyIndex == -1) return baseLayout
+
+        val oldKey = baseLayout.keys[keyIndex]
+        val states = oldKey.dynamicStates
+        val selectedState =
+            states?.getOrNull(stateIndex) ?: states?.firstOrNull() ?: return baseLayout
+
+        val newKey = oldKey.copy(
+            label = selectedState.label ?: "",
+            action = selectedState.action,
+            drawableResId = selectedState.drawableResId
+        )
+
+        val newKeys = baseLayout.keys.toMutableList().apply {
+            this[keyIndex] = newKey
+        }
+
+        return baseLayout.copy(keys = newKeys)
+    }
+
+    //region Hiragana Layout
+    private fun createHiraganaLayout(): KeyboardLayout {
         val keys = listOf(
-            // 0列目
             KeyData(
-                label = "PasteActionKey", // flickKeyMapsで使うための一意なキー
+                label = "PasteActionKey",
                 row = 0,
                 column = 0,
                 isFlickable = false,
                 action = KeyAction.Paste,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
-                keyType = KeyType.CROSS_FLICK // 十字フリックキーに設定
+                keyType = KeyType.CROSS_FLICK
             ),
-            KeyData("←", 1, 0, false, action = KeyAction.MoveCursorLeft, isSpecialKey = true),
-            KeyData("モード", 2, 0, false, action = KeyAction.ChangeInputMode, isSpecialKey = true),
             KeyData(
-                "",
-                3,
-                0,
-                false,
+                label = "CursorMoveLeft",
+                row = 1,
+                column = 0,
+                isFlickable = false,
+                action = KeyAction.MoveCursorLeft,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
+                keyType = KeyType.CROSS_FLICK
+            ),
+            KeyData(
+                label = "モード",
+                row = 2,
+                column = 0,
+                isFlickable = false,
+                action = KeyAction.ChangeInputMode,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+            ),
+            KeyData(
+                label = "",
+                row = 3,
+                column = 0,
+                isFlickable = false,
                 action = KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
-
-            // 1-3列目 (ひらがなフリックキー)
             KeyData("あ", 0, 1, true), KeyData("か", 0, 2, true), KeyData("さ", 0, 3, true),
             KeyData("た", 1, 1, true), KeyData("な", 1, 2, true), KeyData("は", 1, 3, true),
             KeyData("ま", 2, 1, true), KeyData("や", 2, 2, true), KeyData("ら", 2, 3, true),
-            KeyData("^_^", 3, 1, false),KeyData("わ", 3, 2, true), KeyData("、。?!", 3, 3, true),
-
-            // 4列目（右端の特殊キー）
             KeyData(
-                "Del", 0, 4, false,
-                action = KeyAction.Delete, // actionを指定
+                label = dakutenToggleStates[0].label ?: "",
+                row = 3,
+                column = 1,
+                isFlickable = false,
+                action = dakutenToggleStates[0].action,
+                isSpecialKey = false,
+                keyId = "dakuten_toggle_key",
+                dynamicStates = dakutenToggleStates
+            ),
+            KeyData("わ", 3, 2, true), KeyData("、。?!", 3, 3, true),
+            KeyData(
+                label = "Del",
+                row = 0,
+                column = 4,
+                isFlickable = false,
+                action = KeyAction.Delete,
                 rowSpan = 1,
                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
                 isSpecialKey = true
             ),
+            // ▼▼▼ MODIFIED: Space key is now dynamic ▼▼▼
             KeyData(
-                "空白", 1, 4, false, action = KeyAction.Space, rowSpan = 1, isSpecialKey = true
+                label = spaceConvertStates[0].label ?: "",
+                row = 1,
+                column = 4,
+                isFlickable = false,
+                action = spaceConvertStates[0].action,
+                rowSpan = 1,
+                isSpecialKey = true,
+                keyId = "space_convert_key",
+                dynamicStates = spaceConvertStates
             ),
             KeyData(
-                "改行", 2, 4, false,
-                action = KeyAction.NewLine, // actionを指定
+                label = enterKeyStates[0].label ?: "",
+                row = 2,
+                column = 4,
+                isFlickable = false,
+                action = enterKeyStates[0].action,
                 rowSpan = 2,
-                drawableResId = null,
-                isSpecialKey = true
+                isSpecialKey = true,
+                drawableResId = enterKeyStates[0].drawableResId,
+                keyId = "enter_key",
+                dynamicStates = enterKeyStates
             )
         )
 
-        // --- すべてのフリックマップを FlickAction を使って定義 ---
-
+        // Flick maps remain the same...
         val pasteActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Paste,
-                com.kazumaproject.core.R.drawable.content_paste_24px
+                drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
             ),
             FlickDirection.UP to FlickAction.Action(
                 KeyAction.SelectAll,
-                com.kazumaproject.core.R.drawable.text_select_start_24dp // このリソースは仮です
+                drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
             ),
             FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.Copy,
-                com.kazumaproject.core.R.drawable.content_copy_24dp // このリソースは仮です
+                drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
             )
         )
-
+        val cursorMoveActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            ),
+            FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.MoveCursorRight,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            )
+        )
         val a = mapOf(
             FlickDirection.TAP to FlickAction.Input("あ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("あ"),
@@ -232,46 +364,94 @@ object KeyboardDefaultLayouts {
 
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
             "PasteActionKey" to listOf(pasteActionMap),
-            "あ" to listOf(a, small_a), "か" to listOf(ka, ga), "さ" to listOf(sa, za),
-            "た" to listOf(ta, da), "な" to listOf(na), "は" to listOf(ha, ba, pa),
-            "ま" to listOf(ma), "や" to listOf(ya, ya_small), "ら" to listOf(ra),
-            "わ" to listOf(wa), "、。?!" to listOf(kuten)
+            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+            "あ" to listOf(a, small_a),
+            "か" to listOf(ka, ga),
+            "さ" to listOf(sa, za),
+            "た" to listOf(ta, da),
+            "な" to listOf(na),
+            "は" to listOf(ha, ba, pa),
+            "ま" to listOf(ma),
+            "や" to listOf(ya, ya_small),
+            "ら" to listOf(ra),
+            "わ" to listOf(wa),
+            "、。?!" to listOf(kuten)
         )
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
     //endregion
 
-    //region 英語レイアウト
-    fun createEnglishLayout(isUpperCase: Boolean): KeyboardLayout {
+    //region English Layout
+    private fun createEnglishLayout(isUpperCase: Boolean): KeyboardLayout {
         val keys = listOf(
-            KeyData("モード", 0, 0, false, action = KeyAction.ChangeInputMode),
-            KeyData("a/A", 1, 0, false, action = KeyAction.ToggleCase),
-            KeyData("顔文字", 2, 0, false, action = KeyAction.ShowEmojiKeyboard),
-            KeyData("記号", 3, 0, false, action = KeyAction.ChangeInputMode),
+            KeyData("モード", 0, 0, false, KeyAction.ChangeInputMode),
+            KeyData("a/A", 1, 0, false, KeyAction.ToggleCase),
+            KeyData("顔文字", 2, 0, false, KeyAction.ShowEmojiKeyboard),
+            KeyData("記号", 3, 0, false, KeyAction.ChangeInputMode),
             KeyData("ABC", 0, 1, true), KeyData("DEF", 0, 2, true), KeyData("GHI", 0, 3, true),
             KeyData("JKL", 1, 1, true), KeyData("MNO", 1, 2, true), KeyData("PQRS", 1, 3, true),
             KeyData("TUV", 2, 1, true), KeyData("WXYZ", 2, 2, true), KeyData("'", 2, 3, true),
             KeyData(".", 3, 1, true),
-            KeyData("空白", 3, 2, false, action = KeyAction.Space),
-            KeyData("?!", 3, 3, true),
-            KeyData("Del", 0, 4, false, action = KeyAction.Delete, rowSpan = 2),
-            KeyData("Enter", 2, 4, false, action = KeyAction.Enter, rowSpan = 2)
+            // ▼▼▼ MODIFIED: Space key is dynamic, but split for English layout's wider key ▼▼▼
+            KeyData(
+                label = spaceConvertStates[0].label ?: "",
+                row = 3,
+                column = 2,
+                isFlickable = false,
+                action = spaceConvertStates[0].action,
+                colSpan = 2,
+                isSpecialKey = true,
+                keyId = "space_convert_key",
+                dynamicStates = spaceConvertStates
+            ),
+            KeyData("?!", 3, 4, true), // Adjusted column
+            KeyData(
+                "Del",
+                0,
+                4,
+                false,
+                KeyAction.Delete,
+                rowSpan = 2,
+                isSpecialKey = true
+            ), // Adjusted column
+            KeyData(
+                label = enterKeyStates[0].label ?: "",
+                row = 2,
+                column = 4,
+                isFlickable = false,
+                action = enterKeyStates[0].action,
+                rowSpan = 2,
+                isSpecialKey = true,
+                drawableResId = enterKeyStates[0].drawableResId,
+                keyId = "enter_key",
+                dynamicStates = enterKeyStates
+            ) // Adjusted column
         )
 
         val flickMaps = mutableMapOf<String, List<Map<FlickDirection, FlickAction>>>()
         val keyMapping = mapOf(
-            "ABC" to "abc", "DEF" to "def", "GHI" to "ghi", "JKL" to "jkl",
-            "MNO" to "mno", "PQRS" to "pqrs", "TUV" to "tuv", "WXYZ" to "wxyz",
-            "'" to "'\"", "." to ".,", "?!" to "?!"
+            "ABC" to "abc",
+            "DEF" to "def",
+            "GHI" to "ghi",
+            "JKL" to "jkl",
+            "MNO" to "mno",
+            "PQRS" to "pqrs",
+            "TUV" to "tuv",
+            "WXYZ" to "wxyz",
+            "'" to "'\"",
+            "." to ".,",
+            "?!" to "?!"
         )
-
         keyMapping.forEach { (label, chars) ->
             val lowerMap = mutableMapOf<FlickDirection, FlickAction>()
             val upperMap = mutableMapOf<FlickDirection, FlickAction>()
             val directions = listOf(
-                FlickDirection.TAP, FlickDirection.UP_LEFT, FlickDirection.UP,
-                FlickDirection.UP_RIGHT, FlickDirection.UP_RIGHT_FAR
+                FlickDirection.TAP,
+                FlickDirection.UP_LEFT,
+                FlickDirection.UP,
+                FlickDirection.UP_RIGHT,
+                FlickDirection.UP_RIGHT_FAR
             )
             for (i in chars.indices) {
                 lowerMap[directions[i]] = FlickAction.Input(chars[i].toString())
@@ -281,25 +461,45 @@ object KeyboardDefaultLayouts {
                 if (isUpperCase) listOf(upperMap, lowerMap) else listOf(lowerMap, upperMap)
         }
 
+        // English layout might need 6 columns due to the change
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
     //endregion
 
-    //region 記号レイアウト
-    fun createSymbolLayout(): KeyboardLayout {
+    //region Symbol Layout
+    private fun createSymbolLayout(): KeyboardLayout {
         val keys = listOf(
-            KeyData("モード", 0, 0, false, action = KeyAction.ChangeInputMode),
-            KeyData("", 1, 0, false, action = null),
-            KeyData("", 2, 0, false, action = null),
-            KeyData("", 3, 0, false, action = null),
+            KeyData("モード", 0, 0, false, KeyAction.ChangeInputMode),
+            KeyData("", 1, 0, false), KeyData("", 2, 0, false), KeyData("", 3, 0, false),
             KeyData("1", 0, 1, true), KeyData("2", 0, 2, true), KeyData("3", 0, 3, true),
             KeyData("4", 1, 1, true), KeyData("5", 1, 2, true), KeyData("6", 1, 3, true),
             KeyData("7", 2, 1, true), KeyData("8", 2, 2, true), KeyData("9", 2, 3, true),
-            KeyData("*", 3, 1, false, action = KeyAction.InputText("*")),
-            KeyData("0", 3, 2, true),
-            KeyData("#", 3, 3, false, action = KeyAction.InputText("#")),
-            KeyData("Del", 0, 4, false, action = KeyAction.Delete, rowSpan = 2),
-            KeyData("Enter", 2, 4, false, action = KeyAction.Enter, rowSpan = 2)
+            // ▼▼▼ MODIFIED: Space key is now dynamic ▼▼▼
+            KeyData(
+                label = spaceConvertStates[0].label ?: "",
+                row = 3,
+                column = 1,
+                colSpan = 2,
+                isFlickable = false,
+                action = spaceConvertStates[0].action,
+                isSpecialKey = true,
+                keyId = "space_convert_key",
+                dynamicStates = spaceConvertStates
+            ),
+            KeyData("0", 3, 3, true), // Adjusted column
+            KeyData("Del", 0, 4, false, KeyAction.Delete, rowSpan = 2, isSpecialKey = true),
+            KeyData(
+                label = enterKeyStates[0].label ?: "",
+                row = 2,
+                column = 4,
+                isFlickable = false,
+                action = enterKeyStates[0].action,
+                rowSpan = 2,
+                isSpecialKey = true,
+                drawableResId = enterKeyStates[0].drawableResId,
+                keyId = "enter_key",
+                dynamicStates = enterKeyStates
+            )
         )
 
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
@@ -371,6 +571,7 @@ object KeyboardDefaultLayouts {
             "0" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("0")))
         )
 
+        // Symbol layout might need 5 columns
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
     //endregion
