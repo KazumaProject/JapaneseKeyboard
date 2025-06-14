@@ -24,9 +24,7 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 
 class FlickKeyboardView @JvmOverloads constructor(
-    context: Context,
-    attrs: AttributeSet? = null,
-    defStyleAttr: Int = 0
+    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
     /**
@@ -78,6 +76,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             } else {
                 Button(context).apply {
                     isFocusable = false
+                    isAllCaps = false
                     text = keyData.label
                     if (keyData.isSpecialKey) {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
@@ -131,19 +130,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                             setPopupColors(dynamicColorTheme)
                             this.listener = object : FlickInputController.FlickListener {
                                 override fun onStateChanged(
-                                    view: View,
-                                    newMap: Map<FlickDirection, String>
+                                    view: View, newMap: Map<FlickDirection, String>
                                 ) {
                                 }
 
                                 override fun onFlick(direction: FlickDirection, character: String) {
                                     if (character.isNotEmpty()) {
                                         this@FlickKeyboardView.listener?.onKey(character)
-                                    }
-                                    val firstMap = flickKeyMapsList.firstOrNull()
-                                    val tapAction = firstMap?.get(FlickDirection.TAP)
-                                    if (tapAction is FlickAction.Input) {
-                                        (keyView as? Button)?.text = tapAction.char
                                     }
                                 }
 

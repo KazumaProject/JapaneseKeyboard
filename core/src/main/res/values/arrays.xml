@@ -23,14 +23,4 @@
         <item>release</item>
         <item>both</item>
     </string-array>
-
-    <string-array name="input_style_array">
-        <item>フリック入力</item>
-        <item>サークル入力</item>
-    </string-array>
-
-    <string-array name="input_style_array_values">
-        <item>flick</item>
-        <item>circle</item>
-    </string-array>
 </resources>
