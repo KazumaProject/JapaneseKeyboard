@@ -1959,7 +1959,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     if (mainView.customLayoutDefault.isVisible) {
                         setSumireKeyboardDakutenKey()
                         setSumireKeyboardEnterKey(1)
-                        setSumireKeyboardSpaceKey(1)
+                        when (mainView.keyboardView.currentInputMode.value) {
+                            InputMode.ModeJapanese -> {
+                                setSumireKeyboardSpaceKey(1)
+                            }
+
+                            else -> {}
+                        }
                     }
                 }
                 when (currentFlag) {
