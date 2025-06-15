@@ -1310,7 +1310,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
 
-            // ▼▼▼ 変更 ▼▼▼ onSpecialKey と onSpecialKeyLongPress は onAction と onActionLongPress になります
             override fun onActionLongPress(action: KeyAction) {
                 // 特殊キーが長押しされた場合
                 // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
@@ -1485,7 +1484,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.NewLine -> {}
-                    KeyAction.Paste -> {}
+                    KeyAction.Paste -> {
+                        pasteAction()
+                    }
+
                     KeyAction.SelectAll -> {
                         selectAllText()
                     }
@@ -1654,7 +1656,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.Paste -> {
-
+                        pasteAction()
                     }
 
                     KeyAction.SelectAll -> {
@@ -1692,6 +1694,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         })
+    }
+
+    private fun pasteAction() {
+        val allClipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
+        if (allClipboardText.isNotEmpty()) {
+            commitText(allClipboardText, 1)
+            clearDeletedBufferWithoutResetLayout()
+            suggestionAdapter?.setUndoEnabled(false)
+            setClipboardText()
+        }
     }
 
     private var currentKeyboardOrder = 0
@@ -2434,9 +2446,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     position = position
                 )
             }
-            adapter.setOnItemLongClickListener { candidate, _ ->
-                /** Candidate Long Click **/
-            }
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
@@ -2461,13 +2470,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
-                        val allClipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
-                        if (allClipboardText.isNotEmpty()) {
-                            commitText(allClipboardText, 1)
-                            clearDeletedBufferWithoutResetLayout()
-                            suggestionAdapter?.setUndoEnabled(false)
-                            setClipboardText()
-                        }
+                        pasteAction()
                     }
                 }
             }
