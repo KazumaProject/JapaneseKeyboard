@@ -1,0 +1,2 @@
+-keep class com.kazumaproject.custom_keyboard.** { *; }
+-keep interface com.kazumaproject.custom_keyboard.** { *; }

@@ -11,7 +11,6 @@ import android.widget.GridLayout
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
-import androidx.core.view.setMargins
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.FlickInputController
@@ -92,9 +91,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                 width = 0
                 height = 0
                 if (keyData.isSpecialKey) {
-                    setMargins(6, 7, 6, 5)
+                    setMargins(6, 12, 6, 6)
                 } else {
-                    setMargins(7)
+                    setMargins(6, 9, 6, 9)
                 }
             }
             keyView.layoutParams = params
