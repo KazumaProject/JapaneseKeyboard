@@ -1,0 +1,2 @@
+-keep class com.kazumaproject.symbol_keyboard.** { *; }
+-keep interface com.kazumaproject.symbol_keyboard.** { *; }

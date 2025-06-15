@@ -81,7 +81,7 @@ enum class KeyType {
     CIRCULAR_FLICK,
 
     /** 十字フリックキー */
-    CROSS_FLICK
+    CROSS_FLICK,
 }
 
 
