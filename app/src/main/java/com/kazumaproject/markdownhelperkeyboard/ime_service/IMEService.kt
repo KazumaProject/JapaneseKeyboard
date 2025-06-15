@@ -1497,8 +1497,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Space -> {}
                     KeyAction.SwitchToNextIme -> {}
-                    KeyAction.ToggleCase -> {}
-                    KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleCase -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
+
+                    KeyAction.ToggleDakuten -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
                 }
             }
 
@@ -1666,30 +1671,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleCase -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
+
                     KeyAction.ToggleDakuten -> {
-                        val insertString = inputString.value
-                        mainLayoutBinding?.let { mainView ->
-                            mainView.keyboardView.let {
-                                Timber.d("onAction: $action ${it.currentInputMode.value}")
-                                val sb = StringBuilder()
-                                when (it.currentInputMode.value) {
-                                    InputMode.ModeJapanese -> {
-                                        dakutenSmallLetter(
-                                            sb, insertString, GestureType.Tap
-                                        )
-                                    }
-
-                                    InputMode.ModeEnglish -> {
-                                        smallBigLetterConversionEnglish(sb, insertString)
-                                    }
-
-                                    InputMode.ModeNumber -> {
-
-                                    }
-                                }
-                            }
-                        }
+                        dakutenSmallActionForSumire(mainView)
                     }
                 }
             }
@@ -1703,6 +1690,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             clearDeletedBufferWithoutResetLayout()
             suggestionAdapter?.setUndoEnabled(false)
             setClipboardText()
+        }
+    }
+
+    private fun dakutenSmallActionForSumire(mainView: MainLayoutBinding) {
+        val insertString = inputString.value
+        val sb = StringBuilder()
+        mainView.keyboardView.let {
+            when (it.currentInputMode.value) {
+                InputMode.ModeJapanese -> {
+                    dakutenSmallLetter(
+                        sb, insertString, GestureType.Tap
+                    )
+                }
+
+                InputMode.ModeEnglish -> {
+                    smallConversionEnglish(sb, insertString)
+                }
+
+                InputMode.ModeNumber -> {
+
+                }
+            }
+        }
+    }
+
+    private fun smallConversionEnglish(
+        sb: StringBuilder, insertString: String,
+    ) {
+        _dakutenPressed.value = true
+        englishSpaceKeyPressed.set(false)
+
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
+            insertPosition.let { c ->
+                if (!c.isHiragana()) {
+                    c.getDakutenSmallChar()?.let { dakutenChar ->
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
+                    }
+                }
+            }
         }
     }
 
