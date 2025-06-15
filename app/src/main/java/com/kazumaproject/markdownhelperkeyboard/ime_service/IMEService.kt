@@ -1310,7 +1310,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
 
-            // ▼▼▼ 変更 ▼▼▼ onSpecialKey と onSpecialKeyLongPress は onAction と onActionLongPress になります
             override fun onActionLongPress(action: KeyAction) {
                 // 特殊キーが長押しされた場合
                 // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
@@ -1485,7 +1484,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.NewLine -> {}
-                    KeyAction.Paste -> {}
+                    KeyAction.Paste -> {
+                        pasteAction()
+                    }
+
                     KeyAction.SelectAll -> {
                         selectAllText()
                     }
@@ -1495,8 +1497,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Space -> {}
                     KeyAction.SwitchToNextIme -> {}
-                    KeyAction.ToggleCase -> {}
-                    KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleCase -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
+
+                    KeyAction.ToggleDakuten -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
                 }
             }
 
@@ -1654,7 +1661,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.Paste -> {
-
+                        pasteAction()
                     }
 
                     KeyAction.SelectAll -> {
@@ -1664,34 +1671,66 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleCase -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
+
                     KeyAction.ToggleDakuten -> {
-                        val insertString = inputString.value
-                        mainLayoutBinding?.let { mainView ->
-                            mainView.keyboardView.let {
-                                Timber.d("onAction: $action ${it.currentInputMode.value}")
-                                val sb = StringBuilder()
-                                when (it.currentInputMode.value) {
-                                    InputMode.ModeJapanese -> {
-                                        dakutenSmallLetter(
-                                            sb, insertString, GestureType.Tap
-                                        )
-                                    }
-
-                                    InputMode.ModeEnglish -> {
-                                        smallBigLetterConversionEnglish(sb, insertString)
-                                    }
-
-                                    InputMode.ModeNumber -> {
-
-                                    }
-                                }
-                            }
-                        }
+                        dakutenSmallActionForSumire(mainView)
                     }
                 }
             }
         })
+    }
+
+    private fun pasteAction() {
+        val allClipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
+        if (allClipboardText.isNotEmpty()) {
+            commitText(allClipboardText, 1)
+            clearDeletedBufferWithoutResetLayout()
+            suggestionAdapter?.setUndoEnabled(false)
+            setClipboardText()
+        }
+    }
+
+    private fun dakutenSmallActionForSumire(mainView: MainLayoutBinding) {
+        val insertString = inputString.value
+        val sb = StringBuilder()
+        mainView.keyboardView.let {
+            when (it.currentInputMode.value) {
+                InputMode.ModeJapanese -> {
+                    dakutenSmallLetter(
+                        sb, insertString, GestureType.Tap
+                    )
+                }
+
+                InputMode.ModeEnglish -> {
+                    smallConversionEnglish(sb, insertString)
+                }
+
+                InputMode.ModeNumber -> {
+
+                }
+            }
+        }
+    }
+
+    private fun smallConversionEnglish(
+        sb: StringBuilder, insertString: String,
+    ) {
+        _dakutenPressed.value = true
+        englishSpaceKeyPressed.set(false)
+
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
+            insertPosition.let { c ->
+                if (!c.isHiragana()) {
+                    c.getDakutenSmallChar()?.let { dakutenChar ->
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
+                    }
+                }
+            }
+        }
     }
 
     private var currentKeyboardOrder = 0
@@ -1947,7 +1986,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     if (mainView.customLayoutDefault.isVisible) {
                         setSumireKeyboardDakutenKey()
                         setSumireKeyboardEnterKey(1)
-                        setSumireKeyboardSpaceKey(1)
+                        when (mainView.keyboardView.currentInputMode.value) {
+                            InputMode.ModeJapanese -> {
+                                setSumireKeyboardSpaceKey(1)
+                            }
+
+                            else -> {}
+                        }
                     }
                 }
                 when (currentFlag) {
@@ -2434,9 +2479,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     position = position
                 )
             }
-            adapter.setOnItemLongClickListener { candidate, _ ->
-                /** Candidate Long Click **/
-            }
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
@@ -2461,13 +2503,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
-                        val allClipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
-                        if (allClipboardText.isNotEmpty()) {
-                            commitText(allClipboardText, 1)
-                            clearDeletedBufferWithoutResetLayout()
-                            suggestionAdapter?.setUndoEnabled(false)
-                            setClipboardText()
-                        }
+                        pasteAction()
                     }
                 }
             }
