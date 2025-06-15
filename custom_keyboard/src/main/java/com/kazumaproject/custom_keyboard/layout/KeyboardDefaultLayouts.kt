@@ -54,14 +54,9 @@ object KeyboardDefaultLayouts {
         )
     )
 
-    // ▼▼▼ Define states for the Space/Convert key ▼▼▼
+    // ▼▼▼ NEW: Define states for the Space/Convert key ▼▼▼
     private val spaceConvertStates = listOf(
         FlickAction.Action(KeyAction.Space, "空白"), FlickAction.Action(KeyAction.Convert, "変換")
-    )
-
-    private val spaceFlickOnlyMap = mapOf(
-        FlickDirection.UP_LEFT to FlickAction.Action(KeyAction.Space),
-        // TAP is NOT defined here, because it will be handled dynamically
     )
 
     /**
@@ -163,17 +158,17 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
                 isSpecialKey = true
             ),
+            // ▼▼▼ MODIFIED: Space key is now dynamic ▼▼▼
             KeyData(
                 label = spaceConvertStates[0].label ?: "",
                 row = 1,
                 column = 4,
-                isFlickable = true,
+                isFlickable = false,
                 action = spaceConvertStates[0].action,
                 rowSpan = 1,
                 isSpecialKey = true,
                 keyId = "space_convert_key",
-                dynamicStates = spaceConvertStates,
-                keyType = KeyType.DYNAMIC_FLICK
+                dynamicStates = spaceConvertStates
             ),
             KeyData(
                 label = enterKeyStates[0].label ?: "",
@@ -362,7 +357,6 @@ object KeyboardDefaultLayouts {
         val wa_small = mapOf(
             FlickDirection.TAP to FlickAction.Input("ゎ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ゎ"),
-            FlickDirection.UP_LEFT to FlickAction.Input("-"),
             FlickDirection.UP_RIGHT to FlickAction.Input("~"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
             FlickDirection.DOWN to FlickAction.Input("大")
@@ -391,7 +385,6 @@ object KeyboardDefaultLayouts {
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "space_convert_key" to listOf(spaceFlickOnlyMap),
             "あ" to listOf(a, small_a),
             "か" to listOf(ka, ga),
             "さ" to listOf(sa, za),
@@ -460,8 +453,7 @@ object KeyboardDefaultLayouts {
             KeyData("PQRS", 2, 1, true),
             KeyData("TUV", 2, 2, true),
             KeyData("WXYZ", 2, 3, true),
-            // a/AキーはflickMapsを持たないアクションキー
-            KeyData("a/A", 3, 1, false, action = KeyAction.ToggleDakuten),
+            KeyData("a/A", 3, 1, false, action = KeyAction.ToggleCase),
             KeyData("' \" ( )", 3, 2, true),
             KeyData(". , ? !", 3, 3, true),
             KeyData(
@@ -478,13 +470,12 @@ object KeyboardDefaultLayouts {
                 label = spaceConvertStates[0].label ?: "",
                 row = 1,
                 column = 4,
-                isFlickable = true,
+                isFlickable = false,
                 action = spaceConvertStates[0].action,
                 rowSpan = 1,
                 isSpecialKey = true,
                 keyId = "space_convert_key",
-                dynamicStates = spaceConvertStates,
-                keyType = KeyType.DYNAMIC_FLICK
+                dynamicStates = spaceConvertStates
             ),
             KeyData(
                 label = enterKeyStates[0].label ?: "",
@@ -714,7 +705,6 @@ object KeyboardDefaultLayouts {
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "space_convert_key" to listOf(spaceFlickOnlyMap),
             "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
             "' \" ( )" to listOf(symbols2, programmingSymbols),
             ". , ? !" to listOf(symbols3),
@@ -805,13 +795,12 @@ object KeyboardDefaultLayouts {
                 label = spaceConvertStates[0].label ?: "",
                 row = 1,
                 column = 4,
-                isFlickable = true,
+                isFlickable = false,
                 action = spaceConvertStates[0].action,
                 rowSpan = 1,
                 isSpecialKey = true,
                 keyId = "space_convert_key",
-                dynamicStates = spaceConvertStates,
-                keyType = KeyType.DYNAMIC_FLICK
+                dynamicStates = spaceConvertStates
             ),
             KeyData(
                 label = enterKeyStates[0].label ?: "",
@@ -856,7 +845,7 @@ object KeyboardDefaultLayouts {
             // Added for consistency
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "space_convert_key" to listOf(spaceFlickOnlyMap),
+
             "1" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("1"),

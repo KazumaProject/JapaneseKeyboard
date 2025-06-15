@@ -2,7 +2,6 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.PointF
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.MotionEvent
@@ -22,17 +21,15 @@ import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlin.math.atan2
-import kotlin.math.sqrt
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
+    /**
+     * ▼▼▼ 修正 ▼▼▼
+     * 十字フリックのロングプレス後の指離しイベントを処理するメソッドを追加
+     */
     interface OnKeyboardActionListener {
         fun onKey(text: String)
         fun onAction(action: KeyAction)
@@ -42,31 +39,27 @@ class FlickKeyboardView @JvmOverloads constructor(
         fun onFlickActionLongPress(action: KeyAction)
         fun onFlickActionUpAfterLongPress(action: KeyAction)
     }
+    // ▲▲▲ 修正 ▲▲▲
 
     private var listener: OnKeyboardActionListener? = null
     private val flickControllers = mutableListOf<FlickInputController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
 
-    // ▼▼▼ 新設 ▼▼▼ ハイブリッドキーのCoroutinesスコープ
-    private val hybridKeyScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
 
-    @SuppressLint("ClickableViewAccessibility", "Recycle")
+    @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
         this.removeAllViews()
         flickControllers.forEach { it.cancel() }
         flickControllers.clear()
         crossFlickControllers.forEach { it.cancel() }
         crossFlickControllers.clear()
-        // ▼▼▼ 新設 ▼▼▼ スコープをキャンセル
-        hybridKeyScope.coroutineContext[Job]?.cancel()
-
 
         this.columnCount = layout.columnCount
         this.rowCount = layout.rowCount
+
         this.isFocusable = false
 
         layout.keys.forEach { keyData ->
@@ -105,7 +98,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
             keyView.layoutParams = params
 
-            // ▼▼▼ 修正 ▼▼▼ キーのタイプに応じてイベントハンドラを割り振る
             when (keyData.keyType) {
                 KeyType.CIRCULAR_FLICK -> {
                     val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
@@ -137,8 +129,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             setPopupColors(dynamicColorTheme)
                             this.listener = object : FlickInputController.FlickListener {
                                 override fun onStateChanged(
-                                    view: View,
-                                    newMap: Map<FlickDirection, String>
+                                    view: View, newMap: Map<FlickDirection, String>
                                 ) {
                                 }
 
@@ -177,11 +168,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
 
                 KeyType.CROSS_FLICK -> {
-                    // ▼▼▼ 修正 ▼▼▼ keyIdを優先してflickMapを検索する
-                    val mapKey = keyData.keyId ?: keyData.label
-                    val flickActionMap = layout.flickKeyMaps[mapKey]?.firstOrNull()
+                    val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null) {
                         val controller = CrossFlickInputController(context).apply {
+                            /**
+                             * ▼▼▼ 修正 ▼▼▼
+                             * 新しい onFlickUpAfterLongPress メソッドを実装
+                             */
                             this.listener = object : CrossFlickInputController.CrossFlickListener {
                                 override fun onFlick(flickAction: FlickAction) {
                                     when (flickAction) {
@@ -196,88 +189,37 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
 
                                 override fun onFlickLongPress(flickAction: FlickAction) {
-                                    if (flickAction is FlickAction.Action) {
-                                        this@FlickKeyboardView.listener?.onFlickActionLongPress(
-                                            flickAction.action
-                                        )
+                                    when (flickAction) {
+                                        is FlickAction.Action -> {
+                                            this@FlickKeyboardView.listener?.onFlickActionLongPress(
+                                                flickAction.action
+                                            )
+                                        }
+
+                                        is FlickAction.Input -> {
+                                            // 必要であれば、文字入力のロングプレスに対する処理をここに記述
+                                        }
                                     }
                                 }
 
                                 override fun onFlickUpAfterLongPress(flickAction: FlickAction) {
-                                    if (flickAction is FlickAction.Action) {
-                                        this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
-                                            flickAction.action
-                                        )
+                                    when (flickAction) {
+                                        is FlickAction.Action -> {
+                                            this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                                flickAction.action
+                                            )
+                                        }
+
+                                        is FlickAction.Input -> {
+                                            // 必要であれば、文字入力のロングプレス後の指離しに対する処理をここに記述
+                                        }
                                     }
                                 }
                             }
+                            // ▲▲▲ 修正 ▲▲▲
                             attach(keyView, flickActionMap)
                         }
                         crossFlickControllers.add(controller)
-                    }
-                }
-
-                // ▼▼▼ 新設 ▼▼▼ DYNAMIC_FLICKキーの処理
-                KeyType.DYNAMIC_FLICK -> {
-                    val mapKey = keyData.keyId ?: keyData.label
-                    val flickMap = layout.flickKeyMaps[mapKey]?.firstOrNull() ?: emptyMap()
-
-                    var isFlick = false
-                    val initialTouchPoint = PointF(0f, 0f)
-                    val flickThreshold = 80f
-
-                    keyView.setOnTouchListener { _, event ->
-                        when (event.action) {
-                            MotionEvent.ACTION_DOWN -> {
-                                isFlick = false
-                                initialTouchPoint.set(event.rawX, event.rawY)
-                                // ここでポップアップ表示を開始しても良い
-                                true
-                            }
-
-                            MotionEvent.ACTION_MOVE -> {
-                                val dx = event.rawX - initialTouchPoint.x
-                                val dy = event.rawY - initialTouchPoint.y
-                                if (!isFlick && sqrt(dx * dx + dy * dy) > flickThreshold) {
-                                    isFlick = true
-                                    // フリックが検出されたことを示す（例：振動、ポップアップ表示）
-                                }
-                                true
-                            }
-
-                            MotionEvent.ACTION_UP -> {
-                                if (isFlick) {
-                                    // フリック操作の場合
-                                    val dx = event.rawX - initialTouchPoint.x
-                                    val dy = event.rawY - initialTouchPoint.y
-                                    val angle = atan2(dy.toDouble(), dx.toDouble()) * 180 / Math.PI
-                                    val direction = when {
-                                        angle > -135 && angle <= -45 -> FlickDirection.UP
-                                        angle > -45 && angle <= 45 -> FlickDirection.UP_RIGHT
-                                        angle > 45 && angle <= 135 -> FlickDirection.DOWN
-                                        else -> FlickDirection.UP_LEFT
-                                    }
-
-                                    // 暫定的な方向マッピング。より詳細なフリック方向が必要な場合は要調整
-                                    val targetDirection = when (direction) {
-                                        FlickDirection.UP_LEFT -> FlickDirection.UP_LEFT
-                                        FlickDirection.UP_RIGHT -> FlickDirection.UP_RIGHT
-                                        else -> direction
-                                    }
-
-                                    val action = flickMap[targetDirection]
-                                    if (action is FlickAction.Action) {
-                                        listener?.onAction(action.action)
-                                    }
-                                } else {
-                                    // タップ操作の場合：keyDataの現在のactionを使用
-                                    keyData.action?.let { listener?.onAction(it) }
-                                }
-                                true
-                            }
-
-                            else -> false
-                        }
                     }
                 }
 
@@ -285,23 +227,22 @@ class FlickKeyboardView @JvmOverloads constructor(
                     keyData.action?.let { action ->
                         var isLongPressTriggered = false
                         keyView.setOnClickListener {
-                            if (!isLongPressTriggered) {
-                                this@FlickKeyboardView.listener?.onAction(action)
-                            }
-                            isLongPressTriggered = false // Reset after click
+                            this@FlickKeyboardView.listener?.onAction(
+                                action
+                            )
                         }
                         keyView.setOnLongClickListener {
                             isLongPressTriggered = true
                             this@FlickKeyboardView.listener?.onActionLongPress(action)
                             true
                         }
-                        keyView.setOnTouchListener { v, event ->
-                            if (event.action == MotionEvent.ACTION_UP && isLongPressTriggered) {
-                                this@FlickKeyboardView.listener?.onActionUpAfterLongPress(action)
-                                isLongPressTriggered = false
+                        keyView.setOnTouchListener { _, event ->
+                            if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
+                                if (isLongPressTriggered) {
+                                    this@FlickKeyboardView.listener?.onActionUpAfterLongPress(action)
+                                    isLongPressTriggered = false
+                                }
                             }
-                            // Return false to allow OnClickListener to be called
-                            v.onTouchEvent(event)
                             false
                         }
                     }
@@ -315,7 +256,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         flickControllers.forEach { it.cancel() }
         crossFlickControllers.forEach { it.cancel() }
-        hybridKeyScope.coroutineContext[Job]?.cancel()
     }
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {

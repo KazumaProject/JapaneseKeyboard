@@ -82,9 +82,6 @@ enum class KeyType {
 
     /** 十字フリックキー */
     CROSS_FLICK,
-
-    /** 動的タップとフリックを両立するハイブリッドキー */
-    DYNAMIC_FLICK
 }
 
 
