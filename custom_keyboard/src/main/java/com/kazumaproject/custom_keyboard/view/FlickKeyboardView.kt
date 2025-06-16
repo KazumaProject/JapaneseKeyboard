@@ -17,9 +17,11 @@ import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
+import com.google.android.material.R
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.FlickInputController
+import com.kazumaproject.custom_keyboard.controller.PetalFlickInputController
 import com.kazumaproject.custom_keyboard.controller.PopupPosition
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.data.FlickAction
@@ -49,6 +51,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
 
+    // ▼▼▼ 1. ADD LIST FOR THE NEW CONTROLLER ▼▼▼
+    private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
+
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
@@ -62,6 +67,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.clear()
         standardFlickControllers.forEach { it.cancel() }
         standardFlickControllers.clear()
+        // ▼▼▼ 2. CLEAR THE NEW CONTROLLER LIST ▼▼▼
+        petalFlickControllers.forEach { it.cancel() }
+        petalFlickControllers.clear()
 
         this.columnCount = layout.columnCount
         this.rowCount = layout.rowCount
@@ -138,18 +146,17 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
             keyView.layoutParams = params
 
-            // ▼▼▼ FIX: ALL KEY TYPES ARE NOW HANDLED CORRECTLY ▼▼▼
             when (keyData.keyType) {
                 KeyType.CIRCULAR_FLICK -> {
                     val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
                     if (!flickKeyMapsList.isNullOrEmpty()) {
                         val controller = FlickInputController(context).apply {
                             val secondaryColor =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorSecondaryContainer)
+                                context.getColorFromAttr(R.attr.colorSecondaryContainer)
                             val surfaceContainerLow =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerLow)
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerLow)
                             val surfaceContainerHighest =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
                             val textColor =
                                 context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
                             val dynamicColorTheme = FlickPopupColorTheme(
@@ -282,6 +289,25 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
 
+                KeyType.PETAL_FLICK -> {
+                    val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                    if (flickActionMap != null) {
+                        val controller = PetalFlickInputController(context).apply {
+                            this.listener = object : PetalFlickInputController.PetalFlickListener {
+                                override fun onFlick(character: String) {
+                                    this@FlickKeyboardView.listener?.onKey(character)
+                                }
+                            }
+                            val stringMap = flickActionMap.mapValues { (_, flickAction) ->
+                                (flickAction as? FlickAction.Input)?.char ?: ""
+                            }
+                            attach(keyView, stringMap)
+                        }
+                        // ▼▼▼ UPDATE: Add controller to the list for lifecycle management ▼▼▼
+                        petalFlickControllers.add(controller)
+                    }
+                }
+
                 KeyType.NORMAL -> {
                     keyData.action?.let { action ->
                         var isLongPressTriggered = false
@@ -315,6 +341,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickControllers.forEach { it.cancel() }
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
+        // ▼▼▼ 3. CANCEL THE NEW CONTROLLERS ON DETACH ▼▼▼
+        petalFlickControllers.forEach { it.cancel() }
     }
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {
