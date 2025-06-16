@@ -215,16 +215,21 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP to FlickAction.Input("う"),
             FlickDirection.UP_RIGHT to FlickAction.Input("え"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("お"),
-            FlickDirection.DOWN to FlickAction.Input("小゛")
+            FlickDirection.DOWN to FlickAction.Input("小")
         )
         val small_a = mapOf(
             FlickDirection.TAP to FlickAction.Input("ぁ"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぃ"),
-            FlickDirection.UP_LEFT to FlickAction.Input("ぅ"),
-            FlickDirection.UP to FlickAction.Input("ぇ"),
-            FlickDirection.UP_RIGHT to FlickAction.Input("ぉ"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ゔ"),
-            FlickDirection.DOWN to FlickAction.Input("大")
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぁ"),
+            FlickDirection.UP_LEFT to FlickAction.Input("ぃ"),
+            FlickDirection.UP to FlickAction.Input("ぅ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("ぇ"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぉ"),
+            FlickDirection.DOWN to FlickAction.Input("”")
+        )
+        val dakuten_a = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゔ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ゔ"),
+            FlickDirection.DOWN to FlickAction.Input("”")
         )
         val ka = mapOf(
             FlickDirection.TAP to FlickAction.Input("か"),
@@ -296,7 +301,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP to FlickAction.Input("ふ"),
             FlickDirection.UP_RIGHT to FlickAction.Input("へ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ほ"),
-            FlickDirection.DOWN to FlickAction.Input("゛゜")
+            FlickDirection.DOWN to FlickAction.Input("゛")
         )
         val ba = mapOf(
             FlickDirection.TAP to FlickAction.Input("ば"),
@@ -314,7 +319,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP to FlickAction.Input("ぷ"),
             FlickDirection.UP_RIGHT to FlickAction.Input("ぺ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぽ"),
-            FlickDirection.DOWN to FlickAction.Input("゛")
+            FlickDirection.DOWN to FlickAction.Input("゛゜")
         )
         val ma = mapOf(
             FlickDirection.TAP to FlickAction.Input("ま"),
@@ -388,7 +393,7 @@ object KeyboardDefaultLayouts {
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "あ" to listOf(a, small_a),
+            "あ" to listOf(a, small_a, dakuten_a),
             "か" to listOf(ka, ga),
             "さ" to listOf(sa, za),
             "た" to listOf(ta, da),
@@ -777,7 +782,7 @@ object KeyboardDefaultLayouts {
             KeyData("3\n%°#", 0, 3, true),
             KeyData("4\n○*・", 1, 1, true),
             KeyData("5\n+x÷", 1, 2, true),
-            KeyData("6\n<=>", 1, 3, true),
+            KeyData("6\n< = >", 1, 3, true),
             KeyData("7\n「」:", 2, 1, true),
             KeyData("8\n〒々〆", 2, 2, true),
             KeyData("9\n^|\\", 2, 3, true),
@@ -819,9 +824,6 @@ object KeyboardDefaultLayouts {
             )
         )
 
-        // --- FLICK MAP DEFINITIONS (Adjusted) ---
-
-        // Flick maps for special keys (for consistency)
         val pasteActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Paste,
@@ -866,7 +868,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
-            "2" to listOf(
+            "2\n￥$€" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("2"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("2"),
@@ -882,7 +884,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
-            "3" to listOf(
+            "3\n%°#" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("3"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("3"),
@@ -898,7 +900,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
-            "4" to listOf(
+            "4\n○*・" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("4"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("4"),
@@ -915,7 +917,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 ),
             ),
-            "5" to listOf(
+            "5\n+x÷" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("5"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("5"),
@@ -931,7 +933,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
-            "6" to listOf(
+            "6\n< = >" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("6"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("6"),
@@ -948,7 +950,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
-            "7" to listOf(
+            "7\n「」:" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("7"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("7"),
@@ -965,8 +967,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 ),
             ),
-            // ▼▼▼ ENHANCED 8, 9, 0 keys ▼▼▼
-            "8" to listOf(
+            "8\n〒々〆" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("8"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("8"),
@@ -983,7 +984,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
-            "9" to listOf(
+            "9\n^|\\" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("9"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("9"),
@@ -1000,7 +1001,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input(""),
                 )
             ),
-            "0" to listOf(
+            "0\n〜…" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("0"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
