@@ -48,7 +48,7 @@ object KeyboardDefaultLayouts {
         ),
         FlickAction.Action(
             KeyAction.ToggleDakuten,
-            label = " 小 ゛゜",
+            label = " 小゛゜",
         )
     )
 
