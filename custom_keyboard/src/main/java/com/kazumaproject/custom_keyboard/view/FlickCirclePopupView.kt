@@ -56,7 +56,6 @@ class FlickCirclePopupView @JvmOverloads constructor(
 
     init {
         applyThemeToPaints()
-        alpha = 0.9f
     }
 
     // --- State and Properties ---
