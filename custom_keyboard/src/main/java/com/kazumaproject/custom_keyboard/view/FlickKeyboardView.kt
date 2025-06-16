@@ -7,7 +7,7 @@ import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
 import android.util.AttributeSet
 import android.util.TypedValue
-import android.view.Gravity // <-- Import Gravity
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
@@ -86,14 +86,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                         val spannable = SpannableString(keyData.label)
 
                         spannable.setSpan(
-                            AbsoluteSizeSpan(spToPx(24f)),
+                            AbsoluteSizeSpan(spToPx(16f)),
                             0,
                             primaryText.length,
                             Spannable.SPAN_INCLUSIVE_INCLUSIVE
                         )
                         if (secondaryText.isNotEmpty()) {
                             spannable.setSpan(
-                                AbsoluteSizeSpan(spToPx(12f)),
+                                AbsoluteSizeSpan(spToPx(10f)),
                                 primaryText.length + 1,
                                 keyData.label.length,
                                 Spannable.SPAN_INCLUSIVE_INCLUSIVE
@@ -117,31 +117,28 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                         if (englishOnlyRegex.matches(keyData.label)) {
                             // Size for English and common QWERTY symbols
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                         } else if (symbolRegex.matches(keyData.label)) {
                             // Set a specific size for these special symbols
                             setTextSize(
                                 TypedValue.COMPLEX_UNIT_SP,
-                                20f
+                                14f
                             )
                         } else {
                             // Default size for other characters (e.g., Japanese)
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 21f)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
                         }
                     }
 
                     if (keyData.isSpecialKey) {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
-                        // This line below might override your dynamic size setting for special keys.
-                        // Consider if you want to keep it or integrate it with the logic above.
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                     } else {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light)
                     }
                 }
             }
 
-            // ... (The rest of the setKeyboard method remains the same) ...
             val params = LayoutParams().apply {
                 rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
@@ -160,28 +157,25 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
                     if (!flickKeyMapsList.isNullOrEmpty()) {
                         val controller = FlickInputController(context).apply {
-                            val primaryColor =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorPrimary)
                             val secondaryColor =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorSecondary)
-                            val tertiaryColor =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorTertiary)
+                                context.getColorFromAttr(com.google.android.material.R.attr.colorSecondaryContainer)
                             val surfaceContainerLow =
                                 context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerLow)
                             val surfaceContainerHighest =
                                 context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerHighest)
-                            val outline =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorOutline)
+
+                            val textColor =
+                                context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
                             val dynamicColorTheme = FlickPopupColorTheme(
                                 segmentColor = surfaceContainerLow,
-                                segmentHighlightGradientStartColor = primaryColor,
+                                segmentHighlightGradientStartColor = secondaryColor,
                                 segmentHighlightGradientEndColor = secondaryColor,
                                 centerGradientStartColor = surfaceContainerHighest,
                                 centerGradientEndColor = surfaceContainerLow,
-                                centerHighlightGradientStartColor = tertiaryColor,
-                                centerHighlightGradientEndColor = primaryColor,
-                                separatorColor = outline,
-                                textColor = outline
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
                             )
                             setPopupColors(dynamicColorTheme)
                             this.listener = object : FlickInputController.FlickListener {
