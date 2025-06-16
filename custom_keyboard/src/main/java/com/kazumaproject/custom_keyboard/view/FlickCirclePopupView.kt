@@ -129,30 +129,36 @@ class FlickCirclePopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    // ▼▼▼【新規】コントローラーから角度に対応する方向を問い合わせるためのメソッド ▼▼▼
     /**
      * 指定された角度（0〜360度）が、現在表示されているどのフリックセグメントに該当するかを返します。
      * @param angle 判別する角度。
      * @return 対応するFlickDirection。どのセグメントにも該当しない場合はTAPを返します。
      */
     fun getDirectionForAngle(angle: Double): FlickDirection {
-        segmentAngleMap.forEach { (direction, angles) ->
+        val normalizedAngle = angle.toFloat()
+
+        for ((direction, angles) in segmentAngleMap) {
             val start = angles.first
-            val end = start + angles.second
-            // 角度がセグメントの範囲内にあるかチェック（360度をまたぐ場合も考慮）
-            if (start <= end) { // 通常の範囲
-                if (angle >= start && angle < end) {
+            val sweep = angles.second
+
+            // セグメントが0度/360度の境界をまたぐかチェック (例: 開始340度, 幅40度)
+            if (start + sweep > 360f) {
+                val end = (start + sweep) % 360f
+                // 境界をまたぐ場合、角度は「開始角度以上」または「終了角度未満」になる
+                if (normalizedAngle >= start || normalizedAngle < end) {
                     return direction
                 }
-            } else { // 360度をまたぐ範囲 (例: 350度から30度)
-                if (angle >= start || angle < end) {
+            } else { // 通常のセグメントの場合
+                val end = start + sweep
+                // 角度が「開始角度以上」かつ「終了角度未満」かチェック
+                if (normalizedAngle >= start && normalizedAngle < end) {
                     return direction
                 }
             }
         }
+        // どのセグメントにも一致しなかった場合
         return FlickDirection.TAP
     }
-
 
     // --- Lifecycle and Drawing Methods ---
 
@@ -243,14 +249,17 @@ class FlickCirclePopupView @JvmOverloads constructor(
         calculateTargetPositions(centerX, centerY)
     }
 
+    // ▼▼▼【MODIFIED LOGIC】▼▼▼
     private fun calculateSegmentAngles() {
         val upperDirections = EnumSet.allOf(FlickDirection::class.java).filter {
             it != FlickDirection.TAP && it != FlickDirection.DOWN && characterMap.containsKey(it)
         }
 
         if (upperDirections.isNotEmpty()) {
-            val totalAngleSpan = 220f
-            val startAngleAt = 160f
+            // Increased the total angle for upper keys for a larger target area
+            val totalAngleSpan = 270f
+            // Adjusted the start angle to accommodate the smaller DOWN area
+            val startAngleAt = 135f
             val sweepPerSegment = totalAngleSpan / upperDirections.size
 
             upperDirections.forEachIndexed { index, direction ->
@@ -260,9 +269,11 @@ class FlickCirclePopupView @JvmOverloads constructor(
         }
 
         if (characterMap.containsKey(FlickDirection.DOWN)) {
-            segmentAngleMap[FlickDirection.DOWN] = Pair(20f, 140f)
+            // Reduced the DOWN area to a 90-degree arc at the bottom
+            segmentAngleMap[FlickDirection.DOWN] = Pair(45f, 90f)
         }
     }
+    // ▲▲▲【MODIFICATION END】▲▲▲
 
     private fun createSegmentPaths(centerX: Float, centerY: Float) {
         val innerRadius = centerCircleRadius

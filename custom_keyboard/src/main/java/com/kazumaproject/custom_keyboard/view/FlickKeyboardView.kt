@@ -196,14 +196,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     )
                                 }
                             }
-                            setPopupPosition(PopupPosition.TOP)
+                            setPopupPosition(PopupPosition.CENTER)
                             val stringMaps = flickKeyMapsList.map { actionMap ->
                                 actionMap.mapValues { (_, flickAction) ->
                                     (flickAction as? FlickAction.Input)?.char ?: ""
                                 }
                             }
                             attach(keyView, stringMaps)
-                            val scaleFactor = 1.3f
+                            val scaleFactor = 1.618f
                             val newCenter = 80f * scaleFactor
                             val newOrbit = 180f * scaleFactor
                             val newTextSize = 55f * scaleFactor
