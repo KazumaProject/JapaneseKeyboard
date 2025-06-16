@@ -2,42 +2,67 @@ package com.kazumaproject.custom_keyboard.controller
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Color
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
 import android.widget.PopupWindow
+import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.StandardFlickPopupView
-import kotlin.math.abs
 import kotlin.math.sqrt
 
-class StandardFlickInputController(context: Context) {
+class StandardFlickInputController(private val context: Context) {
 
     interface StandardFlickListener {
         fun onFlick(character: String)
     }
 
     var listener: StandardFlickListener? = null
-
-    private val popupView = StandardFlickPopupView(context)
-    private val popupWindow =
-        PopupWindow(popupView, popupView.viewSize, popupView.viewSize, false).apply {
-            isOutsideTouchable = false
-            elevation = 8f
-            isClippingEnabled = false
-        }
+    private var characterMap: Map<FlickDirection, String> = emptyMap()
+    private var anchorView: View? = null
     private var segmentedDrawable: SegmentedBackgroundDrawable? = null
 
-    private var anchorView: View? = null
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private val flickThreshold = 65f
-    private var characterMap: Map<FlickDirection, String> = emptyMap()
-    private var lastDirection: FlickDirection? = null
 
-    fun cancel() {
-        hidePopup()
+    private val popupWindow: PopupWindow
+    private val popupView = StandardFlickPopupView(context)
+
+    private var popupBackgroundColor: Int = Color.WHITE
+    private var popupTextColor: Int = Color.BLACK
+    private var popupStrokeColor: Int = Color.LTGRAY
+
+    init {
+        popupWindow = PopupWindow(
+            popupView,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            false
+        ).apply {
+            setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+            isClippingEnabled = false
+            elevation = 8f
+            animationStyle = 0
+            enterTransition = null
+            exitTransition = null
+        }
+    }
+
+    /**
+     * ▼▼▼ FIX: Method signature changed to accept FlickPopupColorTheme for consistency ▼▼▼
+     */
+    fun setPopupColors(theme: FlickPopupColorTheme) {
+        // The standard popup is simple, so we map theme colors to its components.
+        // Using highlight color for the popup background seems appropriate.
+        this.popupBackgroundColor = theme.segmentHighlightGradientStartColor
+        this.popupTextColor = theme.textColor
+        // Using separator color for the popup's stroke.
+        this.popupStrokeColor = theme.separatorColor
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -46,31 +71,30 @@ class StandardFlickInputController(context: Context) {
         map: Map<FlickDirection, String>,
         drawable: SegmentedBackgroundDrawable
     ) {
-        if (map.isEmpty()) return
-        this.characterMap = map
+        val completeMap = mutableMapOf<FlickDirection, String>()
+        completeMap[FlickDirection.TAP] = map[FlickDirection.TAP] ?: ""
+        completeMap[FlickDirection.UP] = map[FlickDirection.UP] ?: ""
+        completeMap[FlickDirection.DOWN] = map[FlickDirection.DOWN] ?: ""
+        completeMap[FlickDirection.UP_LEFT_FAR] = map[FlickDirection.UP_LEFT_FAR]
+            ?: map.entries.find { it.key.name.contains("LEFT") }?.value ?: ""
+        completeMap[FlickDirection.UP_RIGHT_FAR] = map[FlickDirection.UP_RIGHT_FAR]
+            ?: map.entries.find { it.key.name.contains("RIGHT") }?.value ?: ""
+
+        this.characterMap = completeMap
         this.segmentedDrawable = drawable
-        // The listener passes both the view 'v' and the 'event'
         button.setOnTouchListener { v, event ->
             handleTouchEvent(v, event)
         }
     }
 
-    // ▼▼▼ FIX: Method signature now correctly accepts the View ▼▼▼
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
-        // ▼▼▼ FIX: Assign anchorView from the method parameter, not event ▼▼▼
-        anchorView = view
-
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                anchorView = view
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
-                lastDirection = null
-
-                segmentedDrawable?.highlightedDirection = FlickDirection.TAP
-
-                val initialContent = characterMap[FlickDirection.TAP]
-                popupView.updateText(initialContent)
-                showPopup()
+                segmentedDrawable?.highlightDirection = FlickDirection.TAP
+                showPopup(FlickDirection.TAP)
                 return true
             }
 
@@ -78,55 +102,45 @@ class StandardFlickInputController(context: Context) {
                 val dx = event.rawX - initialTouchX
                 val dy = event.rawY - initialTouchY
                 val direction = calculateDirection(dx, dy)
-
-                if (direction != lastDirection) {
-                    segmentedDrawable?.highlightedDirection = direction
-                    val content = characterMap[direction]
-                    popupView.updateText(content)
-                    lastDirection = direction
-                }
+                segmentedDrawable?.highlightDirection = direction
+                showPopup(direction)
                 return true
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (event.action == MotionEvent.ACTION_UP) {
-                    val dx = event.rawX - initialTouchX
-                    val dy = event.rawY - initialTouchY
-                    val finalDirection = calculateDirection(dx, dy)
-                    characterMap[finalDirection]?.let { content ->
-                        val primaryChar = content.split('\n').firstOrNull() ?: ""
-                        if (primaryChar.isNotEmpty()) {
-                            listener?.onFlick(primaryChar)
-                        }
+                segmentedDrawable?.highlightDirection = null
+                val dx = event.rawX - initialTouchX
+                val dy = event.rawY - initialTouchY
+                val finalDirection = calculateDirection(dx, dy)
+                characterMap[finalDirection]?.let {
+                    if (it.isNotEmpty()) {
+                        listener?.onFlick(it)
                     }
                 }
-                cleanup()
+                dismissPopup()
                 return true
             }
         }
         return false
     }
 
-    private fun cleanup() {
-        hidePopup()
-        // Reset the highlight on the drawable itself
-        segmentedDrawable?.highlightedDirection = null
-        anchorView = null
-    }
-
-    private fun showPopup() {
+    private fun showPopup(direction: FlickDirection) {
         val currentAnchor = anchorView ?: return
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
-        val margin = (currentAnchor.height * 0.2).toInt()
-        val x = location[0] + (currentAnchor.width / 2) - (popupWindow.width / 2)
-        val y = location[1] - popupWindow.height - margin
+        val text = characterMap[direction]
+
+        popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
+        popupView.updateText(text)
+
         if (!popupWindow.isShowing) {
+            val location = IntArray(2)
+            currentAnchor.getLocationInWindow(location)
+            val x = location[0] + (currentAnchor.width / 2) - (popupView.viewSize / 2)
+            val y = location[1] - popupView.viewSize - 10 // Position above the key
             popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
         }
     }
 
-    private fun hidePopup() {
+    private fun dismissPopup() {
         if (popupWindow.isShowing) {
             popupWindow.dismiss()
         }
@@ -137,9 +151,18 @@ class StandardFlickInputController(context: Context) {
         if (distance < flickThreshold) {
             return FlickDirection.TAP
         }
+
+        val angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble()))
+
         return when {
-            abs(dx) > abs(dy) -> if (dx > 0) FlickDirection.UP_RIGHT_FAR else FlickDirection.UP_LEFT_FAR
-            else -> if (dy > 0) FlickDirection.DOWN else FlickDirection.UP
+            angle > -45 && angle <= 45 -> FlickDirection.UP_RIGHT_FAR
+            angle > 45 && angle <= 135 -> FlickDirection.DOWN
+            angle < -45 && angle >= -135 -> FlickDirection.UP
+            else -> FlickDirection.UP_LEFT_FAR
         }
+    }
+
+    fun cancel() {
+        dismissPopup()
     }
 }

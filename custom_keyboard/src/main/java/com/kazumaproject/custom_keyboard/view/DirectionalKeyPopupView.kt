@@ -64,7 +64,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         if (w == 0f || h == 0f) return
 
         backgroundPaint.color = if (currentDirection == FlickDirection.TAP) {
-            this.defaultColor
+            this.highlightColor
         } else {
             this.highlightColor
         }
