@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.os.Build
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -11,6 +12,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.PopupWindow
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.view.DirectionalKeyPopupView
 import com.kazumaproject.custom_keyboard.view.FlickGridPopupView
 import kotlinx.coroutines.CoroutineScope
@@ -25,7 +27,6 @@ import kotlin.math.sqrt
 
 class PetalFlickInputController(private val context: Context) {
 
-    // ... (Listener interface and properties are unchanged) ...
     interface PetalFlickListener {
         fun onFlick(character: String)
     }
@@ -42,6 +43,8 @@ class PetalFlickInputController(private val context: Context) {
 
     private val directionalPopup: PopupWindow
     private val gridPopup: PopupWindow
+
+    private var colorTheme: FlickPopupColorTheme? = null
 
     init {
         directionalPopup = PopupWindow(
@@ -61,10 +64,127 @@ class PetalFlickInputController(private val context: Context) {
         listOf(directionalPopup, gridPopup).forEach {
             it.isClippingEnabled = false
             it.elevation = 8f
+            it.animationStyle = 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                it.enterTransition = null
+                it.exitTransition = null
+            }
         }
     }
 
-    // ... (attach and handleTouchEvent methods are unchanged) ...
+    fun setPopupColors(theme: FlickPopupColorTheme) {
+        this.colorTheme = theme
+    }
+
+    private fun showDirectionalPopup(direction: FlickDirection) {
+        val popupView = directionalPopup.contentView as DirectionalKeyPopupView
+        colorTheme?.let { popupView.setColors(it) }
+        popupView.setFlickDirection(direction)
+        popupView.text = characterMap[direction] ?: ""
+
+        val currentAnchor = anchorView ?: return;
+        val location = IntArray(2); currentAnchor.getLocationInWindow(location)
+        val anchorX = location[0];
+        val anchorY = location[1];
+        val keyWidth = currentAnchor.width;
+        val keyHeight = currentAnchor.height
+        val anchorCenterX = anchorX + keyWidth / 2;
+        val anchorCenterY = anchorY + keyHeight / 2
+        val lengthExtension = 1.4f;
+        val popupWidth: Int;
+        val popupHeight: Int
+        when (direction) {
+            FlickDirection.TAP -> {
+                popupWidth = keyWidth; popupHeight = keyHeight
+            }
+
+            FlickDirection.UP, FlickDirection.DOWN -> {
+                popupWidth = keyWidth; popupHeight = (keyHeight * lengthExtension).toInt()
+            }
+
+            FlickDirection.UP_LEFT_FAR, FlickDirection.UP_RIGHT_FAR -> {
+                popupWidth = (keyWidth * lengthExtension).toInt(); popupHeight = keyHeight
+            }
+
+            else -> {
+                popupWidth = keyWidth; popupHeight = keyHeight
+            }
+        }
+        val x: Int;
+        val y: Int
+        when (direction) {
+            FlickDirection.TAP -> {
+                x = anchorCenterX - popupWidth / 2; y = anchorCenterY - popupHeight / 2
+            }
+
+            FlickDirection.UP -> {
+                x = anchorCenterX - popupWidth / 2; y = anchorCenterY - popupHeight
+            }
+
+            FlickDirection.DOWN -> {
+                x = anchorCenterX - popupWidth / 2; y = anchorCenterY
+            }
+
+            FlickDirection.UP_LEFT_FAR -> {
+                x = anchorCenterX - popupWidth; y = anchorCenterY - popupHeight / 2
+            }
+
+            FlickDirection.UP_RIGHT_FAR -> {
+                x = anchorCenterX; y = anchorCenterY - popupHeight / 2
+            }
+
+            else -> {
+                x = anchorCenterX - popupWidth / 2; y = anchorCenterY - popupHeight / 2
+            }
+        }
+        if (!directionalPopup.isShowing) {
+            directionalPopup.width = popupWidth; directionalPopup.height =
+                popupHeight; directionalPopup.showAtLocation(
+                currentAnchor,
+                Gravity.NO_GRAVITY,
+                x,
+                y
+            )
+        } else {
+            directionalPopup.update(x, y, popupWidth, popupHeight)
+        }
+    }
+
+    /**
+     * FIX: 元キーのサイズをpopupViewに渡し、内容に合わせて大きくなったpopupViewを中央に配置する
+     */
+    private fun showGridPopup() {
+        val popupView = gridPopup.contentView as FlickGridPopupView
+        colorTheme?.let { popupView.setColors(it) }
+
+        val currentAnchor = anchorView ?: return
+
+        // 元キーのサイズをFlickGridPopupViewに渡して、中のボタンサイズを決定させる
+        popupView.setCharacters(characterMap, currentAnchor.width, currentAnchor.height)
+        popupView.highlightKey(FlickDirection.TAP)
+
+        val location = IntArray(2)
+        currentAnchor.getLocationInWindow(location)
+
+        // 内容（ボタン）に合わせてサイズが大きくなったpopupViewの寸法を計測
+        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+
+        // 大きくなったポップアップを、元のキーの中央に配置するための座標を計算
+        val x = location[0] + currentAnchor.width / 2 - popupView.measuredWidth / 2
+        val y = location[1] + currentAnchor.height / 2 - popupView.measuredHeight / 2
+
+        // PopupWindowのサイズを内容に合わせる
+        gridPopup.width = WindowManager.LayoutParams.WRAP_CONTENT
+        gridPopup.height = WindowManager.LayoutParams.WRAP_CONTENT
+
+        if (!gridPopup.isShowing) {
+            gridPopup.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
+        } else {
+            // WRAP_CONTENTを維持しつつ位置を更新
+            gridPopup.update(x, y, -1, -1)
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     fun attach(button: View, map: Map<FlickDirection, String>) {
         this.characterMap = map; button.setOnTouchListener { v, event ->
@@ -117,104 +237,6 @@ class PetalFlickInputController(private val context: Context) {
             }
         }
         return false
-    }
-
-    private fun showDirectionalPopup(direction: FlickDirection) {
-        val popupView = directionalPopup.contentView as DirectionalKeyPopupView
-        popupView.setFlickDirection(direction)
-        popupView.text = characterMap[direction] ?: ""
-
-        val currentAnchor = anchorView ?: return
-        val location = IntArray(2); currentAnchor.getLocationInWindow(location)
-        val anchorX = location[0];
-        val anchorY = location[1]
-        val keyWidth = currentAnchor.width;
-        val keyHeight = currentAnchor.height
-        val anchorCenterX = anchorX + keyWidth / 2
-        val anchorCenterY = anchorY + keyHeight / 2
-
-        // ▼▼▼ FIX: 動的にポップアップのサイズを計算 ▼▼▼
-        val lengthExtension = 1.4f // フリック時の延長率
-        val popupWidth: Int
-        val popupHeight: Int
-
-        when (direction) {
-            FlickDirection.TAP -> {
-                popupWidth = keyWidth
-                popupHeight = keyHeight
-            }
-
-            FlickDirection.UP, FlickDirection.DOWN -> {
-                popupWidth = keyWidth
-                popupHeight = (keyHeight * lengthExtension).toInt()
-            }
-
-            FlickDirection.UP_LEFT_FAR, FlickDirection.UP_RIGHT_FAR -> {
-                popupWidth = (keyWidth * lengthExtension).toInt()
-                popupHeight = keyHeight
-            }
-
-            else -> {
-                popupWidth = keyWidth
-                popupHeight = keyHeight
-            }
-        }
-
-        val x: Int
-        val y: Int
-
-        when (direction) {
-            FlickDirection.TAP -> {
-                x = anchorCenterX - popupWidth / 2
-                y = anchorCenterY - popupHeight / 2
-            }
-
-            FlickDirection.UP -> {
-                x = anchorCenterX - popupWidth / 2
-                y = anchorCenterY - popupHeight
-            }
-
-            FlickDirection.DOWN -> {
-                x = anchorCenterX - popupWidth / 2
-                y = anchorCenterY
-            }
-
-            FlickDirection.UP_LEFT_FAR -> { // Left
-                x = anchorCenterX - popupWidth
-                y = anchorCenterY - popupHeight / 2
-            }
-
-            FlickDirection.UP_RIGHT_FAR -> { // Right
-                x = anchorCenterX
-                y = anchorCenterY - popupHeight / 2
-            }
-
-            else -> {
-                x = anchorCenterX - popupWidth / 2
-                y = anchorCenterY - popupHeight / 2
-            }
-        }
-
-        if (!directionalPopup.isShowing) {
-            directionalPopup.width = popupWidth
-            directionalPopup.height = popupHeight
-            directionalPopup.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
-        } else {
-            // ▼▼▼ FIX: 座標とサイズの両方を更新 ▼▼▼
-            directionalPopup.update(x, y, popupWidth, popupHeight)
-        }
-    }
-
-    // ... (The rest of the file is unchanged) ...
-    private fun showGridPopup() {
-        val popupView = gridPopup.contentView as FlickGridPopupView
-        popupView.setCharacters(characterMap); popupView.highlightKey(FlickDirection.TAP)
-        val currentAnchor = anchorView ?: return
-        val location = IntArray(2); currentAnchor.getLocationInWindow(location)
-        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val x = location[0] + currentAnchor.width / 2 - popupView.measuredWidth / 2
-        val y = location[1] + currentAnchor.height / 2 - popupView.measuredHeight / 2
-        gridPopup.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
     }
 
     private fun dismissAllPopups() {
