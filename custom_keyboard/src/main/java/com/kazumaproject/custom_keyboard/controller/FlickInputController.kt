@@ -108,6 +108,7 @@ class FlickInputController(context: Context) {
                 lastValidFlickDirection = FlickDirection.TAP
                 isDownModeActive = false
                 isLongPressModeActive = false
+                // This correctly starts in single-target mode
                 popupView.setFullUIMode(false)
 
                 popupView.setCharacterMap(keyMaps[currentMapIndex])
@@ -120,6 +121,7 @@ class FlickInputController(context: Context) {
                     delay(ViewConfiguration.getLongPressTimeout().toLong())
                     Log.d("FlickInputController", "Long press detected!")
                     isLongPressModeActive = true
+                    // Full UI is correctly enabled on long press
                     popupView.setFullUIMode(true)
                     popupView.invalidate()
                 }
@@ -136,26 +138,29 @@ class FlickInputController(context: Context) {
 
                 if (currentCalculatedDirection != FlickDirection.TAP) {
                     longPressJob?.cancel()
-                }
-
-                if (currentCalculatedDirection != FlickDirection.TAP) {
                     lastValidFlickDirection = currentCalculatedDirection
-                }
-
-                if (!isDownModeActive && !isLongPressModeActive && currentCalculatedDirection != FlickDirection.TAP) {
+                    // A flick has started. This is needed to distinguish from a simple tap on ACTION_UP.
                     isDownModeActive = true
-                    popupView.setFullUIMode(true)
                 }
 
-                if (currentCalculatedDirection == FlickDirection.DOWN && previousDirection != FlickDirection.DOWN) {
-                    currentMapIndex = (currentMapIndex + 1) % keyMaps.size
-                    val newMap = keyMaps[currentMapIndex]
-                    popupView.setCharacterMap(newMap)
-                    listener?.onStateChanged(view, newMap)
+                // ▼▼▼【MODIFIED LOGIC】▼▼▼
+                // Only set Full UI mode if the direction is DOWN.
+                // For all other directions (UP, UP_LEFT, etc.), it will remain false,
+                // causing FlickCirclePopupView to draw only the single highlighted segment.
+                if (currentCalculatedDirection == FlickDirection.DOWN) {
+                    popupView.setFullUIMode(true)
+
+                    // The existing logic to cycle maps when entering DOWN for the first time
+                    if (previousDirection != FlickDirection.DOWN) {
+                        currentMapIndex = (currentMapIndex + 1) % keyMaps.size
+                        val newMap = keyMaps[currentMapIndex]
+                        popupView.setCharacterMap(newMap)
+                        listener?.onStateChanged(view, newMap)
+                    }
                 }
+                // ▲▲▲【MODIFICATION COMPLETE】▲▲▲
 
                 popupView.updateFlickDirection(currentCalculatedDirection)
-
                 previousDirection = currentCalculatedDirection
                 return true
             }
@@ -163,10 +168,10 @@ class FlickInputController(context: Context) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressJob?.cancel()
 
+                // This logic correctly uses isDownModeActive to determine if it was a flick or a tap.
                 val finalDirectionToInput = if (isDownModeActive || isLongPressModeActive) {
                     calculateDirection(event.rawX, event.rawY)
                 } else {
-                    // ACTION_DOWN -> ACTION_UP のみの単純なタップ操作の場合
                     FlickDirection.TAP
                 }
 
@@ -217,21 +222,17 @@ class FlickInputController(context: Context) {
         anchorView = null
     }
 
-    // ▼▼▼【ロジック更新】ハードコーディングされた角度判定をやめ、popupViewに問い合わせる ▼▼▼
     private fun calculateDirection(currentX: Float, currentY: Float): FlickDirection {
         val dx = currentX - initialTouchX
         val dy = currentY - initialTouchY
         val distance = sqrt(dx * dx + dy * dy)
 
-        // 指が中央の閾値内にある場合は、常にTAPとする
         if (distance < flickThreshold) {
             return FlickDirection.TAP
         }
 
-        // 角度を計算（0〜360度）
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360
 
-        // popupViewに、その角度がどの方向に該当するかを問い合わせる
         return popupView.getDirectionForAngle(angle)
     }
 }
