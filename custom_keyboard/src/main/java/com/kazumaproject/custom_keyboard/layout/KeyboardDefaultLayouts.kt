@@ -1075,7 +1075,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
-            KeyData("あ", 0, 1, true, keyType = KeyType.STANDARD_FLICK),
+            KeyData("あ", 0, 1, true, keyType = KeyType.PETAL_FLICK),
             KeyData("か", 0, 2, true, keyType = KeyType.STANDARD_FLICK),
             KeyData("さ", 0, 3, true, keyType = KeyType.STANDARD_FLICK),
             KeyData("た", 1, 1, true, keyType = KeyType.STANDARD_FLICK),
