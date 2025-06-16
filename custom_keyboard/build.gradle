@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace 'com.kazumaproject.custom_keyboard'            // in Groovy, this form is OK
-    compileSdkVersion 35                                      // <- use compileSdkVersion
+    compileSdkVersion 36                                     // <- use compileSdkVersion
 
     defaultConfig {
         minSdkVersion 24                                      // <- use minSdkVersion
