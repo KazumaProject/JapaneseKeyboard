@@ -10,12 +10,13 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import android.os.Build
 import android.util.AttributeSet
-import android.util.Log
 import android.view.View
 import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import com.kazumaproject.custom_keyboard.data.ShapeType
 import java.util.EnumSet
 import kotlin.math.cos
 import kotlin.math.sin
@@ -42,34 +43,38 @@ class FlickCirclePopupView @JvmOverloads constructor(
         strokeWidth = 2f
     }
     private var colorTheme: FlickPopupColorTheme = FlickPopupColorTheme(
-        segmentColor = "#424242".toColorInt(),
+        segmentColor = "#E0E0E0".toColorInt(),
         segmentHighlightGradientStartColor = "#00BCD4".toColorInt(),
-        segmentHighlightGradientEndColor = "#80DEEA".toColorInt(),
-        centerGradientStartColor = "#3F51B5".toColorInt(),
-        centerGradientEndColor = "#7986CB".toColorInt(),
+        segmentHighlightGradientEndColor = "#4DD0E1".toColorInt(),
+        centerGradientStartColor = "#FAFAFA".toColorInt(),
+        centerGradientEndColor = "#F5F5F5".toColorInt(),
         centerHighlightGradientStartColor = "#00E676".toColorInt(),
         centerHighlightGradientEndColor = "#69F0AE".toColorInt(),
-        separatorColor = Color.BLACK,
-        textColor = Color.WHITE
+        separatorColor = "#BDBDBD".toColorInt(),
+        textColor = Color.BLACK
     )
 
     init {
         applyThemeToPaints()
+        alpha = 0.9f
     }
 
-    // --- State and Characters/Paths ---
+    // --- State and Properties ---
     private var currentFlickDirection = FlickDirection.TAP
     private val characterMap = mutableMapOf<FlickDirection, String>()
     private val targetPositions = mutableMapOf<FlickDirection, PointF>()
     private val segmentPaths = mutableMapOf<FlickDirection, Path>()
     private var isFullUIModeActive = false
     private val segmentAngleMap =
-        mutableMapOf<FlickDirection, Pair<Float, Float>>() // <Direction, <StartAngle, SweepAngle>>
+        mutableMapOf<FlickDirection, Pair<Float, Float>>()
+
+    private var shapeType: ShapeType = ShapeType.ROUNDED_SQUARE
 
     // --- UI Size Properties ---
-    private var centerCircleRadius = 70f
+    private var centerCircleRadius = 60f
     private var orbitRadius = 160f
     private var upperOrbitRadius: Float? = null
+    private var cornerRadius = 60f
 
     var preferredWidth = (orbitRadius * 2).toInt()
         private set
@@ -77,6 +82,14 @@ class FlickCirclePopupView @JvmOverloads constructor(
         private set
 
     // --- Public Methods ---
+
+    fun setShapeType(type: ShapeType) {
+        if (this.shapeType != type) {
+            this.shapeType = type
+            recalculateUiComponents()
+            invalidate()
+        }
+    }
 
     fun setColors(theme: FlickPopupColorTheme) {
         this.colorTheme = theme
@@ -87,23 +100,18 @@ class FlickCirclePopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setUiSize(center: Float, target: Float, orbit: Float, newTextSize: Float) {
+    fun setUiSize(
+        center: Float,
+        target: Float,
+        orbit: Float,
+        newTextSize: Float,
+        newCornerRadius: Float? = null
+    ) {
         this.centerCircleRadius = center
         this.orbitRadius = orbit
         this.textPaint.textSize = newTextSize
+        newCornerRadius?.let { this.cornerRadius = it }
         updateSizesAndRequestLayout()
-    }
-
-    fun setUpperOrbit(newUpperOrbit: Float) {
-        if (newUpperOrbit > centerCircleRadius) {
-            this.upperOrbitRadius = newUpperOrbit
-            updateSizesAndRequestLayout()
-        } else {
-            Log.w(
-                "FlickCirclePopupView",
-                "Upper orbit radius must be greater than the center circle radius."
-            )
-        }
     }
 
     fun updateFlickDirection(direction: FlickDirection) {
@@ -129,36 +137,44 @@ class FlickCirclePopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    /**
-     * 指定された角度（0〜360度）が、現在表示されているどのフリックセグメントに該当するかを返します。
-     * @param angle 判別する角度。
-     * @return 対応するFlickDirection。どのセグメントにも該当しない場合はTAPを返します。
-     */
     fun getDirectionForAngle(angle: Double): FlickDirection {
-        val normalizedAngle = angle.toFloat()
+        // Check DOWN direction first
+        segmentAngleMap[FlickDirection.DOWN]?.let { angles ->
+            if (isAngleInSegment(angle, angles)) return FlickDirection.DOWN
+        }
 
-        for ((direction, angles) in segmentAngleMap) {
-            val start = angles.first
-            val sweep = angles.second
-
-            // セグメントが0度/360度の境界をまたぐかチェック (例: 開始340度, 幅40度)
-            if (start + sweep > 360f) {
-                val end = (start + sweep) % 360f
-                // 境界をまたぐ場合、角度は「開始角度以上」または「終了角度未満」になる
-                if (normalizedAngle >= start || normalizedAngle < end) {
-                    return direction
-                }
-            } else { // 通常のセグメントの場合
-                val end = start + sweep
-                // 角度が「開始角度以上」かつ「終了角度未満」かチェック
-                if (normalizedAngle >= start && normalizedAngle < end) {
-                    return direction
-                }
+        // Then check all other directions
+        segmentAngleMap.forEach { (direction, angles) ->
+            if (direction != FlickDirection.DOWN) {
+                if (isAngleInSegment(angle, angles)) return direction
             }
         }
-        // どのセグメントにも一致しなかった場合
+
         return FlickDirection.TAP
     }
+
+    /**
+     * FIX: Corrected the logic to handle angle segments that wrap around the 360-degree boundary.
+     */
+    private fun isAngleInSegment(angle: Double, segment: Pair<Float, Float>): Boolean {
+        val start = segment.first
+        val sweep = segment.second
+        val end = start + sweep
+
+        // Normalize the input angle to the [0, 360) range
+        val normalizedAngle = (angle + 360) % 360
+
+        return if (end > 360f) {
+            // Segment wraps around 360, e.g., starts at 330 and ends at 30.
+            // The angle must be greater than the start OR less than the wrapped end.
+            val wrappedEnd = end % 360f
+            normalizedAngle >= start || normalizedAngle < wrappedEnd
+        } else {
+            // Segment is a simple continuous block, e.g., starts at 15 and ends at 165.
+            normalizedAngle >= start && normalizedAngle < end
+        }
+    }
+
 
     // --- Lifecycle and Drawing Methods ---
 
@@ -181,12 +197,193 @@ class FlickCirclePopupView @JvmOverloads constructor(
         }
     }
 
-    // --- Private Helper Methods ---
+    // --- Core Logic ---
+
+    private fun recalculateUiComponents() {
+        if (width == 0 || height == 0) return
+
+        segmentPaths.clear()
+        targetPositions.clear()
+        segmentAngleMap.clear()
+
+        val centerX = width / 2f
+        val centerY = height / 2f
+
+        calculateSegmentAngles()
+        createSegmentPaths(centerX, centerY)
+        calculateTargetPositions(centerX, centerY)
+    }
+
+    private fun createSegmentPaths(centerX: Float, centerY: Float) {
+        when (shapeType) {
+            ShapeType.CIRCLE -> {
+                val innerRadius = centerCircleRadius
+                segmentAngleMap.forEach { (direction, angles) ->
+                    val outerRadius = when (direction) {
+                        FlickDirection.DOWN -> orbitRadius
+                        else -> upperOrbitRadius ?: orbitRadius
+                    }
+                    val startAngle = angles.first
+                    val sweepAngle = angles.second
+                    val path = Path()
+                    val outerRect = RectF(
+                        centerX - outerRadius,
+                        centerY - outerRadius,
+                        centerX + outerRadius,
+                        centerY + outerRadius
+                    )
+                    val innerRect = RectF(
+                        centerX - innerRadius,
+                        centerY - innerRadius,
+                        centerX + innerRadius,
+                        centerY + innerRadius
+                    )
+                    path.arcTo(outerRect, startAngle, sweepAngle, false)
+                    path.arcTo(innerRect, startAngle + sweepAngle, -sweepAngle, false)
+                    path.close()
+                    segmentPaths[direction] = path
+                }
+            }
+
+            ShapeType.ROUNDED_SQUARE -> {
+                val w = width.toFloat()
+                val h = height.toFloat() - 50
+                val outerPath = Path().apply {
+                    addRoundRect(
+                        0f,
+                        0f,
+                        w,
+                        h,
+                        cornerRadius,
+                        cornerRadius,
+                        Path.Direction.CW
+                    )
+                }
+                val innerCirclePath = Path().apply {
+                    addCircle(
+                        centerX,
+                        centerY,
+                        centerCircleRadius,
+                        Path.Direction.CCW
+                    )
+                }
+                val donutPath = Path().apply { op(outerPath, innerCirclePath, Path.Op.DIFFERENCE) }
+
+                segmentAngleMap.forEach { (direction, angles) ->
+                    val startAngle = angles.first
+                    val sweepAngle = angles.second
+                    val wedgePath = Path()
+                    val r = w + h
+                    wedgePath.moveTo(centerX, centerY)
+                    wedgePath.lineTo(
+                        centerX + r * cos(Math.toRadians(startAngle.toDouble())).toFloat(),
+                        centerY + r * sin(Math.toRadians(startAngle.toDouble())).toFloat()
+                    )
+                    wedgePath.arcTo(
+                        centerX - r,
+                        centerY - r,
+                        centerX + r,
+                        centerY + r,
+                        startAngle,
+                        sweepAngle,
+                        false
+                    )
+                    wedgePath.close()
+
+                    val segmentPath = Path().apply { op(donutPath, wedgePath, Path.Op.INTERSECT) }
+                    segmentPaths[direction] = segmentPath
+                }
+            }
+        }
+    }
+
+    private fun calculateTargetPositions(centerX: Float, centerY: Float) {
+        targetPositions[FlickDirection.TAP] = PointF(centerX, centerY)
+        segmentPaths.forEach { (direction, path) ->
+            val bounds = RectF()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) { // R is API 30, BAKLAVA is 35
+                path.computeBounds(bounds, true)
+            } else {
+                path.computeBounds(bounds, true)
+            }
+            if (direction == FlickDirection.DOWN && shapeType == ShapeType.ROUNDED_SQUARE) {
+                val bottomOfCenterCircle = centerY + centerCircleRadius
+                val bottomOfView = height.toFloat()
+                val targetY = (bottomOfCenterCircle + bottomOfView) / 2f
+                targetPositions[direction] = PointF(bounds.centerX(), targetY)
+            } else {
+                targetPositions[direction] = PointF(bounds.centerX(), bounds.centerY())
+            }
+        }
+    }
+
+    private fun drawFullUI(canvas: Canvas) {
+        segmentPaths.forEach { (direction, path) ->
+            val paint =
+                if (direction == currentFlickDirection) targetHighlightPaint else targetPaint
+            canvas.drawPath(path, paint)
+        }
+
+        segmentPaths.values.forEach { path ->
+            canvas.drawPath(path, separatorPaint)
+        }
+
+        val centerPoint = targetPositions[FlickDirection.TAP] ?: PointF(width / 2f, height / 2f)
+        val currentCenterPaint =
+            if (currentFlickDirection == FlickDirection.TAP) centerHighlightPaint else centerCirclePaint
+        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, currentCenterPaint)
+
+        characterMap.forEach { (direction, text) ->
+            if (direction != FlickDirection.TAP) {
+                drawTextOnTarget(canvas, text, direction)
+            }
+        }
+        val centerText =
+            characterMap[currentFlickDirection] ?: characterMap[FlickDirection.TAP] ?: ""
+        drawTextOnTarget(canvas, centerText, FlickDirection.TAP)
+    }
+
+    /**
+     * Corrected drawing logic for single target mode.
+     */
+    private fun drawSingleTargetUI(canvas: Canvas) {
+        val centerPoint = targetPositions[FlickDirection.TAP] ?: PointF(width / 2f, height / 2f)
+
+        // Draw the center circle, highlighting it if TAP is the selected direction
+        val currentCenterPaint =
+            if (currentFlickDirection == FlickDirection.TAP) centerHighlightPaint else centerCirclePaint
+        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, currentCenterPaint)
+
+        // If flicking (not tapping), draw the highlighted segment path and the character within it
+        if (currentFlickDirection != FlickDirection.TAP) {
+            segmentPaths[currentFlickDirection]?.let { canvas.drawPath(it, targetHighlightPaint) }
+
+            val flickedCharacter = characterMap[currentFlickDirection] ?: ""
+            drawTextOnTarget(canvas, flickedCharacter, currentFlickDirection)
+        }
+
+        // Determine the correct character for the center and draw it.
+        // This ensures the center text is always correct, showing the flicked character if available,
+        // or the default tap character otherwise. It prevents the center from being cleared
+        // when flicking to a direction with no assigned character.
+        val centerText =
+            characterMap[currentFlickDirection] ?: characterMap[FlickDirection.TAP] ?: ""
+        drawTextOnTarget(canvas, centerText, FlickDirection.TAP)
+    }
+
+    private fun drawTextOnTarget(canvas: Canvas, text: String, direction: FlickDirection) {
+        targetPositions[direction]?.let { pos ->
+            val textOffset = (textPaint.descent() + textPaint.ascent()) / 2
+            canvas.drawText(text, pos.x, pos.y - textOffset, textPaint)
+        }
+    }
+
+    // --- Helper Methods ---
 
     private fun applyThemeToPaints() {
         targetPaint.color = colorTheme.segmentColor
         separatorPaint.color = colorTheme.separatorColor
-        separatorPaint.alpha = 80
+        separatorPaint.alpha = 100
         textPaint.color = colorTheme.textColor
     }
 
@@ -217,12 +414,9 @@ class FlickCirclePopupView @JvmOverloads constructor(
             Shader.TileMode.CLAMP
         )
         centerCirclePaint.shader = LinearGradient(
-            centerX - centerCircleRadius,
-            centerY - centerCircleRadius,
-            centerX + centerCircleRadius,
-            centerY + centerCircleRadius,
-            colorTheme.centerGradientStartColor,
-            colorTheme.centerGradientEndColor,
+            centerX - centerCircleRadius, centerY - centerCircleRadius,
+            centerX + centerCircleRadius, centerY + centerCircleRadius,
+            colorTheme.centerGradientStartColor, colorTheme.centerGradientEndColor,
             Shader.TileMode.CLAMP
         )
         centerHighlightPaint.shader = LinearGradient(
@@ -236,136 +430,27 @@ class FlickCirclePopupView @JvmOverloads constructor(
         )
     }
 
-    private fun recalculateUiComponents() {
-        segmentAngleMap.clear()
-        segmentPaths.clear()
-        targetPositions.clear()
-
-        val centerX = width / 2f
-        val centerY = height / 2f
-
-        calculateSegmentAngles()
-        createSegmentPaths(centerX, centerY)
-        calculateTargetPositions(centerX, centerY)
-    }
-
-    // ▼▼▼【LOGIC REVERTED TO ORIGINAL】▼▼▼
     private fun calculateSegmentAngles() {
         val upperDirections = EnumSet.allOf(FlickDirection::class.java).filter {
             it != FlickDirection.TAP && it != FlickDirection.DOWN && characterMap.containsKey(it)
         }
 
-        if (upperDirections.isNotEmpty()) {
-            val totalAngleSpan = 220f
-            val startAngleAt = 160f
-            val sweepPerSegment = totalAngleSpan / upperDirections.size
+        val downStartAngle = 15f
+        val downSweepAngle = 150f
 
+        val upperStartAngle = 165f
+        val upperSweepAngle = 210f
+
+        if (upperDirections.isNotEmpty()) {
+            val sweepPerSegment = upperSweepAngle / upperDirections.size
             upperDirections.forEachIndexed { index, direction ->
-                val segmentStartAngle = startAngleAt + (index * sweepPerSegment)
+                val segmentStartAngle = upperStartAngle + (index * sweepPerSegment)
                 segmentAngleMap[direction] = Pair(segmentStartAngle, sweepPerSegment)
             }
         }
 
         if (characterMap.containsKey(FlickDirection.DOWN)) {
-            segmentAngleMap[FlickDirection.DOWN] = Pair(20f, 140f)
-        }
-    }
-    // ▲▲▲【REVERT COMPLETE】▲▲▲
-
-    private fun createSegmentPaths(centerX: Float, centerY: Float) {
-        val innerRadius = centerCircleRadius
-
-        segmentAngleMap.forEach { (direction, angles) ->
-            val outerRadius = when (direction) {
-                FlickDirection.DOWN -> orbitRadius
-                else -> upperOrbitRadius ?: orbitRadius
-            }
-            val startAngle = angles.first
-            val sweepAngle = angles.second
-
-            val path = Path()
-            val outerRect = RectF(
-                centerX - outerRadius,
-                centerY - outerRadius,
-                centerX + outerRadius,
-                centerY + outerRadius
-            )
-            val innerRect = RectF(
-                centerX - innerRadius,
-                centerY - innerRadius,
-                centerX + innerRadius,
-                centerY + innerRadius
-            )
-
-            path.arcTo(outerRect, startAngle, sweepAngle, false)
-            path.arcTo(innerRect, startAngle + sweepAngle, -sweepAngle, false)
-            path.close()
-            segmentPaths[direction] = path
-        }
-    }
-
-    private fun calculateTargetPositions(centerX: Float, centerY: Float) {
-        targetPositions[FlickDirection.TAP] = PointF(centerX, centerY)
-        val upperEffectiveOrbit = this.upperOrbitRadius ?: this.orbitRadius
-
-        segmentAngleMap.forEach { (direction, angles) ->
-            val angleRad = Math.toRadians((angles.first + angles.second / 2.0)).toFloat()
-            val textRadius = when (direction) {
-                FlickDirection.DOWN -> (centerCircleRadius + orbitRadius) / 2f
-                else -> (centerCircleRadius + upperEffectiveOrbit) / 2f
-            }
-            val x = centerX + cos(angleRad) * textRadius
-            val y = centerY + sin(angleRad) * textRadius
-            targetPositions[direction] = PointF(x, y)
-        }
-    }
-
-    private fun drawFullUI(canvas: Canvas) {
-        segmentPaths.forEach { (direction, path) ->
-            val paint =
-                if (direction == currentFlickDirection) targetHighlightPaint else targetPaint
-            canvas.drawPath(path, paint)
-            canvas.drawPath(path, separatorPaint)
-        }
-
-        val centerPoint = targetPositions[FlickDirection.TAP] ?: PointF(width / 2f, height / 2f)
-        val currentCenterPaint =
-            if (currentFlickDirection == FlickDirection.TAP) centerHighlightPaint else centerCirclePaint
-        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, currentCenterPaint)
-
-        characterMap.forEach { (direction, text) ->
-            if (direction != FlickDirection.TAP) {
-                drawTextOnTarget(canvas, text, direction)
-            }
-        }
-        val centerText =
-            characterMap[currentFlickDirection] ?: characterMap[FlickDirection.TAP] ?: ""
-        drawTextOnTarget(canvas, centerText, FlickDirection.TAP)
-    }
-
-    private fun drawSingleTargetUI(canvas: Canvas) {
-        val centerPoint = targetPositions[FlickDirection.TAP] ?: PointF(width / 2f, height / 2f)
-        val currentCenterPaint =
-            if (currentFlickDirection == FlickDirection.TAP) centerHighlightPaint else centerCirclePaint
-        canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, currentCenterPaint)
-
-        if (currentFlickDirection != FlickDirection.TAP) {
-            segmentPaths[currentFlickDirection]?.let { path ->
-                canvas.drawPath(path, targetHighlightPaint)
-            }
-        }
-
-        val character = characterMap[currentFlickDirection] ?: ""
-        if (currentFlickDirection != FlickDirection.TAP) {
-            drawTextOnTarget(canvas, character, currentFlickDirection)
-        }
-        drawTextOnTarget(canvas, character, FlickDirection.TAP)
-    }
-
-    private fun drawTextOnTarget(canvas: Canvas, text: String, direction: FlickDirection) {
-        targetPositions[direction]?.let { pos ->
-            val textOffset = (textPaint.descent() + textPaint.ascent()) / 2
-            canvas.drawText(text, pos.x, pos.y - textOffset, textPaint)
+            segmentAngleMap[FlickDirection.DOWN] = Pair(downStartAngle, downSweepAngle)
         }
     }
 }
