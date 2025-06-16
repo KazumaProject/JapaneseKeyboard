@@ -3,14 +3,13 @@ package com.kazumaproject.custom_keyboard.controller
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.os.Build
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.PopupWindow
+import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.view.DirectionalKeyPopupView
@@ -41,34 +40,30 @@ class PetalFlickInputController(private val context: Context) {
     private var initialTouchY = 0f
     private val flickThreshold = 65f
 
-    private val directionalPopup: PopupWindow
-    private val gridPopup: PopupWindow
+    private val directionalPopup: PopupWindow = PopupWindow(
+        DirectionalKeyPopupView(context),
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        false
+    )
+    private val gridPopup: PopupWindow = PopupWindow(
+        FlickGridPopupView(context),
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        WindowManager.LayoutParams.WRAP_CONTENT,
+        false
+    ).apply {
+        setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+    }
 
     private var colorTheme: FlickPopupColorTheme? = null
 
     init {
-        directionalPopup = PopupWindow(
-            DirectionalKeyPopupView(context),
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            false
-        )
-        gridPopup = PopupWindow(
-            FlickGridPopupView(context),
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            false
-        ).apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        }
         listOf(directionalPopup, gridPopup).forEach {
             it.isClippingEnabled = false
             it.elevation = 8f
             it.animationStyle = 0
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                it.enterTransition = null
-                it.exitTransition = null
-            }
+            it.enterTransition = null
+            it.exitTransition = null
         }
     }
 
@@ -82,16 +77,16 @@ class PetalFlickInputController(private val context: Context) {
         popupView.setFlickDirection(direction)
         popupView.text = characterMap[direction] ?: ""
 
-        val currentAnchor = anchorView ?: return;
+        val currentAnchor = anchorView ?: return
         val location = IntArray(2); currentAnchor.getLocationInWindow(location)
-        val anchorX = location[0];
-        val anchorY = location[1];
-        val keyWidth = currentAnchor.width;
+        val anchorX = location[0]
+        val anchorY = location[1]
+        val keyWidth = currentAnchor.width
         val keyHeight = currentAnchor.height
-        val anchorCenterX = anchorX + keyWidth / 2;
+        val anchorCenterX = anchorX + keyWidth / 2
         val anchorCenterY = anchorY + keyHeight / 2
-        val lengthExtension = 1.4f;
-        val popupWidth: Int;
+        val lengthExtension = 1.4f
+        val popupWidth: Int
         val popupHeight: Int
         when (direction) {
             FlickDirection.TAP -> {
@@ -110,7 +105,7 @@ class PetalFlickInputController(private val context: Context) {
                 popupWidth = keyWidth; popupHeight = keyHeight
             }
         }
-        val x: Int;
+        val x: Int
         val y: Int
         when (direction) {
             FlickDirection.TAP -> {

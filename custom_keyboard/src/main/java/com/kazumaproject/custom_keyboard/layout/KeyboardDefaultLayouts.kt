@@ -19,8 +19,8 @@ object KeyboardDefaultLayouts {
         mode: KeyboardInputMode, dynamicKeyStates: Map<String, Int>
     ): KeyboardLayout {
         val baseLayout = when (mode) {
-            KeyboardInputMode.HIRAGANA -> createHiraganaStandardFlickLayout()
-            KeyboardInputMode.ENGLISH -> createEnglishLayout(false) // isUpperCase is managed separately
+            KeyboardInputMode.HIRAGANA -> createHiraganaStandardFlickLayout(isDefaultKey = true)
+            KeyboardInputMode.ENGLISH -> createEnglishLayout(false)
             KeyboardInputMode.SYMBOLS -> createSymbolLayout()
         }
 
@@ -1035,7 +1035,9 @@ object KeyboardDefaultLayouts {
     }
     //endregion
 
-    private fun createHiraganaStandardFlickLayout(): KeyboardLayout {
+    private fun createHiraganaStandardFlickLayout(
+        isDefaultKey: Boolean
+    ): KeyboardLayout {
         val keys = listOf(
             KeyData(
                 "PasteActionKey",
@@ -1075,15 +1077,69 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
-            KeyData("あ", 0, 1, true, keyType = KeyType.PETAL_FLICK),
-            KeyData("か", 0, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("さ", 0, 3, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("た", 1, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("な", 1, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("は", 1, 3, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("ま", 2, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("や", 2, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("ら", 2, 3, true, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                "あ",
+                0,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "か",
+                0,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "さ",
+                0,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "た",
+                1,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "な",
+                1,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "は",
+                1,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "ま",
+                2,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "や",
+                2,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "ら",
+                2,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
             KeyData(
                 dakutenToggleStates[0].label ?: "",
                 3,
@@ -1093,13 +1149,19 @@ object KeyboardDefaultLayouts {
                 dynamicStates = dakutenToggleStates,
                 keyId = "dakuten_toggle_key"
             ),
-            KeyData("わ", 3, 2, true, keyType = KeyType.STANDARD_FLICK),
             KeyData(
-                "、。",
+                "わ",
+                3,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "、。?!",
                 3,
                 3,
                 true,
-                keyType = KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ), // Label fixed to match map key
             KeyData(
                 "Del",
@@ -1228,11 +1290,11 @@ object KeyboardDefaultLayouts {
             FlickDirection.DOWN to FlickAction.Input("ー")
         )
         val symbols = mapOf(
-            FlickDirection.TAP to FlickAction.Input("、\n,"),
-            FlickDirection.UP to FlickAction.Input("？\n?"),
-            FlickDirection.DOWN to FlickAction.Input("。\n."),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("！\n!"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("…\n...")
+            FlickDirection.TAP to FlickAction.Input("、"),
+            FlickDirection.UP to FlickAction.Input("？"),
+            FlickDirection.DOWN to FlickAction.Input("。"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("！"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("…")
         )
 
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
@@ -1248,12 +1310,11 @@ object KeyboardDefaultLayouts {
             "や" to listOf(ya),
             "ら" to listOf(ra),
             "わ" to listOf(wa),
-            "、。" to listOf(symbols)
+            "、。?!" to listOf(symbols)
         )
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
-    //endregion
 
     //region English Layout
     private fun createEnglishStandardFlickLayout(isUpperCase: Boolean): KeyboardLayout {
