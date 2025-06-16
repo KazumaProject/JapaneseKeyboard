@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Color
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
@@ -15,16 +16,19 @@ import android.widget.GridLayout
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.FlickInputController
 import com.kazumaproject.custom_keyboard.controller.PopupPosition
+import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -43,11 +47,11 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var listener: OnKeyboardActionListener? = null
     private val flickControllers = mutableListOf<FlickInputController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
+    private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
-
 
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
@@ -56,15 +60,15 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickControllers.clear()
         crossFlickControllers.forEach { it.cancel() }
         crossFlickControllers.clear()
+        standardFlickControllers.forEach { it.cancel() }
+        standardFlickControllers.clear()
 
         this.columnCount = layout.columnCount
         this.rowCount = layout.rowCount
-
         this.isFocusable = false
 
         layout.keys.forEach { keyData ->
             val isDarkTheme = context.isDarkThemeOn()
-
             val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
                 AppCompatImageButton(context).apply {
                     isFocusable = false
@@ -76,14 +80,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Button(context).apply {
                     isFocusable = false
                     isAllCaps = false
-
                     if (keyData.label.contains("\n")) {
                         val parts = keyData.label.split("\n", limit = 2)
                         val primaryText = parts[0]
                         val secondaryText = parts.getOrNull(1) ?: ""
-
                         val spannable = SpannableString(keyData.label)
-
                         spannable.setSpan(
                             AbsoluteSizeSpan(spToPx(16f)),
                             0,
@@ -98,37 +99,24 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 Spannable.SPAN_INCLUSIVE_INCLUSIVE
                             )
                         }
-
                         this.maxLines = 2
                         this.setLineSpacing(0f, 0.9f)
                         this.setPadding(0, dpToPx(4), 0, dpToPx(4))
                         this.gravity = Gravity.CENTER
-
                         this.text = spannable
-
                     } else {
                         text = keyData.label
                         gravity = Gravity.CENTER
-
-                        // Regular expression to check for English alphabet characters only
                         val englishOnlyRegex = Regex("^[a-zA-Z@#/_'\"().,?! ]+$")
                         val symbolRegex = Regex("^[()\\[\\],./ -]+$")
-
                         if (englishOnlyRegex.matches(keyData.label)) {
-                            // Size for English and common QWERTY symbols
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                         } else if (symbolRegex.matches(keyData.label)) {
-                            // Set a specific size for these special symbols
-                            setTextSize(
-                                TypedValue.COMPLEX_UNIT_SP,
-                                14f
-                            )
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
                         } else {
-                            // Default size for other characters (e.g., Japanese)
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
                         }
                     }
-
                     if (keyData.isSpecialKey) {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
@@ -137,7 +125,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
             }
-
             val params = LayoutParams().apply {
                 rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
@@ -151,6 +138,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
             keyView.layoutParams = params
 
+            // ▼▼▼ FIX: ALL KEY TYPES ARE NOW HANDLED CORRECTLY ▼▼▼
             when (keyData.keyType) {
                 KeyType.CIRCULAR_FLICK -> {
                     val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
@@ -162,7 +150,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerLow)
                             val surfaceContainerHighest =
                                 context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerHighest)
-
                             val textColor =
                                 context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
                             val dynamicColorTheme = FlickPopupColorTheme(
@@ -179,7 +166,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                             setPopupColors(dynamicColorTheme)
                             this.listener = object : FlickInputController.FlickListener {
                                 override fun onStateChanged(
-                                    view: View, newMap: Map<FlickDirection, String>
+                                    view: View,
+                                    newMap: Map<FlickDirection, String>
                                 ) {
                                 }
 
@@ -202,7 +190,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             attach(keyView, stringMaps)
-                            val scaleFactor = 1f
+                            val scaleFactor = 1.3f
                             val newCenter = 64f * scaleFactor
                             val newOrbit = 170f * scaleFactor
                             val newTextSize = 55f * scaleFactor
@@ -224,45 +212,73 @@ class FlickKeyboardView @JvmOverloads constructor(
                             this.listener = object : CrossFlickInputController.CrossFlickListener {
                                 override fun onFlick(flickAction: FlickAction) {
                                     when (flickAction) {
-                                        is FlickAction.Input -> {
-                                            this@FlickKeyboardView.listener?.onKey(flickAction.char)
-                                        }
+                                        is FlickAction.Input -> this@FlickKeyboardView.listener?.onKey(
+                                            flickAction.char
+                                        )
 
-                                        is FlickAction.Action -> {
-                                            this@FlickKeyboardView.listener?.onAction(flickAction.action)
-                                        }
+                                        is FlickAction.Action -> this@FlickKeyboardView.listener?.onAction(
+                                            flickAction.action
+                                        )
                                     }
                                 }
 
                                 override fun onFlickLongPress(flickAction: FlickAction) {
                                     when (flickAction) {
-                                        is FlickAction.Action -> {
-                                            this@FlickKeyboardView.listener?.onFlickActionLongPress(
-                                                flickAction.action
-                                            )
-                                        }
+                                        is FlickAction.Action -> this@FlickKeyboardView.listener?.onFlickActionLongPress(
+                                            flickAction.action
+                                        )
 
-                                        is FlickAction.Input -> {
-                                        }
+                                        is FlickAction.Input -> {}
                                     }
                                 }
 
                                 override fun onFlickUpAfterLongPress(flickAction: FlickAction) {
                                     when (flickAction) {
-                                        is FlickAction.Action -> {
-                                            this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
-                                                flickAction.action
-                                            )
-                                        }
+                                        is FlickAction.Action -> this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                            flickAction.action
+                                        )
 
-                                        is FlickAction.Input -> {
-                                        }
+                                        is FlickAction.Input -> {}
                                     }
                                 }
                             }
                             attach(keyView, flickActionMap)
                         }
                         crossFlickControllers.add(controller)
+                    }
+                }
+
+                KeyType.STANDARD_FLICK -> {
+                    val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                    if (flickActionMap != null && keyView is Button) {
+                        val label = keyData.label.split("\n").firstOrNull() ?: ""
+                        val baseColor =
+                            if (isDarkTheme) "#424242".toColorInt() else "#FFFFFF".toColorInt()
+                        val highlightColor =
+                            if (isDarkTheme) "#616161".toColorInt() else "#E0E0E0".toColorInt()
+                        val textColor = if (isDarkTheme) Color.WHITE else Color.BLACK
+                        val segmentedDrawable = SegmentedBackgroundDrawable(
+                            label = label,
+                            baseColor = baseColor,
+                            highlightColor = highlightColor,
+                            textColor = textColor,
+                            cornerRadius = 20f
+                        )
+                        keyView.background = segmentedDrawable
+                        keyView.setTextColor(Color.TRANSPARENT)
+                        val controller = StandardFlickInputController(context).apply {
+                            this.listener =
+                                object : StandardFlickInputController.StandardFlickListener {
+                                    override fun onFlick(character: String) {
+                                        this@FlickKeyboardView.listener?.onKey(character)
+                                    }
+                                }
+                            val stringMap = flickActionMap.mapValues { (_, flickAction) ->
+                                (flickAction as? FlickAction.Input)?.char ?: ""
+                            }
+                            attach(keyView, stringMap, segmentedDrawable)
+                        }
+                        standardFlickControllers.add(controller)
                     }
                 }
 
@@ -275,15 +291,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                             )
                         }
                         keyView.setOnLongClickListener {
-                            isLongPressTriggered = true
-                            this@FlickKeyboardView.listener?.onActionLongPress(action)
-                            true
+                            isLongPressTriggered =
+                                true; this@FlickKeyboardView.listener?.onActionLongPress(action); true
                         }
                         keyView.setOnTouchListener { _, event ->
                             if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
                                 if (isLongPressTriggered) {
-                                    this@FlickKeyboardView.listener?.onActionUpAfterLongPress(action)
-                                    isLongPressTriggered = false
+                                    this@FlickKeyboardView.listener?.onActionUpAfterLongPress(action); isLongPressTriggered =
+                                        false
                                 }
                             }
                             false
@@ -299,21 +314,22 @@ class FlickKeyboardView @JvmOverloads constructor(
         super.onDetachedFromWindow()
         flickControllers.forEach { it.cancel() }
         crossFlickControllers.forEach { it.cancel() }
+        standardFlickControllers.forEach { it.cancel() }
     }
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {
-        val typedValue = TypedValue()
-        theme.resolveAttribute(attrRes, typedValue, true)
-        return ContextCompat.getColor(this, typedValue.resourceId)
+        val typedValue = TypedValue(); theme.resolveAttribute(
+            attrRes,
+            typedValue,
+            true
+        ); return ContextCompat.getColor(this, typedValue.resourceId)
     }
 
-    // Helper function to convert sp to pixels
     private fun spToPx(sp: Float): Int {
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, resources.displayMetrics)
             .toInt()
     }
 
-    // Helper function to convert dp to pixels
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
     }

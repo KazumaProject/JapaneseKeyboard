@@ -82,6 +82,8 @@ enum class KeyType {
 
     /** 十字フリックキー */
     CROSS_FLICK,
+
+    STANDARD_FLICK
 }
 
 enum class ShapeType {
