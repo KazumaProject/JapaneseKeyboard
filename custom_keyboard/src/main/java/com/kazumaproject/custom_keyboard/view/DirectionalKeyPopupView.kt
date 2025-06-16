@@ -6,11 +6,13 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
 import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
 import androidx.core.graphics.withRotation
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 
 /**
  * 通常フリック時に表示される、方向を示す矢印型のポップアップ
@@ -18,6 +20,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        // 初期色は設定するが、onDrawで動的に上書きされる
         color = "#37474F".toColorInt()
         style = Paint.Style.FILL
     }
@@ -26,10 +29,21 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     private var viewRotation = 0f
     private var currentDirection: FlickDirection = FlickDirection.TAP
 
+    // カラーテーマから受け取る色のプレースホルダー
+    private var defaultColor = "#455A64".toColorInt()
+    private var highlightColor = "#37474F".toColorInt()
+
     init {
+        // init時のテキスト色はテーマで上書きされる前提
         setTextColor(Color.WHITE)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
-        // ▼▼▼ FIX: パディングを削除し、テキスト描画を完全に手動制御する ▼▼▼
+    }
+
+    fun setColors(theme: FlickPopupColorTheme) {
+        this.defaultColor = theme.centerGradientStartColor
+        this.highlightColor = theme.segmentHighlightGradientStartColor
+        // Viewのテキストカラー状態を更新する
+        setTextColor(theme.textColor)
     }
 
     fun setFlickDirection(direction: FlickDirection) {
@@ -49,18 +63,26 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         val h = height.toFloat()
         if (w == 0f || h == 0f) return
 
+        backgroundPaint.color = if (currentDirection == FlickDirection.TAP) {
+            this.defaultColor
+        } else {
+            this.highlightColor
+        }
+
         updatePath(w, h)
 
-        // 1. 背景のPathを指定の角度で回転させて描画
         canvas.withRotation(viewRotation, w / 2f, h / 2f) {
             drawPath(backgroundPath, backgroundPaint)
         }
 
-        // 2. テキストは回転させずに、手動で中央に描画
         val textToDraw = this.text.toString()
         val textPaint = this.paint
-        textPaint.textAlign = Paint.Align.CENTER
 
+        // ▼▼▼ FIX: Paintオブジェクトの色を、現在のテキストカラーで明示的に設定する ▼▼▼
+        // setTextColorで設定された色を描画直前にPaintオブジェクトへ確実に適用します。
+        textPaint.color = this.currentTextColor
+
+        textPaint.textAlign = Paint.Align.CENTER
         textPaint.getTextBounds(textToDraw, 0, textToDraw.length, textBounds)
 
         val textX = w / 2f
@@ -69,37 +91,33 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         canvas.drawText(textToDraw, textX, textY, textPaint)
     }
 
-    /**
-     * 矢印と本体を一体化した、切れ目のない単一のPathを生成する
-     */
     private fun updatePath(w: Float, h: Float) {
         backgroundPath.reset()
 
         val cornerRadius = 24f
         val pointerHeight = 35f
         val showPointer = currentDirection != FlickDirection.TAP
-        val rectWidth = if (showPointer) w - pointerHeight else w
-
-        // ▼▼▼ FIX: 角丸と矢印を滑らかに繋ぐ、新しい描画ロジック ▼▼▼
-        backgroundPath.moveTo(cornerRadius, 0f)
-        backgroundPath.lineTo(rectWidth - cornerRadius, 0f)
-        backgroundPath.quadTo(rectWidth, 0f, rectWidth, cornerRadius)
 
         if (showPointer) {
-            // 矢印の先端へ
-            backgroundPath.lineTo(w, h / 2f)
-            // 矢印の先端から戻る
-            backgroundPath.lineTo(rectWidth, h - cornerRadius)
-        } else {
-            // タップ時
-            backgroundPath.lineTo(rectWidth, h - cornerRadius)
-        }
+            val rectWidth = w - pointerHeight
 
-        backgroundPath.quadTo(rectWidth, h, rectWidth - cornerRadius, h)
-        backgroundPath.lineTo(cornerRadius, h)
-        backgroundPath.quadTo(0f, h, 0f, h - cornerRadius)
-        backgroundPath.lineTo(0f, cornerRadius)
-        backgroundPath.quadTo(0f, 0f, cornerRadius, 0f)
+            backgroundPath.moveTo(cornerRadius, 0f)
+            backgroundPath.lineTo(rectWidth, 0f)
+            backgroundPath.lineTo(w, h / 2f)
+            backgroundPath.lineTo(rectWidth, h)
+            backgroundPath.lineTo(cornerRadius, h)
+            backgroundPath.quadTo(0f, h, 0f, h - cornerRadius)
+            backgroundPath.lineTo(0f, cornerRadius)
+            backgroundPath.quadTo(0f, 0f, cornerRadius, 0f)
+
+        } else {
+            backgroundPath.addRoundRect(
+                RectF(0f, 0f, w, h),
+                cornerRadius,
+                cornerRadius,
+                Path.Direction.CW
+            )
+        }
 
         backgroundPath.close()
     }

@@ -293,6 +293,28 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null) {
                         val controller = PetalFlickInputController(context).apply {
+                            // ▼▼▼ FIX: Dynamic Colorsを取得してコントローラーに設定 ▼▼▼
+                            val secondaryColor =
+                                context.getColorFromAttr(R.attr.colorSecondaryContainer)
+                            val surfaceContainerLow =
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerLow)
+                            val surfaceContainerHighest =
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
+                            val textColor = if (isDarkTheme) Color.WHITE else Color.BLACK
+
+                            val dynamicColorTheme = FlickPopupColorTheme(
+                                segmentColor = surfaceContainerHighest,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest, // Not used, but set
+                                centerGradientEndColor = surfaceContainerLow,       // Not used, but set
+                                centerHighlightGradientStartColor = secondaryColor, // Not used, but set
+                                centerHighlightGradientEndColor = secondaryColor,   // Not used, but set
+                                separatorColor = textColor, // Not used, but set
+                                textColor = textColor
+                            )
+                            setPopupColors(dynamicColorTheme)
+
                             this.listener = object : PetalFlickInputController.PetalFlickListener {
                                 override fun onFlick(character: String) {
                                     this@FlickKeyboardView.listener?.onKey(character)
@@ -303,7 +325,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                             attach(keyView, stringMap)
                         }
-                        // ▼▼▼ UPDATE: Add controller to the list for lifecycle management ▼▼▼
                         petalFlickControllers.add(controller)
                     }
                 }
