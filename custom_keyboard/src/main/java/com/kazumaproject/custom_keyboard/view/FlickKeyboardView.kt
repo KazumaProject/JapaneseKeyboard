@@ -30,7 +30,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
-    // ... (Interface and other properties remain the same) ...
     interface OnKeyboardActionListener {
         fun onKey(text: String)
         fun onAction(action: KeyAction)
@@ -203,9 +202,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             attach(keyView, stringMaps)
-                            val scaleFactor = 1.2f
-                            val newCenter = 80f * scaleFactor
-                            val newOrbit = 200f * scaleFactor
+                            val scaleFactor = 1f
+                            val newCenter = 64f * scaleFactor
+                            val newOrbit = 170f * scaleFactor
                             val newTextSize = 55f * scaleFactor
                             setPopupViewSize(
                                 center = newCenter,
