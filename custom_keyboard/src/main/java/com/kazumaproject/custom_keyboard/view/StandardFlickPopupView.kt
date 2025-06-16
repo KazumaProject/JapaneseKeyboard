@@ -18,15 +18,26 @@ import androidx.core.graphics.toColorInt
 class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
 
     val viewSize = dpToPx(72) // ポップアップの直径
+    private val backgroundDrawable: GradientDrawable = createBackground()
 
     init {
         width = viewSize
         height = viewSize
         gravity = Gravity.CENTER
-        setTextColor(Color.BLACK)
+        setTextColor(Color.BLACK) // 初期色。setColorsで上書きされる
         maxLines = 2
         setLineSpacing(0f, 0.9f)
-        background = createBackground()
+        background = backgroundDrawable
+    }
+
+    /**
+     * ▼▼▼ NEW: ポップアップに動的な色を適用するメソッド ▼▼▼
+     */
+    fun setColors(backgroundColor: Int, textColor: Int, strokeColor: Int) {
+        setTextColor(textColor)
+        backgroundDrawable.setColor(backgroundColor)
+        backgroundDrawable.setStroke(dpToPx(1), strokeColor)
+        invalidate()
     }
 
     /**
