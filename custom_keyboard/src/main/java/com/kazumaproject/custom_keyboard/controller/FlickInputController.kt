@@ -10,7 +10,9 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import com.kazumaproject.custom_keyboard.data.ShapeType
 import com.kazumaproject.custom_keyboard.view.FlickCirclePopupView
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -63,6 +65,10 @@ class FlickInputController(context: Context) {
 
     private var popupPosition: PopupPosition = PopupPosition.CENTER
 
+    fun setShapeType(shape: ShapeType) {
+        popupView.setShapeType(shape)
+    }
+
     fun setPopupPosition(position: PopupPosition) {
         this.popupPosition = position
     }
@@ -76,9 +82,6 @@ class FlickInputController(context: Context) {
         this.flickThreshold = center
     }
 
-    fun setUpperOrbit(upperOrbit: Float) {
-        popupView.setUpperOrbit(upperOrbit)
-    }
 
     fun cancel() {
         controllerScope.cancel()
@@ -108,7 +111,6 @@ class FlickInputController(context: Context) {
                 lastValidFlickDirection = FlickDirection.TAP
                 isDownModeActive = false
                 isLongPressModeActive = false
-                // This correctly starts in single-target mode
                 popupView.setFullUIMode(false)
 
                 popupView.setCharacterMap(keyMaps[currentMapIndex])
@@ -121,7 +123,6 @@ class FlickInputController(context: Context) {
                     delay(ViewConfiguration.getLongPressTimeout().toLong())
                     Log.d("FlickInputController", "Long press detected!")
                     isLongPressModeActive = true
-                    // Full UI is correctly enabled on long press
                     popupView.setFullUIMode(true)
                     popupView.invalidate()
                 }
@@ -139,18 +140,12 @@ class FlickInputController(context: Context) {
                 if (currentCalculatedDirection != FlickDirection.TAP) {
                     longPressJob?.cancel()
                     lastValidFlickDirection = currentCalculatedDirection
-                    // A flick has started. This is needed to distinguish from a simple tap on ACTION_UP.
                     isDownModeActive = true
                 }
 
-                // ▼▼▼【MODIFIED LOGIC】▼▼▼
-                // Only set Full UI mode if the direction is DOWN.
-                // For all other directions (UP, UP_LEFT, etc.), it will remain false,
-                // causing FlickCirclePopupView to draw only the single highlighted segment.
                 if (currentCalculatedDirection == FlickDirection.DOWN) {
                     popupView.setFullUIMode(true)
 
-                    // The existing logic to cycle maps when entering DOWN for the first time
                     if (previousDirection != FlickDirection.DOWN) {
                         currentMapIndex = (currentMapIndex + 1) % keyMaps.size
                         val newMap = keyMaps[currentMapIndex]
@@ -158,7 +153,6 @@ class FlickInputController(context: Context) {
                         listener?.onStateChanged(view, newMap)
                     }
                 }
-                // ▲▲▲【MODIFICATION COMPLETE】▲▲▲
 
                 popupView.updateFlickDirection(currentCalculatedDirection)
                 previousDirection = currentCalculatedDirection
@@ -168,7 +162,6 @@ class FlickInputController(context: Context) {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressJob?.cancel()
 
-                // This logic correctly uses isDownModeActive to determine if it was a flick or a tap.
                 val finalDirectionToInput = if (isDownModeActive || isLongPressModeActive) {
                     calculateDirection(event.rawX, event.rawY)
                 } else {

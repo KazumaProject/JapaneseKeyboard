@@ -84,4 +84,9 @@ enum class KeyType {
     CROSS_FLICK,
 }
 
+enum class ShapeType {
+    CIRCLE,
+    ROUNDED_SQUARE
+}
+
 
