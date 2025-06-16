@@ -249,17 +249,15 @@ class FlickCirclePopupView @JvmOverloads constructor(
         calculateTargetPositions(centerX, centerY)
     }
 
-    // ▼▼▼【MODIFIED LOGIC】▼▼▼
+    // ▼▼▼【LOGIC REVERTED TO ORIGINAL】▼▼▼
     private fun calculateSegmentAngles() {
         val upperDirections = EnumSet.allOf(FlickDirection::class.java).filter {
             it != FlickDirection.TAP && it != FlickDirection.DOWN && characterMap.containsKey(it)
         }
 
         if (upperDirections.isNotEmpty()) {
-            // Increased the total angle for upper keys for a larger target area
-            val totalAngleSpan = 270f
-            // Adjusted the start angle to accommodate the smaller DOWN area
-            val startAngleAt = 135f
+            val totalAngleSpan = 220f
+            val startAngleAt = 160f
             val sweepPerSegment = totalAngleSpan / upperDirections.size
 
             upperDirections.forEachIndexed { index, direction ->
@@ -269,11 +267,10 @@ class FlickCirclePopupView @JvmOverloads constructor(
         }
 
         if (characterMap.containsKey(FlickDirection.DOWN)) {
-            // Reduced the DOWN area to a 90-degree arc at the bottom
-            segmentAngleMap[FlickDirection.DOWN] = Pair(45f, 90f)
+            segmentAngleMap[FlickDirection.DOWN] = Pair(20f, 140f)
         }
     }
-    // ▲▲▲【MODIFICATION END】▲▲▲
+    // ▲▲▲【REVERT COMPLETE】▲▲▲
 
     private fun createSegmentPaths(centerX: Float, centerY: Float) {
         val innerRadius = centerCircleRadius

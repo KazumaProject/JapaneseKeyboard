@@ -203,9 +203,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             attach(keyView, stringMaps)
-                            val scaleFactor = 1.618f
+                            val scaleFactor = 1.2f
                             val newCenter = 80f * scaleFactor
-                            val newOrbit = 180f * scaleFactor
+                            val newOrbit = 200f * scaleFactor
                             val newTextSize = 55f * scaleFactor
                             setPopupViewSize(
                                 center = newCenter,
