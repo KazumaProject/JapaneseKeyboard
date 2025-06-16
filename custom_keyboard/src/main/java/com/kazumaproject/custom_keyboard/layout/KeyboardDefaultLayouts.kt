@@ -9,9 +9,6 @@ import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 
 object KeyboardDefaultLayouts {
-
-    // --- Public Method ---
-
     /**
      * Creates the final keyboard layout based on the mode and dynamic key states.
      * @param mode The keyboard input mode (HIRAGANA, ENGLISH, etc.).
@@ -35,9 +32,6 @@ object KeyboardDefaultLayouts {
         return finalLayout
     }
 
-    // --- Private Helpers and Layout Definitions ---
-
-    // All dynamic key states are managed centrally here
     private val enterKeyStates = listOf(
         FlickAction.Action(KeyAction.NewLine, "改行"),
         FlickAction.Action(KeyAction.Confirm, "確定"),
@@ -47,10 +41,14 @@ object KeyboardDefaultLayouts {
     )
 
     private val dakutenToggleStates = listOf(
-        FlickAction.Action(KeyAction.InputText("^_^"), label = "^_^"), FlickAction.Action(
+        FlickAction.Action(
+            KeyAction.InputText("^_^"),
+            label = "^_^",
+            drawableResId = com.kazumaproject.core.R.drawable.ic_custom_icon
+        ),
+        FlickAction.Action(
             KeyAction.ToggleDakuten,
-            label = "゛゜",
-            drawableResId = com.kazumaproject.core.R.drawable.kana_small
+            label = " 小 ゛゜",
         )
     )
 
@@ -147,7 +145,12 @@ object KeyboardDefaultLayouts {
                 dynamicStates = dakutenToggleStates
             ),
             KeyData("わ", 3, 2, true),
-            KeyData("、。?!", 3, 3, true),
+            KeyData(
+                "、。?!",
+                3,
+                3,
+                true,
+            ),
             KeyData(
                 label = "Del",
                 row = 0,
@@ -769,17 +772,17 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
             // Number keys remain the same
-            KeyData("1", 0, 1, true),
-            KeyData("2", 0, 2, true),
-            KeyData("3", 0, 3, true),
-            KeyData("4", 1, 1, true),
-            KeyData("5", 1, 2, true),
-            KeyData("6", 1, 3, true),
-            KeyData("7", 2, 1, true),
-            KeyData("8", 2, 2, true),
-            KeyData("9", 2, 3, true),
+            KeyData("1\n☆♪→", 0, 1, true),
+            KeyData("2\n￥$€", 0, 2, true),
+            KeyData("3\n%°#", 0, 3, true),
+            KeyData("4\n○*・", 1, 1, true),
+            KeyData("5\n+x÷", 1, 2, true),
+            KeyData("6\n<=>", 1, 3, true),
+            KeyData("7\n「」:", 2, 1, true),
+            KeyData("8\n〒々〆", 2, 2, true),
+            KeyData("9\n^|\\", 2, 3, true),
             KeyData("( ) [ ]", 3, 1, true),
-            KeyData("0", 3, 2, true),
+            KeyData("0\n〜…", 3, 2, true),
             KeyData(". , - /", 3, 3, true),
             KeyData(
                 label = "Del",
@@ -846,7 +849,7 @@ object KeyboardDefaultLayouts {
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
 
-            "1" to listOf(
+            "1\n☆♪→" to listOf(
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("1"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("1"),

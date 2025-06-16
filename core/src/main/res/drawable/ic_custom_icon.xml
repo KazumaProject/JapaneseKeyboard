@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <path
+        android:fillColor="@color/keyboard_icon_color"
+        android:pathData="M18.8652,18.6475H19.0371L21.4004,23.8145H23.1514L20.0146,17.1543H17.8877L14.751,23.8145H16.502L18.8652,18.6475ZM28.9629,18.6475H29.1348L31.498,23.8145H33.249L30.1123,17.1543H27.9854L24.8486,23.8145H26.5996L28.9629,18.6475Z" />
+    <path
+        android:fillColor="@color/keyboard_icon_color"
+        android:pathData="M29.0273,31.5244V30.1494H18.9727V31.5244H29.0273Z" />
+</vector>

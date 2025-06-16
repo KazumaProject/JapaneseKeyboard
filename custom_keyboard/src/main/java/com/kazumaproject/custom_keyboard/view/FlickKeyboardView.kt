@@ -2,8 +2,12 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.AbsoluteSizeSpan
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.Gravity // <-- Import Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
@@ -26,10 +30,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
-    /**
-     * ▼▼▼ 修正 ▼▼▼
-     * 十字フリックのロングプレス後の指離しイベントを処理するメソッドを追加
-     */
+    // ... (Interface and other properties remain the same) ...
     interface OnKeyboardActionListener {
         fun onKey(text: String)
         fun onAction(action: KeyAction)
@@ -39,7 +40,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         fun onFlickActionLongPress(action: KeyAction)
         fun onFlickActionUpAfterLongPress(action: KeyAction)
     }
-    // ▲▲▲ 修正 ▲▲▲
 
     private var listener: OnKeyboardActionListener? = null
     private val flickControllers = mutableListOf<FlickInputController>()
@@ -48,6 +48,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
+
 
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
@@ -76,15 +77,71 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Button(context).apply {
                     isFocusable = false
                     isAllCaps = false
-                    text = keyData.label
+
+                    if (keyData.label.contains("\n")) {
+                        val parts = keyData.label.split("\n", limit = 2)
+                        val primaryText = parts[0]
+                        val secondaryText = parts.getOrNull(1) ?: ""
+
+                        val spannable = SpannableString(keyData.label)
+
+                        spannable.setSpan(
+                            AbsoluteSizeSpan(spToPx(24f)),
+                            0,
+                            primaryText.length,
+                            Spannable.SPAN_INCLUSIVE_INCLUSIVE
+                        )
+                        if (secondaryText.isNotEmpty()) {
+                            spannable.setSpan(
+                                AbsoluteSizeSpan(spToPx(12f)),
+                                primaryText.length + 1,
+                                keyData.label.length,
+                                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+                            )
+                        }
+
+                        this.maxLines = 2
+                        this.setLineSpacing(0f, 0.9f)
+                        this.setPadding(0, dpToPx(4), 0, dpToPx(4))
+                        this.gravity = Gravity.CENTER
+
+                        this.text = spannable
+
+                    } else {
+                        text = keyData.label
+                        gravity = Gravity.CENTER
+
+                        // Regular expression to check for English alphabet characters only
+                        val englishOnlyRegex = Regex("^[a-zA-Z@#/_'\"().,?! ]+$")
+                        val symbolRegex = Regex("^[()\\[\\],./ -]+$")
+
+                        if (englishOnlyRegex.matches(keyData.label)) {
+                            // Size for English and common QWERTY symbols
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                        } else if (symbolRegex.matches(keyData.label)) {
+                            // Set a specific size for these special symbols
+                            setTextSize(
+                                TypedValue.COMPLEX_UNIT_SP,
+                                20f
+                            )
+                        } else {
+                            // Default size for other characters (e.g., Japanese)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 21f)
+                        }
+                    }
+
                     if (keyData.isSpecialKey) {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
+                        // This line below might override your dynamic size setting for special keys.
+                        // Consider if you want to keep it or integrate it with the logic above.
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
                     } else {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light)
                     }
                 }
             }
 
+            // ... (The rest of the setKeyboard method remains the same) ...
             val params = LayoutParams().apply {
                 rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
@@ -171,10 +228,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null) {
                         val controller = CrossFlickInputController(context).apply {
-                            /**
-                             * ▼▼▼ 修正 ▼▼▼
-                             * 新しい onFlickUpAfterLongPress メソッドを実装
-                             */
                             this.listener = object : CrossFlickInputController.CrossFlickListener {
                                 override fun onFlick(flickAction: FlickAction) {
                                     when (flickAction) {
@@ -197,7 +250,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         }
 
                                         is FlickAction.Input -> {
-                                            // 必要であれば、文字入力のロングプレスに対する処理をここに記述
                                         }
                                     }
                                 }
@@ -211,12 +263,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         }
 
                                         is FlickAction.Input -> {
-                                            // 必要であれば、文字入力のロングプレス後の指離しに対する処理をここに記述
                                         }
                                     }
                                 }
                             }
-                            // ▲▲▲ 修正 ▲▲▲
                             attach(keyView, flickActionMap)
                         }
                         crossFlickControllers.add(controller)
@@ -262,5 +312,16 @@ class FlickKeyboardView @JvmOverloads constructor(
         val typedValue = TypedValue()
         theme.resolveAttribute(attrRes, typedValue, true)
         return ContextCompat.getColor(this, typedValue.resourceId)
+    }
+
+    // Helper function to convert sp to pixels
+    private fun spToPx(sp: Float): Int {
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, resources.displayMetrics)
+            .toInt()
+    }
+
+    // Helper function to convert dp to pixels
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 }
