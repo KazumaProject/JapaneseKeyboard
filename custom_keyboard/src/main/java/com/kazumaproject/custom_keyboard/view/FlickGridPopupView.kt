@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
 import androidx.core.graphics.drawable.toDrawable
@@ -16,26 +17,35 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
 
     private val buttons = mutableMapOf<FlickDirection, Button>()
 
+    // ▼▼▼ 変更点: グリッド全体の背景Drawableは不要になったため削除 ▼▼▼
+    // private val backgroundDrawable = GradientDrawable()
+
     private var defaultColor = "#455A64".toColorInt()
     private var highlightColor = "#37474F".toColorInt()
     private var textColor = Color.WHITE
 
+    // ▼▼▼ 追加: 枠線用の色を保持するプロパティ ▼▼▼
+    private var separatorColor = Color.LTGRAY
+
     init {
         columnCount = 3
         rowCount = 3
-        background = Color.TRANSPARENT.toDrawable()
         alignmentMode = ALIGN_BOUNDS
+
+        // ▼▼▼ 変更点: グリッド全体の背景を透明に戻す ▼▼▼
+        background = Color.TRANSPARENT.toDrawable()
     }
 
+    /**
+     * ▼▼▼ 変更点: 枠線用の色もテーマから受け取るようにし、グリッド背景の設定は削除 ▼▼▼
+     */
     fun setColors(theme: FlickPopupColorTheme) {
         this.defaultColor = theme.centerGradientStartColor
         this.highlightColor = theme.segmentHighlightGradientStartColor
         this.textColor = theme.textColor
+        this.separatorColor = theme.separatorColor
     }
 
-    /**
-     * FIX: 元キーのサイズを受け取り、ポップアップ内の各ボタンのサイズをそれに合わせる
-     */
     fun setCharacters(map: Map<FlickDirection, String>, keyWidth: Int, keyHeight: Int) {
         this.removeAllViews()
         buttons.clear()
@@ -50,20 +60,23 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
 
         gridPositions.forEach { (direction, pos) ->
             val char = map[direction]
+
+            val params = LayoutParams(spec(pos.first), spec(pos.second)).apply {
+                width = keyWidth
+                height = keyHeight
+                val margin = dpToPx(1f)
+                setMargins(margin, margin, margin, margin)
+            }
+
             if (!char.isNullOrEmpty()) {
                 val button = createButton(char)
-                // pos.firstが行、pos.secondが列
-                val params = LayoutParams(spec(pos.first), spec(pos.second)).apply {
-                    // 各ボタンのサイズを元のキーのサイズに設定
-                    width = keyWidth
-                    height = keyHeight
-                    // ボタン間の余白を調整
-                    val margin = (context.resources.displayMetrics.density * 1).toInt()
-                    setMargins(margin, margin, margin, margin)
-                }
                 button.layoutParams = params
                 addView(button)
                 buttons[direction] = button
+            } else {
+                val placeholder = View(context)
+                placeholder.layoutParams = params
+                addView(placeholder)
             }
         }
     }
@@ -85,10 +98,21 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
         }
     }
 
+    /**
+     * ▼▼▼ 変更点: ここで各ボタンのDrawableに枠線を追加する ▼▼▼
+     */
     private fun createButtonDrawable(isHighlighted: Boolean): GradientDrawable {
         return GradientDrawable().apply {
+            // 塗りつぶしの色をハイライト状態に応じて設定
             setColor(if (isHighlighted) highlightColor else defaultColor)
+            // 角の丸みを設定
             cornerRadius = 24f
+            // 枠線（アウトライン）を設定
+            setStroke(dpToPx(1f), separatorColor)
         }
+    }
+
+    private fun dpToPx(dp: Float): Int {
+        return (dp * context.resources.displayMetrics.density).toInt()
     }
 }
