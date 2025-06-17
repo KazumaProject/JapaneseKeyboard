@@ -197,7 +197,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             attach(keyView, stringMaps)
-                            val scaleFactor = 1.3f
+                            val scaleFactor = 1.4f
                             val newCenter = 64f * scaleFactor
                             val newOrbit = 170f * scaleFactor
                             val newTextSize = 55f * scaleFactor
@@ -258,7 +258,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 KeyType.STANDARD_FLICK -> {
                     val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null && keyView is Button) {
-                        val label = keyData.label.split("\n").firstOrNull() ?: ""
+                        val label = keyData.label
 
                         val keyBaseColor =
                             if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest) else context.getColorFromAttr(

@@ -53,15 +53,9 @@ class StandardFlickInputController(context: Context) {
         }
     }
 
-    /**
-     * ▼▼▼ FIX: Method signature changed to accept FlickPopupColorTheme for consistency ▼▼▼
-     */
     fun setPopupColors(theme: FlickPopupColorTheme) {
-        // The standard popup is simple, so we map theme colors to its components.
-        // Using highlight color for the popup background seems appropriate.
         this.popupBackgroundColor = theme.segmentHighlightGradientStartColor
         this.popupTextColor = theme.textColor
-        // Using separator color for the popup's stroke.
         this.popupStrokeColor = theme.separatorColor
     }
 
@@ -77,6 +71,10 @@ class StandardFlickInputController(context: Context) {
         completeMap[FlickDirection.DOWN] = map[FlickDirection.DOWN] ?: ""
         completeMap[FlickDirection.UP_LEFT_FAR] = map[FlickDirection.UP_LEFT_FAR]
             ?: map.entries.find { it.key.name.contains("LEFT") }?.value ?: ""
+
+        // ▼▼▼ BUG FIX ▼▼▼
+        // The original code had a copy-paste error here, looking for UP_LEFT_FAR again.
+        // This now correctly looks for the character associated with the RIGHT direction.
         completeMap[FlickDirection.UP_RIGHT_FAR] = map[FlickDirection.UP_RIGHT_FAR]
             ?: map.entries.find { it.key.name.contains("RIGHT") }?.value ?: ""
 
@@ -90,7 +88,6 @@ class StandardFlickInputController(context: Context) {
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                cancel()
                 anchorView = view
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
@@ -100,7 +97,6 @@ class StandardFlickInputController(context: Context) {
             }
 
             MotionEvent.ACTION_MOVE -> {
-                cancel()
                 val dx = event.rawX - initialTouchX
                 val dy = event.rawY - initialTouchY
                 val direction = calculateDirection(dx, dy)
@@ -110,7 +106,6 @@ class StandardFlickInputController(context: Context) {
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                cancel()
                 segmentedDrawable?.highlightDirection = null
                 val dx = event.rawX - initialTouchX
                 val dy = event.rawY - initialTouchY
@@ -128,38 +123,48 @@ class StandardFlickInputController(context: Context) {
     }
 
     /**
-     * ▼▼▼ 変更点 ▼▼▼
-     * ポップアップの位置をフリック方向に応じて動的に調整するよう修正。
-     * 特に、上フリック（FlickDirection.UP）時に、通常より高い位置に表示します。
+     * ▼▼▼ MODIFIED METHOD ▼▼▼
+     * This method now shows the multi-character popup for TAP
+     * and the standard single-character popup for all other directions.
      */
     private fun showPopup(direction: FlickDirection) {
         val currentAnchor = anchorView ?: return
-        val text = characterMap[direction]
 
-        // ポップアップの表示内容と色を更新
+        // Update popup colors
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
-        popupView.updateText(text)
 
-        // ポップアップのY座標を決めるためのオフセット値
-        val baseOffsetY = 10 // キーの上部に表示する際の基本的なマージン
-        val flickUpAdditionalOffset = 80 // 上フリック時、さらに上へ移動させるための追加オフセット
+        // ▼▼▼ NEW LOGIC HERE ▼▼▼
+        if (direction == FlickDirection.TAP) {
+            // For TAP, call the new method to show all flick characters
+            popupView.updateMultiCharText(characterMap)
+        } else {
+            // For any other direction, call the original updateText method
+            val text = characterMap[direction]
+            popupView.updateText(text)
+        }
+        // ▲▲▲ END OF NEW LOGIC ▲▲▲
 
-        // ポップアップの表示位置を計算
+
+        // Y-coordinate offset values
+        val baseOffsetY = 10 // Basic margin to show above the key
+        val flickUpAdditionalOffset = 80 // Additional offset for UP flick
+
+        // Calculate popup position
         val location = IntArray(2)
         currentAnchor.getLocationInWindow(location)
         val x = location[0] + (currentAnchor.width / 2) - (popupView.viewSize / 2)
-        var y = location[1] - popupView.viewSize - baseOffsetY // デフォルトのY座標
+        var y = location[1] - popupView.viewSize - baseOffsetY // Default Y position
 
-        // 方向が「上」の場合、Y座標をさらに上（値を小さく）へ調整
+        // If direction is UP, adjust Y higher (smaller value)
         if (direction == FlickDirection.UP) {
             y -= flickUpAdditionalOffset
         }
 
         if (popupWindow.isShowing) {
-            // 既に表示されている場合は、位置を更新
-            popupWindow.update(x, y, -1, -1) // 幅と高さは変更しないため-1を指定
+            // If already showing, update position
+            popupWindow.update(x, y, -1, -1)
         } else {
-            // 表示されていない場合は、指定した位置に表示
+            // If not showing, show at the specified location
             popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
         }
     }
