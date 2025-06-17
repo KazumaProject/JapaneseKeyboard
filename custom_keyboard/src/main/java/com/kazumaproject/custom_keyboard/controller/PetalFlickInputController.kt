@@ -38,7 +38,7 @@ class PetalFlickInputController(context: Context) {
     private var anchorView: View? = null
     private var initialTouchX = 0f
     private var initialTouchY = 0f
-    private val flickThreshold = 65f
+    private val flickThreshold = 80f
 
     private val directionalPopup: PopupWindow = PopupWindow(
         DirectionalKeyPopupView(context),
@@ -241,12 +241,24 @@ class PetalFlickInputController(context: Context) {
     }
 
     private fun calculateDirection(dx: Float, dy: Float): FlickDirection {
-        val distance =
-            sqrt(dx * dx + dy * dy); if (distance < flickThreshold) return FlickDirection.TAP
-        return when {
-            abs(dx) > abs(dy) * 1.5 -> if (dx > 0) FlickDirection.UP_RIGHT_FAR else FlickDirection.UP_LEFT_FAR
-            abs(dy) > abs(dx) * 1.5 -> if (dy > 0) FlickDirection.DOWN else FlickDirection.UP
-            else -> FlickDirection.TAP
+        val distance = sqrt(dx * dx + dy * dy)
+        if (distance < flickThreshold) {
+            return FlickDirection.TAP
+        }
+
+        // Determine the primary direction by comparing the absolute values of dx and dy.
+        return if (abs(dx) > abs(dy)) {
+            if (dx > 0) {
+                FlickDirection.UP_RIGHT_FAR
+            } else {
+                FlickDirection.UP_LEFT_FAR
+            }
+        } else {
+            if (dy > 0) {
+                FlickDirection.DOWN
+            } else {
+                FlickDirection.UP
+            }
         }
     }
 

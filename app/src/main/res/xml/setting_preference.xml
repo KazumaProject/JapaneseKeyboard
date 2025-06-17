@@ -33,7 +33,7 @@
 
         <PreferenceCategory android:title="スミレ入力キーボード">
             <ListPreference
-                android:defaultValue="@string/vibration_default"
+                android:defaultValue="flick-default"
                 android:dialogTitle="選択してください"
                 android:entries="@array/sumire_keyboard_input_options"
                 android:entryValues="@array/sumire_keyboard_input_values"

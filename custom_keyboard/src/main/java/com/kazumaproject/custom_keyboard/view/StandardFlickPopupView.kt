@@ -1,9 +1,3 @@
-// ===================================================================================
-// FILE: com/kazumaproject/custom_keyboard/view/StandardFlickPopupView.kt
-//
-// Instructions: A spacer has been added to make the bottom margin equal to the top margin.
-// ===================================================================================
-
 package com.kazumaproject.custom_keyboard.view
 
 import android.content.Context
@@ -68,7 +62,7 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         height = viewSize
         gravity = Gravity.CENTER
         setTextColor(Color.BLACK)
-        maxLines = 4 // Increased to 4 to accommodate the new spacer line
+        maxLines = 4
         setLineSpacing(0f, 0.8f)
         background = backgroundDrawable
     }
@@ -98,41 +92,65 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         val tapSize = 19f
         val sideSize = 11f
         val verticalOffset = spToPx(-1.5f)
+        val transparent = ForegroundColorSpan(Color.TRANSPARENT)
 
         val builder = SpannableStringBuilder()
 
         // Line 1: UP
-        builder.inSpans(AbsoluteSizeSpan(spToPx(sideSize))) { append(up) }
+        if (up.isNotEmpty()) {
+            builder.inSpans(AbsoluteSizeSpan(spToPx(sideSize))) { append(up) }
+        } else {
+            builder.inSpans(AbsoluteSizeSpan(spToPx(sideSize)), transparent) { append(" ") }
+        }
         builder.append("\n")
 
-        // Line 2: LEFT TAP RIGHT
-        builder.inSpans(
-            AbsoluteSizeSpan(spToPx(sideSize)),
-            YOffsetSpan(verticalOffset)
-        ) { append("$left ") }
+        // ▼▼▼ CHANGE IS HERE ▼▼▼
+        // Line 2: LEFT - Added an extra space for more margin
+        if (left.isNotEmpty()) {
+            builder.inSpans(
+                AbsoluteSizeSpan(spToPx(sideSize)),
+                YOffsetSpan(verticalOffset)
+            ) { append("$left  ") } // Two spaces
+        } else {
+            builder.inSpans(
+                AbsoluteSizeSpan(spToPx(sideSize)),
+                YOffsetSpan(verticalOffset),
+                transparent
+            ) { append("   ") } // Three spaces
+        }
 
+        // Line 2: TAP
         builder.inSpans(
             AbsoluteSizeSpan(spToPx(tapSize)),
             StyleSpan(Typeface.BOLD)
         ) { append(tap) }
 
-        builder.inSpans(
-            AbsoluteSizeSpan(spToPx(sideSize)),
-            YOffsetSpan(verticalOffset)
-        ) { append(" $right") }
+        // ▼▼▼ CHANGE IS HERE ▼▼▼
+        // Line 2: RIGHT - Added an extra space for more margin
+        if (right.isNotEmpty()) {
+            builder.inSpans(
+                AbsoluteSizeSpan(spToPx(sideSize)),
+                YOffsetSpan(verticalOffset)
+            ) { append("  $right") } // Two spaces
+        } else {
+            builder.inSpans(
+                AbsoluteSizeSpan(spToPx(sideSize)),
+                YOffsetSpan(verticalOffset),
+                transparent
+            ) { append("   ") } // Three spaces
+        }
         builder.append("\n")
 
-        // ▼▼▼ CHANGE IS HERE ▼▼▼
-        // Add a tiny, invisible line to create extra space, matching the top space.
-        // The size '4f' can be adjusted to precisely match the space above.
-        builder.inSpans(
-            AbsoluteSizeSpan(spToPx(4f)),
-            ForegroundColorSpan(Color.TRANSPARENT)
-        ) { append(" \n") }
+        // Spacer Line
+        builder.inSpans(AbsoluteSizeSpan(spToPx(4f)), transparent) { append(" \n") }
 
 
         // Line 3: DOWN
-        builder.inSpans(AbsoluteSizeSpan(spToPx(sideSize))) { append(down) }
+        if (down.isNotEmpty()) {
+            builder.inSpans(AbsoluteSizeSpan(spToPx(sideSize))) { append(down) }
+        } else {
+            builder.inSpans(AbsoluteSizeSpan(spToPx(sideSize)), transparent) { append(" ") }
+        }
 
         this.text = builder
     }
