@@ -202,6 +202,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var mozcUTWiki: Boolean? = false
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
+    private var sumireInputKeyType: String? = "flick-default"
 
     private var isTablet: Boolean? = false
 
@@ -213,7 +214,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val cursorMoveMode: StateFlow<Boolean> = _cursorMoveMode
     private var hasConvertedKatakana = false
 
-    // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
 
     private var keyboardOrder: List<KeyboardType> = emptyList()
@@ -383,6 +383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             nBest = n_best_preference ?: 4
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
+            sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -484,9 +485,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mozcUTWiki = null
         mozcUTNeologd = null
         mozcUTWeb = null
+        sumireInputKeyType = null
+        isTablet = null
         actionInDestroy()
         System.gc()
-        isTablet = null
     }
 
     override fun onWindowHidden() {
@@ -1204,14 +1206,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 KeyboardType.SUMIRE -> {
-                    // SUMIREキーボードの表示はここだけで行う
                     customKeyboardMode = KeyboardInputMode.HIRAGANA
                     val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
-                        KeyboardInputMode.HIRAGANA,
+                        mode = KeyboardInputMode.HIRAGANA,
                         dynamicKeyStates = mapOf(
                             "enter_key" to 0,
                             "dakuten_toggle_key" to 0
-                        )
+                        ),
+                        inputType = sumireInputKeyType ?: "flick-default"
                     )
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
@@ -1238,7 +1240,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
             mode = customKeyboardMode,
-            dynamicKeyStates = dynamicStates
+            dynamicKeyStates = dynamicStates,
+            inputType = sumireInputKeyType ?: "flick-default"
         )
         mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
     }

@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class PetalFlickInputController(private val context: Context) {
+class PetalFlickInputController(context: Context) {
 
     interface PetalFlickListener {
         fun onFlick(character: String)

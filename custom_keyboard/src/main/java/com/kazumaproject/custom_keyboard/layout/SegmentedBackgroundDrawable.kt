@@ -11,7 +11,7 @@ import androidx.core.graphics.withClip
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 
 /**
- * フリック方向に応じて背景の特定領域をハイライト描画するDrawable
+ * A Drawable that highlights specific areas of the background based on the flick direction.
  */
 class SegmentedBackgroundDrawable(
     private val label: String,
@@ -29,10 +29,18 @@ class SegmentedBackgroundDrawable(
             }
         }
 
+    // Paint for the first (or single) line of text
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
         textSize = 60f
+    }
+
+    // Paint for the smaller, second line of text
+    private val secondaryTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textAlign = Paint.Align.CENTER
+        textSize = 40f // Smaller text size for the second line
     }
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -59,12 +67,52 @@ class SegmentedBackgroundDrawable(
         }
 
         // 3. Draw the label
-        canvas.drawText(
-            label,
-            centerX,
-            centerY - (textPaint.descent() + textPaint.ascent()) / 2,
-            textPaint
-        )
+        if (label.contains("\n")) {
+            val parts = label.split("\n", limit = 2)
+            val primaryText = parts[0]
+            val secondaryText = parts.getOrNull(1) ?: ""
+
+            // --- PRECISE VERTICAL CENTERING LOGIC WITH ADJUSTABLE SPACING ---
+
+            // Adjust this value to increase/decrease space between lines.
+            // Negative values reduce the space.
+            val lineSpacing = 2f
+
+            // Get FontMetrics for precise height calculations
+            val primaryFm = textPaint.fontMetrics
+            val secondaryFm = secondaryTextPaint.fontMetrics
+
+            // Calculate the height of each line of text
+            val primaryTextHeight = primaryFm.descent - primaryFm.ascent
+            val secondaryTextHeight = secondaryFm.descent - secondaryFm.ascent
+
+            // Calculate the total height of the block, including the custom line spacing
+            val totalTextHeight = primaryTextHeight + secondaryTextHeight + lineSpacing
+
+            // Calculate the Y coordinate for the top of the entire text block
+            val textBlockTop = centerY - (totalTextHeight / 2f)
+
+            // Calculate the baseline for the first line
+            val primaryTextBaselineY = textBlockTop - primaryFm.ascent
+
+            // Calculate the baseline for the second line, accounting for the first line's height and the custom spacing
+            val secondaryTextBaselineY =
+                textBlockTop + primaryTextHeight + lineSpacing - secondaryFm.ascent
+
+            // Draw both lines of text centered horizontally
+            canvas.drawText(primaryText, centerX, primaryTextBaselineY, textPaint)
+            canvas.drawText(secondaryText, centerX, secondaryTextBaselineY, secondaryTextPaint)
+
+
+        } else {
+            // Original logic for single-line text, which works correctly.
+            canvas.drawText(
+                label,
+                centerX,
+                centerY - (textPaint.descent() + textPaint.ascent()) / 2,
+                textPaint
+            )
+        }
     }
 
     private fun getHighlightPath(bounds: RectF): Path? {
@@ -115,16 +163,15 @@ class SegmentedBackgroundDrawable(
     override fun setAlpha(alpha: Int) {
         backgroundPaint.alpha = alpha
         textPaint.alpha = alpha
+        secondaryTextPaint.alpha = alpha
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
         backgroundPaint.colorFilter = colorFilter
         textPaint.colorFilter = colorFilter
+        secondaryTextPaint.colorFilter = colorFilter
     }
 
-    /**
-     * ▼▼▼ FIX: Deprecated method updated ▼▼▼
-     */
     override fun getOpacity(): Int {
         return PixelFormat.TRANSLUCENT
     }
