@@ -31,7 +31,7 @@ object AppPreference {
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
 
     private val defaultKeyboardOrderJson = gson.toJson(
-        listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE, KeyboardType.QWERTY, KeyboardType.ROMAJI)
+        listOf(KeyboardType.TENKEY, KeyboardType.QWERTY, KeyboardType.ROMAJI)
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
 

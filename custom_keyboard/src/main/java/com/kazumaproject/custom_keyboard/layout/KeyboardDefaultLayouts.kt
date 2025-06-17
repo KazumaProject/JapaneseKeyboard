@@ -1527,12 +1527,13 @@ object KeyboardDefaultLayouts {
                 spaceConvertStates[0].label ?: "",
                 1,
                 4,
-                false,
+                true,
                 spaceConvertStates[0].action,
                 dynamicStates = spaceConvertStates,
                 isSpecialKey = true,
                 rowSpan = 1,
-                keyId = "space_convert_key"
+                keyId = "space_convert_key",
+                keyType = KeyType.CROSS_FLICK
             ),
             KeyData(
                 enterKeyStates[0].label ?: "",
@@ -1570,6 +1571,17 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            )
+        )
+
+        val spaceActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Space,
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.Space,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
             )
         )
 
@@ -1615,7 +1627,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input(getCase('p').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('q').toString()),
             FlickDirection.UP to FlickAction.Input(getCase('r').toString()),
-            FlickDirection.DOWN to FlickAction.Input(getCase('s').toString()),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(getCase('s').toString()),
             FlickDirection.DOWN to FlickAction.Input("7")
         )
         val tuv = mapOf(
@@ -1628,14 +1640,14 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input(getCase('w').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('x').toString()),
             FlickDirection.UP to FlickAction.Input(getCase('y').toString()),
-            FlickDirection.DOWN to FlickAction.Input(getCase('z').toString()),
-            FlickDirection.DOWN to FlickAction.Input("19")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(getCase('z').toString()),
+            FlickDirection.DOWN to FlickAction.Input("9")
         )
         val symbols2 = mapOf(
             FlickDirection.TAP to FlickAction.Input("'"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("\""),
             FlickDirection.UP to FlickAction.Input("("),
-            FlickDirection.DOWN to FlickAction.Input(")"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
             FlickDirection.DOWN to FlickAction.Input("0")
         )
         val symbols3 = mapOf(
@@ -1645,7 +1657,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.DOWN to FlickAction.Input("!")
         )
 
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
+        val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
             "@#/_" to listOf(symbols1),
@@ -1660,6 +1672,10 @@ object KeyboardDefaultLayouts {
             "' \" ( )" to listOf(symbols2),
             ". , ? !" to listOf(symbols3)
         )
+
+        spaceConvertStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(spaceActionMap))
+        }
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
@@ -1709,85 +1725,83 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
             KeyData(
-                "1\n顔文字",
+                "1\n☆♪→",
                 0,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "2\n数字",
+                "2\n￥$€",
                 0,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "3\n通貨",
+                "3\n%°#",
                 0,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "4\n矢印",
+                "4\n○*・",
                 1,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "5\n数学",
+                "5\n+x÷",
                 1,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "6\n括弧",
+                "6\n< = >",
                 1,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "7\n読点",
+                "7\n「」:",
                 2,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "8\n記号",
+                "8\n〒々〆",
                 2,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "9\n他",
+                "9\n^|\\",
                 2,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "0",
+                "0\n〜…",
                 3,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                spaceConvertStates[0].label ?: "",
+                "( ) [ ]",
                 3,
                 1,
-                false,
-                spaceConvertStates[0].action,
-                dynamicStates = spaceConvertStates,
-                isSpecialKey = true,
+                true,
+                isSpecialKey = false,
                 colSpan = 1,
-                keyId = "space_convert_key"
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
                 ".,/",
@@ -1803,8 +1817,20 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.Delete,
                 isSpecialKey = true,
-                rowSpan = 2,
+                rowSpan = 1,
                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+            ),
+            KeyData(
+                spaceConvertStates[0].label ?: "",
+                1,
+                4,
+                true,
+                spaceConvertStates[0].action,
+                dynamicStates = spaceConvertStates,
+                isSpecialKey = true,
+                rowSpan = 1,
+                keyId = "space_convert_key",
+                keyType = KeyType.CROSS_FLICK
             ),
             KeyData(
                 enterKeyStates[0].label ?: "",
@@ -1844,70 +1870,6 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
             )
         )
-        val kaomoji = mapOf(
-            FlickDirection.TAP to FlickAction.Input("1"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("(´・ω・`)"),
-            FlickDirection.UP to FlickAction.Input("(*^^*)"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("(^_^;)"),
-            FlickDirection.DOWN to FlickAction.Input("orz")
-        )
-        val numbers = mapOf(
-            FlickDirection.TAP to FlickAction.Input("2"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("①"),
-            FlickDirection.UP to FlickAction.Input("②"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("③"),
-            FlickDirection.DOWN to FlickAction.Input("No.")
-        )
-        val currency = mapOf(
-            FlickDirection.TAP to FlickAction.Input("3"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("¥"),
-            FlickDirection.UP to FlickAction.Input("$"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
-            FlickDirection.DOWN to FlickAction.Input("£")
-        )
-        val arrows = mapOf(
-            FlickDirection.TAP to FlickAction.Input("4"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("←"),
-            FlickDirection.UP to FlickAction.Input("↑"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
-            FlickDirection.DOWN to FlickAction.Input("↓")
-        )
-        val math = mapOf(
-            FlickDirection.TAP to FlickAction.Input("5"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
-            FlickDirection.UP to FlickAction.Input("-"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("×"),
-            FlickDirection.DOWN to FlickAction.Input("÷")
-        )
-        val brackets = mapOf(
-            FlickDirection.TAP to FlickAction.Input("6"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
-            FlickDirection.UP to FlickAction.Input("」"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("（"),
-            FlickDirection.DOWN to FlickAction.Input("）")
-        )
-        val punctuation1 = mapOf(
-            FlickDirection.TAP to FlickAction.Input("7"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("、"),
-            FlickDirection.UP to FlickAction.Input("。"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("？"),
-            FlickDirection.DOWN to FlickAction.Input("！")
-        )
-        val symbols1 = mapOf(
-            FlickDirection.TAP to FlickAction.Input("8"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("・"),
-            FlickDirection.UP to FlickAction.Input("…"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
-            FlickDirection.DOWN to FlickAction.Input("ー")
-        )
-        val symbols2 = mapOf(
-            FlickDirection.TAP to FlickAction.Input("9"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("*"),
-            FlickDirection.UP to FlickAction.Input("#"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/"),
-            FlickDirection.DOWN to FlickAction.Input("%")
-        )
-        val key0_sym = mapOf(FlickDirection.TAP to FlickAction.Input("0"))
         val symbols3 = mapOf(
             FlickDirection.TAP to FlickAction.Input("."),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
@@ -1915,21 +1877,114 @@ object KeyboardDefaultLayouts {
             FlickDirection.DOWN to FlickAction.Input("-")
         )
 
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
+        val spaceActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Space,
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.Space,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+            )
+        )
+
+        val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "1\n顔文字" to listOf(kaomoji),
-            "2\n数字" to listOf(numbers),
-            "3\n通貨" to listOf(currency),
-            "4\n矢印" to listOf(arrows),
-            "5\n数学" to listOf(math),
-            "6\n括弧" to listOf(brackets),
-            "7\n読点" to listOf(punctuation1),
-            "8\n記号" to listOf(symbols1),
-            "9\n他" to listOf(symbols2),
-            "0" to listOf(key0_sym),
-            ".,/" to listOf(symbols3)
+            "1\n☆♪→" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("1"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
+                    FlickDirection.UP to FlickAction.Input("♪"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
+                )
+            ),
+            "2\n￥$€" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("2"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
+                    FlickDirection.UP to FlickAction.Input("＄"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
+                )
+            ),
+            "3\n%°#" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("3"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
+                    FlickDirection.UP to FlickAction.Input("°"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("#"),
+                )
+            ),
+            "4\n○*・" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("4"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
+                    FlickDirection.UP to FlickAction.Input("*"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
+
+                    )
+            ),
+            "5\n+x÷" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("5"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                    FlickDirection.UP to FlickAction.Input("x"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+                ),
+            ),
+            "6\n< = >" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("6"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
+                    FlickDirection.UP to FlickAction.Input("="),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                )
+            ),
+            "7\n「」:" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("7"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
+                    FlickDirection.UP to FlickAction.Input("」"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
+                )
+            ),
+            "8\n〒々〆" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("8"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
+                    FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
+                )
+            ),
+            "9\n^|\\" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("9"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
+                    FlickDirection.UP to FlickAction.Input("|"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
+                )
+            ),
+            "0\n〜…" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("0"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                    FlickDirection.UP to FlickAction.Input("…"),
+                )
+            ),
+            "( ) [ ]" to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("("),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
+                    FlickDirection.UP to FlickAction.Input("["),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
+                )
+            ),
+            ".,/" to listOf(symbols3),
         )
+
+        spaceConvertStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(spaceActionMap))
+        }
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
