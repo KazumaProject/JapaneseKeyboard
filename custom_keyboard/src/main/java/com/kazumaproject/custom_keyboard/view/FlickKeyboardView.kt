@@ -16,10 +16,11 @@ import android.widget.GridLayout
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
+import com.google.android.material.R
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.FlickInputController
+import com.kazumaproject.custom_keyboard.controller.PetalFlickInputController
 import com.kazumaproject.custom_keyboard.controller.PopupPosition
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.data.FlickAction
@@ -48,6 +49,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val flickControllers = mutableListOf<FlickInputController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
+    private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
@@ -62,6 +64,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.clear()
         standardFlickControllers.forEach { it.cancel() }
         standardFlickControllers.clear()
+        petalFlickControllers.forEach { it.cancel() }
+        petalFlickControllers.clear()
 
         this.columnCount = layout.columnCount
         this.rowCount = layout.rowCount
@@ -72,6 +76,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
                 AppCompatImageButton(context).apply {
                     isFocusable = false
+                    elevation = 2f
                     setImageResource(keyData.drawableResId)
                     contentDescription = keyData.label
                     setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
@@ -118,9 +123,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
                     }
                     if (keyData.isSpecialKey) {
+                        elevation = 2f
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                    } else {
+                    } else if (keyData.keyType != KeyType.STANDARD_FLICK) {
                         setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light)
                     }
                 }
@@ -130,7 +136,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
                 width = 0
                 height = 0
+                elevation = 2f
                 if (keyData.isSpecialKey) {
+                    elevation = 2f
                     setMargins(6, 12, 6, 6)
                 } else {
                     setMargins(6, 9, 6, 9)
@@ -138,18 +146,17 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
             keyView.layoutParams = params
 
-            // ▼▼▼ FIX: ALL KEY TYPES ARE NOW HANDLED CORRECTLY ▼▼▼
             when (keyData.keyType) {
                 KeyType.CIRCULAR_FLICK -> {
                     val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
                     if (!flickKeyMapsList.isNullOrEmpty()) {
                         val controller = FlickInputController(context).apply {
                             val secondaryColor =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorSecondaryContainer)
+                                context.getColorFromAttr(R.attr.colorSecondaryContainer)
                             val surfaceContainerLow =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerLow)
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerLow)
                             val surfaceContainerHighest =
-                                context.getColorFromAttr(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
                             val textColor =
                                 context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
                             val dynamicColorTheme = FlickPopupColorTheme(
@@ -190,7 +197,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             attach(keyView, stringMaps)
-                            val scaleFactor = 1.3f
+                            val scaleFactor = 1.4f
                             val newCenter = 64f * scaleFactor
                             val newOrbit = 170f * scaleFactor
                             val newTextSize = 55f * scaleFactor
@@ -251,21 +258,26 @@ class FlickKeyboardView @JvmOverloads constructor(
                 KeyType.STANDARD_FLICK -> {
                     val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null && keyView is Button) {
-                        val label = keyData.label.split("\n").firstOrNull() ?: ""
-                        val baseColor =
-                            if (isDarkTheme) "#424242".toColorInt() else "#FFFFFF".toColorInt()
-                        val highlightColor =
-                            if (isDarkTheme) "#616161".toColorInt() else "#E0E0E0".toColorInt()
-                        val textColor = if (isDarkTheme) Color.WHITE else Color.BLACK
+                        val label = keyData.label
+
+                        val keyBaseColor =
+                            if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest) else context.getColorFromAttr(
+                                R.attr.colorSurface
+                            )
+                        val keyHighlightColor =
+                            context.getColorFromAttr(R.attr.colorSecondaryContainer)
+                        val keyTextColor = context.getColorFromAttr(R.attr.colorOnSurface)
+
                         val segmentedDrawable = SegmentedBackgroundDrawable(
                             label = label,
-                            baseColor = baseColor,
-                            highlightColor = highlightColor,
-                            textColor = textColor,
+                            baseColor = keyBaseColor,
+                            highlightColor = keyHighlightColor,
+                            textColor = keyTextColor,
                             cornerRadius = 20f
                         )
                         keyView.background = segmentedDrawable
                         keyView.setTextColor(Color.TRANSPARENT)
+
                         val controller = StandardFlickInputController(context).apply {
                             this.listener =
                                 object : StandardFlickInputController.StandardFlickListener {
@@ -273,12 +285,77 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         this@FlickKeyboardView.listener?.onKey(character)
                                     }
                                 }
+
+                            val popupBackgroundColor =
+                                if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest) else context.getColorFromAttr(
+                                    R.attr.colorSurface
+                                )
+                            val popupTextColor = context.getColorFromAttr(R.attr.colorOnSurface)
+                            val popupStrokeColor = context.getColorFromAttr(R.attr.colorOutline)
+
+                            val dynamicColorTheme = FlickPopupColorTheme(
+                                segmentHighlightGradientStartColor = popupBackgroundColor,
+                                textColor = popupTextColor,
+                                separatorColor = popupStrokeColor,
+                                segmentColor = 0,
+                                segmentHighlightGradientEndColor = 0,
+                                centerGradientStartColor = 0,
+                                centerGradientEndColor = 0,
+                                centerHighlightGradientStartColor = 0,
+                                centerHighlightGradientEndColor = 0
+                            )
+                            setPopupColors(dynamicColorTheme)
+
                             val stringMap = flickActionMap.mapValues { (_, flickAction) ->
                                 (flickAction as? FlickAction.Input)?.char ?: ""
                             }
                             attach(keyView, stringMap, segmentedDrawable)
                         }
                         standardFlickControllers.add(controller)
+                    }
+                }
+
+                KeyType.PETAL_FLICK -> {
+                    val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                    if (flickActionMap != null) {
+                        val controller = PetalFlickInputController(context).apply {
+                            val secondaryColor =
+                                context.getColorFromAttr(R.attr.colorSecondaryContainer)
+                            val surfaceContainerLow =
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerLow)
+                            val surfaceContainerHighest =
+                                if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest) else context.getColorFromAttr(
+                                    R.attr.colorSurface
+                                )
+                            val textColor =
+                                context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
+
+                            val dynamicColorTheme = FlickPopupColorTheme(
+                                segmentColor = surfaceContainerHighest,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest,
+                                centerGradientEndColor = surfaceContainerLow,
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
+                            )
+                            setPopupColors(dynamicColorTheme)
+
+                            elevation = 1f
+
+                            this.listener = object : PetalFlickInputController.PetalFlickListener {
+                                override fun onFlick(character: String) {
+                                    this@FlickKeyboardView.listener?.onKey(character)
+                                }
+                            }
+                            val stringMap = flickActionMap.mapValues { (_, flickAction) ->
+                                (flickAction as? FlickAction.Input)?.char ?: ""
+                            }
+                            attach(keyView, stringMap)
+                        }
+                        petalFlickControllers.add(controller)
                     }
                 }
 
@@ -315,6 +392,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickControllers.forEach { it.cancel() }
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
+        petalFlickControllers.forEach { it.cancel() }
     }
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {

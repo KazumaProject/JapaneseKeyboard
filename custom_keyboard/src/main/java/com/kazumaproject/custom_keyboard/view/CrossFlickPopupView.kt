@@ -66,9 +66,9 @@ class CrossFlickPopupView @JvmOverloads constructor(
         val cornerRadius = 20f
         backgroundShape.cornerRadius = cornerRadius
         val color = if (isHighlighted) {
-            context.getColorFromAttr(materialR.attr.colorPrimary)
+            context.getColorFromAttr(materialR.attr.colorSecondaryContainer)
         } else {
-            context.getColorFromAttr(materialR.attr.colorSurfaceContainerHighest)
+            context.getColorFromAttr(materialR.attr.colorSurfaceContainer)
         }
         backgroundShape.setColor(color)
     }
@@ -86,12 +86,19 @@ class CrossFlickPopupView @JvmOverloads constructor(
             }
 
             is FlickAction.Action -> {
+                // THE FIX: Check for drawable, then label, then fallback.
                 if (flickAction.drawableResId != null) {
+                    // If a drawable resource is provided, use the ImageView.
                     imageView.setImageResource(flickAction.drawableResId)
                     imageView.visibility = View.VISIBLE
                     textView.visibility = View.GONE
+                } else if (!flickAction.label.isNullOrEmpty()) {
+                    // If no drawable, but a label exists, use the TextView to show the label.
+                    textView.text = flickAction.label
+                    textView.visibility = View.VISIBLE
+                    imageView.visibility = View.GONE
                 } else {
-                    // Drawableがない場合は、Actionのクラス名などからラベルを生成（代替案）
+                    // Fallback for actions with no drawable and no label.
                     textView.text = flickAction.action.javaClass.simpleName.first().toString()
                     textView.visibility = View.VISIBLE
                     imageView.visibility = View.GONE
