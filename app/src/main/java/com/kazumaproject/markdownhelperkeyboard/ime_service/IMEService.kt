@@ -1307,8 +1307,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 vibrate()
                 val insertString = inputString.value
                 val sb = StringBuilder()
+                val isFlickInputMode = appPreference.flick_input_only_preference ?: false
                 text.forEach {
-                    handleFlick(char = it, insertString, sb, mainView)
+                    if (isFlickInputMode) {
+                        handleFlick(char = it, insertString, sb, mainView)
+                    } else {
+                        handleTap(char = it, insertString, sb, mainView)
+                    }
                 }
             }
 
@@ -1517,11 +1522,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
-                    KeyAction.Convert -> {}
                     KeyAction.Copy -> {}
                     KeyAction.Delete -> {}
                     KeyAction.Enter -> {}
-                    is KeyAction.InputText -> {}
+                    is KeyAction.InputText -> {
+                        when (action.text) {
+                            "ひらがな小文字" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickTop()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickLeft()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "半濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickRight()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                        }
+                    }
+
                     KeyAction.MoveCursorLeft -> {
                         onLeftKeyLongPressUp.set(true)
                         leftCursorKeyLongKeyPressed.set(false)
@@ -1542,15 +1586,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.Space -> {
+                    KeyAction.Convert, KeyAction.Space -> {
                         val insertString = inputString.value
                         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         if (cursorMoveMode.value) {
                             _cursorMoveMode.update { false }
                         } else {
                             if (!isSpaceKeyLongPressed) {
+                                val hankakuPreference =
+                                    appPreference.space_hankaku_preference ?: false
                                 handleSpaceKeyClick(
-                                    true,
+                                    hankakuPreference,
                                     insertString,
                                     suggestions,
                                     mainView
