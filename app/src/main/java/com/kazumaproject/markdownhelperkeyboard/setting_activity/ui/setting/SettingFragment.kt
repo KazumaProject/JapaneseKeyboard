@@ -8,6 +8,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.fragment.findNavController
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
@@ -147,6 +148,43 @@ class SettingFragment : PreferenceFragmentCompat() {
                     "現在、半角入力です"
                 } else {
                     "現在、全角入力です"
+                }
+                true
+            }
+        }
+
+        val sumireKeyboardInputModePreference =
+            findPreference<ListPreference>("sumire_keyboard_input_type_preference")
+
+        sumireKeyboardInputModePreference?.apply {
+            when (value) {
+                "flick-default" -> {
+                    summary = "フリック入力 - Default"
+                }
+
+                "flick-circle" -> {
+                    summary = "フリック入力 - Circle"
+                }
+
+                "flick-sumire" -> {
+                    summary = "スミレ入力"
+                }
+            }
+            setOnPreferenceChangeListener { preference, newValue ->
+                if (newValue is String) {
+                    when (newValue) {
+                        "flick-default" -> {
+                            preference.summary = "フリック入力 - Default"
+                        }
+
+                        "flick-circle" -> {
+                            preference.summary = "フリック入力 - Circle"
+                        }
+
+                        "flick-sumire" -> {
+                            preference.summary = "スミレ入力"
+                        }
+                    }
                 }
                 true
             }
