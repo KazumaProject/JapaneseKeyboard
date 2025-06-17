@@ -1151,7 +1151,8 @@ object KeyboardDefaultLayouts {
                 false,
                 dakutenToggleStates[0].action,
                 dynamicStates = dakutenToggleStates,
-                keyId = "dakuten_toggle_key"
+                keyId = "dakuten_toggle_key",
+                keyType = KeyType.CROSS_FLICK
             ),
             KeyData(
                 "わ",
@@ -1226,6 +1227,36 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
             )
         )
+
+        // 状態0 (^_^): タップ操作のみを持つマップ
+        val emojiStateFlickMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.InputText("^_^"),
+                label = "^_^"
+            )
+            // この状態ではフリックアクションを定義しない
+        )
+
+        // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
+        val dakutenStateFlickMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.ToggleDakuten, // タップ時のアクションを「濁点トグル」に
+                label = " 小゛゜"
+            ),
+            FlickDirection.UP to FlickAction.Action(
+                KeyAction.InputText("ひらがな小文字"),
+                label = "小"
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.InputText("濁点"),
+                label = "゛"
+            ),
+            FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.InputText("半濁点"),
+                label = "゜"
+            )
+        )
+
         val a = mapOf(
             FlickDirection.TAP to FlickAction.Input("あ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("い"),
@@ -1301,9 +1332,9 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("…")
         )
 
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
-            "PasteActionKey" to listOf(pasteActionMap),
-            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+        val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
+            "paste_action_key" to listOf(pasteActionMap),
+            "cursor_move_left_key" to listOf(cursorMoveActionMap),
             "あ" to listOf(a),
             "か" to listOf(ka),
             "さ" to listOf(sa),
@@ -1316,6 +1347,18 @@ object KeyboardDefaultLayouts {
             "わ" to listOf(wa),
             "、。?!" to listOf(symbols)
         )
+
+        // THE FIX: Use the standard .put() method, which should now resolve correctly
+        // because the type of flickMaps is explicitly declared.
+        dakutenToggleStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(emojiStateFlickMap))
+        }
+        dakutenToggleStates.getOrNull(1)?.label?.let { label ->
+            flickMaps.put(label, listOf(dakutenStateFlickMap))
+        }
+        
+        // 安定性のために keyId でも登録します（フォールバック用）
+        flickMaps.put("dakuten_toggle_key", listOf(dakutenStateFlickMap))
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
@@ -1433,8 +1476,8 @@ object KeyboardDefaultLayouts {
                 1,
                 false,
                 action = KeyAction.ToggleCase,
-                isSpecialKey = true
-            ), // isSpecialKey is true
+                isSpecialKey = false
+            ),
             KeyData(
                 "' \" ( )",
                 3,
@@ -1514,55 +1557,65 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("@"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("#"),
             FlickDirection.UP to FlickAction.Input("/"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("_")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("_"),
+            FlickDirection.DOWN to FlickAction.Input("1")
         )
         val abc = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('a').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('b').toString()),
-            FlickDirection.UP to FlickAction.Input(getCase('c').toString())
+            FlickDirection.UP to FlickAction.Input(getCase('c').toString()),
+            FlickDirection.DOWN to FlickAction.Input("2")
         )
         val def = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('d').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('e').toString()),
-            FlickDirection.UP to FlickAction.Input(getCase('f').toString())
+            FlickDirection.UP to FlickAction.Input(getCase('f').toString()),
+            FlickDirection.DOWN to FlickAction.Input("3")
         )
         val ghi = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('g').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('h').toString()),
-            FlickDirection.UP to FlickAction.Input(getCase('i').toString())
+            FlickDirection.UP to FlickAction.Input(getCase('i').toString()),
+            FlickDirection.DOWN to FlickAction.Input("4")
         )
         val jkl = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('j').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('k').toString()),
-            FlickDirection.UP to FlickAction.Input(getCase('l').toString())
+            FlickDirection.UP to FlickAction.Input(getCase('l').toString()),
+            FlickDirection.DOWN to FlickAction.Input("5")
         )
         val mno = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('m').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('n').toString()),
-            FlickDirection.UP to FlickAction.Input(getCase('o').toString())
+            FlickDirection.UP to FlickAction.Input(getCase('o').toString()),
+            FlickDirection.DOWN to FlickAction.Input("6")
         )
         val pqrs = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('p').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('q').toString()),
             FlickDirection.UP to FlickAction.Input(getCase('r').toString()),
-            FlickDirection.DOWN to FlickAction.Input(getCase('s').toString())
+            FlickDirection.DOWN to FlickAction.Input(getCase('s').toString()),
+            FlickDirection.DOWN to FlickAction.Input("7")
         )
         val tuv = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('t').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('u').toString()),
-            FlickDirection.UP to FlickAction.Input(getCase('v').toString())
+            FlickDirection.UP to FlickAction.Input(getCase('v').toString()),
+            FlickDirection.DOWN to FlickAction.Input("8")
         )
         val wxyz = mapOf(
             FlickDirection.TAP to FlickAction.Input(getCase('w').toString()),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('x').toString()),
             FlickDirection.UP to FlickAction.Input(getCase('y').toString()),
-            FlickDirection.DOWN to FlickAction.Input(getCase('z').toString())
+            FlickDirection.DOWN to FlickAction.Input(getCase('z').toString()),
+            FlickDirection.DOWN to FlickAction.Input("19")
         )
         val symbols2 = mapOf(
             FlickDirection.TAP to FlickAction.Input("'"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("\""),
             FlickDirection.UP to FlickAction.Input("("),
-            FlickDirection.DOWN to FlickAction.Input(")")
+            FlickDirection.DOWN to FlickAction.Input(")"),
+            FlickDirection.DOWN to FlickAction.Input("0")
         )
         val symbols3 = mapOf(
             FlickDirection.TAP to FlickAction.Input("."),
