@@ -24,6 +24,12 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         color = "#37474F".toColorInt()
         style = Paint.Style.FILL
     }
+
+    // ▼▼▼ 追加: 枠線描画用のPaintオブジェクト ▼▼▼
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+
     private val backgroundPath = Path()
     private val textBounds = Rect()
     private var viewRotation = 0f
@@ -33,15 +39,24 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     private var defaultColor = "#455A64".toColorInt()
     private var highlightColor = "#37474F".toColorInt()
 
+    // ▼▼▼ 追加: 枠線用の色を保持するプロパティ ▼▼▼
+    private var separatorColor = Color.LTGRAY
+
     init {
         // init時のテキスト色はテーマで上書きされる前提
         setTextColor(Color.WHITE)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
+        // ▼▼▼ 追加: 枠線の太さを設定 ▼▼▼
+        strokePaint.strokeWidth = dpToPx(1f)
     }
 
+    /**
+     * ▼▼▼ 変更点: 枠線用の色もテーマから受け取るように変更 ▼▼▼
+     */
     fun setColors(theme: FlickPopupColorTheme) {
         this.defaultColor = theme.centerGradientStartColor
         this.highlightColor = theme.segmentHighlightGradientStartColor
+        this.separatorColor = theme.separatorColor
         // Viewのテキストカラー状態を更新する
         setTextColor(theme.textColor)
     }
@@ -58,6 +73,9 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         invalidate()
     }
 
+    /**
+     * ▼▼▼ 変更点: 背景の描画後に、枠線も描画する処理を追加 ▼▼▼
+     */
     override fun onDraw(canvas: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
@@ -68,11 +86,17 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         } else {
             this.highlightColor
         }
+        // 枠線用のPaintに色を設定
+        strokePaint.color = this.separatorColor
 
         updatePath(w, h)
 
+        // 背景と枠線の両方が回転されるように、withRotationブロック内で描画
         canvas.withRotation(viewRotation, w / 2f, h / 2f) {
+            // 1. 背景（塗りつぶし）を描画
             drawPath(backgroundPath, backgroundPaint)
+            // 2. 枠線を描画
+            drawPath(backgroundPath, strokePaint)
         }
 
         val textToDraw = this.text.toString()
@@ -120,5 +144,14 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         }
 
         backgroundPath.close()
+    }
+
+    // ▼▼▼ 追加: dpをピクセルに変換するヘルパー関数 ▼▼▼
+    private fun dpToPx(dp: Float): Float {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp,
+            context.resources.displayMetrics
+        )
     }
 }
