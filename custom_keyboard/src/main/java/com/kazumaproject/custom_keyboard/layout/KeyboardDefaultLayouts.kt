@@ -20,8 +20,12 @@ object KeyboardDefaultLayouts {
     ): KeyboardLayout {
         val baseLayout = when (mode) {
             KeyboardInputMode.HIRAGANA -> createHiraganaStandardFlickLayout(isDefaultKey = true)
-            KeyboardInputMode.ENGLISH -> createEnglishLayout(false)
-            KeyboardInputMode.SYMBOLS -> createSymbolLayout()
+            KeyboardInputMode.ENGLISH -> createEnglishStandardFlickLayout(
+                isUpperCase = false,
+                isDefaultKey = true
+            )
+
+            KeyboardInputMode.SYMBOLS -> createSymbolStandardFlickLayout(isDefaultKey = true)
         }
 
         var finalLayout = baseLayout
@@ -1317,7 +1321,10 @@ object KeyboardDefaultLayouts {
     }
 
     //region English Layout
-    private fun createEnglishStandardFlickLayout(isUpperCase: Boolean): KeyboardLayout {
+    private fun createEnglishStandardFlickLayout(
+        isUpperCase: Boolean,
+        isDefaultKey: Boolean
+    ): KeyboardLayout {
         val keys = listOf(
             KeyData(
                 "PasteActionKey",
@@ -1357,15 +1364,69 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
-            KeyData("@#/_", 0, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("ABC", 0, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("DEF", 0, 3, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("GHI", 1, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("JKL", 1, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("MNO", 1, 3, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("PQRS", 2, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("TUV", 2, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("WXYZ", 2, 3, true, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                "@#/_",
+                0,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "ABC",
+                0,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "DEF",
+                0,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "GHI",
+                1,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "JKL",
+                1,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "MNO",
+                1,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "PQRS",
+                2,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "TUV",
+                2,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "WXYZ",
+                2,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
             KeyData(
                 "a/A",
                 3,
@@ -1374,8 +1435,20 @@ object KeyboardDefaultLayouts {
                 action = KeyAction.ToggleCase,
                 isSpecialKey = true
             ), // isSpecialKey is true
-            KeyData("' \" ( )", 3, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData(". , ? !", 3, 3, true, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                "' \" ( )",
+                3,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                ". , ? !",
+                3,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
             KeyData(
                 "Del",
                 0,
@@ -1519,7 +1592,9 @@ object KeyboardDefaultLayouts {
     //endregion
 
     //region Symbol Layout
-    private fun createSymbolStandardFlickLayout(): KeyboardLayout {
+    private fun createSymbolStandardFlickLayout(
+        isDefaultKey: Boolean
+    ): KeyboardLayout {
         val keys = listOf(
             KeyData(
                 "PasteActionKey",
@@ -1559,16 +1634,76 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
-            KeyData("1\n顔文字", 0, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("2\n数字", 0, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("3\n通貨", 0, 3, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("4\n矢印", 1, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("5\n数学", 1, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("6\n括弧", 1, 3, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("7\n読点", 2, 1, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("8\n記号", 2, 2, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("9\n他", 2, 3, true, keyType = KeyType.STANDARD_FLICK),
-            KeyData("0", 3, 2, true, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                "1\n顔文字",
+                0,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "2\n数字",
+                0,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "3\n通貨",
+                0,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "4\n矢印",
+                1,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "5\n数学",
+                1,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "6\n括弧",
+                1,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "7\n読点",
+                2,
+                1,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "8\n記号",
+                2,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "9\n他",
+                2,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "0",
+                3,
+                2,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
             KeyData(
                 spaceConvertStates[0].label ?: "",
                 3,
@@ -1580,7 +1715,13 @@ object KeyboardDefaultLayouts {
                 colSpan = 1,
                 keyId = "space_convert_key"
             ),
-            KeyData(".,/", 3, 3, true, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                ".,/",
+                3,
+                3,
+                true,
+                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+            ),
             KeyData(
                 "Del",
                 0,

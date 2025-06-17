@@ -72,10 +72,12 @@ class PetalFlickInputController(private val context: Context) {
     }
 
     private fun showDirectionalPopup(direction: FlickDirection) {
+        val text = characterMap[direction] ?: ""
         val popupView = directionalPopup.contentView as DirectionalKeyPopupView
         colorTheme?.let { popupView.setColors(it) }
+        popupView.text = text
+        if (text.isEmpty()) return
         popupView.setFlickDirection(direction)
-        popupView.text = characterMap[direction] ?: ""
 
         val currentAnchor = anchorView ?: return
         val location = IntArray(2); currentAnchor.getLocationInWindow(location)
