@@ -1228,8 +1228,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
 
     private fun updateKeyboardLayout() {
-        // ▼▼▼ 変更後 ▼▼▼
-        // 管理している全ての動的キーの状態をマップに詰めて渡す
         val dynamicStates = mapOf(
             "enter_key" to currentEnterKeyIndex,
             "dakuten_toggle_key" to currentDakutenKeyIndex,
