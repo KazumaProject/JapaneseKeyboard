@@ -214,6 +214,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val cursorMoveMode: StateFlow<Boolean> = _cursorMoveMode
     private var hasConvertedKatakana = false
 
+    private var lastNightMode = 0
+
     private val deletedBuffer = StringBuilder()
 
     private var keyboardOrder: List<KeyboardType> = emptyList()
@@ -296,12 +298,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         const val LONG_DELAY_TIME = 64L
     }
 
+    override fun onInitializeInterface() {
+        super.onInitializeInterface()
+        mainLayoutBinding?.let { initializeKeyboardView(it) }
+    }
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter()
+        lastNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
     }
 
     override fun onCreateInputView(): View? {
@@ -522,6 +530,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 setComposingText("", 0)
             }
         }
+
+        val currentNightMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        if (currentNightMode != lastNightMode) {
+            val themeAwareContext: Context = createConfigurationContext(newConfig)
+            val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+
+            val finalThemeAwareContext = if (isDynamicColorsEnable) {
+                DynamicColors.wrapContextIfAvailable(
+                    themeAwareContext,
+                    R.style.Theme_MarkdownKeyboard
+                )
+            } else {
+                ContextThemeWrapper(themeAwareContext, R.style.Theme_MarkdownKeyboard)
+            }
+
+            val themeAwareInflater = LayoutInflater.from(finalThemeAwareContext)
+
+            val newBinding = MainLayoutBinding.inflate(themeAwareInflater)
+            mainLayoutBinding = newBinding
+
+            setInputView(newBinding.root)
+
+            initializeKeyboardView(newBinding)
+
+        }
+
     }
 
     override fun onUpdateSelection(
@@ -585,7 +619,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
-
             when (mainView.keyboardView.currentInputMode.value) {
                 InputMode.ModeJapanese -> {
                     val insertString = inputString.value
@@ -706,6 +739,56 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private fun initializeKeyboardView(binding: MainLayoutBinding) {
+        Timber.d("initializeKeyboardView: Setting up listeners and views.")
+        isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
+        val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+
+        val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
+            flexDirection = FlexDirection.COLUMN
+            justifyContent = JustifyContent.SPACE_AROUND
+        }
+        val flexboxLayoutManagerRow = FlexboxLayoutManager(applicationContext).apply {
+            flexDirection = FlexDirection.ROW
+            justifyContent = JustifyContent.FLEX_START
+        }
+
+        if (isDynamicColorsEnable) {
+            binding.apply {
+                root.setBackgroundResource(
+                    com.kazumaproject.core.R.drawable.keyboard_root_material
+                )
+                suggestionViewParent.setBackgroundResource(
+                    com.kazumaproject.core.R.drawable.keyboard_root_material
+                )
+                suggestionVisibility.setBackgroundResource(
+                    com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
+                )
+            }
+        }
+
+        setupCustomKeyboardListeners(binding)
+        setSuggestionRecyclerView(
+            binding, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
+        )
+        setSymbolKeyboard(binding)
+        setQWERTYKeyboard(binding)
+
+        if (isTablet == true) {
+            setTabletKeyListeners(binding)
+        } else {
+            setTenKeyListeners(binding)
+        }
+
+        // Coroutine scope management
+        if (lifecycle.currentState == Lifecycle.State.CREATED) {
+            startScope(binding)
+        } else {
+            scope.coroutineContext.cancelChildren()
+            startScope(binding)
+        }
     }
 
     private fun setTenKeyListeners(
