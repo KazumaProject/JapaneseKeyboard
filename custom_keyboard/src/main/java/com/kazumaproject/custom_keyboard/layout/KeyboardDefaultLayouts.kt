@@ -16,16 +16,59 @@ object KeyboardDefaultLayouts {
      * @return The final, state-applied KeyboardLayout.
      */
     fun createFinalLayout(
-        mode: KeyboardInputMode, dynamicKeyStates: Map<String, Int>
+        mode: KeyboardInputMode,
+        dynamicKeyStates: Map<String, Int>,
+        inputType: String
     ): KeyboardLayout {
-        val baseLayout = when (mode) {
-            KeyboardInputMode.HIRAGANA -> createHiraganaStandardFlickLayout(isDefaultKey = true)
-            KeyboardInputMode.ENGLISH -> createEnglishStandardFlickLayout(
-                isUpperCase = false,
-                isDefaultKey = true
-            )
+        val baseLayout = when (inputType) {
+            "flick-default" -> {
+                when (mode) {
+                    KeyboardInputMode.HIRAGANA -> createHiraganaStandardFlickLayout(isDefaultKey = true)
+                    KeyboardInputMode.ENGLISH -> createEnglishStandardFlickLayout(
+                        isUpperCase = false,
+                        isDefaultKey = true
+                    )
 
-            KeyboardInputMode.SYMBOLS -> createSymbolStandardFlickLayout(isDefaultKey = true)
+                    KeyboardInputMode.SYMBOLS -> createSymbolStandardFlickLayout(isDefaultKey = true)
+                }
+            }
+
+            "flick-circle" -> {
+                when (mode) {
+                    KeyboardInputMode.HIRAGANA -> createHiraganaStandardFlickLayout(isDefaultKey = false)
+                    KeyboardInputMode.ENGLISH -> createEnglishStandardFlickLayout(
+                        isUpperCase = false,
+                        isDefaultKey = false
+                    )
+
+                    KeyboardInputMode.SYMBOLS -> createSymbolStandardFlickLayout(isDefaultKey = false)
+                }
+            }
+
+            "flick-sumire" -> {
+                when (mode) {
+                    KeyboardInputMode.HIRAGANA -> createHiraganaLayout()
+                    KeyboardInputMode.ENGLISH -> createEnglishLayout(isUpperCase = false)
+                    KeyboardInputMode.SYMBOLS -> createSymbolLayout()
+                }
+            }
+
+            else -> {
+                when (mode) {
+                    KeyboardInputMode.HIRAGANA -> createHiraganaStandardFlickLayout(
+                        isDefaultKey = true
+                    )
+
+                    KeyboardInputMode.ENGLISH -> createEnglishStandardFlickLayout(
+                        isUpperCase = false,
+                        isDefaultKey = true
+                    )
+
+                    KeyboardInputMode.SYMBOLS -> createSymbolStandardFlickLayout(
+                        isDefaultKey = true
+                    )
+                }
+            }
         }
 
         var finalLayout = baseLayout

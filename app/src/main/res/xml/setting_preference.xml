@@ -30,6 +30,18 @@
             android:key="space_key_preference"
             android:summary="空白を半角入力"
             android:title="空白を半角入力" />
+
+        <PreferenceCategory android:title="スミレ入力キーボード">
+            <ListPreference
+                android:defaultValue="@string/vibration_default"
+                android:dialogTitle="選択してください"
+                android:entries="@array/sumire_keyboard_input_options"
+                android:entryValues="@array/sumire_keyboard_input_values"
+                android:key="sumire_keyboard_input_type_preference"
+                android:summary="フリック入力 - Default"
+                android:title="入力スタイル" />
+        </PreferenceCategory>
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="操作">
