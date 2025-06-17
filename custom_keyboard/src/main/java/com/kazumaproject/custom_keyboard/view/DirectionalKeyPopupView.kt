@@ -55,7 +55,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
      */
     fun setColors(theme: FlickPopupColorTheme) {
         this.defaultColor = theme.centerGradientStartColor
-        this.highlightColor = theme.segmentHighlightGradientStartColor
+        this.highlightColor = theme.centerGradientStartColor
         this.separatorColor = theme.separatorColor
         // Viewのテキストカラー状態を更新する
         setTextColor(theme.textColor)

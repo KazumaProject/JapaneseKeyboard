@@ -56,9 +56,9 @@ object KeyboardDefaultLayouts {
         )
     )
 
-    // ▼▼▼ NEW: Define states for the Space/Convert key ▼▼▼
     private val spaceConvertStates = listOf(
-        FlickAction.Action(KeyAction.Space, "空白"), FlickAction.Action(KeyAction.Convert, "変換")
+        FlickAction.Action(KeyAction.Space, "空白"),
+        FlickAction.Action(KeyAction.Convert, "変換")
     )
 
     /**
@@ -1061,7 +1061,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.MoveCursorLeft,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
-                keyType = KeyType.CROSS_FLICK
+                keyType = KeyType.CROSS_FLICK,
             ),
             KeyData(
                 "モード",
@@ -1182,12 +1182,13 @@ object KeyboardDefaultLayouts {
                 spaceConvertStates[0].label ?: "",
                 1,
                 4,
-                false,
+                true,
                 spaceConvertStates[0].action,
                 dynamicStates = spaceConvertStates,
                 isSpecialKey = true,
                 rowSpan = 1,
-                keyId = "space_convert_key"
+                keyId = "space_convert_key",
+                keyType = KeyType.CROSS_FLICK
             ),
             KeyData(
                 enterKeyStates[0].label ?: "",
@@ -1228,6 +1229,23 @@ object KeyboardDefaultLayouts {
             )
         )
 
+        val spaceActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Space,
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.Space,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+            )
+        )
+
+        val conversionActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Convert,
+            ),
+        )
+
         // 状態0 (^_^): タップ操作のみを持つマップ
         val emojiStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
@@ -1240,7 +1258,7 @@ object KeyboardDefaultLayouts {
         // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
         val dakutenStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.ToggleDakuten, // タップ時のアクションを「濁点トグル」に
+                KeyAction.ToggleDakuten,
                 label = " 小゛゜"
             ),
             FlickDirection.UP to FlickAction.Action(
@@ -1333,8 +1351,8 @@ object KeyboardDefaultLayouts {
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
-            "paste_action_key" to listOf(pasteActionMap),
-            "cursor_move_left_key" to listOf(cursorMoveActionMap),
+            "PasteActionKey" to listOf(pasteActionMap),
+            "CursorMoveLeft" to listOf(cursorMoveActionMap),
             "あ" to listOf(a),
             "か" to listOf(ka),
             "さ" to listOf(sa),
@@ -1345,20 +1363,23 @@ object KeyboardDefaultLayouts {
             "や" to listOf(ya),
             "ら" to listOf(ra),
             "わ" to listOf(wa),
-            "、。?!" to listOf(symbols)
+            "、。?!" to listOf(symbols),
         )
 
-        // THE FIX: Use the standard .put() method, which should now resolve correctly
-        // because the type of flickMaps is explicitly declared.
         dakutenToggleStates.getOrNull(0)?.label?.let { label ->
             flickMaps.put(label, listOf(emojiStateFlickMap))
         }
         dakutenToggleStates.getOrNull(1)?.label?.let { label ->
             flickMaps.put(label, listOf(dakutenStateFlickMap))
         }
-        
-        // 安定性のために keyId でも登録します（フォールバック用）
-        flickMaps.put("dakuten_toggle_key", listOf(dakutenStateFlickMap))
+
+        spaceConvertStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(spaceActionMap))
+        }
+
+        spaceConvertStates.getOrNull(1)?.label?.let { label ->
+            flickMaps.put(label, listOf(conversionActionMap))
+        }
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }

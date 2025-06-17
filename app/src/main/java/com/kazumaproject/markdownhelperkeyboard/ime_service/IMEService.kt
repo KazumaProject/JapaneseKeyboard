@@ -298,12 +298,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onCreate() {
         super.onCreate()
+        Timber.d("onCreate")
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter()
     }
 
     override fun onCreateInputView(): View? {
+        Timber.d("onCreateInputView")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
         val ctx = if (isDynamicColorsEnable) {
@@ -1285,10 +1287,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var customKeyboardMode = KeyboardInputMode.HIRAGANA
 
     private fun clearDeleteBufferWithView() {
-        if (deletedBuffer.isNotEmpty()) {
-            clearDeletedBufferWithoutResetLayout()
-            suggestionAdapter?.setUndoEnabled(false)
-            setClipboardText()
+        appPreference.undo_enable_preference?.let {
+            if (it && deletedBuffer.isNotEmpty()) {
+                clearDeletedBufferWithoutResetLayout()
+                suggestionAdapter?.setUndoEnabled(false)
+                setClipboardText()
+            }
         }
     }
 
@@ -1494,13 +1498,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Space -> {}
+
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {
                         dakutenSmallActionForSumire(mainView)
                     }
 
                     KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire(mainView)
+
                     }
                 }
             }
@@ -1537,10 +1542,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.Space -> {}
+                    KeyAction.Space -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (cursorMoveMode.value) {
+                            _cursorMoveMode.update { false }
+                        } else {
+                            if (!isSpaceKeyLongPressed) {
+                                handleSpaceKeyClick(
+                                    true,
+                                    insertString,
+                                    suggestions,
+                                    mainView
+                                )
+                            }
+                        }
+                        isSpaceKeyLongPressed = false
+                    }
+
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {}
-                    KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleDakuten -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
                 }
             }
 
@@ -1555,11 +1579,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
                 when (action) {
                     is KeyAction.InputText -> {
-                        if (action.text == "^_^") {
-                            _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
-                            stringInTail.set("")
-                            finishComposingText()
-                            setComposingText("", 0)
+                        when (action.text) {
+                            "^_^" -> {
+                                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                                stringInTail.set("")
+                                finishComposingText()
+                                setComposingText("", 0)
+                            }
+
+                            "ひらがな小文字" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickTop()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickLeft()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "半濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickRight()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
                         }
                     }
 
