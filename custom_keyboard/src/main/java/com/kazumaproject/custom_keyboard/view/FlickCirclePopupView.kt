@@ -56,7 +56,6 @@ class FlickCirclePopupView @JvmOverloads constructor(
 
     init {
         applyThemeToPaints()
-        alpha = 0.9f
     }
 
     // --- State and Properties ---
@@ -301,8 +300,8 @@ class FlickCirclePopupView @JvmOverloads constructor(
         targetPositions[FlickDirection.TAP] = PointF(centerX, centerY)
         segmentPaths.forEach { (direction, path) ->
             val bounds = RectF()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) { // R is API 30, BAKLAVA is 35
-                path.computeBounds(bounds, true)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+                path.computeBounds(bounds)
             } else {
                 path.computeBounds(bounds, true)
             }

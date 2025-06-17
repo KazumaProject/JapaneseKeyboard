@@ -202,6 +202,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var mozcUTWiki: Boolean? = false
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
+    private var sumireInputKeyType: String? = "flick-default"
 
     private var isTablet: Boolean? = false
 
@@ -213,7 +214,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val cursorMoveMode: StateFlow<Boolean> = _cursorMoveMode
     private var hasConvertedKatakana = false
 
-    // 1. 削除された文字を蓄積するバッファ
     private val deletedBuffer = StringBuilder()
 
     private var keyboardOrder: List<KeyboardType> = emptyList()
@@ -298,12 +298,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     override fun onCreate() {
         super.onCreate()
+        Timber.d("onCreate")
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter()
     }
 
     override fun onCreateInputView(): View? {
+        Timber.d("onCreateInputView")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
         val ctx = if (isDynamicColorsEnable) {
@@ -381,6 +383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             nBest = n_best_preference ?: 4
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
+            sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -482,9 +485,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mozcUTWiki = null
         mozcUTNeologd = null
         mozcUTWeb = null
+        sumireInputKeyType = null
+        isTablet = null
         actionInDestroy()
         System.gc()
-        isTablet = null
     }
 
     override fun onWindowHidden() {
@@ -1202,14 +1206,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 KeyboardType.SUMIRE -> {
-                    // SUMIREキーボードの表示はここだけで行う
                     customKeyboardMode = KeyboardInputMode.HIRAGANA
                     val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
-                        KeyboardInputMode.HIRAGANA,
+                        mode = KeyboardInputMode.HIRAGANA,
                         dynamicKeyStates = mapOf(
                             "enter_key" to 0,
                             "dakuten_toggle_key" to 0
-                        )
+                        ),
+                        inputType = sumireInputKeyType ?: "flick-default"
                     )
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
@@ -1228,8 +1232,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
 
     private fun updateKeyboardLayout() {
-        // ▼▼▼ 変更後 ▼▼▼
-        // 管理している全ての動的キーの状態をマップに詰めて渡す
         val dynamicStates = mapOf(
             "enter_key" to currentEnterKeyIndex,
             "dakuten_toggle_key" to currentDakutenKeyIndex,
@@ -1238,7 +1240,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
             mode = customKeyboardMode,
-            dynamicKeyStates = dynamicStates
+            dynamicKeyStates = dynamicStates,
+            inputType = sumireInputKeyType ?: "flick-default"
         )
         mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
     }
@@ -1287,10 +1290,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var customKeyboardMode = KeyboardInputMode.HIRAGANA
 
     private fun clearDeleteBufferWithView() {
-        if (deletedBuffer.isNotEmpty()) {
-            clearDeletedBufferWithoutResetLayout()
-            suggestionAdapter?.setUndoEnabled(false)
-            setClipboardText()
+        appPreference.undo_enable_preference?.let {
+            if (it && deletedBuffer.isNotEmpty()) {
+                clearDeletedBufferWithoutResetLayout()
+                suggestionAdapter?.setUndoEnabled(false)
+                setClipboardText()
+            }
         }
     }
 
@@ -1305,8 +1310,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 vibrate()
                 val insertString = inputString.value
                 val sb = StringBuilder()
+                val isFlickInputMode = appPreference.flick_input_only_preference ?: false
                 text.forEach {
-                    handleFlick(char = it, insertString, sb, mainView)
+                    if (isFlickInputMode) {
+                        handleFlick(char = it, insertString, sb, mainView)
+                    } else {
+                        handleTap(char = it, insertString, sb, mainView)
+                    }
                 }
             }
 
@@ -1496,13 +1506,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Space -> {}
+
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {
                         dakutenSmallActionForSumire(mainView)
                     }
 
                     KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire(mainView)
+
                     }
                 }
             }
@@ -1514,11 +1525,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
-                    KeyAction.Convert -> {}
                     KeyAction.Copy -> {}
                     KeyAction.Delete -> {}
                     KeyAction.Enter -> {}
-                    is KeyAction.InputText -> {}
+                    is KeyAction.InputText -> {
+                        when (action.text) {
+                            "ひらがな小文字" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickTop()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickLeft()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "半濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickRight()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                        }
+                    }
+
                     KeyAction.MoveCursorLeft -> {
                         onLeftKeyLongPressUp.set(true)
                         leftCursorKeyLongKeyPressed.set(false)
@@ -1539,10 +1589,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.Space -> {}
+                    KeyAction.Convert, KeyAction.Space -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (cursorMoveMode.value) {
+                            _cursorMoveMode.update { false }
+                        } else {
+                            if (!isSpaceKeyLongPressed) {
+                                val hankakuPreference =
+                                    appPreference.space_hankaku_preference ?: false
+                                handleSpaceKeyClick(
+                                    hankakuPreference,
+                                    insertString,
+                                    suggestions,
+                                    mainView
+                                )
+                            }
+                        }
+                        isSpaceKeyLongPressed = false
+                    }
+
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {}
-                    KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleDakuten -> {
+                        dakutenSmallActionForSumire(mainView)
+                    }
                 }
             }
 
@@ -1557,11 +1628,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
                 when (action) {
                     is KeyAction.InputText -> {
-                        if (action.text == "^_^") {
-                            _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
-                            stringInTail.set("")
-                            finishComposingText()
-                            setComposingText("", 0)
+                        when (action.text) {
+                            "^_^" -> {
+                                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                                stringInTail.set("")
+                                finishComposingText()
+                                setComposingText("", 0)
+                            }
+
+                            "ひらがな小文字" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickTop()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickLeft()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
+                            "半濁点" -> {
+                                val insertString = inputString.value
+                                if (insertString.isEmpty()) return
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickRight()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            }
+
                         }
                     }
 
