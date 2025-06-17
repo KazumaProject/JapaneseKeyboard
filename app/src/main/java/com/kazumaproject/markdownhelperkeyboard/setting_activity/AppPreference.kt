@@ -29,9 +29,11 @@ object AppPreference {
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
+    private val SUMIRE_INPUT_SELECTION_PREFERENCE =
+        Pair("sumire_keyboard_input_type_preference", "flick-default")
 
     private val defaultKeyboardOrderJson = gson.toJson(
-        listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE, KeyboardType.QWERTY, KeyboardType.ROMAJI)
+        listOf(KeyboardType.TENKEY, KeyboardType.QWERTY)
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
 
@@ -163,5 +165,14 @@ object AppPreference {
         get() = preferences.getBoolean(SPACE_HANKAKU_ENABLE.first, SPACE_HANKAKU_ENABLE.second)
         set(value) = preferences.edit {
             it.putBoolean(SPACE_HANKAKU_ENABLE.first, value ?: false)
+        }
+
+    var sumire_input_selection_preference: String?
+        get() = preferences.getString(
+            SUMIRE_INPUT_SELECTION_PREFERENCE.first,
+            SUMIRE_INPUT_SELECTION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "flick-default")
         }
 }
