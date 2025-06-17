@@ -17,6 +17,6 @@ sealed class FlickAction {
     data class Action(
         val action: KeyAction,
         val label: String? = null,
-        @DrawableRes val drawableResId: Int? = null
+        @DrawableRes val drawableResId: Int? = null,
     ) : FlickAction()
 }
