@@ -86,7 +86,7 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
             this.text = text
             isAllCaps = false
             setTextColor(this@FlickGridPopupView.textColor)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
             gravity = Gravity.CENTER
             background = createButtonDrawable(false)
         }
