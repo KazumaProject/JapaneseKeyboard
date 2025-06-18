@@ -1,9 +1,15 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.user_dictionary
 
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
@@ -11,14 +17,22 @@ import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.Lifecycle
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.kazumaproject.core.domain.cryptoManager.CryptoManager
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserDictionaryBinding
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
-import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.adapter.UserWordAdapter
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter.UserWordAdapter
 import dagger.hilt.android.AndroidEntryPoint
+import java.io.FileOutputStream
 
 @AndroidEntryPoint
 class UserDictionaryFragment : Fragment() {
@@ -27,6 +41,26 @@ class UserDictionaryFragment : Fragment() {
 
     private var _binding: FragmentUserDictionaryBinding? = null
     private val binding get() = _binding!!
+
+    // Export
+    private val exportLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    exportWords(uri)
+                }
+            }
+        }
+
+    // Import
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    importWords(uri)
+                }
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,11 +73,107 @@ class UserDictionaryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setupMenu()
         setupRecyclerView()
         setupListeners()
         observeViewModel()
         setupSpinner()
-        resetInputFields() // 初期状態を設定
+        resetInputFields()
+    }
+
+    private fun setupMenu() {
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.user_dictionary_menu, menu)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    R.id.action_export -> {
+                        launchExportFilePicker()
+                        true
+                    }
+
+                    R.id.action_import -> {
+                        launchImportFilePicker()
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
+    private fun launchExportFilePicker() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, "user_dictionary_backup.dat")
+        }
+        exportLauncher.launch(intent)
+    }
+
+    private fun launchImportFilePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        importLauncher.launch(intent)
+    }
+
+    private fun exportWords(uri: Uri) {
+        viewModel.allWords.value?.let { words ->
+            if (words.isEmpty()) {
+                Toast.makeText(context, "エクスポートする単語がありません", Toast.LENGTH_SHORT)
+                    .show()
+                return
+            }
+            try {
+                val jsonString = Gson().toJson(words)
+                val encryptedData = CryptoManager.encrypt(jsonString.toByteArray(Charsets.UTF_8))
+
+                requireContext().contentResolver.openFileDescriptor(uri, "w")?.use {
+                    FileOutputStream(it.fileDescriptor).use { fos ->
+                        fos.write(encryptedData)
+                    }
+                }
+                Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                Toast.makeText(context, "エクスポートに失敗しました", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun importWords(uri: Uri) {
+        try {
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            val encryptedData = inputStream?.readBytes()
+            inputStream?.close()
+
+            if (encryptedData != null) {
+                val decryptedData = CryptoManager.decrypt(encryptedData)
+                val jsonString = String(decryptedData, Charsets.UTF_8)
+                val type = object : TypeToken<List<UserWord>>() {}.type
+                val words: List<UserWord> = Gson().fromJson(jsonString, type)
+
+                viewModel.insertAll(words.map { it.copy(id = 0) }) // idを0にして新しい単語として挿入
+                Toast.makeText(
+                    context,
+                    "${words.size}件の単語をインポートしました",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(
+                context,
+                "インポートに失敗しました。ファイルが破損しているか、形式が正しくありません。",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     private fun setupSpinner() {
@@ -106,7 +236,6 @@ class UserDictionaryFragment : Fragment() {
 
         val posIndex = binding.spinnerPos.selectedItemPosition
         val posScoreText = binding.editTextPosScore.text.toString()
-        // デフォルトスコアを使用
         val posScore = posScoreText.toIntOrNull() ?: UserDictionaryViewModel.DEFAULT_SCORE
 
         val newUserWord =
@@ -181,9 +310,6 @@ class UserDictionaryFragment : Fragment() {
         view?.clearFocus()
     }
 
-    /**
-     * 入力フィールドをデフォルト値にリセットする
-     */
     private fun resetInputFields() {
         binding.editTextWord.text?.clear()
         binding.editTextReading.text?.clear()

@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.adapter
+package com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter
 
 import android.view.LayoutInflater
 import android.view.View
