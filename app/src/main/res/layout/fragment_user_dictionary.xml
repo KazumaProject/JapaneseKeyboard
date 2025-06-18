@@ -52,54 +52,10 @@
                         android:layout_height="wrap_content" />
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- 詳細設定 -->
-                <LinearLayout
-                    android:id="@+id/layout_details"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone"
-                    tools:visibility="visible">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="16dp"
-                        android:text="品詞" />
-
-                    <Spinner
-                        android:id="@+id/spinner_pos"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp" />
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:hint="品詞スコア">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/edit_text_pos_score"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                </LinearLayout>
-
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp">
-
-                    <Button
-                        android:id="@+id/button_details"
-                        style="?android:attr/borderlessButtonStyle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:text="詳細" />
 
                     <Button
                         android:id="@+id/button_add"
