@@ -66,7 +66,8 @@ object AppPreference {
 
     var vibration_timing_preference: String?
         get() = preferences.getString(
-            VIBRATION_TIMING_PREFERENCE.first, VIBRATION_TIMING_PREFERENCE.second
+            VIBRATION_TIMING_PREFERENCE.first,
+            VIBRATION_TIMING_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putString(VIBRATION_TIMING_PREFERENCE.first, value ?: "both")
@@ -168,7 +169,8 @@ object AppPreference {
 
     var sumire_input_selection_preference: String?
         get() = preferences.getString(
-            SUMIRE_INPUT_SELECTION_PREFERENCE.first, SUMIRE_INPUT_SELECTION_PREFERENCE.second
+            SUMIRE_INPUT_SELECTION_PREFERENCE.first,
+            SUMIRE_INPUT_SELECTION_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "flick-default")
