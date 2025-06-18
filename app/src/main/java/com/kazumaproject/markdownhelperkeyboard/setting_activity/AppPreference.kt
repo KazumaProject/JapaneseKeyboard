@@ -33,7 +33,7 @@ object AppPreference {
         Pair("sumire_keyboard_input_type_preference", "flick-default")
 
     private val defaultKeyboardOrderJson = gson.toJson(
-        listOf(KeyboardType.TENKEY, KeyboardType.QWERTY)
+        listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE, KeyboardType.QWERTY, KeyboardType.ROMAJI)
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
 
@@ -66,8 +66,7 @@ object AppPreference {
 
     var vibration_timing_preference: String?
         get() = preferences.getString(
-            VIBRATION_TIMING_PREFERENCE.first,
-            VIBRATION_TIMING_PREFERENCE.second
+            VIBRATION_TIMING_PREFERENCE.first, VIBRATION_TIMING_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putString(VIBRATION_TIMING_PREFERENCE.first, value ?: "both")
@@ -169,8 +168,7 @@ object AppPreference {
 
     var sumire_input_selection_preference: String?
         get() = preferences.getString(
-            SUMIRE_INPUT_SELECTION_PREFERENCE.first,
-            SUMIRE_INPUT_SELECTION_PREFERENCE.second
+            SUMIRE_INPUT_SELECTION_PREFERENCE.first, SUMIRE_INPUT_SELECTION_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "flick-default")
