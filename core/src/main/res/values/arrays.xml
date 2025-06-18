@@ -37,19 +37,17 @@
     </string-array>
 
     <string-array name="parts_of_speech">
-        <item>BOS/EOS</item>
-        <item>その他</item>
-        <item>フィラー</item>
+        <item>名詞</item>
+        <item>動詞</item>
+        <item>形容詞</item>
         <item>副詞</item>
         <item>助動詞</item>
         <item>助詞</item>
-        <item>動詞</item>
-        <item>名詞</item>
-        <item>形容詞</item>
         <item>感動詞</item>
         <item>接続詞</item>
         <item>接頭詞</item>
         <item>記号</item>
         <item>連体詞</item>
+        <item>その他</item>
     </string-array>
 </resources>
