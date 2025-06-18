@@ -16,7 +16,8 @@
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="flick_input_only_preference"
-            android:summary="フリック入力のみを使用し、ケータイ打ちを無効にする"
+            android:summaryOn="フリック入力のみを使用し、ケータイ打ちを無効にする"
+            android:summaryOff="ケータイ打ちを有効"
             android:title="フリックのみ" />
 
         <SwitchPreferenceCompat
@@ -81,6 +82,13 @@
             android:summaryOff="学習辞書を無効化\n学習した変換候補を表示しません"
             android:summaryOn="学習辞書を有効化\n学習した変換候補を表示します"
             android:title="学習辞書" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="user_dictionary_preference"
+            android:summaryOff="ユーザー辞書を無効化"
+            android:summaryOn="ユーザー辞書を有効化\n登録した単語を変換候補を表示します"
+            android:title="ユーザー辞書" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="Mozc UT">
