@@ -3558,14 +3558,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             } ?: emptyList()
         }
         val resultFromUserDictionary = withContext(Dispatchers.IO) {
-            userDictionaryRepository.searchByReadingPrefixSuspend(insertString).map {
-                Candidate(
-                    string = it.word,
-                    type = (28).toByte(),
-                    length = (it.reading.length).toUByte(),
-                    score = it.posScore
-                )
-            }.sortedBy { it.score }
+            if (insertString.length <= 1) return@withContext emptyList<Candidate>()
+            userDictionaryRepository.searchByReadingPrefixSuspend(
+                prefix = insertString,
+                limit = 4
+            )
+                .map {
+                    Candidate(
+                        string = it.word,
+                        type = (28).toByte(),
+                        length = (it.reading.length).toUByte(),
+                        score = it.posScore
+                    )
+                }.sortedBy { it.score }
         }
         Timber.d("resultFromUserDictionary: $resultFromUserDictionary")
         val result = if (isLearnDictionaryMode == true) {

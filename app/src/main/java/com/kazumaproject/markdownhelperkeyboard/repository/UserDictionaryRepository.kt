@@ -22,8 +22,8 @@ class UserDictionaryRepository @Inject constructor(
         return userWordDao.searchByReadingPrefix(prefix)
     }
 
-    suspend fun searchByReadingPrefixSuspend(prefix: String): List<UserWord> {
-        return userWordDao.searchByReadingPrefixSuspend(prefix)
+    suspend fun searchByReadingPrefixSuspend(prefix: String, limit: Int): List<UserWord> {
+        return userWordDao.searchByReadingPrefixSuspend(prefix, limit)
     }
 
     suspend fun insert(userWord: UserWord) {

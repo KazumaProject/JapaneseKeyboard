@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.user_dictionary.database
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
@@ -12,7 +13,10 @@ import androidx.room.PrimaryKey
  * @param posIndex 品詞インデックス
  * @param posScore 品詞スコア
  */
-@Entity(tableName = "user_word")
+@Entity(
+    tableName = "user_word",
+    indices = [Index(value = ["reading"])]
+)
 data class UserWord(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val word: String,

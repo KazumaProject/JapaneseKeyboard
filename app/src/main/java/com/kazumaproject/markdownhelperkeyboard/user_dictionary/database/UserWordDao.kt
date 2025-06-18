@@ -11,7 +11,7 @@ import androidx.room.Update
 interface UserWordDao {
     @Query("SELECT * FROM user_word ORDER BY reading ASC")
     fun getAll(): LiveData<List<UserWord>>
-    
+
     /**
      * readingの前方一致で単語を検索する (UI表示用)
      */
@@ -20,10 +20,10 @@ interface UserWordDao {
 
     /**
      * readingの前方一致で単語を検索する (バックグラウンド処理用)
-     * @return 一致した単語のリスト（LiveDataではない）
+     * @return 一致した単語のリスト
      */
-    @Query("SELECT * FROM user_word WHERE reading LIKE :prefix || '%' ORDER BY reading ASC")
-    suspend fun searchByReadingPrefixSuspend(prefix: String): List<UserWord>
+    @Query("SELECT * FROM user_word WHERE reading LIKE :prefix || '%' ORDER BY reading ASC LIMIT :limit")
+    suspend fun searchByReadingPrefixSuspend(prefix: String, limit: Int): List<UserWord>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(userWord: UserWord)
