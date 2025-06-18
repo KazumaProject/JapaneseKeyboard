@@ -21,4 +21,4 @@
 #-renamesourcefileattribute SourceFile
 
 -keepnames class com.kazumaproject.markdownhelperkeyboard.database.** { *; }
--keepnames class com.kazumaproject.markdownhelperkeyboard.user_dictionary.** { *; }
+-keepnames class com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.** { *; }
