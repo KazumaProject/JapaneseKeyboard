@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Rect
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
@@ -31,6 +32,8 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -51,6 +54,11 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
+
+    // START: New properties for handling touches in margins
+    private var motionTarget: View? = null
+    private val hitRect = Rect()
+    // END: New properties
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
@@ -107,6 +115,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
                         this.maxLines = 2
                         this.setLineSpacing(0f, 0.9f)
+                        // This padding was removed in the original code, re-add if needed for text positioning
                         this.setPadding(0, dpToPx(4), 0, dpToPx(4))
                         this.gravity = Gravity.CENTER
                         this.text = spannable
@@ -132,6 +141,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
             }
+            // REVERTED CHANGE: We are using margins again to create the visual gaps
             val params = LayoutParams().apply {
                 rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
@@ -147,6 +157,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
             keyView.layoutParams = params
 
+            // The rest of this method (the `when` block) remains unchanged
             when (keyData.keyType) {
                 KeyType.CIRCULAR_FLICK -> {
                     val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
@@ -388,6 +399,75 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
+    // START: New method to handle touches in margins
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                // First, check if the touch is on any child view.
+                for (i in 0 until childCount) {
+                    val child = getChildAt(i)
+                    child.getHitRect(hitRect)
+                    if (hitRect.contains(event.x.toInt(), event.y.toInt())) {
+                        // If it is, let the system handle it normally.
+                        return super.onTouchEvent(event)
+                    }
+                }
+
+                // If not on any child, it's in a margin. Find the nearest child.
+                var nearestChild: View? = null
+                var minDistance = Double.MAX_VALUE
+
+                for (i in 0 until childCount) {
+                    val child = getChildAt(i)
+                    val childCenterX = child.left + child.width / 2f
+                    val childCenterY = child.top + child.height / 2f
+
+                    val distance = sqrt(
+                        (event.x - childCenterX).pow(2) + (event.y - childCenterY).pow(2)
+                    )
+
+                    if (distance < minDistance) {
+                        minDistance = distance.toDouble()
+                        nearestChild = child
+                    }
+                }
+
+                // We found the nearest child, make it the target for this touch gesture.
+                motionTarget = nearestChild
+                motionTarget?.let {
+                    // Create a new event with coordinates translated to the child's coordinate system
+                    val newEvent = MotionEvent.obtain(event)
+                    newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
+                    // Dispatch the event to the child
+                    it.dispatchTouchEvent(newEvent)
+                    newEvent.recycle()
+                }
+                // Return true to indicate we are handling this touch gesture.
+                return true
+            }
+
+            MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // If we have a target from a previous ACTION_DOWN...
+                motionTarget?.let {
+                    // ...continue forwarding events to it.
+                    val newEvent = MotionEvent.obtain(event)
+                    newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
+                    it.dispatchTouchEvent(newEvent)
+                    newEvent.recycle()
+
+                    // If the gesture is over, clear the target.
+                    if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
+                        motionTarget = null
+                    }
+                    return true
+                }
+            }
+        }
+        return super.onTouchEvent(event)
+    }
+    // END: New method
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         flickControllers.forEach { it.cancel() }
@@ -398,15 +478,16 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
         super.onConfigurationChanged(newConfig)
-
     }
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {
-        val typedValue = TypedValue(); theme.resolveAttribute(
+        val typedValue = TypedValue()
+        theme.resolveAttribute(
             attrRes,
             typedValue,
             true
-        ); return ContextCompat.getColor(this, typedValue.resourceId)
+        )
+        return ContextCompat.getColor(this, typedValue.resourceId)
     }
 
     private fun spToPx(sp: Float): Int {
