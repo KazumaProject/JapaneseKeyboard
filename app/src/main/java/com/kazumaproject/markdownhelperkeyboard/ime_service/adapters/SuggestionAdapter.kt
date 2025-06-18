@@ -310,6 +310,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (26).toByte() -> ""
             /** Mozc UT Web **/
             (27).toByte() -> ""
+            /** User Dictionary **/
+            (28).toByte() -> ""
             /** 英語 **/
             (29).toByte() -> ""
             else -> ""
