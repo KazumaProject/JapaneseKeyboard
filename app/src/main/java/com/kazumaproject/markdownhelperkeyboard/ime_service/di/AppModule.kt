@@ -16,12 +16,14 @@ import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.viterbi.FindPath
 import dagger.Module
 import dagger.Provides
@@ -47,7 +49,7 @@ object AppModule {
             AppDatabase::class.java,
             "learn_database"
         )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .build()
 
     @Singleton
@@ -57,6 +59,10 @@ object AppModule {
     @Singleton
     @Provides
     fun provideClickedSymbolDao(db: AppDatabase): ClickedSymbolDao = db.clickedSymbolDao()
+
+    @Singleton
+    @Provides
+    fun provideUserWordDao(db: AppDatabase): UserWordDao = db.userWordDao()
 
     @Singleton
     @Provides

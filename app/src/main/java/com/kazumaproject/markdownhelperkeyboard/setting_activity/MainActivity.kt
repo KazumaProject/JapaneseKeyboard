@@ -9,18 +9,13 @@ import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
-    @Inject
-    lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +31,7 @@ class MainActivity : AppCompatActivity() {
             setOf(
                 R.id.navigation_setting,
                 R.id.navigation_learn_dictionary,
+                R.id.navigation_user_dictionary
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)

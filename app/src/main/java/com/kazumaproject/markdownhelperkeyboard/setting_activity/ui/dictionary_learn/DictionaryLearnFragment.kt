@@ -30,7 +30,7 @@ class DictionaryLearnFragment : Fragment() {
     @Inject
     lateinit var learnRepository: LearnRepository
 
-    lateinit var learnDictionaryAdapter: LearnDictionaryAdapter
+    private lateinit var learnDictionaryAdapter: LearnDictionaryAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
