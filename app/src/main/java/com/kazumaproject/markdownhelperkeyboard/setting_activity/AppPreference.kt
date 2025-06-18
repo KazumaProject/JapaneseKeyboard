@@ -33,7 +33,7 @@ object AppPreference {
         Pair("sumire_keyboard_input_type_preference", "flick-default")
 
     private val defaultKeyboardOrderJson = gson.toJson(
-        listOf(KeyboardType.TENKEY, KeyboardType.QWERTY)
+        listOf(KeyboardType.TENKEY, KeyboardType.SUMIRE, KeyboardType.QWERTY, KeyboardType.ROMAJI)
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
 
