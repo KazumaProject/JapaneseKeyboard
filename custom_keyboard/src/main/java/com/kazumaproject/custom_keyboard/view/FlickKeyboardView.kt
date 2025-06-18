@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import android.text.Spannable
 import android.text.SpannableString
@@ -393,6 +394,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
         petalFlickControllers.forEach { it.cancel() }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration?) {
+        super.onConfigurationChanged(newConfig)
+
     }
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {
