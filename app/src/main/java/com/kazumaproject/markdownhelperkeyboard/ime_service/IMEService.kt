@@ -86,6 +86,7 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
@@ -142,6 +143,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var learnRepository: LearnRepository
+
+    @Inject
+    lateinit var userDictionaryRepository: UserDictionaryRepository
 
     @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
@@ -3553,6 +3557,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             } ?: emptyList()
         }
+        val resultFromUserDictionary = withContext(Dispatchers.IO) {
+            if (insertString.length <= 1) return@withContext emptyList<Candidate>()
+            userDictionaryRepository.searchByReadingPrefixSuspend(
+                prefix = insertString,
+                limit = 4
+            )
+                .map {
+                    Candidate(
+                        string = it.word,
+                        type = (28).toByte(),
+                        length = (it.reading.length).toUByte(),
+                        score = it.posScore
+                    )
+                }.sortedBy { it.score }
+        }
+        Timber.d("resultFromUserDictionary: $resultFromUserDictionary")
         val result = if (isLearnDictionaryMode == true) {
             val resultFromEngine = kanaKanjiEngine.getCandidates(
                 input = insertString,
@@ -3563,10 +3583,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 mozcUTNeologd = mozcUTNeologd,
                 mozcUTWeb = mozcUTWeb,
             )
-            resultFromLearnDatabase + resultFromEngine
+            resultFromUserDictionary + resultFromLearnDatabase + resultFromEngine
 
         } else {
-            kanaKanjiEngine.getCandidates(
+            resultFromUserDictionary + kanaKanjiEngine.getCandidates(
                 input = insertString,
                 n = nBest ?: 4,
                 mozcUtPersonName = mozcUTPersonName,

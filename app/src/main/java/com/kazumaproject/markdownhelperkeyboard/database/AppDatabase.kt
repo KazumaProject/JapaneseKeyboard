@@ -8,23 +8,26 @@ import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 
 @Database(
     entities = [
         LearnEntity::class,
-        ClickedSymbol::class
+        ClickedSymbol::class,
+        UserWord::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun learnDao(): LearnDao
     abstract fun clickedSymbolDao(): ClickedSymbolDao
+    abstract fun userWordDao(): UserWordDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // clicked_symbol_history テーブルを追加
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `clicked_symbol_history` (
@@ -37,5 +40,22 @@ abstract class AppDatabase : RoomDatabase() {
                 )
             }
         }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `user_word` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `word` TEXT NOT NULL,
+                      `reading` TEXT NOT NULL,
+                      `posIndex` INTEGER NOT NULL,
+                      `posScore` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
     }
 }
