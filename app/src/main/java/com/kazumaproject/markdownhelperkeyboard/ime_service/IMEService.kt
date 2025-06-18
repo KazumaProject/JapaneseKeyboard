@@ -3552,7 +3552,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
-                if (insertString.length <= 1) return@withContext emptyList<Candidate>()
                 userDictionaryRepository.searchByReadingPrefixSuspend(
                     prefix = insertString, limit = 4
                 ).map {
