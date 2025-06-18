@@ -17,7 +17,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWor
         ClickedSymbol::class,
         UserWord::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -54,6 +54,18 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        /**
+         * The new migration from version 3 to 4.
+         * This migration adds an index to the `reading` column of the `user_word` table
+         * to significantly improve query performance for prefix searches.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // SQL command to create an index on the 'reading' column
+                db.execSQL("CREATE INDEX `index_user_word_reading` ON `user_word`(`reading`)")
             }
         }
 
