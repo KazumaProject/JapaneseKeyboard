@@ -9,7 +9,7 @@
         android:id="@+id/navigation_setting"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingFragment"
         android:label="@string/title_dashboard"
-        tools:layout="@layout/fragment_setting_main" >
+        tools:layout="@layout/fragment_setting_main">
         <action
             android:id="@+id/action_navigation_dashboard_to_openSourceFragment"
             app:destination="@id/openSourceFragment" />
@@ -42,5 +42,11 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.KeyboardSelectionFragment"
         android:label="キーボード"
         tools:layout="@layout/fragment_keyboard_selection" />
+
+    <fragment
+        android:id="@+id/navigation_user_dictionary"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.user_dictionary.UserDictionaryFragment"
+        android:label="@string/user_dictionary_title"
+        tools:layout="@layout/fragment_user_dictionary" />
 
 </navigation>
