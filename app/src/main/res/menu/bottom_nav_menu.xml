@@ -11,4 +11,9 @@
         android:icon="@drawable/table_lamp_24px"
         android:title="@string/title_learn_dictionary" />
 
+    <item
+        android:id="@+id/navigation_user_dictionary"
+        android:icon="@drawable/dictionary_24px"
+        android:title="@string/user_dictionary_title" />
+
 </menu>
