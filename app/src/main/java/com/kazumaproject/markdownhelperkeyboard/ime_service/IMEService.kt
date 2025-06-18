@@ -206,6 +206,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var isTablet: Boolean? = false
 
+    private var keyboardContainer: FrameLayout? = null
+
     private var isSpaceKeyLongPressed = false
     private val _selectMode = MutableStateFlow(false)
     private val selectMode: StateFlow<Boolean> = _selectMode
@@ -307,59 +309,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     override fun onCreateInputView(): View? {
         Timber.d("onCreateInputView")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-        val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
-        val ctx = if (isDynamicColorsEnable) {
-            DynamicColors.wrapContextIfAvailable(
-                applicationContext,
-                R.style.Theme_MarkdownKeyboard
-            )
-        } else {
-            ContextThemeWrapper(applicationContext, R.style.Theme_MarkdownKeyboard)
-        }
-        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
-        return mainLayoutBinding?.root.apply {
-            val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
-                flexDirection = FlexDirection.COLUMN
-                justifyContent = JustifyContent.SPACE_AROUND
-            }
-            val flexboxLayoutManagerRow = FlexboxLayoutManager(applicationContext).apply {
-                flexDirection = FlexDirection.ROW
-                justifyContent = JustifyContent.FLEX_START
-            }
-            mainLayoutBinding?.let { mainView ->
-                if (isDynamicColorsEnable) {
-                    mainView.apply {
-                        root.setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.keyboard_root_material
-                        )
-                        suggestionViewParent.setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.keyboard_root_material
-                        )
-                        suggestionVisibility.setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material
-                        )
-                    }
-                }
-                setupCustomKeyboardListeners(mainView)
-                setSuggestionRecyclerView(
-                    mainView, flexboxLayoutManagerColumn, flexboxLayoutManagerRow
-                )
-                setSymbolKeyboard(mainView)
-                setQWERTYKeyboard(mainView)
-                if (isTablet == true) {
-                    setTabletKeyListeners(mainView)
-                } else {
-                    setTenKeyListeners(mainView)
-                }
-                if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                    startScope(mainView)
-                } else {
-                    scope.coroutineContext.cancelChildren()
-                    startScope(mainView)
-                }
+
+        // Create the container that will persist across theme changes
+        keyboardContainer = FrameLayout(this)
+
+        // Setup the keyboard for the first time
+        setupKeyboardView()
+
+        mainLayoutBinding?.let { mainView ->
+            if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                startScope(mainView)
+            } else {
+                scope.coroutineContext.cancelChildren()
+                startScope(mainView)
             }
         }
 
+        // Return the persistent container
+        return keyboardContainer
     }
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
@@ -520,6 +487,77 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             else -> {
                 finishComposingText()
                 setComposingText("", 0)
+            }
+        }
+
+        when (newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
+            Configuration.UI_MODE_NIGHT_YES -> {
+                setupKeyboardView()
+            }
+
+            else -> {
+                setupKeyboardView()
+            }
+        }
+
+    }
+
+    private fun setupKeyboardView() {
+        // Determine the correct, themed context
+        val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
+        val ctx = if (isDynamicColorsEnable) {
+            DynamicColors.wrapContextIfAvailable(
+                this, // Use 'this' (the service context), not applicationContext
+                R.style.Theme_MarkdownKeyboard
+            )
+        } else {
+            ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+        }
+
+        // Inflate the new layout
+        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
+
+        // Ensure the container is not null and add the new view to it
+        keyboardContainer?.let { container ->
+            container.removeAllViews() // Remove the old keyboard view
+            mainLayoutBinding?.root?.let { newRootView ->
+                container.addView(newRootView) // Add the newly inflated view
+
+                // All your listener and setup code goes here
+                mainLayoutBinding?.let { mainView ->
+                    if (isDynamicColorsEnable) {
+                        mainView.apply {
+                            root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                            suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                            suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                        }
+                    }
+                    setupCustomKeyboardListeners(mainView)
+                    setSuggestionRecyclerView(
+                        mainView,
+                        FlexboxLayoutManager(applicationContext).apply {
+                            flexDirection = FlexDirection.COLUMN
+                            justifyContent = JustifyContent.SPACE_AROUND
+                        },
+                        FlexboxLayoutManager(applicationContext).apply {
+                            flexDirection = FlexDirection.ROW
+                            justifyContent = JustifyContent.FLEX_START
+                        }
+                    )
+                    setSymbolKeyboard(mainView)
+                    setQWERTYKeyboard(mainView)
+                    if (isTablet == true) {
+                        setTabletKeyListeners(mainView)
+                    } else {
+                        setTenKeyListeners(mainView)
+                    }
+
+                    // Restore UI state after recreation
+                    setKeyboardSize()
+                    setClipboardText()
+                    mainLayoutBinding?.suggestionRecyclerView?.isVisible =
+                        suggestionViewStatus.value
+                }
             }
         }
     }
