@@ -3,8 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:paddingHorizontal="5dp"
-    android:background="@drawable/recyclerview_item_bg">
+    android:background="@drawable/recyclerview_item_bg"
+    android:paddingHorizontal="5dp">
 
     <com.google.android.material.textview.MaterialTextView
         android:id="@+id/suggestion_item_text_view"
@@ -36,9 +36,11 @@
     <View
         android:id="@+id/candidate_divider"
         android:layout_width="1dp"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
         android:layout_marginVertical="18dp"
         android:background="@color/sub_text_color"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

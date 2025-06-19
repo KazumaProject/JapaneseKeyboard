@@ -1385,14 +1385,14 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("わ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
             FlickDirection.UP to FlickAction.Input("ん"),
-            FlickDirection.DOWN to FlickAction.Input("ー")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
         )
         val symbols = mapOf(
             FlickDirection.TAP to FlickAction.Input("、"),
             FlickDirection.UP to FlickAction.Input("？"),
-            FlickDirection.DOWN to FlickAction.Input("。"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("！"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("…")
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("。"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
+            FlickDirection.DOWN to FlickAction.Input("…")
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
@@ -1635,7 +1635,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("@"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("#"),
             FlickDirection.UP to FlickAction.Input("/"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("_"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("&"),
             FlickDirection.DOWN to FlickAction.Input("1")
         )
         val abc = mapOf(
@@ -1699,7 +1699,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("."),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
             FlickDirection.UP to FlickAction.Input("?"),
-            FlickDirection.DOWN to FlickAction.Input("!")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("!")
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
@@ -1849,7 +1849,7 @@ object KeyboardDefaultLayouts {
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ),
             KeyData(
-                ".,/",
+                ".,-/",
                 3,
                 3,
                 true,
@@ -1918,8 +1918,8 @@ object KeyboardDefaultLayouts {
         val symbols3 = mapOf(
             FlickDirection.TAP to FlickAction.Input("."),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
-            FlickDirection.UP to FlickAction.Input("/"),
-            FlickDirection.DOWN to FlickAction.Input("-")
+            FlickDirection.UP to FlickAction.Input("-"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/")
         )
 
         val spaceActionMap = mapOf(
@@ -2024,7 +2024,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
                 )
             ),
-            ".,/" to listOf(symbols3),
+            ".,-/" to listOf(symbols3),
         )
 
         spaceConvertStates.getOrNull(0)?.label?.let { label ->
