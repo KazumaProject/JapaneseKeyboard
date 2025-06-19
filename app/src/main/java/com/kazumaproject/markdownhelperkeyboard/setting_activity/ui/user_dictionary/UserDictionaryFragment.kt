@@ -159,7 +159,7 @@ class UserDictionaryFragment : Fragment() {
                 val type = object : TypeToken<List<UserWord>>() {}.type
                 val words: List<UserWord> = Gson().fromJson(jsonString, type)
 
-                viewModel.insertAll(words.map { it.copy(id = 0) }) // idを0にして新しい単語として挿入
+                viewModel.insertAll(words)
                 Toast.makeText(
                     context,
                     "${words.size}件の単語をインポートしました",
