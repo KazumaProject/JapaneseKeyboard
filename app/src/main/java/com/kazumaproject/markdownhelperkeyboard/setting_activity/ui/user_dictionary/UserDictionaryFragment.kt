@@ -29,8 +29,8 @@ import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.domain.cryptoManager.CryptoManager
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserDictionaryBinding
-import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter.UserWordAdapter
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.FileOutputStream
 
@@ -159,7 +159,7 @@ class UserDictionaryFragment : Fragment() {
                 val type = object : TypeToken<List<UserWord>>() {}.type
                 val words: List<UserWord> = Gson().fromJson(jsonString, type)
 
-                viewModel.insertAll(words.map { it.copy(id = 0) }) // idを0にして新しい単語として挿入
+                viewModel.insertAll(words)
                 Toast.makeText(
                     context,
                     "${words.size}件の単語をインポートしました",
@@ -180,7 +180,6 @@ class UserDictionaryFragment : Fragment() {
         val adapter =
             ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, viewModel.posList)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerPos.adapter = adapter
     }
 
     private fun setupRecyclerView() {
@@ -207,11 +206,6 @@ class UserDictionaryFragment : Fragment() {
             }
         }
 
-        binding.buttonDetails.setOnClickListener {
-            binding.layoutDetails.isGone = !binding.layoutDetails.isGone
-            binding.buttonDetails.text = if (binding.layoutDetails.isGone) "詳細" else "隠す"
-        }
-
         binding.buttonAdd.setOnClickListener {
             addWord()
         }
@@ -234,12 +228,13 @@ class UserDictionaryFragment : Fragment() {
             return
         }
 
-        val posIndex = binding.spinnerPos.selectedItemPosition
-        val posScoreText = binding.editTextPosScore.text.toString()
-        val posScore = posScoreText.toIntOrNull() ?: UserDictionaryViewModel.DEFAULT_SCORE
-
         val newUserWord =
-            UserWord(word = word, reading = reading, posIndex = posIndex, posScore = posScore)
+            UserWord(
+                word = word,
+                reading = reading,
+                posIndex = viewModel.defaultPosIndex,
+                posScore = 4000
+            )
         viewModel.insert(newUserWord)
 
         Toast.makeText(context, "「$word」を登録しました", Toast.LENGTH_SHORT).show()
@@ -313,8 +308,6 @@ class UserDictionaryFragment : Fragment() {
     private fun resetInputFields() {
         binding.editTextWord.text?.clear()
         binding.editTextReading.text?.clear()
-        binding.editTextPosScore.setText(UserDictionaryViewModel.DEFAULT_SCORE.toString())
-        binding.spinnerPos.setSelection(viewModel.defaultPosIndex)
     }
 
     override fun onDestroyView() {
