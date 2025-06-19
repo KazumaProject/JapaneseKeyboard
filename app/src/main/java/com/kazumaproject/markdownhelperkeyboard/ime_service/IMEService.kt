@@ -2172,6 +2172,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     CandidateShowFlag.Updating -> {
                         val inputString = inputString.value
                         setSuggestionOnView(mainView, inputString)
+                        mainView.suggestionRecyclerView.post {
+                            mainView.suggestionRecyclerView.requestLayout()
+                        }
                     }
                 }
                 prevFlag = currentFlag
