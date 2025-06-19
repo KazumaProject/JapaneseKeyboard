@@ -404,12 +404,10 @@ class FlickKeyboardView @JvmOverloads constructor(
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                // First, check if the touch is on any child view.
                 for (i in 0 until childCount) {
                     val child = getChildAt(i)
                     child.getHitRect(hitRect)
                     if (hitRect.contains(event.x.toInt(), event.y.toInt())) {
-                        // If it is, let the system handle it normally.
                         return super.onTouchEvent(event)
                     }
                 }
@@ -450,7 +448,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 // If we have a target from a previous ACTION_DOWN...
                 motionTarget?.let {
-                    // ...continue forwarding events to it.
                     val newEvent = MotionEvent.obtain(event)
                     newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
                     it.dispatchTouchEvent(newEvent)
