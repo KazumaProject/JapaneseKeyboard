@@ -198,6 +198,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isFlickOnlyMode: Boolean? = false
     private var delayTime: Int? = 1000
     private var isLearnDictionaryMode: Boolean? = false
+    private var isUserDictionaryEnable: Boolean? = false
     private var nBest: Int? = 4
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
@@ -351,6 +352,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isFlickOnlyMode = flick_input_only_preference ?: false
             delayTime = time_same_pronounce_typing_preference ?: 1000
             isLearnDictionaryMode = learn_dictionary_preference ?: true
+            isUserDictionaryEnable = user_dictionary_preference ?: true
             nBest = n_best_preference ?: 4
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -448,6 +450,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isFlickOnlyMode = null
         delayTime = null
         isLearnDictionaryMode = null
+        isUserDictionaryEnable = null
         nBest = null
         isVibration = null
         vibrationTimingStr = null
@@ -546,8 +549,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
                             justifyContent = JustifyContent.FLEX_START
-                        }
-                    )
+                        })
                     setSymbolKeyboard(mainView)
                     setQWERTYKeyboard(mainView)
                     if (isTablet == true) {
@@ -1250,12 +1252,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 KeyboardType.SUMIRE -> {
                     customKeyboardMode = KeyboardInputMode.HIRAGANA
                     val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
-                        mode = KeyboardInputMode.HIRAGANA,
-                        dynamicKeyStates = mapOf(
-                            "enter_key" to 0,
-                            "dakuten_toggle_key" to 0
-                        ),
-                        inputType = sumireInputKeyType ?: "flick-default"
+                        mode = KeyboardInputMode.HIRAGANA, dynamicKeyStates = mapOf(
+                            "enter_key" to 0, "dakuten_toggle_key" to 0
+                        ), inputType = sumireInputKeyType ?: "flick-default"
                     )
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
@@ -1641,10 +1640,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 val hankakuPreference =
                                     appPreference.space_hankaku_preference ?: false
                                 handleSpaceKeyClick(
-                                    hankakuPreference,
-                                    insertString,
-                                    suggestions,
-                                    mainView
+                                    hankakuPreference, insertString, suggestions, mainView
                                 )
                             }
                         }
@@ -1768,10 +1764,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 val hankakuPreference =
                                     appPreference.space_hankaku_preference ?: false
                                 handleSpaceKeyClick(
-                                    hankakuPreference,
-                                    insertString,
-                                    suggestions,
-                                    mainView
+                                    hankakuPreference, insertString, suggestions, mainView
                                 )
                             }
                         }
@@ -3557,13 +3550,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 )
             } ?: emptyList()
         }
-        val resultFromUserDictionary = withContext(Dispatchers.IO) {
-            if (insertString.length <= 1) return@withContext emptyList<Candidate>()
-            userDictionaryRepository.searchByReadingPrefixSuspend(
-                prefix = insertString,
-                limit = 4
-            )
-                .map {
+        val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
+            withContext(Dispatchers.IO) {
+                if (insertString.length <= 1) return@withContext emptyList<Candidate>()
+                userDictionaryRepository.searchByReadingPrefixSuspend(
+                    prefix = insertString, limit = 4
+                ).map {
                     Candidate(
                         string = it.word,
                         type = (28).toByte(),
@@ -3571,30 +3563,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         score = it.posScore
                     )
                 }.sortedBy { it.score }
+            }
+        } else {
+            emptyList()
         }
         Timber.d("resultFromUserDictionary: $resultFromUserDictionary")
+        val engineCandidates = kanaKanjiEngine.getCandidates(
+            input = insertString,
+            n = nBest ?: 4,
+            mozcUtPersonName = mozcUTPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+        )
         val result = if (isLearnDictionaryMode == true) {
-            val resultFromEngine = kanaKanjiEngine.getCandidates(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-            )
-            resultFromUserDictionary + resultFromLearnDatabase + resultFromEngine
-
+            resultFromUserDictionary + resultFromLearnDatabase + engineCandidates
         } else {
-            resultFromUserDictionary + kanaKanjiEngine.getCandidates(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-            )
+            resultFromUserDictionary + engineCandidates
         }
         return result.distinctBy { it.string }
     }
@@ -3614,17 +3600,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 val beforeChar = getLastCharacterAsString(currentInputConnection)
                                 if (beforeChar.isNotEmpty()) {
                                     deletedBuffer.append(beforeChar)
-                                    if (
-                                        beforeChar == "ァ゙" ||
-                                        beforeChar == "ィ゙" ||
-                                        beforeChar == "ゥ゙" ||
-                                        beforeChar == "ェ゙" ||
-                                        beforeChar == "ォ゙" ||
-                                        beforeChar == "ッ゙" ||
-                                        beforeChar == "ャ゙" ||
-                                        beforeChar == "ュ゙" ||
-                                        beforeChar == "ョ゙"
-                                    ) {
+                                    if (beforeChar == "ァ゙" || beforeChar == "ィ゙" || beforeChar == "ゥ゙" || beforeChar == "ェ゙" || beforeChar == "ォ゙" || beforeChar == "ッ゙" || beforeChar == "ャ゙" || beforeChar == "ュ゙" || beforeChar == "ョ゙") {
                                         deleteSurroundingTextInCodePoints(2, 0)
                                     }
                                 }
@@ -3792,16 +3768,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                     setUndoEnabled(true)
                                     setUndoPreviewText(deletedBuffer.toString())
                                 }
-                                if (beforeChar == "ァ゙" ||
-                                    beforeChar == "ィ゙" ||
-                                    beforeChar == "ゥ゙" ||
-                                    beforeChar == "ェ゙" ||
-                                    beforeChar == "ォ゙" ||
-                                    beforeChar == "ッ゙" ||
-                                    beforeChar == "ャ゙" ||
-                                    beforeChar == "ュ゙" ||
-                                    beforeChar == "ョ゙"
-                                ) {
+                                if (beforeChar == "ァ゙" || beforeChar == "ィ゙" || beforeChar == "ゥ゙" || beforeChar == "ェ゙" || beforeChar == "ォ゙" || beforeChar == "ッ゙" || beforeChar == "ャ゙" || beforeChar == "ュ゙" || beforeChar == "ョ゙") {
                                     deleteSurroundingTextInCodePoints(2, 0)
                                     return
                                 }
@@ -3852,9 +3819,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun handleSpaceKeyClickInQWERTY(
-        insertString: String,
-        mainView: MainLayoutBinding,
-        suggestions: List<Candidate>
+        insertString: String, mainView: MainLayoutBinding, suggestions: List<Candidate>
     ) {
         if (insertString.isNotBlank()) {
             mainView.apply {
@@ -4427,9 +4392,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private fun dakutenSmallLetter(
-        sb: StringBuilder,
-        insertString: String,
-        gestureType: GestureType
+        sb: StringBuilder, insertString: String, gestureType: GestureType
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)

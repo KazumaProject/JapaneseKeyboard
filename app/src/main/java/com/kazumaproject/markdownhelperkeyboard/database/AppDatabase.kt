@@ -12,11 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWor
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 
 @Database(
-    entities = [
-        LearnEntity::class,
-        ClickedSymbol::class,
-        UserWord::class
-    ],
+    entities = [LearnEntity::class, ClickedSymbol::class, UserWord::class],
     version = 4,
     exportSchema = false
 )
@@ -65,7 +61,7 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // SQL command to create an index on the 'reading' column
-                db.execSQL("CREATE INDEX `index_user_word_reading` ON `user_word`(`reading`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_user_word_reading` ON `user_word`(`reading`)")
             }
         }
 
