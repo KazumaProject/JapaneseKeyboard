@@ -20,5 +20,4 @@
 # com.kazumaproject.core.domain.extensions.hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
--keepnames class com.kazumaproject.markdownhelperkeyboard.database.** { *; }
--keepnames class com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.** { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord { *; }

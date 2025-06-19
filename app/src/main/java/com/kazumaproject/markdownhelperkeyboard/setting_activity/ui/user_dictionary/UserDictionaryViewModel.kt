@@ -52,6 +52,10 @@ class UserDictionaryViewModel @Inject constructor(
         repository.delete(id)
     }
 
+    fun deleteAll() = viewModelScope.launch {
+        repository.deleteAll()
+    }
+
     /**
      * readingの前方一致で単語を検索する
      * @param prefix 検索したい読みの文字列
