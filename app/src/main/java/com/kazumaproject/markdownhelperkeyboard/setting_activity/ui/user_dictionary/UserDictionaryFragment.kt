@@ -26,7 +26,6 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.kazumaproject.core.domain.cryptoManager.CryptoManager
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserDictionaryBinding
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter.UserWordAdapter
@@ -100,6 +99,11 @@ class UserDictionaryFragment : Fragment() {
                         true
                     }
 
+                    R.id.action_delete_all -> {
+                        showDeleteAllConfirmationDialog()
+                        true
+                    }
+
                     else -> false
                 }
             }
@@ -109,8 +113,9 @@ class UserDictionaryFragment : Fragment() {
     private fun launchExportFilePicker() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/octet-stream"
-            putExtra(Intent.EXTRA_TITLE, "user_dictionary_backup.dat")
+            // Set the type to plain text and the extension to .txt
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TITLE, "user_dictionary_backup.txt")
         }
         exportLauncher.launch(intent)
     }
@@ -123,6 +128,18 @@ class UserDictionaryFragment : Fragment() {
         importLauncher.launch(intent)
     }
 
+    private fun showDeleteAllConfirmationDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("削除の確認")
+            .setMessage("登録されているすべての単語を削除します。この操作は元に戻せません。よろしいですか？")
+            .setPositiveButton("すべて削除") { _, _ ->
+                viewModel.deleteAll()
+                Toast.makeText(context, "すべての単語を削除しました", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("キャンセル", null)
+            .show()
+    }
+
     private fun exportWords(uri: Uri) {
         viewModel.allWords.value?.let { words ->
             if (words.isEmpty()) {
@@ -131,12 +148,13 @@ class UserDictionaryFragment : Fragment() {
                 return
             }
             try {
+                // Convert the list of words to a plain JSON string
                 val jsonString = Gson().toJson(words)
-                val encryptedData = CryptoManager.encrypt(jsonString.toByteArray(Charsets.UTF_8))
 
+                // Write the plain JSON string to the output file
                 requireContext().contentResolver.openFileDescriptor(uri, "w")?.use {
                     FileOutputStream(it.fileDescriptor).use { fos ->
-                        fos.write(encryptedData)
+                        fos.write(jsonString.toByteArray(Charsets.UTF_8))
                     }
                 }
                 Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
@@ -149,17 +167,26 @@ class UserDictionaryFragment : Fragment() {
 
     private fun importWords(uri: Uri) {
         try {
-            val inputStream = requireContext().contentResolver.openInputStream(uri)
-            val encryptedData = inputStream?.readBytes()
-            inputStream?.close()
+            // Read the bytes from the input file and convert to a string
+            val jsonString = requireContext().contentResolver.openInputStream(uri)?.use {
+                it.reader(Charsets.UTF_8).readText()
+            }
 
-            if (encryptedData != null) {
-                val decryptedData = CryptoManager.decrypt(encryptedData)
-                val jsonString = String(decryptedData, Charsets.UTF_8)
+            if (jsonString != null) {
+                // Convert the JSON string back to a list of UserWord objects
                 val type = object : TypeToken<List<UserWord>>() {}.type
                 val words: List<UserWord> = Gson().fromJson(jsonString, type)
 
-                viewModel.insertAll(words)
+                // Insert the words into the database
+                viewModel.insertAll(words.map {
+                    UserWord(
+                        id = 0,
+                        word = it.word,
+                        reading = it.reading,
+                        posIndex = it.posIndex,
+                        posScore = it.posScore
+                    )
+                })
                 Toast.makeText(
                     context,
                     "${words.size}件の単語をインポートしました",

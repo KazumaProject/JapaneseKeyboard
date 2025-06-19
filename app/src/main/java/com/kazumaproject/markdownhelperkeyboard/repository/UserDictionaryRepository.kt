@@ -31,8 +31,7 @@ class UserDictionaryRepository @Inject constructor(
     }
 
     suspend fun insertAll(words: List<UserWord>) {
-        // インポート機能のために複数の単語を一度に登録する
-        words.forEach { userWordDao.insert(it) }
+        userWordDao.insertAll(words)
     }
 
     suspend fun update(userWord: UserWord) {
@@ -42,4 +41,9 @@ class UserDictionaryRepository @Inject constructor(
     suspend fun delete(id: Int) {
         userWordDao.delete(id)
     }
+
+    suspend fun deleteAll() {
+        userWordDao.deleteAll()
+    }
+
 }
