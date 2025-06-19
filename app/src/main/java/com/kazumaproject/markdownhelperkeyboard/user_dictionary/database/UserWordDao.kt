@@ -28,9 +28,15 @@ interface UserWordDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(userWord: UserWord)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(words: List<UserWord>)
+
     @Update
     suspend fun update(userWord: UserWord)
 
     @Query("DELETE FROM user_word WHERE id = :id")
     suspend fun delete(id: Int)
+
+    @Query("DELETE FROM user_word")
+    suspend fun deleteAll()
 }
