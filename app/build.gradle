@@ -28,7 +28,7 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 387
+        versionCode 388
         versionName "1.0.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -58,11 +58,11 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.12.0'
 
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
-    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.0'
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.9.1'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.9.0'
     implementation 'androidx.navigation:navigation-ui-ktx:2.9.0'
     implementation 'androidx.preference:preference-ktx:1.2.1'
@@ -74,7 +74,7 @@ dependencies {
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
 
-    implementation 'androidx.fragment:fragment-ktx:1.8.7'
+    implementation 'androidx.fragment:fragment-ktx:1.8.8'
     implementation 'androidx.emoji2:emoji2:1.5.0'
     implementation 'androidx.window:window:1.4.0'
 
