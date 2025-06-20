@@ -9,6 +9,7 @@ import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
 import android.util.AttributeSet
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
@@ -399,71 +400,215 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    // START: New method to handle touches in margins
+    // onTouchEvent の前に、ポインターIDとViewをマッピングするためのプロパティを追加します。
+    private val motionTargets = mutableMapOf<Int, View>()
+    private val pointerDownTime = mutableMapOf<Int, Long>()
+    private val TAG = "FlickKeyboardViewTouch"
+
+    private fun findTargetView(x: Float, y: Float): View? {
+        // まず、キーの矩形内に直接ヒットしたかチェック
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            child.getHitRect(hitRect)
+            if (hitRect.contains(x.toInt(), y.toInt())) {
+                return child
+            }
+        }
+
+        // 直接ヒットしなかった場合（マージンなどをタッチした場合）、最も近いキーを探す
+        var nearestChild: View? = null
+        var minDistance = Double.MAX_VALUE
+
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val childCenterX = child.left + child.width / 2f
+            val childCenterY = child.top + child.height / 2f
+            val distance = sqrt((x - childCenterX).pow(2) + (y - childCenterY).pow(2))
+
+            if (distance < minDistance) {
+                minDistance = distance.toDouble()
+                nearestChild = child
+            }
+        }
+        return nearestChild
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        val action = ev.actionMasked
+        Log.d(TAG, "onInterceptTouchEvent: ${MotionEvent.actionToString(action)}")
+
+        // 最初の指が触れた瞬間に true を返すことで、
+        // この後のすべてのタッチイベント(MOVE, UP, POINTER_DOWNなど)を
+        // このビューの onTouchEvent で処理することを決定する。
+        if (action == MotionEvent.ACTION_DOWN) {
+            Log.d(TAG, "-> Intercepting gesture from ACTION_DOWN. Returning true.")
+            return true
+        }
+
+        // すでにインターセプトしている場合は、子には渡さない
+        if (motionTargets.isNotEmpty()) {
+            return true
+        }
+
+        return super.onInterceptTouchEvent(ev)
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.action) {
+        val action = event.actionMasked
+        val pointerIndex = event.actionIndex
+        val pointerId = event.getPointerId(pointerIndex)
+
+        when (action) {
             MotionEvent.ACTION_DOWN -> {
-                for (i in 0 until childCount) {
-                    val child = getChildAt(i)
-                    child.getHitRect(hitRect)
-                    if (hitRect.contains(event.x.toInt(), event.y.toInt())) {
-                        return super.onTouchEvent(event)
-                    }
-                }
+                // 最初の指が触れた。すべての状態をクリアして開始。
+                motionTargets.clear()
+                pointerDownTime.clear()
 
-                // If not on any child, it's in a margin. Find the nearest child.
-                var nearestChild: View? = null
-                var minDistance = Double.MAX_VALUE
+                // この指の情報を保存
+                pointerDownTime[pointerId] = event.downTime
+                val x = event.x
+                val y = event.y
+                val targetView = findTargetView(x, y)
 
-                for (i in 0 until childCount) {
-                    val child = getChildAt(i)
-                    val childCenterX = child.left + child.width / 2f
-                    val childCenterY = child.top + child.height / 2f
+                targetView?.let {
+                    motionTargets[pointerId] = it
 
-                    val distance = sqrt(
-                        (event.x - childCenterX).pow(2) + (event.y - childCenterY).pow(2)
+                    // ★★★ 修正箇所 ★★★
+                    // システムのイベントをコピーするのではなく、2本指目と同様に
+                    // クリーンなACTION_DOWNイベントを自作する。
+                    val newEvent = MotionEvent.obtain(
+                        event.downTime,    // downTime
+                        event.eventTime,   // eventTime
+                        MotionEvent.ACTION_DOWN, // action
+                        x,                 // x
+                        y,                 // y
+                        event.metaState    // metaState
                     )
+                    // ★★★ ここまで ★★★
 
-                    if (distance < minDistance) {
-                        minDistance = distance.toDouble()
-                        nearestChild = child
-                    }
-                }
-
-                // We found the nearest child, make it the target for this touch gesture.
-                motionTarget = nearestChild
-                motionTarget?.let {
-                    // Create a new event with coordinates translated to the child's coordinate system
-                    val newEvent = MotionEvent.obtain(event)
                     newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
-                    // Dispatch the event to the child
                     it.dispatchTouchEvent(newEvent)
                     newEvent.recycle()
                 }
-                // Return true to indicate we are handling this touch gesture.
                 return true
             }
 
-            MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                // If we have a target from a previous ACTION_DOWN...
-                motionTarget?.let {
-                    val newEvent = MotionEvent.obtain(event)
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                // 新しい指が追加された
+                val x = event.getX(pointerIndex)
+                val y = event.getY(pointerIndex)
+
+                // 新しい指の情報を保存
+                pointerDownTime[pointerId] = event.eventTime // このイベント時刻を「押下開始時刻」とする
+                val targetView = findTargetView(x, y)
+
+                targetView?.let {
+                    motionTargets[pointerId] = it
+                    // この指専用の「ACTION_DOWN」イベントを自作する
+                    val newEvent = MotionEvent.obtain(
+                        pointerDownTime[pointerId]!!, // downTime
+                        event.eventTime,              // eventTime
+                        MotionEvent.ACTION_DOWN,      // action (新しいジェスチャーの開始として偽装)
+                        x,                            // x
+                        y,                            // y
+                        event.metaState               // metaState
+                    )
+                    // 自作したきれいなDOWNイベントをターゲットにディスパッチ
                     newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
                     it.dispatchTouchEvent(newEvent)
                     newEvent.recycle()
-
-                    // If the gesture is over, clear the target.
-                    if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
-                        motionTarget = null
-                    }
-                    return true
                 }
+                return true
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                // 指が動いた。追跡中のすべての指に対して、それぞれ専用のMOVEイベントを作成する
+                for (i in 0 until event.pointerCount) {
+                    val pId = event.getPointerId(i)
+                    val target = motionTargets[pId]
+                    val downTime = pointerDownTime[pId]
+
+                    if (target != null && downTime != null) {
+                        val x = event.getX(i)
+                        val y = event.getY(i)
+
+                        // この指専用の「ACTION_MOVE」イベントを自作
+                        val newEvent = MotionEvent.obtain(
+                            downTime,
+                            event.eventTime,
+                            MotionEvent.ACTION_MOVE,
+                            x,
+                            y,
+                            event.metaState
+                        )
+                        newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
+                        target.dispatchTouchEvent(newEvent)
+                        newEvent.recycle()
+                    }
+                }
+                return true
+            }
+
+            MotionEvent.ACTION_POINTER_UP -> {
+                // 最初の指以外の指が離された
+                val x = event.getX(pointerIndex)
+                val y = event.getY(pointerIndex)
+
+                motionTargets[pointerId]?.let { target ->
+                    val downTime = pointerDownTime[pointerId]!!
+                    // この指専用の「ACTION_UP」イベントを自作
+                    val newEvent = MotionEvent.obtain(
+                        downTime,
+                        event.eventTime,
+                        MotionEvent.ACTION_UP, // ジェスチャーの終了として偽装
+                        x,
+                        y,
+                        event.metaState
+                    )
+                    newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
+                    target.dispatchTouchEvent(newEvent)
+                    newEvent.recycle()
+                }
+
+                // 離された指の情報を削除
+                motionTargets.remove(pointerId)
+                pointerDownTime.remove(pointerId)
+                return true
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // 最後の指が離された、またはジェスチャーがキャンセルされた
+                val x = event.getX(pointerIndex)
+                val y = event.getY(pointerIndex)
+                val actionToDispatch =
+                    if (action == MotionEvent.ACTION_UP) MotionEvent.ACTION_UP else MotionEvent.ACTION_CANCEL
+
+                motionTargets[pointerId]?.let { target ->
+                    val downTime = pointerDownTime[pointerId]!!
+                    // この指専用のUP/CANCELイベントを自作
+                    val newEvent = MotionEvent.obtain(
+                        downTime,
+                        event.eventTime,
+                        actionToDispatch,
+                        x,
+                        y,
+                        event.metaState
+                    )
+                    newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
+                    target.dispatchTouchEvent(newEvent)
+                    newEvent.recycle()
+                }
+
+                // すべての状態をクリア
+                motionTargets.clear()
+                pointerDownTime.clear()
+                return true
             }
         }
         return super.onTouchEvent(event)
     }
-    // END: New method
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()

@@ -135,21 +135,19 @@ class PetalFlickInputController(private val context: Context) {
     }
 
     private fun showPopupForDirection(direction: FlickDirection) {
-        // 計算された方向が前回と同じなら、何もせずに処理を終了（ちらつき防止）
         if (direction == currentFlickDirection) {
             return
         }
 
-        // 以前のポップアップを消す
         currentVisiblePopup?.dismiss()
-
         if (isLongPressModeActive) return
 
         val popupToShow = popupMap[direction]
         val currentAnchor = anchorView
 
-        if (popupToShow != null && currentAnchor != null) {
-            val location = IntArray(2); currentAnchor.getLocationInWindow(location)
+        if (popupToShow != null && currentAnchor != null && currentAnchor.isAttachedToWindow) {
+            val location = IntArray(2)
+            currentAnchor.getLocationInWindow(location)
             val anchorX = location[0]
             val anchorY = location[1]
             val keyWidth = currentAnchor.width
@@ -165,42 +163,52 @@ class PetalFlickInputController(private val context: Context) {
 
             when (direction) {
                 FlickDirection.TAP -> {
-                    x = anchorCenterX - popupWidth / 2; y = anchorCenterY - popupHeight / 2
+                    x = anchorCenterX - popupWidth / 2
+                    y = anchorCenterY - popupHeight / 2
                 }
 
                 FlickDirection.UP -> {
-                    x = anchorCenterX - popupWidth / 2; y = anchorCenterY - popupHeight
+                    x = anchorCenterX - popupWidth / 2
+                    y = anchorCenterY - popupHeight
                 }
 
                 FlickDirection.DOWN -> {
-                    x = anchorCenterX - popupWidth / 2; y = anchorCenterY
+                    x = anchorCenterX - popupWidth / 2
+                    y = anchorCenterY
                 }
 
                 FlickDirection.UP_LEFT_FAR -> {
-                    x = anchorCenterX - popupWidth; y = anchorCenterY - popupHeight / 2
+                    x = anchorCenterX - popupWidth
+                    y = anchorCenterY - popupHeight / 2
                 }
 
                 FlickDirection.UP_RIGHT_FAR -> {
-                    x = anchorCenterX; y = anchorCenterY - popupHeight / 2
+                    x = anchorCenterX
+                    y = anchorCenterY - popupHeight / 2
                 }
 
                 else -> {
-                    x = anchorCenterX - popupWidth / 2; y = anchorCenterY - popupHeight / 2
+                    x = anchorCenterX - popupWidth / 2
+                    y = anchorCenterY - popupHeight / 2
                 }
             }
 
             popupToShow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
             currentVisiblePopup = popupToShow
-            // 現在表示した方向を記録する
             currentFlickDirection = direction
         }
     }
 
     private fun showGridPopup() {
+        val currentAnchor = anchorView ?: return
+
+        // FIX: Add a check to ensure the anchor view is attached to a window
+        if (!currentAnchor.isAttachedToWindow) {
+            return
+        }
+
         val popupView = gridPopup.contentView as FlickGridPopupView
         colorTheme?.let { popupView.setColors(it) }
-
-        val currentAnchor = anchorView ?: return
 
         popupView.setCharacters(characterMap, currentAnchor.width, currentAnchor.height)
         popupView.highlightKey(FlickDirection.TAP)
