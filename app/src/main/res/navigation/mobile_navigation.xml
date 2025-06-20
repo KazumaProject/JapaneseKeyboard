@@ -41,12 +41,40 @@
         android:id="@+id/keyboardSelectionFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.KeyboardSelectionFragment"
         android:label="キーボード"
-        tools:layout="@layout/fragment_keyboard_selection" />
+        tools:layout="@layout/fragment_keyboard_selection">
+        <action
+            android:id="@+id/action_keyboardSelectionFragment_to_keyboardListFragment"
+            app:destination="@id/keyboardListFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/navigation_user_dictionary"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.user_dictionary.UserDictionaryFragment"
         android:label="@string/user_dictionary_title"
         tools:layout="@layout/fragment_user_dictionary" />
+    <fragment
+        android:id="@+id/keyboardEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.KeyboardEditorFragment"
+        android:label="@string/title_custom_layouts">
+        <argument
+            android:name="layoutId"
+            android:defaultValue="-1L"
+            app:argType="long" />
+        <action
+            android:id="@+id/action_keyboardEditorFragment_to_keyEditorFragment"
+            app:destination="@id/keyEditorFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/keyEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.KeyEditorFragment"
+        android:label="KeyEditorFragment" />
+    <fragment
+        android:id="@+id/keyboardListFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.KeyboardListFragment"
+        android:label="KeyboardListFragment">
+        <action
+            android:id="@+id/action_keyboardListFragment_to_keyboardEditorFragment"
+            app:destination="@id/keyboardEditorFragment" />
+    </fragment>
 
 </navigation>
