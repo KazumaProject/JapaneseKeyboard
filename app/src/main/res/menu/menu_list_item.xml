@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_duplicate_layout"
+        android:title="@string/duplicate_keyboard" />
+    <item
+        android:id="@+id/action_delete_layout"
+        android:title="@string/delete_keyboard" />
+</menu>

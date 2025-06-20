@@ -65,6 +65,10 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.listener = listener
     }
 
+    fun removeKeyboardActionListener() {
+        this.listener = null
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
         this.removeAllViews()
