@@ -121,7 +121,6 @@ class FlickInputController(context: Context) {
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
                     delay(ViewConfiguration.getLongPressTimeout().toLong())
-                    Log.d("FlickInputController", "Long press detected!")
                     isLongPressModeActive = true
                     popupView.setFullUIMode(true)
                     popupView.invalidate()
@@ -171,10 +170,6 @@ class FlickInputController(context: Context) {
                 if (finalDirectionToInput != FlickDirection.DOWN) {
                     val currentMap = keyMaps[currentMapIndex]
                     val character = currentMap[finalDirectionToInput] ?: ""
-                    Log.d(
-                        "FlickInputController",
-                        "Final Direction: $finalDirectionToInput, Char: $character"
-                    )
                     listener?.onFlick(finalDirectionToInput, character)
                 }
 
