@@ -72,9 +72,6 @@ class StandardFlickInputController(context: Context) {
         completeMap[FlickDirection.UP_LEFT_FAR] = map[FlickDirection.UP_LEFT_FAR]
             ?: map.entries.find { it.key.name.contains("LEFT") }?.value ?: ""
 
-        // ▼▼▼ BUG FIX ▼▼▼
-        // The original code had a copy-paste error here, looking for UP_LEFT_FAR again.
-        // This now correctly looks for the character associated with the RIGHT direction.
         completeMap[FlickDirection.UP_RIGHT_FAR] = map[FlickDirection.UP_RIGHT_FAR]
             ?: map.entries.find { it.key.name.contains("RIGHT") }?.value ?: ""
 
@@ -122,49 +119,41 @@ class StandardFlickInputController(context: Context) {
         return false
     }
 
-    /**
-     * ▼▼▼ MODIFIED METHOD ▼▼▼
-     * This method now shows the multi-character popup for TAP
-     * and the standard single-character popup for all other directions.
-     */
     private fun showPopup(direction: FlickDirection) {
         val currentAnchor = anchorView ?: return
 
-        // Update popup colors
+        // ★★★ START: 修正箇所 ★★★
+        // PopupWindowを表示する前に、アンカービューがウィンドウにアタッチされているか必ず確認する。
+        // これで BadTokenException クラッシュを回避できる。
+        if (!currentAnchor.isAttachedToWindow) {
+            return
+        }
+        // ★★★ END: 修正箇所 ★★★
+
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
 
-        // ▼▼▼ NEW LOGIC HERE ▼▼▼
         if (direction == FlickDirection.TAP) {
-            // For TAP, call the new method to show all flick characters
             popupView.updateMultiCharText(characterMap)
         } else {
-            // For any other direction, call the original updateText method
             val text = characterMap[direction]
             popupView.updateText(text)
         }
-        // ▲▲▲ END OF NEW LOGIC ▲▲▲
 
+        val baseOffsetY = 10
+        val flickUpAdditionalOffset = 80
 
-        // Y-coordinate offset values
-        val baseOffsetY = 10 // Basic margin to show above the key
-        val flickUpAdditionalOffset = 80 // Additional offset for UP flick
-
-        // Calculate popup position
         val location = IntArray(2)
         currentAnchor.getLocationInWindow(location)
         val x = location[0] + (currentAnchor.width / 2) - (popupView.viewSize / 2)
-        var y = location[1] - popupView.viewSize - baseOffsetY // Default Y position
+        var y = location[1] - popupView.viewSize - baseOffsetY
 
-        // If direction is UP, adjust Y higher (smaller value)
         if (direction == FlickDirection.UP) {
             y -= flickUpAdditionalOffset
         }
 
         if (popupWindow.isShowing) {
-            // If already showing, update position
             popupWindow.update(x, y, -1, -1)
         } else {
-            // If not showing, show at the specified location
             popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
         }
     }
