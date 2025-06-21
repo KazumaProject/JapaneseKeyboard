@@ -84,4 +84,14 @@ interface KeyboardLayoutDao {
         deleteKeysForLayout(layoutId)
     }
 
+    @Query("SELECT name FROM keyboard_layouts WHERE layoutId = :id")
+    suspend fun getLayoutName(id: Long): String?
+
+    /**
+     * IDを指定して、Flowではない単発のデータとして完全なレイアウトを取得します（複製用）
+     */
+    @Transaction
+    @Query("SELECT * FROM keyboard_layouts WHERE layoutId = :id")
+    suspend fun getFullLayoutOneShot(id: Long): FullKeyboardLayout?
+
 }
