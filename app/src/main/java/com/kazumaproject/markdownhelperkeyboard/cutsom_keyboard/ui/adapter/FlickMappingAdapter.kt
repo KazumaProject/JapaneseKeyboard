@@ -1,7 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.adapter
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.core.widget.doOnTextChanged
 import androidx.recyclerview.widget.DiffUtil
@@ -11,7 +13,6 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.markdownhelperkeyboard.databinding.ListItemFlickMappingBinding
 import java.util.UUID
 
-// RecyclerViewの各項目を表すデータクラス
 data class FlickMappingItem(
     val id: String = UUID.randomUUID().toString(),
     var direction: FlickDirection,
@@ -19,14 +20,43 @@ data class FlickMappingItem(
 )
 
 class FlickMappingAdapter(
-    private val onDeleteClick: (FlickMappingItem) -> Unit
+    private val onItemUpdated: (FlickMappingItem) -> Unit,
+    private val onItemDeleted: (FlickMappingItem) -> Unit
 ) : ListAdapter<FlickMappingItem, FlickMappingAdapter.ViewHolder>(DiffCallback) {
 
     inner class ViewHolder(private val binding: ListItemFlickMappingBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        private val textWatcher =
+            binding.flickActionValueEdittext.doOnTextChanged { text, _, _, _ ->
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    val currentItem = getItem(bindingAdapterPosition)
+                    if (currentItem.output != text.toString()) {
+                        onItemUpdated(currentItem.copy(output = text.toString()))
+                    }
+                }
+            }
+
+        private val spinnerListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
+                    val selectedDirection = FlickDirection.values()[position]
+                    val currentItem = getItem(bindingAdapterPosition)
+                    if (currentItem.direction != selectedDirection) {
+                        onItemUpdated(currentItem.copy(direction = selectedDirection))
+                    }
+                }
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
         init {
-            // Spinnerのセットアップ
             val directionAdapter = ArrayAdapter(
                 binding.root.context,
                 android.R.layout.simple_spinner_item,
@@ -36,24 +66,27 @@ class FlickMappingAdapter(
             }
             binding.flickDirectionSpinner.adapter = directionAdapter
 
-            // リスナーの設定
-            binding.flickActionValueEdittext.doOnTextChanged { text, _, _, _ ->
-                if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    getItem(bindingAdapterPosition).output = text.toString()
-                }
-            }
-
             binding.flickDeleteButton.setOnClickListener {
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) {
-                    onDeleteClick(getItem(bindingAdapterPosition))
+                    onItemDeleted(getItem(bindingAdapterPosition))
                 }
             }
         }
 
         fun bind(item: FlickMappingItem) {
-            binding.flickActionValueEdittext.setText(item.output)
+            binding.flickActionValueEdittext.removeTextChangedListener(textWatcher)
+            binding.flickDirectionSpinner.onItemSelectedListener = null
+
+            if (binding.flickActionValueEdittext.text.toString() != item.output) {
+                binding.flickActionValueEdittext.setText(item.output)
+            }
             val selection = FlickDirection.values().indexOf(item.direction)
-            binding.flickDirectionSpinner.setSelection(selection)
+            if (binding.flickDirectionSpinner.selectedItemPosition != selection) {
+                binding.flickDirectionSpinner.setSelection(selection)
+            }
+
+            binding.flickActionValueEdittext.addTextChangedListener(textWatcher)
+            binding.flickDirectionSpinner.onItemSelectedListener = spinnerListener
         }
     }
 

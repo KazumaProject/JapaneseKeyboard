@@ -9,7 +9,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.google.android.material.snackbar.Snackbar
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -17,6 +16,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEdit
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import timber.log.Timber
 
 @AndroidEntryPoint
 class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
@@ -108,55 +108,16 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         } else {
             "編集"
         }
-
-        // Handle navigation triggers
-        if (state.selectedKeyIdentifier != null) {
-            findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
-            // Reset the trigger to prevent re-navigation
-            // viewModel.doneNavigatingToKeyEditor()
-        }
-
-        if (state.navigateBack) {
-            Snackbar.make(binding.root, "Layout saved!", Snackbar.LENGTH_SHORT).show()
-            findNavController().popBackStack()
-            // Reset the trigger
-            viewModel.onDoneNavigating()
-        }
     }
 
     //region FlickKeyboardView.OnKeyboardActionListener Implementation
     override fun onKey(text: String) {
-        if (viewModel.uiState.value.isEditMode) {
-            // In Edit Mode, tapping a key selects it for editing
-            //viewModel.selectKeyForEditing(keyData.keyId)
-        } else {
-            // In Preview Mode, type the character into the preview box
-            binding.previewOutputText.append(text)
-        }
+        Timber.d("onKey $text")
+        findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
     }
 
     override fun onAction(action: KeyAction) {
-        val isEditMode = viewModel.uiState.value.isEditMode
-        if (isEditMode) {
-            //viewModel.selectKeyForEditing(keyData.keyId)
-        } else {
-            // Handle special actions in preview mode
-            when (action) {
-                is KeyAction.Delete, is KeyAction.Backspace -> {
-                    val currentText = binding.previewOutputText.text
-                    if (currentText.isNotEmpty()) {
-                        binding.previewOutputText.text =
-                            currentText.substring(0, currentText.length - 1)
-                    }
-                }
-
-                is KeyAction.Space -> binding.previewOutputText.append(" ")
-                is KeyAction.NewLine -> binding.previewOutputText.append("\n")
-                else -> {
-                    // Other actions can be ignored in preview
-                }
-            }
-        }
+        Timber.d("onAction $action")
     }
 
     // Other listener methods can be left empty for this screen's purpose
