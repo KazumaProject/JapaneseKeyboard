@@ -55,9 +55,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         binding.toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.action_save -> {
-                    // ▼▼▼ Fragmentが保持しているargs.layoutIdを直接渡す ▼▼▼
-                    val idToSave = if (args.layoutId == -1L) null else args.layoutId
-                    viewModel.saveLayout(idToSave)
+                    viewModel.saveLayout()
                     true
                 }
 
