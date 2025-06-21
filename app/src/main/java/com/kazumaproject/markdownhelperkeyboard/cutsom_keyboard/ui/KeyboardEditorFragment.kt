@@ -6,26 +6,25 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.hilt.navigation.fragment.hiltNavGraphViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
-import com.kazumaproject.custom_keyboard.data.KeyAction
-import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+import androidx.navigation.fragment.navArgs
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEditorBinding
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 @AndroidEntryPoint
 class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
-    FlickKeyboardView.OnKeyboardActionListener {
+    EditableFlickKeyboardView.OnKeyEditListener {
 
-    // Use hiltNavGraphViewModels to get a ViewModel instance scoped to the navigation graph.
-    // This allows this Fragment and KeyEditorFragment to share the same ViewModel instance.
-    // Make sure your NavGraph has an ID, e.g., android:id="@+id/keyboard_editor_nav_graph"
-    private val viewModel: KeyboardEditorViewModel by viewModels()
+    private val viewModel: KeyboardEditorViewModel by hiltNavGraphViewModels(R.id.mobile_navigation)
+    private val args: KeyboardEditorFragmentArgs by navArgs()
 
     private var _binding: FragmentKeyboardEditorBinding? = null
     private val binding get() = _binding!!
@@ -33,7 +32,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(true)
+            hide()
         }
     }
 
@@ -41,13 +40,14 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardEditorBinding.bind(view)
 
+        viewModel.start(args.layoutId)
+
         setupUIListeners()
         observeViewModel()
     }
 
     private fun setupUIListeners() {
-        binding.flickKeyboardView.setOnKeyboardActionListener(this)
-
+        binding.flickKeyboardView.setOnKeyEditListener(this)
         binding.toolbar.setNavigationOnClickListener {
             findNavController().popBackStack()
         }
@@ -55,12 +55,9 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         binding.toolbar.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 R.id.action_save -> {
-                    viewModel.saveLayout()
-                    true
-                }
-
-                R.id.action_toggle_mode -> {
-                    //viewModel.toggleEditMode()
+                    // ▼▼▼ Fragmentが保持しているargs.layoutIdを直接渡す ▼▼▼
+                    val idToSave = if (args.layoutId == -1L) null else args.layoutId
+                    viewModel.saveLayout(idToSave)
                     true
                 }
 
@@ -69,7 +66,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }
 
         binding.keyboardNameEdittext.doAfterTextChanged { text ->
-            // Only update if the text is different from the state to prevent infinite loops
             if (text.toString() != viewModel.uiState.value.name) {
                 viewModel.updateName(text.toString())
             }
@@ -82,56 +78,50 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     }
 
     private fun observeViewModel() {
-        viewModel.uiState.onEach { state ->
-            updateUi(state)
-        }.launchIn(viewLifecycleOwner.lifecycleScope)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.uiState.collect { state ->
+                        updateUi(state)
+                    }
+                }
+                launch {
+                    viewModel.uiState.collect {
+                        if (it.navigateBack) {
+                            findNavController().popBackStack()
+                            viewModel.onDoneNavigating()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun updateUi(state: EditorUiState) {
-        // Update keyboard name, preventing cursor jumps
+        if (state.isLoading) {
+            binding.editModePanel.isVisible = false
+            return
+        }
+
+        binding.editModePanel.isVisible = true
+
         if (binding.keyboardNameEdittext.text.toString() != state.name) {
             binding.keyboardNameEdittext.setText(state.name)
             binding.keyboardNameEdittext.setSelection(state.name.length)
         }
 
-        // Update the keyboard view
         binding.flickKeyboardView.setKeyboard(state.layout)
-
-        // Update UI based on edit/preview mode
-        binding.editModePanel.isVisible = state.isEditMode
-        binding.previewOutputText.isVisible = !state.isEditMode
-
-        val menu = binding.toolbar.menu
-        val toggleItem = menu.findItem(R.id.action_toggle_mode)
-        toggleItem?.title = if (state.isEditMode) {
-            "プレビュー"
-        } else {
-            "編集"
-        }
     }
 
-    //region FlickKeyboardView.OnKeyboardActionListener Implementation
-    override fun onKey(text: String) {
-        Timber.d("onKey $text")
+    override fun onKeySelected(keyId: String) {
+        Timber.d("onKeySelected: keyId = $keyId")
+        viewModel.selectKeyForEditing(keyId)
         findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
     }
 
-    override fun onAction(action: KeyAction) {
-        Timber.d("onAction $action")
-    }
-
-    // Other listener methods can be left empty for this screen's purpose
-    override fun onActionLongPress(action: KeyAction) {}
-    override fun onActionUpAfterLongPress(action: KeyAction) {}
-    override fun onFlickDirectionChanged(direction: com.kazumaproject.custom_keyboard.data.FlickDirection) {}
-    override fun onFlickActionLongPress(action: KeyAction) {}
-    override fun onFlickActionUpAfterLongPress(action: KeyAction) {}
-    //endregion
-
     override fun onDestroyView() {
         super.onDestroyView()
-        // Clear the listener to avoid leaks
-        binding.flickKeyboardView.removeKeyboardActionListener()
+        binding.flickKeyboardView.removeOnKeyEditListener()
         _binding = null
     }
 }

@@ -50,4 +50,12 @@
         <item>連体詞</item>
         <item>その他</item>
     </string-array>
+
+    <string-array name="flick_directions">
+        <item>タップ</item>
+        <item>左フリック</item>
+        <item>上フリック</item>
+        <item>右フリック</item>
+        <item>下フリック</item>
+    </string-array>
 </resources>

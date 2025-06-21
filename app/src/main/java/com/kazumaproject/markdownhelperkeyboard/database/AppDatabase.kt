@@ -24,7 +24,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWor
         KeyDefinition::class,
         FlickMapping::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -133,6 +133,17 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent()
                 )
+            }
+        }
+
+        /**
+         * バージョン5から6へのマイグレーション。
+         * key_definitions テーブルに action 列を追加します。
+         * この列は、キーが持つ特別な機能（削除、スペースなど）を文字列として保存します。
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) { // <<< ★★★ ここから追加 ★★★
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `action` TEXT")
             }
         }
 
