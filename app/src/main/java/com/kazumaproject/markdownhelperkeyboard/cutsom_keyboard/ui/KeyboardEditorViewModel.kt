@@ -8,6 +8,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,7 +25,7 @@ data class EditorUiState(
     val isEditMode: Boolean = true,
     val isLoading: Boolean = true,
     val selectedKeyIdentifier: String? = null,
-    val navigateBack: Boolean = false // 保存後に戻るためのフラグ
+    val navigateBack: Boolean = false
 )
 
 @HiltViewModel
@@ -48,11 +49,12 @@ class KeyboardEditorViewModel @Inject constructor(
 
     private fun loadLayout(id: Long) {
         viewModelScope.launch {
+            val layoutName = repository.getLayoutName(id) ?: "名称未設定"
             repository.getFullLayout(id).collect { loadedLayout ->
                 _uiState.update {
                     it.copy(
                         layoutId = id,
-                        name = "", // NameもRepositoryから取得するべき
+                        name = layoutName,
                         layout = loadedLayout,
                         isLoading = false
                     )
@@ -62,21 +64,9 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     private fun createNewLayout() {
-        val columnCount = 5
-        val rowCount = 4
-        val initialKeys = mutableListOf<KeyData>()
-        for (row in 0 until rowCount) {
-            for (col in 0 until columnCount) {
-                initialKeys.add(createEmptyKey(row, col))
-            }
-        }
-        val newLayout = KeyboardLayout(initialKeys, emptyMap(), columnCount, rowCount)
+        val newLayout = KeyboardDefaultLayouts.defaultLayout()
         _uiState.update {
-            it.copy(
-                layout = newLayout,
-                isLoading = false,
-                name = "新しいキーボード"
-            )
+            it.copy(layout = newLayout, isLoading = false, name = "新しいキーボード")
         }
     }
 
@@ -92,7 +82,8 @@ class KeyboardEditorViewModel @Inject constructor(
             for (col in 0 until layout.columnCount) {
                 newKeys.add(createEmptyKey(newRowCount - 1, col))
             }
-            currentState.copy(layout = layout.copy(keys = newKeys, rowCount = newRowCount))
+            val newLayout = layout.copy(keys = newKeys, rowCount = newRowCount)
+            currentState.copy(layout = newLayout)
         }
     }
 
@@ -102,7 +93,8 @@ class KeyboardEditorViewModel @Inject constructor(
             if (layout.rowCount <= 1) return@update currentState
             val newRowCount = layout.rowCount - 1
             val newKeys = layout.keys.filter { it.row < newRowCount }
-            currentState.copy(layout = layout.copy(keys = newKeys, rowCount = newRowCount))
+            val newLayout = layout.copy(keys = newKeys, rowCount = newRowCount)
+            currentState.copy(layout = newLayout)
         }
     }
 
@@ -112,10 +104,10 @@ class KeyboardEditorViewModel @Inject constructor(
             val newColumnCount = layout.columnCount + 1
             val newKeys = layout.keys.toMutableList()
             for (row in 0 until layout.rowCount) {
-                // 各行の末尾に新しいキーを追加
                 newKeys.add(createEmptyKey(row, newColumnCount - 1))
             }
-            currentState.copy(layout = layout.copy(keys = newKeys, columnCount = newColumnCount))
+            val newLayout = layout.copy(keys = newKeys, columnCount = newColumnCount)
+            currentState.copy(layout = newLayout)
         }
     }
 
@@ -125,37 +117,43 @@ class KeyboardEditorViewModel @Inject constructor(
             if (layout.columnCount <= 1) return@update currentState
             val newColumnCount = layout.columnCount - 1
             val newKeys = layout.keys.filter { it.column < newColumnCount }
-            currentState.copy(layout = layout.copy(keys = newKeys, columnCount = newColumnCount))
+            val newLayout = layout.copy(keys = newKeys, columnCount = newColumnCount)
+            currentState.copy(layout = newLayout)
         }
     }
 
     private fun createEmptyKey(row: Int, column: Int): KeyData {
         return KeyData(
-            " ",
-            row,
-            column,
-            false,
+            label = " ",
+            row = row,
+            column = column,
+            isFlickable = false,
             keyId = UUID.randomUUID().toString(),
             keyType = KeyType.NORMAL
         )
+    }
+
+    fun toggleEditMode() {
+        _uiState.update { it.copy(isEditMode = !it.isEditMode) }
     }
 
     fun selectKeyForEditing(keyId: String?) {
         _uiState.update { it.copy(selectedKeyIdentifier = keyId) }
     }
 
+    fun doneNavigatingToKeyEditor() {
+        _uiState.update { it.copy(selectedKeyIdentifier = null) }
+    }
+
     fun updateKeyAndFlicks(keyData: KeyData, flickMap: Map<FlickDirection, FlickAction>) {
         _uiState.update { currentState ->
-            val newKeys =
-                currentState.layout.keys.map { if (it.keyId == keyData.keyId) keyData else it }
+            val newKeys = currentState.layout.keys.map {
+                if (it.keyId == keyData.keyId) keyData else it
+            }
             val newFlickMaps = currentState.layout.flickKeyMaps.toMutableMap()
-            newFlickMaps[keyData.keyId!!] = listOf(flickMap) // 状態は1つと仮定
-            currentState.copy(
-                layout = currentState.layout.copy(
-                    keys = newKeys,
-                    flickKeyMaps = newFlickMaps
-                )
-            )
+            newFlickMaps[keyData.keyId!!] = listOf(flickMap)
+            val newLayout = currentState.layout.copy(keys = newKeys, flickKeyMaps = newFlickMaps)
+            currentState.copy(layout = newLayout)
         }
     }
 

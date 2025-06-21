@@ -23,6 +23,8 @@ class KeyboardRepository @Inject constructor(
 
     fun getLayouts(): Flow<List<CustomKeyboardLayout>> = dao.getLayoutsList()
 
+    suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
+
     fun getFullLayout(id: Long): Flow<KeyboardLayout> {
         return dao.getFullLayoutById(id).map { dbLayout ->
             convertToUiModel(dbLayout)
@@ -36,17 +38,19 @@ class KeyboardRepository @Inject constructor(
             columnCount = layout.columnCount,
             rowCount = layout.rowCount
         )
-        val (keys, flicks) = convertToDbModel(layout)
+        val (keys, flicksMap) = convertToDbModel(layout)
 
-        if (id == null || id == 0L) {
-            dao.insertFullKeyboardLayout(dbLayout, keys, flicks)
+        if (id == null || id == 0L || id == -1L) {
+            dao.insertFullKeyboardLayout(dbLayout, keys, flicksMap)
         } else {
             dao.updateLayout(dbLayout)
             dao.deleteKeysAndFlicksForLayout(id)
             val keysWithLayoutId = keys.map { it.copy(ownerLayoutId = id) }
             val newKeyIds = dao.insertKeys(keysWithLayoutId)
-            val flicksWithKeyIds = mapFlicksToNewKeys(keysWithLayoutId, newKeyIds, flicks)
-            dao.insertFlickMappings(flicksWithKeyIds)
+            val flicksWithKeyIds = mapFlicksToNewKeys(keysWithLayoutId, newKeyIds, flicksMap)
+            if (flicksWithKeyIds.isNotEmpty()) {
+                dao.insertFlickMappings(flicksWithKeyIds)
+            }
         }
     }
 
@@ -54,8 +58,27 @@ class KeyboardRepository @Inject constructor(
         dao.deleteLayout(id)
     }
 
+    suspend fun duplicateLayout(id: Long) {
+        val originalLayout = dao.getFullLayoutOneShot(id) ?: return
+
+        // 新しいレイアウト名を作成
+        val newLayoutInfo = originalLayout.layout.copy(
+            layoutId = 0, // 新規作成なのでIDを0に
+            name = originalLayout.layout.name + " (コピー)",
+            createdAt = System.currentTimeMillis()
+        )
+
+        // キーとフリックの情報を抽出
+        val keys = originalLayout.keysWithFlicks.map { it.key }
+        val flicksMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
+            keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
+        }
+
+        // 新規レイアウトとして保存
+        dao.insertFullKeyboardLayout(newLayoutInfo, keys, flicksMap)
+    }
+
     private fun convertToUiModel(dbLayout: FullKeyboardLayout): KeyboardLayout {
-        //val keyIdMap = dbLayout.keysWithFlicks.associate { it.key.keyId to it.key.keyIdentifier }
         val flickMaps = dbLayout.keysWithFlicks.associate { keyWithFlicks ->
             val identifier = keyWithFlicks.key.keyIdentifier
             val flicksByState = keyWithFlicks.flicks.groupBy { it.stateIndex }
@@ -64,6 +87,7 @@ class KeyboardRepository @Inject constructor(
                         flick.flickDirection to flick.toFlickAction()
                     }
                 }
+                .toSortedMap() // 状態インデックス順にソート
                 .values.toList() // Map<Int, Map> to List<Map>
             identifier to flicksByState
         }
@@ -91,9 +115,9 @@ class KeyboardRepository @Inject constructor(
         )
     }
 
-    private fun convertToDbModel(uiLayout: KeyboardLayout): Pair<List<KeyDefinition>, List<FlickMapping>> {
+    private fun convertToDbModel(uiLayout: KeyboardLayout): Pair<List<KeyDefinition>, Map<String, List<FlickMapping>>> {
         val keys = mutableListOf<KeyDefinition>()
-        val flicks = mutableListOf<FlickMapping>()
+        val flicksMap = mutableMapOf<String, MutableList<FlickMapping>>()
 
         uiLayout.keys.forEach { keyData ->
             val keyIdentifier = keyData.keyId ?: UUID.randomUUID().toString()
@@ -116,50 +140,49 @@ class KeyboardRepository @Inject constructor(
             uiLayout.flickKeyMaps[keyIdentifier]?.forEachIndexed { stateIndex, stateMap ->
                 stateMap.forEach { (direction, flickAction) ->
                     val (actionType, actionValue) = flickAction.toDbStrings()
-                    flicks.add(
-                        FlickMapping(
-                            ownerKeyId = keyIdentifier.hashCode()
-                                .toLong(), // 仮のIDとしてIdentifierのハッシュコードを使う
-                            stateIndex = stateIndex,
-                            flickDirection = direction,
-                            actionType = actionType,
-                            actionValue = actionValue
-                        )
+                    val flick = FlickMapping(
+                        ownerKeyId = 0,
+                        stateIndex = stateIndex,
+                        flickDirection = direction,
+                        actionType = actionType,
+                        actionValue = actionValue
                     )
+                    flicksMap.getOrPut(keyIdentifier) { mutableListOf() }.add(flick)
                 }
             }
         }
-        return Pair(keys, flicks)
+        return Pair(keys, flicksMap)
     }
 }
 
-// ヘルパー関数
+// ヘルパー関数群（リポジトリの外部、または別のファイルに定義）
 private suspend fun KeyboardLayoutDao.insertFullKeyboardLayout(
     layout: CustomKeyboardLayout,
     keys: List<KeyDefinition>,
-    flicks: List<FlickMapping>
+    flicksMap: Map<String, List<FlickMapping>>
 ) {
     val layoutId = insertLayout(layout)
     val keysWithLayoutId = keys.map { it.copy(ownerLayoutId = layoutId) }
     val newKeyIds = insertKeys(keysWithLayoutId)
-    val flicksWithKeyIds = mapFlicksToNewKeys(keysWithLayoutId, newKeyIds, flicks)
-    insertFlickMappings(flicksWithKeyIds)
+    val flicksWithKeyIds = mapFlicksToNewKeys(keysWithLayoutId, newKeyIds, flicksMap)
+    if (flicksWithKeyIds.isNotEmpty()) {
+        insertFlickMappings(flicksWithKeyIds)
+    }
 }
 
 private fun mapFlicksToNewKeys(
     dbKeys: List<KeyDefinition>,
     newKeyIds: List<Long>,
-    allFlicks: List<FlickMapping>
+    flicksMap: Map<String, List<FlickMapping>>
 ): List<FlickMapping> {
-    val flicksWithKeyIds = mutableListOf<FlickMapping>()
+    val finalFlicks = mutableListOf<FlickMapping>()
     val identifierToIdMap =
         dbKeys.mapIndexed { index, key -> key.keyIdentifier to newKeyIds[index] }.toMap()
 
-    allFlicks.forEach { flick ->
-        val realOwnerKeyId = identifierToIdMap[flick.ownerKeyId.toString().hashCode().toString()]
-        if (realOwnerKeyId != null) {
-            flicksWithKeyIds.add(flick.copy(ownerKeyId = realOwnerKeyId))
+    identifierToIdMap.forEach { (identifier, realKeyId) ->
+        flicksMap[identifier]?.forEach { flick ->
+            finalFlicks.add(flick.copy(ownerKeyId = realKeyId))
         }
     }
-    return flicksWithKeyIds
+    return finalFlicks
 }

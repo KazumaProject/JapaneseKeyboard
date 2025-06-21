@@ -76,12 +76,16 @@
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_normal"
                             style="@style/Widget.Material3.Chip.Filter"
-                            android:text="Normal" />
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="通常のキー" />
 
                         <com.google.android.material.chip.Chip
                             android:id="@+id/chip_petal"
                             style="@style/Widget.Material3.Chip.Filter"
-                            android:text="Petal Flick" />
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="特別なキー" />
                     </com.google.android.material.chip.ChipGroup>
 
                 </LinearLayout>
@@ -109,7 +113,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        tools:itemCount="2"
+                        tools:itemCount="1"
                         tools:listitem="@layout/list_item_flick_mapping" />
 
                     <com.google.android.material.button.MaterialButton

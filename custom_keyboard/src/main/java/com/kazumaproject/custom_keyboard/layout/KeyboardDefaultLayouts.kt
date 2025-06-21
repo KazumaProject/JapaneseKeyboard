@@ -79,6 +79,11 @@ object KeyboardDefaultLayouts {
         return finalLayout
     }
 
+
+    fun defaultLayout(): KeyboardLayout {
+        return createHiraganaStandardFlickLayout(isDefaultKey = true)
+    }
+
     private val enterKeyStates = listOf(
         FlickAction.Action(KeyAction.NewLine, "改行"),
         FlickAction.Action(KeyAction.Confirm, "確定"),
