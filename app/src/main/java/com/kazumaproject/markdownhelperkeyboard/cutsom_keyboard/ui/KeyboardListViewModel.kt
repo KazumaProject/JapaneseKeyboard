@@ -31,7 +31,7 @@ class KeyboardListViewModel @Inject constructor(
 
     fun duplicateLayout(id: Long) {
         viewModelScope.launch {
-            //repository.duplicateLayout(id) // Repositoryにこのメソッドを追加する必要があります
+            repository.duplicateLayout(id) // Repositoryにこのメソッドを追加する必要があります
         }
     }
 }

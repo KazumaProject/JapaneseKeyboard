@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui
 
 import android.os.Bundle
 import android.view.View
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -23,6 +24,13 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
 
     private var _binding: FragmentKeyboardListBinding? = null
     private val binding get() = _binding!!
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        (activity as AppCompatActivity).supportActionBar?.apply {
+            hide()
+        }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)

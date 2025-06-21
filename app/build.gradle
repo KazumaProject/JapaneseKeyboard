@@ -122,5 +122,7 @@ dependencies {
 
     implementation 'com.google.code.gson:gson:2.13.1'
 
+    implementation "androidx.hilt:hilt-navigation-fragment:1.2.0"
+
     //debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }

@@ -32,5 +32,6 @@ data class KeyDefinition(
     val keyType: KeyType,     // キーの種類 (NORMAL, CROSS_FLICKなど)
     val isSpecialKey: Boolean = false,
     val drawableResId: Int? = null,
-    val keyIdentifier: String // FlickMappingとの紐付けに使う一意なID (labelの代わりに使う)
+    val keyIdentifier: String,
+    val action: String? = null
 )

@@ -6,14 +6,16 @@
     android:layout_height="wrap_content"
     android:paddingVertical="8dp">
 
-    <Spinner
-        android:id="@+id/flick_direction_spinner"
-        android:layout_width="wrap_content"
-        android:layout_height="0dp"
+    <TextView
+        android:id="@+id/flick_direction_label"
+        android:layout_width="80dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:entries="@array/flick_directions" />
+        tools:text="左フリック" />
 
     <TextView
         android:id="@+id/arrow_text"
@@ -21,8 +23,9 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:text="→"
+        android:textAppearance="?attr/textAppearanceBodyLarge"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/flick_direction_spinner"
+        app:layout_constraintStart_toEndOf="@id/flick_direction_label"
         app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.textfield.TextInputLayout
@@ -30,8 +33,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        app:layout_constraintEnd_toStartOf="@id/flick_delete_button"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/arrow_text"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -44,16 +46,5 @@
             android:maxLines="1" />
 
     </com.google.android.material.textfield.TextInputLayout>
-
-    <ImageButton
-        android:id="@+id/flick_delete_button"
-        android:layout_width="wrap_content"
-        android:layout_height="0dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="@string/desc_delete_flick_mapping"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/baseline_delete_24" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -6,14 +6,4 @@
         android:icon="@drawable/baseline_save_24"
         android:title="@string/action_save"
         app:showAsAction="ifRoom" />
-
-    <item
-        android:id="@+id/action_toggle_mode"
-        android:title="@string/action_preview_mode"
-        app:showAsAction="never" />
-
-    <item
-        android:id="@+id/action_layout_settings"
-        android:title="@string/action_layout_settings"
-        app:showAsAction="never" />
 </menu>
