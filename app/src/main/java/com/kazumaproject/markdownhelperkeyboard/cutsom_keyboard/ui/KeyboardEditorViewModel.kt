@@ -25,7 +25,8 @@ data class EditorUiState(
     val isEditMode: Boolean = true,
     val isLoading: Boolean = true,
     val selectedKeyIdentifier: String? = null,
-    val navigateBack: Boolean = false
+    val navigateBack: Boolean = false,
+    val duplicateNameError: Boolean = false
 )
 
 @HiltViewModel
@@ -103,23 +104,32 @@ class KeyboardEditorViewModel @Inject constructor(
     fun saveLayout() {
         viewModelScope.launch {
             val currentState = _uiState.value
-            val idToSave = currentEditingId // 更新・削除にはキャッシュしたIDを使用
+            val idToSave = currentEditingId
 
-            if (idToSave != null) {
-                // 更新の場合は、古いものを削除してから新しいものを登録
-                Timber.d("This is an update. Deleting old layout with ID: $idToSave")
-                repository.deleteLayout(idToSave)
+            // 1. 保存前に名前の重複をチェック
+            val nameExists = repository.doesNameExist(currentState.name, idToSave)
+
+            if (nameExists) {
+                // 2. もし名前が重複していたら、エラー状態をtrueにして処理を中断
+                Timber.d("Save failed: Duplicate name found.")
+                _uiState.update { it.copy(duplicateNameError = true) }
+            } else {
+                // 3. 重複がなければ、保存処理を実行
+                if (idToSave != null) {
+                    repository.deleteLayout(idToSave)
+                }
+                repository.saveLayout(
+                    layout = currentState.layout,
+                    name = currentState.name,
+                    id = null
+                )
+                _uiState.update { it.copy(navigateBack = true) }
             }
-
-            Timber.d("Saving layout as a new entry.")
-            repository.saveLayout(
-                layout = currentState.layout,
-                name = currentState.name,
-                id = null // 常に新規作成として保存
-            )
-
-            _uiState.update { it.copy(navigateBack = true) }
         }
+    }
+
+    fun clearDuplicateNameError() {
+        _uiState.update { it.copy(duplicateNameError = false) }
     }
 
     // 他のすべての関数は変更なし

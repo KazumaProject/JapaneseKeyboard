@@ -94,4 +94,10 @@ interface KeyboardLayoutDao {
     @Query("SELECT * FROM keyboard_layouts WHERE layoutId = :id")
     suspend fun getFullLayoutOneShot(id: Long): FullKeyboardLayout?
 
+    /**
+     * 指定された名前のレイアウトを検索します。
+     */
+    @Query("SELECT * FROM keyboard_layouts WHERE name = :name LIMIT 1")
+    suspend fun findLayoutByName(name: String): CustomKeyboardLayout?
+
 }

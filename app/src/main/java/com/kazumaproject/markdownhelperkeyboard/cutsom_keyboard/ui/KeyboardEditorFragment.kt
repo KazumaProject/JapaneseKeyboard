@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEditorBinding
@@ -78,21 +79,39 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                // UI更新とナビゲーションの監視
                 launch {
                     viewModel.uiState.collect { state ->
                         updateUi(state)
-                    }
-                }
-                launch {
-                    viewModel.uiState.collect {
-                        if (it.navigateBack) {
+                        if (state.navigateBack) {
                             findNavController().popBackStack()
                             viewModel.onDoneNavigating()
                         }
                     }
                 }
+
+                // ▼▼▼ 重複エラーを監視する処理を追加 ▼▼▼
+                launch {
+                    viewModel.uiState.collect { state ->
+                        if (state.duplicateNameError) {
+                            showDuplicateNameDialog()
+                            viewModel.clearDuplicateNameError() // ダイアログ表示後にエラー状態をリセット
+                        }
+                    }
+                }
             }
         }
+    }
+
+    // ▼▼▼ ダイアログを表示する関数を追加 ▼▼▼
+    private fun showDuplicateNameDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("名前が重複しています")
+            .setMessage("同じ名前のキーボードレイアウトが既に存在します。別の名前を入力してください。")
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     private fun updateUi(state: EditorUiState) {

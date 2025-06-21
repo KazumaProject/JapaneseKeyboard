@@ -21,6 +21,25 @@ class KeyboardRepository @Inject constructor(
     private val dao: KeyboardLayoutDao
 ) {
 
+    // ▼▼▼ この関数を追加 ▼▼▼
+    /**
+     * 指定された名前が、編集中のレイアウトIDを除いて、既に存在するかどうかを確認します。
+     * @param name チェックする名前
+     * @param currentId 現在編集中のレイアウトのID（新規作成の場合はnull）
+     * @return 存在する場合は true
+     */
+    suspend fun doesNameExist(name: String, currentId: Long?): Boolean {
+        val foundLayout = dao.findLayoutByName(name)
+        return when {
+            // 名前が見つからなかった -> 重複なし
+            foundLayout == null -> false
+            // 見つかったが、それが現在編集中のレイアウト自身だった -> 重複なし
+            foundLayout.layoutId == currentId -> false
+            // 見つかって、それが別のレイアウトだった -> 重複あり
+            else -> true
+        }
+    }
+
     fun getLayouts(): Flow<List<CustomKeyboardLayout>> = dao.getLayoutsList()
 
     suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
