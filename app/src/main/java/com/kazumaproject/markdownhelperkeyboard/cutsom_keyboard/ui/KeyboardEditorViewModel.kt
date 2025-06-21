@@ -36,25 +36,41 @@ class KeyboardEditorViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState = _uiState.asStateFlow()
 
-    private var isInitialized = false
+    // ▼▼▼ isInitializedフラグを廃止し、前回編集したIDを保持する変数に変更 ▼▼▼
+    private var currentEditingId: Long? = null
 
+    /**
+     * Fragmentから呼び出される初期化メソッド。
+     * 新しいIDで呼び出された場合のみ、データの読み込み/新規作成を実行する。
+     */
     fun start(layoutId: Long) {
-        if (isInitialized) {
+        val newId = if (layoutId == -1L) null else layoutId
+
+        // ▼▼▼ 前回と同じIDを編集しようとしている場合は、処理をスキップ（画面回転時の再読み込みを防ぐ） ▼▼▼
+        if (currentEditingId == newId && !_uiState.value.isLoading) {
+            Timber.d("Request to load same layout ($newId). Skipping.")
             return
         }
-        if (layoutId != -1L) {
-            loadLayout(layoutId)
+
+        // ▼▼▼ 新しい編集セッションが始まったと判断し、IDを更新 ▼▼▼
+        currentEditingId = newId
+        Timber.d("Starting new editing session for layoutId: $newId")
+
+        if (newId != null) {
+            loadLayout(newId)
         } else {
             createNewLayout()
         }
-        isInitialized = true
     }
 
     private fun loadLayout(id: Long) {
+        Timber.d("loadLayout called with id = $id")
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+
             val layoutName = repository.getLayoutName(id) ?: "名称未設定"
             val loadedLayout = repository.getFullLayout(id).first()
+
             _uiState.update {
                 it.copy(
                     layoutId = id,
@@ -84,20 +100,29 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
-    // ▼▼▼ この関数を修正し、FragmentからIDを直接受け取るように変更 ▼▼▼
-    fun saveLayout(id: Long?) {
+    fun saveLayout() {
         viewModelScope.launch {
             val currentState = _uiState.value
-            Timber.d("saveLayout: ID passed directly from Fragment = $id")
+            val idToSave = currentEditingId // 更新・削除にはキャッシュしたIDを使用
+
+            if (idToSave != null) {
+                // 更新の場合は、古いものを削除してから新しいものを登録
+                Timber.d("This is an update. Deleting old layout with ID: $idToSave")
+                repository.deleteLayout(idToSave)
+            }
+
+            Timber.d("Saving layout as a new entry.")
             repository.saveLayout(
                 layout = currentState.layout,
                 name = currentState.name,
-                id = id
+                id = null // 常に新規作成として保存
             )
+
             _uiState.update { it.copy(navigateBack = true) }
         }
     }
 
+    // 他のすべての関数は変更なし
     fun updateName(name: String) {
         _uiState.update { it.copy(name = name) }
     }
