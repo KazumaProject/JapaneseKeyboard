@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
@@ -10,6 +11,7 @@ import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
+import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -35,6 +37,8 @@ class SettingFragment : PreferenceFragmentCompat() {
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
+    private var count = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
@@ -43,23 +47,17 @@ class SettingFragment : PreferenceFragmentCompat() {
         }
         CoroutineScope(Dispatchers.IO).launch {
             learnRepository.apply {
-                if (findLearnDataByInput("びゃんびゃんめん")
-                        .isNullOrEmpty()
-                ) {
+                if (findLearnDataByInput("びゃんびゃんめん").isNullOrEmpty()) {
                     insertLearnedData(
                         LearnEntity(
-                            input = "びゃんびゃんめん",
-                            out = "\uD883\uDEDE\uD883\uDEDE麺"
+                            input = "びゃんびゃんめん", out = "\uD883\uDEDE\uD883\uDEDE麺"
                         )
                     )
                 }
-                if (findLearnDataByInput("びゃん")
-                        .isNullOrEmpty()
-                ) {
+                if (findLearnDataByInput("びゃん").isNullOrEmpty()) {
                     insertLearnedData(
                         LearnEntity(
-                            input = "びゃん",
-                            out = "\uD883\uDEDE"
+                            input = "びゃん", out = "\uD883\uDEDE"
                         )
                     )
                 }
@@ -93,6 +91,29 @@ class SettingFragment : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.setting_preference, rootKey)
 
+        val packageInfo = requireContext().packageManager.getPackageInfo(
+            requireContext().packageName, 0
+        )
+
+        val sumireInputPreference =
+            findPreference<PreferenceCategory>("sumire_input_preference_category")
+
+        val appVersionPreference = findPreference<Preference>("app_version_preference")
+        appVersionPreference?.apply {
+            summary = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                "version name: ${packageInfo.versionName}\nversion code: ${packageInfo.longVersionCode}"
+            } else {
+                "version name: ${packageInfo.versionName}\nversion code: ${packageInfo.versionCode}"
+            }
+            setOnPreferenceClickListener {
+                count += 1
+                if (count >= 5) {
+                    sumireInputPreference?.isVisible = true
+                }
+                true
+            }
+        }
+
         val keyboardSelectionPreference =
             findPreference<Preference>("keyboard_selection_preference")
 
@@ -123,8 +144,7 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val spaceHankakuPreference =
-            findPreference<SwitchPreferenceCompat>("space_key_preference")
+        val spaceHankakuPreference = findPreference<SwitchPreferenceCompat>("space_key_preference")
         spaceHankakuPreference?.apply {
             appPreference.space_hankaku_preference?.let {
                 this.title = if (it) {
