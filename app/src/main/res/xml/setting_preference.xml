@@ -32,7 +32,10 @@
             android:summary="空白を半角入力"
             android:title="空白を半角入力" />
 
-        <PreferenceCategory android:title="スミレ入力キーボード">
+        <PreferenceCategory
+            android:key="sumire_input_preference_category"
+            android:title="スミレ入力キーボード"
+            app:isPreferenceVisible="false">
             <ListPreference
                 android:defaultValue="flick-default"
                 android:dialogTitle="選択してください"
@@ -148,5 +151,9 @@
             android:key="preference_open_source"
             android:title="使用した Open Source のライブラリ" />
     </PreferenceCategory>
+
+    <Preference
+        android:key="app_version_preference"
+        android:title="アプリのバージョン" />
 
 </PreferenceScreen>
