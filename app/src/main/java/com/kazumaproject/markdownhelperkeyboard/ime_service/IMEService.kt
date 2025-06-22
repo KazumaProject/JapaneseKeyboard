@@ -723,6 +723,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             romajiConverter.clear()
                             return true
                         }
+
+                        KeyEvent.KEYCODE_BACK -> {
+                            requestHideSelf(0)
+                        }
                     }
 
                     event?.let { e ->
