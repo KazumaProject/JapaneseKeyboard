@@ -242,7 +242,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val paddingLength = when {
             position == 0 -> 4
             suggestion.string.length == 1 -> 4
-            else -> 2
+            suggestion.string.length == 2 -> 2
+            else -> 1
         }
 
         val readingCorrectionString =
