@@ -727,25 +727,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         KeyEvent.KEYCODE_BACK -> {
                             return super.onKeyDown(keyCode, event)
                         }
-                    }
 
-                    event?.let { e ->
-                        romajiConverter.handleKeyEvent(e).let { romajiResult ->
-                            if (insertString.isNotEmpty()) {
-                                sb.append(
-                                    insertString.dropLast((romajiResult.second))
-                                ).append(romajiResult.first)
-                                _inputString.update {
-                                    sb.toString()
+                        else -> {
+                            event?.let { e ->
+                                romajiConverter.handleKeyEvent(e).let { romajiResult ->
+                                    if (insertString.isNotEmpty()) {
+                                        sb.append(
+                                            insertString.dropLast((romajiResult.second))
+                                        ).append(romajiResult.first)
+                                        _inputString.update {
+                                            sb.toString()
+                                        }
+                                    } else {
+                                        _inputString.update {
+                                            romajiResult.first
+                                        }
+                                    }
                                 }
-                            } else {
-                                _inputString.update {
-                                    romajiResult.first
-                                }
+                                return true
                             }
+                            return super.onKeyDown(keyCode, event)
                         }
+
                     }
-                    return true
                 }
 
                 else -> {
@@ -3538,6 +3542,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         suggestionAdapter?.suggestions = filtered
         updateUIinHenkan(mainView, insertString)
+        delay(40L)
+        mainView.suggestionRecyclerView.scrollToPosition(0)
     }
 
     private suspend fun getSuggestionList(
