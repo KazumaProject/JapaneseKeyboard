@@ -25,6 +25,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @AndroidEntryPoint
 class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
@@ -169,13 +170,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 isSpecial = true
                 newKeyType = KeyType.NORMAL
 
+                val selectedText = binding.keyActionSpinner.text.toString()
                 val selectedDisplayAction =
-                    KeyActionMapper.displayActions.firstOrNull { it.displayName == binding.keyActionSpinner.text.toString() }
+                    KeyActionMapper.displayActions.firstOrNull { it.displayName == selectedText }
+
+                Timber.d("KeyEditor: Spinner text is '$selectedText', Found action object is '$selectedDisplayAction'")
 
                 newAction = selectedDisplayAction?.action
                 newDrawableResId = selectedDisplayAction?.iconResId
 
-                // ▼▼▼ ラベルのロジックを修正 ▼▼▼
                 // アイコンがある場合はラベルを空にし、ない場合はアクションの表示名を表示ラベルとする
                 newLabel = if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
                     ?: "ACTION"

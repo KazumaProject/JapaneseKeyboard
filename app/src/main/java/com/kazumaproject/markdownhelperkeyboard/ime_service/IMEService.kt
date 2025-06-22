@@ -85,6 +85,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -113,6 +114,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -149,6 +151,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
+
+    @Inject
+    lateinit var keyboardRepository: KeyboardRepository
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
@@ -1286,6 +1291,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             "enter_key" to 0, "dakuten_toggle_key" to 0
                         ), inputType = sumireInputKeyType ?: "flick-default"
                     )
+                    Timber.d("hiraganaLayout: ${hiraganaLayout.flickKeyMaps}\n${hiraganaLayout.keys}")
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
@@ -1303,18 +1309,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
 
     private fun updateKeyboardLayout() {
-        val dynamicStates = mapOf(
-            "enter_key" to currentEnterKeyIndex,
-            "dakuten_toggle_key" to currentDakutenKeyIndex,
-            "space_convert_key" to currentSpaceKeyIndex
-        )
+//        val dynamicStates = mapOf(
+//            "enter_key" to currentEnterKeyIndex,
+//            "dakuten_toggle_key" to currentDakutenKeyIndex,
+//            "space_convert_key" to currentSpaceKeyIndex
+//        )
+//
+//        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+//            mode = customKeyboardMode,
+//            dynamicKeyStates = dynamicStates,
+//            inputType = sumireInputKeyType ?: "flick-default"
+//        )
+//        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+        setKeyboardTab()
+    }
 
-        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
-            mode = customKeyboardMode,
-            dynamicKeyStates = dynamicStates,
-            inputType = sumireInputKeyType ?: "flick-default"
-        )
-        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+    private fun setKeyboardTab() {
+        scope.launch(Dispatchers.IO) {
+            if (keyboardRepository.getLayoutsNotFlow().isEmpty()) return@launch
+            val id = keyboardRepository.getLayoutsNotFlow()[0].layoutId
+            val dbLayout = keyboardRepository.getFullLayout(id).first()
+
+            val finalLayout = keyboardRepository.convertLayout(dbLayout)
+
+            // 変換後のログを確認
+            Timber.d("FINAL flickKeyMaps: ${finalLayout.flickKeyMaps}")
+            Timber.d("FINAL keys: ${finalLayout.keys}")
+
+            withContext(Dispatchers.Main) {
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+            }
+        }
     }
 
     /**
