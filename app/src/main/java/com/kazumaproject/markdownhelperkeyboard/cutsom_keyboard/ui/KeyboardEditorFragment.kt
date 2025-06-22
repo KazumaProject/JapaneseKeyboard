@@ -1,8 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
@@ -30,39 +35,58 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     private var _binding: FragmentKeyboardEditorBinding? = null
     private val binding get() = _binding!!
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        (activity as AppCompatActivity).supportActionBar?.apply {
-            hide()
-        }
-    }
+    // The deprecated setHasOptionsMenu call in onCreate has been removed.
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardEditorBinding.bind(view)
 
-        viewModel.start(args.layoutId)
+        setupToolbarAndMenu()
 
+        viewModel.start(args.layoutId)
         setupUIListeners()
         observeViewModel()
     }
 
+    private fun setupToolbarAndMenu() {
+        // Set up the activity's action bar
+        (activity as? AppCompatActivity)?.supportActionBar?.apply {
+            title = getString(R.string.edit_keyboard) // Set a title for the screen
+            setDisplayHomeAsUpEnabled(true) // Show the back arrow
+        }
+
+        // Add the menu provider, which is the modern way to handle menus in fragments.
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                // Add menu items here
+                menuInflater.inflate(R.menu.menu_keyboard_editor, menu)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                // Handle the menu selection
+                return when (menuItem.itemId) {
+                    android.R.id.home -> {
+                        findNavController().popBackStack()
+                        viewModel.onCancelEditing()
+                        true
+                    }
+
+                    R.id.action_save -> {
+                        viewModel.saveLayout()
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
+    // The deprecated onCreateOptionsMenu and onOptionsItemSelected overrides have been removed.
+
     private fun setupUIListeners() {
         binding.flickKeyboardView.setOnKeyEditListener(this)
-        binding.toolbar.setNavigationOnClickListener {
-            findNavController().popBackStack()
-        }
-
-        binding.toolbar.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.action_save -> {
-                    viewModel.saveLayout()
-                    true
-                }
-
-                else -> false
-            }
-        }
 
         binding.keyboardNameEdittext.doAfterTextChanged { text ->
             if (text.toString() != viewModel.uiState.value.name) {
@@ -79,7 +103,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // UI更新とナビゲーションの監視
+                // UI update and navigation observation
                 launch {
                     viewModel.uiState.collect { state ->
                         updateUi(state)
@@ -90,12 +114,12 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
                     }
                 }
 
-                // ▼▼▼ 重複エラーを監視する処理を追加 ▼▼▼
+                // Observe for duplicate name errors
                 launch {
                     viewModel.uiState.collect { state ->
                         if (state.duplicateNameError) {
                             showDuplicateNameDialog()
-                            viewModel.clearDuplicateNameError() // ダイアログ表示後にエラー状態をリセット
+                            viewModel.clearDuplicateNameError() // Reset the error state after showing the dialog
                         }
                     }
                 }
@@ -103,12 +127,11 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }
     }
 
-    // ▼▼▼ ダイアログを表示する関数を追加 ▼▼▼
     private fun showDuplicateNameDialog() {
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("名前が重複しています")
-            .setMessage("同じ名前のキーボードレイアウトが既に存在します。別の名前を入力してください。")
-            .setPositiveButton("OK") { dialog, _ ->
+            .setTitle("キーボード名が重複しています")
+            .setMessage("別のキーボード名に修正してください。")
+            .setPositiveButton(android.R.string.ok) { dialog, _ ->
                 dialog.dismiss()
             }
             .show()
@@ -138,6 +161,12 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Good practice to clean up action bar modifications.
+        // The MenuProvider is automatically removed by the lifecycle owner, so no need for manual removal.
+        (activity as? AppCompatActivity)?.supportActionBar?.apply {
+            title = null
+            setDisplayHomeAsUpEnabled(false)
+        }
         binding.flickKeyboardView.removeOnKeyEditListener()
         _binding = null
     }
