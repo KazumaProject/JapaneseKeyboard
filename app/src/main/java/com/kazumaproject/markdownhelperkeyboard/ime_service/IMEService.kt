@@ -725,7 +725,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
 
                         KeyEvent.KEYCODE_BACK -> {
-                            requestHideSelf(0)
+                            return super.onKeyDown(keyCode, event)
                         }
                     }
 
@@ -2176,9 +2176,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     CandidateShowFlag.Updating -> {
                         val inputString = inputString.value
                         setSuggestionOnView(mainView, inputString)
-                        mainView.suggestionRecyclerView.post {
-                            mainView.suggestionRecyclerView.requestLayout()
-                        }
                     }
                 }
                 prevFlag = currentFlag
@@ -3090,7 +3087,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 commitAndClearInput(readingCorrection.first)
             }
 
-            14 -> {
+            14, 28 -> {
                 commitAndClearInput(candidate.string)
             }
 
@@ -3540,7 +3537,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             candidates
         }
         suggestionAdapter?.suggestions = filtered
-        mainView.suggestionRecyclerView.scrollToPosition(0)
         updateUIinHenkan(mainView, insertString)
     }
 
