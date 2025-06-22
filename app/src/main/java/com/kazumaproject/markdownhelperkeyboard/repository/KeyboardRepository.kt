@@ -1,5 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
+import com.kazumaproject.custom_keyboard.data.FlickAction
+import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -12,6 +15,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.toDbStrings
 import com.kazumaproject.markdownhelperkeyboard.database.toFlickAction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,7 +25,75 @@ class KeyboardRepository @Inject constructor(
     private val dao: KeyboardLayoutDao
 ) {
 
-    // ▼▼▼ この関数を追加 ▼▼▼
+    /**
+     * DBから取得したレイアウトを、flickKeyMapsのキーが文字ラベルになり、
+     * かつKeyDataのlabelやactionも正しく設定されたレイアウトに変換する。
+     * 外部のtemplateLayoutには一切依存せず、KeyActionMapperを活用する。
+     *
+     * @param dbLayout DBから取得した、UUIDキーを持つレイアウト。
+     * @return キーとラベル、アクションが修復された新しいKeyboardLayout。
+     */
+    fun convertLayout(dbLayout: KeyboardLayout): KeyboardLayout {
+
+        // ステップ1: 「UUID」から「対応する文字」へのマップを作成する (通常キー用)
+        val uuidToCharMap = dbLayout.flickKeyMaps.mapNotNull { (uuid, flickActionStates) ->
+            val tapAction = flickActionStates.firstOrNull()?.get(FlickDirection.TAP)
+            if (tapAction is FlickAction.Input) {
+                uuid to tapAction.char
+            } else {
+                null
+            }
+        }.toMap()
+
+        // ステップ2: 新しい「文字ラベル」をキーとする flickKeyMaps を作成する
+        val newFlickKeyMaps = dbLayout.flickKeyMaps
+            .filter { (uuid, flickActions) ->
+                flickActions.isNotEmpty() && uuidToCharMap.containsKey(uuid)
+            }
+            .mapKeys { (uuid, _) ->
+                uuidToCharMap[uuid]!!
+            }
+
+        // ステップ3: KeyDataのlabelを正しく設定した、新しい keys リストを作成する
+        val newKeys = dbLayout.keys.map { keyData ->
+            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+            // ★★★ 最終修正点：ここだけを修正します ★★★
+            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+            if (keyData.isSpecialKey) {
+                // 特殊キーの場合、dbLayoutのKeyDataは既に完璧な状態。
+                // 何もせず、そのまま返す。
+                keyData
+            } else {
+                // 通常キーの場合、labelを修復する
+                val correctLabel = uuidToCharMap[keyData.keyId]
+                if (correctLabel != null) {
+                    keyData.copy(label = correctLabel)
+                } else {
+                    keyData
+                }
+            }
+        }
+
+        // ステップ4: 修正されたkeysと新しいflickKeyMapsで最終的なレイアウトを返す
+        return dbLayout.copy(
+            keys = newKeys,
+            flickKeyMaps = newFlickKeyMaps
+        )
+    }
+
+    /**
+     * ユーザーが作成した全てのカスタムキーボードを、表示可能な KeyboardLayout のリストとして効率的に取得します。
+     */
+    fun getAllCustomKeyboardLayouts(): Flow<List<KeyboardLayout>> {
+        // 1. DAOの新しいメソッドを呼び出し、DBから全てのレイアウト情報を一度に取得
+        return dao.getAllFullLayouts().map { dbLayouts ->
+            // 2. 各レイアウトを、UIで使える KeyboardLayout に変換
+            dbLayouts.map { dbLayout ->
+                convertToUiModel(dbLayout)
+            }
+        }
+    }
+
     /**
      * 指定された名前が、編集中のレイアウトIDを除いて、既に存在するかどうかを確認します。
      * @param name チェックする名前
@@ -42,6 +114,8 @@ class KeyboardRepository @Inject constructor(
 
     fun getLayouts(): Flow<List<CustomKeyboardLayout>> = dao.getLayoutsList()
 
+    suspend fun getLayoutsNotFlow(): List<CustomKeyboardLayout> = dao.getLayoutsListNotFlow()
+
     suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
 
     fun getFullLayout(id: Long): Flow<KeyboardLayout> {
@@ -51,12 +125,14 @@ class KeyboardRepository @Inject constructor(
     }
 
     suspend fun saveLayout(layout: KeyboardLayout, name: String, id: Long?) {
+        Timber.d("saveLayout: $layout")
         val dbLayout = CustomKeyboardLayout(
             layoutId = id ?: 0,
             name = name,
             columnCount = layout.columnCount,
             rowCount = layout.rowCount
         )
+        Timber.d("saveLayout db: $dbLayout")
         val (keys, flicksMap) = convertToDbModel(layout)
 
         if (id == null || id == 0L || id == -1L) {
@@ -106,23 +182,35 @@ class KeyboardRepository @Inject constructor(
                         flick.flickDirection to flick.toFlickAction()
                     }
                 }
-                .toSortedMap() // 状態インデックス順にソート
-                .values.toList() // Map<Int, Map> to List<Map>
+                .toSortedMap()
+                .values.toList()
             identifier to flicksByState
         }
 
         val keys = dbLayout.keysWithFlicks.map { keyWithFlicks ->
+            val dbKey = keyWithFlicks.key
+
+            // DBのaction文字列をKeyActionオブジェクトに復元する
+            val actionObject = if (dbKey.isSpecialKey) {
+                KeyActionMapper.toKeyAction(dbKey.action)
+            } else {
+                null
+            }
+
+            Timber.d("convertToUiModel: $actionObject")
+
             KeyData(
-                label = keyWithFlicks.key.label,
-                row = keyWithFlicks.key.row,
-                column = keyWithFlicks.key.column,
-                isFlickable = keyWithFlicks.key.keyType != KeyType.NORMAL,
-                keyType = keyWithFlicks.key.keyType,
-                rowSpan = keyWithFlicks.key.rowSpan,
-                colSpan = keyWithFlicks.key.colSpan,
-                isSpecialKey = keyWithFlicks.key.isSpecialKey,
-                drawableResId = keyWithFlicks.key.drawableResId,
-                keyId = keyWithFlicks.key.keyIdentifier
+                label = dbKey.label,
+                row = dbKey.row,
+                column = dbKey.column,
+                isFlickable = dbKey.keyType != KeyType.NORMAL,
+                keyType = dbKey.keyType,
+                rowSpan = dbKey.rowSpan,
+                colSpan = dbKey.colSpan,
+                isSpecialKey = dbKey.isSpecialKey,
+                drawableResId = dbKey.drawableResId,
+                keyId = dbKey.keyIdentifier,
+                action = actionObject // ★★★★★ 正しくactionオブジェクトを復元する
             )
         }
 
@@ -140,6 +228,16 @@ class KeyboardRepository @Inject constructor(
 
         uiLayout.keys.forEach { keyData ->
             val keyIdentifier = keyData.keyId ?: UUID.randomUUID().toString()
+
+            // isSpecialKeyがtrueの場合、keyData.actionオブジェクトを文字列に変換する
+            val actionString: String? = if (keyData.isSpecialKey) {
+                KeyActionMapper.fromKeyAction(keyData.action)
+            } else {
+                null
+            }
+
+            Timber.d("convertToDbModel: $actionString")
+
             keys.add(
                 KeyDefinition(
                     keyId = 0,
@@ -152,11 +250,14 @@ class KeyboardRepository @Inject constructor(
                     keyType = keyData.keyType,
                     isSpecialKey = keyData.isSpecialKey,
                     drawableResId = keyData.drawableResId,
-                    keyIdentifier = keyIdentifier
+                    keyIdentifier = keyIdentifier,
+                    action = actionString
                 )
             )
 
-            uiLayout.flickKeyMaps[keyIdentifier]?.forEachIndexed { stateIndex, stateMap ->
+            // ViewModelのflickKeyMapsのキーはUUIDなので、keyIdentifierで検索する
+            val flickActionsForThisKey = uiLayout.flickKeyMaps[keyIdentifier]
+            flickActionsForThisKey?.forEachIndexed { stateIndex, stateMap ->
                 stateMap.forEach { (direction, flickAction) ->
                     val (actionType, actionValue) = flickAction.toDbStrings()
                     val flick = FlickMapping(
@@ -172,6 +273,7 @@ class KeyboardRepository @Inject constructor(
         }
         return Pair(keys, flicksMap)
     }
+
 }
 
 // ヘルパー関数群（リポジトリの外部、または別のファイルに定義）
@@ -205,4 +307,6 @@ private fun mapFlicksToNewKeys(
     }
     return finalFlicks
 }
+
+
 
