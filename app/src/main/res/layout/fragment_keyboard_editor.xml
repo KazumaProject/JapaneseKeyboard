@@ -1,27 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.google.android.material.appbar.AppBarLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:menu="@menu/menu_keyboard_editor"
-            tools:title="レイアウトを編集" />
-
-    </com.google.android.material.appbar.AppBarLayout>
+    <!-- The AppBarLayout and MaterialToolbar have been removed from here. -->
+    <!-- The Fragment will now manage the ActionBar. -->
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:layout_height="match_parent">
+        <!-- The app:layout_behavior attribute is removed as it's no longer needed without the AppBarLayout. -->
 
         <LinearLayout
             android:layout_width="match_parent"

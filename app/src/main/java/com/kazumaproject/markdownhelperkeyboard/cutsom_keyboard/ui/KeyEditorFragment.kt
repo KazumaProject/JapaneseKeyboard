@@ -1,12 +1,19 @@
 package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import androidx.hilt.navigation.fragment.hiltNavGraphViewModels
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -40,13 +47,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
     private lateinit var keyActionAdapter: ArrayAdapter<String>
 
+    // The ActionBar setup is now fully handled in onViewCreated.
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyEditorBinding.bind(view)
 
-        // ▼▼▼ 先にボタンを無効化 ▼▼▼
         binding.buttonDone.isEnabled = false
-
+        setupToolbarAndMenu()
         setupAdapters()
         setupUIListeners()
         setupInitialState()
@@ -72,7 +83,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun setupUIListeners() {
-        binding.toolbar.setNavigationOnClickListener { findNavController().popBackStack() }
         binding.buttonDone.setOnClickListener { onDone() }
 
         binding.keyTypeChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
@@ -84,11 +94,21 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             binding.keyActionLayout.isVisible = isSpecialKey
             binding.flickEditorGroup.isVisible = !isSpecialKey
 
-            // ▼▼▼ Chip変更時にボタンの状態を更新 ▼▼▼
+            // If switching to a normal key, ensure the flick list is initialized and displayed.
+            if (!isSpecialKey) {
+                // If the list is empty, it means we are coming from a "special key" state.
+                if (currentFlickItems.isEmpty()) {
+                    currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
+                        FlickMappingItem(direction = direction, output = "")
+                    }.toMutableList()
+                }
+                // Submit the list to the adapter to display the flick settings.
+                flickAdapter.submitList(currentFlickItems)
+            }
+
             updateDoneButtonState()
         }
 
-        // ▼▼▼ 各入力欄の変更を監視してボタンの状態を更新 ▼▼▼
         binding.keyLabelEdittext.doAfterTextChanged {
             updateDoneButtonState()
         }
@@ -97,20 +117,44 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
     }
 
-    // ▼▼▼ 「完了」ボタンの有効/無効を切り替える関数を新設 ▼▼▼
+    private fun setupToolbarAndMenu() {
+        (activity as? AppCompatActivity)?.supportActionBar?.apply {
+            title = getString(R.string.edit_key)
+            // This line shows the back arrow in the ActionBar
+            setDisplayHomeAsUpEnabled(true)
+        }
+
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                // No menu items to inflate for this fragment
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                // This handles the click on the back arrow
+                return when (menuItem.itemId) {
+                    android.R.id.home -> {
+                        findNavController().popBackStack()
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
     private fun updateDoneButtonState() {
         val isEnabled = when (binding.keyTypeChipGroup.checkedChipId) {
             R.id.chip_special -> {
-                // 「特別なキー」の場合、アクションが選択されているか
                 binding.keyActionSpinner.text.isNotEmpty()
             }
 
             R.id.chip_normal -> {
-                // 「通常キー」の場合、表示ラベルが入力されているか
                 binding.keyLabelEdittext.text.toString().isNotEmpty()
             }
 
-            else -> false // 何も選択されていない場合
+            else -> false
         }
         binding.buttonDone.isEnabled = isEnabled
     }
@@ -150,7 +194,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 flickAdapter.submitList(currentFlickItems)
             }
 
-            // ▼▼▼ 初期状態設定後に、一度ボタンの状態を更新 ▼▼▼
             updateDoneButtonState()
         }
     }
@@ -179,7 +222,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 newAction = selectedDisplayAction?.action
                 newDrawableResId = selectedDisplayAction?.iconResId
 
-                // アイコンがある場合はラベルを空にし、ない場合はアクションの表示名を表示ラベルとする
                 newLabel = if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
                     ?: "ACTION"
             }
@@ -210,6 +252,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        // Clean up the action bar when the view is destroyed.
+        (activity as? AppCompatActivity)?.supportActionBar?.apply {
+            title = null
+            setDisplayHomeAsUpEnabled(false)
+        }
         viewModel.doneNavigatingToKeyEditor()
         _binding = null
     }

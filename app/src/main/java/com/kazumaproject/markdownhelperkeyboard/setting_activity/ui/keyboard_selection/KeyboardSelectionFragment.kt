@@ -47,6 +47,7 @@ class KeyboardSelectionFragment : Fragment() {
         super.onCreate(savedInstanceState)
         (activity as AppCompatActivity).supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
+            show()
         }
     }
 
