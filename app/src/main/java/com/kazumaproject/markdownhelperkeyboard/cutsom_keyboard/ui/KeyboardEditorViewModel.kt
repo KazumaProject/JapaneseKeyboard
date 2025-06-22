@@ -53,7 +53,7 @@ class KeyboardEditorViewModel @Inject constructor(
             return
         }
 
-        // ▼▼▼ 新しい編集セッションが始まったと判断し、IDを更新 ▼▼▼
+        // 新しい編集セッションが始まったと判断し、IDを更新 ▼▼▼
         currentEditingId = newId
         Timber.d("Starting new editing session for layoutId: $newId")
 
@@ -94,9 +94,9 @@ class KeyboardEditorViewModel @Inject constructor(
                     },
                     flickKeyMaps = emptyMap(),
                     columnCount = 5,
-                    rowCount = 4
+                    rowCount = 4,
                 ),
-                isLoading = false
+                isLoading = false,
             )
         }
     }
@@ -118,6 +118,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 if (idToSave != null) {
                     repository.deleteLayout(idToSave)
                 }
+                Timber.d("save layout: ${currentState.layout}")
                 repository.saveLayout(
                     layout = currentState.layout,
                     name = currentState.name,
@@ -190,8 +191,8 @@ class KeyboardEditorViewModel @Inject constructor(
 
     private fun createEmptyKey(row: Int, column: Int): KeyData {
         return KeyData(
-            label = " ", row = row, column = column, isFlickable = false,
-            keyId = UUID.randomUUID().toString(), keyType = KeyType.NORMAL
+            label = " ", row = row, column = column, isFlickable = true,
+            keyId = UUID.randomUUID().toString(), keyType = KeyType.PETAL_FLICK
         )
     }
 
@@ -204,12 +205,34 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     fun updateKeyAndFlicks(keyData: KeyData, flickMap: Map<FlickDirection, FlickAction>) {
+        // まず、渡されたデータが正常かを確認するログ
+        Timber.d("ENTERING updateKeyAndFlicks -> keyId: ${keyData.keyId}, action: ${keyData.action}")
+
+        // ★★★ 修正点 1: keyIdがnullでないことを安全にチェックする ★★★
+        val keyId = keyData.keyId
+        if (keyId == null) {
+            // もしkeyIdがnullなら、致命的なエラーなのでログを出力して処理を中断する
+            Timber.e("FATAL: updateKeyAndFlicks received a KeyData with a null keyId! Aborting update.")
+            return
+        }
+
         _uiState.update { currentState ->
+            // ★★★ 修正点 2: ラムダブロックが実行されたことを確認するログ ★★★
+            Timber.d("Executing _uiState.update block for keyId: $keyId")
+
             val newKeys =
-                currentState.layout.keys.map { if (it.keyId == keyData.keyId) keyData else it }
+                currentState.layout.keys.map { if (it.keyId == keyId) keyData else it }
+
             val newFlickMaps = currentState.layout.flickKeyMaps.toMutableMap()
-            newFlickMaps[keyData.keyId!!] = listOf(flickMap)
+
+            // ★★★ 修正点 3: 安全なkeyId変数を使用する ★★★
+            newFlickMaps[keyId] = listOf(flickMap)
+
             val newLayout = currentState.layout.copy(keys = newKeys, flickKeyMaps = newFlickMaps)
+
+            // ★★★ 修正点 4: 処理が最後まで完了したことを確認するログ ★★★
+            Timber.d("SUCCESS: State update finished. The new KeyData for this key is: $keyData")
+
             currentState.copy(layout = newLayout)
         }
     }

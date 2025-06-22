@@ -22,6 +22,9 @@ interface KeyboardLayoutDao {
     @Query("SELECT * FROM keyboard_layouts ORDER BY createdAt DESC")
     fun getLayoutsList(): Flow<List<CustomKeyboardLayout>>
 
+    @Query("SELECT * FROM keyboard_layouts ORDER BY createdAt DESC")
+    suspend fun getLayoutsListNotFlow(): List<CustomKeyboardLayout>
+
     /**
      * 指定したIDのキーボードレイアウトを、キーとフリック情報を含めてすべて取得する
      */
@@ -35,9 +38,7 @@ interface KeyboardLayoutDao {
      */
     @Transaction
     suspend fun insertFullKeyboardLayout(
-        layout: CustomKeyboardLayout,
-        keys: List<KeyDefinition>,
-        flicks: List<FlickMapping>
+        layout: CustomKeyboardLayout, keys: List<KeyDefinition>, flicks: List<FlickMapping>
     ) {
         val layoutId = insertLayout(layout)
         // キーに正しい ownerLayoutId を設定
@@ -99,5 +100,9 @@ interface KeyboardLayoutDao {
      */
     @Query("SELECT * FROM keyboard_layouts WHERE name = :name LIMIT 1")
     suspend fun findLayoutByName(name: String): CustomKeyboardLayout?
+
+    @Transaction
+    @Query("SELECT * FROM keyboard_layouts")
+    fun getAllFullLayouts(): Flow<List<FullKeyboardLayout>>
 
 }

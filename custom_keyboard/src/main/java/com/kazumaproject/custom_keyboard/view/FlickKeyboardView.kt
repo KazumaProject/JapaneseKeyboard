@@ -440,7 +440,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     @SuppressLint("ClickableViewAccessibility")
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         val action = ev.actionMasked
-        Log.d(TAG, "onInterceptTouchEvent: ${MotionEvent.actionToString(action)}")
+        Log.d(TAG, "onInterceptTouchEvent: ${MotionEvent.actionToString(action)} $")
 
         // 最初の指が触れた瞬間に true を返すことで、
         // この後のすべてのタッチイベント(MOVE, UP, POINTER_DOWNなど)を
