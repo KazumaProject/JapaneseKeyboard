@@ -728,7 +728,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             return super.onKeyDown(keyCode, event)
                         }
 
-                        else -> {
+                        in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z,
+                        in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9,
+                        KeyEvent.KEYCODE_MINUS,
+                        KeyEvent.KEYCODE_EQUALS,
+                        KeyEvent.KEYCODE_LEFT_BRACKET,
+                        KeyEvent.KEYCODE_RIGHT_BRACKET,
+                        KeyEvent.KEYCODE_BACKSLASH,
+                        KeyEvent.KEYCODE_SEMICOLON,
+                        KeyEvent.KEYCODE_APOSTROPHE,
+                        KeyEvent.KEYCODE_COMMA,
+                        KeyEvent.KEYCODE_PERIOD,
+                        KeyEvent.KEYCODE_SLASH,
+                        KeyEvent.KEYCODE_GRAVE,
+                        KeyEvent.KEYCODE_AT,
+                        KeyEvent.KEYCODE_NUMPAD_DIVIDE,
+                        KeyEvent.KEYCODE_NUMPAD_MULTIPLY,
+                        KeyEvent.KEYCODE_NUMPAD_SUBTRACT,
+                        KeyEvent.KEYCODE_NUMPAD_ADD,
+                        KeyEvent.KEYCODE_NUMPAD_DOT -> {
                             event?.let { e ->
                                 romajiConverter.handleKeyEvent(e).let { romajiResult ->
                                     if (insertString.isNotEmpty()) {
@@ -746,6 +764,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                                 }
                                 return true
                             }
+                            return super.onKeyDown(keyCode, null)
+                        }
+
+                        else -> {
                             return super.onKeyDown(keyCode, event)
                         }
 
