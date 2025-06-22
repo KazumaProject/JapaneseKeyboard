@@ -28,7 +28,7 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         (activity as AppCompatActivity).supportActionBar?.apply {
-            hide()
+            setDisplayHomeAsUpEnabled(false)
         }
     }
 

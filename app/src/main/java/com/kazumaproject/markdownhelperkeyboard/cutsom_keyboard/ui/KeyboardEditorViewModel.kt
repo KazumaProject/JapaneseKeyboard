@@ -37,7 +37,6 @@ class KeyboardEditorViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EditorUiState())
     val uiState = _uiState.asStateFlow()
 
-    // ▼▼▼ isInitializedフラグを廃止し、前回編集したIDを保持する変数に変更 ▼▼▼
     private var currentEditingId: Long? = null
 
     /**
@@ -47,13 +46,13 @@ class KeyboardEditorViewModel @Inject constructor(
     fun start(layoutId: Long) {
         val newId = if (layoutId == -1L) null else layoutId
 
-        // ▼▼▼ 前回と同じIDを編集しようとしている場合は、処理をスキップ（画面回転時の再読み込みを防ぐ） ▼▼▼
+        // 前回と同じIDを編集しようとしている場合は、処理をスキップ（画面回転時の再読み込みを防ぐ）
         if (currentEditingId == newId && !_uiState.value.isLoading) {
             Timber.d("Request to load same layout ($newId). Skipping.")
             return
         }
 
-        // 新しい編集セッションが始まったと判断し、IDを更新 ▼▼▼
+        // 新しい編集セッションが始まったと判断し、IDを更新
         currentEditingId = newId
         Timber.d("Starting new editing session for layoutId: $newId")
 
@@ -129,11 +128,21 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
+    // ▼▼▼ ADDED: This function resets the ViewModel's state. ▼▼▼
+    /**
+     * Called when the user cancels the editing process (e.g., by pressing the back button).
+     * This resets the state to ensure a fresh start next time.
+     */
+    fun onCancelEditing() {
+        Timber.d("Editing cancelled. Resetting ViewModel state.")
+        currentEditingId = null // Reset the tracking ID
+        _uiState.value = EditorUiState() // Reset UI state to its initial default
+    }
+
     fun clearDuplicateNameError() {
         _uiState.update { it.copy(duplicateNameError = false) }
     }
 
-    // 他のすべての関数は変更なし
     fun updateName(name: String) {
         _uiState.update { it.copy(name = name) }
     }
@@ -205,34 +214,20 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     fun updateKeyAndFlicks(keyData: KeyData, flickMap: Map<FlickDirection, FlickAction>) {
-        // まず、渡されたデータが正常かを確認するログ
-        Timber.d("ENTERING updateKeyAndFlicks -> keyId: ${keyData.keyId}, action: ${keyData.action}")
-
-        // ★★★ 修正点 1: keyIdがnullでないことを安全にチェックする ★★★
         val keyId = keyData.keyId
         if (keyId == null) {
-            // もしkeyIdがnullなら、致命的なエラーなのでログを出力して処理を中断する
             Timber.e("FATAL: updateKeyAndFlicks received a KeyData with a null keyId! Aborting update.")
             return
         }
 
         _uiState.update { currentState ->
-            // ★★★ 修正点 2: ラムダブロックが実行されたことを確認するログ ★★★
             Timber.d("Executing _uiState.update block for keyId: $keyId")
-
             val newKeys =
                 currentState.layout.keys.map { if (it.keyId == keyId) keyData else it }
-
             val newFlickMaps = currentState.layout.flickKeyMaps.toMutableMap()
-
-            // ★★★ 修正点 3: 安全なkeyId変数を使用する ★★★
             newFlickMaps[keyId] = listOf(flickMap)
-
             val newLayout = currentState.layout.copy(keys = newKeys, flickKeyMaps = newFlickMaps)
-
-            // ★★★ 修正点 4: 処理が最後まで完了したことを確認するログ ★★★
             Timber.d("SUCCESS: State update finished. The new KeyData for this key is: $keyData")
-
             currentState.copy(layout = newLayout)
         }
     }
