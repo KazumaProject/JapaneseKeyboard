@@ -14,6 +14,8 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
+import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
+import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
 
 @Database(
     entities = [
@@ -22,9 +24,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWor
         UserWord::class,
         CustomKeyboardLayout::class,
         KeyDefinition::class,
-        FlickMapping::class
+        FlickMapping::class,
+        UserTemplate::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,6 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun clickedSymbolDao(): ClickedSymbolDao
     abstract fun userWordDao(): UserWordDao
     abstract fun keyboardLayoutDao(): KeyboardLayoutDao
+    abstract fun userTemplateDao(): UserTemplateDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -146,6 +150,31 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `action` TEXT")
             }
         }
+
+        /**
+         * バージョン6から7へのマイグレーション。
+         * 定型文機能をサポートするため、user_template テーブルを追加します。
+         * 検索パフォーマンス向上のため、reading列にインデックスも作成します。
+         */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // user_template テーブルの作成
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `user_template` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `word` TEXT NOT NULL,
+                      `reading` TEXT NOT NULL,
+                      `posIndex` INTEGER NOT NULL,
+                      `posScore` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                // reading 列にインデックスを作成
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_user_template_reading` ON `user_template`(`reading`)")
+            }
+        }
+
 
     }
 }

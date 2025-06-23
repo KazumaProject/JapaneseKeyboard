@@ -97,6 +97,15 @@
             android:title="ユーザー辞書" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="定型文">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="user_template_preference"
+            android:summaryOff="定型文を無効化"
+            android:summaryOn="定型文を有効化\n登録した単語を変換候補を表示します"
+            android:title="定型文" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="Mozc UT">
         <SwitchPreferenceCompat
             android:defaultValue="false"
