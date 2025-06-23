@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -202,6 +203,19 @@ class KeyboardEditorViewModel @Inject constructor(
         return KeyData(
             label = " ", row = row, column = column, isFlickable = true,
             keyId = UUID.randomUUID().toString(), keyType = KeyType.PETAL_FLICK
+        )
+    }
+
+    private fun createDefaultKey(row: Int, column: Int): KeyData {
+        return KeyData(
+            label = " ",
+            row = row,
+            column = column,
+            isFlickable = true,
+            isSpecialKey = true,
+            action = KeyAction.SwitchToNextIme,
+            keyId = UUID.randomUUID().toString(),
+            keyType = KeyType.PETAL_FLICK,
         )
     }
 

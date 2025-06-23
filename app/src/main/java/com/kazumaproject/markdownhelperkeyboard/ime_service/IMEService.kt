@@ -1305,7 +1305,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
                 }
@@ -1362,10 +1362,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val dbLayout = keyboardRepository.getFullLayout(id).first()
 
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
-
-            // 変換後のログを確認
-            Timber.d("FINAL flickKeyMaps: ${finalLayout.flickKeyMaps}")
-            Timber.d("FINAL keys: ${finalLayout.keys}")
 
             withContext(Dispatchers.Main) {
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
@@ -1435,21 +1431,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 clearDeleteBufferWithView()
                 Timber.d("onKey: $text")
                 vibrate()
-                val insertString = inputString.value
-                val sb = StringBuilder()
-                val isFlickInputMode = appPreference.flick_input_only_preference ?: false
-                text.forEach {
-                    if (isFlickInputMode) {
-                        handleFlick(char = it, insertString, sb, mainView)
-                    } else {
-                        handleTap(char = it, insertString, sb, mainView)
+
+                when (qwertyMode.value) {
+                    TenKeyQWERTYMode.Custom -> {
+                        if (text.isEmpty()) return
+                        if (text.length == 1) {
+                            handleOnKeyForSumire(
+                                text, mainView
+                            )
+                        } else {
+                            finishComposingText()
+                            setComposingText("", 0)
+                            commitText(text, 0)
+                        }
                     }
+
+                    TenKeyQWERTYMode.Sumire -> {
+                        handleOnKeyForSumire(
+                            text, mainView
+                        )
+                    }
+
+                    else -> {}
                 }
             }
 
             override fun onActionLongPress(action: KeyAction) {
-                // 特殊キーが長押しされた場合
-                // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
                 vibrate()
                 clearDeleteBufferWithView()
                 Timber.d("onActionLongPress: $action")
@@ -1908,6 +1915,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         })
+    }
+
+    private fun handleOnKeyForSumire(
+        text: String,
+        mainView: MainLayoutBinding
+    ) {
+        val insertString = inputString.value
+        val sb = StringBuilder()
+        val isFlickInputMode = appPreference.flick_input_only_preference ?: false
+        text.forEach {
+            if (isFlickInputMode) {
+                handleFlick(char = it, insertString, sb, mainView)
+            } else {
+                handleTap(char = it, insertString, sb, mainView)
+            }
+        }
     }
 
     private fun cancelLeftLongPress() {
