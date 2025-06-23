@@ -25,6 +25,34 @@ class KeyboardRepository @Inject constructor(
     private val dao: KeyboardLayoutDao
 ) {
 
+    suspend fun getAllFullLayoutsForExport(): List<FullKeyboardLayout> {
+        return dao.getAllFullLayoutsOneShot()
+    }
+
+    suspend fun importLayouts(layouts: List<FullKeyboardLayout>) {
+        for (fullLayout in layouts) {
+            var newName = fullLayout.layout.name
+            var nameExists = dao.findLayoutByName(newName) != null
+            var counter = 1
+            // Handle name conflicts by appending a number
+            while (nameExists) {
+                newName = "${fullLayout.layout.name} (${counter})"
+                nameExists = dao.findLayoutByName(newName) != null
+                counter++
+            }
+
+            val layoutToInsert = fullLayout.layout.copy(
+                layoutId = 0, // Ensure new ID is generated
+                name = newName,
+                createdAt = System.currentTimeMillis()
+            )
+            val keysToInsert = fullLayout.keysWithFlicks.map { it.key.copy(keyId = 0) }
+            val flicksToInsert = fullLayout.keysWithFlicks.flatMap { it.flicks }
+
+            dao.insertFullKeyboardLayout(layoutToInsert, keysToInsert, flicksToInsert)
+        }
+    }
+
     /**
      * DBから取得したレイアウトを、flickKeyMapsとKeyDataのlabelが同期したレイアウトに変換する。
      * - 既存のKeyData.labelが空でなければ、そのlabelをflickKeyMapsのキーとしても使用する。
