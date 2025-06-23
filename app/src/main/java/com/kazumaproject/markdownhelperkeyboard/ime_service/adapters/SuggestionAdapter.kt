@@ -301,7 +301,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     // Helper method for binding SuggestionViewHolder
     private fun onBindSuggestionViewHolder(holder: SuggestionViewHolder, position: Int) {
-        val suggestionHolder = holder
         val suggestion = suggestions[position]
 
         // === (Existing padding + text logic) ===
@@ -318,7 +317,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 ""
             )
 
-        suggestionHolder.text.text = if (suggestion.type == (15).toByte()) {
+        holder.text.text = if (suggestion.type == (15).toByte()) {
             readingCorrectionString.first
                 .padStart(readingCorrectionString.first.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
@@ -328,7 +327,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 .plus(" ".repeat(paddingLength))
         }
 
-        suggestionHolder.typeText.text = when (suggestion.type) {
+        holder.typeText.text = when (suggestion.type) {
             // ... (rest of your when block for suggestion type)
             (1).toByte() -> ""
             (9).toByte() -> ""
@@ -368,12 +367,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
 
         // Highlight logic:
-        suggestionHolder.itemView.isPressed = position == highlightedPosition
+        holder.itemView.isPressed = position == highlightedPosition
 
-        suggestionHolder.itemView.setOnClickListener {
+        holder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion, position)
         }
-        suggestionHolder.itemView.setOnLongClickListener {
+        holder.itemView.setOnLongClickListener {
             onItemLongClickListener?.invoke(suggestion, position)
             true
         }

@@ -410,8 +410,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setClipboardText()
         setKeyboardSize()
         resetKeyboard()
-        ioScope.launch {
-            customLayouts = keyboardRepository.getLayoutsNotFlow()
+        appPreference.keyboard_order.let { keyboardTypes ->
+            if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
+                ioScope.launch {
+                    customLayouts = keyboardRepository.getLayoutsNotFlow()
+                }
+            }
         }
     }
 

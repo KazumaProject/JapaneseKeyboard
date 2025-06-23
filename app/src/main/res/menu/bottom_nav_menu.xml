@@ -17,6 +17,11 @@
         android:title="@string/user_dictionary_title" />
 
     <item
+        android:id="@+id/userTemplateFragment"
+        android:title="@string/user_template"
+        android:icon="@drawable/book_3_24px"/>
+
+    <item
         android:id="@+id/keyboardListFragment"
         android:icon="@drawable/keyboard_24px"
         android:title="@string/title_custom_layouts" />
