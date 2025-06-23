@@ -129,7 +129,8 @@ class KeyboardRepository @Inject constructor(
 
     fun getLayouts(): Flow<List<CustomKeyboardLayout>> = dao.getLayoutsList()
 
-    suspend fun getLayoutsNotFlow(): List<CustomKeyboardLayout> = dao.getLayoutsListNotFlow()
+    suspend fun getLayoutsNotFlow(): List<CustomKeyboardLayout> =
+        dao.getLayoutsListNotFlow()
 
     suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
 
