@@ -1458,7 +1458,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         } else {
                             finishComposingText()
                             setComposingText("", 0)
-                            commitText(text, 0)
+                            commitText(text, 1)
                         }
                     }
 
