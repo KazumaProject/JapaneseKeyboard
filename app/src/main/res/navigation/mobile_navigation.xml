@@ -76,5 +76,9 @@
             android:id="@+id/action_keyboardListFragment_to_keyboardEditorFragment"
             app:destination="@id/keyboardEditorFragment" />
     </fragment>
+    <fragment
+        android:id="@+id/userTemplateFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.user_template.ui.UserTemplateFragment"
+        android:label="定型文" />
 
 </navigation>
