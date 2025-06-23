@@ -6,20 +6,32 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.FlickMapping
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 
 @Database(
-    entities = [LearnEntity::class, ClickedSymbol::class, UserWord::class],
-    version = 4,
+    entities = [
+        LearnEntity::class,
+        ClickedSymbol::class,
+        UserWord::class,
+        CustomKeyboardLayout::class,
+        KeyDefinition::class,
+        FlickMapping::class
+    ],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun learnDao(): LearnDao
     abstract fun clickedSymbolDao(): ClickedSymbolDao
     abstract fun userWordDao(): UserWordDao
+    abstract fun keyboardLayoutDao(): KeyboardLayoutDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -62,6 +74,76 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // SQL command to create an index on the 'reading' column
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_user_word_reading` ON `user_word`(`reading`)")
+            }
+        }
+
+        /**
+         * バージョン4から5へのマイグレーション。
+         * ユーザーによるキーボードレイアウトのカスタマイズ機能をサポートするため、
+         * 3つの新しいテーブル (keyboard_layouts, key_definitions, flick_mappings) を追加します。
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. keyboard_layouts テーブルの作成
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `keyboard_layouts` (
+                        `layoutId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `name` TEXT NOT NULL, 
+                        `columnCount` INTEGER NOT NULL, 
+                        `rowCount` INTEGER NOT NULL, 
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """.trimIndent()
+                )
+
+                // 2. key_definitions テーブルの作成
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `key_definitions` (
+                        `keyId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
+                        `ownerLayoutId` INTEGER NOT NULL, 
+                        `label` TEXT NOT NULL, 
+                        `row` INTEGER NOT NULL, 
+                        `column` INTEGER NOT NULL, 
+                        `rowSpan` INTEGER NOT NULL, 
+                        `colSpan` INTEGER NOT NULL, 
+                        `keyType` TEXT NOT NULL, 
+                        `isSpecialKey` INTEGER NOT NULL, 
+                        `drawableResId` INTEGER, 
+                        `keyIdentifier` TEXT NOT NULL, 
+                        FOREIGN KEY(`ownerLayoutId`) REFERENCES `keyboard_layouts`(`layoutId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                """.trimIndent()
+                )
+                // key_definitions テーブルのインデックス作成 (外部キーのパフォーマンス向上)
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_key_definitions_ownerLayoutId` ON `key_definitions`(`ownerLayoutId`)")
+
+                // 3. flick_mappings テーブルの作成
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `flick_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL, 
+                        `stateIndex` INTEGER NOT NULL, 
+                        `flickDirection` TEXT NOT NULL, 
+                        `actionType` TEXT NOT NULL, 
+                        `actionValue` TEXT, 
+                        PRIMARY KEY(`ownerKeyId`, `stateIndex`, `flickDirection`), 
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                """.trimIndent()
+                )
+            }
+        }
+
+        /**
+         * バージョン5から6へのマイグレーション。
+         * key_definitions テーブルに action 列を追加します。
+         * この列は、キーが持つ特別な機能（削除、スペースなど）を文字列として保存します。
+         */
+        val MIGRATION_5_6 = object : Migration(5, 6) { // <<< ★★★ ここから追加 ★★★
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `action` TEXT")
             }
         }
 

@@ -2,11 +2,19 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.fragment.findNavController
+import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentOpenSourceBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.LicenseDialogLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicense
@@ -58,14 +66,14 @@ class OpenSourceFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(false)
+            setDisplayHomeAsUpEnabled(true)
         }
     }
 
     override fun onResume() {
         super.onResume()
         (activity as AppCompatActivity).supportActionBar?.apply {
-            setDisplayHomeAsUpEnabled(false)
+            setDisplayHomeAsUpEnabled(true)
         }
     }
 
@@ -79,6 +87,8 @@ class OpenSourceFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        setupToolbarAndMenu()
 
         val arrayAdapter = ArrayAdapter(
             requireContext(),
@@ -235,6 +245,32 @@ class OpenSourceFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun setupToolbarAndMenu() {
+        // Set up the activity's action bar
+        (activity as? AppCompatActivity)?.supportActionBar?.apply {
+            title = getString(R.string.edit_keyboard) // Set a title for the screen
+            setDisplayHomeAsUpEnabled(true) // Show the back arrow
+        }
+
+        // Add the menu provider, which is the modern way to handle menus in fragments.
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                // Handle the menu selection
+                return when (menuItem.itemId) {
+                    android.R.id.home -> {
+                        findNavController().popBackStack()
+                        true
+                    }
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
 }

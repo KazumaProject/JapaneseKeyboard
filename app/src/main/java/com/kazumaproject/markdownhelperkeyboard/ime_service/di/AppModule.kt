@@ -14,10 +14,13 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_5_6
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
@@ -54,6 +57,8 @@ object AppModule {
             MIGRATION_1_2,
             MIGRATION_2_3,
             MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6
         )
         .build()
 
@@ -68,6 +73,10 @@ object AppModule {
     @Singleton
     @Provides
     fun provideUserWordDao(db: AppDatabase): UserWordDao = db.userWordDao()
+
+    @Singleton
+    @Provides
+    fun provideKeyboardLayoutDao(db: AppDatabase): KeyboardLayoutDao = db.keyboardLayoutDao()
 
     @Singleton
     @Provides

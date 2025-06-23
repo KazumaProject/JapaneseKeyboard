@@ -37,16 +37,12 @@ class KeyboardSelectionAdapter(
         holder.bind(getItem(position))
     }
 
-    fun onItemMove(fromPosition: Int, toPosition: Int) {
-        // This logic is now handled in the Fragment/ViewModel
-    }
-
     inner class KeyboardViewHolder(private val binding: ListItemKeyboardBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
             binding.deleteIcon.setOnClickListener {
-                if (adapterPosition != RecyclerView.NO_POSITION) {
-                    onDeleteClick(adapterPosition)
+                if (absoluteAdapterPosition != RecyclerView.NO_POSITION) {
+                    onDeleteClick(absoluteAdapterPosition)
                 }
             }
         }
@@ -87,6 +83,7 @@ class KeyboardSelectionAdapter(
             KeyboardType.QWERTY -> "英語(QWERTY)"
             KeyboardType.ROMAJI -> "日本語 - ローマ字"
             KeyboardType.SUMIRE -> "日本語 - スミレ入力 β"
+            KeyboardType.CUSTOM -> "カスタム - ユーザー定義"
         }
     }
 }

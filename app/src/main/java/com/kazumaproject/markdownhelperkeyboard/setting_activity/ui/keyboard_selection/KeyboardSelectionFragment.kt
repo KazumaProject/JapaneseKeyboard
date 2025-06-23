@@ -47,6 +47,7 @@ class KeyboardSelectionFragment : Fragment() {
         super.onCreate(savedInstanceState)
         (activity as AppCompatActivity).supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
+            show()
         }
     }
 
@@ -212,5 +213,6 @@ fun getKeyboardDisplayName(keyboardType: KeyboardType): String {
         KeyboardType.QWERTY -> "英語(QWERTY)"
         KeyboardType.ROMAJI -> "日本語 - ローマ字"
         KeyboardType.SUMIRE -> "日本語 - スミレ入力 β"
+        KeyboardType.CUSTOM -> "カスタム - ユーザー定義"
     }
 }
