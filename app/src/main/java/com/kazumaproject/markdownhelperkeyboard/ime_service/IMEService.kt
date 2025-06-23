@@ -71,6 +71,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -85,6 +86,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -113,6 +115,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -149,6 +152,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
+
+    @Inject
+    lateinit var keyboardRepository: KeyboardRepository
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
@@ -224,6 +230,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private val deletedBuffer = StringBuilder()
 
     private var keyboardOrder: List<KeyboardType> = emptyList()
+
+    private var customLayouts: List<CustomKeyboardLayout> = emptyList()
 
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
@@ -402,6 +410,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setClipboardText()
         setKeyboardSize()
         resetKeyboard()
+        ioScope.launch {
+            customLayouts = keyboardRepository.getLayoutsNotFlow()
+        }
     }
 
     override fun onFinishInput() {
@@ -1267,6 +1278,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 KeyboardType.QWERTY -> {
                     qwertyView.isVisible = true
+                    keyboardView.isVisible = false
+                    customLayoutDefault.isVisible = false
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                     keyboardView.setCurrentMode(InputMode.ModeEnglish)
                     qwertyView.setRomajiMode(false)
@@ -1274,6 +1287,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 KeyboardType.ROMAJI -> {
                     qwertyView.isVisible = true
+                    keyboardView.isVisible = false
+                    customLayoutDefault.isVisible = false
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
                     qwertyView.setRomajiMode(true)
@@ -1286,10 +1301,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             "enter_key" to 0, "dakuten_toggle_key" to 0
                         ), inputType = sumireInputKeyType ?: "flick-default"
                     )
+                    Timber.d("hiraganaLayout: ${hiraganaLayout.flickKeyMaps}\n${hiraganaLayout.keys}")
                     customLayoutDefault.setKeyboard(hiraganaLayout)
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                    qwertyView.isVisible = false
+                    keyboardView.isVisible = false
+                }
+
+                KeyboardType.CUSTOM -> {
+                    setInitialKeyboardTab()
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+                    customLayoutDefault.isVisible = true
+                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
                 }
@@ -1303,18 +1328,61 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
 
     private fun updateKeyboardLayout() {
-        val dynamicStates = mapOf(
-            "enter_key" to currentEnterKeyIndex,
-            "dakuten_toggle_key" to currentDakutenKeyIndex,
-            "space_convert_key" to currentSpaceKeyIndex
-        )
+        Timber.d("updateKeyboardLayout: ${qwertyMode.value}")
+        when (qwertyMode.value) {
+            TenKeyQWERTYMode.Custom -> {
+                //setInitialKeyboardTab()
+            }
 
-        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
-            mode = customKeyboardMode,
-            dynamicKeyStates = dynamicStates,
-            inputType = sumireInputKeyType ?: "flick-default"
-        )
-        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+            TenKeyQWERTYMode.Default -> {}
+            TenKeyQWERTYMode.TenKeyQWERTY -> {}
+            TenKeyQWERTYMode.Sumire -> {
+                val dynamicStates = mapOf(
+                    "enter_key" to currentEnterKeyIndex,
+                    "dakuten_toggle_key" to currentDakutenKeyIndex,
+                    "space_convert_key" to currentSpaceKeyIndex
+                )
+
+                val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+                    mode = customKeyboardMode,
+                    dynamicKeyStates = dynamicStates,
+                    inputType = sumireInputKeyType ?: "flick-default"
+                )
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+            }
+        }
+    }
+
+    private fun setInitialKeyboardTab() {
+        scope.launch(Dispatchers.IO) {
+            if (customLayouts.isEmpty()) {
+                return@launch
+            }
+            val id = customLayouts[0].layoutId
+            val dbLayout = keyboardRepository.getFullLayout(id).first()
+
+            val finalLayout = keyboardRepository.convertLayout(dbLayout)
+
+            withContext(Dispatchers.Main) {
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+            }
+        }
+    }
+
+    private fun setKeyboardTab(pos: Int) {
+        scope.launch(Dispatchers.IO) {
+            if (customLayouts.isEmpty()) {
+                return@launch
+            }
+            val id = customLayouts[pos].layoutId
+            val dbLayout = keyboardRepository.getFullLayout(id).first()
+
+            val finalLayout = keyboardRepository.convertLayout(dbLayout)
+
+            withContext(Dispatchers.Main) {
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+            }
+        }
     }
 
     /**
@@ -1379,21 +1447,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 clearDeleteBufferWithView()
                 Timber.d("onKey: $text")
                 vibrate()
-                val insertString = inputString.value
-                val sb = StringBuilder()
-                val isFlickInputMode = appPreference.flick_input_only_preference ?: false
-                text.forEach {
-                    if (isFlickInputMode) {
-                        handleFlick(char = it, insertString, sb, mainView)
-                    } else {
-                        handleTap(char = it, insertString, sb, mainView)
+
+                when (qwertyMode.value) {
+                    TenKeyQWERTYMode.Custom -> {
+                        if (text.isEmpty()) return
+                        if (text.length == 1) {
+                            handleOnKeyForSumire(
+                                text, mainView
+                            )
+                        } else {
+                            finishComposingText()
+                            setComposingText("", 0)
+                            commitText(text, 0)
+                        }
                     }
+
+                    TenKeyQWERTYMode.Sumire -> {
+                        handleOnKeyForSumire(
+                            text, mainView
+                        )
+                    }
+
+                    else -> {}
                 }
             }
 
             override fun onActionLongPress(action: KeyAction) {
-                // 特殊キーが長押しされた場合
-                // 例: Deleteの長押しで文章を大きく削除する、などの実装が可能
                 vibrate()
                 clearDeleteBufferWithView()
                 Timber.d("onActionLongPress: $action")
@@ -1541,6 +1620,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     KeyAction.Enter -> {}
                     is KeyAction.InputText -> {}
                     KeyAction.MoveCursorLeft -> {
+                        cancelLeftLongPress()
                         handleLeftLongPress()
                         leftCursorKeyLongKeyPressed.set(true)
                         if (selectMode.value) {
@@ -1553,6 +1633,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.MoveCursorRight -> {
+                        cancelLeftLongPress()
                         handleRightLongPress()
                         rightCursorKeyLongKeyPressed.set(true)
                         if (selectMode.value) {
@@ -1641,17 +1722,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     KeyAction.MoveCursorLeft -> {
-                        onLeftKeyLongPressUp.set(true)
-                        leftCursorKeyLongKeyPressed.set(false)
-                        leftLongPressJob?.cancel()
-                        leftLongPressJob = null
+                        cancelLeftLongPress()
                     }
 
                     KeyAction.MoveCursorRight -> {
-                        onRightKeyLongPressUp.set(true)
-                        rightCursorKeyLongKeyPressed.set(false)
-                        rightLongPressJob?.cancel()
-                        rightLongPressJob = null
+                        cancelRightLongPress()
                     }
 
                     KeyAction.NewLine -> {}
@@ -1856,6 +1931,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         })
+    }
+
+    private fun handleOnKeyForSumire(
+        text: String,
+        mainView: MainLayoutBinding
+    ) {
+        val insertString = inputString.value
+        val sb = StringBuilder()
+        val isFlickInputMode = appPreference.flick_input_only_preference ?: false
+        text.forEach {
+            if (isFlickInputMode) {
+                handleFlick(char = it, insertString, sb, mainView)
+            } else {
+                handleTap(char = it, insertString, sb, mainView)
+            }
+        }
+    }
+
+    private fun cancelLeftLongPress() {
+        onLeftKeyLongPressUp.set(true)
+        leftCursorKeyLongKeyPressed.set(false)
+        leftLongPressJob?.cancel()
+        leftLongPressJob = null
+    }
+
+    private fun cancelRightLongPress() {
+        onRightKeyLongPressUp.set(true)
+        rightCursorKeyLongKeyPressed.set(false)
+        rightLongPressJob?.cancel()
+        rightLongPressJob = null
     }
 
     private fun pasteAction() {
@@ -2249,6 +2354,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         launch {
             cursorMoveMode.collect { isCursorMoveMode ->
                 mainView.keyboardView.setTextToMoveCursorMode(isCursorMoveMode)
+            }
+        }
+
+        launch {
+            qwertyMode.collectLatest {
+                when (it) {
+                    TenKeyQWERTYMode.Default -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.Default,
+                            emptyList()
+                        )
+                        mainView.apply {
+                            keyboardView.isVisible = true
+                            qwertyView.isVisible = false
+                            customLayoutDefault.isVisible = false
+                        }
+                    }
+
+                    TenKeyQWERTYMode.TenKeyQWERTY -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.TenKeyQWERTY,
+                            emptyList()
+                        )
+                        mainView.apply {
+                            keyboardView.isVisible = false
+                            qwertyView.isVisible = true
+                            customLayoutDefault.isVisible = false
+                        }
+                    }
+
+                    TenKeyQWERTYMode.Custom -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.Custom,
+                            customLayouts
+                        )
+                        mainView.apply {
+                            keyboardView.isVisible = false
+                            qwertyView.isVisible = false
+                            customLayoutDefault.isVisible = true
+                        }
+                    }
+
+                    TenKeyQWERTYMode.Sumire -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.Sumire,
+                            emptyList()
+                        )
+                        mainView.apply {
+                            keyboardView.isVisible = false
+                            qwertyView.isVisible = false
+                            customLayoutDefault.isVisible = true
+                        }
+                    }
+                }
             }
         }
 
@@ -2703,6 +2862,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                     }
                 }
+            }
+            adapter.setOnCustomLayoutItemClickListener { position ->
+                setKeyboardTab(position)
             }
         }
         mainView.suggestionRecyclerView.apply {

@@ -233,4 +233,33 @@
     <string name="delete_in_long_press">ロングプレスで削除</string>
 
     <string name="done_text">完了</string>
+    <string name="title_custom_layouts">カスタムキーボード</string>
+    <string name="desc_add_new_layout">新しいレイアウトを追加</string>
+    <string name="desc_layout_options">レイアウトオプション</string>
+
+    <string name="action_save">保存</string>
+    <string name="action_preview_mode">プレビューモード</string>
+    <string name="action_edit_mode">編集モード</string>
+    <string name="action_layout_settings">レイアウト設定</string>
+    <string name="hint_keyboard_name">キーボード名</string>
+    <string name="label_rows">行</string>
+    <string name="label_columns">列</string>
+    <string name="btn_add">追加</string>
+    <string name="btn_remove">削除</string>
+
+    <string name="title_edit_key">キーの編集</string>
+    <string name="action_done">完了</string>
+    <string name="hint_key_label">キーのラベル</string>
+    <string name="label_key_type">キーの種類</string>
+    <string name="title_flick_actions">フリックアクション</string>
+    <string name="btn_add_flick">アクションを追加</string>
+    <string name="hint_flick_output">出力文字</string>
+    <string name="desc_delete_flick_mapping">このフリック設定を削除</string>
+    <string name="created_at_date">作成日: %1$s</string>
+    <string name="action_duplicate">複製</string>
+    <string name="action_delete">削除</string>
+    <string name="dialog_delete_title">レイアウトを削除しますか？</string>
+    <string name="dialog_delete_message">このキーボードレイアウトを完全に削除します。この操作は元に戻せません。よろしいですか？</string>
+    <string name="dialog_cancel">キャンセル</string>
+    <string name="dialog_delete">削除</string>
 </resources>
