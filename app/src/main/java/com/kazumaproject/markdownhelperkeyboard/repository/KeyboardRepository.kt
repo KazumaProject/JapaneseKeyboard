@@ -26,17 +26,17 @@ class KeyboardRepository @Inject constructor(
 ) {
 
     /**
-     * DBから取得したレイアウトを、flickKeyMapsのキーが文字ラベルになり、
-     * かつKeyDataのlabelやactionも正しく設定されたレイアウトに変換する。
-     * 外部のtemplateLayoutには一切依存せず、KeyActionMapperを活用する。
+     * DBから取得したレイアウトを、flickKeyMapsとKeyDataのlabelが同期したレイアウトに変換する。
+     * - 既存のKeyData.labelが空でなければ、そのlabelをflickKeyMapsのキーとしても使用する。
+     * - 既存のKeyData.labelが空の場合は、タップアクションの文字をlabelとflickKeyMapsのキーの両方に使用する。
      *
      * @param dbLayout DBから取得した、UUIDキーを持つレイアウト。
-     * @return キーとラベル、アクションが修復された新しいKeyboardLayout。
+     * @return flickKeyMapsのキーとKeyData.labelが完全に同期された、新しいKeyboardLayout。
      */
     fun convertLayout(dbLayout: KeyboardLayout): KeyboardLayout {
 
-        // ステップ1: 「UUID」から「対応する文字」へのマップを作成する (通常キー用)
-        val uuidToCharMap = dbLayout.flickKeyMaps.mapNotNull { (uuid, flickActionStates) ->
+        // ステップ1: まず、UUIDとタップ文字の対応表を作成する
+        val uuidToTapCharMap = dbLayout.flickKeyMaps.mapNotNull { (uuid, flickActionStates) ->
             val tapAction = flickActionStates.firstOrNull()?.get(FlickDirection.TAP)
             if (tapAction is FlickAction.Input) {
                 uuid to tapAction.char
@@ -45,36 +45,51 @@ class KeyboardRepository @Inject constructor(
             }
         }.toMap()
 
-        // ステップ2: 新しい「文字ラベル」をキーとする flickKeyMaps を作成する
-        val newFlickKeyMaps = dbLayout.flickKeyMaps
-            .filter { (uuid, flickActions) ->
-                flickActions.isNotEmpty() && uuidToCharMap.containsKey(uuid)
+        // ステップ2: 「UUID」から「最終的に使われるべきラベル」への対応表を作成する
+        // このマップが、KeyData.labelとflickKeyMapsのキーの「唯一の正しい情報源」となる。
+        val uuidToFinalLabelMap = dbLayout.keys.associate { keyData ->
+            val uuid = keyData.keyId
+            // 既存のlabelが空でなければそれを優先、空ならタップ文字を使う
+            val finalLabel = if (keyData.label.isNotEmpty()) {
+                keyData.label
+            } else {
+                uuidToTapCharMap[uuid]
             }
-            .mapKeys { (uuid, _) ->
-                uuidToCharMap[uuid]!!
-            }
+            uuid to finalLabel
+        }.filterValues { it != null } as Map<String, String>
 
-        // ステップ3: KeyDataのlabelを正しく設定した、新しい keys リストを作成する
+
+        // ステップ3: 「最終ラベル」をキーとする、新しいflickKeyMapsを作成する
+        val newFlickKeyMaps = dbLayout.flickKeyMaps
+            .mapNotNull { (uuid, flickActions) ->
+                // このUUIDに対応する最終ラベルを取得
+                val finalLabel = uuidToFinalLabelMap[uuid]
+                if (finalLabel != null) {
+                    // キーをUUIDから「最終ラベル」に差し替える
+                    finalLabel to flickActions
+                } else {
+                    null
+                }
+            }
+            .toMap()
+
+        // ステップ4: 「最終ラベル」をlabelとして設定した、新しいkeysリストを作成する
         val newKeys = dbLayout.keys.map { keyData ->
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-            // ★★★ 最終修正点：ここだけを修正します ★★★
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
             if (keyData.isSpecialKey) {
-                // 特殊キーの場合、dbLayoutのKeyDataは既に完璧な状態。
-                // 何もせず、そのまま返す。
                 keyData
             } else {
-                // 通常キーの場合、labelを修復する
-                val correctLabel = uuidToCharMap[keyData.keyId]
-                if (correctLabel != null) {
-                    keyData.copy(label = correctLabel)
+                // このキーの最終ラベルを取得して設定する
+                val finalLabel = uuidToFinalLabelMap[keyData.keyId]
+                if (finalLabel != null) {
+                    keyData.copy(label = finalLabel)
                 } else {
+                    // 該当するラベルがなければ元のまま
                     keyData
                 }
             }
         }
 
-        // ステップ4: 修正されたkeysと新しいflickKeyMapsで最終的なレイアウトを返す
+        // ステップ5: 完全に同期された新しいレイアウトを返す
         return dbLayout.copy(
             keys = newKeys,
             flickKeyMaps = newFlickKeyMaps
@@ -197,8 +212,6 @@ class KeyboardRepository @Inject constructor(
                 null
             }
 
-            Timber.d("convertToUiModel: $actionObject")
-
             KeyData(
                 label = dbKey.label,
                 row = dbKey.row,
@@ -235,8 +248,6 @@ class KeyboardRepository @Inject constructor(
             } else {
                 null
             }
-
-            Timber.d("convertToDbModel: $actionString")
 
             keys.add(
                 KeyDefinition(

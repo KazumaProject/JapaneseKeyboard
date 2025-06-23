@@ -15,7 +15,6 @@ object KeyActionMapper {
             "空白",
             com.kazumaproject.core.R.drawable.baseline_space_bar_24
         ),
-        DisplayAction(KeyAction.NewLine, "改行"),
         DisplayAction(
             KeyAction.Enter,
             "エンター",
@@ -31,16 +30,32 @@ object KeyActionMapper {
             "コピー",
             com.kazumaproject.core.R.drawable.content_copy_24dp
         ),
+        DisplayAction(
+            KeyAction.SwitchToNextIme,
+            "IME切替",
+            com.kazumaproject.core.R.drawable.language_24dp
+        ),
         // --- アイコンがないアクション ---
         DisplayAction(KeyAction.Convert, "変換"),
         DisplayAction(KeyAction.Confirm, "確定"),
-        DisplayAction(KeyAction.MoveCursorLeft, "カーソル左"),
-        DisplayAction(KeyAction.MoveCursorRight, "カーソル右"),
+        DisplayAction(KeyAction.NewLine, "改行"),
+        DisplayAction(
+            KeyAction.MoveCursorLeft,
+            "カーソル左",
+            com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+        ),
+        DisplayAction(
+            KeyAction.MoveCursorRight,
+            "カーソル右",
+            com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+        ),
         DisplayAction(KeyAction.SelectLeft, "左を選択"),
         DisplayAction(KeyAction.SelectRight, "右を選択"),
-        DisplayAction(KeyAction.SelectAll, "すべて選択"),
-        DisplayAction(KeyAction.ShowEmojiKeyboard, "絵文字キーボード"),
-        DisplayAction(KeyAction.SwitchToNextIme, "IME切替")
+        DisplayAction(
+            KeyAction.SelectAll,
+            "すべて選択",
+            com.kazumaproject.core.R.drawable.text_select_start_24dp
+        ),
     )
 
     // KeyActionオブジェクトをDB保存用の文字列に変換
