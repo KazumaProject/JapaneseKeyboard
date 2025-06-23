@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.view
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view
 
 import android.annotation.SuppressLint
 import android.content.Context

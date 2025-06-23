@@ -1,9 +1,8 @@
-package com.kazumaproject.markdownhelperkeyboard.database
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.KeyAction
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.FlickMapping
 
 /**
  * DBから取得したFlickMappingを、UIで扱うFlickActionに変換します。

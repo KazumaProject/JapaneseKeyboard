@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.app.Activity
 import android.content.Intent
@@ -24,8 +24,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.FullKeyboardLayout
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.adapter.KeyboardLayoutAdapter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.KeyboardLayoutAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardListBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch

@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.adapter
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter
 
 import android.text.TextWatcher
 import android.view.LayoutInflater
@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.FlickDirectionMapper
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
 import com.kazumaproject.markdownhelperkeyboard.databinding.ListItemFlickMappingBinding
 import java.util.UUID
 
