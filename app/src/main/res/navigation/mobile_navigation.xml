@@ -54,7 +54,7 @@
         tools:layout="@layout/fragment_user_dictionary" />
     <fragment
         android:id="@+id/keyboardEditorFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.KeyboardEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardEditorFragment"
         android:label="キーボードの編集">
         <argument
             android:name="layoutId"
@@ -66,11 +66,11 @@
     </fragment>
     <fragment
         android:id="@+id/keyEditorFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.KeyEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyEditorFragment"
         android:label="キーの編集" />
     <fragment
         android:id="@+id/keyboardListFragment"
-        android:name="com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.KeyboardListFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardListFragment"
         android:label="@string/title_custom_layouts">
         <action
             android:id="@+id/action_keyboardListFragment_to_keyboardEditorFragment"

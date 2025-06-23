@@ -45,7 +45,7 @@
                 tools:text="プレビュー表示エリア"
                 tools:visibility="visible" />
 
-            <com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.view.EditableFlickKeyboardView
+            <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
                 android:id="@+id/flick_keyboard_view"
                 android:layout_width="match_parent"
                 android:layout_height="280dp"

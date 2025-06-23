@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.os.Bundle
 import android.view.Menu
@@ -24,9 +24,9 @@ import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.FlickDirectionMapper
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.adapter.FlickMappingAdapter
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.adapter.FlickMappingItem
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingAdapter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyEditorBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
