@@ -15,49 +15,44 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface KeyboardLayoutDao {
 
-    /**
-     * 保存されているすべてのキーボードレイアウトのリストを取得する (名前などの基本情報のみ)
-     * キーボード選択画面などで使用
-     */
     @Query("SELECT * FROM keyboard_layouts ORDER BY createdAt DESC")
     fun getLayoutsList(): Flow<List<CustomKeyboardLayout>>
 
     @Query("SELECT * FROM keyboard_layouts ORDER BY createdAt DESC")
     suspend fun getLayoutsListNotFlow(): List<CustomKeyboardLayout>
 
-    /**
-     * 指定したIDのキーボードレイアウトを、キーとフリック情報を含めてすべて取得する
-     */
     @Transaction
     @Query("SELECT * FROM keyboard_layouts WHERE layoutId = :id")
     fun getFullLayoutById(id: Long): Flow<FullKeyboardLayout>
 
     /**
-     * 新しいキーボードレイアウトをデータベースに保存する
-     * トランザクション内で実行することで、途中で失敗した場合にすべての変更がロールバックされる
+     * 【バグ修正版】新しいキーボードレイアウトをデータベースにアトミックに保存する。
+     * キーとフリックの正しい関連付けを保証する。
      */
     @Transaction
     suspend fun insertFullKeyboardLayout(
-        layout: CustomKeyboardLayout, keys: List<KeyDefinition>, flicks: List<FlickMapping>
+        layout: CustomKeyboardLayout,
+        keys: List<KeyDefinition>,
+        flicksMap: Map<String, List<FlickMapping>> // ★キーとフリックの関連情報を受け取る
     ) {
         val layoutId = insertLayout(layout)
-        // キーに正しい ownerLayoutId を設定
         val keysWithLayoutId = keys.map { it.copy(ownerLayoutId = layoutId) }
-        val keyIds = insertKeys(keysWithLayoutId) // 新しく挿入されたキーのIDリストが返る
+        val newKeyIds = insertKeys(keysWithLayoutId)
+        val identifierToIdMap = keysWithLayoutId
+            .mapIndexed { index, key -> key.keyIdentifier to newKeyIds[index] }
+            .toMap()
 
-        // フリック設定に正しい ownerKeyId を設定
-        // keysWithLayoutId と keyIds は同じ順序であることが前提
-        val flicksWithKeyIds = mutableListOf<FlickMapping>()
-        keysWithLayoutId.forEachIndexed { index, keyDef ->
-            flicks.filter { it.ownerKeyId.toString() == keyDef.keyIdentifier } // 文字列の仮IDでフィルタ
-                .forEach { flick ->
-                    flicksWithKeyIds.add(flick.copy(ownerKeyId = keyIds[index])) // 本物のIDに差し替え
-                }
+        val flicksWithRealKeyIds = mutableListOf<FlickMapping>()
+        identifierToIdMap.forEach { (identifier, realKeyId) ->
+            flicksMap[identifier]?.forEach { flick ->
+                flicksWithRealKeyIds.add(flick.copy(ownerKeyId = realKeyId))
+            }
         }
-        insertFlickMappings(flicksWithKeyIds)
+        if (flicksWithRealKeyIds.isNotEmpty()) {
+            insertFlickMappings(flicksWithRealKeyIds)
+        }
     }
 
-    // DAO内で使用するprivateなヘルパーメソッド
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLayout(layout: CustomKeyboardLayout): Long
 
@@ -88,16 +83,10 @@ interface KeyboardLayoutDao {
     @Query("SELECT name FROM keyboard_layouts WHERE layoutId = :id")
     suspend fun getLayoutName(id: Long): String?
 
-    /**
-     * IDを指定して、Flowではない単発のデータとして完全なレイアウトを取得します（複製用）
-     */
     @Transaction
     @Query("SELECT * FROM keyboard_layouts WHERE layoutId = :id")
     suspend fun getFullLayoutOneShot(id: Long): FullKeyboardLayout?
 
-    /**
-     * 指定された名前のレイアウトを検索します。
-     */
     @Query("SELECT * FROM keyboard_layouts WHERE name = :name LIMIT 1")
     suspend fun findLayoutByName(name: String): CustomKeyboardLayout?
 
@@ -108,5 +97,4 @@ interface KeyboardLayoutDao {
     @Transaction
     @Query("SELECT * FROM keyboard_layouts")
     suspend fun getAllFullLayoutsOneShot(): List<FullKeyboardLayout>
-
 }
