@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.adapter
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -7,7 +7,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.ListItemKeyboardLayoutBinding
 import java.text.SimpleDateFormat
 import java.util.Date

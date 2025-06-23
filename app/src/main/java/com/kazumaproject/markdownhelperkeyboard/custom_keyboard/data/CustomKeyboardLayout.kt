@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

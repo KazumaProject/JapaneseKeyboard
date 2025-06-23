@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui
+package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.os.Bundle
 import android.view.Menu
@@ -19,7 +19,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.ui.view.EditableFlickKeyboardView
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEditorBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
