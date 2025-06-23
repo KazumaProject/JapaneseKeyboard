@@ -7,4 +7,5 @@
     <string name="delete_keyboard">キーボードを削除</string>
     <string name="edit_keyboard">キーボードを編集</string>
     <string name="edit_key">キーを編集</string>
+    <string name="user_template">定型文</string>
 </resources>
