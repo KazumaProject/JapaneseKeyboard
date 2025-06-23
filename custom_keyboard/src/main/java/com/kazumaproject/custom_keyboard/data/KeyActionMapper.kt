@@ -12,7 +12,7 @@ object KeyActionMapper {
         DisplayAction(KeyAction.Delete, "削除", com.kazumaproject.core.R.drawable.backspace_24px),
         DisplayAction(
             KeyAction.Space,
-            "空白",
+            "空白/変換",
             com.kazumaproject.core.R.drawable.baseline_space_bar_24
         ),
         DisplayAction(
@@ -36,9 +36,6 @@ object KeyActionMapper {
             com.kazumaproject.core.R.drawable.language_24dp
         ),
         // --- アイコンがないアクション ---
-        DisplayAction(KeyAction.Convert, "変換"),
-        DisplayAction(KeyAction.Confirm, "確定"),
-        DisplayAction(KeyAction.NewLine, "改行"),
         DisplayAction(
             KeyAction.MoveCursorLeft,
             "カーソル左",
@@ -49,8 +46,8 @@ object KeyActionMapper {
             "カーソル右",
             com.kazumaproject.core.R.drawable.baseline_arrow_right_24
         ),
-        DisplayAction(KeyAction.SelectLeft, "左を選択"),
-        DisplayAction(KeyAction.SelectRight, "右を選択"),
+//        DisplayAction(KeyAction.SelectLeft, "左を選択"),
+//        DisplayAction(KeyAction.SelectRight, "右を選択"),
         DisplayAction(
             KeyAction.SelectAll,
             "すべて選択",

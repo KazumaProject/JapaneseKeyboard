@@ -71,6 +71,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -230,6 +231,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var keyboardOrder: List<KeyboardType> = emptyList()
 
+    private var customLayouts: List<CustomKeyboardLayout> = emptyList()
+
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
@@ -326,12 +329,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // Setup the keyboard for the first time
         setupKeyboardView()
 
-        ioScope.launch {
-            val customLayouts = keyboardRepository.getLayoutsNotFlow()
-            if (customLayouts.isEmpty()) return@launch
-            Timber.d("customLayouts: $customLayouts")
-        }
-
         mainLayoutBinding?.let { mainView ->
             if (lifecycle.currentState == Lifecycle.State.CREATED) {
                 startScope(mainView)
@@ -413,6 +410,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setClipboardText()
         setKeyboardSize()
         resetKeyboard()
+        ioScope.launch {
+            customLayouts = keyboardRepository.getLayoutsNotFlow()
+        }
     }
 
     override fun onFinishInput() {
@@ -1311,7 +1311,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
 
                 KeyboardType.CUSTOM -> {
-                    setKeyboardTab()
+                    setInitialKeyboardTab()
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
@@ -1331,7 +1331,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("updateKeyboardLayout: ${qwertyMode.value}")
         when (qwertyMode.value) {
             TenKeyQWERTYMode.Custom -> {
-                setKeyboardTab()
+                //setInitialKeyboardTab()
             }
 
             TenKeyQWERTYMode.Default -> {}
@@ -1353,12 +1353,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
     }
 
-    private fun setKeyboardTab() {
+    private fun setInitialKeyboardTab() {
         scope.launch(Dispatchers.IO) {
-            if (keyboardRepository.getLayoutsNotFlow().isEmpty()) {
+            if (customLayouts.isEmpty()) {
                 return@launch
             }
-            val id = keyboardRepository.getLayoutsNotFlow()[0].layoutId
+            val id = customLayouts[0].layoutId
+            val dbLayout = keyboardRepository.getFullLayout(id).first()
+
+            val finalLayout = keyboardRepository.convertLayout(dbLayout)
+
+            withContext(Dispatchers.Main) {
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+            }
+        }
+    }
+
+    private fun setKeyboardTab(pos: Int) {
+        scope.launch(Dispatchers.IO) {
+            if (customLayouts.isEmpty()) {
+                return@launch
+            }
+            val id = customLayouts[pos].layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
 
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
@@ -2345,6 +2361,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             qwertyMode.collectLatest {
                 when (it) {
                     TenKeyQWERTYMode.Default -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.Default,
+                            emptyList()
+                        )
                         mainView.apply {
                             keyboardView.isVisible = true
                             qwertyView.isVisible = false
@@ -2353,6 +2373,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     TenKeyQWERTYMode.TenKeyQWERTY -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.TenKeyQWERTY,
+                            emptyList()
+                        )
                         mainView.apply {
                             keyboardView.isVisible = false
                             qwertyView.isVisible = true
@@ -2361,6 +2385,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     TenKeyQWERTYMode.Custom -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.Custom,
+                            customLayouts
+                        )
                         mainView.apply {
                             keyboardView.isVisible = false
                             qwertyView.isVisible = false
@@ -2369,6 +2397,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     TenKeyQWERTYMode.Sumire -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.Sumire,
+                            emptyList()
+                        )
                         mainView.apply {
                             keyboardView.isVisible = false
                             qwertyView.isVisible = false
@@ -2830,6 +2862,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                     }
                 }
+            }
+            adapter.setOnCustomLayoutItemClickListener { position ->
+                setKeyboardTab(position)
             }
         }
         mainView.suggestionRecyclerView.apply {
