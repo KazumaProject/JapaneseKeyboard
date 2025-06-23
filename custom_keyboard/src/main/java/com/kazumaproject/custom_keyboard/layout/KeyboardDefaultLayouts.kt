@@ -1713,7 +1713,9 @@ object KeyboardDefaultLayouts {
         )
         val ya = mapOf(
             FlickDirection.TAP to FlickAction.Input("や"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
             FlickDirection.UP to FlickAction.Input("ゆ"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
             FlickDirection.DOWN to FlickAction.Input("よ")
         )
         val ra = mapOf(
