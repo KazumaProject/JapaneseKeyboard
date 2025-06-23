@@ -105,4 +105,8 @@ interface KeyboardLayoutDao {
     @Query("SELECT * FROM keyboard_layouts")
     fun getAllFullLayouts(): Flow<List<FullKeyboardLayout>>
 
+    @Transaction
+    @Query("SELECT * FROM keyboard_layouts")
+    suspend fun getAllFullLayoutsOneShot(): List<FullKeyboardLayout>
+
 }

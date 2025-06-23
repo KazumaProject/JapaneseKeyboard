@@ -8,6 +8,7 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.cutsom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -248,5 +249,17 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun onDoneNavigating() {
         _uiState.update { it.copy(navigateBack = false) }
+    }
+
+    // Function for the Fragment to call to get data for export
+    suspend fun getLayoutsForExport(): List<FullKeyboardLayout> {
+        return repository.getAllFullLayoutsForExport()
+    }
+
+    // Function for the Fragment to call to import data
+    fun importLayouts(layouts: List<FullKeyboardLayout>) {
+        viewModelScope.launch {
+            repository.importLayouts(layouts)
+        }
     }
 }

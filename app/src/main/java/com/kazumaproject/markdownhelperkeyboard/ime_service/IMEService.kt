@@ -89,6 +89,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolReposito
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
@@ -151,6 +152,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var userDictionaryRepository: UserDictionaryRepository
 
     @Inject
+    lateinit var userTemplateRepository: UserTemplateRepository
+
+    @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
 
     @Inject
@@ -205,6 +209,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var delayTime: Int? = 1000
     private var isLearnDictionaryMode: Boolean? = false
     private var isUserDictionaryEnable: Boolean? = false
+    private var isUserTemplateEnable: Boolean? = false
     private var nBest: Int? = 4
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
@@ -361,6 +366,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             delayTime = time_same_pronounce_typing_preference ?: 1000
             isLearnDictionaryMode = learn_dictionary_preference ?: true
             isUserDictionaryEnable = user_dictionary_preference ?: true
+            isUserTemplateEnable = user_template_preference ?: true
             nBest = n_best_preference ?: 4
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -410,8 +416,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         setClipboardText()
         setKeyboardSize()
         resetKeyboard()
-        ioScope.launch {
-            customLayouts = keyboardRepository.getLayoutsNotFlow()
+        appPreference.keyboard_order.let { keyboardTypes ->
+            if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
+                ioScope.launch {
+                    customLayouts = keyboardRepository.getLayoutsNotFlow()
+                }
+            }
         }
     }
 
@@ -462,6 +472,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         delayTime = null
         isLearnDictionaryMode = null
         isUserDictionaryEnable = null
+        isUserTemplateEnable = null
         nBest = null
         isVibration = null
         vibrationTimingStr = null
@@ -3733,15 +3744,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun getSuggestionList(
         insertString: String,
     ): List<Candidate> {
-        val resultFromLearnDatabase = withContext(Dispatchers.IO) {
-            learnRepository.findLearnDataByInput(insertString)?.map {
-                Candidate(
-                    string = it.out,
-                    type = (20).toByte(),
-                    length = (insertString.length).toUByte(),
-                    score = it.score,
-                )
-            } ?: emptyList()
+        val resultFromLearnDatabase = if (isLearnDictionaryMode == true) {
+            withContext(Dispatchers.IO) {
+                learnRepository.findLearnDataByInput(insertString)?.map {
+                    Candidate(
+                        string = it.out,
+                        type = (20).toByte(),
+                        length = (insertString.length).toUByte(),
+                        score = it.score,
+                    )
+                } ?: emptyList()
+            }
+        } else {
+            emptyList()
         }
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
@@ -3760,7 +3775,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             emptyList()
         }
-        Timber.d("resultFromUserDictionary: $resultFromUserDictionary")
+
+        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
+            withContext(Dispatchers.IO) {
+                userTemplateRepository.searchByReading(
+                    reading = insertString,
+                    limit = 8
+                ).map {
+                    Candidate(
+                        string = it.word,
+                        type = (30).toByte(),
+                        length = (it.reading.length).toUByte(),
+                        score = it.posScore
+                    )
+                }.sortedBy { it.score }
+            }
+        } else {
+            emptyList()
+        }
+        Timber.d("resultFromUserTemplate: $resultFromUserTemplate")
         val engineCandidates = kanaKanjiEngine.getCandidates(
             input = insertString,
             n = nBest ?: 4,
@@ -3770,11 +3803,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mozcUTNeologd = mozcUTNeologd,
             mozcUTWeb = mozcUTWeb,
         )
-        val result = if (isLearnDictionaryMode == true) {
-            resultFromUserDictionary + resultFromLearnDatabase + engineCandidates
-        } else {
-            resultFromUserDictionary + engineCandidates
-        }
+        val result =
+            resultFromUserTemplate + resultFromUserDictionary + resultFromLearnDatabase + engineCandidates
         return result.distinctBy { it.string }
     }
 
