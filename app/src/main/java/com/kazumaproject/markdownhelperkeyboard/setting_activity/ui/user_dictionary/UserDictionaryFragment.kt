@@ -88,6 +88,7 @@ class UserDictionaryFragment : Fragment() {
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                // [CHANGE] メニューからのトグルロジックはここには含めない
                 return when (menuItem.itemId) {
                     R.id.action_export -> {
                         launchExportFilePicker()
@@ -217,25 +218,45 @@ class UserDictionaryFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        // [CHANGE 1 START] FABのリスナーを修正
         binding.fabAddWord.setOnClickListener {
             val isCurrentlyGone = binding.cardViewAddWord.isGone
             binding.cardViewAddWord.isGone = !isCurrentlyGone
 
-            if (binding.cardViewAddWord.isGone) {
-                binding.fabAddWord.setImageResource(android.R.drawable.ic_input_add)
-                hideKeyboardAndClearFocus()
-            } else {
+            // CardViewが表示される場合
+            if (!binding.cardViewAddWord.isGone) {
+                // 説明文を隠す
+                binding.layoutExplanation.isGone = true
+
                 binding.fabAddWord.setImageResource(com.kazumaproject.core.R.drawable.remove)
                 binding.editTextWord.requestFocus()
                 val imm =
                     context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
                 imm?.showSoftInput(binding.editTextWord, InputMethodManager.SHOW_IMPLICIT)
+            } else { // CardViewが隠される場合
+                binding.fabAddWord.setImageResource(android.R.drawable.ic_input_add)
+                hideKeyboardAndClearFocus()
             }
         }
+        // [CHANGE 1 END]
 
         binding.buttonAdd.setOnClickListener {
             addWord()
         }
+
+        // [CHANGE 2 START] ヘルプアイコンボタンのリスナーを新規追加
+        binding.buttonToggleExplanation.setOnClickListener {
+            // 説明文の表示/非表示を切り替える
+            binding.layoutExplanation.isGone = !binding.layoutExplanation.isGone
+
+            // もし説明文が表示されたら、単語追加CardViewを隠す
+            if (!binding.layoutExplanation.isGone) {
+                binding.cardViewAddWord.isGone = true
+                binding.fabAddWord.setImageResource(android.R.drawable.ic_input_add)
+                hideKeyboardAndClearFocus()
+            }
+        }
+        // [CHANGE 2 END]
     }
 
     private fun observeViewModel() {
