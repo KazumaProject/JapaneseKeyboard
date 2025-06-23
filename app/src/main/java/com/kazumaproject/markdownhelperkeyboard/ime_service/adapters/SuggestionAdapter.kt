@@ -124,11 +124,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem.leftId == newItem.leftId && oldItem.rightId == newItem.rightId
+            return false
         }
 
         override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem == newItem
+            return false
         }
     }
     private val differ = AsyncListDiffer(this, diffCallback)
