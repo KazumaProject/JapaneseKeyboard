@@ -6,31 +6,91 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.util.Log
+import timber.log.Timber
 
+/**
+ * クリップボードのコンテンツの種類を表すsealed class。
+ * これにより、クリップボードの内容がテキストか画像かを安全に判定できます。
+ */
+sealed class ClipboardItem {
+    /** テキストコンテンツを保持します。 */
+    data class Text(val text: String) : ClipboardItem()
+
+    /** 画像コンテンツ (Bitmap) を保持します。 */
+    data class Image(val bitmap: Bitmap) : ClipboardItem()
+
+    /** クリップボードが空、またはサポートされていないコンテンツの場合を表します。 */
+    object Empty : ClipboardItem()
+}
+
+/**
+ * クリップボードの操作を補助するユーティリティクラス。
+ *
+ * @property context アプリケーションコンテキスト
+ */
 class ClipboardUtil(private val context: Context) {
 
+    private val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+
+    /**
+     * クリップボードの主要なコンテンツを取得します。
+     * 画像の取得を最優先で試み、失敗した場合にテキストの取得を試みます。
+     * これにより、画像とテキストが混在している場合でも、画像を優先的に扱うことができます。
+     *
+     * @return 取得したコンテンツを表す [ClipboardItem]。（[ClipboardItem.Image]、[ClipboardItem.Text]、または [ClipboardItem.Empty]）
+     */
+    fun getPrimaryClipContent(): ClipboardItem {
+        if (!clipboard.hasPrimaryClip()) {
+            return ClipboardItem.Empty
+        }
+
+        // 1. 画像の取得を最優先で試みる
+        getClipboardImageBitmap()?.let { bitmap ->
+            Log.d("ClipboardUtil", "クリップボードから画像Bitmapを取得しました。")
+            return ClipboardItem.Image(bitmap)
+        }
+
+        // 2. 画像が取得できなかった場合、テキストの取得を試みる
+        getFirstClipboardTextOrNull()?.let { text ->
+            if (text.isNotBlank()) {
+                Log.d("ClipboardUtil", "クリップボードからテキストを取得しました。")
+                return ClipboardItem.Text(text)
+            }
+        }
+
+        // 3. 画像も有効なテキストも見つからなかった場合
+        Log.d("ClipboardUtil", "クリップボードに有効なコンテンツが見つかりませんでした。")
+        return ClipboardItem.Empty
+    }
+
+    /**
+     * クリップボードにテキストが存在するかどうかを確認します。
+     * @return テキストが存在しない場合はtrue、存在する場合はfalse。
+     */
     fun isClipboardTextEmpty(): Boolean {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         if (!clipboard.hasPrimaryClip()) return true
-
         val clipData = clipboard.primaryClip ?: return true
-
         for (i in 0 until clipData.itemCount) {
             val text = clipData.getItemAt(i).text
             if (!text.isNullOrBlank()) return false
         }
-
-        return true // No valid text found
+        return true
     }
 
+    /**
+     * 指定されたテキストをクリップボードにコピーします。
+     * @param text コピーするテキスト。
+     */
     fun setClipBoard(text: String) {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("copied text", text)
         clipboard.setPrimaryClip(clip)
     }
 
+    /**
+     * クリップボードの内容を消去します。
+     */
     fun clearClipboard() {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             clipboard.clearPrimaryClip()
         } else {
@@ -38,11 +98,13 @@ class ClipboardUtil(private val context: Context) {
         }
     }
 
+    /**
+     * クリップボードから最初のテキスト項目を取得します。
+     * @return クリップボードのテキスト。存在しない場合はnull。
+     */
     fun getFirstClipboardTextOrNull(): String? {
-        val clipboardManager =
-            context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clipData = clipboardManager.primaryClip ?: return null
-
+        if (!clipboard.hasPrimaryClip()) return null
+        val clipData = clipboard.primaryClip ?: return null
         for (i in 0 until clipData.itemCount) {
             val text = clipData.getItemAt(i).text?.toString()
             if (!text.isNullOrBlank()) return text
@@ -50,24 +112,34 @@ class ClipboardUtil(private val context: Context) {
         return null
     }
 
+    /**
+     * クリップボードから画像を取得します。
+     * アプリによってはMIMEタイプが正しく設定されていない場合があるため、
+     * MIMEタイプのチェックは参考程度とし、URIからのデコードを試みます。
+     *
+     * @return 成功した場合はBitmapオブジェクト、失敗した場合はnull。
+     */
     fun getClipboardImageBitmap(): Bitmap? {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        if (!clipboard.hasPrimaryClip()) return null
-
+        if (!clipboard.hasPrimaryClip()) {
+            return null
+        }
         val clipData = clipboard.primaryClip ?: return null
-        if (clipData.itemCount == 0) return null
+        if (clipData.itemCount == 0) {
+            return null
+        }
 
-        val item = clipData.getItemAt(0)
-        val uri = item.uri ?: return null
-
-        val mimeType = context.contentResolver.getType(uri)
-        if (mimeType != null && mimeType.startsWith("image/")) {
-            return try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                BitmapFactory.decodeStream(inputStream)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
+        for (i in 0 until clipData.itemCount) {
+            val item = clipData.getItemAt(i)
+            val uri = item.uri
+            if (uri != null) {
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        return BitmapFactory.decodeStream(inputStream)
+                    }
+                } catch (e: Exception) {
+                    Timber.e("ClipboardUtil", "URIからのBitmapデコードに失敗しました: $uri", e)
+                    continue // 次のアイテムを試す
+                }
             }
         }
 
