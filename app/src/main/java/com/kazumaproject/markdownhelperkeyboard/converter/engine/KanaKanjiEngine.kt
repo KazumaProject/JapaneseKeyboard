@@ -18,6 +18,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertTo
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
 import com.kazumaproject.viterbi.FindPath
@@ -553,7 +554,8 @@ class KanaKanjiEngine {
         mozcUTWiki: Boolean?,
         mozcUTNeologd: Boolean?,
         mozcUTWeb: Boolean?,
-        userDictionaryRepository: UserDictionaryRepository
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -565,7 +567,8 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
             succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
-            userDictionaryRepository = userDictionaryRepository
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository
         )
 
         val resultNBestFinalDeferred: List<Candidate> =
