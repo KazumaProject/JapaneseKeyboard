@@ -7,8 +7,10 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
+import timber.log.Timber
 
 class GraphBuilder {
 
@@ -21,7 +23,8 @@ class GraphBuilder {
         succinctBitVectorIsLeafYomi: SuccinctBitVector,
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
-        userDictionaryRepository: UserDictionaryRepository
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?
     ): MutableMap<Int, MutableList<Node>> {
         val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
         graph[0] = mutableListOf(BOS)
@@ -40,11 +43,11 @@ class GraphBuilder {
 
         for (i in str.indices) {
             val subStr = str.substring(i)
+            var foundInAnyDictionary = false
 
             // 1. ユーザー辞書からCommon Prefix Searchを実行
             val userWords = userDictionaryRepository.commonPrefixSearchInUserDict(subStr)
-
-            // ユーザー辞書の結果をNodeに変換してグラフに追加
+            if (userWords.isNotEmpty()) foundInAnyDictionary = true
             userWords.forEach { userWord ->
                 val endIndex = i + userWord.reading.length
                 val contextId = PosMapper.getContextIdForPos(userWord.posIndex)
@@ -61,13 +64,33 @@ class GraphBuilder {
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(node)
             }
 
-            // 2. システム辞書からCommon Prefix Searchを実行
+            // 2. 学習辞書からCommon Prefix Searchを実行
+            val learnedWords = learnRepository?.findCommonPrefixes(subStr) ?: emptyList()
+            if (learnedWords.isNotEmpty()) foundInAnyDictionary = true
+            learnedWords.forEach { learnedWord ->
+                val endIndex = i + learnedWord.input.length
+                val node = Node(
+                    l = 1851,
+                    r = 1851,
+                    score = learnedWord.score.toInt(),
+                    f = learnedWord.score.toInt(),
+                    g = learnedWord.score.toInt(),
+                    tango = learnedWord.out,
+                    len = learnedWord.input.length.toShort(),
+                    sPos = i
+                )
+                graph.computeIfAbsent(endIndex) { mutableListOf() }.add(node)
+            }
+
+            Timber.d("learnedWords: $learnedWords")
+
+            // 3. システム辞書からCommon Prefix Searchを実行
             val commonPrefixSearchSystem: List<String> = yomiTrie.commonPrefixSearch(
                 str = subStr,
                 succinctBitVector = succinctBitVectorLBSYomi
             )
+            if (commonPrefixSearchSystem.isNotEmpty()) foundInAnyDictionary = true
 
-            // システム辞書の結果をNodeに変換してグラフに追加
             for (yomiStr in commonPrefixSearchSystem) {
                 val nodeIndex = yomiTrie.getNodeIndex(
                     yomiStr,
@@ -104,12 +127,9 @@ class GraphBuilder {
                 }
             }
 
-            // 3. 辞書に全くヒットしなかった場合のフォールバック
-            //    (ユーザー辞書にもシステム辞書にもsubStrの接頭辞となる単語がなかった場合)
-            val isUserWordFound = userWords.any { it.reading.isNotEmpty() }
-            val isSystemWordFound = commonPrefixSearchSystem.any { it.isNotEmpty() }
-            if (!isUserWordFound && !isSystemWordFound && subStr.isNotEmpty()) {
-                val yomiStr = subStr.substring(0, 1) // 1文字だけを未知語として切り出すなど
+            // 4. どの辞書にもヒットしなかった場合のフォールバック
+            if (!foundInAnyDictionary && subStr.isNotEmpty()) {
+                val yomiStr = subStr.substring(0, 1) // 1文字だけを未知語として切り出す
                 val endIndex = i + yomiStr.length
                 val unknownNode = Node(
                     l = 0, // 未知語用のID
