@@ -2482,9 +2482,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         setComposingTextAfterEdit(insertString, spannableString)
         mainLayoutBinding?.suggestionRecyclerView?.apply {
-            post {
-                scrollToPosition(0)
-            }
+            scrollToPosition(0)
         }
     }
 
@@ -3972,6 +3970,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding,
         insertString: String,
     ) {
+        mainView.suggestionRecyclerView.scrollToPosition(0)
         val candidates = getSuggestionList(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
@@ -3980,7 +3979,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         suggestionAdapter?.suggestions = filtered
         updateUIinHenkan(mainView, insertString)
-        mainView.suggestionRecyclerView.scrollToPosition(0)
     }
 
     private suspend fun getSuggestionList(
