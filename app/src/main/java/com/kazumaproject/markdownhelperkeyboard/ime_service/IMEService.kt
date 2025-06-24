@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import android.content.ClipData
 import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -2033,10 +2035,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * @param bitmap 送信するBitmapオブジェクト。
      */
     private fun commitBitmap(bitmap: Bitmap) {
+        // ▼▼▼ ログ追加 ▼▼▼
+        Timber.d("commitBitmap: 開始")
+
         // APIレベルが低い場合は何もせずに終了
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) {
             Timber.w("このAPIレベルではcommitContentはサポートされていません。")
             return
+        }
+
+        // ▼▼▼ ログ追加 ▼▼▼
+        // InputConnectionとEditorInfoが有効か確認
+        val inputConnection = currentInputConnection
+        val editorInfo = currentInputEditorInfo
+        if (inputConnection == null || editorInfo == null) {
+            Timber.e("commitBitmap: InputConnectionまたはEditorInfoがnullです。処理を中断します。")
+            return
+        }
+
+        // ▼▼▼ ログ追加 ▼▼▼
+        // ターゲットエディタがサポートするMIMEタイプをログに出力
+        val supportedMimeTypes = editorInfo.contentMimeTypes ?: emptyArray()
+        if (supportedMimeTypes.isEmpty()) {
+            Timber.w("commitBitmap: ターゲットエディタはどのMIMEタイプもサポートしていません。")
+        } else {
+            Timber.d("commitBitmap: ターゲットエディタがサポートするMIMEタイプ: ${supportedMimeTypes.joinToString()}")
+        }
+
+        // ▼▼▼ ログ追加 ▼▼▼
+        // "image/png"をサポートしているか確認
+        val isPngSupported = supportedMimeTypes.any { mimeType ->
+            ClipDescription.compareMimeTypes(mimeType, "image/png")
+        }
+        if (!isPngSupported) {
+            Timber.w("commitBitmap: ターゲットエディタは 'image/png' をサポートしていません。")
+            // ここで処理を中断するか、別の形式（例: "image/jpeg"）を試すか判断できます
         }
 
         // 1. Bitmapをキャッシュディレクトリ内のファイルに保存
@@ -2047,6 +2080,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             FileOutputStream(imageFile).use { outputStream ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
             }
+            // ▼▼▼ ログ追加 ▼▼▼
+            Timber.d("commitBitmap: Bitmapをファイルに保存しました: ${imageFile.absolutePath}")
         } catch (e: IOException) {
             Timber.e(e, "Bitmapのファイルへの保存に失敗しました")
             return
@@ -2057,6 +2092,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         try {
             val authority = "${applicationContext.packageName}.fileprovider"
             contentUri = FileProvider.getUriForFile(this, authority, imageFile)
+            // ▼▼▼ ログ追加 ▼▼▼
+            Timber.d("commitBitmap: Content URIを取得しました: $contentUri")
         } catch (e: IllegalArgumentException) {
             Timber.e(
                 e,
@@ -2081,17 +2118,64 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // 4. 読み取り権限をターゲットアプリに付与
         val flags = InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION
 
+        // ▼▼▼ ログ追加 ▼▼▼
+        Timber.d("commitBitmap: commitContentを呼び出します...")
+
         // 5. コンテンツをコミット (InputConnectionCompatを使用)
         val didCommit = InputConnectionCompat.commitContent(
-            currentInputConnection,
-            currentInputEditorInfo,
+            inputConnection,
+            editorInfo,
             inputContentInfo,
             flags,
-            null
+            null // opts (Bundle) は通常nullで問題ありません
         )
 
-        if (!didCommit) {
-            Timber.e("コンテンツのコミットに失敗しました。エディタが画像の挿入をサポートしていない可能性があります。")
+        // ▼▼▼ ログ追加 ▼▼▼
+        if (didCommit) {
+            Timber.d("commitBitmap: コンテンツのコミットに成功しました。")
+        } else {
+            // このログは元のコードにもありますが、ここに来た場合の直前のログが重要になります
+            Timber.e("commitBitmap: コンテンツのコミットに失敗しました。エディタが画像の挿入をサポートしていない可能性があります。")
+            commitBitmapViaClipboard(contentUri)
+        }
+    }
+
+    /**
+     * クリップボード経由でBitmapを貼り付けます。
+     * commitContentが失敗した場合のフォールバックとして使用します。
+     *
+     * @param contentUri 貼り付ける画像のContent URI
+     */
+    private fun commitBitmapViaClipboard(contentUri: Uri) {
+        Timber.d("commitBitmapViaClipboard: 開始")
+        try {
+            // 1. クリップボードに画像をコピー
+            val mimeType = "image/png"
+            val clip = ClipData.newUri(contentResolver, "Image", contentUri)
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(clip)
+
+            // 2. ターゲットアプリに読み取り権限を一時的に付与
+            // (FileProviderのgrantUriPermissions属性がtrueなら不要な場合もあるが、明示的に行うのが安全)
+            grantUriPermission(
+                currentInputEditorInfo.packageName,
+                contentUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            Timber.d("commitBitmapViaClipboard: クリップボードにコピー完了")
+
+            // 3. 「貼り付け」コマンドを実行
+            val didPaste =
+                currentInputConnection?.performContextMenuAction(android.R.id.paste) ?: false
+            if (didPaste) {
+                Timber.d("commitBitmapViaClipboard: 貼り付けコマンドの実行に成功")
+            } else {
+                Timber.w("commitBitmapViaClipboard: 貼り付けコマンドの実行に失敗")
+                // ここでユーザーに「クリップボードにコピーしました。手動で貼り付けてください」と通知するのも良い
+            }
+
+        } catch (e: Exception) {
+            Timber.e(e, "commitBitmapViaClipboard: 処理中に例外が発生")
         }
     }
 
