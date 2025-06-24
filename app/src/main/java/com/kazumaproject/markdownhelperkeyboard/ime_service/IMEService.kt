@@ -1,10 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import android.content.ClipDescription
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
 import android.inputmethodservice.InputMethodService
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.CombinedVibration
@@ -34,6 +37,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -74,6 +78,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardItem
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
@@ -122,6 +127,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.text.BreakIterator
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -413,7 +421,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         super.onStartInputView(editorInfo, restarting)
         Timber.d("onUpdate onStartInputView called $restarting")
         setCurrentInputType(editorInfo)
-        setClipboardText()
+        updateClipboardPreview()
         setKeyboardSize()
         resetKeyboard()
         appPreference.keyboard_order.let { keyboardTypes ->
@@ -582,7 +590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                     // Restore UI state after recreation
                     setKeyboardSize()
-                    setClipboardText()
+                    updateClipboardPreview()
                     mainLayoutBinding?.suggestionRecyclerView?.isVisible =
                         suggestionViewStatus.value
                 }
@@ -609,10 +617,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
-            if (deletedBuffer.isEmpty() && !clipboardUtil.isClipboardTextEmpty()) {
-                clipboardUtil.getFirstClipboardTextOrNull()?.let {
-                    setPasteEnabled(true)
-                    setClipboardPreview(it)
+            if (deletedBuffer.isEmpty()) {
+                // getPrimaryClipContentでクリップボードの内容を取得
+                when (val item = clipboardUtil.getPrimaryClipContent()) {
+                    is ClipboardItem.Image -> {
+                        // 画像だった場合の処理
+                        setPasteEnabled(true)
+                        // ★新しいメソッドでBitmapをアダプターに渡す
+                        setClipboardImagePreview(item.bitmap)
+                    }
+
+                    is ClipboardItem.Text -> {
+                        // テキストだった場合の処理
+                        setPasteEnabled(true)
+                        setClipboardPreview(item.text)
+                    }
+
+                    is ClipboardItem.Empty -> {
+                        // 空だった場合の処理
+                        setPasteEnabled(false)
+                        setClipboardPreview("") // 念のためプレビューもクリア
+                    }
                 }
             } else {
                 setPasteEnabled(false)
@@ -967,11 +992,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
             suggestionAdapter?.setUndoEnabled(false)
-            setClipboardText()
+            updateClipboardPreview()
         } else if (deletedBuffer.isNotEmpty() && selectMode.value && key == Key.SideKeySpace) {
             clearDeletedBufferWithoutResetLayout()
             suggestionAdapter?.setUndoEnabled(false)
-            setClipboardText()
+            updateClipboardPreview()
         }
         when (key) {
             Key.NotSelected -> {}
@@ -1198,7 +1223,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     clearDeletedBuffer()
                 }
                 suggestionAdapter?.setUndoEnabled(false)
-                setClipboardText()
+                updateClipboardPreview()
             }
 
             Key.SideKeyCursorRight -> {
@@ -1210,7 +1235,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     clearDeletedBuffer()
                 }
                 suggestionAdapter?.setUndoEnabled(false)
-                setClipboardText()
+                updateClipboardPreview()
             }
 
             Key.SideKeyDelete -> {
@@ -1444,7 +1469,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (it && deletedBuffer.isNotEmpty()) {
                 clearDeletedBufferWithoutResetLayout()
                 suggestionAdapter?.setUndoEnabled(false)
-                setClipboardText()
+                updateClipboardPreview()
             }
         }
     }
@@ -1640,7 +1665,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             clearDeletedBuffer()
                         }
                         suggestionAdapter?.setUndoEnabled(false)
-                        setClipboardText()
+                        updateClipboardPreview()
                     }
 
                     KeyAction.MoveCursorRight -> {
@@ -1653,7 +1678,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             clearDeletedBuffer()
                         }
                         suggestionAdapter?.setUndoEnabled(false)
-                        setClipboardText()
+                        updateClipboardPreview()
                     }
 
                     KeyAction.NewLine -> {}
@@ -1974,15 +1999,119 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         rightLongPressJob = null
     }
 
+    /**
+     * クリップボードからの貼り付けアクション。テキストと画像の両方に対応。
+     */
     private fun pasteAction() {
-        val allClipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
-        if (allClipboardText.isNotEmpty()) {
-            commitText(allClipboardText, 1)
-            clearDeletedBufferWithoutResetLayout()
-            suggestionAdapter?.setUndoEnabled(false)
-            setClipboardText()
+        when (val item = clipboardUtil.getPrimaryClipContent()) {
+            is ClipboardItem.Image -> {
+                commitBitmap(item.bitmap)
+            }
+
+            is ClipboardItem.Text -> {
+                if (item.text.isNotEmpty()) {
+                    commitText(item.text, 1)
+                }
+            }
+
+            is ClipboardItem.Empty -> {
+                // Do nothing
+            }
+        }
+        clearDeletedBufferWithoutResetLayout()
+        suggestionAdapter?.setUndoEnabled(false)
+        // ★修正点: UIを正しく更新する新しい関数を呼び出す
+        updateClipboardPreview()
+    }
+
+    /**
+     * Bitmapを入力先アプリに送信します。
+     * この関数を呼び出す前に、FileProviderが正しく設定されている必要があります。
+     *
+     * 変更点：
+     * - コードの可読性を向上させるためにリファクタリング。
+     *
+     * @param bitmap 送信するBitmapオブジェクト。
+     */
+    private fun commitBitmap(bitmap: Bitmap) {
+        // APIレベルが低い場合は何もせずに終了
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) {
+            Timber.w("このAPIレベルではcommitContentはサポートされていません。")
+            return
+        }
+
+        // 1. Bitmapをキャッシュディレクトリ内のファイルに保存
+        val cachePath = File(cacheDir, "images")
+        cachePath.mkdirs() // ディレクトリが存在することを確認
+        val imageFile = File(cachePath, "clipboard_image.png")
+        try {
+            FileOutputStream(imageFile).use { outputStream ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            }
+        } catch (e: IOException) {
+            Timber.e(e, "Bitmapのファイルへの保存に失敗しました")
+            return // ファイル保存に失敗した場合は中止
+        }
+
+        // 2. FileProviderを使用してContent URIを取得
+        val contentUri: Uri
+        try {
+            // 重要: このauthority文字列はAndroidManifest.xmlで定義したものと一致させる必要があります
+            val authority = "${applicationContext.packageName}.fileprovider"
+            contentUri = FileProvider.getUriForFile(this, authority, imageFile)
+        } catch (e: IllegalArgumentException) {
+            Timber.e(
+                e,
+                "FileProviderが正しく設定されていません。AndroidManifest.xmlを確認してください。"
+            )
+            return
+        }
+
+        // 3. InputContentInfoを作成
+        val mimeType = "image/png"
+        val description = ClipDescription("Image from keyboard", arrayOf(mimeType))
+        val inputContentInfo = InputContentInfo(contentUri, description)
+
+        // 4. 読み取り権限をターゲットアプリに付与
+        val flags = InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION
+
+        // 5. コンテンツをコミット
+        val didCommit = commitContent(inputContentInfo, flags, null)
+        if (!didCommit) {
+            Timber.e("コンテンツのコミットに失敗しました。エディタが画像の挿入をサポートしていない可能性があります。")
         }
     }
+
+    /**
+     * ★新しい関数: クリップボードのプレビューUIを更新します。
+     * 画像とテキストの両方を判定して、正しくプレビューの状態を設定します。
+     */
+    private fun updateClipboardPreview() {
+        suggestionAdapter?.apply {
+            when (val item = clipboardUtil.getPrimaryClipContent()) {
+                is ClipboardItem.Image -> {
+                    // 画像だった場合
+                    setPasteEnabled(true)
+                    // ★新しいメソッドを呼び出してBitmapを渡す
+                    setClipboardImagePreview(item.bitmap)
+                }
+
+                is ClipboardItem.Text -> {
+                    // テキストだった場合
+                    setPasteEnabled(true)
+                    // 既存のメソッドを呼び出す（これにより画像プレビューはクリアされる）
+                    setClipboardPreview(item.text)
+                }
+
+                is ClipboardItem.Empty -> {
+                    // 空だった場合
+                    setPasteEnabled(false)
+                    setClipboardPreview("")
+                }
+            }
+        }
+    }
+
 
     private fun dakutenSmallActionForSumire(mainView: MainLayoutBinding) {
         val insertString = inputString.value
@@ -2838,7 +2967,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         }
                         if (deletedBuffer.isEmpty()) {
                             suggestionAdapter?.setUndoEnabled(false)
-                            setClipboardText()
+                            updateClipboardPreview()
                             mainView.keyboardView.setSideKeyPreviousDrawable(
                                 ContextCompat.getDrawable(
                                     this, com.kazumaproject.core.R.drawable.undo_24px
@@ -2862,7 +2991,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         commitText(textToCommit, 1)
                         clearDeletedBuffer()
                         suggestionAdapter?.setUndoEnabled(false)
-                        setClipboardText()
+                        updateClipboardPreview()
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
@@ -3389,7 +3518,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         stopDeleteLongPress()
         clearDeletedBuffer()
         suggestionAdapter?.setUndoEnabled(false)
-        setClipboardText()
+        updateClipboardPreview()
         _selectMode.update { false }
         hasConvertedKatakana = false
         romajiConverter.clear()
@@ -4760,16 +4889,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         }
-    }
-
-    private fun setClipboardText() {
-        if (!clipboardUtil.isClipboardTextEmpty()) {
-            val clipboardText = clipboardUtil.getFirstClipboardTextOrNull() ?: ""
-            suggestionAdapter?.setClipboardPreview(clipboardText)
-        }
-        suggestionAdapter?.setPasteEnabled(
-            !clipboardUtil.isClipboardTextEmpty()
-        )
     }
 
     private fun setKeyTouch(
