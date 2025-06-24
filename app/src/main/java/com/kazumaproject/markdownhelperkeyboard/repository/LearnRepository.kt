@@ -37,6 +37,25 @@ class LearnRepository @Inject constructor(
         }
     }
 
+    /**
+     * Calls the DAO to perform a predictive search for entries starting with the given prefix.
+     *
+     * @param prefix The prefix to search for.
+     * @param limit The maximum number of results.
+     * @return A list of matching LearnEntity objects.
+     */
+    suspend fun predictiveSearchByInput(prefix: String, limit: Int): List<LearnEntity> =
+        learnDao.predictiveSearchByInput(prefix, limit)
+
+    /**
+     * Calls the DAO to find entries that are a common prefix of the given search term.
+     *
+     * @param searchTerm The term to search with.
+     * @return A list of matching LearnEntity objects.
+     */
+    suspend fun findCommonPrefixes(searchTerm: String): List<LearnEntity> =
+        learnDao.findCommonPrefixes(searchTerm)
+
     fun all(): Flow<List<LearnEntity>> = learnDao.all()
 
     suspend fun delete(learnData: LearnEntity) = learnDao.delete(learnData)
