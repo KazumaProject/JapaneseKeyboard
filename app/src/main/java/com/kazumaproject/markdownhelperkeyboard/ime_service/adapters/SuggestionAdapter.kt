@@ -1,11 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import android.graphics.Bitmap
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.AsyncListDiffer
@@ -27,7 +29,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     companion object {
         private const val VIEW_TYPE_EMPTY = 0
         private const val VIEW_TYPE_SUGGESTION = 1
-        private const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2 // CHANGED: Add new view type
+        private const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
     }
 
     enum class HelperIcon {
@@ -39,21 +41,19 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
     private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
     private var onItemHelperIconLongClickListener: ((HelperIcon) -> Unit)? = null
-    private var onCustomLayoutItemClickListener: ((Int) -> Unit)? =
-        null // CHANGED: Add new listener
+    private var onCustomLayoutItemClickListener: ((Int) -> Unit)? = null
 
-    // Holds the text to show in the clipboard preview inside the empty state.
+    // Holds the preview content for the empty state.
     private var clipboardText: String = ""
+    private var clipboardBitmap: Bitmap? = null // ★追加: Bitmapを保持するフィールド
     private var undoText: String = ""
 
     // Internal flags to track enable/disable state
     private var isUndoEnabled: Boolean = false
     private var isPasteEnabled: Boolean = true
 
-    // CHANGED: Add state for TenKeyQWERTYMode and custom layouts
     private var currentMode: TenKeyQWERTYMode = TenKeyQWERTYMode.Default
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
-
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -71,7 +71,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.onItemHelperIconLongClickListener = onItemHelperIconLongClickListener
     }
 
-    // CHANGED: Add setter for new listener
     fun setOnCustomLayoutItemClickListener(listener: (Int) -> Unit) {
         this.onCustomLayoutItemClickListener = listener
     }
@@ -81,7 +80,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onItemLongClickListener = null
         onItemHelperIconClickListener = null
         onItemHelperIconLongClickListener = null
-        onCustomLayoutItemClickListener = null // CHANGED: Release listener
+        onCustomLayoutItemClickListener = null
     }
 
     fun setUndoEnabled(enabled: Boolean) {
@@ -98,12 +97,30 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    /**
+     * テキストのクリップボードプレビューを設定します。
+     * このとき、画像のプレビューはクリアされます。
+     */
     fun setClipboardPreview(text: String) {
         clipboardText = text
+        clipboardBitmap = null // ★追加: テキスト設定時に画像はクリア
         if (suggestions.isEmpty()) {
             notifyItemChanged(0)
         }
     }
+
+    /**
+     * ★新しい関数: 画像のクリップボードプレビューを設定します。
+     * このとき、テキストのプレビューはクリアされます。
+     */
+    fun setClipboardImagePreview(bitmap: Bitmap?) {
+        clipboardBitmap = bitmap
+        clipboardText = "" // 画像設定時にテキストはクリア
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
 
     fun setUndoPreviewText(text: String) {
         undoText = text
@@ -112,13 +129,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    // These methods should be called from your IME Service when the mode or data changes.
     fun updateState(mode: TenKeyQWERTYMode, layouts: List<CustomKeyboardLayout>) {
         val needsFullRefresh = (currentMode != mode) || (customLayouts != layouts)
         currentMode = mode
         customLayouts = layouts
         if (needsFullRefresh) {
-            notifyItemChanged(layouts.size)
+            notifyDataSetChanged()
         }
     }
 
@@ -137,38 +153,33 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
-
-    // Track which suggestion is highlighted
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
 
-    /** ViewHolder for a normal suggestion row **/
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
-    /** ViewHolder for the “empty” state (showing icons + clipboard preview) **/
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
         val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
-        val pasteIcon: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
+        val pasteIconParent: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
+        val pasteIcon: ImageView? = itemView.findViewById(R.id.paste_icon)
         val clipboardPreviewText: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_text_preview)
         val clipboardPreviewTextDescription: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_preview_text_description)
     }
 
-    // CHANGED: Add new ViewHolder for custom layouts
     inner class CustomLayoutViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val nameTextView: MaterialTextView = itemView.findViewById(R.id.custom_layout_name)
         val detailTextView: MaterialTextView = itemView.findViewById(R.id.custom_layout_details)
     }
 
-    // CHANGED: Updated logic to select one of three view types
     override fun getItemViewType(position: Int): Int {
         return if (suggestions.isNotEmpty()) {
             VIEW_TYPE_SUGGESTION
-        } else { // Suggestions are empty
+        } else {
             if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
                 VIEW_TYPE_CUSTOM_LAYOUT_PICKER
             } else {
@@ -177,20 +188,18 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    // CHANGED: Updated logic for item count
     override fun getItemCount(): Int {
         return if (suggestions.isNotEmpty()) {
             suggestions.size
-        } else { // Suggestions are empty
+        } else {
             if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
-                customLayouts.size // Show a list of custom layouts
+                customLayouts.size
             } else {
-                1 // Show the single empty view (Undo/Paste)
+                1
             }
         }
     }
 
-    // CHANGED: Updated to handle the new view type
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         return when (viewType) {
@@ -201,7 +210,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
 
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> {
-                // You need to create this new layout file: R.layout.suggestion_custom_layout_item
                 val customView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.suggestion_custom_layout_item, parent, false)
                 CustomLayoutViewHolder(customView)
@@ -220,8 +228,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-
-    // CHANGED: Updated to bind the new ViewHolder
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder.itemViewType) {
             VIEW_TYPE_EMPTY -> onBindEmptyViewHolder(holder as EmptyViewHolder)
@@ -237,11 +243,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    // Helper method for binding EmptyViewHolder
     private fun onBindEmptyViewHolder(holder: EmptyViewHolder) {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         holder.apply {
-            // Set enabled/disabled state on icons
             undoIcon?.apply {
                 isVisible = isUndoEnabled
                 isFocusable = false
@@ -249,17 +253,27 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 debugPrintCodePoints(undoText)
                 text = undoText.reversed()
             }
-            pasteIcon?.apply {
+            pasteIconParent?.apply {
                 isEnabled = isPasteEnabled
-                visibility = if (isPasteEnabled) {
-                    View.VISIBLE
-                } else {
-                    View.INVISIBLE
-                }
+                visibility = if (isPasteEnabled) View.VISIBLE else View.INVISIBLE
                 isFocusable = false
             }
-            // Update the clipboard preview text
-            clipboardPreviewText?.text = clipboardText
+
+            // ★修正: 画像プレビューのロジック
+            pasteIcon?.apply {
+                if (clipboardBitmap != null) {
+                    // Bitmapがあればそれを設定
+                    setImageBitmap(clipboardBitmap)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                } else {
+                    // なければデフォルトのアイコンを設定
+                    setImageResource(com.kazumaproject.core.R.drawable.content_paste_24px)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                }
+            }
+
+            // テキストプレビューは、画像がない場合にのみ表示
+            clipboardPreviewText?.text = if (clipboardBitmap == null) clipboardText else ""
 
             undoIconParent?.apply {
                 if (isDynamicColorEnable) {
@@ -283,11 +297,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 }
             }
 
-            clipboardPreviewTextDescription?.apply {
-                isVisible = isPasteEnabled
-            }
+            // テキスト用の説明は、画像がない場合にのみ表示
+            clipboardPreviewTextDescription?.isVisible = isPasteEnabled && clipboardBitmap == null
 
-            pasteIcon?.apply {
+            pasteIconParent?.apply {
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
                 }
@@ -299,24 +312,19 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    // Helper method for binding SuggestionViewHolder
     private fun onBindSuggestionViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
-
-        // === (Existing padding + text logic) ===
         val paddingLength = when {
             position == 0 -> 4
             suggestion.string.length == 1 -> 4
             suggestion.string.length == 2 -> 2
             else -> 1
         }
-
         val readingCorrectionString =
             if (suggestion.type == (15).toByte()) suggestion.string.correctReading() else Pair(
                 "",
                 ""
             )
-
         holder.text.text = if (suggestion.type == (15).toByte()) {
             readingCorrectionString.first
                 .padStart(readingCorrectionString.first.length + paddingLength)
@@ -326,9 +334,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 .padStart(suggestion.string.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
         }
-
         holder.typeText.text = when (suggestion.type) {
-            // ... (rest of your when block for suggestion type)
             (1).toByte() -> ""
             (9).toByte() -> ""
             (5).toByte() -> "[部]"
@@ -365,10 +371,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (29).toByte() -> ""
             else -> ""
         }
-
-        // Highlight logic:
         holder.itemView.isPressed = position == highlightedPosition
-
         holder.itemView.setOnClickListener {
             onItemClickListener?.invoke(suggestion, position)
         }
@@ -378,21 +381,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    // CHANGED: New helper method for binding the custom layout ViewHolder
     private fun onBindCustomLayoutViewHolder(holder: CustomLayoutViewHolder, position: Int) {
         val layoutItem = customLayouts[position]
         holder.nameTextView.text = layoutItem.name
         holder.detailTextView.text = "列: ${layoutItem.columnCount}, 行: ${layoutItem.rowCount}"
-
-        // Set a click listener to notify the service
         holder.itemView.setOnClickListener {
             onCustomLayoutItemClickListener?.invoke(position)
         }
     }
 
-    /**
-     * Call this to move the highlight to a new position; previous highlighted row will repaint.
-     */
     fun updateHighlightPosition(newPosition: Int) {
         val previous = highlightedPosition
         highlightedPosition = newPosition

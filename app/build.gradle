@@ -29,7 +29,7 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 407
+        versionCode 408
         versionName "1.0.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -124,5 +124,5 @@ dependencies {
 
     implementation "androidx.hilt:hilt-navigation-fragment:1.2.0"
 
-    //debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+//    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }
