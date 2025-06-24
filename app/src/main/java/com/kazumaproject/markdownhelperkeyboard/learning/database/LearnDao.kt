@@ -23,6 +23,30 @@ interface LearnDao {
     @Query("SELECT * FROM learn_table ORDER BY score ASC")
     fun all(): Flow<List<LearnEntity>>
 
+    /**
+     * Predictive Search: Finds entries where the 'input' column starts with a given prefix.
+     * This is useful for autocompleting user input.
+     * The results are ordered by score in descending order to show the most likely candidates first.
+     *
+     * @param prefix The prefix string to search for.
+     * @param limit The maximum number of results to return.
+     * @return A list of matching LearnEntity objects.
+     */
+    @Query("SELECT * FROM learn_table WHERE input LIKE :prefix || '%' ORDER BY score DESC LIMIT :limit")
+    suspend fun predictiveSearchByInput(prefix: String, limit: Int): List<LearnEntity>
+
+    /**
+     * Common Prefix Search: Finds entries where the 'input' value is a prefix of the given searchTerm.
+     * For example, if the table contains an entry with input="he", and the searchTerm is "hello", this entry will be matched.
+     * This is useful for finding the most specific matching command or keyword from user input.
+     * Results are ordered by the length of the input string in descending order to prioritize longer (more specific) matches.
+     *
+     * @param searchTerm The full string to check against the stored prefixes.
+     * @return A list of matching LearnEntity objects.
+     */
+    @Query("SELECT * FROM learn_table WHERE :searchTerm LIKE input || '%' ORDER BY LENGTH(input) DESC")
+    suspend fun findCommonPrefixes(searchTerm: String): List<LearnEntity>
+
     @Update
     suspend fun updateLearnedData(learnData: LearnEntity)
 

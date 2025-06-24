@@ -3569,7 +3569,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
-                        LearnEntity(input = insertString, out = candidate.string)
+                        LearnEntity(
+                            input = insertString,
+                            out = candidate.string,
+                            score = (insertString.length * 300 + 3500).toShort()
+                        )
                     )
                 } catch (e: Exception) {
                     Timber.e(e, "upsertLearnDictionary failed")
@@ -3594,7 +3598,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     learnRepository.upsertLearnedData(LearnEntity(input = input, out = output))
                     learnRepository.upsertLearnedData(
                         LearnEntity(
-                            input = insertString, out = candidate.string
+                            input = insertString,
+                            out = candidate.string,
+                            score = (insertString.length * 500 + 3500).toShort()
                         )
                     )
                 } catch (e: Exception) {
@@ -3987,14 +3993,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ): List<Candidate> {
         val resultFromLearnDatabase = if (isLearnDictionaryMode == true) {
             withContext(Dispatchers.IO) {
-                learnRepository.findLearnDataByInput(insertString)?.map {
-                    Candidate(
-                        string = it.out,
-                        type = (20).toByte(),
-                        length = (insertString.length).toUByte(),
-                        score = it.score,
+                learnRepository
+                    .predictiveSearchByInput(insertString, 4)
+                    .map { entity ->
+                        Candidate(
+                            string = entity.out,
+                            type = 20.toByte(),
+                            length = insertString.length.toUByte(), // 入力の長さ
+                            score = entity.score.toInt(),
+                        )
+                    }
+                    .sortedWith(
+                        compareBy<Candidate> { it.score }
+                            .thenBy { it.string.length }
                     )
-                } ?: emptyList()
             }
         } else {
             emptyList()
@@ -4043,7 +4055,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mozcUTWiki = mozcUTWiki,
             mozcUTNeologd = mozcUTNeologd,
             mozcUTWeb = mozcUTWeb,
-            userDictionaryRepository = userDictionaryRepository
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null
         )
         val result =
             resultFromUserTemplate + resultFromUserDictionary + resultFromLearnDatabase + engineCandidates
