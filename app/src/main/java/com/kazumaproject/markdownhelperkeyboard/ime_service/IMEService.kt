@@ -346,6 +346,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // Setup the keyboard for the first time
         setupKeyboardView()
 
+        appPreference.keyboard_order.let { keyboardTypes ->
+            if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
+                ioScope.launch {
+                    customLayouts = keyboardRepository.getLayoutsNotFlow()
+                }
+            }
+        }
+
         mainLayoutBinding?.let { mainView ->
             if (lifecycle.currentState == Lifecycle.State.CREATED) {
                 startScope(mainView)
@@ -428,13 +436,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         updateClipboardPreview()
         setKeyboardSize()
         resetKeyboard()
-        appPreference.keyboard_order.let { keyboardTypes ->
-            if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
-                ioScope.launch {
-                    customLayouts = keyboardRepository.getLayoutsNotFlow()
-                }
-            }
-        }
     }
 
     override fun onFinishInput() {
