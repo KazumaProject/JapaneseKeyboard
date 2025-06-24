@@ -3980,7 +3980,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
         suggestionAdapter?.suggestions = filtered
         updateUIinHenkan(mainView, insertString)
-        delay(40L)
         mainView.suggestionRecyclerView.scrollToPosition(0)
     }
 
