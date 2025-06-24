@@ -3572,7 +3572,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         LearnEntity(
                             input = insertString,
                             out = candidate.string,
-                            score = (insertString.length * 300 + 3500).toShort()
+                            score = (insertString.length * 100 + 3500).toShort()
                         )
                     )
                 } catch (e: Exception) {
@@ -3595,12 +3595,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true) {
             ioScope.launch {
                 try {
-                    learnRepository.upsertLearnedData(LearnEntity(input = input, out = output))
+                    learnRepository.upsertLearnedData(
+                        LearnEntity(
+                            input = input,
+                            out = output,
+                            score = (input.length * 100 + 3500).toShort()
+                        )
+                    )
                     learnRepository.upsertLearnedData(
                         LearnEntity(
                             input = insertString,
                             out = candidate.string,
-                            score = (insertString.length * 500 + 3500).toShort()
+                            score = (insertString.length * 100 + 3500).toShort()
                         )
                     )
                 } catch (e: Exception) {
@@ -4000,13 +4006,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         Candidate(
                             string = entity.out,
                             type = 20.toByte(),
-                            length = insertString.length.toUByte(), // 入力の長さ
+                            length = entity.input.length.toUByte(),
                             score = entity.score.toInt(),
                         )
                     }
                     .sortedWith(
-                        compareBy<Candidate> { it.score }
-                            .thenBy { it.string.length }
+                        compareBy<Candidate> { it.length }
+                            .thenBy { it.score }
                     )
             }
         } else {
