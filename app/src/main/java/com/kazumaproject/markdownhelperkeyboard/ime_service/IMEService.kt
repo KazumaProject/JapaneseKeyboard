@@ -38,6 +38,8 @@ import android.widget.FrameLayout
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.inputmethod.InputConnectionCompat
+import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
@@ -2028,9 +2030,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
      * Bitmapを入力先アプリに送信します。
      * この関数を呼び出す前に、FileProviderが正しく設定されている必要があります。
      *
-     * 変更点：
-     * - コードの可読性を向上させるためにリファクタリング。
-     *
      * @param bitmap 送信するBitmapオブジェクト。
      */
     private fun commitBitmap(bitmap: Bitmap) {
@@ -2050,13 +2049,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         } catch (e: IOException) {
             Timber.e(e, "Bitmapのファイルへの保存に失敗しました")
-            return // ファイル保存に失敗した場合は中止
+            return
         }
 
         // 2. FileProviderを使用してContent URIを取得
         val contentUri: Uri
         try {
-            // 重要: このauthority文字列はAndroidManifest.xmlで定義したものと一致させる必要があります
             val authority = "${applicationContext.packageName}.fileprovider"
             contentUri = FileProvider.getUriForFile(this, authority, imageFile)
         } catch (e: IllegalArgumentException) {
@@ -2067,16 +2065,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             return
         }
 
-        // 3. InputContentInfoを作成
+        // 3. InputContentInfoCompatを作成
         val mimeType = "image/png"
         val description = ClipDescription("Image from keyboard", arrayOf(mimeType))
-        val inputContentInfo = InputContentInfo(contentUri, description)
+
+        // ★★★ 修正点 ★★★
+        // linkUri（3番目の引数）にはnullを渡します。
+        // この引数はhttp/httpsのウェブURIを要求するため、content:// URIを渡すとクラッシュします。
+        val inputContentInfo = InputContentInfoCompat(
+            contentUri,
+            description,
+            null // linkUriはnullにする
+        )
 
         // 4. 読み取り権限をターゲットアプリに付与
-        val flags = InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION
+        val flags = InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION
 
-        // 5. コンテンツをコミット
-        val didCommit = commitContent(inputContentInfo, flags, null)
+        // 5. コンテンツをコミット (InputConnectionCompatを使用)
+        val didCommit = InputConnectionCompat.commitContent(
+            currentInputConnection,
+            currentInputEditorInfo,
+            inputContentInfo,
+            flags,
+            null
+        )
+
         if (!didCommit) {
             Timber.e("コンテンツのコミットに失敗しました。エディタが画像の挿入をサポートしていない可能性があります。")
         }
@@ -2426,14 +2439,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             resetSumireKeyboardDakutenMode()
                             setSumireKeyboardSpaceKey(0)
                         }
-                        if (clipboardUtil.isClipboardTextEmpty()) {
-                            suggestionAdapter?.setPasteEnabled(false)
-                        } else {
-                            suggestionAdapter?.apply {
-                                setPasteEnabled(true)
-                                setClipboardPreview(
-                                    clipboardUtil.getFirstClipboardTextOrNull() ?: ""
-                                )
+                        suggestionAdapter?.apply {
+                            if (deletedBuffer.isEmpty()) {
+                                // getPrimaryClipContentでクリップボードの内容を取得
+                                when (val item = clipboardUtil.getPrimaryClipContent()) {
+                                    is ClipboardItem.Image -> {
+                                        // 画像だった場合の処理
+                                        setPasteEnabled(true)
+                                        // ★新しいメソッドでBitmapをアダプターに渡す
+                                        setClipboardImagePreview(item.bitmap)
+                                    }
+
+                                    is ClipboardItem.Text -> {
+                                        // テキストだった場合の処理
+                                        setPasteEnabled(true)
+                                        setClipboardPreview(item.text)
+                                    }
+
+                                    is ClipboardItem.Empty -> {
+                                        // 空だった場合の処理
+                                        setPasteEnabled(false)
+                                        setClipboardPreview("") // 念のためプレビューもクリア
+                                    }
+                                }
+                            } else {
+                                setPasteEnabled(false)
                             }
                         }
                         if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
