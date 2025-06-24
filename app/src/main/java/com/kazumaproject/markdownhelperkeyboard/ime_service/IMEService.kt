@@ -3993,6 +3993,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ): List<Candidate> {
         val resultFromLearnDatabase = if (isLearnDictionaryMode == true) {
             withContext(Dispatchers.IO) {
+                if (insertString.length <= 1) return@withContext emptyList<Candidate>()
                 learnRepository
                     .predictiveSearchByInput(insertString, 4)
                     .map { entity ->
