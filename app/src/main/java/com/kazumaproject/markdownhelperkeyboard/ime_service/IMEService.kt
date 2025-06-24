@@ -4042,6 +4042,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             mozcUTWiki = mozcUTWiki,
             mozcUTNeologd = mozcUTNeologd,
             mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository
         )
         val result =
             resultFromUserTemplate + resultFromUserDictionary + resultFromLearnDatabase + engineCandidates
