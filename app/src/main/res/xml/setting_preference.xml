@@ -92,8 +92,8 @@
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="user_dictionary_preference"
-            android:summaryOff="ユーザー辞書を無効化"
-            android:summaryOn="ユーザー辞書を有効化\n登録した単語を変換候補を表示します"
+            android:summaryOff="ユーザー辞書の予測変換を無効化"
+            android:summaryOn="ユーザー辞書の予測変換を有効化\n登録した単語を予測変換として変換候補を表示します"
             android:title="ユーザー辞書" />
     </PreferenceCategory>
 
