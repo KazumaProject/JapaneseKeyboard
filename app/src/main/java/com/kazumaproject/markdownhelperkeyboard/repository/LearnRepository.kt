@@ -4,6 +4,7 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
 import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,11 +22,12 @@ class LearnRepository @Inject constructor(
 
     suspend fun upsertLearnedData(learnData: LearnEntity) {
         val existingData = learnDao.findByInputAndOutput(learnData.input, learnData.out)
+        Timber.d("upsertLearnedData: $learnData\n $existingData")
         if (existingData == null) {
             learnDao.insert(learnData)
         } else {
             val score =
-                if (existingData.score > 0) (existingData.score - 1).toShort() else (0).toShort()
+                if (existingData.score > 0) ((existingData.score - 3000).coerceAtLeast(0)).toShort() else (0).toShort()
             learnDao.updateLearnedData(
                 learnData.copy(
                     input = learnData.input,
