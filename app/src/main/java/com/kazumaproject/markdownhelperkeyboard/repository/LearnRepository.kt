@@ -1,10 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
+import androidx.room.Transaction
+import com.kazumaproject.core.domain.extensions.isEmojiOrSymbol
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
 import kotlinx.coroutines.flow.Flow
-import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,9 +21,19 @@ class LearnRepository @Inject constructor(
     suspend fun findLearnDataByInputAndOutput(input: String, output: String): LearnEntity? =
         learnDao.findByInputAndOutput(input, output)
 
+    /**
+     * 学習データをアトミックにupsert（更新または挿入）します。
+     * この関数は、指定された単語が既に存在するかどうかを確認し、
+     * 存在しない場合は挿入、存在する場合はスコアを加算して更新します。
+     * @Transactionアノテーションにより、一連の処理が単一のトランザクションとして実行され、競合状態を防ぎます。
+     *
+     * @param learnData 学習させたいデータ。
+     * @param scoreIncrement スコアを加算する量。
+     */
+    @Transaction
     suspend fun upsertLearnedData(learnData: LearnEntity) {
+        if (learnData.out.isEmojiOrSymbol()) return
         val existingData = learnDao.findByInputAndOutput(learnData.input, learnData.out)
-        Timber.d("upsertLearnedData: $learnData\n $existingData")
         if (existingData == null) {
             learnDao.insert(learnData)
         } else {
