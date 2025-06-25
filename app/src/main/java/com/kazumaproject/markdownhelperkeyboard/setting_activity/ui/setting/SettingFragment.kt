@@ -16,9 +16,9 @@ import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
-import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,18 +26,20 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class SettingFragment : PreferenceFragmentCompat() {
+class SettingFragment : PreferenceFragmentCompat {
 
     @Inject
     lateinit var appPreference: AppPreference
 
     @Inject
-    lateinit var learnRepository: LearnRepository
+    lateinit var userDictionaryRepository: UserDictionaryRepository
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     private var count = 0
+
+    constructor() : super()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,18 +48,21 @@ class SettingFragment : PreferenceFragmentCompat() {
             appPreference.flick_input_only_preference = true
         }
         CoroutineScope(Dispatchers.IO).launch {
-            learnRepository.apply {
-                if (findLearnDataByInput("びゃんびゃんめん").isNullOrEmpty()) {
-                    insertLearnedData(
-                        LearnEntity(
-                            input = "びゃんびゃんめん", out = "\uD883\uDEDE\uD883\uDEDE麺"
+            userDictionaryRepository.apply {
+                if (searchByReadingExactMatchSuspend("びゃんびゃんめん").isEmpty()) {
+                    insert(
+                        UserWord(
+                            reading = "びゃんびゃんめん",
+                            word = "\uD883\uDEDE\uD883\uDEDE麺",
+                            posIndex = 0,
+                            posScore = 4000
                         )
                     )
                 }
-                if (findLearnDataByInput("びゃん").isNullOrEmpty()) {
-                    insertLearnedData(
-                        LearnEntity(
-                            input = "びゃん", out = "\uD883\uDEDE"
+                if (searchByReadingExactMatchSuspend("びゃん").isEmpty()) {
+                    insert(
+                        UserWord(
+                            reading = "びゃん", word = "\uD883\uDEDE", posIndex = 0, posScore = 3000
                         )
                     )
                 }
