@@ -2883,6 +2883,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             if (timeToDelay in 1..QUICK_DELAY_THRESHOLD_MS) {
                 delay(LIVE_CONVERSION_QUICK_DELAY_MS)
             }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
             applyFirstSuggestion()
         } else {
             val shouldCommitOriginalText = inputString.value.isNotEmpty() &&
