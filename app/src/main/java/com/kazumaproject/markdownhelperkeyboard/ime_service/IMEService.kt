@@ -2785,14 +2785,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
             val inputStringAfterDelay = inputString.value
-            Timber.d("suggestions: ${suggestionAdapter?.suggestions?.get(0)?.string}\n$inputStringAfterDelay $string")
             if (inputStringAfterDelay != string) return
-
             if (isLiveConversionEnable == true) {
-                val spannableString2 =
-                    SpannableString(suggestionAdapter?.suggestions?.get(0)?.string + stringInTail.get())
+                val timeToDelay = delayTime ?: 1000
+                if (timeToDelay in 1..100) {
+                    delay(128L)
+                }
                 suggestionAdapter?.apply {
-                    setComposingTextAfterEdit(this.suggestions[0].string, spannableString2)
+                    if (this.suggestions.isNotEmpty()) {
+                        val suggestionToCommit = this.suggestions[0].string
+                        val spannableString2 =
+                            SpannableString(suggestionToCommit + stringInTail.get())
+                        setComposingTextAfterEdit(suggestionToCommit, spannableString2)
+                    }
                 }
             } else {
                 if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
