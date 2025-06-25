@@ -3997,27 +3997,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private suspend fun getSuggestionList(
         insertString: String,
     ): List<Candidate> {
-        val resultFromLearnDatabase = if (isLearnDictionaryMode == true) {
-            withContext(Dispatchers.IO) {
-                if (insertString.length <= 1) return@withContext emptyList<Candidate>()
-                learnRepository
-                    .predictiveSearchByInput(insertString, 4)
-                    .map { entity ->
-                        Candidate(
-                            string = entity.out,
-                            type = 20.toByte(),
-                            length = entity.input.length.toUByte(),
-                            score = entity.score.toInt(),
-                        )
-                    }
-                    .sortedWith(
-                        compareBy<Candidate> { it.length }
-                            .thenBy { it.score }
-                    )
-            }
-        } else {
-            emptyList()
-        }
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
                 if (insertString.length <= 1) return@withContext emptyList<Candidate>()
@@ -4066,7 +4045,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             learnRepository = if (isLearnDictionaryMode == true) learnRepository else null
         )
         val result =
-            resultFromUserTemplate + resultFromUserDictionary + resultFromLearnDatabase + engineCandidates
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.distinctBy { it.string }
     }
 
