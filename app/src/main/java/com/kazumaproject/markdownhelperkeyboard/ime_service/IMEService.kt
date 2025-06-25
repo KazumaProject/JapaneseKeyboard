@@ -328,14 +328,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private val hiraganaLayout: KeyboardLayout? by lazy {
-        val dynamicStates = mapOf(
-            "enter_key" to currentEnterKeyIndex,
-            "dakuten_toggle_key" to currentDakutenKeyIndex,
-            "space_convert_key" to currentSpaceKeyIndex
-        )
         KeyboardDefaultLayouts.createFinalLayout(
             mode = KeyboardInputMode.HIRAGANA,
-            dynamicKeyStates = dynamicStates,
+            dynamicKeyStates = mapOf(
+                "enter_key" to 0, "dakuten_toggle_key" to 0
+            ),
             inputType = sumireInputKeyType ?: "flick-default"
         )
     }
@@ -1401,12 +1398,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     "dakuten_toggle_key" to currentDakutenKeyIndex,
                     "space_convert_key" to currentSpaceKeyIndex
                 )
-                val layout = KeyboardDefaultLayouts.createFinalLayout(
-                    mode = KeyboardInputMode.HIRAGANA,
+
+                val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+                    mode = customKeyboardMode,
                     dynamicKeyStates = dynamicStates,
                     inputType = sumireInputKeyType ?: "flick-default"
                 )
-                mainLayoutBinding?.customLayoutDefault?.setKeyboard(layout)
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
         }
     }
@@ -2851,7 +2849,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         if (isLiveConversionEnable == true) {
             setComposingTextPreEdit(string, spannable)
 
-            val timeToDelay = (delayTime ?: DEFAULT_DELAY_MS).toLong()
+            val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
             val effectiveDelay = if (timeToDelay in 1..QUICK_DELAY_THRESHOLD_MS) {
                 LIVE_CONVERSION_QUICK_DELAY_MS
             } else {
@@ -2873,7 +2871,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val spannable = createSpannableWithTail(string)
         setComposingTextPreEdit(string, spannable)
         _suggestionFlag.emit(CandidateShowFlag.Updating)
-        val timeToDelay = (delayTime ?: DEFAULT_DELAY_MS).toLong()
+        val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
         delay(timeToDelay)
 
         // delay中にユーザーの入力が変わった場合は、古い処理を中断します。
