@@ -67,6 +67,7 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
@@ -326,8 +327,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         )
     }
 
+    private val hiraganaLayout: KeyboardLayout? by lazy {
+        val dynamicStates = mapOf(
+            "enter_key" to currentEnterKeyIndex,
+            "dakuten_toggle_key" to currentDakutenKeyIndex,
+            "space_convert_key" to currentSpaceKeyIndex
+        )
+        KeyboardDefaultLayouts.createFinalLayout(
+            mode = KeyboardInputMode.HIRAGANA,
+            dynamicKeyStates = dynamicStates,
+            inputType = sumireInputKeyType ?: "flick-default"
+        )
+    }
+
     companion object {
-        const val LONG_DELAY_TIME = 64L
+        private const val LONG_DELAY_TIME = 64L
+        private const val DEFAULT_DELAY_MS = 1000L
+        private const val LIVE_CONVERSION_QUICK_DELAY_MS = 128L
+        private const val QUICK_DELAY_THRESHOLD_MS = 100
     }
 
     override fun onCreate() {
@@ -1342,13 +1359,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
                 KeyboardType.SUMIRE -> {
                     customKeyboardMode = KeyboardInputMode.HIRAGANA
-                    val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
-                        mode = KeyboardInputMode.HIRAGANA, dynamicKeyStates = mapOf(
-                            "enter_key" to 0, "dakuten_toggle_key" to 0
-                        ), inputType = sumireInputKeyType ?: "flick-default"
-                    )
-                    Timber.d("hiraganaLayout: ${hiraganaLayout.flickKeyMaps}\n${hiraganaLayout.keys}")
-                    customLayoutDefault.setKeyboard(hiraganaLayout)
+                    hiraganaLayout?.let { layout ->
+                        customLayoutDefault.setKeyboard(layout)
+                    }
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -1388,13 +1401,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     "dakuten_toggle_key" to currentDakutenKeyIndex,
                     "space_convert_key" to currentSpaceKeyIndex
                 )
-
-                val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
-                    mode = customKeyboardMode,
+                val layout = KeyboardDefaultLayouts.createFinalLayout(
+                    mode = KeyboardInputMode.HIRAGANA,
                     dynamicKeyStates = dynamicStates,
                     inputType = sumireInputKeyType ?: "flick-default"
                 )
-                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(layout)
             }
         }
     }
@@ -2620,7 +2632,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             emptyList()
                         )
                         mainView.apply {
-                            keyboardView.isVisible = true
+                            if (isTablet == true) {
+                                tabletView.isVisible = true
+                            } else {
+                                keyboardView.isVisible = true
+                            }
                             qwertyView.isVisible = false
                             customLayoutDefault.isVisible = false
                         }
@@ -2632,7 +2648,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             emptyList()
                         )
                         mainView.apply {
-                            keyboardView.isVisible = false
+                            if (isTablet == true) {
+                                tabletView.isVisible = false
+                            } else {
+                                keyboardView.isVisible = false
+                            }
                             qwertyView.isVisible = true
                             customLayoutDefault.isVisible = false
                         }
@@ -2644,7 +2664,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             customLayouts
                         )
                         mainView.apply {
-                            keyboardView.isVisible = false
+                            if (isTablet == true) {
+                                tabletView.isVisible = false
+                            } else {
+                                keyboardView.isVisible = false
+                            }
                             qwertyView.isVisible = false
                             customLayoutDefault.isVisible = true
                         }
@@ -2656,7 +2680,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             emptyList()
                         )
                         mainView.apply {
-                            keyboardView.isVisible = false
+                            if (isTablet == true) {
+                                tabletView.isVisible = false
+                            } else {
+                                keyboardView.isVisible = false
+                            }
                             qwertyView.isVisible = false
                             customLayoutDefault.isVisible = true
                         }
@@ -2770,41 +2798,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     ) {
         Timber.d("launchInputString: inputString: $string stringTail: $stringInTail")
         if (string.isNotEmpty()) {
-            val spannableString = SpannableString(string + stringInTail.get())
-            val isQwerty = qwertyMode.value
-            if (isQwerty == TenKeyQWERTYMode.TenKeyQWERTY) {
-                setComposingTextAfterEdit(string, spannableString)
-                _suggestionFlag.emit(CandidateShowFlag.Updating)
-                return
-            }
-            setComposingTextPreEdit(string, spannableString)
-            _suggestionFlag.emit(CandidateShowFlag.Updating)
-            delay((delayTime ?: 1000).toLong())
-            val henkanValue = isHenkan.get()
-            val deleteLongPressUp = onDeleteLongPressUp.get()
-            val englishSpacePressed = englishSpaceKeyPressed.get()
-            val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
-            val inputStringAfterDelay = inputString.value
-            if (inputStringAfterDelay != string) return
-            if (isLiveConversionEnable == true) {
-                val timeToDelay = delayTime ?: 1000
-                if (timeToDelay in 1..100) {
-                    delay(128L)
-                }
-                suggestionAdapter?.apply {
-                    if (this.suggestions.isNotEmpty()) {
-                        val suggestionToCommit = this.suggestions[0].string
-                        val spannableString2 =
-                            SpannableString(suggestionToCommit + stringInTail.get())
-                        setComposingTextAfterEdit(suggestionToCommit, spannableString2)
-                    }
-                }
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
+                handleTenKeyQwertyInput(string)
             } else {
-                if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
-                    isContinuousTapInputEnabled.set(true)
-                    lastFlickConvertedNextHiragana.set(true)
-                    setComposingTextAfterEdit(string, spannableString)
-                }
+                handleDefaultInput(string)
             }
         } else {
             if (stringInTail.get().isNotEmpty()) {
@@ -2842,6 +2839,84 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             }
         }
+    }
+
+    /**
+     * TenKeyQWERTYモードの入力処理を担当します。
+     */
+    private suspend fun handleTenKeyQwertyInput(string: String) {
+        val spannable = createSpannableWithTail(string)
+        _suggestionFlag.emit(CandidateShowFlag.Updating)
+
+        if (isLiveConversionEnable == true) {
+            setComposingTextPreEdit(string, spannable)
+
+            val timeToDelay = (delayTime ?: DEFAULT_DELAY_MS).toLong()
+            val effectiveDelay = if (timeToDelay in 1..QUICK_DELAY_THRESHOLD_MS) {
+                LIVE_CONVERSION_QUICK_DELAY_MS
+            } else {
+                timeToDelay
+            }
+            delay(effectiveDelay)
+            // 最初のサジェスト候補をテキストに反映します。
+            applyFirstSuggestion()
+        } else {
+            // ライブ変換が無効な場合は、入力されたテキストをそのまま表示します。
+            setComposingTextAfterEdit(string, spannable)
+        }
+    }
+
+    /**
+     * TenKeyQWERTY以外のモードの入力処理を担当します。
+     */
+    private suspend fun handleDefaultInput(string: String) {
+        val spannable = createSpannableWithTail(string)
+        setComposingTextPreEdit(string, spannable)
+        _suggestionFlag.emit(CandidateShowFlag.Updating)
+        val timeToDelay = (delayTime ?: DEFAULT_DELAY_MS).toLong()
+        delay(timeToDelay)
+
+        // delay中にユーザーの入力が変わった場合は、古い処理を中断します。
+        if (inputString.value != string) {
+            return
+        }
+
+        if (isLiveConversionEnable == true) {
+            if (timeToDelay in 1..QUICK_DELAY_THRESHOLD_MS) {
+                delay(LIVE_CONVERSION_QUICK_DELAY_MS)
+            }
+            applyFirstSuggestion()
+        } else {
+            val shouldCommitOriginalText = inputString.value.isNotEmpty() &&
+                    !isHenkan.get() &&
+                    !onDeleteLongPressUp.get() &&
+                    !englishSpaceKeyPressed.get() &&
+                    !deleteKeyLongKeyPressed.get()
+
+            if (shouldCommitOriginalText) {
+                isContinuousTapInputEnabled.set(true)
+                lastFlickConvertedNextHiragana.set(true)
+                setComposingTextAfterEdit(string, spannable)
+            }
+        }
+    }
+
+    /**
+     * サジェスト候補リストの先頭にある文字列を取得し、編集後のテキストとして設定します。
+     * このロジックは複数箇所で使われるため、関数として抽出しました。
+     */
+    private fun applyFirstSuggestion() {
+        suggestionAdapter?.suggestions?.firstOrNull()?.string?.let { suggestionToCommit ->
+            val newSpannable = createSpannableWithTail(suggestionToCommit)
+            setComposingTextAfterEdit(suggestionToCommit, newSpannable)
+        }
+    }
+
+    /**
+     * 末尾文字列を結合したSpannableStringを生成します。
+     */
+    private fun createSpannableWithTail(text: String): SpannableString {
+        return SpannableString(text + stringInTail.get())
     }
 
     private suspend fun resetInputString() {
