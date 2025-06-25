@@ -31,6 +31,7 @@ object AppPreference {
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
+    private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val SUMIRE_INPUT_SELECTION_PREFERENCE =
         Pair("sumire_keyboard_input_type_preference", "flick-default")
 
@@ -189,6 +190,12 @@ object AppPreference {
         get() = preferences.getBoolean(SPACE_HANKAKU_ENABLE.first, SPACE_HANKAKU_ENABLE.second)
         set(value) = preferences.edit {
             it.putBoolean(SPACE_HANKAKU_ENABLE.first, value ?: false)
+        }
+
+    var live_conversion_preference: Boolean?
+        get() = preferences.getBoolean(LIVE_CONVERSION_ENABLE.first, LIVE_CONVERSION_ENABLE.second)
+        set(value) = preferences.edit {
+            it.putBoolean(LIVE_CONVERSION_ENABLE.first, value ?: false)
         }
 
     var sumire_input_selection_preference: String?
