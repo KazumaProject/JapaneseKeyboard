@@ -38,7 +38,7 @@ class LearnRepository @Inject constructor(
             learnDao.insert(learnData)
         } else {
             val score =
-                if (existingData.score > 0) ((existingData.score - 3000).coerceAtLeast(0)).toShort() else (0).toShort()
+                if (existingData.score > 0) ((existingData.score - 1500).coerceAtLeast(0)).toShort() else (0).toShort()
             learnDao.updateLearnedData(
                 learnData.copy(
                     input = learnData.input,
