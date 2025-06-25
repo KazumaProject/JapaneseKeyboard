@@ -3572,7 +3572,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         LearnEntity(
                             input = insertString,
                             out = candidate.string,
-                            score = (insertString.length * 100 + 3500).toShort()
+                            score = (insertString.length * 100 + 3500).toShort(),
+                            leftId = candidate.leftId,
+                            rightId = candidate.rightId
                         )
                     )
                 } catch (e: Exception) {
@@ -3599,14 +3601,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         LearnEntity(
                             input = input,
                             out = output,
-                            score = (input.length * 100 + 3500).toShort()
+                            score = (input.length * 100 + 3500).toShort(),
+                            leftId = candidate.leftId,
+                            rightId = candidate.rightId
                         )
                     )
                     learnRepository.upsertLearnedData(
                         LearnEntity(
                             input = insertString,
                             out = candidate.string,
-                            score = (insertString.length * 100 + 3500).toShort()
+                            score = (insertString.length * 100 + 3500).toShort(),
+                            leftId = candidate.leftId,
+                            rightId = candidate.rightId
                         )
                     )
                 } catch (e: Exception) {

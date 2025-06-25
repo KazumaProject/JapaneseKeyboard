@@ -70,8 +70,8 @@ class GraphBuilder {
             learnedWords.forEach { learnedWord ->
                 val endIndex = i + learnedWord.input.length
                 val node = Node(
-                    l = 1851,
-                    r = 1851,
+                    l = learnedWord.leftId ?: 1851,
+                    r = learnedWord.rightId ?: 1851,
                     score = learnedWord.score.toInt(),
                     f = learnedWord.score.toInt(),
                     g = learnedWord.score.toInt(),

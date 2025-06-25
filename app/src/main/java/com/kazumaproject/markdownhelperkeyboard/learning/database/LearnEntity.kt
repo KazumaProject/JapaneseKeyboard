@@ -12,6 +12,8 @@ data class LearnEntity(
     val input: String,
     val out: String,
     val score: Short = 3000,
+    val leftId: Short? = null,
+    val rightId: Short? = null,
     @PrimaryKey(autoGenerate = true)
     val id: Int? = null
 )

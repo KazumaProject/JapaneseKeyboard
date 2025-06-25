@@ -27,7 +27,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         FlickMapping::class,
         UserTemplate::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -175,6 +175,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * バージョン7から8へのマイグレーション。
+         * learn_table に leftId と rightId カラムを追加します。
+         * これらは連接コスト計算のために使用されます。
+         * SQLiteではShort型はINTEGERとして扱われ、デフォルト値はNULLとなります。
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `learn_table` ADD COLUMN `leftId` INTEGER")
+                db.execSQL("ALTER TABLE `learn_table` ADD COLUMN `rightId` INTEGER")
+            }
+        }
 
     }
 }
