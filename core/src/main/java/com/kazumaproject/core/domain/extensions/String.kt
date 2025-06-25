@@ -44,3 +44,9 @@ fun String.katakanaToHiragana(): String = buildString {
     }
 }
 
+fun String.isEmojiOrSymbol(): Boolean {
+    val emojiOrSymbolRegex =
+        """^([\p{P}\p{S}]|[\u2600-\u27BF]|[\uD83C][\uDC00-\uDFFF]|[\uD83D][\uDC00-\uDFFF]|[\uD83E][\uDD00-\uDFFF]|\u200d|\uFE0F)+$""".toRegex()
+    return this.matches(emojiOrSymbolRegex)
+}
+
