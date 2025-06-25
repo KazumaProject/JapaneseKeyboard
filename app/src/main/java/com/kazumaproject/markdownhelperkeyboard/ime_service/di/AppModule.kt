@@ -22,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_5_6
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_6_7
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_7_8
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
@@ -61,7 +62,8 @@ object AppModule {
             MIGRATION_3_4,
             MIGRATION_4_5,
             MIGRATION_5_6,
-            MIGRATION_6_7
+            MIGRATION_6_7,
+            MIGRATION_7_8
         )
         .build()
 
