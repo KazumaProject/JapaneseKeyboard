@@ -222,6 +222,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var isLearnDictionaryMode: Boolean? = false
     private var isUserDictionaryEnable: Boolean? = false
     private var isUserTemplateEnable: Boolean? = false
+    private var hankakuPreference: Boolean? = false
+    private var isLiveConversionEnable: Boolean? = false
     private var nBest: Int? = 4
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
@@ -387,6 +389,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isLearnDictionaryMode = learn_dictionary_preference ?: true
             isUserDictionaryEnable = user_dictionary_preference ?: true
             isUserTemplateEnable = user_template_preference ?: true
+            hankakuPreference = space_hankaku_preference ?: false
+            isLiveConversionEnable = live_conversion_preference ?: false
             nBest = n_best_preference ?: 4
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -486,6 +490,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         isLearnDictionaryMode = null
         isUserDictionaryEnable = null
         isUserTemplateEnable = null
+        hankakuPreference = null
+        isLiveConversionEnable = null
         nBest = null
         isVibration = null
         vibrationTimingStr = null
@@ -1076,8 +1082,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
-                        val hankakuPreference = appPreference.space_hankaku_preference ?: false
-                        val isHankaku = isFlick || hankakuPreference
+                        val isHankaku = isFlick || hankakuPreference == true
                         handleSpaceKeyClick(isHankaku, insertString, suggestions, mainView)
                     }
                 }
@@ -1783,10 +1788,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             _cursorMoveMode.update { false }
                         } else {
                             if (!isSpaceKeyLongPressed) {
-                                val hankakuPreference =
-                                    appPreference.space_hankaku_preference ?: false
                                 handleSpaceKeyClick(
-                                    hankakuPreference, insertString, suggestions, mainView
+                                    hankakuPreference ?: false, insertString, suggestions, mainView
                                 )
                             }
                         }
@@ -1907,10 +1910,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             _cursorMoveMode.update { false }
                         } else {
                             if (!isSpaceKeyLongPressed) {
-                                val hankakuPreference =
-                                    appPreference.space_hankaku_preference ?: false
                                 handleSpaceKeyClick(
-                                    hankakuPreference, insertString, suggestions, mainView
+                                    hankakuPreference ?: false, insertString, suggestions, mainView
                                 )
                             }
                         }
@@ -2784,11 +2785,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             val englishSpacePressed = englishSpaceKeyPressed.get()
             val deleteKeyLongPressed = deleteKeyLongKeyPressed.get()
             val inputStringAfterDelay = inputString.value
+            Timber.d("suggestions: ${suggestionAdapter?.suggestions?.get(0)?.string}\n$inputStringAfterDelay $string")
             if (inputStringAfterDelay != string) return
-            if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
-                isContinuousTapInputEnabled.set(true)
-                lastFlickConvertedNextHiragana.set(true)
-                setComposingTextAfterEdit(string, spannableString)
+
+            if (isLiveConversionEnable == true) {
+                val spannableString2 =
+                    SpannableString(suggestionAdapter?.suggestions?.get(0)?.string + stringInTail.get())
+                suggestionAdapter?.apply {
+                    setComposingTextAfterEdit(this.suggestions[0].string, spannableString2)
+                }
+            } else {
+                if (inputStringAfterDelay.isNotEmpty() && !henkanValue && !deleteLongPressUp && !englishSpacePressed && !deleteKeyLongPressed) {
+                    isContinuousTapInputEnabled.set(true)
+                    lastFlickConvertedNextHiragana.set(true)
+                    setComposingTextAfterEdit(string, spannableString)
+                }
             }
         } else {
             if (stringInTail.get().isNotEmpty()) {

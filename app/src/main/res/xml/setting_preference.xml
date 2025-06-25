@@ -32,6 +32,13 @@
             android:summary="空白を半角入力"
             android:title="空白を半角入力" />
 
+        <SwitchPreference
+            android:defaultValue="false"
+            android:key="live_conversion_preference"
+            android:title="ライブ変換 β"
+            android:summaryOn="ライブ変換は有効です"
+            android:summaryOff="ライブ変換は無効です"/>
+
         <PreferenceCategory
             android:key="sumire_input_preference_category"
             android:title="スミレ入力キーボード"
@@ -54,7 +61,7 @@
             android:key="time_same_pronounce_typing_preference"
             android:max="1000"
             android:summary="単位: [ ms ]"
-            android:title="同じ韻をタイピングできる時間"
+            android:title="ライブ変換 / 同じ韻をタイピングできる時間"
             app:min="1"
             app:showSeekBarValue="true" />
     </PreferenceCategory>
