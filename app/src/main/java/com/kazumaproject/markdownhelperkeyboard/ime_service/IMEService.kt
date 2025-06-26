@@ -253,6 +253,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
 
+    private var currentNightMode: Int = 0
+
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
@@ -350,36 +352,49 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter()
+        currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
     }
 
     override fun onCreateInputView(): View? {
         Timber.d("onCreateInputView")
-        isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
+        // もしコンテナがすでに存在している場合、システムが再追加できるように
+        // 古い親から切り離す。
+        keyboardContainer?.let {
+            (it.parent as? ViewGroup)?.removeView(it)
+        }
 
-        // Create the container that will persist across theme changes
-        keyboardContainer = FrameLayout(this)
+        // もしコンテナがまだ一度も作成されていない場合（初回起動時）のみ、
+        // 作成とセットアップを行う。
+        if (keyboardContainer == null) {
+            Timber.d("Creating keyboardContainer for the first time.")
+            isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
+            keyboardContainer = FrameLayout(this)
 
-        // Setup the keyboard for the first time
-        setupKeyboardView()
+            // コンテナの内部にキーボードのUIをセットアップする
+            setupKeyboardView()
 
-        appPreference.keyboard_order.let { keyboardTypes ->
-            if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
-                ioScope.launch {
-                    customLayouts = keyboardRepository.getLayoutsNotFlow()
+            // 初回のみ実行したい他のセットアップ処理
+            appPreference.keyboard_order.let { keyboardTypes ->
+                if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
+                    ioScope.launch {
+                        customLayouts = keyboardRepository.getLayoutsNotFlow()
+                    }
+                }
+            }
+
+            mainLayoutBinding?.let { mainView ->
+                if (lifecycle.currentState == Lifecycle.State.CREATED) {
+                    startScope(mainView)
+                } else {
+                    scope.coroutineContext.cancelChildren()
+                    startScope(mainView)
                 }
             }
         }
 
-        mainLayoutBinding?.let { mainView ->
-            if (lifecycle.currentState == Lifecycle.State.CREATED) {
-                startScope(mainView)
-            } else {
-                scope.coroutineContext.cancelChildren()
-                startScope(mainView)
-            }
-        }
-
-        // Return the persistent container
+        // コンテナを返す。
+        // この時点でコンテナは「新規作成された」または「古い親から切り離された」
+        // 状態なので、親を持っていないことが保証される。
         return keyboardContainer
     }
 
@@ -552,19 +567,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
 
-        when (newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK) {
-            Configuration.UI_MODE_NIGHT_YES -> {
-                setupKeyboardView()
-            }
+        val newNightMode = newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK
 
-            else -> {
-                setupKeyboardView()
-            }
+        if (newNightMode != currentNightMode) {
+            setupKeyboardView()
+            currentNightMode = newNightMode
         }
 
     }
 
     private fun setupKeyboardView() {
+        Timber.d("setupKeyboardView: Called")
         // Determine the correct, themed context
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
         val ctx = if (isDynamicColorsEnable) {
