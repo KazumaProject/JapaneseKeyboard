@@ -5295,8 +5295,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         val heightPx = when {
             // For special keyboards, use specific, fixed heights
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY -> {
-                val height = if (isPortrait) 230 else 200
-                (height * density).toInt()
+                val clampedHeight = if (isPortrait) 320 else 230
+                (clampedHeight * density).toInt()
             }
 
             keyboardSymbolViewState.value -> { // Emoji keyboard state
