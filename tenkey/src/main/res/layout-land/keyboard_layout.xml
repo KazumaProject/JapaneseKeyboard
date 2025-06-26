@@ -397,6 +397,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/key_3"
         app:layout_constraintTop_toBottomOf="@+id/key_space"
-        app:tint="@color/keyboard_enter_key_color" />
+        app:tint="@color/keyboard_icon_color" />
 
 </merge>
