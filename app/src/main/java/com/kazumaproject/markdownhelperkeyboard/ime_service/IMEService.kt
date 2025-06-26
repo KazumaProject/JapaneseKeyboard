@@ -1339,49 +1339,89 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainLayoutBinding?.apply {
             when (type) {
                 KeyboardType.TENKEY -> {
-                    if (isTablet == true) {
-                        tabletView.isVisible = true
-                        tabletView.resetLayout()
+                    if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        if (isTablet == true) {
+                            tabletView.isVisible = true
+                            tabletView.resetLayout()
+                        } else {
+                            keyboardView.isVisible = true
+                            keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                        }
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                     } else {
-                        keyboardView.isVisible = true
-                        keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        customLayoutDefault.isVisible = true
+                        keyboardView.setCurrentMode(InputMode.ModeNumber)
+                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                        qwertyView.isVisible = false
+                        keyboardView.isVisible = false
                     }
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                 }
 
                 KeyboardType.QWERTY -> {
-                    qwertyView.isVisible = true
-                    keyboardView.isVisible = false
-                    customLayoutDefault.isVisible = false
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                    qwertyView.setRomajiMode(false)
+                    if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        qwertyView.isVisible = true
+                        keyboardView.isVisible = false
+                        customLayoutDefault.isVisible = false
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                        qwertyView.setRomajiMode(false)
+                    } else {
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        customLayoutDefault.isVisible = true
+                        keyboardView.setCurrentMode(InputMode.ModeNumber)
+                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                        qwertyView.isVisible = false
+                        keyboardView.isVisible = false
+                    }
                 }
 
                 KeyboardType.ROMAJI -> {
-                    qwertyView.isVisible = true
-                    keyboardView.isVisible = false
-                    customLayoutDefault.isVisible = false
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    qwertyView.setRomajiMode(true)
+                    if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        qwertyView.isVisible = true
+                        keyboardView.isVisible = false
+                        customLayoutDefault.isVisible = false
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                        qwertyView.setRomajiMode(true)
+                    } else {
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        customLayoutDefault.isVisible = true
+                        keyboardView.setCurrentMode(InputMode.ModeNumber)
+                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                        qwertyView.isVisible = false
+                        keyboardView.isVisible = false
+                    }
                 }
 
                 KeyboardType.SUMIRE -> {
                     customKeyboardMode = KeyboardInputMode.HIRAGANA
-                    hiraganaLayout?.let { layout ->
-                        customLayoutDefault.setKeyboard(layout)
-                    }
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                    if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        hiraganaLayout?.let { layout ->
+                            customLayoutDefault.setKeyboard(layout)
+                        }
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                    } else {
+                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                    }
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
                 }
 
                 KeyboardType.CUSTOM -> {
                     setInitialKeyboardTab()
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+                    if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+                    } else {
+                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                    }
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
                     qwertyView.isVisible = false
@@ -1417,6 +1457,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     dynamicKeyStates = dynamicStates,
                     inputType = sumireInputKeyType ?: "flick-default"
                 )
+                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+            }
+
+            TenKeyQWERTYMode.Number -> {
+                val finalLayout = KeyboardDefaultLayouts.createNumberLayout()
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
         }
@@ -1532,6 +1577,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
 
                     TenKeyQWERTYMode.Sumire -> {
+                        handleOnKeyForSumire(
+                            text, mainView
+                        )
+                    }
+
+                    TenKeyQWERTYMode.Number -> {
                         handleOnKeyForSumire(
                             text, mainView
                         )
@@ -2700,6 +2751,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                             customLayoutDefault.isVisible = true
                         }
                     }
+
+                    TenKeyQWERTYMode.Number -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.Sumire,
+                            emptyList()
+                        )
+                        mainView.apply {
+                            if (isTablet == true) {
+                                tabletView.isVisible = false
+                            } else {
+                                keyboardView.isVisible = false
+                            }
+                            qwertyView.isVisible = false
+                            customLayoutDefault.isVisible = true
+                        }
+                    }
                 }
             }
         }
@@ -3139,11 +3206,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
                             -> {
-                            setCurrentMode(InputMode.ModeNumber)
-                            setSideKeyPreviousState(false)
-                            this.setSideKeyEnterDrawable(
-                                cachedArrowRightDrawable
-                            )
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         }
 
                     }
@@ -5306,12 +5369,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         // This now respects the user's preference for the default keyboard,
         // while still allowing overrides for special keyboards like Emoji or full QWERTY.
         val heightPx = when {
-            // For special keyboards, use specific, fixed heights
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY -> {
-                val clampedHeight = if (isPortrait) 320 else 230
-                (clampedHeight * density).toInt()
-            }
-
             keyboardSymbolViewState.value -> { // Emoji keyboard state
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
