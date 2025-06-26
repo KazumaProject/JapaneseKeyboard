@@ -1426,6 +1426,133 @@ object KeyboardDefaultLayouts {
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
 
+    //region Hiragana Layout
+    fun createNumberLayout(): KeyboardLayout {
+        val keys = listOf(
+            KeyData(
+                label = "1",
+                row = 0,
+                column = 0,
+                isFlickable = false,
+                keyType = KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                label = "4",
+                row = 1,
+                column = 0,
+                isFlickable = false,
+                keyType = KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                label = "7",
+                row = 2,
+                column = 0,
+                isFlickable = false,
+                keyType = KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                label = ",",
+                row = 3,
+                column = 0,
+                isFlickable = false,
+                keyType = KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "2", 0, 1,
+                false,
+                keyType = KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                "3", 0, 2,
+                false,
+                keyType = KeyType.STANDARD_FLICK
+            ),
+            KeyData(
+                label = "",
+                row = 0,
+                column = 3,
+                isFlickable = false,
+                action = KeyAction.SwitchToNextIme,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyType = KeyType.NORMAL
+            ),
+            KeyData("5", 1, 1, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData("6", 1, 2, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                "",
+                1,
+                3,
+                false,
+                spaceConvertStates[0].action,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
+                rowSpan = 1,
+                keyType = KeyType.NORMAL
+            ),
+            KeyData("8", 2, 1, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData("9", 2, 2, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                "",
+                2,
+                3,
+                false,
+                KeyAction.Delete,
+                isSpecialKey = true,
+                rowSpan = 1,
+                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
+                keyType = KeyType.NORMAL
+            ),
+            KeyData("0", 3, 1, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData(".", 3, 2, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData(
+                label = enterKeyStates[0].label ?: "",
+                row = 3,
+                column = 3,
+                isFlickable = false,
+                action = enterKeyStates[0].action,
+                rowSpan = 1,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
+                keyId = "enter_key",
+                dynamicStates = enterKeyStates,
+            )
+        )
+
+        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
+            "1" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("1"))),
+            "2" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("2"))),
+            "3" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("3"))),
+            "4" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("4"))),
+            "5" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("5"))),
+            "6" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("6"))),
+            "7" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("7"))),
+            "8" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("8"))),
+            "9" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("9"))),
+            "0" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("0"))),
+            "," to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input(","),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                    FlickDirection.UP to FlickAction.Input("-"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("*"),
+                    FlickDirection.DOWN to FlickAction.Input("/"),
+                )
+            ),
+            "." to listOf(
+                mapOf(
+                    FlickDirection.TAP to FlickAction.Input("."),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
+                    FlickDirection.UP to FlickAction.Input("%"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
+                    FlickDirection.DOWN to FlickAction.Input("="),
+                )
+            )
+        )
+
+        return KeyboardLayout(keys, flickMaps, 4, 4)
+    }
+
     private fun createHiraganaStandardFlickLayout(
         isDefaultKey: Boolean
     ): KeyboardLayout {
