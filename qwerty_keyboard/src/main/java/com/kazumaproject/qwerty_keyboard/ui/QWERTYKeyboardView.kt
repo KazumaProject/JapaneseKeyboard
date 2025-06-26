@@ -204,10 +204,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         23f
                                     )
                                 }
-                                binding.keyShift.setImageResource(
+                                keyShift.setMarginStart(4f)
+                                keyDelete.setMarginEnd(4f)
+                                keyShift.setImageResource(
                                     com.kazumaproject.core.R.drawable.shift_24px
                                 )
-                                binding.key123.text =
+                                key123.text =
                                     resources.getString(com.kazumaproject.core.R.string.string_123)
                             }
                             attachDefaultKeyLabels()
@@ -224,6 +226,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 keyL.setMarginEnd(
                                     9f
                                 )
+                                keyShift.setMarginStart(4f)
+                                keyDelete.setMarginEnd(4f)
                                 keyShift.setImageResource(
                                     com.kazumaproject.core.R.drawable.qwerty_symbol
                                 )
@@ -247,6 +251,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 keyL.setMarginEnd(
                                     9f
                                 )
+                                keyShift.setMarginStart(4f)
+                                keyDelete.setMarginEnd(4f)
                                 keyShift.setImageResource(
                                     com.kazumaproject.core.R.drawable.qwerty_number
                                 )
@@ -271,6 +277,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 resources.getString(com.kazumaproject.core.R.string.return_japanese)
                             keyA.setMarginStart(9f)
                             keyL.setMarginEnd(9f)
+                            keyShift.setMarginStart(4f)
+                            keyDelete.setMarginEnd(4f)
                             keyAtMark.apply {
                                 isVisible = true
                                 text = "l"
@@ -320,6 +328,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 setMarginEnd(23f)
                                 text = "l"
                             }
+                            keyShift.setMarginStart(4f)
+                            keyDelete.setMarginEnd(4f)
                             key123.text =
                                 resources.getString(com.kazumaproject.core.R.string.string_abc)
                         }

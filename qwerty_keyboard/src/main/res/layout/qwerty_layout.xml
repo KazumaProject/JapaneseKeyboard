@@ -411,9 +411,10 @@
     <!-- ─── Third Row: SHIFT, z x c v b n m, DELETE ─── -->
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_shift"
-        android:layout_width="48dp"
+        android:layout_width="50dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
+        android:layout_marginStart="2dp"
         android:layout_marginEnd="12dp"
         android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
@@ -568,11 +569,11 @@
 
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/key_delete"
-        android:layout_width="48dp"
+        android:layout_width="50dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
         android:layout_marginStart="12dp"
-        android:layout_marginEnd="0dp"
+        android:layout_marginEnd="2dp"
         android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
         android:scaleType="centerInside"

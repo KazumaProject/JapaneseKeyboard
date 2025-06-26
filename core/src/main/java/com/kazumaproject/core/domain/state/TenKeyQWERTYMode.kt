@@ -5,4 +5,5 @@ sealed class TenKeyQWERTYMode {
     data object TenKeyQWERTY : TenKeyQWERTYMode()
     data object Sumire : TenKeyQWERTYMode()
     data object Custom : TenKeyQWERTYMode()
+    data object Number : TenKeyQWERTYMode()
 }
