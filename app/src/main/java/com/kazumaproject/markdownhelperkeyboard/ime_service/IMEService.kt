@@ -5091,6 +5091,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         showKeyboard(nextType)
 
         currentKeyboardOrder = nextIndex
+
+        if (qwertyMode.value == TenKeyQWERTYMode.Number) {
+            val type = when (nextType) {
+                KeyboardType.TENKEY -> TenKeyQWERTYMode.Default
+                KeyboardType.SUMIRE -> TenKeyQWERTYMode.Sumire
+                KeyboardType.QWERTY -> TenKeyQWERTYMode.TenKeyQWERTY
+                KeyboardType.ROMAJI -> TenKeyQWERTYMode.TenKeyQWERTY
+                KeyboardType.CUSTOM -> TenKeyQWERTYMode.Custom
+            }
+            _tenKeyQWERTYMode.update { type }
+        }
     }
 
     private fun smallBigLetterConversionEnglish(
