@@ -372,7 +372,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             // コンテナの内部にキーボードのUIをセットアップする
             setupKeyboardView()
-
             // 初回のみ実行したい他のセットアップ処理
             appPreference.keyboard_order.let { keyboardTypes ->
                 if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
@@ -390,11 +389,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     startScope(mainView)
                 }
             }
+        } else {
+            setupKeyboardView()
+            scope.coroutineContext.cancelChildren()
+            mainLayoutBinding?.let { mainView ->
+                startScope(mainView)
+            }
         }
 
-        // コンテナを返す。
-        // この時点でコンテナは「新規作成された」または「古い親から切り離された」
-        // 状態なので、親を持っていないことが保証される。
         return keyboardContainer
     }
 
