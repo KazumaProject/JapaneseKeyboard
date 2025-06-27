@@ -22,6 +22,12 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -42,6 +48,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
     private var onItemHelperIconLongClickListener: ((HelperIcon) -> Unit)? = null
     private var onCustomLayoutItemClickListener: ((Int) -> Unit)? = null
+
+    private val adapterScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    var onListUpdated: (() -> Unit)? = null
 
     // Holds the preview content for the empty state.
     private var clipboardText: String = ""
@@ -81,6 +90,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onItemHelperIconClickListener = null
         onItemHelperIconLongClickListener = null
         onCustomLayoutItemClickListener = null
+        onListUpdated = null
+        adapterScope.cancel()
     }
 
     fun setUndoEnabled(enabled: Boolean) {
@@ -151,7 +162,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     var suggestions: List<Candidate>
         get() = differ.currentList
-        set(value) = differ.submitList(value)
+        set(value) {
+            // submitListの第2引数にコールバックを渡す
+            differ.submitList(value) {
+                adapterScope.launch {
+                    delay(16)
+                    // リストの更新が完了し、UIに反映された後にこのブロックが実行される
+                    onListUpdated?.invoke()
+                }
+            }
+        }
 
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
 
