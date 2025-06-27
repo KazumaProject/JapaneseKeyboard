@@ -351,7 +351,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         Timber.d("onCreate")
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        suggestionAdapter = SuggestionAdapter()
+        suggestionAdapter = SuggestionAdapter().apply {
+            onListUpdated = {
+                mainLayoutBinding?.suggestionRecyclerView?.scrollToPosition(0)
+            }
+        }
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
     }
 
@@ -372,7 +376,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
             // コンテナの内部にキーボードのUIをセットアップする
             setupKeyboardView()
-
             // 初回のみ実行したい他のセットアップ処理
             appPreference.keyboard_order.let { keyboardTypes ->
                 if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
@@ -390,11 +393,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     startScope(mainView)
                 }
             }
+        } else {
+            setupKeyboardView()
+            scope.coroutineContext.cancelChildren()
+            mainLayoutBinding?.let { mainView ->
+                startScope(mainView)
+            }
         }
-
-        // コンテナを返す。
-        // この時点でコンテナは「新規作成された」または「古い親から切り離された」
-        // 状態なので、親を持っていないことが保証される。
         return keyboardContainer
     }
 
@@ -612,7 +617,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                         mainView,
                         FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.COLUMN
-                            justifyContent = JustifyContent.SPACE_AROUND
                         },
                         FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
@@ -4156,7 +4160,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mainView: MainLayoutBinding,
         insertString: String,
     ) {
-        mainView.suggestionRecyclerView.scrollToPosition(0)
         val candidates = getSuggestionList(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
