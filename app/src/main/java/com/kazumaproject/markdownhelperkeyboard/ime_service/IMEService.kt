@@ -78,6 +78,8 @@ import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.toHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -96,6 +98,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -171,6 +174,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
 
     @Inject
+    lateinit var clipboardHistoryRepository: ClipboardHistoryRepository
+
+    @Inject
     lateinit var keyboardRepository: KeyboardRepository
 
     @Inject
@@ -178,6 +184,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var romajiConverter: RomajiKanaConverter
+
+    private lateinit var clipboardManager: ClipboardManager
+
+    /**
+     * クリップボードの内容が変更されたときに呼び出されるリスナー。
+     */
+    private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
+        // リスナーのコールバックはUIスレッドで呼ばれるとは限らないため、
+        // UI更新は安全にメインスレッドのCoroutineスコープで実行する。
+        ioScope.launch {
+            clipboardUtil.getPrimaryClipContent().toHistoryItem()?.let {
+                clipboardHistoryRepository.insert(it)
+            }
+        }
+    }
 
     private var suggestionAdapter: SuggestionAdapter? = null
 
@@ -188,6 +209,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var cachedEmoticons: List<String>? = null
     private var cachedSymbols: List<String>? = null
     private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
+    private var currentClipboardItems: List<ClipboardItem> = emptyList()
 
     private var deleteLongPressJob: Job? = null
     private var rightLongPressJob: Job? = null
@@ -357,6 +379,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboardManager.addPrimaryClipChangedListener(clipboardListener)
     }
 
     override fun onCreateInputView(): View? {
@@ -514,6 +538,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
         clearSymbols()
+        clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
         if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
         if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
@@ -2784,6 +2809,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
+            clipboardHistoryRepository.allHistory.collectLatest { historyList ->
+                // 1. DBモデルのリストからUIモデルのリストに変換する
+                //    このとき、削除に必要な `id` も一緒に渡す
+                val uiItems = historyList.map {
+                    when (it.itemType) {
+                        ItemType.TEXT -> ClipboardItem.Text(id = it.id, text = it.textData ?: "")
+                        ItemType.IMAGE -> {
+                            it.imageData?.let { bitmap ->
+                                ClipboardItem.Image(id = it.id, bitmap = bitmap)
+                            } ?: ClipboardItem.Empty
+                        }
+                    }
+                }.filter { it !is ClipboardItem.Empty }
+
+                // 2. 最新のリストをクラスのプロパティにキャッシュする
+                currentClipboardItems = uiItems
+
+                // 3. CustomSymbolKeyboardViewの表示を更新する
+                //    このメソッドは、クリップボードタブが表示中の場合のみUIを更新する
+                mainView.keyboardSymbolView.updateClipboardItems(uiItems)
+            }
+        }
+
+        launch {
             inputString.collectLatest { string ->
                 processInputString(string, mainView)
             }
@@ -3396,6 +3445,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 }
             })
             setOnImageItemClickListener { bitmap -> pasteImageAction(bitmap) }
+            setOnClipboardItemLongClickListener { item, _ ->
+                when (item) {
+                    ClipboardItem.Empty -> {}
+                    is ClipboardItem.Image -> {
+                        vibrate()
+                        ioScope.launch {
+                            clipboardHistoryRepository.deleteById(item.id)
+                        }
+                    }
+
+                    is ClipboardItem.Text -> {
+                        vibrate()
+                        ioScope.launch {
+                            clipboardHistoryRepository.deleteById(item.id)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -3529,6 +3596,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
+        var clipboardItems = emptyList<ClipboardItem>()
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
                 val emojiDeferred =
@@ -3545,12 +3613,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             cachedClickedSymbolHistory =
                 historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
         }
-        val clipboardItems = listOf(ClipboardUtil(this).getPrimaryClipContent())
         mainView.keyboardSymbolView.setSymbolLists(
             emojiList = cachedEmoji ?: emptyList(),
             emoticons = cachedEmoticons ?: emptyList(),
             symbols = cachedSymbols ?: emptyList(),
-            clipBoardItems = clipboardItems,
+            clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList()
         )
     }

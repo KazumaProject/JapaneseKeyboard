@@ -14,9 +14,14 @@ class ClipboardAdapter :
     PagingDataAdapter<ClipboardItem, ClipboardAdapter.ClipboardViewHolder>(DIFF_CALLBACK) {
 
     private var onItemClickListener: ((ClipboardItem) -> Unit)? = null
+    private var onItemLongClickListener: ((ClipboardItem, Int) -> Unit)? = null
 
     fun setOnItemClickListener(listener: (ClipboardItem) -> Unit) {
         this.onItemClickListener = listener
+    }
+
+    fun setOnItemLongClickListener(listener: (ClipboardItem, Int) -> Unit) {
+        this.onItemLongClickListener = listener
     }
 
     inner class ClipboardViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -31,6 +36,15 @@ class ClipboardAdapter :
                         onItemClickListener?.invoke(item)
                     }
                 }
+            }
+            itemView.setOnLongClickListener {
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    getItem(position)?.let { item ->
+                        onItemLongClickListener?.invoke(item, position)
+                    }
+                }
+                true
             }
         }
     }
@@ -49,11 +63,13 @@ class ClipboardAdapter :
                 holder.textView.visibility = View.GONE
                 holder.imageView.setImageBitmap(item.bitmap)
             }
+
             is ClipboardItem.Text -> {
                 holder.imageView.visibility = View.GONE
                 holder.textView.visibility = View.VISIBLE
                 holder.textView.text = item.text
             }
+
             is ClipboardItem.Empty, null -> {
                 holder.imageView.visibility = View.GONE
                 holder.textView.visibility = View.GONE
