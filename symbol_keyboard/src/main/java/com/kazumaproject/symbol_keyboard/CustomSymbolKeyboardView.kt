@@ -12,6 +12,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
@@ -21,6 +22,7 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoji.EmojiCategory
+import com.kazumaproject.listeners.ClipboardItemLongClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ImageItemClickListener
@@ -62,6 +64,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var itemClickListener: SymbolRecyclerViewItemClickListener? = null
     private var itemLongClickListener: SymbolRecyclerViewItemLongClickListener? = null
     private var imageItemClickListener: ImageItemClickListener? = null
+    private var clipboardItemLongClickListener: ClipboardItemLongClickListener? = null //
 
     init {
         inflate(context, R.layout.symbol_keyboard_main_layout, this)
@@ -97,6 +100,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
                 else -> {}
             }
+        }
+
+        clipboardAdapter.setOnItemLongClickListener { item, position ->
+            clipboardItemLongClickListener?.onLongClick(item, position)
         }
 
         symbolAdapter.setOnItemLongClickListener { str, pos ->
@@ -210,6 +217,17 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         imageItemClickListener = l
     }
 
+    fun setOnClipboardItemLongClickListener(l: ClipboardItemLongClickListener) {
+        clipboardItemLongClickListener = l
+    }
+
+    fun updateClipboardItems(newItems: List<ClipboardItem>) {
+        this.clipBoardItems = newItems
+        if (currentMode == SymbolMode.CLIPBOARD) {
+            updateSymbolsForCategory(categoryTab.selectedTabPosition)
+        }
+    }
+
     fun setSymbolLists(
         emojiList: List<Emoji>,
         emoticons: List<String>,
@@ -288,15 +306,24 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private fun updateSymbolsForCategory(index: Int) {
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
-            recycler.scrollToPosition(0)
-            when (currentMode) {
-                SymbolMode.CLIPBOARD -> {
-                    recycler.adapter = clipboardAdapter
-                    gridLM.spanCount =
-                        if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 2 else 4
-                    gridLM.orientation = RecyclerView.VERTICAL
+            // ▼▼▼ ここから修正 ▼▼▼
+            pagingJob = owner.lifecycleScope.launch {
+                // 1. 最初に両方のアダプターのデータをクリアする
+                // これにより、タブ切り替え時に古いデータが残るのを防ぐ
+                symbolAdapter.submitData(PagingData.empty())
+                clipboardAdapter.submitData(PagingData.empty())
 
-                    pagingJob = owner.lifecycleScope.launch {
+                // 2. RecyclerViewを先頭にスクロール
+                recycler.scrollToPosition(0)
+
+                // 3. 現在のモードに応じて適切なアダプターとデータを設定する
+                when (currentMode) {
+                    SymbolMode.CLIPBOARD -> {
+                        recycler.adapter = clipboardAdapter
+                        gridLM.spanCount =
+                            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 2 else 4
+                        gridLM.orientation = RecyclerView.VERTICAL
+
                         Pager(
                             config = PagingConfig(pageSize = 20, enablePlaceholders = false),
                             pagingSourceFactory = { ClipboardPagingSource(clipBoardItems) }
@@ -304,45 +331,43 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             clipboardAdapter.submitData(pagingData)
                         }
                     }
-                }
 
-                else -> {
-                    recycler.adapter = symbolAdapter
+                    else -> {
+                        recycler.adapter = symbolAdapter
 
-                    val listForPaging = when (currentMode) {
-                        SymbolMode.EMOJI -> {
-                            if (historyEmojiList.isNotEmpty() && index == 0) historyEmojiList
-                            else {
-                                val adj = index - if (historyEmojiList.isNotEmpty()) 1 else 0
-                                emojiMap.keys.elementAtOrNull(adj)
-                                    ?.let { emojiMap[it]?.map { e -> e.symbol } } ?: emptyList()
+                        val listForPaging = when (currentMode) {
+                            SymbolMode.EMOJI -> {
+                                if (historyEmojiList.isNotEmpty() && index == 0) historyEmojiList
+                                else {
+                                    val adj = index - if (historyEmojiList.isNotEmpty()) 1 else 0
+                                    emojiMap.keys.elementAtOrNull(adj)
+                                        ?.let { emojiMap[it]?.map { e -> e.symbol } } ?: emptyList()
+                                }
                             }
+
+                            SymbolMode.EMOTICON -> emoticons
+                            SymbolMode.SYMBOL -> symbols
+                            SymbolMode.Template -> emoticons // TODO: Replace with actual template data
+                            else -> emptyList()
                         }
 
-                        SymbolMode.EMOTICON -> emoticons
-                        SymbolMode.SYMBOL -> symbols
-                        SymbolMode.Template -> emoticons // TODO: Replace with actual template data
-                        else -> emptyList()
-                    }
+                        symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
+                            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
+                        } else 16f
 
-                    symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
-                        if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
-                    } else 16f
+                        gridLM.spanCount = when (currentMode) {
+                            SymbolMode.EMOJI -> 7
+                            SymbolMode.EMOTICON, SymbolMode.SYMBOL -> 5
+                            SymbolMode.Template -> 1
+                            else -> 5
+                        }
+                        gridLM.orientation = when (currentMode) {
+                            SymbolMode.EMOJI -> RecyclerView.VERTICAL
+                            SymbolMode.EMOTICON, SymbolMode.SYMBOL -> RecyclerView.HORIZONTAL
+                            SymbolMode.Template -> RecyclerView.VERTICAL
+                            else -> RecyclerView.VERTICAL
+                        }
 
-                    gridLM.spanCount = when (currentMode) {
-                        SymbolMode.EMOJI -> 7
-                        SymbolMode.EMOTICON, SymbolMode.SYMBOL -> 5
-                        SymbolMode.Template -> 1
-                        else -> 5
-                    }
-                    gridLM.orientation = when (currentMode) {
-                        SymbolMode.EMOJI -> RecyclerView.VERTICAL
-                        SymbolMode.EMOTICON, SymbolMode.SYMBOL -> RecyclerView.HORIZONTAL
-                        SymbolMode.Template -> RecyclerView.VERTICAL
-                        else -> RecyclerView.VERTICAL
-                    }
-
-                    pagingJob = owner.lifecycleScope.launch {
                         Pager(
                             config = PagingConfig(pageSize = 100, enablePlaceholders = false),
                             pagingSourceFactory = { SymbolPagingSource(listForPaging) }
@@ -352,6 +377,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     }
                 }
             }
+            // ▲▲▲ ここまで修正 ▲▲▲
         }
     }
 
@@ -377,6 +403,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         itemClickListener = null
         itemLongClickListener = null
         imageItemClickListener = null
+        clipboardItemLongClickListener = null
     }
 
     private val categoryIconRes = mapOf(

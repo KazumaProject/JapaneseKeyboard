@@ -2,10 +2,15 @@ package com.kazumaproject.markdownhelperkeyboard.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.BitmapConverter
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryDao
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
@@ -25,10 +30,15 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         CustomKeyboardLayout::class,
         KeyDefinition::class,
         FlickMapping::class,
-        UserTemplate::class
+        UserTemplate::class,
+        ClipboardHistoryItem::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
+)
+@TypeConverters(
+    BitmapConverter::class,
+    ItemTypeConverter::class
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun learnDao(): LearnDao
@@ -36,6 +46,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userWordDao(): UserWordDao
     abstract fun keyboardLayoutDao(): KeyboardLayoutDao
     abstract fun userTemplateDao(): UserTemplateDao
+    abstract fun clipboardHistoryDao(): ClipboardHistoryDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -185,6 +196,23 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `learn_table` ADD COLUMN `leftId` INTEGER")
                 db.execSQL("ALTER TABLE `learn_table` ADD COLUMN `rightId` INTEGER")
+            }
+        }
+
+        // バージョン8から9へのマイグレーション例
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `clipboard_history` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `itemType` TEXT NOT NULL,
+                      `textData` TEXT,
+                      `imageData` BLOB,
+                      `timestamp` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
             }
         }
 

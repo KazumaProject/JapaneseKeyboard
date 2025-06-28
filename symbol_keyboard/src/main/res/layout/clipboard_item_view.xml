@@ -21,7 +21,7 @@
         android:layout_gravity="center"
         android:ellipsize="end"
         android:gravity="center"
-        android:maxLines="4"
+        android:maxLines="3"
         android:padding="8dp"
         android:textAlignment="center"
         android:textColor="@color/symbol_text_color"
