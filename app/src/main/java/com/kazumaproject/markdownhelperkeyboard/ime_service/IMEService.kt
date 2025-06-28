@@ -292,6 +292,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
     private var sumireInputKeyType: String? = "flick-default"
+    private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
 
     private var isTablet: Boolean? = false
 
@@ -490,6 +491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
+            symbolKeyboardFirstItem = symbol_mode_preference
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -598,6 +600,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTWeb = null
         sumireInputKeyType = null
         isTablet = null
+        symbolKeyboardFirstItem = null
         actionInDestroy()
         System.gc()
     }
@@ -3635,7 +3638,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
-        var clipboardItems = emptyList<ClipboardItem>()
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
                 val emojiDeferred =
@@ -3657,7 +3659,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emoticons = cachedEmoticons ?: emptyList(),
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
-            symbolsHistory = cachedClickedSymbolHistory ?: emptyList()
+            symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
+            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI
+
         )
     }
 

@@ -7,6 +7,7 @@ import android.widget.ImageView
 import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 
@@ -26,6 +27,9 @@ class ClipboardAdapter :
 
     inner class ClipboardViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val imageView: ImageView = itemView.findViewById(R.id.clipboard_image_view)
+
+        // MaterialCardViewへの参照を追加
+        val textCardView: MaterialCardView = itemView.findViewById(R.id.clipboard_text_card_view)
         val textView: MaterialTextView = itemView.findViewById(R.id.clipboard_text_view)
 
         init {
@@ -60,19 +64,22 @@ class ClipboardAdapter :
         when (item) {
             is ClipboardItem.Image -> {
                 holder.imageView.visibility = View.VISIBLE
-                holder.textView.visibility = View.GONE
+                // textCardViewを非表示にする
+                holder.textCardView.visibility = View.GONE
                 holder.imageView.setImageBitmap(item.bitmap)
             }
 
             is ClipboardItem.Text -> {
                 holder.imageView.visibility = View.GONE
-                holder.textView.visibility = View.VISIBLE
+                // textCardViewを表示する
+                holder.textCardView.visibility = View.VISIBLE
                 holder.textView.text = item.text
             }
 
             is ClipboardItem.Empty, null -> {
                 holder.imageView.visibility = View.GONE
-                holder.textView.visibility = View.GONE
+                // textCardViewも非表示にする
+                holder.textCardView.visibility = View.GONE
             }
         }
     }
