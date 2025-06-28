@@ -6,23 +6,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
-import android.util.Log
+import com.kazumaproject.core.data.clipboard.ClipboardItem
 import timber.log.Timber
-
-/**
- * クリップボードのコンテンツの種類を表すsealed class。
- * これにより、クリップボードの内容がテキストか画像かを安全に判定できます。
- */
-sealed class ClipboardItem {
-    /** テキストコンテンツを保持します。 */
-    data class Text(val text: String) : ClipboardItem()
-
-    /** 画像コンテンツ (Bitmap) を保持します。 */
-    data class Image(val bitmap: Bitmap) : ClipboardItem()
-
-    /** クリップボードが空、またはサポートされていないコンテンツの場合を表します。 */
-    object Empty : ClipboardItem()
-}
 
 /**
  * クリップボードの操作を補助するユーティリティクラス。
@@ -47,20 +32,17 @@ class ClipboardUtil(private val context: Context) {
 
         // 1. 画像の取得を最優先で試みる
         getClipboardImageBitmap()?.let { bitmap ->
-            Log.d("ClipboardUtil", "クリップボードから画像Bitmapを取得しました。")
-            return ClipboardItem.Image(bitmap)
+            return ClipboardItem.Image(id = 0, bitmap)
         }
 
         // 2. 画像が取得できなかった場合、テキストの取得を試みる
         getFirstClipboardTextOrNull()?.let { text ->
             if (text.isNotBlank()) {
-                Log.d("ClipboardUtil", "クリップボードからテキストを取得しました。")
-                return ClipboardItem.Text(text)
+                return ClipboardItem.Text(id = 0, text)
             }
         }
 
         // 3. 画像も有効なテキストも見つからなかった場合
-        Log.d("ClipboardUtil", "クリップボードに有効なコンテンツが見つかりませんでした。")
         return ClipboardItem.Empty
     }
 
