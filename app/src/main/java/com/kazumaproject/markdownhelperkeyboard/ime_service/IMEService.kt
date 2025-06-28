@@ -133,6 +133,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -187,15 +189,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private lateinit var clipboardManager: ClipboardManager
 
+    private val clipboardMutex = Mutex()
+
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
      */
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
-        // リスナーのコールバックはUIスレッドで呼ばれるとは限らないため、
-        // UI更新は安全にメインスレッドのCoroutineスコープで実行する。
         ioScope.launch {
-            clipboardUtil.getPrimaryClipContent().toHistoryItem()?.let {
-                clipboardHistoryRepository.insert(it)
+            // ▼▼▼ Mutexで処理ブロックをロックする ▼▼▼
+            clipboardMutex.withLock {
+                // 1. 現在クリップボードにあるアイテムを取得
+                val newItem = clipboardUtil.getPrimaryClipContent()
+                val newHistoryItem = newItem.toHistoryItem() ?: return@withLock
+
+                // 2. DBに保存されている最新のアイテムを取得
+                val lastSavedItem = clipboardHistoryRepository.getLatestItem()
+
+                // 3. 最新アイテムと比較して、内容が重複していないかチェック
+                val isDuplicate = if (lastSavedItem == null) {
+                    false
+                } else {
+                    if (newHistoryItem.itemType == lastSavedItem.itemType) {
+                        when (newHistoryItem.itemType) {
+                            ItemType.TEXT -> newHistoryItem.textData == lastSavedItem.textData
+                            ItemType.IMAGE -> newHistoryItem.imageData?.sameAs(lastSavedItem.imageData)
+                                ?: false
+                        }
+                    } else {
+                        false
+                    }
+                }
+
+                // 4. 重複していなければ、DBに挿入する
+                if (!isDuplicate) {
+                    Timber.d("LOCKED: New clipboard item detected. Inserting to history.")
+                    clipboardHistoryRepository.insert(newHistoryItem)
+                } else {
+                    Timber.d("LOCKED: Clipboard item is a duplicate. Skipping insert.")
+                }
             }
         }
     }
