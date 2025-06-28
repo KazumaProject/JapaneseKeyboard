@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
@@ -16,12 +17,14 @@ import androidx.paging.PagingData
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.imageview.ShapeableImageView
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoji.EmojiCategory
+import com.kazumaproject.listeners.ClipboardHistoryToggleListener
 import com.kazumaproject.listeners.ClipboardItemLongClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
@@ -64,7 +67,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var itemClickListener: SymbolRecyclerViewItemClickListener? = null
     private var itemLongClickListener: SymbolRecyclerViewItemLongClickListener? = null
     private var imageItemClickListener: ImageItemClickListener? = null
-    private var clipboardItemLongClickListener: ClipboardItemLongClickListener? = null //
+    private var clipboardItemLongClickListener: ClipboardItemLongClickListener? = null
+    private var clipboardHistoryToggleListener: ClipboardHistoryToggleListener? = null
+    private var isClipboardHistoryEnabled: Boolean = false
 
     init {
         inflate(context, R.layout.symbol_keyboard_main_layout, this)
@@ -228,6 +233,28 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
+    /**
+     * クリップボード履歴の有効/無効を設定し、表示に反映させる
+     * @param isEnabled スイッチをONにする場合はtrue
+     */
+    fun setClipboardHistoryEnabled(isEnabled: Boolean) {
+        this.isClipboardHistoryEnabled = isEnabled
+        // すでにタブが表示されている場合は、スイッチの状態を即座に更新する
+        if (currentMode == SymbolMode.CLIPBOARD) {
+            categoryTab.getTabAt(0)?.customView?.let {
+                val switch = it.findViewById<SwitchMaterial>(R.id.clipboard_tab_switch)
+                switch?.isChecked = isEnabled
+            }
+        }
+    }
+
+    /**
+     * クリップボード履歴のOn/Offが切り替わったときのリスナーを設定する
+     */
+    fun setOnClipboardHistoryToggleListener(l: ClipboardHistoryToggleListener) {
+        this.clipboardHistoryToggleListener = l
+    }
+
     fun setSymbolLists(
         emojiList: List<Emoji>,
         emoticons: List<String>,
@@ -261,7 +288,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             com.kazumaproject.core.R.drawable.emoticon_24px,
             com.kazumaproject.core.R.drawable.star_24px,
             com.kazumaproject.core.R.drawable.clip_board,
-            com.kazumaproject.core.R.drawable.book_3_24px
         ).forEach { res ->
             modeTab.addTab(modeTab.newTab().setIcon(res))
         }
@@ -285,7 +311,35 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            SymbolMode.EMOTICON, SymbolMode.SYMBOL, SymbolMode.CLIPBOARD, SymbolMode.Template -> {
+            SymbolMode.CLIPBOARD -> {
+                // 1. 新しいタブを作成し、カスタムビューを設定
+                val tab = categoryTab.newTab().setCustomView(R.layout.custom_tab_clipboard)
+
+                // 2. タブをレイアウトに追加
+                categoryTab.addTab(tab)
+
+                // 3. カスタムビュー内のスイッチを取得して設定
+                tab.customView?.let { customView ->
+                    val switch = customView.findViewById<SwitchMaterial>(R.id.clipboard_tab_switch)
+                    // 外部から設定された状態をスイッチに反映
+                    switch.isChecked = isClipboardHistoryEnabled
+                    // スイッチが操作されたときのリスナーを設定
+                    switch.setOnCheckedChangeListener { _, isChecked ->
+                        // 状態を内部プロパティに保存し、外部リスナーを呼び出す
+                        isClipboardHistoryEnabled = isChecked
+                        clipboardHistoryToggleListener?.onToggled(isChecked)
+                    }
+                    // テキストの色をテーマに合わせる
+                    val textColor = ContextCompat.getColor(
+                        context,
+                        com.kazumaproject.core.R.color.keyboard_icon_color
+                    )
+                    customView.findViewById<TextView>(R.id.clipboard_tab_text)
+                        .setTextColor(textColor)
+                }
+            }
+
+            SymbolMode.EMOTICON, SymbolMode.SYMBOL -> {
                 val c = ContextCompat.getColor(
                     context,
                     com.kazumaproject.core.R.color.keyboard_icon_color
@@ -295,7 +349,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     SymbolMode.EMOTICON -> "顔文字"
                     SymbolMode.SYMBOL -> "記号"
                     SymbolMode.CLIPBOARD -> "クリップボード"
-                    SymbolMode.Template -> "定型文"
                     else -> ""
                 }
                 categoryTab.addTab(categoryTab.newTab().setText(text))
@@ -347,7 +400,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
                             SymbolMode.EMOTICON -> emoticons
                             SymbolMode.SYMBOL -> symbols
-                            SymbolMode.Template -> emoticons // TODO: Replace with actual template data
                             else -> emptyList()
                         }
 
@@ -358,13 +410,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                         gridLM.spanCount = when (currentMode) {
                             SymbolMode.EMOJI -> 7
                             SymbolMode.EMOTICON, SymbolMode.SYMBOL -> 5
-                            SymbolMode.Template -> 1
                             else -> 5
                         }
                         gridLM.orientation = when (currentMode) {
                             SymbolMode.EMOJI -> RecyclerView.VERTICAL
                             SymbolMode.EMOTICON, SymbolMode.SYMBOL -> RecyclerView.HORIZONTAL
-                            SymbolMode.Template -> RecyclerView.VERTICAL
                             else -> RecyclerView.VERTICAL
                         }
 
@@ -404,6 +454,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         itemLongClickListener = null
         imageItemClickListener = null
         clipboardItemLongClickListener = null
+        clipboardHistoryToggleListener = null
     }
 
     private val categoryIconRes = mapOf(
