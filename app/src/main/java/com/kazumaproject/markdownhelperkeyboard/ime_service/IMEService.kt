@@ -53,6 +53,7 @@ import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.katakanaToHiragana
 import com.kazumaproject.core.domain.key.Key
@@ -83,7 +84,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
-import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardItem
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
@@ -2108,6 +2108,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         updateClipboardPreview()
     }
 
+    private fun pasteImageAction(bitmap: Bitmap) {
+        commitBitmap(bitmap)
+        clearDeletedBufferWithoutResetLayout()
+        suggestionAdapter?.setUndoEnabled(false)
+        // ★修正点: UIを正しく更新する新しい関数を呼び出す
+        updateClipboardPreview()
+    }
+
     /**
      * Bitmapを入力先アプリに送信します。
      * この関数を呼び出す前に、FileProviderが正しく設定されている必要があります。
@@ -3387,6 +3395,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             })
+            setOnImageItemClickListener { bitmap -> pasteImageAction(bitmap) }
         }
     }
 
@@ -3536,10 +3545,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             cachedClickedSymbolHistory =
                 historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
         }
+        val clipboardItems = listOf(ClipboardUtil(this).getPrimaryClipContent())
         mainView.keyboardSymbolView.setSymbolLists(
             emojiList = cachedEmoji ?: emptyList(),
             emoticons = cachedEmoticons ?: emptyList(),
             symbols = cachedSymbols ?: emptyList(),
+            clipBoardItems = clipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList()
         )
     }
