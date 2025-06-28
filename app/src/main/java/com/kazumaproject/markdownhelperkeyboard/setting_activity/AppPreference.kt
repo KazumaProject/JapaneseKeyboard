@@ -12,6 +12,7 @@ object AppPreference {
     private lateinit var preferences: SharedPreferences
     private val gson = Gson()
 
+    private val CLIPBOARD_HISTORY_ENABLE = Pair("clipboard_history_preference", false)
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
     private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
@@ -55,6 +56,15 @@ object AppPreference {
         operation(editor)
         editor.apply()
     }
+
+    var clipboard_history_enable: Boolean?
+        get() = preferences.getBoolean(
+            CLIPBOARD_HISTORY_ENABLE.first,
+            CLIPBOARD_HISTORY_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CLIPBOARD_HISTORY_ENABLE.first, value ?: false)
+        }
 
     var keyboard_order: List<KeyboardType>
         get() {

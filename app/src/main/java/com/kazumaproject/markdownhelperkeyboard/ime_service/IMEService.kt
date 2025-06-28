@@ -72,6 +72,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
+import com.kazumaproject.listeners.ClipboardHistoryToggleListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
@@ -146,7 +147,8 @@ import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
+class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
+    ClipboardHistoryToggleListener {
 
     @Inject
     lateinit var learnMultiple: LearnMultiple
@@ -189,6 +191,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     private lateinit var clipboardManager: ClipboardManager
 
+    private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
 
     /**
@@ -223,7 +226,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                 // 4. 重複していなければ、DBに挿入する
                 if (!isDuplicate) {
                     Timber.d("LOCKED: New clipboard item detected. Inserting to history.")
-                    clipboardHistoryRepository.insert(newHistoryItem)
+                    if (isClipboardHistoryFeatureEnabled) {
+                        clipboardHistoryRepository.insert(newHistoryItem)
+                    }
                 } else {
                     Timber.d("LOCKED: Clipboard item is a duplicate. Skipping insert.")
                 }
@@ -412,6 +417,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
+        isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
     }
 
     override fun onCreateInputView(): View? {
@@ -3494,6 +3500,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             }
+            setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
+            setOnClipboardHistoryToggleListener(this@IMEService)
         }
     }
 
@@ -5714,5 +5722,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             false
         }
+    }
+
+    override fun onToggled(isEnabled: Boolean) {
+        isClipboardHistoryFeatureEnabled = isEnabled
+        appPreference.clipboard_history_enable = isEnabled
     }
 }
