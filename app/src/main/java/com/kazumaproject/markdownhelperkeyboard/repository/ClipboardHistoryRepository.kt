@@ -48,4 +48,15 @@ class ClipboardHistoryRepository @Inject constructor(
     suspend fun getHistorySnapshot(): List<ClipboardHistoryItem> {
         return dao.getAllHistorySuspended()
     }
+
+    /**
+     * データベースに保存されている最新の履歴アイテムを取得します。
+     * 履歴が空の場合はnullを返します。
+     *
+     * @return 最新の ClipboardHistoryItem、または null
+     */
+    suspend fun getLatestItem(): ClipboardHistoryItem? {
+        return dao.getLatestItem()
+    }
+
 }
