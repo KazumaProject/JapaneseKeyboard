@@ -39,6 +39,16 @@
             android:summaryOn="ライブ変換は有効です"
             android:title="ライブ変換 β" />
 
+        <PreferenceCategory android:title="記号キーボード">
+            <ListPreference
+                android:defaultValue="EMOJI"
+                android:dialogTitle="初期画面を選択"
+                android:entries="@array/symbol_mode_entries"
+                android:entryValues="@array/symbol_mode_values"
+                android:key="symbol_mode_preference"
+                android:summary="記号キーボードの初期画面を選択します"
+                android:title="記号キーボードの初期画面" />
+        </PreferenceCategory>
         <PreferenceCategory
             android:key="sumire_input_preference_category"
             android:title="スミレ入力キーボード"

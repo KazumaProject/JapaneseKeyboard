@@ -58,4 +58,19 @@
         <item>右フリック</item>
         <item>下フリック</item>
     </string-array>
+
+    <string-array name="symbol_mode_entries">
+        <item>絵文字</item>
+        <item>顔文字</item>
+        <item>記号</item>
+        <item>クリップボード履歴</item>
+    </string-array>
+
+    <!-- SymbolMode の選択肢に対応する値 (プログラム側で扱う値) -->
+    <string-array name="symbol_mode_values">
+        <item>EMOJI</item>
+        <item>EMOTICON</item>
+        <item>SYMBOL</item>
+        <item>CLIPBOARD</item>
+    </string-array>
 </resources>

@@ -53,6 +53,7 @@ import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.katakanaToHiragana
 import com.kazumaproject.core.domain.key.Key
@@ -71,19 +72,21 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
+import com.kazumaproject.listeners.ClipboardHistoryToggleListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.toHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
-import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardItem
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
@@ -96,6 +99,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -130,6 +134,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
@@ -141,7 +147,8 @@ import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
+class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
+    ClipboardHistoryToggleListener {
 
     @Inject
     lateinit var learnMultiple: LearnMultiple
@@ -171,6 +178,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
 
     @Inject
+    lateinit var clipboardHistoryRepository: ClipboardHistoryRepository
+
+    @Inject
     lateinit var keyboardRepository: KeyboardRepository
 
     @Inject
@@ -178,6 +188,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
 
     @Inject
     lateinit var romajiConverter: RomajiKanaConverter
+
+    private lateinit var clipboardManager: ClipboardManager
+
+    private var isClipboardHistoryFeatureEnabled: Boolean = false
+    private val clipboardMutex = Mutex()
+
+    /**
+     * クリップボードの内容が変更されたときに呼び出されるリスナー。
+     */
+    private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
+        ioScope.launch {
+            // ▼▼▼ Mutexで処理ブロックをロックする ▼▼▼
+            clipboardMutex.withLock {
+                // 1. 現在クリップボードにあるアイテムを取得
+                val newItem = clipboardUtil.getPrimaryClipContent()
+                val newHistoryItem = newItem.toHistoryItem() ?: return@withLock
+
+                // 2. DBに保存されている最新のアイテムを取得
+                val lastSavedItem = clipboardHistoryRepository.getLatestItem()
+
+                // 3. 最新アイテムと比較して、内容が重複していないかチェック
+                val isDuplicate = if (lastSavedItem == null) {
+                    false
+                } else {
+                    if (newHistoryItem.itemType == lastSavedItem.itemType) {
+                        when (newHistoryItem.itemType) {
+                            ItemType.TEXT -> newHistoryItem.textData == lastSavedItem.textData
+                            ItemType.IMAGE -> newHistoryItem.imageData?.sameAs(lastSavedItem.imageData)
+                                ?: false
+                        }
+                    } else {
+                        false
+                    }
+                }
+
+                // 4. 重複していなければ、DBに挿入する
+                if (!isDuplicate) {
+                    Timber.d("LOCKED: New clipboard item detected. Inserting to history.")
+                    if (isClipboardHistoryFeatureEnabled) {
+                        clipboardHistoryRepository.insert(newHistoryItem)
+                    }
+                } else {
+                    Timber.d("LOCKED: Clipboard item is a duplicate. Skipping insert.")
+                }
+            }
+        }
+    }
 
     private var suggestionAdapter: SuggestionAdapter? = null
 
@@ -188,6 +245,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var cachedEmoticons: List<String>? = null
     private var cachedSymbols: List<String>? = null
     private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
+    private var currentClipboardItems: List<ClipboardItem> = emptyList()
 
     private var deleteLongPressJob: Job? = null
     private var rightLongPressJob: Job? = null
@@ -234,6 +292,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
     private var sumireInputKeyType: String? = "flick-default"
+    private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
 
     private var isTablet: Boolean? = false
 
@@ -357,6 +416,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             }
         }
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboardManager.addPrimaryClipChangedListener(clipboardListener)
+        isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
     }
 
     override fun onCreateInputView(): View? {
@@ -429,6 +491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
+            symbolKeyboardFirstItem = symbol_mode_preference
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -514,6 +577,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
         clearSymbols()
+        clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
         if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
         if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
@@ -536,6 +600,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         mozcUTWeb = null
         sumireInputKeyType = null
         isTablet = null
+        symbolKeyboardFirstItem = null
         actionInDestroy()
         System.gc()
     }
@@ -2108,6 +2173,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         updateClipboardPreview()
     }
 
+    private fun pasteImageAction(bitmap: Bitmap) {
+        commitBitmap(bitmap)
+        clearDeletedBufferWithoutResetLayout()
+        suggestionAdapter?.setUndoEnabled(false)
+        // ★修正点: UIを正しく更新する新しい関数を呼び出す
+        updateClipboardPreview()
+    }
+
     /**
      * Bitmapを入力先アプリに送信します。
      * この関数を呼び出す前に、FileProviderが正しく設定されている必要があります。
@@ -2776,6 +2849,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         }
 
         launch {
+            clipboardHistoryRepository.allHistory.collectLatest { historyList ->
+                // 1. DBモデルのリストからUIモデルのリストに変換する
+                //    このとき、削除に必要な `id` も一緒に渡す
+                val uiItems = historyList.map {
+                    when (it.itemType) {
+                        ItemType.TEXT -> ClipboardItem.Text(id = it.id, text = it.textData ?: "")
+                        ItemType.IMAGE -> {
+                            it.imageData?.let { bitmap ->
+                                ClipboardItem.Image(id = it.id, bitmap = bitmap)
+                            } ?: ClipboardItem.Empty
+                        }
+                    }
+                }.filter { it !is ClipboardItem.Empty }
+
+                // 2. 最新のリストをクラスのプロパティにキャッシュする
+                currentClipboardItems = uiItems
+
+                // 3. CustomSymbolKeyboardViewの表示を更新する
+                //    このメソッドは、クリップボードタブが表示中の場合のみUIを更新する
+                mainView.keyboardSymbolView.updateClipboardItems(uiItems)
+            }
+        }
+
+        launch {
             inputString.collectLatest { string ->
                 processInputString(string, mainView)
             }
@@ -3387,6 +3484,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
                     }
                 }
             })
+            setOnImageItemClickListener { bitmap -> pasteImageAction(bitmap) }
+            setOnClipboardItemLongClickListener { item, _ ->
+                when (item) {
+                    ClipboardItem.Empty -> {}
+                    is ClipboardItem.Image -> {
+                        vibrate()
+                        ioScope.launch {
+                            clipboardHistoryRepository.deleteById(item.id)
+                        }
+                    }
+
+                    is ClipboardItem.Text -> {
+                        vibrate()
+                        ioScope.launch {
+                            clipboardHistoryRepository.deleteById(item.id)
+                        }
+                    }
+                }
+            }
+            setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
+            setOnClipboardHistoryToggleListener(this@IMEService)
         }
     }
 
@@ -3540,7 +3658,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             emojiList = cachedEmoji ?: emptyList(),
             emoticons = cachedEmoticons ?: emptyList(),
             symbols = cachedSymbols ?: emptyList(),
-            symbolsHistory = cachedClickedSymbolHistory ?: emptyList()
+            clipBoardItems = currentClipboardItems,
+            symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
+            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI
+
         )
     }
 
@@ -5390,7 +5511,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
             // For the default keyboard, use the user's preference.
             // **FIXED**: Clamp the height to the same range as the settings UI (180-280).
             else -> {
-                val clampedHeight = heightPref.coerceIn(180, 280)
+                val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
             }
         }
@@ -5605,5 +5726,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection {
         } else {
             false
         }
+    }
+
+    override fun onToggled(isEnabled: Boolean) {
+        isClipboardHistoryFeatureEnabled = isEnabled
+        appPreference.clipboard_history_enable = isEnabled
     }
 }

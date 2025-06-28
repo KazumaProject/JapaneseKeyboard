@@ -36,7 +36,7 @@ class KeyboardSettingFragment : Fragment() {
 
     // Define min/max dimensions for the keyboard
     private val minHeightDp = 170
-    private val maxHeightDp = 280
+    private val maxHeightDp = 420
     private val minWidthPercent = 74
     private val maxWidthPercent = 100
 

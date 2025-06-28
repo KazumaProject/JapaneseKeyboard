@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 
 object AppPreference {
@@ -12,6 +13,7 @@ object AppPreference {
     private lateinit var preferences: SharedPreferences
     private val gson = Gson()
 
+    private val CLIPBOARD_HISTORY_ENABLE = Pair("clipboard_history_preference", false)
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
     private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
@@ -45,6 +47,7 @@ object AppPreference {
         )
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
+    private val SYMBOL_MODE_PREFERENCE = Pair("symbol_mode_preference", "EMOJI")
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -56,6 +59,15 @@ object AppPreference {
         editor.apply()
     }
 
+    var clipboard_history_enable: Boolean?
+        get() = preferences.getBoolean(
+            CLIPBOARD_HISTORY_ENABLE.first,
+            CLIPBOARD_HISTORY_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CLIPBOARD_HISTORY_ENABLE.first, value ?: false)
+        }
+
     var keyboard_order: List<KeyboardType>
         get() {
             val json = preferences.getString(KEYBOARD_ORDER.first, KEYBOARD_ORDER.second)
@@ -65,6 +77,25 @@ object AppPreference {
         set(value) = preferences.edit {
             val json = gson.toJson(value)
             it.putString(KEYBOARD_ORDER.first, json)
+        }
+
+    var symbol_mode_preference: SymbolMode
+        get() {
+            val modeString = preferences.getString(
+                SYMBOL_MODE_PREFERENCE.first,
+                SYMBOL_MODE_PREFERENCE.second
+            )
+            return try {
+                // 保存されている文字列からEnumを復元
+                SymbolMode.valueOf(modeString ?: SYMBOL_MODE_PREFERENCE.second)
+            } catch (e: IllegalArgumentException) {
+                // 不正な値が保存されていた場合はデフォルト値を返す
+                SymbolMode.valueOf(SYMBOL_MODE_PREFERENCE.second)
+            }
+        }
+        set(value) = preferences.edit {
+            // Enumを文字列として保存
+            it.putString(SYMBOL_MODE_PREFERENCE.first, value.name)
         }
 
     var vibration_preference: Boolean?
