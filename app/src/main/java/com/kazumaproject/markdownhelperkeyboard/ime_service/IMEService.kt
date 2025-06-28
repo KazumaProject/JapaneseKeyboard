@@ -5511,7 +5511,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // For the default keyboard, use the user's preference.
             // **FIXED**: Clamp the height to the same range as the settings UI (180-280).
             else -> {
-                val clampedHeight = heightPref.coerceIn(180, 280)
+                val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
             }
         }
