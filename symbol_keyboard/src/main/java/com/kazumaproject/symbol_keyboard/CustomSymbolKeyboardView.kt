@@ -261,7 +261,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         symbols: List<String>,
         clipBoardItems: List<ClipboardItem>,
         symbolsHistory: List<ClickedSymbol>,
-        defaultMode: SymbolMode = SymbolMode.EMOJI
+        symbolMode: SymbolMode = SymbolMode.EMOJI
     ) {
         this.symbolsHistory = symbolsHistory
         this.clipBoardItems = clipBoardItems
@@ -273,10 +273,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         this.symbols = symbols
         emojiMap = emojiList.groupBy { it.category }.toSortedMap(categoryOrder)
 
-        currentMode = defaultMode
+        currentMode = symbolMode
         buildModeTabs()
         buildCategoryTabs()
-        modeTab.getTabAt(defaultMode.ordinal)?.select()
+        modeTab.getTabAt(symbolMode.ordinal)?.select()
         categoryTab.getTabAt(0)?.select()
         updateSymbolsForCategory(0)
     }
