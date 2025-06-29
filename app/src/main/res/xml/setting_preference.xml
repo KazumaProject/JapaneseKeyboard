@@ -73,7 +73,8 @@
             android:title="入力待機時間"
             app:min="1"
             app:showSeekBarValue="true"
-            app:summary="ライブ変換やケータイ打ちで次の入力を待つ時間（ミリ秒）" />
+            android:dependency=""
+            app:summary="ケータイ打ちで次の入力を待つ時間（ミリ秒）" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="バイブレーション">

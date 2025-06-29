@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.custom_keyboard.data.FlickDirection
@@ -39,6 +40,7 @@ class PetalFlickInputController(private val context: Context) {
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private val flickThreshold = 80f
+    private var originalKeyText: CharSequence? = null
 
     // 各方向に対応するPopupWindowを保持するMap
     private val popupMap: MutableMap<FlickDirection, PopupWindow> = mutableMapOf()
@@ -245,6 +247,11 @@ class PetalFlickInputController(private val context: Context) {
                 initialTouchY = event.rawY
                 isLongPressModeActive = false
 
+                (anchorView as? Button)?.let { button ->
+                    originalKeyText = button.text
+                    button.text = ""
+                }
+
                 createPopups()
 
                 // 方向の状態を初期化
@@ -286,6 +293,10 @@ class PetalFlickInputController(private val context: Context) {
                     val finalDirection = calculateDirection(dx, dy)
                     characterMap[finalDirection]?.let { listener?.onFlick(it) }
                 }
+                (anchorView as? Button)?.let { button ->
+                    button.text = originalKeyText
+                }
+                originalKeyText = null
                 dismissAllPopups()
                 return true
             }
