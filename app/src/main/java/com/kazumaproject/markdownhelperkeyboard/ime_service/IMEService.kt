@@ -1344,15 +1344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             Key.SideKeyDelete -> {
-                if (isHenkan.get()) {
-                    cancelHenkanByLongPressDeleteKey()
-                } else {
-                    onDeleteLongPressUp.set(true)
-                    deleteLongPress()
-                    _dakutenPressed.value = false
-                    englishSpaceKeyPressed.set(false)
-                    deleteKeyLongKeyPressed.set(true)
-                }
+                handleDeleteLongPress()
             }
 
             Key.SideKeyInputMode -> {}
@@ -1366,12 +1358,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun handleDeleteLongPress() {
+        if (isHenkan.get()) {
+            cancelHenkanByLongPressDeleteKey()
+            hasConvertedKatakana = false
+        } else {
+            onDeleteLongPressUp.set(true)
+            deleteLongPress()
+            _dakutenPressed.value = false
+            englishSpaceKeyPressed.set(false)
+            deleteKeyLongKeyPressed.set(true)
+        }
+    }
+
     private fun handleSpaceLongAction() {
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
             mainLayoutBinding?.let {
                 if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                    if (isHenkan.get()) return
                     isSpaceKeyLongPressed = true
                     if (hasConvertedKatakana) {
                         if (isLiveConversionEnable == true) {
@@ -1725,15 +1731,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Delete -> {
-                        if (isHenkan.get()) {
-                            cancelHenkanByLongPressDeleteKey()
-                        } else {
-                            onDeleteLongPressUp.set(true)
-                            deleteLongPress()
-                            _dakutenPressed.value = false
-                            englishSpaceKeyPressed.set(false)
-                            deleteKeyLongKeyPressed.set(true)
-                        }
+                        handleDeleteLongPress()
                     }
 
                     KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
