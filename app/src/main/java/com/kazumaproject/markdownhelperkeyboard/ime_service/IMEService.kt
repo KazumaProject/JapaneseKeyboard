@@ -1366,9 +1366,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                             isSpaceKeyLongPressed = true
                             if (hasConvertedKatakana) {
-                                _inputString.update { str -> str.katakanaToHiragana() }
+                                if (isLiveConversionEnable == true) {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString.hiraganaToKatakana(),
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
+                                    )
+                                } else {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString,
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
+                                    )
+                                }
                             } else {
-                                _inputString.update { str -> str.hiraganaToKatakana() }
+                                if (isLiveConversionEnable == true) {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString,
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
+                                    )
+                                } else {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString.hiraganaToKatakana(),
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
+                                    )
+                                }
                             }
                             hasConvertedKatakana = !hasConvertedKatakana
                         }
@@ -2302,8 +2338,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun commitBitmapViaClipboard(contentUri: Uri) {
         Timber.d("commitBitmapViaClipboard: 開始")
         try {
-            // 1. クリップボードに画像をコピー
-            val mimeType = "image/png"
             val clip = ClipData.newUri(contentResolver, "Image", contentUri)
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(clip)
@@ -2977,6 +3011,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         Timber.d("launchInputString: inputString: $string stringTail: $stringInTail")
         if (string.isNotEmpty()) {
+            hasConvertedKatakana = false
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
                 handleTenKeyQwertyInput(string)
             } else {
@@ -3027,19 +3062,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val spannable = createSpannableWithTail(string)
         _suggestionFlag.emit(CandidateShowFlag.Updating)
 
-        if (isLiveConversionEnable == true) {
-            setComposingTextPreEdit(string, spannable)
-
-            val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
-            val effectiveDelay = if (timeToDelay in 1..QUICK_DELAY_THRESHOLD_MS) {
-                LIVE_CONVERSION_QUICK_DELAY_MS
-            } else {
-                timeToDelay
-            }
-            delay(effectiveDelay)
-            // 最初のサジェスト候補をテキストに反映します。
-            applyFirstSuggestion()
-        } else {
+        if (isLiveConversionEnable != true) {
             // ライブ変換が無効な場合は、入力されたテキストをそのまま表示します。
             setComposingTextAfterEdit(string, spannable)
         }
@@ -3060,19 +3083,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        if (isLiveConversionEnable == true) {
-            if (timeToDelay in 1..QUICK_DELAY_THRESHOLD_MS) {
-                delay(LIVE_CONVERSION_QUICK_DELAY_MS)
-            }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            applyFirstSuggestion()
-        } else {
+        if (isLiveConversionEnable != true) {
             val shouldCommitOriginalText = inputString.value.isNotEmpty() &&
                     !isHenkan.get() &&
                     !onDeleteLongPressUp.get() &&
                     !englishSpaceKeyPressed.get() &&
-                    !deleteKeyLongKeyPressed.get()
+                    !deleteKeyLongKeyPressed.get() &&
+                    !hasConvertedKatakana
 
             if (shouldCommitOriginalText) {
                 isContinuousTapInputEnabled.set(true)
@@ -3086,11 +3103,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * サジェスト候補リストの先頭にある文字列を取得し、編集後のテキストとして設定します。
      * このロジックは複数箇所で使われるため、関数として抽出しました。
      */
-    private fun applyFirstSuggestion() {
-        suggestionAdapter?.suggestions?.firstOrNull()?.string?.let { suggestionToCommit ->
-            val newSpannable = createSpannableWithTail(suggestionToCommit)
-            setComposingTextAfterEdit(suggestionToCommit, newSpannable)
-        }
+    private fun applyFirstSuggestion(
+        candidate: Candidate
+    ) {
+        val commitString = candidate.string
+        val newSpannable = createSpannableWithTail(commitString)
+        setComposingTextAfterEdit(commitString, newSpannable)
     }
 
     /**
@@ -4289,6 +4307,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapter?.suggestions = filtered
         updateUIinHenkan(mainView, insertString)
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana) applyFirstSuggestion(filtered.first())
+        }
     }
 
     private suspend fun getSuggestionList(
