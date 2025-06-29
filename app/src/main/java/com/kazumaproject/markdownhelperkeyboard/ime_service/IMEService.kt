@@ -55,7 +55,6 @@ import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
-import com.kazumaproject.core.domain.extensions.katakanaToHiragana
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
@@ -1359,66 +1358,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
-                Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
-                val insertString = inputString.value
-                if (insertString.isNotEmpty()) {
-                    mainLayoutBinding?.let {
-                        if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                            isSpaceKeyLongPressed = true
-                            if (hasConvertedKatakana) {
-                                if (isLiveConversionEnable == true) {
-                                    applyFirstSuggestion(
-                                        Candidate(
-                                            string = insertString.hiraganaToKatakana(),
-                                            type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
-                                            score = 4000
-                                        )
-                                    )
-                                } else {
-                                    applyFirstSuggestion(
-                                        Candidate(
-                                            string = insertString,
-                                            type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
-                                            score = 4000
-                                        )
-                                    )
-                                }
-                            } else {
-                                if (isLiveConversionEnable == true) {
-                                    applyFirstSuggestion(
-                                        Candidate(
-                                            string = insertString,
-                                            type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
-                                            score = 4000
-                                        )
-                                    )
-                                } else {
-                                    applyFirstSuggestion(
-                                        Candidate(
-                                            string = insertString.hiraganaToKatakana(),
-                                            type = (3).toByte(),
-                                            length = insertString.length.toUByte(),
-                                            score = 4000
-                                        )
-                                    )
-                                }
-                            }
-                            hasConvertedKatakana = !hasConvertedKatakana
-                        }
-                    }
-                } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                    _cursorMoveMode.update { true }
-                    isSpaceKeyLongPressed = true
-                }
-                Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+                handleSpaceLongAction()
             }
 
             Key.SideKeySymbol -> {}
             else -> {}
         }
+    }
+
+    private fun handleSpaceLongAction() {
+        Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+        val insertString = inputString.value
+        if (insertString.isNotEmpty()) {
+            mainLayoutBinding?.let {
+                if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                    isSpaceKeyLongPressed = true
+                    if (hasConvertedKatakana) {
+                        if (isLiveConversionEnable == true) {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString.hiraganaToKatakana(),
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        } else {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString,
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        }
+                    } else {
+                        if (isLiveConversionEnable == true) {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString,
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        } else {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString.hiraganaToKatakana(),
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        }
+                    }
+                    hasConvertedKatakana = !hasConvertedKatakana
+                }
+            }
+        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+            _cursorMoveMode.update { true }
+            isSpaceKeyLongPressed = true
+        }
+        Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
 
     /**
@@ -1714,23 +1717,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Convert, KeyAction.Space -> {
-                        val insertString = inputString.value
-                        if (insertString.isNotEmpty()) {
-                            mainLayoutBinding?.let {
-                                if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                    isSpaceKeyLongPressed = true
-                                    if (hasConvertedKatakana) {
-                                        _inputString.update { str -> str.katakanaToHiragana() }
-                                    } else {
-                                        _inputString.update { str -> str.hiraganaToKatakana() }
-                                    }
-                                    hasConvertedKatakana = !hasConvertedKatakana
-                                }
-                            }
-                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-                            _cursorMoveMode.update { true }
-                            isSpaceKeyLongPressed = true
-                        }
+                        handleSpaceLongAction()
                     }
 
                     KeyAction.Copy -> {
@@ -1829,7 +1816,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
-                    KeyAction.Convert -> {}
+                    KeyAction.Convert -> {
+                        handleSpaceLongAction()
+                    }
+
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
@@ -1961,17 +1951,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Convert, KeyAction.Space -> {
-                        val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (cursorMoveMode.value) {
-                            _cursorMoveMode.update { false }
-                        } else {
-                            if (!isSpaceKeyLongPressed) {
-                                handleSpaceKeyClick(
-                                    hankakuPreference ?: false, insertString, suggestions, mainView
-                                )
-                            }
-                        }
                         isSpaceKeyLongPressed = false
                     }
 
