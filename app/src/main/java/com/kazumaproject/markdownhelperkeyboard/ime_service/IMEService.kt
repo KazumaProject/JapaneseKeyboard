@@ -1361,7 +1361,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleDeleteLongPress() {
         if (isHenkan.get()) {
             cancelHenkanByLongPressDeleteKey()
-            hasConvertedKatakana = false
+            hasConvertedKatakana = isLiveConversionEnable == true
         } else {
             onDeleteLongPressUp.set(true)
             deleteLongPress()
