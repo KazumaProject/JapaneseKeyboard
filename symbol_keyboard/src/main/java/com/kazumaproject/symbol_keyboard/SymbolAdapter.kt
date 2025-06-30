@@ -1,6 +1,7 @@
-// SymbolAdapter.kt
 package com.kazumaproject.symbol_keyboard
 
+import android.content.Context
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,6 +31,26 @@ class SymbolAdapter :
 
     // 外部から文字サイズを設定できるようにプロパティ化
     var symbolTextSize: Float = 16f
+
+    // マージン値をピクセル単位で保持するプロパティ
+    private var horizontalMarginPx: Int = 0
+    private var verticalMarginPx: Int = 0
+
+    /**
+     * 外部からマージン値をDP単位で設定するためのメソッド
+     * @param horizontalDp 水平マージン (DP)
+     * @param verticalDp 垂直マージン (DP)
+     * @param context Contextオブジェクト
+     */
+    fun setItemMargins(horizontalDp: Int, verticalDp: Int, context: Context) {
+        val metrics = context.resources.displayMetrics
+        horizontalMarginPx =
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, horizontalDp.toFloat(), metrics)
+                .toInt()
+        verticalMarginPx =
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, verticalDp.toFloat(), metrics)
+                .toInt()
+    }
 
     inner class SymbolViewHolder(itemView: View) :
         RecyclerView.ViewHolder(itemView) {
@@ -69,6 +90,11 @@ class SymbolAdapter :
         if (symbol != null) {
             holder.symbolTextView.text = symbol
             holder.symbolTextView.textSize = symbolTextSize
+
+            // Viewのレイアウトパラメータにマージンを適用する
+            (holder.itemView.layoutParams as? ViewGroup.MarginLayoutParams)?.setMargins(
+                horizontalMarginPx, verticalMarginPx, horizontalMarginPx, verticalMarginPx
+            )
         } else {
             holder.symbolTextView.text = ""
         }
