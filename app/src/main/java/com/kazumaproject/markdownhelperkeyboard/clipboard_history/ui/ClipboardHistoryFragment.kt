@@ -156,12 +156,12 @@ class ClipboardHistoryFragment : Fragment() {
 
         AlertDialog.Builder(requireContext())
             .setView(dialogView)
-            .setPositiveButton("閉じる", null)
-            .setNegativeButton("削除") { _, _ ->
+            .setNegativeButton("閉じる", null)
+            .setNeutralButton("削除") { _, _ ->
                 viewModel.delete(item.id)
                 Toast.makeText(context, "削除しました", Toast.LENGTH_SHORT).show()
             }
-            .setNeutralButton("共有") { _, _ ->
+            .setPositiveButton("共有") { _, _ ->
                 item.imageData?.let {
                     shareImage(it)
                 } ?: Toast.makeText(context, "画像を共有できません", Toast.LENGTH_SHORT).show()
