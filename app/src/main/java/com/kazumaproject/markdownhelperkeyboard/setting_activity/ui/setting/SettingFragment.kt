@@ -138,6 +138,27 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val symbolKeyboardOrderPreference = findPreference<ListPreference>("symbol_mode_preference")
+        symbolKeyboardOrderPreference?.apply {
+            summary = when (value) {
+                "EMOJI" -> "絵文字"
+                "EMOTICON" -> "顔文字"
+                "SYMBOL" -> "記号"
+                "CLIPBOARD" -> "クリップボードの履歴"
+                else -> "記号キーボードの初期画面を選択します"
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                summary = when (newValue) {
+                    "EMOJI" -> "絵文字"
+                    "EMOTICON" -> "顔文字"
+                    "SYMBOL" -> "記号"
+                    "CLIPBOARD" -> "クリップボードの履歴"
+                    else -> "記号キーボードの初期画面を選択します"
+                }
+                true
+            }
+        }
+
         val keyboardUndoEnablePreference =
             findPreference<SwitchPreferenceCompat>("undo_enable_preference")
         keyboardUndoEnablePreference?.apply {
