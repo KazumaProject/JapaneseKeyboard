@@ -23,6 +23,9 @@ interface LearnDao {
     @Query("SELECT * FROM learn_table ORDER BY score ASC")
     fun all(): Flow<List<LearnEntity>>
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(learnDataList: List<LearnEntity>)
+
     /**
      * Predictive Search: Finds entries where the 'input' column starts with a given prefix.
      * This is useful for autocompleting user input.
