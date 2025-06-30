@@ -44,13 +44,16 @@ class LearnDictionaryAdapter :
         set(value) = differ.submitList(value)
 
     private var onItemLongClickListener: ((String) -> Unit)? = null
-
     fun setOnItemLongClickListener(listener: (String) -> Unit) {
         this.onItemLongClickListener = listener
     }
 
-    private var onItemChildrenLongClickListener: ((String, String) -> Unit)? = null
+    private var onItemChildrenClickListener: ((String, String) -> Unit)? = null
+    fun setOnItemChildrenClickListener(listener: (String, String) -> Unit) {
+        this.onItemChildrenClickListener = listener
+    }
 
+    private var onItemChildrenLongClickListener: ((String, String) -> Unit)? = null
     fun setOnItemChildrenLongClickListener(listener: (String, String) -> Unit) {
         this.onItemChildrenLongClickListener = listener
     }
@@ -76,6 +79,9 @@ class LearnDictionaryAdapter :
 
         holder.outputAdapter.apply {
             learnDataOutputList = item.second
+            this.setOnItemClickListener { child ->
+                onItemChildrenClickListener?.invoke(item.first, child)
+            }
             this.setOnItemLongClickListener { child ->
                 onItemChildrenLongClickListener?.invoke(item.first, child)
             }

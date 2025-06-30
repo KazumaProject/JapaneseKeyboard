@@ -15,6 +15,8 @@ class LearnRepository @Inject constructor(
 ) {
     suspend fun insertLearnedData(learnData: LearnEntity) = learnDao.insert(learnData)
 
+    suspend fun insertAll(learnDataList: List<LearnEntity>) = learnDao.insertAll(learnDataList)
+
     suspend fun findLearnDataByInput(input: String): List<LearnResult>? =
         learnDao.findByInput(input)?.sortedBy { it.score }
 
@@ -79,4 +81,6 @@ class LearnRepository @Inject constructor(
 
     suspend fun deleteByInputAndOutput(input: String, output: String) =
         learnDao.deleteByInputAndOutput(input, output)
+
+    suspend fun update(learnData: LearnEntity) = learnDao.updateLearnedData(learnData)
 }
