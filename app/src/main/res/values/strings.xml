@@ -11,4 +11,6 @@
     <string name="user_dictionary_explanation">この画面では、キーボードの予測変換に表示させたい単語を自由に登録できます。\n登録した単語は、その「読み」を2文字以上入力することで、キーボードの変換候補として表示されるようになります。\n\n例：\n単語:「お疲れ様です。」 読み:「おつ」\n→「おつ」と入力すると「お疲れ様です。」が候補に表示されます。</string>
     <string name="user_dictionary_about_title">ユーザー辞書とは</string>
     <string name="user_template_explanation"><![CDATA[メールアドレスやコードスニペット、Markdownの表などを短い「読み」で登録できます。キーボードで登録した「読み」を正確に入力すると、変換候補に登録した全文が表示されます。\n\n例:\n- `読み`: myemail\n `定型文`: my.long.email.address@example.com\n- `読み`: html5\n `定型文`: <!DOCTYPE html><html>…</html>\n- `読み`: mdtable\n `定型文`: | Header | Header |\n|---|---|\n| Cell | Cell |]]></string>
+    <string name="clipboard_history_title">クリップボード履歴</string>
+    <string name="dialog_image_description">dialog_image_description</string>
 </resources>

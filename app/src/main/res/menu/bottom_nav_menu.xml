@@ -18,8 +18,8 @@
 
     <item
         android:id="@+id/userTemplateFragment"
-        android:title="@string/user_template"
-        android:icon="@drawable/book_3_24px"/>
+        android:icon="@drawable/book_3_24px"
+        android:title="@string/user_template" />
 
     <item
         android:id="@+id/keyboardListFragment"
