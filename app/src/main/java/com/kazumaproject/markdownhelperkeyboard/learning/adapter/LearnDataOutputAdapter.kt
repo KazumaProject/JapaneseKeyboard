@@ -31,11 +31,22 @@ class LearnDataOutputAdapter :
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
+    // 既存の長押しリスナー
     private var onItemLongClickListener: ((String) -> Unit)? = null
 
     fun setOnItemLongClickListener(listener: (String) -> Unit) {
         this.onItemLongClickListener = listener
     }
+
+    // --- ここから追加 ---
+    // クリックリスナーのプロパティとセッター
+    private var onItemClickListener: ((String) -> Unit)? = null
+
+    fun setOnItemClickListener(listener: (String) -> Unit) {
+        this.onItemClickListener = listener
+    }
+    // --- ここまで追加 ---
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LearnDataOutputViewHolder {
         return LearnDataOutputViewHolder(
@@ -52,14 +63,24 @@ class LearnDataOutputAdapter :
     }
 
     override fun onBindViewHolder(holder: LearnDataOutputViewHolder, position: Int) {
+        // 現在のアイテムを変数に入れておくと分かりやすい
+        val currentItem = learnDataOutputList[position]
+
         holder.tvOutput.apply {
-            text = learnDataOutputList[position]
+            text = currentItem
+
+            // --- ここから追加 ---
+            // クリックリスナーを設定
+            setOnClickListener {
+                onItemClickListener?.invoke(currentItem)
+            }
+            // --- ここまで追加 ---
+
+            // 既存の長押しリスナー
             setOnLongClickListener {
-                onItemLongClickListener?.invoke(learnDataOutputList[position])
+                onItemLongClickListener?.invoke(currentItem)
                 true
             }
         }
-
     }
-
 }
