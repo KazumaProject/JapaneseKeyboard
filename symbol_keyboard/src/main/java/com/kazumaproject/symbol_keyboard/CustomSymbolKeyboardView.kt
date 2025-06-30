@@ -403,6 +403,35 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             else -> emptyList()
                         }
 
+                        // ★★★ ここでSymbolModeに応じてマージンを設定 ★★★
+                        when (currentMode) {
+                            SymbolMode.EMOTICON -> {
+                                // 顔文字と記号のときはマージンを強める (例: 水平10dp, 垂直12dp)
+                                symbolAdapter.setItemMargins(
+                                    horizontalDp = 10,
+                                    verticalDp = 4,
+                                    context = context
+                                )
+                            }
+
+                            SymbolMode.SYMBOL -> {
+                                symbolAdapter.setItemMargins(
+                                    horizontalDp = 14,
+                                    verticalDp = 4,
+                                    context = context
+                                )
+                            }
+
+                            else -> {
+                                // 絵文字など、それ以外のときはデフォルトのマージン (例: 水平4dp, 垂直3dp)
+                                symbolAdapter.setItemMargins(
+                                    horizontalDp = 4,
+                                    verticalDp = 3,
+                                    context = context
+                                )
+                            }
+                        }
+
                         symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
                             if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
                         } else 16f

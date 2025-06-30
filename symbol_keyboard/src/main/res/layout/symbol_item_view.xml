@@ -3,8 +3,6 @@
     android:id="@+id/symbol_text"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="3dp"
-    android:layout_marginHorizontal="4dp"
     android:gravity="center"
     android:textStyle="bold"
     android:layout_gravity="center"
