@@ -24,3 +24,4 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.** { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
