@@ -16,9 +16,9 @@
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="flick_input_only_preference"
-            android:summaryOff="ケータイ打ちを有効"
-            android:summaryOn="フリック入力のみを使用し、ケータイ打ちを無効にする"
-            android:title="フリックのみ" />
+            android:summaryOff="トグル入力を有効にします"
+            android:summaryOn="フリック入力のみを使用し、トグル入力を無効にする"
+            android:title="フリック・トグル入力" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
@@ -49,6 +49,14 @@
                 android:summary="記号キーボードの初期画面を選択します"
                 android:title="記号キーボードの初期画面" />
         </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/clipboard_history_title">
+            <Preference
+                android:key="clipboard_history_preference_fragment"
+                android:title="クリップボードの履歴"
+                app:summary="クリップボードの履歴を表示します" />
+        </PreferenceCategory>
+
         <PreferenceCategory
             android:key="sumire_input_preference_category"
             android:title="スミレ入力キーボード"
@@ -68,12 +76,12 @@
     <PreferenceCategory android:title="操作">
         <SeekBarPreference
             android:defaultValue="1000"
+            android:dependency=""
             android:key="time_same_pronounce_typing_preference"
             android:max="1000"
             android:title="入力待機時間"
             app:min="1"
             app:showSeekBarValue="true"
-            android:dependency=""
             app:summary="ケータイ打ちで次の入力を待つ時間（ミリ秒）" />
     </PreferenceCategory>
 

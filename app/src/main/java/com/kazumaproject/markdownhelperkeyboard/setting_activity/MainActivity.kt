@@ -32,7 +32,6 @@ class MainActivity : AppCompatActivity() {
                 R.id.navigation_setting,
                 R.id.navigation_learn_dictionary,
                 R.id.navigation_user_dictionary,
-
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)

@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class SettingFragment : PreferenceFragmentCompat {
+class SettingFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -39,7 +39,6 @@ class SettingFragment : PreferenceFragmentCompat {
 
     private var count = 0
 
-    constructor() : super()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -127,6 +126,38 @@ class SettingFragment : PreferenceFragmentCompat {
                 R.id.action_navigation_setting_to_keyboardSelectionFragment
             )
             true
+        }
+
+        val clipBoardHistoryPreference =
+            findPreference<Preference>("clipboard_history_preference_fragment")
+        clipBoardHistoryPreference?.apply {
+            setOnPreferenceClickListener {
+                findNavController().navigate(
+                    R.id.action_navigation_setting_to_clipboardHistoryFragment
+                )
+                true
+            }
+        }
+
+        val symbolKeyboardOrderPreference = findPreference<ListPreference>("symbol_mode_preference")
+        symbolKeyboardOrderPreference?.apply {
+            summary = when (value) {
+                "EMOJI" -> "絵文字"
+                "EMOTICON" -> "顔文字"
+                "SYMBOL" -> "記号"
+                "CLIPBOARD" -> "クリップボードの履歴"
+                else -> "記号キーボードの初期画面を選択します"
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                summary = when (newValue) {
+                    "EMOJI" -> "絵文字"
+                    "EMOTICON" -> "顔文字"
+                    "SYMBOL" -> "記号"
+                    "CLIPBOARD" -> "クリップボードの履歴"
+                    else -> "記号キーボードの初期画面を選択します"
+                }
+                true
+            }
         }
 
         val keyboardUndoEnablePreference =

@@ -22,6 +22,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_keyboardSelectionFragment"
             app:destination="@id/keyboardSelectionFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_clipboardHistoryFragment"
+            app:destination="@id/clipboardHistoryFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -80,5 +83,9 @@
         android:id="@+id/userTemplateFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.user_template.ui.UserTemplateFragment"
         android:label="定型文" />
+    <fragment
+        android:id="@+id/clipboardHistoryFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.clipboard_history.ui.ClipboardHistoryFragment"
+        android:label="クリップボード履歴" />
 
 </navigation>
