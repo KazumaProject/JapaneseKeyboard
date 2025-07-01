@@ -250,7 +250,7 @@ class OpenSourceFragment : Fragment() {
     private fun setupToolbarAndMenu() {
         // Set up the activity's action bar
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = getString(R.string.edit_keyboard) // Set a title for the screen
+            title = getString(R.string.open_sorce_title) // Set a title for the screen
             setDisplayHomeAsUpEnabled(true) // Show the back arrow
         }
 

@@ -30,6 +30,14 @@ class ClipboardHistoryRepository @Inject constructor(
         dao.insert(item)
     }
 
+    suspend fun insertAll(items: List<ClipboardHistoryItem>) {
+        items.forEach { dao.insert(it) }
+    }
+
+    suspend fun update(item: ClipboardHistoryItem) {
+        dao.update(item)
+    }
+
     /**
      * 指定されたIDの履歴アイテムをデータベースから削除します。
      *
@@ -39,6 +47,9 @@ class ClipboardHistoryRepository @Inject constructor(
         dao.deleteById(id)
     }
 
+    suspend fun deleteAll() {
+        dao.deleteAll()
+    }
     /**
      * 現在のクリップボード履歴のスナップショット（一度きりのリスト）を取得します。
      * バックグラウンド処理などで、一度だけ最新のリストが必要な場合に使用します。
