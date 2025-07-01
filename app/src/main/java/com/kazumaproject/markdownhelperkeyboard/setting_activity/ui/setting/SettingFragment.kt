@@ -128,7 +128,8 @@ class SettingFragment : PreferenceFragmentCompat() {
             true
         }
 
-        val clipBoardHistoryPreference = findPreference<Preference>("clipboard_history_preference")
+        val clipBoardHistoryPreference =
+            findPreference<Preference>("clipboard_history_preference_fragment")
         clipBoardHistoryPreference?.apply {
             setOnPreferenceClickListener {
                 findNavController().navigate(
