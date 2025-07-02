@@ -37,7 +37,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         ClipboardHistoryItem::class,
         RomajiMapEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(
@@ -235,6 +235,19 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent()
                 )
+            }
+        }
+
+        // ▼▼▼ このマイグレーションを追加 ▼▼▼
+        /**
+         * バージョン10から11へのマイグレーション。
+         * keyboard_layoutsテーブルにisRomajiカラムを追加します。
+         * これはキーボードがローマ字入力用かどうかを示すためのフラグです。
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // keyboard_layoutsテーブルにisRomajiカラム(INTEGER型, NOT NULL, デフォルト値0)を追加
+                db.execSQL("ALTER TABLE keyboard_layouts ADD COLUMN isRomaji INTEGER NOT NULL DEFAULT 0")
             }
         }
 

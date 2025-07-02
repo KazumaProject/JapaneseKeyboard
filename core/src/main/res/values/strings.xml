@@ -277,4 +277,5 @@
     <string name="export_romaji_maps">エクスポート</string>
     <string name="import_romaji_maps">インポート</string>
     <string name="title_settings">設定</string>
+    <string name="enable_romaji_input">ローマ字入力を使用する</string>
 </resources>

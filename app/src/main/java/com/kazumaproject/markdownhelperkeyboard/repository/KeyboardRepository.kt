@@ -146,7 +146,8 @@ class KeyboardRepository @Inject constructor(
             layoutId = id ?: 0,
             name = name,
             columnCount = layout.columnCount,
-            rowCount = layout.rowCount
+            rowCount = layout.rowCount,
+            isRomaji = layout.isRomaji
         )
         Timber.d("saveLayout db: $dbLayout")
         val (keys, flicksMap) = convertToDbModel(layout)
@@ -226,7 +227,8 @@ class KeyboardRepository @Inject constructor(
             keys = keys,
             flickKeyMaps = flickMaps,
             columnCount = dbLayout.layout.columnCount,
-            rowCount = dbLayout.layout.rowCount
+            rowCount = dbLayout.layout.rowCount,
+            isRomaji = dbLayout.layout.isRomaji
         )
     }
 
