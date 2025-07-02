@@ -159,6 +159,7 @@ class RomajiMapRepository @Inject constructor(
             "ne" to Pair("ね", 2),
             "no" to Pair("の", 2),
 
+            "ca" to Pair("か", 2),
             "ka" to Pair("か", 2),
             "ki" to Pair("き", 2),
             "ku" to Pair("く", 2),

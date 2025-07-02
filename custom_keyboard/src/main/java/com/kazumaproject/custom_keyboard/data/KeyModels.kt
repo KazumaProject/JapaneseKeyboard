@@ -67,7 +67,8 @@ data class KeyboardLayout(
     val keys: List<KeyData>,
     val flickKeyMaps: Map<String, List<Map<FlickDirection, FlickAction>>>,
     val columnCount: Int,
-    val rowCount: Int
+    val rowCount: Int,
+    val isRomaji: Boolean = false
 )
 
 /**

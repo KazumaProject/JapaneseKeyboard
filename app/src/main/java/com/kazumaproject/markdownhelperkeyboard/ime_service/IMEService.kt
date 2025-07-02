@@ -1587,6 +1587,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var isCustomLayoutRomajiMode = false
+
     private fun setInitialKeyboardTab() {
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
@@ -1594,9 +1596,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             val id = customLayouts[0].layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
-
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
 
+            Timber.d("setInitialKeyboardTab ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
+            isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -1610,9 +1613,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             val id = customLayouts[pos].layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
-
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
-
+            Timber.d("setKeyboardTab: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
+            isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -1686,9 +1689,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     TenKeyQWERTYMode.Custom -> {
                         if (text.isEmpty()) return
                         if (text.length == 1) {
-                            handleOnKeyForSumire(
-                                text, mainView
-                            )
+                            if (isCustomLayoutRomajiMode) {
+                                romajiConverter?.let { converter ->
+                                    handleOnKeyForSumire(
+                                        converter.convert(text), mainView
+                                    )
+                                }
+                            } else {
+                                handleOnKeyForSumire(
+                                    text, mainView
+                                )
+                            }
                         } else {
                             finishComposingText()
                             setComposingText("", 0)
