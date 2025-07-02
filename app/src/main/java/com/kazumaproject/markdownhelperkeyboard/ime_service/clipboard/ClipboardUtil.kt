@@ -14,10 +14,10 @@ import timber.log.Timber
  *
  * @property context アプリケーションコンテキスト
  */
-class ClipboardUtil(private val context: Context) {
-
-    private val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-
+class ClipboardUtil(
+    private val context: Context,
+    private val clipboard: ClipboardManager
+) {
     /**
      * クリップボードの主要なコンテンツを取得します。
      * 画像の取得を最優先で試み、失敗した場合にテキストの取得を試みます。
