@@ -193,7 +193,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class CustomLayoutViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val nameTextView: MaterialTextView = itemView.findViewById(R.id.custom_layout_name)
-        val detailTextView: MaterialTextView = itemView.findViewById(R.id.custom_layout_details)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -404,7 +403,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private fun onBindCustomLayoutViewHolder(holder: CustomLayoutViewHolder, position: Int) {
         val layoutItem = customLayouts[position]
         holder.nameTextView.text = layoutItem.name
-        holder.detailTextView.text = "列: ${layoutItem.columnCount}, 行: ${layoutItem.rowCount}"
         holder.itemView.setOnClickListener {
             onCustomLayoutItemClickListener?.invoke(position)
         }

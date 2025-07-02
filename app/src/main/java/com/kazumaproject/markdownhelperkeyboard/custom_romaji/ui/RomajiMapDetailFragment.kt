@@ -2,14 +2,20 @@ package com.kazumaproject.markdownhelperkeyboard.custom_romaji.ui
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -45,7 +51,7 @@ class RomajiMapDetailFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        setupMenu()
         setupRecyclerView()
         observeMapDetails()
 
@@ -54,11 +60,33 @@ class RomajiMapDetailFragment : Fragment() {
         }
     }
 
+    private fun setupMenu() {
+        // Add a menu provider to handle the "home" button press
+        requireActivity().addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                // No menu to inflate in this case
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                // Handle the menu item selection
+                return when (menuItem.itemId) {
+                    android.R.id.home -> {
+                        findNavController().popBackStack()
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
     private fun setupRecyclerView() {
         detailAdapter = RomajiMapDetailAdapter(
             onEditClicked = { pair -> showEditPairDialog(pair) },
             onDeleteClicked = { pair ->
-                val updatedMapData = currentMap?.mapData?.toMutableMap()?.apply { remove(pair.first) }
+                val updatedMapData =
+                    currentMap?.mapData?.toMutableMap()?.apply { remove(pair.first) }
                 updateDatabase(updatedMapData)
             }
         )
@@ -82,7 +110,8 @@ class RomajiMapDetailFragment : Fragment() {
     }
 
     private fun showEditPairDialog(pairToEdit: RomajiPair?) {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_romaji_pair, null)
+        val dialogView =
+            LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_romaji_pair, null)
         val keyEditText = dialogView.findViewById<EditText>(R.id.romaji_key_edit_text)
         val valueEditText = dialogView.findViewById<EditText>(R.id.kana_value_edit_text)
 
@@ -101,13 +130,18 @@ class RomajiMapDetailFragment : Fragment() {
                 val newValue = valueEditText.text.toString().trim()
 
                 if (newKey.isEmpty() || newValue.isEmpty()) {
-                    Toast.makeText(context, "キーと値の両方を入力してください", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "キーと値の両方を入力してください", Toast.LENGTH_SHORT)
+                        .show()
                     return@setPositiveButton
                 }
 
                 val existingKeys = currentMap?.mapData?.keys ?: emptySet()
                 if (newKey in existingKeys && (pairToEdit == null || newKey != pairToEdit.first)) {
-                    Toast.makeText(context, "エラー: このローマ字キーは既に使用されています", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "エラー: このローマ字キーは既に使用されています",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     return@setPositiveButton
                 }
 

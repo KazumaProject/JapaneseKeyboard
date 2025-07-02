@@ -93,7 +93,7 @@
     <fragment
         android:id="@+id/romajiMapFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_romaji.ui.RomajiMapFragment"
-        android:label="RomajiMapFragment">
+        android:label="カスタムローマ字変換">
         <action
             android:id="@+id/action_romajiMapFragment_to_romajiMapDetailFragment"
             app:destination="@id/romajiMapDetailFragment" />

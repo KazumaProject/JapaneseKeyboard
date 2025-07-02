@@ -126,6 +126,10 @@ class RomajiMapFragment : Fragment() {
                         launchImportFilePicker()
                         true
                     }
+                    android.R.id.home ->{
+                        findNavController().popBackStack()
+                        true
+                    }
                     else -> false
                 }
             }
