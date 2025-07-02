@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="24dp"
+    android:paddingTop="24dp"
+    android:paddingEnd="24dp"
+    android:paddingBottom="8dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/romaji_key_edit_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/romaji_key_hint"
+            android:imeOptions="actionNext"
+            android:inputType="textNoSuggestions" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/kana_value_edit_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/kana_value_hint"
+            android:imeOptions="actionDone"
+            android:inputType="text" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+</LinearLayout>
