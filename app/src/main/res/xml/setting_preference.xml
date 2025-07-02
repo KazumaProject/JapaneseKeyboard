@@ -39,6 +39,13 @@
             android:summaryOn="ライブ変換は有効です"
             android:title="ライブ変換 β" />
 
+        <PreferenceCategory android:title="ローマ字変換">
+            <Preference
+                android:key="custom_romaji_preference"
+                android:title="ローマ字変換のカスタマイズ"
+                app:summary="ローマ字の変換表を作成、選択します"/>
+        </PreferenceCategory>
+
         <PreferenceCategory android:title="記号キーボード">
             <ListPreference
                 android:defaultValue="EMOJI"
