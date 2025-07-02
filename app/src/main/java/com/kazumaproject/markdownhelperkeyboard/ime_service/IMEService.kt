@@ -101,6 +101,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolReposito
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -129,7 +130,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -183,10 +186,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var keyboardRepository: KeyboardRepository
 
     @Inject
-    lateinit var clipboardUtil: ClipboardUtil
+    lateinit var romajiMapRepository: RomajiMapRepository
 
     @Inject
-    lateinit var romajiConverter: RomajiKanaConverter
+    lateinit var clipboardUtil: ClipboardUtil
+
+    private var romajiConverter: RomajiKanaConverter? = null
 
     private lateinit var clipboardManager: ClipboardManager
 
@@ -593,6 +598,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
+        romajiConverter = null
         mozcUTPlaces = null
         mozcUTWiki = null
         mozcUTNeologd = null
@@ -824,7 +830,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         deleteStringCommon(insertString)
                                         resetFlagsDeleteKey()
                                         event?.let { e ->
-                                            romajiConverter.handleDelete(e)
+                                            romajiConverter?.handleDelete(e)
                                         }
                                         return true
                                     }
@@ -847,7 +853,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleLeftKeyPress(
                                     GestureType.Tap, insertString
                                 )
-                                romajiConverter.clear()
+                                romajiConverter?.clear()
                             }
                             return true
                         }
@@ -862,7 +868,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 actionInRightKeyPressed(
                                     GestureType.Tap, insertString
                                 )
-                                romajiConverter.clear()
+                                romajiConverter?.clear()
                             }
                             return true
                         }
@@ -873,7 +879,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 handleEmptyInputEnterKey(mainView)
                             }
-                            romajiConverter.clear()
+                            romajiConverter?.clear()
                             return true
                         }
 
@@ -901,7 +907,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_NUMPAD_ADD,
                         KeyEvent.KEYCODE_NUMPAD_DOT -> {
                             event?.let { e ->
-                                romajiConverter.handleKeyEvent(e).let { romajiResult ->
+                                romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
                                     if (insertString.isNotEmpty()) {
                                         sb.append(
                                             insertString.dropLast((romajiResult.second))
@@ -2884,6 +2890,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
+            romajiMapRepository.getActiveMap().map { entity ->
+                entity?.mapData ?: romajiMapRepository.getDefaultMapData()
+            }
+                .distinctUntilChanged()
+                .collectLatest { activeMapData ->
+                    romajiConverter = RomajiKanaConverter(activeMapData)
+                }
+        }
+
+        launch {
             inputString.collectLatest { string ->
                 processInputString(string, mainView)
             }
@@ -3590,13 +3606,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
                                     sb.append(insertString).append(tap)
-                                    _inputString.update {
-                                        romajiConverter.convert(sb.toString())
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(sb.toString())
+                                        }
                                     }
                                 } else {
                                     tap?.let { c ->
-                                        _inputString.update {
-                                            romajiConverter.convert(c.toString())
+                                        romajiConverter?.let { converter ->
+                                            _inputString.update {
+                                                converter.convert(c.toString())
+                                            }
                                         }
                                     }
                                 }
@@ -3939,7 +3959,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateClipboardPreview()
         _selectMode.update { false }
         hasConvertedKatakana = false
-        romajiConverter.clear()
+        romajiConverter?.clear()
         resetSumireKeyboardDakutenMode()
     }
 

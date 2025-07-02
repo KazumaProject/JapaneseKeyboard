@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_export_romaji_map"
+        android:icon="@drawable/upload_file_24px"
+        android:title="@string/export_romaji_maps"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_import_romaji_map"
+        android:icon="@drawable/download_24px"
+        android:title="@string/import_romaji_maps"
+        app:showAsAction="ifRoom" />
+</menu>

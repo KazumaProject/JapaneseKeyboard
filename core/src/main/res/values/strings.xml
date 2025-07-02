@@ -262,4 +262,19 @@
     <string name="dialog_delete_message">このキーボードレイアウトを完全に削除します。この操作は元に戻せません。よろしいですか？</string>
     <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_delete">削除</string>
+
+    <string name="default_map">デフォルト</string>
+    <string name="activate_map">このマップを有効化</string>
+    <string name="edit_map_name">マップ名を編集</string>
+    <string name="delete_map">マップを削除</string>
+    <string name="add_new_romaji_map">新しいローマ字マップを追加</string>
+    <string name="add_new_pair">新しいペアを追加</string>
+    <string name="edit_pair">ペアを編集</string>
+    <string name="delete_pair">ペアを削除</string>
+    <string name="map_name_hint">マップ名</string>
+    <string name="romaji_key_hint">ローマ字キー (例: kya)</string>
+    <string name="kana_value_hint">かなの値 (例: きゃ)</string>
+    <string name="export_romaji_maps">エクスポート</string>
+    <string name="import_romaji_maps">インポート</string>
+    <string name="title_settings">設定</string>
 </resources>

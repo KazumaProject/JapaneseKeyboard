@@ -246,6 +246,14 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val customRomajiPreference = findPreference<Preference>("custom_romaji_preference")
+        customRomajiPreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_romajiMapFragment
+            )
+            true
+        }
+
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {
