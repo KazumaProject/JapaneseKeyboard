@@ -94,6 +94,12 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             }
         }
 
+        binding.switchRomaji.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked != viewModel.uiState.value.isRomaji) {
+                viewModel.updateIsRomaji(isChecked)
+            }
+        }
+
         binding.buttonAddRow.setOnClickListener { viewModel.addRow() }
         binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
@@ -148,6 +154,10 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         if (binding.keyboardNameEdittext.text.toString() != state.name) {
             binding.keyboardNameEdittext.setText(state.name)
             binding.keyboardNameEdittext.setSelection(state.name.length)
+        }
+
+        if (binding.switchRomaji.isChecked != state.isRomaji) {
+            binding.switchRomaji.isChecked = state.isRomaji
         }
 
         binding.flickKeyboardView.setKeyboard(state.layout)

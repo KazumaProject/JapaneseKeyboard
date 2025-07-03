@@ -15,6 +15,9 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
+import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.MapTypeConverter
+import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
+import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
@@ -31,14 +34,16 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         KeyDefinition::class,
         FlickMapping::class,
         UserTemplate::class,
-        ClipboardHistoryItem::class
+        ClipboardHistoryItem::class,
+        RomajiMapEntity::class
     ],
-    version = 9,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(
     BitmapConverter::class,
-    ItemTypeConverter::class
+    ItemTypeConverter::class,
+    MapTypeConverter::class
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun learnDao(): LearnDao
@@ -47,6 +52,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun keyboardLayoutDao(): KeyboardLayoutDao
     abstract fun userTemplateDao(): UserTemplateDao
     abstract fun clipboardHistoryDao(): ClipboardHistoryDao
+    abstract fun romajiMapDao(): RomajiMapDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -213,6 +219,35 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `romaji_maps` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `mapData` TEXT NOT NULL,
+                        `isActive` INTEGER NOT NULL,
+                        `isDeletable` INTEGER NOT NULL
+                    )
+                """.trimIndent()
+                )
+            }
+        }
+
+        // ▼▼▼ このマイグレーションを追加 ▼▼▼
+        /**
+         * バージョン10から11へのマイグレーション。
+         * keyboard_layoutsテーブルにisRomajiカラムを追加します。
+         * これはキーボードがローマ字入力用かどうかを示すためのフラグです。
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // keyboard_layoutsテーブルにisRomajiカラム(INTEGER型, NOT NULL, デフォルト値0)を追加
+                db.execSQL("ALTER TABLE keyboard_layouts ADD COLUMN isRomaji INTEGER NOT NULL DEFAULT 0")
             }
         }
 

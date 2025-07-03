@@ -101,6 +101,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolReposito
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -129,7 +130,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -183,10 +186,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var keyboardRepository: KeyboardRepository
 
     @Inject
-    lateinit var clipboardUtil: ClipboardUtil
+    lateinit var romajiMapRepository: RomajiMapRepository
 
-    @Inject
-    lateinit var romajiConverter: RomajiKanaConverter
+    private var clipboardUtil: ClipboardUtil? = null
+
+    private var romajiConverter: RomajiKanaConverter? = null
 
     private lateinit var clipboardManager: ClipboardManager
 
@@ -201,8 +205,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // ▼▼▼ Mutexで処理ブロックをロックする ▼▼▼
             clipboardMutex.withLock {
                 // 1. 現在クリップボードにあるアイテムを取得
-                val newItem = clipboardUtil.getPrimaryClipContent()
-                val newHistoryItem = newItem.toHistoryItem() ?: return@withLock
+                val newItem = clipboardUtil?.getPrimaryClipContent()
+                val newHistoryItem = newItem?.toHistoryItem() ?: return@withLock
 
                 // 2. DBに保存されている最新のアイテムを取得
                 val lastSavedItem = clipboardHistoryRepository.getLatestItem()
@@ -400,8 +404,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     companion object {
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
-        private const val LIVE_CONVERSION_QUICK_DELAY_MS = 128L
-        private const val QUICK_DELAY_THRESHOLD_MS = 100
     }
 
     override fun onCreate() {
@@ -417,6 +419,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
+        clipboardUtil = ClipboardUtil(
+            this,
+            clipboardManager
+        )
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
     }
 
@@ -593,6 +599,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
+        romajiConverter = null
+        clipboardUtil = null
         mozcUTPlaces = null
         mozcUTWiki = null
         mozcUTNeologd = null
@@ -725,24 +733,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.apply {
             if (deletedBuffer.isEmpty()) {
                 // getPrimaryClipContentでクリップボードの内容を取得
-                when (val item = clipboardUtil.getPrimaryClipContent()) {
-                    is ClipboardItem.Image -> {
-                        // 画像だった場合の処理
-                        setPasteEnabled(true)
-                        // ★新しいメソッドでBitmapをアダプターに渡す
-                        setClipboardImagePreview(item.bitmap)
-                    }
+                clipboardUtil?.let { clipboard ->
+                    when (val item = clipboard.getPrimaryClipContent()) {
+                        is ClipboardItem.Image -> {
+                            // 画像だった場合の処理
+                            setPasteEnabled(true)
+                            // ★新しいメソッドでBitmapをアダプターに渡す
+                            setClipboardImagePreview(item.bitmap)
+                        }
 
-                    is ClipboardItem.Text -> {
-                        // テキストだった場合の処理
-                        setPasteEnabled(true)
-                        setClipboardPreview(item.text)
-                    }
+                        is ClipboardItem.Text -> {
+                            // テキストだった場合の処理
+                            setPasteEnabled(true)
+                            setClipboardPreview(item.text)
+                        }
 
-                    is ClipboardItem.Empty -> {
-                        // 空だった場合の処理
-                        setPasteEnabled(false)
-                        setClipboardPreview("") // 念のためプレビューもクリア
+                        is ClipboardItem.Empty -> {
+                            // 空だった場合の処理
+                            setPasteEnabled(false)
+                            setClipboardPreview("") // 念のためプレビューもクリア
+                        }
                     }
                 }
             } else {
@@ -824,7 +834,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         deleteStringCommon(insertString)
                                         resetFlagsDeleteKey()
                                         event?.let { e ->
-                                            romajiConverter.handleDelete(e)
+                                            romajiConverter?.handleDelete(e)
                                         }
                                         return true
                                     }
@@ -847,7 +857,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleLeftKeyPress(
                                     GestureType.Tap, insertString
                                 )
-                                romajiConverter.clear()
+                                romajiConverter?.clear()
                             }
                             return true
                         }
@@ -862,7 +872,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 actionInRightKeyPressed(
                                     GestureType.Tap, insertString
                                 )
-                                romajiConverter.clear()
+                                romajiConverter?.clear()
                             }
                             return true
                         }
@@ -873,7 +883,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 handleEmptyInputEnterKey(mainView)
                             }
-                            romajiConverter.clear()
+                            romajiConverter?.clear()
                             return true
                         }
 
@@ -901,7 +911,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_NUMPAD_ADD,
                         KeyEvent.KEYCODE_NUMPAD_DOT -> {
                             event?.let { e ->
-                                romajiConverter.handleKeyEvent(e).let { romajiResult ->
+                                romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
                                     if (insertString.isNotEmpty()) {
                                         sb.append(
                                             insertString.dropLast((romajiResult.second))
@@ -1200,7 +1210,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Key.KeyA -> {
                             val selectedText = getSelectedText(0)
                             if (!selectedText.isNullOrEmpty()) {
-                                clipboardUtil.setClipBoard(selectedText.toString())
+                                clipboardUtil?.setClipBoard(selectedText.toString())
                                 suggestionAdapter?.apply {
                                     setPasteEnabled(true)
                                     setClipboardPreview(selectedText.toString())
@@ -1211,7 +1221,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Key.KeySA -> {
                             val selectedText = getSelectedText(0)
                             if (!selectedText.isNullOrEmpty()) {
-                                clipboardUtil.setClipBoard(selectedText.toString())
+                                clipboardUtil?.setClipBoard(selectedText.toString())
                                 suggestionAdapter?.apply {
                                     setPasteEnabled(true)
                                     setClipboardPreview(selectedText.toString())
@@ -1581,6 +1591,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var isCustomLayoutRomajiMode = false
+
     private fun setInitialKeyboardTab() {
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
@@ -1588,9 +1600,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             val id = customLayouts[0].layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
-
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
 
+            Timber.d("setInitialKeyboardTab ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
+            isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -1604,9 +1617,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             val id = customLayouts[pos].layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
-
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
-
+            Timber.d("setKeyboardTab: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
+            isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -1680,9 +1693,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     TenKeyQWERTYMode.Custom -> {
                         if (text.isEmpty()) return
                         if (text.length == 1) {
-                            handleOnKeyForSumire(
-                                text, mainView
-                            )
+                            if (isCustomLayoutRomajiMode) {
+                                romajiConverter?.let { converter ->
+                                    handleOnKeyForSumire(
+                                        converter.convert(text), mainView
+                                    )
+                                }
+                            } else {
+                                handleOnKeyForSumire(
+                                    text, mainView
+                                )
+                            }
                         } else {
                             finishComposingText()
                             setComposingText("", 0)
@@ -1821,7 +1842,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil.setClipBoard(selectedText.toString())
+                            clipboardUtil?.setClipBoard(selectedText.toString())
                             suggestionAdapter?.apply {
                                 setPasteEnabled(true)
                                 setClipboardPreview(selectedText.toString())
@@ -2100,7 +2121,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil.setClipBoard(selectedText.toString())
+                            clipboardUtil?.setClipBoard(selectedText.toString())
                             suggestionAdapter?.apply {
                                 setPasteEnabled(true)
                                 setClipboardPreview(selectedText.toString())
@@ -2165,19 +2186,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * クリップボードからの貼り付けアクション。テキストと画像の両方に対応。
      */
     private fun pasteAction() {
-        when (val item = clipboardUtil.getPrimaryClipContent()) {
-            is ClipboardItem.Image -> {
-                commitBitmap(item.bitmap)
-            }
-
-            is ClipboardItem.Text -> {
-                if (item.text.isNotEmpty()) {
-                    commitText(item.text, 1)
+        clipboardUtil?.let { clipboard ->
+            when (val item = clipboard.getPrimaryClipContent()) {
+                is ClipboardItem.Image -> {
+                    commitBitmap(item.bitmap)
                 }
-            }
 
-            is ClipboardItem.Empty -> {
-                // Do nothing
+                is ClipboardItem.Text -> {
+                    if (item.text.isNotEmpty()) {
+                        commitText(item.text, 1)
+                    }
+                }
+
+                is ClipboardItem.Empty -> {
+                    // Do nothing
+                }
             }
         }
         clearDeletedBufferWithoutResetLayout()
@@ -2349,25 +2372,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun updateClipboardPreview() {
         suggestionAdapter?.apply {
-            when (val item = clipboardUtil.getPrimaryClipContent()) {
-                is ClipboardItem.Image -> {
-                    // 画像だった場合
-                    setPasteEnabled(true)
-                    // ★新しいメソッドを呼び出してBitmapを渡す
-                    setClipboardImagePreview(item.bitmap)
-                }
+            clipboardUtil?.let { clipboard ->
+                when (val item = clipboard.getPrimaryClipContent()) {
+                    is ClipboardItem.Image -> {
+                        // 画像だった場合
+                        setPasteEnabled(true)
+                        // ★新しいメソッドを呼び出してBitmapを渡す
+                        setClipboardImagePreview(item.bitmap)
+                    }
 
-                is ClipboardItem.Text -> {
-                    // テキストだった場合
-                    setPasteEnabled(true)
-                    // 既存のメソッドを呼び出す（これにより画像プレビューはクリアされる）
-                    setClipboardPreview(item.text)
-                }
+                    is ClipboardItem.Text -> {
+                        // テキストだった場合
+                        setPasteEnabled(true)
+                        // 既存のメソッドを呼び出す（これにより画像プレビューはクリアされる）
+                        setClipboardPreview(item.text)
+                    }
 
-                is ClipboardItem.Empty -> {
-                    // 空だった場合
-                    setPasteEnabled(false)
-                    setClipboardPreview("")
+                    is ClipboardItem.Empty -> {
+                        // 空だった場合
+                        setPasteEnabled(false)
+                        setClipboardPreview("")
+                    }
                 }
             }
         }
@@ -2688,24 +2713,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         suggestionAdapter?.apply {
                             if (deletedBuffer.isEmpty()) {
                                 // getPrimaryClipContentでクリップボードの内容を取得
-                                when (val item = clipboardUtil.getPrimaryClipContent()) {
-                                    is ClipboardItem.Image -> {
-                                        // 画像だった場合の処理
-                                        setPasteEnabled(true)
-                                        // ★新しいメソッドでBitmapをアダプターに渡す
-                                        setClipboardImagePreview(item.bitmap)
-                                    }
+                                clipboardUtil?.let { clipboard ->
+                                    when (val item = clipboard.getPrimaryClipContent()) {
+                                        is ClipboardItem.Image -> {
+                                            // 画像だった場合の処理
+                                            setPasteEnabled(true)
+                                            // ★新しいメソッドでBitmapをアダプターに渡す
+                                            setClipboardImagePreview(item.bitmap)
+                                        }
 
-                                    is ClipboardItem.Text -> {
-                                        // テキストだった場合の処理
-                                        setPasteEnabled(true)
-                                        setClipboardPreview(item.text)
-                                    }
+                                        is ClipboardItem.Text -> {
+                                            // テキストだった場合の処理
+                                            setPasteEnabled(true)
+                                            setClipboardPreview(item.text)
+                                        }
 
-                                    is ClipboardItem.Empty -> {
-                                        // 空だった場合の処理
-                                        setPasteEnabled(false)
-                                        setClipboardPreview("") // 念のためプレビューもクリア
+                                        is ClipboardItem.Empty -> {
+                                            // 空だった場合の処理
+                                            setPasteEnabled(false)
+                                            setClipboardPreview("") // 念のためプレビューもクリア
+                                        }
                                     }
                                 }
                             } else {
@@ -2881,6 +2908,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 //    このメソッドは、クリップボードタブが表示中の場合のみUIを更新する
                 mainView.keyboardSymbolView.updateClipboardItems(uiItems)
             }
+        }
+
+        launch {
+            romajiMapRepository.getActiveMap().map { entity ->
+                entity?.mapData ?: romajiMapRepository.getDefaultMapData()
+            }
+                .distinctUntilChanged()
+                .collectLatest { activeMapData ->
+                    romajiConverter = RomajiKanaConverter(activeMapData)
+                }
         }
 
         launch {
@@ -3371,7 +3408,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
-                        clipboardUtil.clearClipboard()
+                        clipboardUtil?.clearClipboard()
                         adapter.apply {
                             setClipboardPreview("")
                             setPasteEnabled(false)
@@ -3590,13 +3627,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
                                     sb.append(insertString).append(tap)
-                                    _inputString.update {
-                                        romajiConverter.convert(sb.toString())
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(sb.toString())
+                                        }
                                     }
                                 } else {
                                     tap?.let { c ->
-                                        _inputString.update {
-                                            romajiConverter.convert(c.toString())
+                                        romajiConverter?.let { converter ->
+                                            _inputString.update {
+                                                converter.convert(c.toString())
+                                            }
                                         }
                                     }
                                 }
@@ -3939,7 +3980,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateClipboardPreview()
         _selectMode.update { false }
         hasConvertedKatakana = false
-        romajiConverter.clear()
+        romajiConverter?.clear()
         resetSumireKeyboardDakutenMode()
     }
 

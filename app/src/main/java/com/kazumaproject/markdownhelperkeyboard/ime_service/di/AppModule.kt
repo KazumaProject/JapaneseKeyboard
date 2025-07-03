@@ -16,7 +16,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
+import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_10_11
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
@@ -25,11 +27,11 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_6_7
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_7_8
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_8_9
-import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_9_10
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
-import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
+import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
@@ -39,6 +41,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.util.zip.ZipInputStream
@@ -66,7 +70,9 @@ object AppModule {
             MIGRATION_5_6,
             MIGRATION_6_7,
             MIGRATION_7_8,
-            MIGRATION_8_9
+            MIGRATION_8_9,
+            MIGRATION_9_10,
+            MIGRATION_10_11
         )
         .build()
 
@@ -96,8 +102,16 @@ object AppModule {
 
     @Singleton
     @Provides
-    fun providesClipBoardUtil(@ApplicationContext context: Context): ClipboardUtil =
-        ClipboardUtil(context)
+    fun providesRomajiMapDao(db: AppDatabase): RomajiMapDao = db.romajiMapDao()
+
+    @Singleton
+    @Provides
+    fun provideActiveRomajiMapFlow(repository: RomajiMapRepository): Flow<Map<String, Pair<String, Int>>> {
+        return repository.getActiveMap()
+            .map { entity ->
+                entity?.mapData ?: repository.getDefaultMapData()
+            }
+    }
 
     @Singleton
     @Provides
@@ -109,12 +123,6 @@ object AppModule {
         return AppPreference.apply {
             init(context)
         }
-    }
-
-    @Singleton
-    @Provides
-    fun providesRomajiKanaConverter(): RomajiKanaConverter {
-        return RomajiKanaConverter()
     }
 
     @Singleton
