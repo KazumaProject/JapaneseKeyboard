@@ -393,11 +393,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val hiraganaLayout: KeyboardLayout? by lazy {
         KeyboardDefaultLayouts.createFinalLayout(
-            mode = KeyboardInputMode.HIRAGANA,
-            dynamicKeyStates = mapOf(
+            mode = KeyboardInputMode.HIRAGANA, dynamicKeyStates = mapOf(
                 "enter_key" to 0, "dakuten_toggle_key" to 0
-            ),
-            inputType = sumireInputKeyType ?: "flick-default"
+            ), inputType = sumireInputKeyType ?: "flick-default"
         )
     }
 
@@ -420,8 +418,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         clipboardUtil = ClipboardUtil(
-            this,
-            clipboardManager
+            this, clipboardManager
         )
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
     }
@@ -444,13 +441,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // コンテナの内部にキーボードのUIをセットアップする
             setupKeyboardView()
             // 初回のみ実行したい他のセットアップ処理
-            appPreference.keyboard_order.let { keyboardTypes ->
-                if (keyboardTypes.contains(KeyboardType.CUSTOM)) {
-                    ioScope.launch {
-                        customLayouts = keyboardRepository.getLayoutsNotFlow()
-                    }
-                }
-            }
 
             mainLayoutBinding?.let { mainView ->
                 if (lifecycle.currentState == Lifecycle.State.CREATED) {
@@ -891,25 +881,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             return super.onKeyDown(keyCode, event)
                         }
 
-                        in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z,
-                        in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9,
-                        KeyEvent.KEYCODE_MINUS,
-                        KeyEvent.KEYCODE_EQUALS,
-                        KeyEvent.KEYCODE_LEFT_BRACKET,
-                        KeyEvent.KEYCODE_RIGHT_BRACKET,
-                        KeyEvent.KEYCODE_BACKSLASH,
-                        KeyEvent.KEYCODE_SEMICOLON,
-                        KeyEvent.KEYCODE_APOSTROPHE,
-                        KeyEvent.KEYCODE_COMMA,
-                        KeyEvent.KEYCODE_PERIOD,
-                        KeyEvent.KEYCODE_SLASH,
-                        KeyEvent.KEYCODE_GRAVE,
-                        KeyEvent.KEYCODE_AT,
-                        KeyEvent.KEYCODE_NUMPAD_DIVIDE,
-                        KeyEvent.KEYCODE_NUMPAD_MULTIPLY,
-                        KeyEvent.KEYCODE_NUMPAD_SUBTRACT,
-                        KeyEvent.KEYCODE_NUMPAD_ADD,
-                        KeyEvent.KEYCODE_NUMPAD_DOT -> {
+                        in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
                             event?.let { e ->
                                 romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
                                     if (insertString.isNotEmpty()) {
@@ -1617,6 +1589,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             val id = customLayouts[pos].layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
+            Timber.d("setKeyboardTab: $id $dbLayout")
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             Timber.d("setKeyboardTab: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
             isCustomLayoutRomajiMode = finalLayout.isRomaji
@@ -2153,8 +2126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleOnKeyForSumire(
-        text: String,
-        mainView: MainLayoutBinding
+        text: String, mainView: MainLayoutBinding
     ) {
         val insertString = inputString.value
         val sb = StringBuilder()
@@ -2285,8 +2257,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("commitBitmap: Content URIを取得しました: $contentUri")
         } catch (e: IllegalArgumentException) {
             Timber.e(
-                e,
-                "FileProviderが正しく設定されていません。AndroidManifest.xmlを確認してください。"
+                e, "FileProviderが正しく設定されていません。AndroidManifest.xmlを確認してください。"
             )
             return
         }
@@ -2299,9 +2270,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // linkUri（3番目の引数）にはnullを渡します。
         // この引数はhttp/httpsのウェブURIを要求するため、content:// URIを渡すとクラッシュします。
         val inputContentInfo = InputContentInfoCompat(
-            contentUri,
-            description,
-            null // linkUriはnullにする
+            contentUri, description, null // linkUriはnullにする
         )
 
         // 4. 読み取り権限をターゲットアプリに付与
@@ -2805,8 +2774,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (it) {
                     TenKeyQWERTYMode.Default -> {
                         suggestionAdapter?.updateState(
-                            TenKeyQWERTYMode.Default,
-                            emptyList()
+                            TenKeyQWERTYMode.Default, emptyList()
                         )
                         mainView.apply {
                             if (isTablet == true) {
@@ -2821,8 +2789,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     TenKeyQWERTYMode.TenKeyQWERTY -> {
                         suggestionAdapter?.updateState(
-                            TenKeyQWERTYMode.TenKeyQWERTY,
-                            emptyList()
+                            TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
                         )
                         mainView.apply {
                             if (isTablet == true) {
@@ -2837,8 +2804,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     TenKeyQWERTYMode.Custom -> {
                         suggestionAdapter?.updateState(
-                            TenKeyQWERTYMode.Custom,
-                            customLayouts
+                            TenKeyQWERTYMode.Custom, customLayouts
                         )
                         mainView.apply {
                             if (isTablet == true) {
@@ -2853,8 +2819,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     TenKeyQWERTYMode.Sumire -> {
                         suggestionAdapter?.updateState(
-                            TenKeyQWERTYMode.Sumire,
-                            emptyList()
+                            TenKeyQWERTYMode.Sumire, emptyList()
                         )
                         mainView.apply {
                             if (isTablet == true) {
@@ -2869,8 +2834,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     TenKeyQWERTYMode.Number -> {
                         suggestionAdapter?.updateState(
-                            TenKeyQWERTYMode.Sumire,
-                            emptyList()
+                            TenKeyQWERTYMode.Sumire, emptyList()
                         )
                         mainView.apply {
                             if (isTablet == true) {
@@ -2913,10 +2877,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             romajiMapRepository.getActiveMap().map { entity ->
                 entity?.mapData ?: romajiMapRepository.getDefaultMapData()
+            }.distinctUntilChanged().collectLatest { activeMapData ->
+                romajiConverter = RomajiKanaConverter(activeMapData)
             }
+        }
+
+        launch {
+            keyboardRepository.getLayouts()
                 .distinctUntilChanged()
-                .collectLatest { activeMapData ->
-                    romajiConverter = RomajiKanaConverter(activeMapData)
+                .collectLatest { layouts ->
+                    customLayouts = layouts
                 }
         }
 
@@ -3098,12 +3068,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         if (isLiveConversionEnable != true) {
-            val shouldCommitOriginalText = inputString.value.isNotEmpty() &&
-                    !isHenkan.get() &&
-                    !onDeleteLongPressUp.get() &&
-                    !englishSpaceKeyPressed.get() &&
-                    !deleteKeyLongKeyPressed.get() &&
-                    !hasConvertedKatakana
+            val shouldCommitOriginalText =
+                inputString.value.isNotEmpty() && !isHenkan.get() && !onDeleteLongPressUp.get() && !englishSpaceKeyPressed.get() && !deleteKeyLongKeyPressed.get() && !hasConvertedKatakana
 
             if (shouldCommitOriginalText) {
                 isContinuousTapInputEnabled.set(true)
@@ -4359,8 +4325,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val resultFromUserTemplate = if (isUserTemplateEnable == true) {
             withContext(Dispatchers.IO) {
                 userTemplateRepository.searchByReading(
-                    reading = insertString,
-                    limit = 8
+                    reading = insertString, limit = 8
                 ).map {
                     Candidate(
                         string = it.word,
@@ -4385,8 +4350,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = if (isLearnDictionaryMode == true) learnRepository else null
         )
-        val result =
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.distinctBy { it.string }
     }
 
