@@ -188,7 +188,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Inject
     lateinit var romajiMapRepository: RomajiMapRepository
 
-    private var clipboardUtil: ClipboardUtil? = null
+    @Inject
+    lateinit var clipboardUtil: ClipboardUtil
 
     private var romajiConverter: RomajiKanaConverter? = null
 
@@ -205,8 +206,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // ▼▼▼ Mutexで処理ブロックをロックする ▼▼▼
             clipboardMutex.withLock {
                 // 1. 現在クリップボードにあるアイテムを取得
-                val newItem = clipboardUtil?.getPrimaryClipContent()
-                val newHistoryItem = newItem?.toHistoryItem() ?: return@withLock
+                val newItem = clipboardUtil.getPrimaryClipContent()
+                val newHistoryItem = newItem.toHistoryItem() ?: return@withLock
 
                 // 2. DBに保存されている最新のアイテムを取得
                 val lastSavedItem = clipboardHistoryRepository.getLatestItem()
@@ -415,11 +416,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboardManager = applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
-        clipboardUtil = ClipboardUtil(
-            this, clipboardManager
-        )
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
     }
 
@@ -590,7 +588,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         vibrationTimingStr = null
         mozcUTPersonName = null
         romajiConverter = null
-        clipboardUtil = null
         mozcUTPlaces = null
         mozcUTWiki = null
         mozcUTNeologd = null
@@ -723,26 +720,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.apply {
             if (deletedBuffer.isEmpty()) {
                 // getPrimaryClipContentでクリップボードの内容を取得
-                clipboardUtil?.let { clipboard ->
-                    when (val item = clipboard.getPrimaryClipContent()) {
-                        is ClipboardItem.Image -> {
-                            // 画像だった場合の処理
-                            setPasteEnabled(true)
-                            // ★新しいメソッドでBitmapをアダプターに渡す
-                            setClipboardImagePreview(item.bitmap)
-                        }
+                when (val item = clipboardUtil.getPrimaryClipContent()) {
+                    is ClipboardItem.Image -> {
+                        // 画像だった場合の処理
+                        setPasteEnabled(true)
+                        // ★新しいメソッドでBitmapをアダプターに渡す
+                        setClipboardImagePreview(item.bitmap)
+                    }
 
-                        is ClipboardItem.Text -> {
-                            // テキストだった場合の処理
-                            setPasteEnabled(true)
-                            setClipboardPreview(item.text)
-                        }
+                    is ClipboardItem.Text -> {
+                        // テキストだった場合の処理
+                        setPasteEnabled(true)
+                        setClipboardPreview(item.text)
+                    }
 
-                        is ClipboardItem.Empty -> {
-                            // 空だった場合の処理
-                            setPasteEnabled(false)
-                            setClipboardPreview("") // 念のためプレビューもクリア
-                        }
+                    is ClipboardItem.Empty -> {
+                        // 空だった場合の処理
+                        setPasteEnabled(false)
+                        setClipboardPreview("") // 念のためプレビューもクリア
                     }
                 }
             } else {
@@ -1182,7 +1177,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Key.KeyA -> {
                             val selectedText = getSelectedText(0)
                             if (!selectedText.isNullOrEmpty()) {
-                                clipboardUtil?.setClipBoard(selectedText.toString())
+                                clipboardUtil.setClipBoard(selectedText.toString())
                                 suggestionAdapter?.apply {
                                     setPasteEnabled(true)
                                     setClipboardPreview(selectedText.toString())
@@ -1193,7 +1188,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Key.KeySA -> {
                             val selectedText = getSelectedText(0)
                             if (!selectedText.isNullOrEmpty()) {
-                                clipboardUtil?.setClipBoard(selectedText.toString())
+                                clipboardUtil.setClipBoard(selectedText.toString())
                                 suggestionAdapter?.apply {
                                     setPasteEnabled(true)
                                     setClipboardPreview(selectedText.toString())
@@ -1815,7 +1810,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil?.setClipBoard(selectedText.toString())
+                            clipboardUtil.setClipBoard(selectedText.toString())
                             suggestionAdapter?.apply {
                                 setPasteEnabled(true)
                                 setClipboardPreview(selectedText.toString())
@@ -2094,7 +2089,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil?.setClipBoard(selectedText.toString())
+                            clipboardUtil.setClipBoard(selectedText.toString())
                             suggestionAdapter?.apply {
                                 setPasteEnabled(true)
                                 setClipboardPreview(selectedText.toString())
@@ -2158,21 +2153,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * クリップボードからの貼り付けアクション。テキストと画像の両方に対応。
      */
     private fun pasteAction() {
-        clipboardUtil?.let { clipboard ->
-            when (val item = clipboard.getPrimaryClipContent()) {
-                is ClipboardItem.Image -> {
-                    commitBitmap(item.bitmap)
-                }
+        when (val item = clipboardUtil.getPrimaryClipContent()) {
+            is ClipboardItem.Image -> {
+                commitBitmap(item.bitmap)
+            }
 
-                is ClipboardItem.Text -> {
-                    if (item.text.isNotEmpty()) {
-                        commitText(item.text, 1)
-                    }
+            is ClipboardItem.Text -> {
+                if (item.text.isNotEmpty()) {
+                    commitText(item.text, 1)
                 }
+            }
 
-                is ClipboardItem.Empty -> {
-                    // Do nothing
-                }
+            is ClipboardItem.Empty -> {
+                // Do nothing
             }
         }
         clearDeletedBufferWithoutResetLayout()
@@ -2341,27 +2334,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun updateClipboardPreview() {
         suggestionAdapter?.apply {
-            clipboardUtil?.let { clipboard ->
-                when (val item = clipboard.getPrimaryClipContent()) {
-                    is ClipboardItem.Image -> {
-                        // 画像だった場合
-                        setPasteEnabled(true)
-                        // ★新しいメソッドを呼び出してBitmapを渡す
-                        setClipboardImagePreview(item.bitmap)
-                    }
+            when (val item = clipboardUtil.getPrimaryClipContent()) {
+                is ClipboardItem.Image -> {
+                    // 画像だった場合
+                    setPasteEnabled(true)
+                    // ★新しいメソッドを呼び出してBitmapを渡す
+                    setClipboardImagePreview(item.bitmap)
+                }
 
-                    is ClipboardItem.Text -> {
-                        // テキストだった場合
-                        setPasteEnabled(true)
-                        // 既存のメソッドを呼び出す（これにより画像プレビューはクリアされる）
-                        setClipboardPreview(item.text)
-                    }
+                is ClipboardItem.Text -> {
+                    // テキストだった場合
+                    setPasteEnabled(true)
+                    // 既存のメソッドを呼び出す（これにより画像プレビューはクリアされる）
+                    setClipboardPreview(item.text)
+                }
 
-                    is ClipboardItem.Empty -> {
-                        // 空だった場合
-                        setPasteEnabled(false)
-                        setClipboardPreview("")
-                    }
+                is ClipboardItem.Empty -> {
+                    // 空だった場合
+                    setPasteEnabled(false)
+                    setClipboardPreview("")
                 }
             }
         }
@@ -2682,26 +2673,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         suggestionAdapter?.apply {
                             if (deletedBuffer.isEmpty()) {
                                 // getPrimaryClipContentでクリップボードの内容を取得
-                                clipboardUtil?.let { clipboard ->
-                                    when (val item = clipboard.getPrimaryClipContent()) {
-                                        is ClipboardItem.Image -> {
-                                            // 画像だった場合の処理
-                                            setPasteEnabled(true)
-                                            // ★新しいメソッドでBitmapをアダプターに渡す
-                                            setClipboardImagePreview(item.bitmap)
-                                        }
+                                when (val item = clipboardUtil.getPrimaryClipContent()) {
+                                    is ClipboardItem.Image -> {
+                                        // 画像だった場合の処理
+                                        setPasteEnabled(true)
+                                        // ★新しいメソッドでBitmapをアダプターに渡す
+                                        setClipboardImagePreview(item.bitmap)
+                                    }
 
-                                        is ClipboardItem.Text -> {
-                                            // テキストだった場合の処理
-                                            setPasteEnabled(true)
-                                            setClipboardPreview(item.text)
-                                        }
+                                    is ClipboardItem.Text -> {
+                                        // テキストだった場合の処理
+                                        setPasteEnabled(true)
+                                        setClipboardPreview(item.text)
+                                    }
 
-                                        is ClipboardItem.Empty -> {
-                                            // 空だった場合の処理
-                                            setPasteEnabled(false)
-                                            setClipboardPreview("") // 念のためプレビューもクリア
-                                        }
+                                    is ClipboardItem.Empty -> {
+                                        // 空だった場合の処理
+                                        setPasteEnabled(false)
+                                        setClipboardPreview("") // 念のためプレビューもクリア
                                     }
                                 }
                             } else {
@@ -3374,7 +3363,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
-                        clipboardUtil?.clearClipboard()
+                        clipboardUtil.clearClipboard()
                         adapter.apply {
                             setClipboardPreview("")
                             setPasteEnabled(false)
