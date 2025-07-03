@@ -109,6 +109,7 @@ class RomajiMapFragment : Fragment() {
         }
     }
 
+
     private fun setupMenu() {
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
