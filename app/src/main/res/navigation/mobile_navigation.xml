@@ -25,6 +25,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_clipboardHistoryFragment"
             app:destination="@id/clipboardHistoryFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_romajiMapFragment"
+            app:destination="@id/romajiMapFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -87,5 +90,22 @@
         android:id="@+id/clipboardHistoryFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.clipboard_history.ui.ClipboardHistoryFragment"
         android:label="クリップボード履歴" />
+    <fragment
+        android:id="@+id/romajiMapFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.custom_romaji.ui.RomajiMapFragment"
+        android:label="カスタムローマ字変換">
+        <action
+            android:id="@+id/action_romajiMapFragment_to_romajiMapDetailFragment"
+            app:destination="@id/romajiMapDetailFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/romajiMapDetailFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.custom_romaji.ui.RomajiMapDetailFragment"
+        android:label="マップの編集"
+        tools:layout="@layout/fragment_romaji_map_detail">
+        <argument
+            android:name="mapId"
+            app:argType="long" />
+    </fragment>
 
 </navigation>

@@ -28,7 +28,8 @@ data class EditorUiState(
     val isLoading: Boolean = true,
     val selectedKeyIdentifier: String? = null,
     val navigateBack: Boolean = false,
-    val duplicateNameError: Boolean = false
+    val duplicateNameError: Boolean = false,
+    val isRomaji: Boolean = false
 )
 
 @HiltViewModel
@@ -78,7 +79,8 @@ class KeyboardEditorViewModel @Inject constructor(
                     layoutId = id,
                     name = layoutName,
                     layout = loadedLayout,
-                    isLoading = false
+                    isLoading = false,
+                    isRomaji = loadedLayout.isRomaji
                 )
             }
         }
@@ -98,6 +100,7 @@ class KeyboardEditorViewModel @Inject constructor(
                     rowCount = 4,
                 ),
                 isLoading = false,
+                isRomaji = false
             )
         }
     }
@@ -120,10 +123,11 @@ class KeyboardEditorViewModel @Inject constructor(
                     repository.deleteLayout(idToSave)
                 }
                 Timber.d("save layout: ${currentState.layout}")
+                val layoutToSave = currentState.layout.copy(isRomaji = currentState.isRomaji)
                 repository.saveLayout(
-                    layout = currentState.layout,
+                    layout = layoutToSave,
                     name = currentState.name,
-                    id = null
+                    id = idToSave
                 )
                 _uiState.update { it.copy(navigateBack = true) }
             }
@@ -245,6 +249,10 @@ class KeyboardEditorViewModel @Inject constructor(
             Timber.d("SUCCESS: State update finished. The new KeyData for this key is: $keyData")
             currentState.copy(layout = newLayout)
         }
+    }
+
+    fun updateIsRomaji(isRomaji: Boolean) {
+        _uiState.update { it.copy(isRomaji = isRomaji) }
     }
 
     fun onDoneNavigating() {
