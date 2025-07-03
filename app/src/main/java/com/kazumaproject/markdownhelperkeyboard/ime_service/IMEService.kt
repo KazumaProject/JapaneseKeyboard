@@ -416,7 +416,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        clipboardManager = applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboardManager =
+            applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
     }
@@ -3075,7 +3076,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFirstSuggestion(
         candidate: Candidate
     ) {
-        val commitString = candidate.string
+        val commitString = if (candidate.type == (15).toByte()) {
+            candidate.string.correctReading().first
+        } else {
+            candidate.string
+        }
         val newSpannable = createSpannableWithTail(commitString)
         setComposingTextAfterEdit(commitString, newSpannable)
     }
