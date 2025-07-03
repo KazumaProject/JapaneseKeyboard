@@ -25,3 +25,4 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.** { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity { *; }
