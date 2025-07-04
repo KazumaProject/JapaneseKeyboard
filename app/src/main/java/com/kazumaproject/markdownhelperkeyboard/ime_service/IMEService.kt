@@ -36,7 +36,11 @@ import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.ListView
+import android.widget.PopupWindow
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -277,6 +281,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val onLeftKeyLongPressUp = AtomicBoolean(false)
     private val onRightKeyLongPressUp = AtomicBoolean(false)
     private val onDeleteLongPressUp = AtomicBoolean(false)
+    private var onKeyboardSwitchLongPressUp = false
     private val deleteKeyLongKeyPressed = AtomicBoolean(false)
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
@@ -531,6 +536,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateClipboardPreview()
         setKeyboardSize()
         resetKeyboard()
+        keyboardSelectionPopupWindow?.dismiss()
     }
 
     override fun onFinishInput() {
@@ -571,6 +577,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
         clearSymbols()
+        keyboardSelectionPopupWindow = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
         if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
@@ -606,6 +613,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _keyboardSymbolViewState.update { false }
         _selectMode.update { false }
         _cursorMoveMode.update { false }
+        keyboardSelectionPopupWindow?.dismiss()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -1296,7 +1304,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
-            Key.KeyDakutenSmall -> {}
+            Key.KeyDakutenSmall -> {
+                showListPopup()
+            }
+
             Key.SideKeyCursorLeft -> {
                 handleLeftLongPress()
                 leftCursorKeyLongKeyPressed.set(true)
@@ -1333,6 +1344,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeySymbol -> {}
             else -> {}
+        }
+    }
+
+    private var keyboardSelectionPopupWindow: PopupWindow? = null
+
+    private fun showListPopup() {
+        onKeyboardSwitchLongPressUp = true
+        if (inputString.value.isNotEmpty()) return
+        mainLayoutBinding?.let { mainView ->
+            val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+            val popupView = inflater.inflate(R.layout.popup_list_layout, null)
+            val listView = popupView.findViewById<ListView>(R.id.popup_listview)
+
+            // A. Enable single choice mode for the ListView
+            listView.choiceMode = ListView.CHOICE_MODE_SINGLE
+
+            val currentKeyboardSetting = appPreference.keyboard_order
+
+            val items = currentKeyboardSetting.map {
+                when (it) {
+                    KeyboardType.TENKEY -> "日本語 - かな"
+                    KeyboardType.SUMIRE -> "スミレ入力"
+                    KeyboardType.QWERTY -> "英語"
+                    KeyboardType.ROMAJI -> "ローマ字入力"
+                    KeyboardType.CUSTOM -> "カスタム"
+                }
+            }
+
+            // B. Use your new custom layout file in the ArrayAdapter
+            val adapter = ArrayAdapter(this, R.layout.list_item_layout, items) // Use your layout
+            listView.adapter = adapter
+
+            keyboardSelectionPopupWindow = PopupWindow(
+                popupView,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                true // Set focusable to true
+            )
+
+            listView.setOnItemClickListener { _, _, position, _ ->
+                if (keyboardOrder.isEmpty()) return@setOnItemClickListener
+                currentKeyboardOrder = position
+                listView.setItemChecked(position, true)
+                onKeyboardSwitchLongPressUp = false
+                val nextType = keyboardOrder[position]
+                showKeyboard(nextType)
+                keyboardSelectionPopupWindow?.dismiss()
+            }
+
+            keyboardSelectionPopupWindow?.setOnDismissListener {
+                onKeyboardSwitchLongPressUp = false
+            }
+
+            keyboardSelectionPopupWindow?.showAtLocation(mainView.root, Gravity.CENTER, 0, 0)
         }
     }
 
@@ -1752,10 +1817,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
 
                     KeyAction.SwitchToNextIme -> {
-                        switchNextKeyboard()
-                        _inputString.update { "" }
-                        finishComposingText()
-                        setComposingText("", 0)
+                        showListPopup()
                     }
 
                     KeyAction.ToggleCase -> {}
@@ -1862,7 +1924,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Space -> {}
 
-                    KeyAction.SwitchToNextIme -> {}
+                    KeyAction.SwitchToNextIme -> {
+                        showListPopup()
+                    }
+
                     KeyAction.ToggleCase -> {
                         dakutenSmallActionForSumire(mainView)
                     }
@@ -2009,10 +2074,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.SwitchToNextIme -> {
-                        switchNextKeyboard()
-                        _inputString.update { "" }
-                        finishComposingText()
-                        setComposingText("", 0)
+                        if (!onKeyboardSwitchLongPressUp) {
+                            switchNextKeyboard()
+                            _inputString.update { "" }
+                            finishComposingText()
+                            setComposingText("", 0)
+                        }
                     }
 
                     KeyAction.ChangeInputMode -> {
@@ -3557,11 +3624,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
-                            switchNextKeyboard()
-
-                            _inputString.update { "" }
-                            finishComposingText()
-                            setComposingText("", 0)
+                            if (!onKeyboardSwitchLongPressUp) {
+                                switchNextKeyboard()
+                                _inputString.update { "" }
+                                finishComposingText()
+                                setComposingText("", 0)
+                            }
                         }
 
                         QWERTYKey.QWERTYKeySwitchMode -> {
@@ -3622,6 +3690,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 englishSpaceKeyPressed.set(false)
                                 deleteKeyLongKeyPressed.set(true)
                             }
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
+                            showListPopup()
                         }
 
                         else -> {
@@ -3929,6 +4001,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lastFlickConvertedNextHiragana.set(false)
         onDeleteLongPressUp.set(false)
         isSpaceKeyLongPressed = false
+        onKeyboardSwitchLongPressUp = false
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         resetKeyboard()
@@ -5201,7 +5274,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else {
-            switchNextKeyboard()
+            if (!onKeyboardSwitchLongPressUp) {
+                switchNextKeyboard()
+            }
         }
     }
 
@@ -5246,7 +5321,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else {
-            switchNextKeyboard()
+            if (!onKeyboardSwitchLongPressUp) {
+                switchNextKeyboard()
+            }
         }
     }
 
