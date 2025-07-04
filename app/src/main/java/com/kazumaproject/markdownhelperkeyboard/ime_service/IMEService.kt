@@ -1383,10 +1383,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 true // Set focusable to true
             )
 
+            listView.choiceMode = ListView.CHOICE_MODE_SINGLE
+            listView.setItemChecked(currentKeyboardOrder, true)
+
             listView.setOnItemClickListener { _, _, position, _ ->
                 if (keyboardOrder.isEmpty()) return@setOnItemClickListener
                 currentKeyboardOrder = position
-                listView.setItemChecked(position, true)
                 onKeyboardSwitchLongPressUp = false
                 val nextType = keyboardOrder[position]
                 showKeyboard(nextType)
