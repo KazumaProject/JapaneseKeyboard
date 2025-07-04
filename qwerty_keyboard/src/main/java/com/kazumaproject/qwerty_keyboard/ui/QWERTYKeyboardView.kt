@@ -105,6 +105,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var isDynamicColorsEnable = false
 
+    private var variationPopup: PopupWindow? = null
+    private var variationPopupView: VariationsPopupView? = null
+    private var longPressedPointerId: Int? = null
+
     init {
         isClickable = true
         isFocusable = true
@@ -603,7 +607,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         when (event.actionMasked) {
 
             MotionEvent.ACTION_DOWN -> {
-                // If multi‐touch or leftover map entries exist, clear everything
+                // If multi-touch or leftover map entries exist, clear everything
                 if (event.pointerCount > 1 || pointerButtonMap.isNotEmpty()) {
                     clearAllPressed()
                 }
@@ -612,6 +616,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_DOWN -> {
+                // If the variation popup is showing, ignore additional pointers.
+                if (variationPopup?.isShowing == true) return true
+
                 // Cancel the first tracked pointer if exactly one was active
                 if (pointerButtonMap.size == 1) {
                     val firstPointerId = pointerButtonMap.keyAt(0)
@@ -633,11 +640,23 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_MOVE -> {
-                // On MOVE, process each pointer except any suppressed one
-                for (i in 0 until event.pointerCount) {
-                    val pid = event.getPointerId(i)
-                    if (pid == suppressedPointerId) continue
-                    handlePointerMove(event, pointerIndex = i, pointerId = pid)
+                // If the variations popup is active, handle its selection
+                if (variationPopup?.isShowing == true && longPressedPointerId != null) {
+                    val index = event.findPointerIndex(longPressedPointerId!!)
+                    if (index != -1) {
+                        // Convert screen coordinates to the popup's local coordinates
+                        val location = IntArray(2)
+                        variationPopupView?.getLocationOnScreen(location)
+                        val popupX = event.getRawX() - location[0]
+                        variationPopupView?.updateSelection(popupX)
+                    }
+                } else {
+                    // Otherwise, perform the normal move handling
+                    for (i in 0 until event.pointerCount) {
+                        val pid = event.getPointerId(i)
+                        if (pid == suppressedPointerId) continue
+                        handlePointerMove(event, pointerIndex = i, pointerId = pid)
+                    }
                 }
             }
 
@@ -645,7 +664,32 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val pointerIndex = event.actionIndex
                 val pointerId = event.getPointerId(pointerIndex)
 
-                // If it was suppressed, clear suppression
+                // If it was the long-pressing pointer that lifted, treat it like a normal ACTION_UP.
+                if (variationPopup?.isShowing == true && pointerId == longPressedPointerId) {
+                    // This will be handled by ACTION_UP logic, so we can delegate to it.
+                    // To keep it simple, we'll just process the UP logic here.
+                    if (variationPopup?.isShowing == true) {
+                        variationPopupView?.getSelectedChar()?.let { selectedChar ->
+                            val qwertyKey =
+                                qwertyButtonMap[pointerButtonMap[longPressedPointerId!!]]
+                                    ?: QWERTYKey.QWERTYKeyNotSelect
+                            qwertyKeyListener?.onReleasedQWERTYKey(
+                                qwertyKey = qwertyKey,
+                                tap = selectedChar,
+                                variations = null
+                            )
+                        }
+                        variationPopup?.dismiss()
+                        variationPopup = null
+                        variationPopupView = null
+                        longPressedPointerId = null
+                    }
+                    clearAllPressed()
+                    return true
+                }
+
+
+                // If it was a suppressed pointer, clear suppression
                 if (suppressedPointerId == pointerId) {
                     suppressedPointerId = null
                 }
@@ -658,7 +702,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     cancelLongPressForPointer(pointerId)
 
                     val wasShift = (it.id == binding.keyShift.id)
-                    // ③ If Shift was double‐tapped, suppress this single‐tap event
+                    // If Shift was double‐tapped, suppress this single‐tap event
                     if (wasShift && shiftDoubleTapped) {
                         // Consume without notifying
                         shiftDoubleTapped = false
@@ -672,35 +716,52 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_UP -> {
-                val liftedId = event.getPointerId(event.actionIndex)
-                if (suppressedPointerId == liftedId) {
-                    suppressedPointerId = null
-                }
-                if (pointerButtonMap.size == 1) {
-                    val view = pointerButtonMap.valueAt(0)
-                    view?.let {
-                        Log.d("QWERTYKEY", "ACTION_UP: ${capsLockState.value}")
-                        it.isPressed = false
-                        dismissKeyPreview()
-                        cancelLongPressForPointer(liftedId)
+                // If a variation popup was active, finalize the selection
+                if (variationPopup?.isShowing == true) {
+                    variationPopupView?.getSelectedChar()?.let { selectedChar ->
+                        val qwertyKey = qwertyButtonMap[pointerButtonMap[longPressedPointerId!!]]
+                            ?: QWERTYKey.QWERTYKeyNotSelect
+                        qwertyKeyListener?.onReleasedQWERTYKey(
+                            qwertyKey = qwertyKey,
+                            tap = selectedChar,
+                            variations = null
+                        )
+                    }
+                    variationPopup?.dismiss()
+                    variationPopup = null
+                    variationPopupView = null
+                    longPressedPointerId = null
+                } else {
+                    // Otherwise, perform the normal UP action
+                    val liftedId = event.getPointerId(event.actionIndex)
+                    if (suppressedPointerId == liftedId) {
+                        suppressedPointerId = null
+                    }
+                    if (pointerButtonMap.size == 1) {
+                        val view = pointerButtonMap.valueAt(0)
+                        view?.let {
+                            it.isPressed = false
+                            dismissKeyPreview()
+                            cancelLongPressForPointer(liftedId)
 
-
-                        val wasShift = (it.id == binding.keyShift.id)
-                        // ④ If Shift was double‐tapped, suppress this single‐tap event
-                        if (wasShift && shiftDoubleTapped) {
-                            shiftDoubleTapped = false
-                        } else {
-                            val qwertyMode = qwertyMode.value
-                            if (qwertyMode != QWERTYMode.Default && wasShift) {
-                                if (qwertyMode == QWERTYMode.Number) {
-                                    _qwertyMode.update { QWERTYMode.Symbol }
-                                } else {
-                                    _qwertyMode.update { QWERTYMode.Number }
-                                }
+                            val wasShift = (it.id == binding.keyShift.id)
+                            // If Shift was double‐tapped, suppress this single‐tap event
+                            if (wasShift && shiftDoubleTapped) {
+                                shiftDoubleTapped = false
                             } else {
-                                val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                                logVariationIfNeeded(qwertyKey)
-                                setToggleShiftState(view)
+                                val qwertyMode = qwertyMode.value
+                                if (qwertyMode != QWERTYMode.Default && wasShift) {
+                                    if (qwertyMode == QWERTYMode.Number) {
+                                        _qwertyMode.update { QWERTYMode.Symbol }
+                                    } else {
+                                        _qwertyMode.update { QWERTYMode.Number }
+                                    }
+                                } else {
+                                    val qwertyKey =
+                                        qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
+                                    logVariationIfNeeded(qwertyKey)
+                                    setToggleShiftState(view)
+                                }
                             }
                         }
                     }
@@ -709,6 +770,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                // On cancel, ensure the popup is dismissed and everything is reset
+                variationPopup?.dismiss()
+                variationPopup = null
+                variationPopupView = null
+                longPressedPointerId = null
                 clearAllPressed()
             }
         }
@@ -848,6 +914,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             cancelLongPressForPointer(pid)
         }
         pointerButtonMap.clear()
+        dismissKeyPreview()
+        suppressedPointerId = null
+        variationPopup?.dismiss()
+        variationPopup = null
+        variationPopupView = null
+        longPressedPointerId = null
         dismissKeyPreview()
         suppressedPointerId = null
     }
@@ -1053,28 +1125,59 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * Schedule a “long‐press” Job for the given pointer + view.
      */
     private fun scheduleLongPressForPointer(pointerId: Int, view: View) {
-        // Cancel any existing Job for this pointer
         cancelLongPressForPointer(pointerId)
 
-        // Launch a coroutine that waits longPressTimeout ms
         val job = scope.launch {
             delay(longPressTimeout)
-            // After the delay, check that this pointer still “owns” the same view
             val currentView = pointerButtonMap[pointerId]
             if (currentView == view) {
-                // Long‐press confirmed: just log
                 val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
-                qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
-                Log.d("QWERTYKEY", "Long‐press detected on $qwertyKey")
                 val info = getVariationInfo(qwertyKey)
-                info?.apply {
-                    Log.d("QWERTYKEY", "Long‐press $variations")
+
+                // 派生文字があればポップアップを表示
+                if (info != null && !info.variations.isNullOrEmpty()) {
+                    // 長押しが確定したことをリスナーに通知（オプション）
+                    qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
+
+                    // ★ ポップアップ表示処理
+                    info.variations?.let {
+                        showVariationPopup(view, it)
+                    }
+                    longPressedPointerId = pointerId
+
+                    // 通常のキープレビューは消す
+                    dismissKeyPreview()
                 }
-                // Note: we do NOT remove the pointer here, so ACTION_UP still triggers normal tap
             }
         }
-
         longPressJobs.put(pointerId, job)
+    }
+
+    // 新しいメソッド：派生文字ポップアップを表示する
+    private fun showVariationPopup(anchorView: View, variations: List<Char>) {
+        // 既存のポップアップがあれば閉じる
+        variationPopup?.dismiss()
+
+        val context = this.context
+        variationPopupView = VariationsPopupView(context).apply {
+            setChars(variations)
+        }
+
+        // ポップアップのサイズを計算
+        val charWidth = 80 // 1文字あたりの幅 (dpToPxなどを使って調整)
+        val popupWidth = charWidth * variations.size
+        val popupHeight = 150 // ポップアップの高さ (同様に調整)
+
+        val popup = PopupWindow(variationPopupView, popupWidth, popupHeight, false).apply {
+            isTouchable = false // ポップアップ自体はタッチを受けない
+        }
+
+        // 表示位置を計算 (キーの上中央)
+        val xOffset = -(popupWidth / 2) + (anchorView.width / 2)
+        val yOffset = -anchorView.height - popupHeight
+
+        popup.showAsDropDown(anchorView, xOffset, yOffset)
+        this.variationPopup = popup
     }
 
     /**
@@ -1120,7 +1223,5 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setRomajiMode(state: Boolean) {
         _romajiModeState.update { state }
     }
-
-    fun getRomajiMode() = romajiModeState.value
 
 }
