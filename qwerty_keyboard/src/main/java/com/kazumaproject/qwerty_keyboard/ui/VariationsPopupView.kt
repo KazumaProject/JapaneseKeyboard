@@ -40,7 +40,11 @@ class VariationsPopupView(context: Context) : View(context) {
 
     fun setChars(charList: List<Char>) {
         this.chars = charList
-        this.charWidth = width / chars.size.toFloat()
+        if (width > 0 && chars.isNotEmpty()) {
+            this.charWidth = width / chars.size.toFloat()
+        }
+        selectedIndex = if (charList.isNotEmpty()) 0 else -1
+
         invalidate() // 再描画を要求
     }
 
