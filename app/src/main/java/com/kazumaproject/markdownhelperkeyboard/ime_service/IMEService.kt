@@ -536,6 +536,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateClipboardPreview()
         setKeyboardSize()
         resetKeyboard()
+        keyboardSelectionPopupWindow?.dismiss()
     }
 
     override fun onFinishInput() {
@@ -576,6 +577,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
         clearSymbols()
+        keyboardSelectionPopupWindow = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
         if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
@@ -611,6 +613,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _keyboardSymbolViewState.update { false }
         _selectMode.update { false }
         _cursorMoveMode.update { false }
+        keyboardSelectionPopupWindow?.dismiss()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -1344,6 +1347,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var keyboardSelectionPopupWindow: PopupWindow? = null
+
     private fun showListPopup() {
         onKeyboardSwitchLongPressUp = true
         if (inputString.value.isNotEmpty()) return
@@ -1371,7 +1376,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val adapter = ArrayAdapter(this, R.layout.list_item_layout, items) // Use your layout
             listView.adapter = adapter
 
-            val popupWindow = PopupWindow(
+            keyboardSelectionPopupWindow = PopupWindow(
                 popupView,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -1385,14 +1390,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 onKeyboardSwitchLongPressUp = false
                 val nextType = keyboardOrder[position]
                 showKeyboard(nextType)
-                popupWindow.dismiss()
+                keyboardSelectionPopupWindow?.dismiss()
             }
 
-            popupWindow.setOnDismissListener {
+            keyboardSelectionPopupWindow?.setOnDismissListener {
                 onKeyboardSwitchLongPressUp = false
             }
 
-            popupWindow.showAtLocation(mainView.root, Gravity.CENTER, 0, 0)
+            keyboardSelectionPopupWindow?.showAtLocation(mainView.root, Gravity.CENTER, 0, 0)
         }
     }
 
