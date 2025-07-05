@@ -35,4 +35,9 @@ sealed class QWERTYKey {
     data object QWERTYKeySwitchMode : QWERTYKey()
     data object QWERTYKeySpace : QWERTYKey()
     data object QWERTYKeyReturn : QWERTYKey()
+
+    data object QWERTYKeyCursorLeft : QWERTYKey()
+    data object QWERTYKeyCursorRight : QWERTYKey()
+    data object QWERTYKeyCursorUp : QWERTYKey()
+    data object QWERTYKeyCursorDown : QWERTYKey()
 }

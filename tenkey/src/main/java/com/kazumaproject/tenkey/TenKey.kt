@@ -1580,11 +1580,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key7.text = ""
             key8.text = ""
             key9.text = ""
-            keyEnter.visibility = View.INVISIBLE
-            keySwitchKeyMode.visibility = View.INVISIBLE
-            key11.visibility = View.INVISIBLE
-            key12.visibility = View.INVISIBLE
-            keySmallLetter.visibility = View.INVISIBLE
+            key11.text = ""
+            key12.text = ""
+            keySmallLetter.setImageDrawable(null)
             keyReturn.setImageDrawable(null)
             sideKeySymbol.setImageDrawable(null)
             keySpace.setImageDrawable(null)
@@ -1713,6 +1711,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             key11.setTenKeyTextJapanese(key11.id)
             key12.setTenKeyTextJapanese(key12.id)
+            keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
                 cachedArrowRightDrawable
@@ -1757,6 +1756,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySoftLeft.setImageDrawable(
                 cachedArrowLeftDrawable
             )
+            keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }
     }
@@ -1795,6 +1795,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySoftLeft.setImageDrawable(
                 cachedArrowLeftDrawable
             )
+            keySmallLetter.setImageDrawable(cachedNumberSmallDrawable)
             keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }
     }

@@ -355,14 +355,21 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
         holder.typeText.text = when (suggestion.type) {
             (1).toByte() -> ""
+            /** 予測 **/
             (9).toByte() -> ""
             (5).toByte() -> "[部]"
             (7).toByte() -> "[単]"
+            /** 最長 **/
             (10).toByte() -> ""
+            /** 絵文字 **/
             (11).toByte() -> "  "
+            /** 顔文字 **/
             (12).toByte() -> "  "
+            /** 記号 **/
             (13).toByte() -> "  "
+            /** 日付 **/
             (14).toByte() -> "[日付]"
+            /** 修正 **/
             (15).toByte() -> {
                 val spannable = SpannableString("[読] ${readingCorrectionString.second}")
                 spannable.setSpan(
@@ -373,20 +380,32 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 )
                 spannable
             }
-
+            /** ことわざ **/
             (16).toByte() -> ""
+            /** 数 漢字混じり **/
             (17).toByte() -> ""
+            /** 数 カンマあり**/
             (18).toByte() -> ""
+            /** 数 **/
             (19).toByte() -> ""
+            /** 学習 **/
             (20).toByte() -> ""
+            /** 記号半角 **/
             (21).toByte() -> ""
+            /** 全角数字 **/
             (22).toByte() -> "[全]"
+            /** Mozc UT Names **/
             (23).toByte() -> ""
+            /** Mozc UT Places **/
             (24).toByte() -> ""
+            /** Mozc UT Wiki **/
             (25).toByte() -> ""
+            /** Mozc UT Neologd **/
             (26).toByte() -> ""
+            /** Mozc UT Web **/
             (27).toByte() -> ""
             (28).toByte() -> ""
+            /** 英語 **/
             (29).toByte() -> ""
             else -> ""
         }
