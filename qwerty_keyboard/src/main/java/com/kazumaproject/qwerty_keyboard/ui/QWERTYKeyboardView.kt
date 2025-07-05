@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 /**
  * A custom keyboard view that:
@@ -111,6 +112,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     // ★ ポインターをロックするための変数を追加
     private var lockedPointerId: Int? = null
+
+    private var isCursorMode: Boolean = false
+
+    // カーソルモード中のタッチの初期位置を記録する変数
+    private var cursorInitialX = 0f
+    private var cursorInitialY = 0f
 
     // ★ ポップアップなしで長押しを有効にするキーのリストを追加
     private val longPressEnabledKeys = setOf(
@@ -614,6 +621,43 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+
+        if (isCursorMode) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> {
+                    val threshold = 20f // 移動を検知する閾値 (px)
+                    val currentX = event.x
+                    val currentY = event.y
+
+                    val dx = currentX - cursorInitialX
+                    val dy = currentY - cursorInitialY
+
+                    // 水平方向の移動
+                    if (abs(dx) > abs(dy) && abs(dx) > threshold) {
+                        val direction =
+                            if (dx < 0f) QWERTYKey.QWERTYKeyCursorLeft else QWERTYKey.QWERTYKeyCursorRight
+                        qwertyKeyListener?.onReleasedQWERTYKey(direction, null, null)
+                        cursorInitialX = currentX // 起点をリセット
+                        cursorInitialY = currentY
+                    }
+                    // 垂直方向の移動
+                    else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
+                        val direction =
+                            if (dy < 0f) QWERTYKey.QWERTYKeyCursorUp else QWERTYKey.QWERTYKeyCursorDown
+                        qwertyKeyListener?.onReleasedQWERTYKey(direction, null, null)
+                        cursorInitialX = currentX // 起点をリセット
+                        cursorInitialY = currentY
+                    }
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    setCursorMode(false)
+                    clearAllPressed()
+                }
+            }
+            return true // イベントを消費
+        }
+
         when (event.actionMasked) {
 
             MotionEvent.ACTION_DOWN -> {
@@ -1145,6 +1189,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val currentView = pointerButtonMap[pointerId]
             if (currentView == view) {
                 val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+
                 val info = getVariationInfo(qwertyKey)
 
                 // ★ 条件を分かりやすく変数に格納
@@ -1241,6 +1286,73 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setRomajiMode(state: Boolean) {
         _romajiModeState.update { state }
+    }
+
+    fun setCursorMode(enabled: Boolean) {
+        isCursorMode = enabled
+        if (enabled) {
+            setKeysForCursorMoveMode()
+        } else {
+            when (_qwertyMode.value) {
+                QWERTYMode.Default -> {
+                    attachDefaultKeyLabels()
+                }
+
+                QWERTYMode.Number -> {
+                    attachNumberKeyLabels(isSymbol = false)
+                }
+
+                QWERTYMode.Symbol -> {
+                    attachNumberKeyLabels(isSymbol = true)
+                }
+            }
+
+            if (_romajiModeState.value) {
+                binding.keySpace.text =
+                    resources.getString(com.kazumaproject.core.R.string.space_japanese)
+            } else {
+                binding.keySpace.text =
+                    resources.getString(com.kazumaproject.core.R.string.space_english)
+            }
+
+        }
+    }
+
+    private fun setKeysForCursorMoveMode() {
+        // 例：キーのテキストを消去する
+        binding.apply {
+            val characterKeys = listOf(
+                keyQ,
+                keyW,
+                keyE,
+                keyR,
+                keyT,
+                keyY,
+                keyU,
+                keyI,
+                keyO,
+                keyP,
+                keyA,
+                keyS,
+                keyD,
+                keyF,
+                keyG,
+                keyH,
+                keyJ,
+                keyK,
+                keyL,
+                keyZ,
+                keyX,
+                keyC,
+                keyV,
+                keyB,
+                keyN,
+                keyM,
+                keyAtMark
+            )
+            characterKeys.forEach { it.text = "" }
+            keySpace.text = ""
+        }
     }
 
 }
