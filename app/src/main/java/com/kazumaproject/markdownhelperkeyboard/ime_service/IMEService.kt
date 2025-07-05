@@ -2965,7 +2965,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
-
+        
         if (isVisible) {
             mainLayoutBinding?.apply {
                 if (customLayoutDefault.isInvisible) {
