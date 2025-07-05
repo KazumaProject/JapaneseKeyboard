@@ -1528,6 +1528,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         keyboardView.setCurrentMode(InputMode.ModeEnglish)
                         qwertyView.setRomajiMode(false)
+                        qwertyView.resetQWERTYKeyboard()
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -1536,6 +1537,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
+                        qwertyView.resetQWERTYKeyboard()
                     }
                 }
 
@@ -1547,6 +1549,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         keyboardView.setCurrentMode(InputMode.ModeJapanese)
                         qwertyView.setRomajiMode(true)
+                        qwertyView.resetQWERTYKeyboard()
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -1555,6 +1558,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
+                        qwertyView.resetQWERTYKeyboard()
                     }
                 }
 
