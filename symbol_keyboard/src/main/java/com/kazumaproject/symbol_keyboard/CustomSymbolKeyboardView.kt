@@ -336,9 +336,16 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private fun buildCategoryTabs() {
         categoryTab.removeAllTabs()
         val historyIcon = com.kazumaproject.core.R.drawable.history_24dp
-        val textColor =
+
+        // Define colors for normal and selected states
+        val normalColor =
             ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
-        categoryTab.setTabTextColors(textColor, textColor)
+        val selectedColor =
+            ContextCompat.getColor(
+                context,
+                com.kazumaproject.core.R.color.enter_key_bg
+            )
+        categoryTab.setTabTextColors(normalColor, selectedColor)
 
         when (currentMode) {
             SymbolMode.EMOJI -> {
@@ -404,7 +411,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                         clipboardHistoryToggleListener?.onToggled(isChecked)
                     }
                     customView.findViewById<TextView>(R.id.clipboard_tab_text)
-                        .setTextColor(textColor)
+                        .setTextColor(normalColor)
                 }
             }
         }
