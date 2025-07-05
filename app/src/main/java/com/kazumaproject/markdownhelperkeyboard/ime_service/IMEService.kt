@@ -3653,6 +3653,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
 
+                        QWERTYKey.QWERTYKeyCursorLeft -> {
+                            Timber.d("QWERTYKey.QWERTYKeyCursorLeft")
+                            if (!leftCursorKeyLongKeyPressed.get()) {
+                                handleLeftCursor(GestureType.Tap, insertString)
+                            }
+                            onLeftKeyLongPressUp.set(true)
+                            leftCursorKeyLongKeyPressed.set(false)
+                            leftLongPressJob?.cancel()
+                            leftLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeyCursorRight -> {
+                            Timber.d("QWERTYKey.QWERTYKeyCursorRight")
+                            if (!rightCursorKeyLongKeyPressed.get()) {
+                                actionInRightKeyPressed(GestureType.Tap, insertString)
+                            }
+                            onRightKeyLongPressUp.set(true)
+                            rightCursorKeyLongKeyPressed.set(false)
+                            rightLongPressJob?.cancel()
+                            rightLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeyCursorUp -> {
+                            if (!leftCursorKeyLongKeyPressed.get()) {
+                                handleLeftCursor(GestureType.FlickTop, insertString)
+                            }
+                            onLeftKeyLongPressUp.set(true)
+                            leftCursorKeyLongKeyPressed.set(false)
+                            leftLongPressJob?.cancel()
+                            leftLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeyCursorDown -> {
+                            if (!leftCursorKeyLongKeyPressed.get()) {
+                                handleLeftCursor(GestureType.FlickBottom, insertString)
+                            }
+                            onLeftKeyLongPressUp.set(true)
+                            leftCursorKeyLongKeyPressed.set(false)
+                            leftLongPressJob?.cancel()
+                            leftLongPressJob = null
+                        }
+
                         else -> {
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
@@ -3696,6 +3738,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
                             showListPopup()
+                        }
+
+                        QWERTYKey.QWERTYKeySpace -> {
+                            if (inputString.value.isEmpty()) {
+                                setCursorMode(true)
+                                isSpaceKeyLongPressed = true
+                            }
                         }
 
                         else -> {
