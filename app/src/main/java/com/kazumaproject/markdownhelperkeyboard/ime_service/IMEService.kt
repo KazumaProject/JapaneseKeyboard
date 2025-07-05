@@ -75,6 +75,8 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
+import com.kazumaproject.data.emoticon.Emoticon
+import com.kazumaproject.data.symbol.Symbol
 import com.kazumaproject.listeners.ClipboardHistoryToggleListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
@@ -250,8 +252,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private var cachedEmoji: List<Emoji>? = null
-    private var cachedEmoticons: List<String>? = null
-    private var cachedSymbols: List<String>? = null
+    private var cachedEmoticons: List<Emoticon>? = null
+    private var cachedSymbols: List<Symbol>? = null
     private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
     private var currentClipboardItems: List<ClipboardItem> = emptyList()
 
@@ -1526,6 +1528,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         keyboardView.setCurrentMode(InputMode.ModeEnglish)
                         qwertyView.setRomajiMode(false)
+                        qwertyView.resetQWERTYKeyboard()
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -1534,6 +1537,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
+                        qwertyView.resetQWERTYKeyboard()
                     }
                 }
 
@@ -1545,6 +1549,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         keyboardView.setCurrentMode(InputMode.ModeJapanese)
                         qwertyView.setRomajiMode(true)
+                        qwertyView.resetQWERTYKeyboard()
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -1553,6 +1558,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
+                        qwertyView.resetQWERTYKeyboard()
                     }
                 }
 
@@ -2965,7 +2971,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
-        
+
         if (isVisible) {
             mainLayoutBinding?.apply {
                 if (customLayoutDefault.isInvisible) {
@@ -3521,12 +3527,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onClick(symbol: ClickedSymbol) {
                     vibrate()
                     commitText(symbol.symbol, 1)
-                    if (symbol.mode == SymbolMode.EMOJI) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            clickedSymbolRepository.insert(
-                                mode = symbol.mode, symbol = symbol.symbol
-                            )
-                        }
+                    CoroutineScope(Dispatchers.IO).launch {
+                        clickedSymbolRepository.insert(
+                            mode = symbol.mode, symbol = symbol.symbol
+                        )
                     }
                 }
             })

@@ -332,7 +332,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             key123.text =
-                                resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
+                                resources.getString(com.kazumaproject.core.R.string.string_123)
                         }
                     } else {
                         binding.apply {
@@ -352,7 +352,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             keyShift.setMarginStart(4f)
                             keyDelete.setMarginEnd(4f)
                             key123.text =
-                                resources.getString(com.kazumaproject.core.R.string.string_abc)
+                                resources.getString(com.kazumaproject.core.R.string.string_123)
                         }
                     }
                 }
