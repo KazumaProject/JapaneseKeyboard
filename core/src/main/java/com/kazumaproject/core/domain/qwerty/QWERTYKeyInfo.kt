@@ -13,15 +13,25 @@ sealed class QWERTYKeyInfo {
     object KeyA : QWERTYVariation() {
         override val tap: Char get() = 'a'
         override val capChar: Char get() = 'A'
-        override val variations: List<Char> get() = listOf('à', 'á', 'â', 'æ', 'ã', 'å', 'ā', '@')
-        override val capVariations: List<Char> get() = listOf('À', 'Á', 'Â', 'Æ', 'Ã', 'Å', 'Ā', '＠')
+        override val variations: List<Char> get() = listOf('a', 'à', 'á', 'â', 'æ', 'ã', 'å', 'ā')
+        override val capVariations: List<Char>
+            get() = listOf(
+                'A',
+                'À',
+                'Á',
+                'Â',
+                'Æ',
+                'Ã',
+                'Å',
+                'Ā'
+            )
     }
 
     object KeyB : QWERTYVariation() {
         override val tap: Char get() = 'b'
         override val capChar: Char get() = 'B'
-        override val variations: List<Char> = listOf('ƀ', 'ɓ',';')
-        override val capVariations: List<Char> = listOf('Ɓ', 'Ƀ','；')
+        override val variations: List<Char> = listOf('ƀ', 'ɓ')
+        override val capVariations: List<Char> = listOf('Ɓ', 'Ƀ')
     }
 
     object KeyC : QWERTYVariation() {
