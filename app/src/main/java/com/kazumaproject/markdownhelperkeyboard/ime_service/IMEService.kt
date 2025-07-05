@@ -3512,6 +3512,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     stopDeleteLongPress()
                 }
             })
+
+            setOnDeleteButtonFingerUpListener {
+                stopDeleteLongPress()
+            }
             setOnDeleteButtonSymbolViewLongClickListener(object :
                 DeleteButtonSymbolViewLongClickListener {
                 override fun onLongClickListener() {
