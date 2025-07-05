@@ -3,9 +3,12 @@ package com.kazumaproject.symbol_keyboard
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Handler
+import android.os.Looper
 import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
@@ -78,6 +81,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var clipboardItemLongClickListener: ClipboardItemLongClickListener? = null
     private var clipboardHistoryToggleListener: ClipboardHistoryToggleListener? = null
     private var isClipboardHistoryEnabled: Boolean = false
+    private var onDeleteFingerUpListener: (() -> Unit)? = null
 
     init {
         inflate(context, R.layout.symbol_keyboard_main_layout, this)
@@ -153,13 +157,51 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         findViewById<ShapeableImageView>(R.id.return_jp_keyboard_button).setOnClickListener {
             returnListener?.onClick()
         }
+
+        // region Delete Key Listener (Modified)
         findViewById<ShapeableImageView>(R.id.symbol_keyboard_delete_key).apply {
-            setOnClickListener { deleteClickListener?.onClick() }
-            setOnLongClickListener {
+            val handler = Handler(Looper.getMainLooper())
+            var isLongPressed = false
+
+            val longPressRunnable = Runnable {
+                isLongPressed = true
+                // Call the existing long click listener
                 deleteLongListener?.onLongClickListener()
-                true
             }
+
+            setOnTouchListener { _, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        isLongPressed = false
+                        // Schedule the long press runnable
+                        handler.postDelayed(
+                            longPressRunnable,
+                            ViewConfiguration.getLongPressTimeout().toLong()
+                        )
+                        true // Consume the event
+                    }
+
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        // Cancel the scheduled long press
+                        handler.removeCallbacks(longPressRunnable)
+
+                        if (isLongPressed) {
+                            // If a long press occurred, notify the finger-up listener
+                            onDeleteFingerUpListener?.invoke()
+                        } else {
+                            // Otherwise, perform a normal click
+                            deleteClickListener?.onClick()
+                        }
+                        true // Consume the event
+                    }
+
+                    else -> false
+                }
+            }
+            // Disable the standard click listener since we handle it manually
+            setOnClickListener(null)
         }
+        // endregion
 
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -181,6 +223,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+    }
+
+    fun setOnDeleteButtonFingerUpListener(listener: () -> Unit) {
+        onDeleteFingerUpListener = listener
     }
 
     private val gestureDetector = GestureDetector(
@@ -489,14 +535,14 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             }
 
                             SymbolMode.EMOTICON -> 14f
-                            SymbolMode.SYMBOL -> 16f
+                            SymbolMode.SYMBOL -> 13f
                             SymbolMode.CLIPBOARD -> 16f
                         }
 
                         gridLM.spanCount = when (currentMode) {
                             SymbolMode.EMOJI -> 7
                             SymbolMode.EMOTICON -> 3
-                            SymbolMode.SYMBOL -> 6
+                            SymbolMode.SYMBOL -> 5
                             else -> 5
                         }
                         gridLM.orientation = RecyclerView.VERTICAL
