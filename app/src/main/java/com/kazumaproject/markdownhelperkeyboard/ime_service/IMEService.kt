@@ -1383,10 +1383,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 true // Set focusable to true
             )
 
+            listView.choiceMode = ListView.CHOICE_MODE_SINGLE
+            listView.setItemChecked(currentKeyboardOrder, true)
+
             listView.setOnItemClickListener { _, _, position, _ ->
                 if (keyboardOrder.isEmpty()) return@setOnItemClickListener
                 currentKeyboardOrder = position
-                listView.setItemChecked(position, true)
                 onKeyboardSwitchLongPressUp = false
                 val nextType = keyboardOrder[position]
                 showKeyboard(nextType)
@@ -2963,11 +2965,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
-
-        if (mainView.candidatesRowView.isVisible) {
-            mainView.candidatesRowView.scrollToPosition(0)
-        }
-
+        
         if (isVisible) {
             mainLayoutBinding?.apply {
                 if (customLayoutDefault.isInvisible) {
@@ -3651,6 +3649,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
 
+                        QWERTYKey.QWERTYKeyCursorLeft -> {
+                            Timber.d("QWERTYKey.QWERTYKeyCursorLeft")
+                            if (!leftCursorKeyLongKeyPressed.get()) {
+                                handleLeftCursor(GestureType.Tap, insertString)
+                            }
+                            onLeftKeyLongPressUp.set(true)
+                            leftCursorKeyLongKeyPressed.set(false)
+                            leftLongPressJob?.cancel()
+                            leftLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeyCursorRight -> {
+                            Timber.d("QWERTYKey.QWERTYKeyCursorRight")
+                            if (!rightCursorKeyLongKeyPressed.get()) {
+                                actionInRightKeyPressed(GestureType.Tap, insertString)
+                            }
+                            onRightKeyLongPressUp.set(true)
+                            rightCursorKeyLongKeyPressed.set(false)
+                            rightLongPressJob?.cancel()
+                            rightLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeyCursorUp -> {
+                            if (!leftCursorKeyLongKeyPressed.get()) {
+                                handleLeftCursor(GestureType.FlickTop, insertString)
+                            }
+                            onLeftKeyLongPressUp.set(true)
+                            leftCursorKeyLongKeyPressed.set(false)
+                            leftLongPressJob?.cancel()
+                            leftLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeyCursorDown -> {
+                            if (!leftCursorKeyLongKeyPressed.get()) {
+                                handleLeftCursor(GestureType.FlickBottom, insertString)
+                            }
+                            onLeftKeyLongPressUp.set(true)
+                            leftCursorKeyLongKeyPressed.set(false)
+                            leftLongPressJob?.cancel()
+                            leftLongPressJob = null
+                        }
+
                         else -> {
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
@@ -3694,6 +3734,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
                             showListPopup()
+                        }
+
+                        QWERTYKey.QWERTYKeySpace -> {
+                            if (inputString.value.isEmpty()) {
+                                setCursorMode(true)
+                                isSpaceKeyLongPressed = true
+                            }
                         }
 
                         else -> {
@@ -3888,17 +3935,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitAndClearInput(readingCorrection.first)
             }
 
-            14, 28 -> {
+            9, 11, 12, 13, 14, 28 -> {
                 commitAndClearInput(candidate.string)
-            }
-
-            9, 11, 12, 13 -> {
-                upsertLearnDictionaryWhenTapCandidate(
-                    currentInputMode = currentInputMode,
-                    insertString = insertString,
-                    candidate = candidate,
-                    position = position
-                )
             }
 
             else -> {
