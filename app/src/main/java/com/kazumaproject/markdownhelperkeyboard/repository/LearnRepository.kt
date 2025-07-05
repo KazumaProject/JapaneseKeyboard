@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
 import androidx.room.Transaction
-import com.kazumaproject.core.domain.extensions.isEmojiOrSymbol
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
@@ -34,7 +33,6 @@ class LearnRepository @Inject constructor(
      */
     @Transaction
     suspend fun upsertLearnedData(learnData: LearnEntity) {
-        if (learnData.out.isEmojiOrSymbol()) return
         val existingData = learnDao.findByInputAndOutput(learnData.input, learnData.out)
         if (existingData == null) {
             learnDao.insert(learnData)
