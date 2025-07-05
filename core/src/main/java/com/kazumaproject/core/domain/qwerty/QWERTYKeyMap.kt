@@ -140,7 +140,7 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
     )
 
     private val listDefaultJP: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
-        QWERTYKey.QWERTYKeyA to QWERTYKeyInfo.KeyA,
+        QWERTYKey.QWERTYKeyA to QWERTYKeyInfo.KeyAJP,
         QWERTYKey.QWERTYKeyB to QWERTYKeyInfo.KeyB,
         QWERTYKey.QWERTYKeyC to QWERTYKeyInfo.KeyC,
         QWERTYKey.QWERTYKeyD to QWERTYKeyInfo.KeyD,
