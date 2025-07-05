@@ -2965,11 +2965,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
-
-        if (mainView.candidatesRowView.isVisible) {
-            mainView.candidatesRowView.scrollToPosition(0)
-        }
-
+        
         if (isVisible) {
             mainLayoutBinding?.apply {
                 if (customLayoutDefault.isInvisible) {
@@ -3939,17 +3935,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitAndClearInput(readingCorrection.first)
             }
 
-            14, 28 -> {
+            9, 11, 12, 13, 14, 28 -> {
                 commitAndClearInput(candidate.string)
-            }
-
-            9, 11, 12, 13 -> {
-                upsertLearnDictionaryWhenTapCandidate(
-                    currentInputMode = currentInputMode,
-                    insertString = insertString,
-                    candidate = candidate,
-                    position = position
-                )
             }
 
             else -> {
