@@ -1580,11 +1580,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key7.text = ""
             key8.text = ""
             key9.text = ""
-            keyEnter.visibility = View.INVISIBLE
-            keySwitchKeyMode.visibility = View.INVISIBLE
-            key11.visibility = View.INVISIBLE
-            key12.visibility = View.INVISIBLE
-            keySmallLetter.visibility = View.INVISIBLE
+            key11.text = ""
+            key12.text = ""
             keyReturn.setImageDrawable(null)
             sideKeySymbol.setImageDrawable(null)
             keySpace.setImageDrawable(null)
