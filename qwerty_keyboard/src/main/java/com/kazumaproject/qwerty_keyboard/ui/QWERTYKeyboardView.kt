@@ -109,6 +109,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var variationPopupView: VariationsPopupView? = null
     private var longPressedPointerId: Int? = null
 
+    // ★ ポインターをロックするための変数を追加
+    private var lockedPointerId: Int? = null
+
+    // ★ ポップアップなしで長押しを有効にするキーのリストを追加
+    private val longPressEnabledKeys = setOf(
+        QWERTYKey.QWERTYKeyDelete,
+        QWERTYKey.QWERTYKeySpace,
+        QWERTYKey.QWERTYKeySwitchDefaultLayout
+    )
+
     init {
         isClickable = true
         isFocusable = true
@@ -647,14 +657,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         // Convert screen coordinates to the popup's local coordinates
                         val location = IntArray(2)
                         variationPopupView?.getLocationOnScreen(location)
-                        val popupX = event.getRawX() - location[0]
+                        val popupX = event.rawX - location[0]
                         variationPopupView?.updateSelection(popupX)
                     }
                 } else {
                     // Otherwise, perform the normal move handling
                     for (i in 0 until event.pointerCount) {
                         val pid = event.getPointerId(i)
-                        if (pid == suppressedPointerId) continue
+                        if (pid == suppressedPointerId || pid == lockedPointerId) continue
                         handlePointerMove(event, pointerIndex = i, pointerId = pid)
                     }
                 }
@@ -679,6 +689,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 variations = null
                             )
                         }
+                        disableShift()
                         variationPopup?.dismiss()
                         variationPopup = null
                         variationPopupView = null
@@ -727,6 +738,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             variations = null
                         )
                     }
+                    disableShift()
                     variationPopup?.dismiss()
                     variationPopup = null
                     variationPopupView = null
@@ -922,6 +934,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         longPressedPointerId = null
         dismissKeyPreview()
         suppressedPointerId = null
+        lockedPointerId = null
     }
 
     /**
@@ -1099,7 +1112,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             VariationInfo(
                 tap = info.tap,
                 cap = info.capChar,
-                variations = info.variations,
+                variations = if (capsLockState.value.shiftOn || capsLockState.value.capsLockOn) info.capVariations else info.variations,
                 capVariations = info.capVariations
             )
         } else {
@@ -1134,19 +1147,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
                 val info = getVariationInfo(qwertyKey)
 
-                // 派生文字があればポップアップを表示
-                if (info != null && !info.variations.isNullOrEmpty()) {
-                    // 長押しが確定したことをリスナーに通知（オプション）
-                    qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
+                // ★ 条件を分かりやすく変数に格納
+                val hasVariations = info != null && !info.variations.isNullOrEmpty()
+                val isSpecialLongPressKey = qwertyKey in longPressEnabledKeys
 
-                    // ★ ポップアップ表示処理
-                    info.variations?.let {
+                // ★ 条件1: 派生文字を持つキーの場合
+                if (hasVariations) {
+                    // リスナーを呼び出し、ポップアップを表示する（元のロジック）
+                    qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
+                    info?.variations?.let {
                         showVariationPopup(view, it)
                     }
                     longPressedPointerId = pointerId
-
-                    // 通常のキープレビューは消す
                     dismissKeyPreview()
+                }
+                // ★ 条件2: 派生文字はないが、特別に長押しを有効にするキーの場合
+                else if (isSpecialLongPressKey) {
+                    // リスナーのみを呼び出す
+                    qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
+                    lockedPointerId = pointerId
                 }
             }
         }
