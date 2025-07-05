@@ -24,6 +24,10 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoji.EmojiCategory
+import com.kazumaproject.data.emoticon.Emoticon
+import com.kazumaproject.data.emoticon.EmoticonCategory
+import com.kazumaproject.data.symbol.Symbol
+import com.kazumaproject.data.symbol.SymbolCategory
 import com.kazumaproject.listeners.ClipboardHistoryToggleListener
 import com.kazumaproject.listeners.ClipboardItemLongClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -51,9 +55,13 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private val gridLM = GridLayoutManager(context, 3, RecyclerView.HORIZONTAL, false)
 
     private var emojiMap: Map<EmojiCategory, List<Emoji>> = emptyMap()
-    private var emoticons: List<String> = emptyList()
-    private var symbols: List<String> = emptyList()
+    private var emoticonMap: Map<EmoticonCategory, List<String>> = emptyMap()
+    private var symbolMap: Map<SymbolCategory, List<String>> = emptyMap()
+
     private var historyEmojiList: MutableList<String> = mutableListOf()
+    private var historyEmoticonList: MutableList<String> = mutableListOf()
+    private var historySymbolList: MutableList<String> = mutableListOf()
+
     private var symbolsHistory: List<ClickedSymbol> = emptyList()
     private var clipBoardItems: List<ClipboardItem> = emptyList()
     private var currentMode: SymbolMode = SymbolMode.EMOJI
@@ -112,16 +120,32 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         symbolAdapter.setOnItemLongClickListener { str, pos ->
-            if (currentMode == SymbolMode.EMOJI
-                && historyEmojiList.isNotEmpty()
+            val historyList = when (currentMode) {
+                SymbolMode.EMOJI -> historyEmojiList
+                SymbolMode.EMOTICON -> historyEmoticonList
+                SymbolMode.SYMBOL -> historySymbolList
+                else -> emptyList()
+            }
+            if (historyList.isNotEmpty()
                 && categoryTab.selectedTabPosition == 0
-                && pos in 0 until historyEmojiList.size
+                && pos in 0 until historyList.size
             ) {
                 itemLongClickListener?.onLongClick(
                     ClickedSymbol(mode = currentMode, symbol = str),
                     position = pos
                 )
-                historyEmojiList = historyEmojiList.toMutableList().apply { removeAt(pos) }
+                when (currentMode) {
+                    SymbolMode.EMOJI -> historyEmojiList =
+                        historyEmojiList.toMutableList().apply { removeAt(pos) }
+
+                    SymbolMode.EMOTICON -> historyEmoticonList =
+                        historyEmoticonList.toMutableList().apply { removeAt(pos) }
+
+                    SymbolMode.SYMBOL -> historySymbolList =
+                        historySymbolList.toMutableList().apply { removeAt(pos) }
+
+                    else -> {}
+                }
                 updateSymbolsForCategory(0)
             }
         }
@@ -218,7 +242,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         itemLongClickListener = l
     }
 
-    fun setOnImageItemClickListener(l: ImageItemClickListener) { // <<< 追加
+    fun setOnImageItemClickListener(l: ImageItemClickListener) {
         imageItemClickListener = l
     }
 
@@ -233,13 +257,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * クリップボード履歴の有効/無効を設定し、表示に反映させる
-     * @param isEnabled スイッチをONにする場合はtrue
-     */
     fun setClipboardHistoryEnabled(isEnabled: Boolean) {
         this.isClipboardHistoryEnabled = isEnabled
-        // すでにタブが表示されている場合は、スイッチの状態を即座に更新する
         if (currentMode == SymbolMode.CLIPBOARD) {
             categoryTab.getTabAt(0)?.customView?.let {
                 val switch = it.findViewById<SwitchMaterial>(R.id.clipboard_tab_switch)
@@ -248,31 +267,52 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * クリップボード履歴のOn/Offが切り替わったときのリスナーを設定する
-     */
     fun setOnClipboardHistoryToggleListener(l: ClipboardHistoryToggleListener) {
         this.clipboardHistoryToggleListener = l
     }
 
+    /**
+     * Sets the lists of symbols, emoticons, and other data for the keyboard.
+     * This function now takes raw lists of Emoticon and Symbol objects and
+     * performs the categorization internally.
+     */
     fun setSymbolLists(
         emojiList: List<Emoji>,
-        emoticons: List<String>,
-        symbols: List<String>,
+        emoticons: List<Emoticon>,
+        symbols: List<Symbol>,
         clipBoardItems: List<ClipboardItem>,
         symbolsHistory: List<ClickedSymbol>,
         symbolMode: SymbolMode = SymbolMode.EMOJI
     ) {
         this.symbolsHistory = symbolsHistory
         this.clipBoardItems = clipBoardItems
+
+        // Populate history lists from the provided history data
         historyEmojiList = symbolsHistory
             .filter { it.mode == SymbolMode.EMOJI }
             .map { it.symbol }
             .toMutableList()
-        this.emoticons = emoticons
-        this.symbols = symbols
-        emojiMap = emojiList.groupBy { it.category }.toSortedMap(categoryOrder)
+        historyEmoticonList = symbolsHistory
+            .filter { it.mode == SymbolMode.EMOTICON }
+            .map { it.symbol }
+            .toMutableList()
+        historySymbolList = symbolsHistory
+            .filter { it.mode == SymbolMode.SYMBOL }
+            .map { it.symbol }
+            .toMutableList()
 
+        // Group the incoming lists into maps for internal use
+        this.emoticonMap = emoticons
+            .groupBy { it.category }
+            .mapValues { entry -> entry.value.map { it.symbol } }
+        this.symbolMap = symbols
+            .groupBy { it.category }
+            .mapValues { entry -> entry.value.map { it.symbol } }
+        this.emojiMap = emojiList
+            .groupBy { it.category }
+            .toSortedMap(categoryOrder)
+
+        // Initialize UI components
         currentMode = symbolMode
         buildModeTabs()
         buildCategoryTabs()
@@ -295,12 +335,15 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private fun buildCategoryTabs() {
         categoryTab.removeAllTabs()
+        val historyIcon = com.kazumaproject.core.R.drawable.history_24dp
+        val textColor =
+            ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
+        categoryTab.setTabTextColors(textColor, textColor)
+
         when (currentMode) {
             SymbolMode.EMOJI -> {
                 if (historyEmojiList.isNotEmpty()) {
-                    categoryTab.addTab(
-                        categoryTab.newTab().setIcon(com.kazumaproject.core.R.drawable.history_24dp)
-                    )
+                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon))
                 }
                 emojiMap.keys.forEach { cat ->
                     categoryTab.addTab(
@@ -311,47 +354,58 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            SymbolMode.CLIPBOARD -> {
-                // 1. 新しいタブを作成し、カスタムビューを設定
-                val tab = categoryTab.newTab().setCustomView(R.layout.custom_tab_clipboard)
-
-                // 2. タブをレイアウトに追加
-                categoryTab.addTab(tab)
-
-                // 3. カスタムビュー内のスイッチを取得して設定
-                tab.customView?.let { customView ->
-                    val switch = customView.findViewById<SwitchMaterial>(R.id.clipboard_tab_switch)
-                    // 外部から設定された状態をスイッチに反映
-                    switch.isChecked = isClipboardHistoryEnabled
-                    // スイッチが操作されたときのリスナーを設定
-                    switch.setOnCheckedChangeListener { _, isChecked ->
-                        // 状態を内部プロパティに保存し、外部リスナーを呼び出す
-                        isClipboardHistoryEnabled = isChecked
-                        clipboardHistoryToggleListener?.onToggled(isChecked)
+            SymbolMode.EMOTICON -> {
+                if (historyEmoticonList.isNotEmpty()) {
+                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon))
+                }
+                val orderedKeys = EmoticonCategory.entries
+                orderedKeys.forEach { category ->
+                    if (emoticonMap.containsKey(category)) {
+                        val tabText = when (category) {
+                            EmoticonCategory.SMILE -> "笑顔"
+                            EmoticonCategory.SWEAT -> "焦っている顔"
+                            EmoticonCategory.SURPRISE -> "驚いている顔"
+                            EmoticonCategory.SADNESS -> "泣いている顔"
+                            EmoticonCategory.DISPLEASURE -> "不満げな顔"
+                            EmoticonCategory.UNKNOWN -> "その他"
+                        }
+                        categoryTab.addTab(categoryTab.newTab().setText(tabText))
                     }
-                    // テキストの色をテーマに合わせる
-                    val textColor = ContextCompat.getColor(
-                        context,
-                        com.kazumaproject.core.R.color.keyboard_icon_color
-                    )
-                    customView.findViewById<TextView>(R.id.clipboard_tab_text)
-                        .setTextColor(textColor)
                 }
             }
 
-            SymbolMode.EMOTICON, SymbolMode.SYMBOL -> {
-                val c = ContextCompat.getColor(
-                    context,
-                    com.kazumaproject.core.R.color.keyboard_icon_color
-                )
-                categoryTab.setTabTextColors(c, c)
-                val text = when (currentMode) {
-                    SymbolMode.EMOTICON -> "顔文字"
-                    SymbolMode.SYMBOL -> "記号"
-                    SymbolMode.CLIPBOARD -> "クリップボード"
-                    else -> ""
+            SymbolMode.SYMBOL -> {
+                if (historySymbolList.isNotEmpty()) {
+                    categoryTab.addTab(categoryTab.newTab().setIcon(historyIcon))
                 }
-                categoryTab.addTab(categoryTab.newTab().setText(text))
+                val orderedKeys = SymbolCategory.entries
+                orderedKeys.forEach { category ->
+                    if (symbolMap.containsKey(category)) {
+                        val tabText = when (category) {
+                            SymbolCategory.GENERAL -> "全般"
+                            SymbolCategory.HALF -> "半角"
+                            SymbolCategory.PARENTHESIS -> "括弧"
+                            SymbolCategory.ARROW -> "矢印"
+                            SymbolCategory.MATH -> "数"
+                        }
+                        categoryTab.addTab(categoryTab.newTab().setText(tabText))
+                    }
+                }
+            }
+
+            SymbolMode.CLIPBOARD -> {
+                val tab = categoryTab.newTab().setCustomView(R.layout.custom_tab_clipboard)
+                categoryTab.addTab(tab)
+                tab.customView?.let { customView ->
+                    val switch = customView.findViewById<SwitchMaterial>(R.id.clipboard_tab_switch)
+                    switch.isChecked = isClipboardHistoryEnabled
+                    switch.setOnCheckedChangeListener { _, isChecked ->
+                        isClipboardHistoryEnabled = isChecked
+                        clipboardHistoryToggleListener?.onToggled(isChecked)
+                    }
+                    customView.findViewById<TextView>(R.id.clipboard_tab_text)
+                        .setTextColor(textColor)
+                }
             }
         }
     }
@@ -359,104 +413,94 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private fun updateSymbolsForCategory(index: Int) {
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
-            // ▼▼▼ ここから修正 ▼▼▼
             pagingJob = owner.lifecycleScope.launch {
-                // 1. 最初に両方のアダプターのデータをクリアする
-                // これにより、タブ切り替え時に古いデータが残るのを防ぐ
                 symbolAdapter.submitData(PagingData.empty())
                 clipboardAdapter.submitData(PagingData.empty())
-
-                // 2. RecyclerViewを先頭にスクロール
                 recycler.scrollToPosition(0)
 
-                // 3. 現在のモードに応じて適切なアダプターとデータを設定する
                 when (currentMode) {
                     SymbolMode.CLIPBOARD -> {
                         recycler.adapter = clipboardAdapter
                         gridLM.spanCount =
                             if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 2 else 4
                         gridLM.orientation = RecyclerView.VERTICAL
-
                         Pager(
                             config = PagingConfig(pageSize = 20, enablePlaceholders = false),
                             pagingSourceFactory = { ClipboardPagingSource(clipBoardItems) }
-                        ).flow.collectLatest { pagingData ->
-                            clipboardAdapter.submitData(pagingData)
-                        }
+                        ).flow.collectLatest { clipboardAdapter.submitData(it) }
                     }
 
                     else -> {
                         recycler.adapter = symbolAdapter
-
                         val listForPaging = when (currentMode) {
                             SymbolMode.EMOJI -> {
-                                if (historyEmojiList.isNotEmpty() && index == 0) historyEmojiList
+                                val hasHistory = historyEmojiList.isNotEmpty()
+                                if (hasHistory && index == 0) historyEmojiList
                                 else {
-                                    val adj = index - if (historyEmojiList.isNotEmpty()) 1 else 0
+                                    val adj = index - if (hasHistory) 1 else 0
                                     emojiMap.keys.elementAtOrNull(adj)
                                         ?.let { emojiMap[it]?.map { e -> e.symbol } } ?: emptyList()
                                 }
                             }
 
-                            SymbolMode.EMOTICON -> emoticons
-                            SymbolMode.SYMBOL -> symbols
-                            else -> emptyList()
-                        }
-
-                        // ★★★ ここでSymbolModeに応じてマージンを設定 ★★★
-                        when (currentMode) {
                             SymbolMode.EMOTICON -> {
-                                // 顔文字と記号のときはマージンを強める (例: 水平10dp, 垂直12dp)
-                                symbolAdapter.setItemMargins(
-                                    horizontalDp = 10,
-                                    verticalDp = 4,
-                                    context = context
-                                )
+                                val hasHistory = historyEmoticonList.isNotEmpty()
+                                if (hasHistory && index == 0) historyEmoticonList
+                                else {
+                                    val adj = index - if (hasHistory) 1 else 0
+                                    val orderedKeys = EmoticonCategory.entries
+                                        .filter { emoticonMap.containsKey(it) }
+                                    orderedKeys.elementAtOrNull(adj)?.let { emoticonMap[it] }
+                                        ?: emptyList()
+                                }
                             }
 
                             SymbolMode.SYMBOL -> {
-                                symbolAdapter.setItemMargins(
-                                    horizontalDp = 14,
-                                    verticalDp = 4,
-                                    context = context
-                                )
+                                val hasHistory = historySymbolList.isNotEmpty()
+                                if (hasHistory && index == 0) historySymbolList
+                                else {
+                                    val adj = index - if (hasHistory) 1 else 0
+                                    val orderedKeys = SymbolCategory.entries
+                                        .filter { symbolMap.containsKey(it) }
+                                    orderedKeys.elementAtOrNull(adj)?.let { symbolMap[it] }
+                                        ?: emptyList()
+                                }
                             }
 
-                            else -> {
-                                // 絵文字など、それ以外のときはデフォルトのマージン (例: 水平4dp, 垂直3dp)
-                                symbolAdapter.setItemMargins(
-                                    horizontalDp = 4,
-                                    verticalDp = 3,
-                                    context = context
-                                )
-                            }
+                            else -> emptyList()
                         }
 
-                        symbolAdapter.symbolTextSize = if (currentMode == SymbolMode.EMOJI) {
-                            if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
-                        } else 16f
+                        when (currentMode) {
+                            SymbolMode.EMOTICON -> symbolAdapter.setItemMargins(10, 8, context)
+                            SymbolMode.SYMBOL -> symbolAdapter.setItemMargins(14, 8, context)
+                            else -> symbolAdapter.setItemMargins(4, 3, context)
+                        }
+
+                        symbolAdapter.symbolTextSize = when (currentMode) {
+                            SymbolMode.EMOJI -> {
+                                if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
+                            }
+
+                            SymbolMode.EMOTICON -> 14f
+                            SymbolMode.SYMBOL -> 16f
+                            SymbolMode.CLIPBOARD -> 16f
+                        }
 
                         gridLM.spanCount = when (currentMode) {
                             SymbolMode.EMOJI -> 7
-                            SymbolMode.EMOTICON, SymbolMode.SYMBOL -> 5
+                            SymbolMode.EMOTICON -> 3
+                            SymbolMode.SYMBOL -> 6
                             else -> 5
                         }
-                        gridLM.orientation = when (currentMode) {
-                            SymbolMode.EMOJI -> RecyclerView.VERTICAL
-                            SymbolMode.EMOTICON, SymbolMode.SYMBOL -> RecyclerView.HORIZONTAL
-                            else -> RecyclerView.VERTICAL
-                        }
+                        gridLM.orientation = RecyclerView.VERTICAL
 
                         Pager(
                             config = PagingConfig(pageSize = 100, enablePlaceholders = false),
                             pagingSourceFactory = { SymbolPagingSource(listForPaging) }
-                        ).flow.collectLatest { pagingData ->
-                            symbolAdapter.submitData(pagingData)
-                        }
+                        ).flow.collectLatest { symbolAdapter.submitData(it) }
                     }
                 }
             }
-            // ▲▲▲ ここまで修正 ▲▲▲
         }
     }
 
