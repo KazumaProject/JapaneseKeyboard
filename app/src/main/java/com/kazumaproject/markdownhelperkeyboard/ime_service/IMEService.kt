@@ -3102,7 +3102,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun handleTenKeyQwertyInput(string: String) {
         val spannable = createSpannableWithTail(string)
         _suggestionFlag.emit(CandidateShowFlag.Updating)
-
+        if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
+            setComposingTextPreEdit(
+                string,
+                spannable
+            )
+        }
         if (isLiveConversionEnable != true) {
             // ライブ変換が無効な場合は、入力されたテキストをそのまま表示します。
             setComposingTextAfterEdit(string, spannable)
@@ -3114,7 +3119,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private suspend fun handleDefaultInput(string: String) {
         val spannable = createSpannableWithTail(string)
-        setComposingTextPreEdit(string, spannable)
+        if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
+            setComposingTextPreEdit(
+                string,
+                spannable
+            )
+        }
         _suggestionFlag.emit(CandidateShowFlag.Updating)
         val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
         delay(timeToDelay)
