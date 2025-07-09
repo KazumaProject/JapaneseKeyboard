@@ -304,6 +304,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTWeb: Boolean? = false
     private var sumireInputKeyType: String? = "flick-default"
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
+    private var userDictionaryPrefixMatchNumber: Int? = 2
 
     private var isTablet: Boolean? = false
 
@@ -489,6 +490,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             hankakuPreference = space_hankaku_preference ?: false
             isLiveConversionEnable = live_conversion_preference ?: false
             nBest = n_best_preference ?: 4
+            userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
@@ -605,6 +607,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputKeyType = null
         isTablet = null
         symbolKeyboardFirstItem = null
+        userDictionaryPrefixMatchNumber = null
         actionInDestroy()
         System.gc()
     }
@@ -1356,7 +1359,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.value.isNotEmpty()) return
         mainLayoutBinding?.let { mainView ->
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            val popupView = inflater.inflate(R.layout.popup_list_layout, null)
+            val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
             val listView = popupView.findViewById<ListView>(R.id.popup_listview)
 
             // A. Enable single choice mode for the ListView
@@ -1384,8 +1387,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 true // Set focusable to true
             )
-
-            listView.choiceMode = ListView.CHOICE_MODE_SINGLE
             listView.setItemChecked(currentKeyboardOrder, true)
 
             listView.setOnItemClickListener { _, _, position, _ ->
@@ -4425,7 +4426,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): List<Candidate> {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
-                if (insertString.length <= 1) return@withContext emptyList<Candidate>()
+                val prefixMatchNumber =
+                    (appPreference.user_dictionary_prefix_match_number_preference ?: 2) - 1
+                if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                 userDictionaryRepository.searchByReadingPrefixSuspend(
                     prefix = insertString, limit = 4
                 ).map {

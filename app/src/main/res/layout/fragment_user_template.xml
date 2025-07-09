@@ -102,14 +102,12 @@
 
             <TextView
                 android:id="@+id/textView_title"
-                android:layout_width="0dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:layout_marginEnd="8dp"
                 android:text="登録済み定型文一覧"
                 android:textAppearance="?attr/textAppearanceTitleMedium"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/button_toggle_explanation"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -117,12 +115,12 @@
                 android:id="@+id/button_toggle_explanation"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
+                android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="説明の表示/非表示"
                 android:src="@android:drawable/ic_menu_help"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@+id/textView_title"
                 app:layout_constraintTop_toTopOf="parent"
                 app:tint="?attr/colorOnSurface" />
 

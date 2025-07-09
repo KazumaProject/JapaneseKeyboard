@@ -19,6 +19,7 @@ object AppPreference {
     private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
+    private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 8)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
@@ -135,6 +136,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(USER_DICTIONARY_PREFERENCE.first, value ?: true)
+        }
+
+    var user_dictionary_prefix_match_number_preference: Int?
+        get() = preferences.getInt(
+            USER_DICTIONARY_PREFIX_PREFERENCE.first, USER_DICTIONARY_PREFIX_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(USER_DICTIONARY_PREFIX_PREFERENCE.first, value ?: 2)
         }
 
     var user_template_preference: Boolean?

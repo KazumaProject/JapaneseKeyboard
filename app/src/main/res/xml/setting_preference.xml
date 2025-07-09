@@ -43,7 +43,7 @@
             <Preference
                 android:key="custom_romaji_preference"
                 android:title="ローマ字変換のカスタマイズ"
-                app:summary="ローマ字の変換表を作成、選択します"/>
+                app:summary="ローマ字の変換表を作成、選択します" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="記号キーボード">
@@ -89,7 +89,7 @@
             android:title="入力待機時間"
             app:min="1"
             app:showSeekBarValue="true"
-            app:summary="ケータイ打ちで次の入力を待つ時間（ミリ秒）" />
+            app:summary="トグル入力で次の入力を待つ時間（ミリ秒）" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="バイブレーション">
@@ -128,6 +128,15 @@
             android:summaryOff="ユーザー辞書の予測変換を無効化"
             android:summaryOn="ユーザー辞書の予測変換を有効化\n登録した単語を予測変換として変換候補を表示します"
             android:title="ユーザー辞書" />
+
+        <SeekBarPreference
+            android:defaultValue="2"
+            android:dependency="user_dictionary_preference"
+            android:key="user_dictionary_prefix_match_number"
+            android:max="8"
+            android:title="予測変換"
+            app:min="2"
+            app:showSeekBarValue="true" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="定型文">
