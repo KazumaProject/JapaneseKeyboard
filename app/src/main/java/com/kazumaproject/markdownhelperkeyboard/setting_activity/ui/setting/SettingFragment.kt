@@ -13,6 +13,7 @@ import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -156,6 +157,18 @@ class SettingFragment : PreferenceFragmentCompat() {
                     "CLIPBOARD" -> "クリップボードの履歴"
                     else -> "記号キーボードの初期画面を選択します"
                 }
+                true
+            }
+        }
+
+        val userDictionaryPrefixSeekBar =
+            findPreference<SeekBarPreference>("user_dictionary_prefix_match_number")
+        userDictionaryPrefixSeekBar?.apply {
+            appPreference.user_dictionary_prefix_match_number_preference?.let {
+                this.summary = "ユーザー辞書に登録された単語を、前方 $it 文字一致で変換候補として表示します"
+            }
+            this.setOnPreferenceChangeListener { _, newValue ->
+                this.summary = "ユーザー辞書に登録された単語を、前方 $newValue 文字一致で変換候補として表示します"
                 true
             }
         }
