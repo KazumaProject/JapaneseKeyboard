@@ -4427,7 +4427,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
                 val prefixMatchNumber =
-                    (appPreference.user_dictionary_prefix_match_number_preference ?: 2) - 1
+                    (userDictionaryPrefixMatchNumber ?: 2) - 1
                 if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                 userDictionaryRepository.searchByReadingPrefixSuspend(
                     prefix = insertString, limit = 4
