@@ -4037,7 +4037,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitAndClearInput(readingCorrection.first)
             }
 
-            9, 11, 12, 13, 14, 28 -> {
+            9, 11, 12, 13, 14, 28,30 -> {
                 commitAndClearInput(candidate.string)
             }
 
