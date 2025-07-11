@@ -120,7 +120,7 @@
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="ng_word_enable_preference"
-            android:title="NG ワードを有効"/>
+            app:summary="設定を反映するにはキーボードの切り替えが必要となります。"/>
 
         <Preference
             android:icon="@drawable/outline_border_color_24"
