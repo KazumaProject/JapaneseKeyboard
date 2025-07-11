@@ -161,6 +161,24 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val ngWordSwitchPreference =
+            findPreference<SwitchPreferenceCompat>("ng_word_enable_preference")
+        ngWordSwitchPreference?.apply {
+            title = if (isChecked) {
+                "NG ワードを有効にする"
+            } else {
+                "NG ワードを無効にする"
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                title = if (newValue == true) {
+                    "NG ワードを有効にする"
+                } else {
+                    "NG ワードを無効にする"
+                }
+                true
+            }
+        }
+
         val ngWordPreference = findPreference<Preference>("ng_word_preference")
         ngWordPreference?.setOnPreferenceClickListener {
             findNavController().navigate(
