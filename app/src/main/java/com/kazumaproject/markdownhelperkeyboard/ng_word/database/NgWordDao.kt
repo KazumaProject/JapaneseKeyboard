@@ -19,11 +19,11 @@ interface NgWordDao {
 
     @Query(
         """
-    SELECT *
-    FROM ng_word
-    WHERE :searchYomi LIKE '%' || yomi || '%'
-    ORDER BY LENGTH(yomi) DESC
-"""
+        SELECT * 
+        FROM ng_word 
+        WHERE :searchYomi LIKE yomi || '%' 
+        ORDER BY LENGTH(yomi) DESC
+    """
     )
     suspend fun findCommonPrefixes(searchYomi: String): List<NgWord>
 

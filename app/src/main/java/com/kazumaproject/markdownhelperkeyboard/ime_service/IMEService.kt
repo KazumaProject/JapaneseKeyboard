@@ -153,6 +153,7 @@ import java.io.IOException
 import java.text.BreakIterator
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import java.util.regex.Pattern
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -412,6 +413,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private var allNGWords: List<String>? = null
+    private var ngPattern: Regex? = null
+
     companion object {
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
@@ -432,6 +436,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
+        ioScope.launch {
+            allNGWords = ngWordRepository.getAllNgWords().map { it.tango }.apply {
+                ngPattern = this.joinToString(separator = "|") { Pattern.quote(it) }
+                    .toRegex()
+            }
+
+        }
     }
 
     override fun onCreateInputView(): View? {
@@ -601,6 +612,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isLiveConversionEnable = null
         nBest = null
         isVibration = null
+        allNGWords = null
+        ngPattern = null
         vibrationTimingStr = null
         mozcUTPersonName = null
         romajiConverter = null
@@ -1370,7 +1383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
             val items = listOf(
-                "NG ワードとして登録", "閉じる"
+                "この単語を非表示", "閉じる"
             )
 
             // B. Use your new custom layout file in the ArrayAdapter
@@ -4520,8 +4533,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
-        val ngWords = ngWordRepository.getCommonPrefixes(insertString).map { it.tango }
+        val ngWords = allNGWords ?: emptyList()
         Timber.d("resultFromUserTemplate: $resultFromUserTemplate")
+        Timber.d("candidate $ngWords $ngPattern")
         val engineCandidates = kanaKanjiEngine.getCandidates(
             input = insertString,
             n = nBest ?: 4,
@@ -4537,7 +4551,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result
             .filter { candidate ->
-                ngWords.none { ng -> candidate.string.contains(ng) }
+                ngPattern?.let { !it.containsMatchIn(candidate.string) } ?: true
             }
             .distinctBy { it.string }
     }
