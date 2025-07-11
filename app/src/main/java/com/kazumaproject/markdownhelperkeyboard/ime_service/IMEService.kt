@@ -310,7 +310,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputKeyType: String? = "flick-default"
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
-
     private var isTablet: Boolean? = false
 
     private var keyboardContainer: FrameLayout? = null
@@ -940,6 +939,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun retrieveNGWord() {
+        if (appPreference.ng_word_preference != true) return
         val allNgWordStrings = ngWordRepository.getAllNgWords().map { it.tango }
 
         // 2. 作成したリストから、正規表現パターンを生成する
