@@ -161,14 +161,24 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val ngWordPreference = findPreference<Preference>("ng_word_preference")
+        ngWordPreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_ngWordFragment
+            )
+            true
+        }
+
         val userDictionaryPrefixSeekBar =
             findPreference<SeekBarPreference>("user_dictionary_prefix_match_number")
         userDictionaryPrefixSeekBar?.apply {
             appPreference.user_dictionary_prefix_match_number_preference?.let {
-                this.summary = "ユーザー辞書に登録された単語を、前方 $it 文字一致で変換候補として表示します"
+                this.summary =
+                    "ユーザー辞書に登録された単語を、前方 $it 文字一致で変換候補として表示します"
             }
             this.setOnPreferenceChangeListener { _, newValue ->
-                this.summary = "ユーザー辞書に登録された単語を、前方 $newValue 文字一致で変換候補として表示します"
+                this.summary =
+                    "ユーザー辞書に登録された単語を、前方 $newValue 文字一致で変換候補として表示します"
                 true
             }
         }

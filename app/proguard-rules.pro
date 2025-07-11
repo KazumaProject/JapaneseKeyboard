@@ -26,3 +26,4 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord { *; }
