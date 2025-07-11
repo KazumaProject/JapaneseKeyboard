@@ -437,11 +437,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
         ioScope.launch {
-            allNGWords = ngWordRepository.getAllNgWords().map { it.tango }.apply {
-                ngPattern = this.joinToString(separator = "|") { Pattern.quote(it) }
-                    .toRegex()
-            }
-
+            retrieveNGWord()
         }
     }
 
@@ -943,6 +939,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return super.onKeyDown(keyCode, event)
     }
 
+    private suspend fun retrieveNGWord() {
+        val allNgWordStrings = ngWordRepository.getAllNgWords().map { it.tango }
+
+        // 2. 作成したリストから、正規表現パターンを生成する
+        val ngPattern = allNgWordStrings
+            .joinToString(separator = "|") { Pattern.quote(it) }
+            .toRegex()
+
+        // 必要であれば、クラスのプロパティなどにそれぞれ代入する
+        this.allNGWords = allNgWordStrings
+        this.ngPattern = ngPattern
+    }
+
+
     private fun setTenKeyListeners(
         mainView: MainLayoutBinding
     ) {
@@ -1383,7 +1393,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
             val items = listOf(
-                "この単語を非表示", "閉じる"
+                "この単語を非表示",
+                "閉じる"
             )
 
             // B. Use your new custom layout file in the ArrayAdapter
@@ -1405,6 +1416,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 yomi = insertString,
                                 tango = candidate.string
                             )
+                            retrieveNGWord()
                             withContext(Dispatchers.Main) {
                                 _suggestionFlag.emit(CandidateShowFlag.Updating)
                             }
@@ -1414,6 +1426,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     1 -> {
 
                     }
+
                 }
                 keyboardSelectionPopupWindow?.dismiss()
             }
@@ -4551,7 +4564,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result
             .filter { candidate ->
-                ngPattern?.let { !it.containsMatchIn(candidate.string) } ?: true
+                if (ngWords.isEmpty()) {
+                    true
+                } else {
+                    ngPattern?.let {
+                        !it.containsMatchIn(candidate.string)
+                    } ?: true
+                }
             }
             .distinctBy { it.string }
     }
