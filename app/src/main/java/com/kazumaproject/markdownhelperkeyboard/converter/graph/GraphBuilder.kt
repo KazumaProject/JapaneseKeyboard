@@ -24,7 +24,8 @@ class GraphBuilder {
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
         userDictionaryRepository: UserDictionaryRepository,
-        learnRepository: LearnRepository?
+        learnRepository: LearnRepository?,
+        ngWords: List<String>
     ): MutableMap<Int, MutableList<Node>> {
         val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
         graph[0] = mutableListOf(BOS)
@@ -121,6 +122,8 @@ class GraphBuilder {
                             len = yomiStr.length.toShort(),
                             sPos = i,
                         )
+                    }.filter { cand ->
+                        ngWords.none { ng -> ng == cand.tango }
                     }
                     val endIndex = i + yomiStr.length
                     graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
