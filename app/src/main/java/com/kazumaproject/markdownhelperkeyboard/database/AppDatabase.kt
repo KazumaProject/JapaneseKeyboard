@@ -20,6 +20,8 @@ import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMap
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
@@ -35,9 +37,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         FlickMapping::class,
         UserTemplate::class,
         ClipboardHistoryItem::class,
-        RomajiMapEntity::class
+        RomajiMapEntity::class,
+        NgWord::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 @TypeConverters(
@@ -53,6 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userTemplateDao(): UserTemplateDao
     abstract fun clipboardHistoryDao(): ClipboardHistoryDao
     abstract fun romajiMapDao(): RomajiMapDao
+    abstract fun ngWordDao(): NgWordDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -248,6 +252,28 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // keyboard_layoutsテーブルにisRomajiカラム(INTEGER型, NOT NULL, デフォルト値0)を追加
                 db.execSQL("ALTER TABLE keyboard_layouts ADD COLUMN isRomaji INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1) Create table
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `ng_word` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `yomi` TEXT NOT NULL,
+                      `tango` TEXT NOT NULL
+                    )
+                """.trimIndent()
+                )
+                // 2) Index on yomi for fast lookups
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_ng_word_yomi`
+                    ON `ng_word`(`yomi`)
+                """.trimIndent()
+                )
             }
         }
 
