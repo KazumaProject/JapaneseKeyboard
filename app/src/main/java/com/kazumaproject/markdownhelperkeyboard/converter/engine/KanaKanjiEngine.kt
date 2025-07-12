@@ -555,7 +555,8 @@ class KanaKanjiEngine {
         mozcUTNeologd: Boolean?,
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
-        learnRepository: LearnRepository?
+        learnRepository: LearnRepository?,
+        ngWords: List<String>
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -568,7 +569,36 @@ class KanaKanjiEngine {
             succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             userDictionaryRepository = userDictionaryRepository,
-            learnRepository = learnRepository
+            learnRepository = learnRepository,
+            ngWords = ngWords,
+            wikiYomiTrie = wikiYomiTrie,
+            wikiTangoTrie = wikiTangoTrie,
+            wikiTokenArray = wikiTokenArray,
+            succinctBitVectorLBSWikiYomi = wikiSuccinctBitVectorLBSYomi,
+            succinctBitVectorWikiTangoLBS = wikiSuccinctBitVectorLBSTango,
+            succinctBitVectorWikiTokenArray = wikiSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafWikiYomi = wikiSuccinctBitVectorIsLeaf,
+            webYomiTrie = webYomiTrie,
+            webTangoTrie = webTangoTrie,
+            webTokenArray = webTokenArray,
+            succinctBitVectorLBSwebYomi = webSuccinctBitVectorLBSYomi,
+            succinctBitVectorwebTangoLBS = webSuccinctBitVectorLBSTango,
+            succinctBitVectorwebTokenArray = webSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafwebYomi = webSuccinctBitVectorIsLeaf,
+            personYomiTrie = personYomiTrie,
+            personTangoTrie = personTangoTrie,
+            personTokenArray = personTokenArray,
+            succinctBitVectorLBSpersonYomi = personSuccinctBitVectorLBSYomi,
+            succinctBitVectorpersonTangoLBS = personSuccinctBitVectorLBSTango,
+            succinctBitVectorpersonTokenArray = personSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafpersonYomi = personSuccinctBitVectorIsLeaf,
+            neologdYomiTrie = neologdYomiTrie,
+            neologdTangoTrie = neologdTangoTrie,
+            neologdTokenArray = neologdTokenArray,
+            succinctBitVectorLBSneologdYomi = neologdSuccinctBitVectorLBSYomi,
+            succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
+            succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
         )
 
         val resultNBestFinalDeferred: List<Candidate> =
@@ -842,6 +872,20 @@ class KanaKanjiEngine {
                 createCandidatesForDate(tomorrow, input)
             }
 
+            "いま" -> {
+                val now = Calendar.getInstance()
+                createCandidatesForTime(now, input)
+            }
+
+            else -> emptyList()
+        }
+
+        val convertYearToEra: List<Candidate> = when {
+            input.matches(Regex("""\d{1,4}ねん""")) -> {
+                val year = input.removeSuffix("ねん").toIntOrNull()
+                if (year != null) createCandidatesForEra(year, input) else emptyList()
+            }
+
             else -> emptyList()
         }
 
@@ -933,12 +977,13 @@ class KanaKanjiEngine {
         val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + kotowazaListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList
+            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + kotowazaListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList
+                .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + numbersDeferred + symbolHalfWidthListDeferred + englishDeferred + (listOfDictionaryToday + emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + convertYearToEra + symbolHalfWidthListDeferred + englishDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
     }
 
@@ -998,45 +1043,141 @@ class KanaKanjiEngine {
                 string = formatter1.format(calendar.time),  // M/d format
                 type = 14,
                 length = input.length.toUByte(),
-                score = 4000,
+                score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatter2.format(calendar.time),  // yyyy/MM/dd format
                 type = 14,
                 length = input.length.toUByte(),
-                score = 4000,
+                score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatter3.format(calendar.time),  // M月d日(曜日) format
                 type = 14,
                 length = input.length.toUByte(),
-                score = 4000,
+                score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatterReiwa,  // 令和 format
                 type = 14,
                 length = input.length.toUByte(),
-                score = 4000,
+                score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = formatterR06,  // Rxx/MM/dd format
                 type = 14,
                 length = input.length.toUByte(),
-                score = 4000,
+                score = 7000,
                 leftId = 1851,
                 rightId = 1851
             ), Candidate(
                 string = dayOfWeek,  // 曜日 format
                 type = 14,
                 length = input.length.toUByte(),
-                score = 4000,
+                score = 7000,
                 leftId = 1851,
                 rightId = 1851
             )
+        )
+    }
+
+    private fun createCandidatesForEra(year: Int, input: String): List<Candidate> {
+        // 元号名、開始年、終了年（null は現在まで）
+        data class Era(val name: String, val start: Int, val end: Int?)
+
+        val eras = listOf(
+            Era("令和", 2019, null),    // 令和は継続中
+            Era("平成", 1989, 2019),    // 平成は1989～2019
+            Era("昭和", 1926, 1989),    // 昭和は1926～1989
+            Era("大正", 1912, 1926),    // 大正は1912～1926
+            Era("明治", 1868, 1912)     // 明治は1868～1912
+        )
+
+        val length = input.length.toUByte()
+
+        fun formatEra(eraName: String, eraYear: Int) =
+            eraName + if (eraYear == 1) "元年" else "${eraYear}年"
+
+        return eras
+            .filter { (name, start, end) ->
+                year >= start && (end == null || year <= end)
+            }
+            .map { (name, start, _) ->
+                val eraYear = year - start + 1
+                Candidate(
+                    string = formatEra(name, eraYear),
+                    type = 30,
+                    length = length,
+                    score = 8000,
+                    leftId = 1851,
+                    rightId = 1851
+                )
+            }
+    }
+
+    private fun createCandidatesForTime(cal: Calendar, input: String): List<Candidate> {
+        val hour24 = cal.get(Calendar.HOUR_OF_DAY)
+        val minute = cal.get(Calendar.MINUTE)
+        val minutePadded = minute.toString().padStart(2, '0')
+
+        // 12時間表記と午前/午後
+        val meridiem = if (hour24 < 12) "午前" else "午後"
+        val hour12 = when {
+            hour24 == 0 -> 12
+            hour24 > 12 -> hour24 - 12
+            else -> hour24
+        }
+
+        return listOf(
+            // 例: "14時5分"
+            Candidate(
+                string = "${hour24}時${minute}分",
+                type = 14,
+                length = input.length.toUByte(),
+                score = 7000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            // 例: "14:05"
+            Candidate(
+                string = "${
+                    hour24.toString().padStart(2, '0')
+                }:$minutePadded",
+                type = 14,
+                length = input.length.toUByte(),
+                score = 7001,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            // 例: "午後2時5分"
+            Candidate(
+                string = "$meridiem${hour12}時${minute}分", type = 14,
+                length = input.length.toUByte(),
+                score = 7003,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = "${hour12}時${minute}分", type = 14,
+                length = input.length.toUByte(),
+                score = 7004,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = "${
+                    hour12.toString().padStart(2, '0')
+                }:$minutePadded",
+                type = 14,
+                length = input.length.toUByte(),
+                score = 7002,
+                leftId = 1851,
+                rightId = 1851
+            ),
         )
     }
 

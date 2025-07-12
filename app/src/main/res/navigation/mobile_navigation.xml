@@ -28,6 +28,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_romajiMapFragment"
             app:destination="@id/romajiMapFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_ngWordFragment"
+            app:destination="@id/ngWordFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -107,5 +110,9 @@
             android:name="mapId"
             app:argType="long" />
     </fragment>
+    <fragment
+        android:id="@+id/ngWordFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.ng_word.ui.NgWordFragment"
+        android:label="NG ワード一覧" />
 
 </navigation>
