@@ -311,6 +311,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
+    private var isNgWordEnable: Boolean? = false
 
     private var keyboardContainer: FrameLayout? = null
 
@@ -500,6 +501,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             hankakuPreference = space_hankaku_preference ?: false
             isLiveConversionEnable = live_conversion_preference ?: false
             nBest = n_best_preference ?: 4
+            isNgWordEnable = ng_word_preference ?: true
             userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -618,6 +620,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTWeb = null
         sumireInputKeyType = null
         isTablet = null
+        isNgWordEnable = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         actionInDestroy()
@@ -1412,13 +1415,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (position) {
                     0 -> {
                         ioScope.launch {
-                            ngWordRepository.addNgWord(
+                            val exist = ngWordRepository.exists(
                                 yomi = insertString,
                                 tango = candidate.string
                             )
-                            retrieveNGWord()
-                            withContext(Dispatchers.Main) {
-                                _suggestionFlag.emit(CandidateShowFlag.Updating)
+                            if (!exist) {
+                                ngWordRepository.addNgWord(
+                                    yomi = insertString,
+                                    tango = candidate.string
+                                )
+                                retrieveNGWord()
+                                withContext(Dispatchers.Main) {
+                                    _suggestionFlag.emit(CandidateShowFlag.Updating)
+                                }
                             }
                         }
                     }
@@ -3486,9 +3495,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
                 val insertString = inputString.value
-                registerNGWord(
-                    insertString = insertString, candidate = candidate, candidatePosition = i
-                )
+                if (isNgWordEnable == true) {
+                    registerNGWord(
+                        insertString = insertString, candidate = candidate, candidatePosition = i
+                    )
+                }
             }
 
             adapter.setOnItemHelperIconClickListener { helperIcon ->
@@ -4037,7 +4048,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitAndClearInput(readingCorrection.first)
             }
 
-            9, 11, 12, 13, 14, 28,30 -> {
+            9, 11, 12, 13, 14, 28, 30 -> {
                 commitAndClearInput(candidate.string)
             }
 
