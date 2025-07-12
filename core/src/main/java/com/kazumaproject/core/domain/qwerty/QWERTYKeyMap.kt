@@ -177,16 +177,16 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
 
     private val listNumberJP: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
         // ─── Top row (Q W E R T Y U I O P) ───
-        QWERTYKey.QWERTYKeyQ to QWERTYKeyInfo.Key1,
-        QWERTYKey.QWERTYKeyW to QWERTYKeyInfo.Key2,
-        QWERTYKey.QWERTYKeyE to QWERTYKeyInfo.Key3,
-        QWERTYKey.QWERTYKeyR to QWERTYKeyInfo.Key4,
-        QWERTYKey.QWERTYKeyT to QWERTYKeyInfo.Key5,
-        QWERTYKey.QWERTYKeyY to QWERTYKeyInfo.Key6,
-        QWERTYKey.QWERTYKeyU to QWERTYKeyInfo.Key7,
-        QWERTYKey.QWERTYKeyI to QWERTYKeyInfo.Key8,
-        QWERTYKey.QWERTYKeyO to QWERTYKeyInfo.Key9,
-        QWERTYKey.QWERTYKeyP to QWERTYKeyInfo.Key0,
+        QWERTYKey.QWERTYKeyQ to QWERTYKeyInfo.Key1JP,
+        QWERTYKey.QWERTYKeyW to QWERTYKeyInfo.Key2JP,
+        QWERTYKey.QWERTYKeyE to QWERTYKeyInfo.Key3JP,
+        QWERTYKey.QWERTYKeyR to QWERTYKeyInfo.Key4JP,
+        QWERTYKey.QWERTYKeyT to QWERTYKeyInfo.Key5JP,
+        QWERTYKey.QWERTYKeyY to QWERTYKeyInfo.Key6JP,
+        QWERTYKey.QWERTYKeyU to QWERTYKeyInfo.Key7JP,
+        QWERTYKey.QWERTYKeyI to QWERTYKeyInfo.Key8JP,
+        QWERTYKey.QWERTYKeyO to QWERTYKeyInfo.Key9JP,
+        QWERTYKey.QWERTYKeyP to QWERTYKeyInfo.Key0JP,
 
         // ─── Middle row (A S D F G H J K L) ───
         QWERTYKey.QWERTYKeyA to QWERTYKeyInfo.KeyMinus,

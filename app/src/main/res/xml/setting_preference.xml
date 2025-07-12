@@ -41,6 +41,7 @@
 
         <PreferenceCategory android:title="ローマ字変換">
             <Preference
+                android:icon="@drawable/outline_border_color_24"
                 android:key="custom_romaji_preference"
                 android:title="ローマ字変換のカスタマイズ"
                 app:summary="ローマ字の変換表を作成、選択します" />
@@ -59,9 +60,10 @@
 
         <PreferenceCategory android:title="@string/clipboard_history_title">
             <Preference
+                android:icon="@drawable/outline_border_color_24"
                 android:key="clipboard_history_preference_fragment"
                 android:title="クリップボードの履歴"
-                app:summary="クリップボードの履歴を表示します" />
+                app:summary="クリップボードの履歴を表示" />
         </PreferenceCategory>
 
         <PreferenceCategory
@@ -109,6 +111,22 @@
             android:key="vibration_timing"
             android:summary="バイブレーションを発生させるタイミングを選択"
             android:title="バイブレーションのタイミング" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="NG ワード"
+        app:summary="変換候補を長押しで登録できます。">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="ng_word_enable_preference" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="ng_word_preference"
+            android:title="非表示にする単語の一覧"
+            app:summary="非表示にする単語の一覧を表示" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="学習辞書">
