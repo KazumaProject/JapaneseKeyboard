@@ -25,7 +25,35 @@ class GraphBuilder {
         succinctBitVectorTangoLBS: SuccinctBitVector,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>
+        ngWords: List<String>,
+        wikiYomiTrie: LOUDSWithTermId?,
+        wikiTangoTrie: LOUDS?,
+        wikiTokenArray: TokenArray?,
+        succinctBitVectorLBSWikiYomi: SuccinctBitVector?,
+        succinctBitVectorIsLeafWikiYomi: SuccinctBitVector?,
+        succinctBitVectorWikiTokenArray: SuccinctBitVector?,
+        succinctBitVectorWikiTangoLBS: SuccinctBitVector?,
+        webYomiTrie: LOUDSWithTermId?,
+        webTangoTrie: LOUDS?,
+        webTokenArray: TokenArray?,
+        succinctBitVectorLBSwebYomi: SuccinctBitVector?,
+        succinctBitVectorIsLeafwebYomi: SuccinctBitVector?,
+        succinctBitVectorwebTokenArray: SuccinctBitVector?,
+        succinctBitVectorwebTangoLBS: SuccinctBitVector?,
+        personYomiTrie: LOUDSWithTermId?,
+        personTangoTrie: LOUDS?,
+        personTokenArray: TokenArray?,
+        succinctBitVectorLBSpersonYomi: SuccinctBitVector?,
+        succinctBitVectorIsLeafpersonYomi: SuccinctBitVector?,
+        succinctBitVectorpersonTokenArray: SuccinctBitVector?,
+        succinctBitVectorpersonTangoLBS: SuccinctBitVector?,
+        neologdYomiTrie: LOUDSWithTermId?,
+        neologdTangoTrie: LOUDS?,
+        neologdTokenArray: TokenArray?,
+        succinctBitVectorLBSneologdYomi: SuccinctBitVector?,
+        succinctBitVectorIsLeafneologdYomi: SuccinctBitVector?,
+        succinctBitVectorneologdTokenArray: SuccinctBitVector?,
+        succinctBitVectorneologdTangoLBS: SuccinctBitVector?,
     ): MutableMap<Int, MutableList<Node>> {
         val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
         graph[0] = mutableListOf(BOS)
@@ -127,6 +155,207 @@ class GraphBuilder {
                     }
                     val endIndex = i + yomiStr.length
                     graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
+                }
+            }
+
+            // 4. wiki辞書からCommon Prefix Searchを実行
+            if (wikiYomiTrie != null && wikiTangoTrie != null && wikiTokenArray != null &&
+                succinctBitVectorLBSWikiYomi != null && succinctBitVectorWikiTangoLBS != null &&
+                succinctBitVectorWikiTokenArray != null && succinctBitVectorIsLeafWikiYomi != null
+            ) {
+                val commonPrefixSearchWiki: List<String> = wikiYomiTrie.commonPrefixSearch(
+                    str = subStr,
+                    succinctBitVector = succinctBitVectorLBSWikiYomi
+                )
+                if (commonPrefixSearchWiki.isNotEmpty()) foundInAnyDictionary = true
+
+                for (yomiStr in commonPrefixSearchWiki) {
+                    val nodeIndex = wikiYomiTrie.getNodeIndex(
+                        yomiStr,
+                        succinctBitVectorLBSWikiYomi,
+                    )
+                    if (nodeIndex > 0) { // ルートノードは除く
+                        val termId =
+                            wikiYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafWikiYomi)
+                        val listToken = wikiTokenArray.getListDictionaryByYomiTermId(
+                            termId,
+                            succinctBitVectorWikiTokenArray
+                        )
+
+                        val tangoList = listToken.map {
+                            Node(
+                                l = wikiTokenArray.leftIds[it.posTableIndex.toInt()],
+                                r = wikiTokenArray.rightIds[it.posTableIndex.toInt()],
+                                score = it.wordCost.toInt(),
+                                f = it.wordCost.toInt(),
+                                g = it.wordCost.toInt(),
+                                tango = when (it.nodeId) {
+                                    -2 -> yomiStr
+                                    -1 -> yomiStr.hiraToKata()
+                                    else -> wikiTangoTrie.getLetter(
+                                        it.nodeId,
+                                        succinctBitVector = succinctBitVectorWikiTangoLBS
+                                    )
+                                },
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                            )
+                        }.filter { cand ->
+                            ngWords.none { ng -> ng == cand.tango }
+                        }
+                        val endIndex = i + yomiStr.length
+                        graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
+                    }
+                }
+            }
+
+            if (webYomiTrie != null && webTangoTrie != null && webTokenArray != null &&
+                succinctBitVectorLBSwebYomi != null && succinctBitVectorwebTangoLBS != null &&
+                succinctBitVectorwebTokenArray != null && succinctBitVectorIsLeafwebYomi != null
+            ) {
+                val commonPrefixSearchweb: List<String> = webYomiTrie.commonPrefixSearch(
+                    str = subStr,
+                    succinctBitVector = succinctBitVectorLBSwebYomi
+                )
+                if (commonPrefixSearchweb.isNotEmpty()) foundInAnyDictionary = true
+
+                for (yomiStr in commonPrefixSearchweb) {
+                    val nodeIndex = webYomiTrie.getNodeIndex(
+                        yomiStr,
+                        succinctBitVectorLBSwebYomi,
+                    )
+                    if (nodeIndex > 0) { // ルートノードは除く
+                        val termId =
+                            webYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafwebYomi)
+                        val listToken = webTokenArray.getListDictionaryByYomiTermId(
+                            termId,
+                            succinctBitVectorwebTokenArray
+                        )
+
+                        val tangoList = listToken.map {
+                            Node(
+                                l = webTokenArray.leftIds[it.posTableIndex.toInt()],
+                                r = webTokenArray.rightIds[it.posTableIndex.toInt()],
+                                score = it.wordCost.toInt(),
+                                f = it.wordCost.toInt(),
+                                g = it.wordCost.toInt(),
+                                tango = when (it.nodeId) {
+                                    -2 -> yomiStr
+                                    -1 -> yomiStr.hiraToKata()
+                                    else -> webTangoTrie.getLetter(
+                                        it.nodeId,
+                                        succinctBitVector = succinctBitVectorwebTangoLBS
+                                    )
+                                },
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                            )
+                        }.filter { cand ->
+                            ngWords.none { ng -> ng == cand.tango }
+                        }
+                        val endIndex = i + yomiStr.length
+                        graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
+                    }
+                }
+            }
+
+            if (personYomiTrie != null && personTangoTrie != null && personTokenArray != null &&
+                succinctBitVectorLBSpersonYomi != null && succinctBitVectorpersonTangoLBS != null &&
+                succinctBitVectorpersonTokenArray != null && succinctBitVectorIsLeafpersonYomi != null
+            ) {
+                val commonPrefixSearchperson: List<String> = personYomiTrie.commonPrefixSearch(
+                    str = subStr,
+                    succinctBitVector = succinctBitVectorLBSpersonYomi
+                )
+                if (commonPrefixSearchperson.isNotEmpty()) foundInAnyDictionary = true
+
+                for (yomiStr in commonPrefixSearchperson) {
+                    val nodeIndex = personYomiTrie.getNodeIndex(
+                        yomiStr,
+                        succinctBitVectorLBSpersonYomi,
+                    )
+                    if (nodeIndex > 0) { // ルートノードは除く
+                        val termId =
+                            personYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafpersonYomi)
+                        val listToken = personTokenArray.getListDictionaryByYomiTermId(
+                            termId,
+                            succinctBitVectorpersonTokenArray
+                        )
+
+                        val tangoList = listToken.map {
+                            Node(
+                                l = personTokenArray.leftIds[it.posTableIndex.toInt()],
+                                r = personTokenArray.rightIds[it.posTableIndex.toInt()],
+                                score = it.wordCost.toInt(),
+                                f = it.wordCost.toInt(),
+                                g = it.wordCost.toInt(),
+                                tango = when (it.nodeId) {
+                                    -2 -> yomiStr
+                                    -1 -> yomiStr.hiraToKata()
+                                    else -> personTangoTrie.getLetter(
+                                        it.nodeId,
+                                        succinctBitVector = succinctBitVectorpersonTangoLBS
+                                    )
+                                },
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                            )
+                        }.filter { cand ->
+                            ngWords.none { ng -> ng == cand.tango }
+                        }
+                        val endIndex = i + yomiStr.length
+                        graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
+                    }
+                }
+            }
+
+            if (neologdYomiTrie != null && neologdTangoTrie != null && neologdTokenArray != null &&
+                succinctBitVectorLBSneologdYomi != null && succinctBitVectorneologdTangoLBS != null &&
+                succinctBitVectorneologdTokenArray != null && succinctBitVectorIsLeafneologdYomi != null
+            ) {
+                val commonPrefixSearchneologd: List<String> = neologdYomiTrie.commonPrefixSearch(
+                    str = subStr,
+                    succinctBitVector = succinctBitVectorLBSneologdYomi
+                )
+                if (commonPrefixSearchneologd.isNotEmpty()) foundInAnyDictionary = true
+
+                for (yomiStr in commonPrefixSearchneologd) {
+                    val nodeIndex = neologdYomiTrie.getNodeIndex(
+                        yomiStr,
+                        succinctBitVectorLBSneologdYomi,
+                    )
+                    if (nodeIndex > 0) { // ルートノードは除く
+                        val termId =
+                            neologdYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafneologdYomi)
+                        val listToken = neologdTokenArray.getListDictionaryByYomiTermId(
+                            termId,
+                            succinctBitVectorneologdTokenArray
+                        )
+
+                        val tangoList = listToken.map {
+                            Node(
+                                l = neologdTokenArray.leftIds[it.posTableIndex.toInt()],
+                                r = neologdTokenArray.rightIds[it.posTableIndex.toInt()],
+                                score = it.wordCost.toInt(),
+                                f = it.wordCost.toInt(),
+                                g = it.wordCost.toInt(),
+                                tango = when (it.nodeId) {
+                                    -2 -> yomiStr
+                                    -1 -> yomiStr.hiraToKata()
+                                    else -> neologdTangoTrie.getLetter(
+                                        it.nodeId,
+                                        succinctBitVector = succinctBitVectorneologdTangoLBS
+                                    )
+                                },
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                            )
+                        }.filter { cand ->
+                            ngWords.none { ng -> ng == cand.tango }
+                        }
+                        val endIndex = i + yomiStr.length
+                        graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
+                    }
                 }
             }
 
