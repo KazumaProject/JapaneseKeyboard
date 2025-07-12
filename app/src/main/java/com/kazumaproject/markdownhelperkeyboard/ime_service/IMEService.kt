@@ -103,6 +103,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIM
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
@@ -312,6 +313,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
     private var isNgWordEnable: Boolean? = false
+    private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
+    private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
+    private val _ngPattern = MutableStateFlow("".toRegex())
+    private val ngPattern: StateFlow<Regex> = _ngPattern
 
     private var keyboardContainer: FrameLayout? = null
 
@@ -413,9 +418,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private var allNGWords: List<String>? = null
-    private var ngPattern: Regex? = null
-
     companion object {
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
@@ -436,9 +438,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
-        ioScope.launch {
-            retrieveNGWord()
-        }
     }
 
     override fun onCreateInputView(): View? {
@@ -609,8 +608,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isLiveConversionEnable = null
         nBest = null
         isVibration = null
-        allNGWords = null
-        ngPattern = null
         vibrationTimingStr = null
         mozcUTPersonName = null
         romajiConverter = null
@@ -940,21 +937,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         return super.onKeyDown(keyCode, event)
     }
-
-    private suspend fun retrieveNGWord() {
-        if (appPreference.ng_word_preference != true) return
-        val allNgWordStrings = ngWordRepository.getAllNgWords().map { it.tango }
-
-        // 2. 作成したリストから、正規表現パターンを生成する
-        val ngPattern = allNgWordStrings
-            .joinToString(separator = "|") { Pattern.quote(it) }
-            .toRegex()
-
-        // 必要であれば、クラスのプロパティなどにそれぞれ代入する
-        this.allNGWords = allNgWordStrings
-        this.ngPattern = ngPattern
-    }
-
 
     private fun setTenKeyListeners(
         mainView: MainLayoutBinding
@@ -1424,7 +1406,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     yomi = insertString,
                                     tango = candidate.string
                                 )
-                                retrieveNGWord()
                                 withContext(Dispatchers.Main) {
                                     _suggestionFlag.emit(CandidateShowFlag.Updating)
                                 }
@@ -3043,6 +3024,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
+            ngWordRepository.getAllNgWordsFlow().collectLatest { ngWords ->
+                _ngWordsList.value = ngWords.distinct()
+                _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }
+                    .toRegex()
+            }
+        }
+
+        launch {
             inputString.collectLatest { string ->
                 processInputString(string, mainView)
             }
@@ -4557,7 +4546,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
-        val ngWords = allNGWords ?: emptyList()
+        val ngWords =
+            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         Timber.d("resultFromUserTemplate: $resultFromUserTemplate")
         Timber.d("candidate $ngWords $ngPattern")
         val engineCandidates = kanaKanjiEngine.getCandidates(
@@ -4578,9 +4568,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (ngWords.isEmpty()) {
                     true
                 } else {
-                    ngPattern?.let {
+                    ngPattern.value.let {
                         !it.containsMatchIn(candidate.string)
-                    } ?: true
+                    }
                 }
             }
             .distinctBy { it.string }

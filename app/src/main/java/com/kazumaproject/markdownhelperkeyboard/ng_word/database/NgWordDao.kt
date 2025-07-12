@@ -5,11 +5,15 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NgWordDao {
     @Query("SELECT * FROM ng_word ORDER BY id DESC")
     suspend fun getAll(): List<NgWord>
+
+    @Query("SELECT * FROM ng_word ORDER BY id DESC")
+    fun getAllFlow(): Flow<List<NgWord>>
 
     @Query("SELECT * FROM ng_word WHERE yomi = :yomi AND tango = :tango LIMIT 1")
     suspend fun find(yomi: String, tango: String): NgWord?
