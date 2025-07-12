@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,6 +13,9 @@ class NgWordRepository @Inject constructor(
     /** 全件取得（降順） */
     suspend fun getAllNgWords(): List<NgWord> =
         dao.getAll()
+
+    fun getAllNgWordsFlow(): Flow<List<NgWord>> =
+        dao.getAllFlow()
 
     /** yomi による検索 */
     suspend fun getNgWordsByYomi(yomi: String): List<NgWord> =
