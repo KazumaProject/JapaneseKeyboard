@@ -103,10 +103,12 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIM
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
+import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.NgWordRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
@@ -152,6 +154,7 @@ import java.io.IOException
 import java.text.BreakIterator
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import java.util.regex.Pattern
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -193,6 +196,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var romajiMapRepository: RomajiMapRepository
+
+    @Inject
+    lateinit var ngWordRepository: NgWordRepository
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
@@ -305,8 +311,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputKeyType: String? = "flick-default"
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
-
     private var isTablet: Boolean? = false
+    private var isNgWordEnable: Boolean? = false
+    private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
+    private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
+    private val _ngPattern = MutableStateFlow("".toRegex())
+    private val ngPattern: StateFlow<Regex> = _ngPattern
 
     private var keyboardContainer: FrameLayout? = null
 
@@ -490,6 +500,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             hankakuPreference = space_hankaku_preference ?: false
             isLiveConversionEnable = live_conversion_preference ?: false
             nBest = n_best_preference ?: 4
+            isNgWordEnable = ng_word_preference ?: true
             userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -606,6 +617,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTWeb = null
         sumireInputKeyType = null
         isTablet = null
+        isNgWordEnable = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         actionInDestroy()
@@ -1353,6 +1365,67 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private var keyboardSelectionPopupWindow: PopupWindow? = null
+
+    private fun registerNGWord(
+        insertString: String, candidate: Candidate, candidatePosition: Int
+    ) {
+        mainLayoutBinding?.let { mainView ->
+            val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+            val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
+            val listView = popupView.findViewById<ListView>(R.id.popup_listview)
+
+            // A. Enable single choice mode for the ListView
+            listView.choiceMode = ListView.CHOICE_MODE_SINGLE
+
+            val items = listOf(
+                "この単語を非表示",
+                "閉じる"
+            )
+
+            // B. Use your new custom layout file in the ArrayAdapter
+            val adapter = ArrayAdapter(this, R.layout.list_item_layout, items) // Use your layout
+            listView.adapter = adapter
+
+            keyboardSelectionPopupWindow = PopupWindow(
+                popupView,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                true // Set focusable to true
+            )
+            listView.setOnItemClickListener { _, _, position, _ ->
+                Timber.d("candidate long click: $candidate $candidatePosition")
+                when (position) {
+                    0 -> {
+                        ioScope.launch {
+                            val exist = ngWordRepository.exists(
+                                yomi = insertString,
+                                tango = candidate.string
+                            )
+                            if (!exist) {
+                                ngWordRepository.addNgWord(
+                                    yomi = insertString,
+                                    tango = candidate.string
+                                )
+                                withContext(Dispatchers.Main) {
+                                    _suggestionFlag.emit(CandidateShowFlag.Updating)
+                                }
+                            }
+                        }
+                    }
+
+                    1 -> {
+
+                    }
+
+                }
+                keyboardSelectionPopupWindow?.dismiss()
+            }
+
+            keyboardSelectionPopupWindow?.showAtLocation(
+                mainView.suggestionRecyclerView, Gravity.TOP, 0, 0
+            )
+        }
+    }
 
     private fun showListPopup() {
         onKeyboardSwitchLongPressUp = true
@@ -2945,11 +3018,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
-            keyboardRepository.getLayouts()
-                .distinctUntilChanged()
-                .collectLatest { layouts ->
-                    customLayouts = layouts
-                }
+            keyboardRepository.getLayouts().distinctUntilChanged().collectLatest { layouts ->
+                customLayouts = layouts
+            }
+        }
+
+        launch {
+            ngWordRepository.getAllNgWordsFlow().collectLatest { ngWords ->
+                _ngWordsList.value = ngWords.distinct()
+                _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }
+                    .toRegex()
+            }
         }
 
         launch {
@@ -3105,8 +3184,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _suggestionFlag.emit(CandidateShowFlag.Updating)
         if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
-                string,
-                spannable
+                string, spannable
             )
         }
         if (isLiveConversionEnable != true) {
@@ -3122,8 +3200,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val spannable = createSpannableWithTail(string)
         if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
-                string,
-                spannable
+                string, spannable
             )
         }
         _suggestionFlag.emit(CandidateShowFlag.Updating)
@@ -3404,6 +3481,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     position = position
                 )
             }
+            adapter.setOnItemLongClickListener { candidate, i ->
+                Timber.d("Candidate long tap: $candidate $i")
+                val insertString = inputString.value
+                if (isNgWordEnable == true) {
+                    registerNGWord(
+                        insertString = insertString, candidate = candidate, candidatePosition = i
+                    )
+                }
+            }
+
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
@@ -3950,7 +4037,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitAndClearInput(readingCorrection.first)
             }
 
-            9, 11, 12, 13, 14, 28 -> {
+            9, 11, 12, 13, 14, 28, 30 -> {
                 commitAndClearInput(candidate.string)
             }
 
@@ -4417,7 +4504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana) applyFirstSuggestion(filtered.first())
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
     }
 
@@ -4426,8 +4513,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): List<Candidate> {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
-                val prefixMatchNumber =
-                    (userDictionaryPrefixMatchNumber ?: 2) - 1
+                val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
                 if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                 userDictionaryRepository.searchByReadingPrefixSuspend(
                     prefix = insertString, limit = 4
@@ -4460,7 +4546,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
+        val ngWords =
+            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         Timber.d("resultFromUserTemplate: $resultFromUserTemplate")
+        Timber.d("candidate $ngWords $ngPattern")
         val engineCandidates = kanaKanjiEngine.getCandidates(
             input = insertString,
             n = nBest ?: 4,
@@ -4470,10 +4559,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mozcUTNeologd = mozcUTNeologd,
             mozcUTWeb = mozcUTWeb,
             userDictionaryRepository = userDictionaryRepository,
-            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null
+            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+            ngWords = ngWords
         )
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
-        return result.distinctBy { it.string }
+        return result
+            .filter { candidate ->
+                if (ngWords.isEmpty()) {
+                    true
+                } else {
+                    ngPattern.value.let {
+                        !it.containsMatchIn(candidate.string)
+                    }
+                }
+            }
+            .distinctBy { it.string }
     }
 
     private fun deleteLongPress() {

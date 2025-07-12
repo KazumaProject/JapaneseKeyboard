@@ -21,6 +21,7 @@ object AppPreference {
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
+    private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 8)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
     private val MOZCUT_PLACES = Pair("mozc_ut_places_preference", false)
@@ -103,6 +104,15 @@ object AppPreference {
         get() = preferences.getBoolean(VIBRATION_PREFERENCE.first, VIBRATION_PREFERENCE.second)
         set(value) = preferences.edit {
             it.putBoolean(VIBRATION_PREFERENCE.first, value ?: true)
+        }
+
+    var ng_word_preference: Boolean?
+        get() = preferences.getBoolean(
+            NG_WORD_ENABLE_PREFERENCE.first,
+            NG_WORD_ENABLE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(NG_WORD_ENABLE_PREFERENCE.first, value ?: true)
         }
 
     var vibration_timing_preference: String?
