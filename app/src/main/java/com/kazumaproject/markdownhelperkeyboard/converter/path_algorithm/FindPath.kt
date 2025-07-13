@@ -42,7 +42,7 @@ class FindPath {
                             string = stringFromNode,
                             type = (1).toByte(),
                             length = length.toUByte(),
-                            score = node.second,
+                            score = if (stringFromNode.any { it.isDigit() }) node.second + 2000 else node.second,
                             leftId = node.first.next?.l,
                             rightId = node.first.next?.r
                         )
