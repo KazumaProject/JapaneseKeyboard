@@ -1,4 +1,4 @@
-package com.kazumaproject.viterbi
+package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
@@ -42,7 +42,7 @@ class FindPath {
                             string = stringFromNode,
                             type = (1).toByte(),
                             length = length.toUByte(),
-                            score = if (Regex("\\d").containsMatchIn(stringFromNode)) node.second + 2000 else node.second,
+                            score = node.second,
                             leftId = node.first.next?.l,
                             rightId = node.first.next?.r
                         )

@@ -4548,8 +4548,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        Timber.d("resultFromUserTemplate: $resultFromUserTemplate")
-        Timber.d("candidate $ngWords $ngPattern")
         val engineCandidates = kanaKanjiEngine.getCandidates(
             input = insertString,
             n = nBest ?: 4,
