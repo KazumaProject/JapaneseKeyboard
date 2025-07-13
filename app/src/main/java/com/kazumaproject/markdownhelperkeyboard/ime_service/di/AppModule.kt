@@ -38,7 +38,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
-import com.kazumaproject.viterbi.FindPath
+import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
