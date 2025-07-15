@@ -126,7 +126,7 @@ class EnglishEngine {
                         string = base,
                         type = defaultType,
                         length = base.length.toUByte(),
-                        score = entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY
+                        score = entry.wordCost.toInt()
                     ),
 
                     Candidate(
