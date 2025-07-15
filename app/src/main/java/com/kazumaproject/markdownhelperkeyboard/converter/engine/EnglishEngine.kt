@@ -2,85 +2,112 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
-import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
+import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
+import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
+import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
 
 class EnglishEngine {
-    private lateinit var englishLOUDS: EnglishLOUDS
-    private lateinit var englishSuccinctBitVectorLBS: SuccinctBitVector
-    private lateinit var englishSuccinctBitVectorIsLeaf: SuccinctBitVector
+    private lateinit var readingLOUDS: LOUDSWithTermId
+    private lateinit var wordLOUDS: LOUDS
+    private lateinit var tokenArray: TokenArray
+    private lateinit var succinctBitVectorLBSReading: SuccinctBitVector
+    private lateinit var succinctBitVectorReadingIsLeaf: SuccinctBitVector
+    private lateinit var succinctBitVectorTokenArray: SuccinctBitVector
+    private lateinit var succinctBitVectorLBSWord: SuccinctBitVector
     fun buildEngine(
-        englishLOUDS: EnglishLOUDS,
-        englishSuccinctBitVectorLBS: SuccinctBitVector,
-        englishSuccinctBitVectorIsLeaf: SuccinctBitVector
+        englishReadingLOUDS: LOUDSWithTermId,
+        englishWordLOUDS: LOUDS,
+        englishTokenArray: TokenArray,
+        englishSuccinctBitVectorLBSReading: SuccinctBitVector,
+        englishSuccinctBitVectorLBSWord: SuccinctBitVector,
+        englishSuccinctBitVectorReadingIsLeaf: SuccinctBitVector,
+        englishSuccinctBitVectorTokenArray: SuccinctBitVector,
     ) {
-        this.englishLOUDS = englishLOUDS
-        this.englishSuccinctBitVectorLBS = englishSuccinctBitVectorLBS
-        this.englishSuccinctBitVectorIsLeaf = englishSuccinctBitVectorIsLeaf
+        this.readingLOUDS = englishReadingLOUDS
+        this.wordLOUDS = englishWordLOUDS
+        this.tokenArray = englishTokenArray
+        this.succinctBitVectorLBSReading = englishSuccinctBitVectorLBSReading
+        this.succinctBitVectorLBSWord = englishSuccinctBitVectorLBSWord
+        this.succinctBitVectorReadingIsLeaf = englishSuccinctBitVectorReadingIsLeaf
+        this.succinctBitVectorTokenArray = englishSuccinctBitVectorTokenArray
     }
 
-    fun getCandidates(input: String, limit: Int): List<Candidate> {
+    fun getCandidates(input: String): List<Candidate> {
         if (input.isEmpty()) return emptyList()
 
         // common constants
         val defaultType = 29.toByte()
-        val inputLen = input.length.toUByte()
-        val isFirstCapital = input[0].isUpperCase()
         val lowerInput = input.lowercase()
-        val upperInput = input.uppercase()
-        val capInput = input.replaceFirstChar { it.uppercaseChar() }
+        val limit = if (input.length <= 2) 8 else 32
 
-        // 1) predictive search
-        val preds = englishLOUDS.predictiveSearch(lowerInput, englishSuccinctBitVectorLBS, limit)
-        if (preds.isEmpty()) {
-            // default fallback
-            val out = ArrayList<Candidate>(3)
-            if (isFirstCapital) {
-                out += Candidate(capInput, defaultType, inputLen, 0)
-                out += Candidate(input, defaultType, inputLen, 500)
-                out += Candidate(upperInput, defaultType, inputLen, 2000)
-            } else {
-                out += Candidate(input, defaultType, inputLen, 0)
-                out += Candidate(capInput, defaultType, inputLen, 500)
-                out += Candidate(upperInput, defaultType, inputLen, 2000)
+        val predictiveSearchReading = readingLOUDS.predictiveSearch(
+            prefix = lowerInput,
+            succinctBitVector = succinctBitVectorLBSReading,
+            limit = limit
+        )
+
+        val predictions = mutableListOf<Candidate>()
+        for (readingStr in predictiveSearchReading) {
+            val nodeIndex = readingLOUDS.getNodeIndex(
+                readingStr,
+                succinctBitVector = succinctBitVectorLBSReading
+            )
+            if (nodeIndex <= 0) continue
+
+            val termId = readingLOUDS.getTermId(
+                nodeIndex = nodeIndex,
+                succinctBitVector = succinctBitVectorReadingIsLeaf
+            )
+
+            val listToken = tokenArray.getListDictionaryByYomiTermId(
+                termId,
+                succinctBitVectorTokenArray
+            )
+
+            // flatMap each token entry into three Candidate variants
+            val variants = listToken.flatMap { entry ->
+                // base string
+                val base = when (entry.nodeId) {
+                    -1 -> readingStr
+                    else -> wordLOUDS.getLetter(
+                        entry.nodeId,
+                        succinctBitVector = succinctBitVectorLBSWord
+                    )
+                }
+
+                // build the three variants
+                listOf(
+                    Candidate(
+                        string = base,
+                        type = defaultType,
+                        length = base.length.toUByte(),
+                        score = entry.wordCost.toInt() + base.length * 5000
+                    ),
+
+                    Candidate(
+                        string = base.replaceFirstChar { it.uppercaseChar() },
+                        type = defaultType,
+                        length = base.length.toUByte(),
+                        score = if (input.first()
+                                .isUpperCase()
+                        ) entry.wordCost.toInt() + base.length * 5000 else entry.wordCost.toInt() + 500 + base.length * 5000
+                    ),
+
+                    Candidate(
+                        string = base.uppercase(),
+                        type = defaultType,
+                        length = base.length.toUByte(),
+                        score = if (input.first()
+                                .isUpperCase()
+                        ) entry.wordCost.toInt() + base.length * 5000 else entry.wordCost.toInt() + 2000 + base.length * 5000
+                    )
+                )
             }
-            return out
+
+            predictions += variants
         }
 
-        // 2) build candidates for each prediction
-        val out = ArrayList<Candidate>(preds.size)
-        // cache these locally to avoid repeated property lookups
-        val lbs = englishSuccinctBitVectorLBS
-        val leaf = englishSuccinctBitVectorIsLeaf
-
-        for (word in preds) {
-            val idx = englishLOUDS.getNodeIndex(word, lbs)
-            val base = englishLOUDS.getTermId(idx, leaf).toInt().takeIf { it >= 0 } ?: continue
-
-            val wLen = word.length.toUByte()
-            val wUp = word.uppercase()
-            val wCap = word.replaceFirstChar { it.uppercaseChar() }
-            val inputUp = input.uppercase()
-            val inputWCap = input.replaceFirstChar { it.uppercaseChar() }
-
-            if (isFirstCapital) {
-                out += Candidate(wCap, defaultType, wLen, base - 1)
-                out += Candidate(word, defaultType, wLen, base + 1500)
-                out += Candidate(wUp, defaultType, wLen, base + 1000)
-                out += Candidate(inputWCap, defaultType, wLen, base + 4000)
-                out += Candidate(inputUp, defaultType, wLen, base + 5000)
-                out += Candidate(input, defaultType, wLen, base + 5500)
-            } else {
-                out += Candidate(word, defaultType, wLen, base)
-                out += Candidate(wCap, defaultType, wLen, base + 500)
-                out += Candidate(wUp, defaultType, wLen, base + 2000)
-                out += Candidate(inputWCap, defaultType, wLen, base + 5000)
-                out += Candidate(inputUp, defaultType, wLen, base + 5500)
-                out += Candidate(input, defaultType, wLen, base + 4000)
-            }
-        }
-
-        // 3) sort once, in-place
-        out.sortBy { it.score }
-        return out
+        return predictions.sortedBy { it.score }
     }
+
 }

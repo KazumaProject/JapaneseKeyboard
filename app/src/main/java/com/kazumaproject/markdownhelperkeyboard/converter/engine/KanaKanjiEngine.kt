@@ -708,7 +708,7 @@ class KanaKanjiEngine {
             )
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input, n)
+            englishEngine.getCandidates(input)
         } else {
             emptyList()
         }

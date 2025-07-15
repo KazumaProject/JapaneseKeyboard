@@ -77,6 +77,7 @@ annotation class EmojiTokenArray
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class EmojiSuccinctBitVectorLBSYomi
+
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class EmojiSuccinctBitVectorIsLeafYomi
@@ -140,9 +141,11 @@ annotation class SymbolSuccinctBitVectorIsLeafYomi
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class SymbolSuccinctBitVectorTokenArray
+
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class SymbolSuccinctBitVectorTangoLBS
+
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class ReadingCorrectionYomiTrie
@@ -170,6 +173,7 @@ annotation class ReadingCorrectionSuccinctBitVectorTokenArray
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class ReadingCorrectionSuccinctBitVectorTangoLBS
+
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class KotowazaYomiTrie
@@ -200,12 +204,28 @@ annotation class KotowazaSuccinctBitVectorTangoLBS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class EnglishDictionary
+annotation class EnglishReadingLOUDS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class EnglishSuccinctBitVectorLBS
+annotation class EnglishWordLOUDS
 
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
-annotation class EnglishSuccinctBitVectorIsLeaf
+annotation class EnglishTokenArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EnglishSuccinctBitVectorLBSReading
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EnglishSuccinctBitVectorLBSWord
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EnglishSuccinctBitVectorTokenArray
+
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class EnglishSuccinctBitVectorReadingIsLeaf
