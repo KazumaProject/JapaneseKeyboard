@@ -13,8 +13,8 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.Clipb
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.converter.english.EnglishLOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
@@ -38,7 +38,6 @@ import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
-import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -46,6 +45,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.util.zip.ZipInputStream
@@ -711,43 +711,92 @@ object AppModule {
     fun providesInputManager(@ApplicationContext context: Context): InputMethodManager =
         context.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
 
-    @EnglishDictionary
+    @Provides
+    @Singleton
+    @EnglishReadingLOUDS
+    fun provideEnglishReadingLOUDS(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId {
+        val zipInputStream = ZipInputStream(context.assets.open("english/reading.dat.zip"))
+        zipInputStream.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
+            return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
+                .readExternalNotCompress(it)
+        }
+    }
+
+    @EnglishWordLOUDS
     @Singleton
     @Provides
-    fun provideEnglishLOUDS(@ApplicationContext context: Context): EnglishLOUDS {
+    fun provideEnglishWordLOUDS(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS {
         val objectInputEnglish =
-            ObjectInputStream(BufferedInputStream(context.assets.open("english/english.dat")))
-        return EnglishLOUDS().readExternal(objectInputEnglish)
+            ObjectInputStream(BufferedInputStream(context.assets.open("english/word.dat")))
+        return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS()
+            .readExternalNotCompress(objectInputEnglish)
+    }
+
+    @Provides
+    @Singleton
+    @EnglishTokenArray
+    fun provideEnglishTokenArray(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray {
+        val zipInputStream = ZipInputStream(context.assets.open("english/token.dat.zip"))
+        zipInputStream.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
+            return com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
+                .readExternal(it)
+        }
     }
 
     @Singleton
     @Provides
     fun providesEnglishEngine(
-        @EnglishDictionary englishLOUDS: EnglishLOUDS,
-        @EnglishSuccinctBitVectorLBS englishSuccinctBitVectorLBS: SuccinctBitVector,
-        @EnglishSuccinctBitVectorIsLeaf englishSuccinctBitVectorIsLeaf: SuccinctBitVector
+        @EnglishReadingLOUDS englishReadingLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId,
+        @EnglishWordLOUDS englishWordLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS,
+        @EnglishTokenArray englishTokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray,
+        @EnglishSuccinctBitVectorLBSReading englishSuccinctBitVectorLBSReading: SuccinctBitVector,
+        @EnglishSuccinctBitVectorLBSWord englishSuccinctBitVectorLBSWord: SuccinctBitVector,
+        @EnglishSuccinctBitVectorTokenArray englishSuccinctBitVectorLBSTokenArray: SuccinctBitVector,
+        @EnglishSuccinctBitVectorReadingIsLeaf englishSuccinctBitVectorLBSReadingIsLeaf: SuccinctBitVector
     ): EnglishEngine {
         val englishEngine = EnglishEngine()
         englishEngine.buildEngine(
-            englishLOUDS,
-            englishSuccinctBitVectorLBS,
-            englishSuccinctBitVectorIsLeaf
+            englishReadingLOUDS = englishReadingLOUDS,
+            englishWordLOUDS = englishWordLOUDS,
+            englishTokenArray = englishTokenArray,
+            englishSuccinctBitVectorLBSReading = englishSuccinctBitVectorLBSReading,
+            englishSuccinctBitVectorLBSWord = englishSuccinctBitVectorLBSWord,
+            englishSuccinctBitVectorTokenArray = englishSuccinctBitVectorLBSTokenArray,
+            englishSuccinctBitVectorReadingIsLeaf = englishSuccinctBitVectorLBSReadingIsLeaf
+
         )
         return englishEngine
     }
 
     @Singleton
     @Provides
-    @EnglishSuccinctBitVectorLBS
-    fun provideEnglishSuccinctBitVectorLBS(@EnglishDictionary englishLOUDS: EnglishLOUDS): SuccinctBitVector {
+    @EnglishSuccinctBitVectorLBSReading
+    fun provideEnglishSuccinctBitVectorLBS(@EnglishReadingLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId): SuccinctBitVector {
         return SuccinctBitVector(englishLOUDS.LBS)
     }
 
     @Singleton
     @Provides
-    @EnglishSuccinctBitVectorIsLeaf
-    fun provideEnglishSuccinctBitVectorIsLeaf(@EnglishDictionary englishLOUDS: EnglishLOUDS): SuccinctBitVector {
+    @EnglishSuccinctBitVectorReadingIsLeaf
+    fun provideEnglishSuccinctBitVectorIsLeaf(@EnglishReadingLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId): SuccinctBitVector {
         return SuccinctBitVector(englishLOUDS.isLeaf)
+    }
+
+    @Singleton
+    @Provides
+    @EnglishSuccinctBitVectorLBSWord
+    fun provideEnglishSuccinctBitVectorWord(@EnglishWordLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS): SuccinctBitVector {
+        return SuccinctBitVector(englishLOUDS.LBS)
+    }
+
+    @Singleton
+    @Provides
+    @EnglishSuccinctBitVectorTokenArray
+    fun provideEnglishSuccinctBitVectorTokenArray(@EnglishTokenArray englishTokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray): SuccinctBitVector {
+        Timber.d("provideEnglishSuccinctBitVectorTokenArray: ${englishTokenArray.bitvector.size()}")
+        return SuccinctBitVector(englishTokenArray.bitvector)
     }
 
 }
