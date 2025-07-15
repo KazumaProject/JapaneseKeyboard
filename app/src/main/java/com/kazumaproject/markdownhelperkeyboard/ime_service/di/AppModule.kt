@@ -711,14 +711,16 @@ object AppModule {
     fun providesInputManager(@ApplicationContext context: Context): InputMethodManager =
         context.getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
 
-    @EnglishReadingLOUDS
-    @Singleton
     @Provides
+    @Singleton
+    @EnglishReadingLOUDS
     fun provideEnglishReadingLOUDS(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId {
-        val objectInputEnglish =
-            ObjectInputStream(BufferedInputStream(context.assets.open("english/reading.dat")))
-        return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
-            .readExternalNotCompress(objectInputEnglish)
+        val zipInputStream = ZipInputStream(context.assets.open("english/reading.dat.zip"))
+        zipInputStream.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
+            return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
+                .readExternalNotCompress(it)
+        }
     }
 
     @EnglishWordLOUDS
@@ -731,14 +733,16 @@ object AppModule {
             .readExternalNotCompress(objectInputEnglish)
     }
 
-    @EnglishTokenArray
-    @Singleton
     @Provides
+    @Singleton
+    @EnglishTokenArray
     fun provideEnglishTokenArray(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray {
-        val objectInputEnglish =
-            ObjectInputStream(BufferedInputStream(context.assets.open("english/token.dat")))
-        return com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
-            .readExternal(objectInputEnglish)
+        val zipInputStream = ZipInputStream(context.assets.open("english/token.dat.zip"))
+        zipInputStream.nextEntry
+        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
+            return com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
+                .readExternal(it)
+        }
     }
 
     @Singleton
