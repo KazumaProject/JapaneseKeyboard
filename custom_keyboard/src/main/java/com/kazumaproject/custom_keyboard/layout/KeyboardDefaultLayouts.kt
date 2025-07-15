@@ -2106,7 +2106,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("@"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("#"),
             FlickDirection.UP to FlickAction.Input("/"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("&"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("_"),
             FlickDirection.DOWN to FlickAction.Input("1")
         )
         val abc = mapOf(
@@ -2170,7 +2170,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("."),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
             FlickDirection.UP to FlickAction.Input("?"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("!")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("!"),
+            FlickDirection.DOWN to FlickAction.Input("-")
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
@@ -2419,7 +2420,7 @@ object KeyboardDefaultLayouts {
                 mapOf(
                     FlickDirection.TAP to FlickAction.Input("2"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
-                    FlickDirection.UP to FlickAction.Input("＄"),
+                    FlickDirection.UP to FlickAction.Input("$"),
                     FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
                 )
             ),
@@ -2485,6 +2486,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Input("0"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
                     FlickDirection.UP to FlickAction.Input("…"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
                 )
             ),
             "( ) [ ]" to listOf(
