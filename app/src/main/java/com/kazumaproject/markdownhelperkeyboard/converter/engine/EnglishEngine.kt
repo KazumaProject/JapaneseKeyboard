@@ -14,6 +14,11 @@ class EnglishEngine {
     private lateinit var succinctBitVectorReadingIsLeaf: SuccinctBitVector
     private lateinit var succinctBitVectorTokenArray: SuccinctBitVector
     private lateinit var succinctBitVectorLBSWord: SuccinctBitVector
+
+    companion object {
+        const val LENGTH_MULTIPLY = 2000
+    }
+
     fun buildEngine(
         englishReadingLOUDS: LOUDSWithTermId,
         englishWordLOUDS: LOUDS,
@@ -38,7 +43,7 @@ class EnglishEngine {
         // common constants
         val defaultType = 29.toByte()
         val lowerInput = input.lowercase()
-        val limit = if (input.length <= 2) 8 else 32
+        val limit = if (input.length <= 2) 8 else 16
 
         val predictiveSearchReading = readingLOUDS.predictiveSearch(
             prefix = lowerInput,
@@ -47,6 +52,46 @@ class EnglishEngine {
         )
 
         val predictions = mutableListOf<Candidate>()
+        predictions.add(
+            Candidate(
+                string = input.replaceFirstChar { it.uppercaseChar() },
+                score = if (input.length <= 3) 9000 else if (input.length <= 4) 12000 else 57000,
+                type = defaultType,
+                length = input.length.toUByte()
+            )
+        )
+        predictions.add(
+            Candidate(
+                string = input.uppercase(),
+                score = if (input.length <= 3) 9001 else if (input.length <= 4) 22001 else 57001,
+                type = defaultType,
+                length = input.length.toUByte()
+            )
+        )
+        if (predictiveSearchReading.isEmpty()) {
+            return listOf(
+                Candidate(
+                    string = input,
+                    type = defaultType,
+                    length = input.length.toUByte(),
+                    score = 10000
+                ),
+
+                Candidate(
+                    string = input.replaceFirstChar { it.uppercaseChar() },
+                    type = defaultType,
+                    length = input.length.toUByte(),
+                    score = 10001
+                ),
+
+                Candidate(
+                    string = input.uppercase(),
+                    type = defaultType,
+                    length = input.length.toUByte(),
+                    score = 10002
+                )
+            )
+        }
         for (readingStr in predictiveSearchReading) {
             val nodeIndex = readingLOUDS.getNodeIndex(
                 readingStr,
@@ -81,7 +126,7 @@ class EnglishEngine {
                         string = base,
                         type = defaultType,
                         length = base.length.toUByte(),
-                        score = entry.wordCost.toInt() + base.length * 5000
+                        score = entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY
                     ),
 
                     Candidate(
@@ -90,7 +135,7 @@ class EnglishEngine {
                         length = base.length.toUByte(),
                         score = if (input.first()
                                 .isUpperCase()
-                        ) entry.wordCost.toInt() + base.length * 5000 else entry.wordCost.toInt() + 500 + base.length * 5000
+                        ) entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY else entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY
                     ),
 
                     Candidate(
@@ -99,7 +144,7 @@ class EnglishEngine {
                         length = base.length.toUByte(),
                         score = if (input.first()
                                 .isUpperCase()
-                        ) entry.wordCost.toInt() + base.length * 5000 else entry.wordCost.toInt() + 2000 + base.length * 5000
+                        ) entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY else entry.wordCost.toInt() + 2000 + base.length * LENGTH_MULTIPLY
                     )
                 )
             }
