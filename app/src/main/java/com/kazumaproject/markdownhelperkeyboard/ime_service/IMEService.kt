@@ -71,7 +71,6 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
-import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
@@ -407,14 +406,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val cachedEnglishDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
             applicationContext, com.kazumaproject.core.R.drawable.english_small
-        )
-    }
-
-    private val hiraganaLayout: KeyboardLayout? by lazy {
-        KeyboardDefaultLayouts.createFinalLayout(
-            mode = KeyboardInputMode.HIRAGANA, dynamicKeyStates = mapOf(
-                "enter_key" to 0, "dakuten_toggle_key" to 0
-            ), inputType = sumireInputKeyType ?: "flick-default"
         )
     }
 
@@ -1637,9 +1628,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
-                        hiraganaLayout?.let { layout ->
-                            customLayoutDefault.setKeyboard(layout)
-                        }
+                        val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
+                            mode = KeyboardInputMode.HIRAGANA, dynamicKeyStates = mapOf(
+                                "enter_key" to 0, "dakuten_toggle_key" to 0
+                            ), inputType = sumireInputKeyType ?: "flick-default"
+                        )
+                        customLayoutDefault.setKeyboard(hiraganaLayout)
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
                     } else {
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
