@@ -25,7 +25,10 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class PetalFlickInputController(private val context: Context) {
+class PetalFlickInputController(
+    private val context: Context,
+    private val flickSensitivity: Int
+) {
 
     interface PetalFlickListener {
         fun onFlick(character: String)
@@ -39,7 +42,6 @@ class PetalFlickInputController(private val context: Context) {
     private var anchorView: View? = null
     private var initialTouchX = 0f
     private var initialTouchY = 0f
-    private val flickThreshold = 80f
     private var originalKeyText: CharSequence? = null
 
     // 各方向に対応するPopupWindowを保持するMap
@@ -272,7 +274,7 @@ class PetalFlickInputController(private val context: Context) {
                 val dx = event.rawX - initialTouchX
                 val dy = event.rawY - initialTouchY
 
-                if (sqrt(dx * dx + dy * dy) > flickThreshold * 0.5f) {
+                if (sqrt(dx * dx + dy * dy) > flickSensitivity * 0.5f) {
                     longPressJob?.cancel()
                 }
 
@@ -315,7 +317,7 @@ class PetalFlickInputController(private val context: Context) {
 
     private fun calculateDirection(dx: Float, dy: Float): FlickDirection {
         val distance = sqrt(dx * dx + dy * dy)
-        if (distance < flickThreshold) {
+        if (distance < flickSensitivity) {
             return FlickDirection.TAP
         }
 

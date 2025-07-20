@@ -56,17 +56,16 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
 
-    // START: New properties for handling touches in margins
-    private var motionTarget: View? = null
     private val hitRect = Rect()
-    // END: New properties
+
+    private var flickSensitivity: Int = 100
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
 
-    fun removeKeyboardActionListener() {
-        this.listener = null
+    fun setFlickSensitivityValue(sensitivity: Int) {
+        flickSensitivity = sensitivity
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -335,7 +334,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                 KeyType.PETAL_FLICK -> {
                     val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null) {
-                        val controller = PetalFlickInputController(context).apply {
+                        val controller = PetalFlickInputController(
+                            context,
+                            flickSensitivity
+                        ).apply {
                             val secondaryColor =
                                 context.getColorFromAttr(R.attr.colorSecondaryContainer)
                             val surfaceContainerLow =
