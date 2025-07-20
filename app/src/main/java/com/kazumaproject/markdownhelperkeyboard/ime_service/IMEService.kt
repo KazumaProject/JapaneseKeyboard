@@ -300,6 +300,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var hankakuPreference: Boolean? = false
     private var isLiveConversionEnable: Boolean? = false
     private var nBest: Int? = 4
+    private var flickSensitivityPreferenceValue: Int? = 100
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
     private var mozcUTPersonName: Boolean? = false
@@ -491,6 +492,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             hankakuPreference = space_hankaku_preference ?: false
             isLiveConversionEnable = live_conversion_preference ?: false
             nBest = n_best_preference ?: 4
+            flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             isNgWordEnable = ng_word_preference ?: true
             userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
@@ -543,6 +545,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setKeyboardSize()
         resetKeyboard()
         keyboardSelectionPopupWindow?.dismiss()
+        mainLayoutBinding?.let { mainView ->
+            mainView.apply {
+                keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+            }
+        }
     }
 
     override fun onFinishInput() {
@@ -598,6 +607,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hankakuPreference = null
         isLiveConversionEnable = null
         nBest = null
+        flickSensitivityPreferenceValue = null
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -1369,8 +1379,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
             val items = listOf(
-                "この単語を非表示",
-                "閉じる"
+                "この単語を非表示", "閉じる"
             )
 
             // B. Use your new custom layout file in the ArrayAdapter
@@ -1389,13 +1398,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     0 -> {
                         ioScope.launch {
                             val exist = ngWordRepository.exists(
-                                yomi = insertString,
-                                tango = candidate.string
+                                yomi = insertString, tango = candidate.string
                             )
                             if (!exist) {
                                 ngWordRepository.addNgWord(
-                                    yomi = insertString,
-                                    tango = candidate.string
+                                    yomi = insertString, tango = candidate.string
                                 )
                                 withContext(Dispatchers.Main) {
                                     _suggestionFlag.emit(CandidateShowFlag.Updating)
@@ -3020,8 +3027,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             ngWordRepository.getAllNgWordsFlow().collectLatest { ngWords ->
                 _ngWordsList.value = ngWords.distinct()
-                _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }
-                    .toRegex()
+                _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }.toRegex()
             }
         }
 
@@ -4555,17 +4561,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ngWords = ngWords
         )
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
-        return result
-            .filter { candidate ->
-                if (ngWords.isEmpty()) {
-                    true
-                } else {
-                    ngPattern.value.let {
-                        !it.containsMatchIn(candidate.string)
-                    }
+        return result.filter { candidate ->
+            if (ngWords.isEmpty()) {
+                true
+            } else {
+                ngPattern.value.let {
+                    !it.containsMatchIn(candidate.string)
                 }
             }
-            .distinctBy { it.string }
+        }.distinctBy { it.string }
     }
 
     private fun deleteLongPress() {
