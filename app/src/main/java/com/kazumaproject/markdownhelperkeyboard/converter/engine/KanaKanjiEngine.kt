@@ -613,7 +613,8 @@ class KanaKanjiEngine {
                 leftId = 2040,
                 rightId = 2040
             )
-            return resultNBestFinalDeferred + fullWidth
+            val timeConversion = createCandidatesForTime(input)
+            return resultNBestFinalDeferred + timeConversion + fullWidth
         }
 
         val hirakanaAndKana = listOf(
@@ -1083,6 +1084,59 @@ class KanaKanjiEngine {
                 rightId = 1851
             )
         )
+    }
+
+    /**
+     * 4桁の数字を時刻の候補に変換する。
+     *
+     * @param input "0000"から"2959"までの4桁の数字文字列。
+     * @return 時刻の候補リスト。条件に合わない場合は空のリストを返す。
+     */
+    private fun createCandidatesForTime(input: String): List<Candidate> {
+        // 入力が4桁の数字でない場合は早期リターン
+        if (!input.matches(Regex("""\d{4}"""))) {
+            return emptyList()
+        }
+
+        val number = input.toInt()
+
+        // 全体の数値が 0 から 2959 の範囲内かチェック
+        if (number !in 0..2959) {
+            return emptyList()
+        }
+
+        // 下2桁（分）が 0 から 59 の範囲内かチェック
+        val minutes = number % 100
+        if (minutes > 59) { // Redundant 'minutes < 0' check removed
+            return emptyList()
+        }
+
+        // 時間と分を2桁の文字列として取り出す
+        val hoursStr = input.substring(0, 2)
+        val minutesStr = input.substring(2, 4)
+
+        val length = input.length.toUByte()
+
+        // 2つのフォーマットの候補を作成
+        val candidate1 = Candidate(
+            string = "$hoursStr:$minutesStr",
+            type = 30,
+            length = length,
+            score = 8000,
+            leftId = 1851,
+            rightId = 1851
+        )
+
+        val candidate2 = Candidate(
+            string = "${hoursStr}時${minutesStr}分",
+            type = 30,
+            length = length,
+            score = 8000,
+            leftId = 1851,
+            rightId = 1851
+        )
+
+        return listOf(candidate1, candidate2)
     }
 
     private fun createCandidatesForEra(year: Int, input: String): List<Candidate> {
