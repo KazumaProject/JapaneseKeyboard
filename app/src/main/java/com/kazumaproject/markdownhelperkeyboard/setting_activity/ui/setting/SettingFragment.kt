@@ -201,6 +201,37 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SeekBarPreference>("flick_sensitivity_preference")?.apply {
+            summary = when (this.value) {
+                in 0..50 -> "非常に繊細"
+                in 51..90 -> "やや繊細"
+                in 91..110 -> "普通"
+                in 111..150 -> "やや鈍感"
+                in 151..200 -> "非常に鈍感"
+                else -> ""
+            }
+            setOnPreferenceChangeListener { pref, newValue ->
+                val sbp = pref as SeekBarPreference
+                val raw = (newValue as Int)
+                val inc = sbp.seekBarIncrement
+                val rounded = (raw + inc / 2) / inc * inc
+                summary = when (rounded) {
+                    in 0..50 -> "非常に繊細"
+                    in 51..90 -> "やや繊細"
+                    in 91..110 -> "普通"
+                    in 111..150 -> "やや鈍感"
+                    in 151..200 -> "非常に鈍感"
+                    else -> ""
+                }
+                return@setOnPreferenceChangeListener if (rounded != raw) {
+                    sbp.value = rounded
+                    false
+                } else {
+                    true
+                }
+            }
+        }
+
         val keyboardUndoEnablePreference =
             findPreference<SwitchPreferenceCompat>("undo_enable_preference")
         keyboardUndoEnablePreference?.apply {

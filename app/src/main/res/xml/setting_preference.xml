@@ -39,6 +39,16 @@
             android:summaryOn="ライブ変換は有効です"
             android:title="ライブ変換 β" />
 
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="flick_sensitivity_preference"
+            android:max="200"
+            android:summary="%s"
+            android:title="フリック入力の感度"
+            app:min="10"
+            app:seekBarIncrement="10"
+            app:showSeekBarValue="true" />
+
         <PreferenceCategory android:title="ローマ字変換">
             <Preference
                 android:icon="@drawable/outline_border_color_24"
