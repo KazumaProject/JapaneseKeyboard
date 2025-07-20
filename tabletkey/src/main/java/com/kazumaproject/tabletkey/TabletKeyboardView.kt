@@ -18,7 +18,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_TABLET
 import com.kazumaproject.core.data.tablet.TabletCapsLockState
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
@@ -93,6 +92,8 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
     private lateinit var pressedKey: PressedKey
+
+    private var flickSensitivity: Int = 100
 
     // All AppCompatButton keys (all the character keys)
     private val allButtonKeys = listOf(
@@ -952,7 +953,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when {
-            abs(distanceX) < DEFAULT_TAP_RANGE_TABLET && abs(distanceY) < DEFAULT_TAP_RANGE_TABLET -> GestureType.Tap
+            abs(distanceX) < flickSensitivity && abs(distanceY) < flickSensitivity -> GestureType.Tap
             abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
             abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
             abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
@@ -3052,6 +3053,10 @@ class TabletKeyboardView @JvmOverloads constructor(
         val inputMode = currentInputMode.get()
         binding.keySwitchKeyMode.setInputMode(inputMode, true)
         handleCurrentInputModeSwitch(inputMode)
+    }
+
+    fun setFlickSensitivityValue(sensitivity: Int) {
+        flickSensitivity = sensitivity
     }
 
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {

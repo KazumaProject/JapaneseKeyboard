@@ -20,7 +20,6 @@ import androidx.core.view.setPadding
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.Constants.DEFAULT_TAP_RANGE_SMART_PHONE
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.layoutXPosition
@@ -107,6 +106,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     // External listeners
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
+
+    private var flickSensitivity: Int = 100
 
     /** ← REPLACED AtomicReference with StateFlow **/
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
@@ -952,6 +953,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
+    fun setFlickSensitivityValue(sensitivity: Int) {
+        flickSensitivity = sensitivity
+    }
+
     private fun setTextToAllButtons() {
         binding.key1.setTenKeyTextJapanese(binding.key1.id)
         binding.key2.setTenKeyTextJapanese(binding.key2.id)
@@ -1137,7 +1142,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
         return when {
-            abs(distanceX) < DEFAULT_TAP_RANGE_SMART_PHONE && abs(distanceY) < DEFAULT_TAP_RANGE_SMART_PHONE -> GestureType.Tap
+            abs(distanceX) < flickSensitivity && abs(distanceY) < flickSensitivity -> GestureType.Tap
             abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
             abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
             abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
