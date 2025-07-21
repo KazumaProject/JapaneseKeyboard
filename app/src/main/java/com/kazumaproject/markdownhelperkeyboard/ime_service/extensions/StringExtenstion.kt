@@ -72,3 +72,12 @@ fun getLastCharacterAsString(ic: InputConnection): String {
     // ④ その範囲を丸ごと取り出す
     return beforeText.substring(start, end)
 }
+
+private val validTwoCharBrackets = setOf(
+    "()", "[]", "{}", "<>", "「」",
+    "（）", "［］", "｛｝", "＜＞"
+)
+
+fun String.isOnlyTwoCharBracketPair(): Boolean {
+    return validTwoCharBrackets.contains(this)
+}
