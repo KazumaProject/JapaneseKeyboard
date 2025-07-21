@@ -95,6 +95,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardU
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
@@ -4852,10 +4853,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             finishInputEnterKey()
+                            setCusrorLeftAfterCloseBracket(insertString)
                         }
                     }
 
-                    else -> finishInputEnterKey()
+                    else -> {
+                        finishInputEnterKey()
+                        setCusrorLeftAfterCloseBracket(insertString)
+                    }
                 }
             }
         } else {
@@ -4866,12 +4871,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             finishInputEnterKey()
+                            setCusrorLeftAfterCloseBracket(insertString)
                         }
                     }
 
-                    else -> finishInputEnterKey()
+                    else -> {
+                        finishInputEnterKey()
+                        setCusrorLeftAfterCloseBracket(insertString)
+                    }
                 }
             }
+        }
+    }
+
+    private fun setCusrorLeftAfterCloseBracket(insertString: String) {
+        if (insertString.isOnlyTwoCharBracketPair()) {
+            sendKeyEvent(
+                KeyEvent(
+                    KeyEvent.ACTION_DOWN,
+                    KeyEvent.KEYCODE_DPAD_LEFT
+                )
+            )
         }
     }
 
