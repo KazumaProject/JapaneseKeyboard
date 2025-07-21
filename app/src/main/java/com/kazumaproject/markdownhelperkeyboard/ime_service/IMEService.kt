@@ -19,7 +19,6 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.text.Spannable
 import android.text.SpannableString
-import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.Gravity
@@ -4253,19 +4252,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         } else {
-            // Use TextUtils.getOffsetBefore to handle surrogate pairs
-            val lastCharStart = TextUtils.getOffsetBefore(inputString, inputLength)
-
             spannableString.apply {
                 setSpan(
-                    BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.green)),
-                    0,
-                    lastCharStart,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
-                )
-                setSpan(
                     BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.char_in_edit_color)),
-                    lastCharStart,
+                    0,
                     inputLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
                 )
