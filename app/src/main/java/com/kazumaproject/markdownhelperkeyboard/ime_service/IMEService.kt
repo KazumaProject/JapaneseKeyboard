@@ -19,7 +19,6 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.text.Spannable
 import android.text.SpannableString
-import android.text.TextUtils
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.Gravity
@@ -1797,7 +1796,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
-            override fun onKey(text: String) {
+            override fun onKey(text: String, isFlick: Boolean) {
                 // 通常の文字が入力された場合（変更なし）
                 clearDeleteBufferWithView()
                 Timber.d("onKey: $text")
@@ -1810,12 +1809,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (isCustomLayoutRomajiMode) {
                                 romajiConverter?.let { converter ->
                                     handleOnKeyForSumire(
-                                        converter.convert(text), mainView
+                                        converter.convert(text), mainView, isFlick
                                     )
                                 }
                             } else {
                                 handleOnKeyForSumire(
-                                    text, mainView
+                                    text, mainView, isFlick
                                 )
                             }
                         } else {
@@ -1827,13 +1826,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     TenKeyQWERTYMode.Sumire -> {
                         handleOnKeyForSumire(
-                            text, mainView
+                            text, mainView, isFlick
                         )
                     }
 
                     TenKeyQWERTYMode.Number -> {
                         handleOnKeyForSumire(
-                            text, mainView
+                            text, mainView, isFlick
                         )
                     }
 
@@ -2269,16 +2268,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleOnKeyForSumire(
-        text: String, mainView: MainLayoutBinding
+        text: String,
+        mainView: MainLayoutBinding,
+        isFlick: Boolean
     ) {
         val insertString = inputString.value
         val sb = StringBuilder()
-        val isFlickInputMode = appPreference.flick_input_only_preference ?: false
         text.forEach {
-            if (isFlickInputMode) {
+            if (isFlickOnlyMode == true) {
                 handleFlick(char = it, insertString, sb, mainView)
             } else {
-                handleTap(char = it, insertString, sb, mainView)
+                if (isFlick) {
+                    handleFlick(char = it, insertString, sb, mainView)
+                } else {
+                    handleTap(char = it, insertString, sb, mainView)
+                }
             }
         }
     }
@@ -2788,7 +2792,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
-                    animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                    if (!mainView.suggestionVisibility.isVisible) {
+                        animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                    }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
                             setSpaceKeyText("変換")
@@ -4253,19 +4259,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         } else {
-            // Use TextUtils.getOffsetBefore to handle surrogate pairs
-            val lastCharStart = TextUtils.getOffsetBefore(inputString, inputLength)
-
             spannableString.apply {
                 setSpan(
-                    BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.green)),
-                    0,
-                    lastCharStart,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
-                )
-                setSpan(
                     BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.char_in_edit_color)),
-                    lastCharStart,
+                    0,
                     inputLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
                 )
