@@ -41,7 +41,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 ) : GridLayout(context, attrs, defStyleAttr) {
 
     interface OnKeyboardActionListener {
-        fun onKey(text: String)
+        fun onKey(text: String, isFlick: Boolean)
         fun onAction(action: KeyAction)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
@@ -196,7 +196,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                                 override fun onFlick(direction: FlickDirection, character: String) {
                                     if (character.isNotEmpty()) {
-                                        this@FlickKeyboardView.listener?.onKey(character)
+                                        this@FlickKeyboardView.listener?.onKey(
+                                            text = character,
+                                            isFlick = direction != FlickDirection.TAP
+                                        )
                                     }
                                 }
 
@@ -236,7 +239,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 override fun onFlick(flickAction: FlickAction) {
                                     when (flickAction) {
                                         is FlickAction.Input -> this@FlickKeyboardView.listener?.onKey(
-                                            flickAction.char
+                                            flickAction.char,
+                                            isFlick = true
                                         )
 
                                         is FlickAction.Action -> this@FlickKeyboardView.listener?.onAction(
@@ -298,7 +302,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                             this.listener =
                                 object : StandardFlickInputController.StandardFlickListener {
                                     override fun onFlick(character: String) {
-                                        this@FlickKeyboardView.listener?.onKey(character)
+                                        this@FlickKeyboardView.listener?.onKey(
+                                            character,
+                                            isFlick = true
+                                        )
                                     }
                                 }
 
@@ -365,8 +372,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                             elevation = 1f
 
                             this.listener = object : PetalFlickInputController.PetalFlickListener {
-                                override fun onFlick(character: String) {
-                                    this@FlickKeyboardView.listener?.onKey(character)
+                                override fun onFlick(character: String, isFlick: Boolean) {
+                                    this@FlickKeyboardView.listener?.onKey(
+                                        character,
+                                        isFlick = isFlick
+                                    )
                                 }
                             }
                             val stringMap = flickActionMap.mapValues { (_, flickAction) ->

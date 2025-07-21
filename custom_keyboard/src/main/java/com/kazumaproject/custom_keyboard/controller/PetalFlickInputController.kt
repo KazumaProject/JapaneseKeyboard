@@ -31,7 +31,7 @@ class PetalFlickInputController(
 ) {
 
     interface PetalFlickListener {
-        fun onFlick(character: String)
+        fun onFlick(character: String, isFlick: Boolean)
     }
 
     var listener: PetalFlickListener? = null
@@ -293,7 +293,12 @@ class PetalFlickInputController(
                     val dx = event.rawX - initialTouchX
                     val dy = event.rawY - initialTouchY
                     val finalDirection = calculateDirection(dx, dy)
-                    characterMap[finalDirection]?.let { listener?.onFlick(it) }
+                    characterMap[finalDirection]?.let {
+                        listener?.onFlick(
+                            it,
+                            isFlick = finalDirection != FlickDirection.TAP
+                        )
+                    }
                 }
                 (anchorView as? Button)?.let { button ->
                     button.text = originalKeyText
