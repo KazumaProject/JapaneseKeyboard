@@ -2792,7 +2792,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
-                    animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                    if (!mainView.suggestionVisibility.isVisible) {
+                        animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                    }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
                             setSpaceKeyText("変換")
