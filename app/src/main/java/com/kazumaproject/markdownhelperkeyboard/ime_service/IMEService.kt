@@ -1796,7 +1796,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
-            override fun onKey(text: String) {
+            override fun onKey(text: String, isFlick: Boolean) {
                 // 通常の文字が入力された場合（変更なし）
                 clearDeleteBufferWithView()
                 Timber.d("onKey: $text")
@@ -1809,12 +1809,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (isCustomLayoutRomajiMode) {
                                 romajiConverter?.let { converter ->
                                     handleOnKeyForSumire(
-                                        converter.convert(text), mainView
+                                        converter.convert(text), mainView, isFlick
                                     )
                                 }
                             } else {
                                 handleOnKeyForSumire(
-                                    text, mainView
+                                    text, mainView, isFlick
                                 )
                             }
                         } else {
@@ -1826,13 +1826,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     TenKeyQWERTYMode.Sumire -> {
                         handleOnKeyForSumire(
-                            text, mainView
+                            text, mainView, isFlick
                         )
                     }
 
                     TenKeyQWERTYMode.Number -> {
                         handleOnKeyForSumire(
-                            text, mainView
+                            text, mainView, isFlick
                         )
                     }
 
@@ -2268,16 +2268,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleOnKeyForSumire(
-        text: String, mainView: MainLayoutBinding
+        text: String,
+        mainView: MainLayoutBinding,
+        isFlick: Boolean
     ) {
         val insertString = inputString.value
         val sb = StringBuilder()
-        val isFlickInputMode = appPreference.flick_input_only_preference ?: false
         text.forEach {
-            if (isFlickInputMode) {
+            if (isFlickOnlyMode == true) {
                 handleFlick(char = it, insertString, sb, mainView)
             } else {
-                handleTap(char = it, insertString, sb, mainView)
+                if (isFlick) {
+                    handleFlick(char = it, insertString, sb, mainView)
+                } else {
+                    handleTap(char = it, insertString, sb, mainView)
+                }
             }
         }
     }
