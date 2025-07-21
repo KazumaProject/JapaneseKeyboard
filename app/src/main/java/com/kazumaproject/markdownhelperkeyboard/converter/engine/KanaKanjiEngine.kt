@@ -614,7 +614,8 @@ class KanaKanjiEngine {
                 rightId = 2040
             )
             val timeConversion = createCandidatesForTime(input)
-            return resultNBestFinalDeferred + timeConversion + fullWidth
+            val dateConversion = createCandidatesForDateInDigit(input)
+            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth
         }
 
         val hirakanaAndKana = listOf(
@@ -1137,6 +1138,55 @@ class KanaKanjiEngine {
         )
 
         return listOf(candidate1, candidate2)
+    }
+
+    /**
+     * 3桁または4桁の数字を月日の候補に変換する。
+     *
+     * @param input "101"から"1231"のような3桁または4桁の数字文字列。
+     * @return 月日の候補リスト。条件に合わない場合は空のリストを返す。
+     */
+    private fun createCandidatesForDateInDigit(input: String): List<Candidate> {
+        // 入力が3桁または4桁の数字でない場合は早期リターン
+        if (!input.matches(Regex("""\d{3,4}"""))) {
+            return emptyList()
+        }
+
+        // 最後の2桁を「日」、それより前を「月」として分割
+        val dayStr = input.substring(input.length - 2)
+        val monthStr = input.substring(0, input.length - 2)
+
+        val month = monthStr.toInt()
+        val day = dayStr.toInt()
+
+        // 月が1から12の範囲内かチェック
+        if (month !in 1..12) {
+            return emptyList()
+        }
+
+        // 日が1から31の範囲内かチェック（簡略版）
+        // ※より厳密にする場合は、月ごとの日数（30日、31日、閏年など）を考慮する必要があります。
+        if (day !in 1..31) {
+            return emptyList()
+        }
+
+        // 候補の文字列を作成（例: 5月12日）
+        // .toInt()で変換しているため、"05"のような先頭のゼロは自動的に除去されます。
+        val dateString = "${month}月${day}日"
+
+        val length = input.length.toUByte()
+
+        // 候補を作成
+        val candidate = Candidate(
+            string = dateString,
+            type = 40, // 時刻(30)とは別のタイプ番号を割り当て（例: 40）
+            length = length,
+            score = 8000,
+            leftId = 1851, // 必要に応じて日付用のIDに変更
+            rightId = 1851  // 必要に応じて日付用のIDに変更
+        )
+
+        return listOf(candidate)
     }
 
     private fun createCandidatesForEra(year: Int, input: String): List<Candidate> {
