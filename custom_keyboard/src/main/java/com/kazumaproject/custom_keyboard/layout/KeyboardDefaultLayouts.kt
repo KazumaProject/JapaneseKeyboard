@@ -3046,12 +3046,12 @@ object KeyboardDefaultLayouts {
 
         val cursorMoveActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.MoveCursorLeft,
-                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-            ),
-            FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
             )
         )
 
@@ -3336,14 +3336,15 @@ object KeyboardDefaultLayouts {
 
         val cursorMoveActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.MoveCursorLeft,
-                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-            ),
-            FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
             )
         )
+
         val symbols3 = mapOf(
             FlickDirection.TAP to FlickAction.Input("."),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
