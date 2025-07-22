@@ -1978,6 +1978,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     is KeyAction.InputText -> {}
                     KeyAction.MoveCursorLeft -> {
                         cancelLeftLongPress()
+                        cancelRightLongPress()
                         handleLeftLongPress()
                         leftCursorKeyLongKeyPressed.set(true)
                         if (selectMode.value) {
@@ -1991,6 +1992,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCursorRight -> {
                         cancelLeftLongPress()
+                        cancelRightLongPress()
                         handleRightLongPress()
                         rightCursorKeyLongKeyPressed.set(true)
                         if (selectMode.value) {
@@ -2236,10 +2238,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (!leftCursorKeyLongKeyPressed.get()) {
                             handleLeftCursor(GestureType.Tap, insertString)
                         }
-                        onLeftKeyLongPressUp.set(true)
-                        leftCursorKeyLongKeyPressed.set(false)
-                        leftLongPressJob?.cancel()
-                        leftLongPressJob = null
+                        cancelRightLongPress()
+                        cancelLeftLongPress()
                     }
 
                     KeyAction.MoveCursorRight -> {
@@ -2247,10 +2247,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (!rightCursorKeyLongKeyPressed.get()) {
                             actionInRightKeyPressed(GestureType.Tap, insertString)
                         }
-                        onRightKeyLongPressUp.set(true)
-                        rightCursorKeyLongKeyPressed.set(false)
-                        rightLongPressJob?.cancel()
-                        rightLongPressJob = null
+                        cancelRightLongPress()
+                        cancelLeftLongPress()
                     }
 
                     KeyAction.Backspace -> {}
