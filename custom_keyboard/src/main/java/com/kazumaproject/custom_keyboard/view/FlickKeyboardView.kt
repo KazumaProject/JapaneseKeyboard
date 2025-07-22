@@ -93,6 +93,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                     setImageResource(keyData.drawableResId)
                     contentDescription = keyData.label
                     setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
+                    if (keyData.isHiLighted) {
+                        isPressed = true
+                    }
                 }
             } else {
                 Button(context).apply {
