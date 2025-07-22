@@ -1635,10 +1635,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
                         val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
-                            mode = KeyboardInputMode.HIRAGANA, dynamicKeyStates = mapOf(
+                            mode = KeyboardInputMode.HIRAGANA,
+                            dynamicKeyStates = mapOf(
                                 "enter_key" to 0, "dakuten_toggle_key" to 0
-                            ), inputType = sumireInputKeyType ?: "flick-default"
+                            ),
+                            inputType = sumireInputKeyType ?: "flick-default",
+                            isFlick = isFlickOnlyMode
                         )
                         customLayoutDefault.setKeyboard(hiraganaLayout)
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -1688,10 +1692,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     "space_convert_key" to currentSpaceKeyIndex
                 )
 
+                Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
+
                 val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
                     mode = customKeyboardMode,
                     dynamicKeyStates = dynamicStates,
-                    inputType = sumireInputKeyType ?: "flick-default"
+                    inputType = sumireInputKeyType ?: "flick-default",
+                    isFlick = isFlickOnlyMode
                 )
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -1901,6 +1908,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
+                    KeyAction.SwitchToEnglishLayout -> {}
+                    KeyAction.SwitchToKanaLayout -> {}
+                    KeyAction.SwitchToNumberLayout -> {}
                 }
             }
 
@@ -1931,6 +1941,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
+                    KeyAction.SwitchToEnglishLayout -> {}
+                    KeyAction.SwitchToKanaLayout -> {}
+                    KeyAction.SwitchToNumberLayout -> {}
                 }
             }
 
@@ -2014,6 +2027,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ToggleDakuten -> {
 
                     }
+
+                    KeyAction.SwitchToEnglishLayout -> {}
+                    KeyAction.SwitchToKanaLayout -> {}
+                    KeyAction.SwitchToNumberLayout -> {}
                 }
             }
 
@@ -2091,6 +2108,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ToggleDakuten -> {
                         dakutenSmallActionForSumire(mainView)
                     }
+
+                    KeyAction.SwitchToEnglishLayout -> {}
+                    KeyAction.SwitchToKanaLayout -> {}
+                    KeyAction.SwitchToNumberLayout -> {}
                 }
             }
 
@@ -2262,15 +2283,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ToggleDakuten -> {
                         dakutenSmallActionForSumire(mainView)
                     }
+
+                    KeyAction.SwitchToEnglishLayout -> {
+                        customKeyboardMode = KeyboardInputMode.ENGLISH
+                        updateKeyboardLayout()
+                        val inputMode = InputMode.ModeEnglish
+                        mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
+                    KeyAction.SwitchToKanaLayout -> {
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        updateKeyboardLayout()
+                        val inputMode = InputMode.ModeJapanese
+                        mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
+                    KeyAction.SwitchToNumberLayout -> {
+                        customKeyboardMode = KeyboardInputMode.SYMBOLS
+                        updateKeyboardLayout()
+                        val inputMode = InputMode.ModeNumber
+                        mainView.keyboardView.setCurrentMode(inputMode)
+                    }
                 }
             }
         })
     }
 
     private fun handleOnKeyForSumire(
-        text: String,
-        mainView: MainLayoutBinding,
-        isFlick: Boolean
+        text: String, mainView: MainLayoutBinding, isFlick: Boolean
     ) {
         val insertString = inputString.value
         val sb = StringBuilder()
@@ -3906,6 +3946,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentInputMode = currentInputMode,
                 position = position
             )
+            setCusrorLeftAfterCloseBracket(candidate.string)
         }
         resetFlagsSuggestionClick()
     }
@@ -4885,8 +4926,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isOnlyTwoCharBracketPair()) {
             sendKeyEvent(
                 KeyEvent(
-                    KeyEvent.ACTION_DOWN,
-                    KeyEvent.KEYCODE_DPAD_LEFT
+                    KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
                 )
             )
         }

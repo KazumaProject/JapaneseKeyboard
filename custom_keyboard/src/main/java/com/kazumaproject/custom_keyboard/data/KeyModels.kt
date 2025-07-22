@@ -41,6 +41,9 @@ sealed class KeyAction {
     data object ChangeInputMode : KeyAction()
     data object ShowEmojiKeyboard : KeyAction()
     data object SwitchToNextIme : KeyAction() // 次のキーボード（IME）へ切り替え
+    data object SwitchToKanaLayout : KeyAction()
+    data object SwitchToEnglishLayout : KeyAction()
+    data object SwitchToNumberLayout : KeyAction()
 
     // ひらがな・英語用
     data object ToggleDakuten : KeyAction() // 濁点・半濁点・小文字化
@@ -58,6 +61,7 @@ data class KeyData(
     val colSpan: Int = 1,
     @DrawableRes val drawableResId: Int? = null,
     val isSpecialKey: Boolean = false,
+    val isHiLighted: Boolean = false,
     val keyId: String? = null,
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL
 )

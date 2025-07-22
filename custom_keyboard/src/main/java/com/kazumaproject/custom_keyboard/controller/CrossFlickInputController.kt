@@ -115,7 +115,24 @@ class CrossFlickInputController(private val context: Context) {
                         dismissAllPopups()
                         showPopup(currentDirection)
                     } else {
+                        // ロングプレスモード中のフリック先変更
+                        // 1. 新しいフリック先をハイライトする
                         highlightPopup(currentDirection)
+
+                        /**
+                         * ▼▼▼ 修正 ▼▼▼
+                         * ロングプレスモード中にフリック先が変更された場合、
+                         * その新しいフリック先のアクションで onFlickLongPress を呼び出す。
+                         */
+                        val directionToCommit = if (currentDirection != CrossDirection.TAP) {
+                            directionMapping[currentDirection]
+                        } else {
+                            FlickDirection.TAP
+                        }
+                        val longPressAction = flickActionMap[directionToCommit]
+
+                        longPressAction?.let { listener?.onFlickLongPress(it) }
+                        // ▲▲▲ 修正 ▲▲▲
                     }
                 }
                 return true
