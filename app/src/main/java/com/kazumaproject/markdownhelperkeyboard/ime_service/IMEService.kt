@@ -3906,6 +3906,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentInputMode = currentInputMode,
                 position = position
             )
+            setCusrorLeftAfterCloseBracket(candidate.string)
         }
         resetFlagsSuggestionClick()
     }
