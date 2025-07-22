@@ -166,7 +166,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             // submitListの第2引数にコールバックを渡す
             differ.submitList(value) {
                 adapterScope.launch {
-                    delay(32)
+                    delay(16)
                     // リストの更新が完了し、UIに反映された後にこのブロックが実行される
                     onListUpdated?.invoke()
                 }
