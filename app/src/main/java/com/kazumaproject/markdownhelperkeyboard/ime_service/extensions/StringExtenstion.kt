@@ -19,6 +19,40 @@ fun Char.isEnglishLetter(): Boolean {
 fun String.isAllEnglishLetters(): Boolean =
     isNotEmpty() && all { it.isEnglishLetter() }
 
+private fun Char.isHiragana(): Boolean =
+    this in '\u3041'..'\u3096'
+
+fun String.isAllHiragana(): Boolean =
+    isNotEmpty() && all { it.isHiragana() }
+
+// 数字かどうか
+fun Char.isNumber(): Boolean =
+    this.isDigit()
+
+// 句読点や記号（一般的な記号区分）かどうか
+fun Char.isPunctuationOrSymbol(): Boolean {
+    val type = Character.getType(this)  // Int
+    return when (type) {
+        Character.CONNECTOR_PUNCTUATION.toInt(),
+        Character.DASH_PUNCTUATION.toInt(),
+        Character.START_PUNCTUATION.toInt(),
+        Character.END_PUNCTUATION.toInt(),
+        Character.INITIAL_QUOTE_PUNCTUATION.toInt(),
+        Character.FINAL_QUOTE_PUNCTUATION.toInt(),
+        Character.OTHER_PUNCTUATION.toInt(),
+        Character.MATH_SYMBOL.toInt(),
+        Character.CURRENCY_SYMBOL.toInt(),
+        Character.MODIFIER_SYMBOL.toInt(),
+        Character.OTHER_SYMBOL.toInt() -> true
+
+        else -> false
+    }
+}
+
+// 文字列中に記号・数字・絵文字が含まれているかをまとめて判定
+fun String.containsSymbolNumberOrEmoji(): Boolean =
+    any { it.isNumber() || it.isPunctuationOrSymbol() }
+
 /**
  * 絵文字などを含む文字列を「グラフェム単位」で逆順にする拡張関数
  */
@@ -75,7 +109,9 @@ fun getLastCharacterAsString(ic: InputConnection): String {
 
 private val validTwoCharBrackets = setOf(
     "()", "[]", "{}", "<>", "「」",
-    "（）", "［］", "｛｝", "＜＞"
+    "（）", "［］", "｛｝", "＜＞",
+    "〔〕", "〘〙", "〘〙", "〚〛", "〈〉",
+    "《》", "«»", "‹›", "『』", "【】"
 )
 
 fun String.isOnlyTwoCharBracketPair(): Boolean {

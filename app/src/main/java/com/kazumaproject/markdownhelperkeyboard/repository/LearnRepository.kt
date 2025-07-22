@@ -1,10 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
 import androidx.room.Transaction
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsSymbolNumberOrEmoji
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiragana
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
 import kotlinx.coroutines.flow.Flow
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -34,6 +37,8 @@ class LearnRepository @Inject constructor(
     @Transaction
     suspend fun upsertLearnedData(learnData: LearnEntity) {
         val existingData = learnDao.findByInputAndOutput(learnData.input, learnData.out)
+        Timber.d("upsertLearnedData: ${learnData.input} ${learnData.out} ${learnData.input.isAllHiragana()}")
+        if (learnData.out.containsSymbolNumberOrEmoji()) return
         if (existingData == null) {
             learnDao.insert(learnData)
         } else {
