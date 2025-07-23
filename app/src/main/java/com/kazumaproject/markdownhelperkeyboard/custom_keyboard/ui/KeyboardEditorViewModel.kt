@@ -182,6 +182,60 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
+    // ▼▼▼ ここから追加 ▼▼▼
+    /**
+     * 指定されたインデックスの行を削除する
+     */
+    fun deleteRowAt(rowIndex: Int) {
+        _uiState.update { currentState ->
+            val layout = currentState.layout
+            if (layout.rowCount <= 1) return@update currentState // 最後の1行は消せない
+
+            // 1. 指定された行以外のキーを保持
+            val remainingKeys = layout.keys.filter { it.row != rowIndex }
+
+            // 2. 削除された行より下の行のインデックスを1つずつ上に詰める
+            val updatedKeys = remainingKeys.map { key ->
+                if (key.row > rowIndex) {
+                    key.copy(row = key.row - 1)
+                } else {
+                    key
+                }
+            }
+
+            // 3. 行数を1つ減らしてレイアウトを更新
+            val newLayout = layout.copy(keys = updatedKeys, rowCount = layout.rowCount - 1)
+            currentState.copy(layout = newLayout)
+        }
+    }
+
+    /**
+     * 指定されたインデックスの列を削除する
+     */
+    fun deleteColumnAt(columnIndex: Int) {
+        _uiState.update { currentState ->
+            val layout = currentState.layout
+            if (layout.columnCount <= 1) return@update currentState // 最後の1列は消せない
+
+            // 1. 指定された列以外のキーを保持
+            val remainingKeys = layout.keys.filter { it.column != columnIndex }
+
+            // 2. 削除された列より右の列のインデックスを1つずつ左に詰める
+            val updatedKeys = remainingKeys.map { key ->
+                if (key.column > columnIndex) {
+                    key.copy(column = key.column - 1)
+                } else {
+                    key
+                }
+            }
+
+            // 3. 列数を1つ減らしてレイアウトを更新
+            val newLayout = layout.copy(keys = updatedKeys, columnCount = layout.columnCount - 1)
+            currentState.copy(layout = newLayout)
+        }
+    }
+    // ▲▲▲ ここまで追加 ▲▲▲
+
     private fun createEmptyKey(row: Int, column: Int): KeyData {
         return KeyData(
             label = " ", row = row, column = column, isFlickable = true,
