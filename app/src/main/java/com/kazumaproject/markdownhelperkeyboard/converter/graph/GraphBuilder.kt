@@ -15,7 +15,7 @@ import timber.log.Timber
 class GraphBuilder {
 
     companion object {
-        private const val SCORE_BONUS_PER_OMISSION = 100
+        private const val SCORE_BONUS_PER_OMISSION = 250
     }
 
 
