@@ -34,6 +34,7 @@ object AppPreference {
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
+    private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
@@ -243,6 +244,12 @@ object AppPreference {
         get() = preferences.getBoolean(UNDO_ENABLE.first, UNDO_ENABLE.second)
         set(value) = preferences.edit {
             it.putBoolean(UNDO_ENABLE.first, value ?: false)
+        }
+
+    var omission_search_preference: Boolean?
+        get() = preferences.getBoolean(OMISSION_SEARCH.first, OMISSION_SEARCH.second)
+        set(value) = preferences.edit {
+            it.putBoolean(OMISSION_SEARCH.first, value ?: false)
         }
 
     var space_hankaku_preference: Boolean?

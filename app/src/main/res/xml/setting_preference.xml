@@ -32,12 +32,19 @@
             android:summary="空白を半角入力"
             android:title="空白を半角入力" />
 
-        <SwitchPreference
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="live_conversion_preference"
             android:summaryOff="ライブ変換は無効です"
             android:summaryOn="ライブ変換は有効です"
             android:title="ライブ変換 β" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="omission_search_preference"
+            android:summaryOff="修飾キー省略入力は無効です"
+            android:summaryOn="修飾キー省略入力は有効です\nかつこう → がっこう"
+            android:title="修飾キー省略入力" />
 
         <SeekBarPreference
             android:defaultValue="100"
