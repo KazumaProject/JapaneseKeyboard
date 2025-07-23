@@ -144,9 +144,16 @@ class GraphBuilder {
                             Node(
                                 l = tokenArray.leftIds[it.posTableIndex.toInt()],
                                 r = tokenArray.rightIds[it.posTableIndex.toInt()],
-                                score = if (omissionResult.omissionCount > 0) it.wordCost + SCORE_BONUS_PER_OMISSION * omissionResult.omissionCount else (it.wordCost - 100).coerceAtLeast(
-                                    0
-                                ),
+                                score = when {
+                                    omissionResult.omissionCount > 0 && omissionResult.yomi.length == 1 ->
+                                        it.wordCost + 900
+
+                                    omissionResult.omissionCount > 0 ->
+                                        it.wordCost + (SCORE_BONUS_PER_OMISSION * omissionResult.omissionCount)
+
+                                    else ->
+                                        (it.wordCost - 100).coerceAtLeast(0)
+                                },
                                 f = it.wordCost.toInt(),
                                 g = it.wordCost.toInt(),
                                 tango = when (it.nodeId) {
