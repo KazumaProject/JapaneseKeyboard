@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
-import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -42,23 +41,14 @@ class KeyboardEditorViewModel @Inject constructor(
 
     private var currentEditingId: Long? = null
 
-    /**
-     * Fragmentから呼び出される初期化メソッド。
-     * 新しいIDで呼び出された場合のみ、データの読み込み/新規作成を実行する。
-     */
     fun start(layoutId: Long) {
         val newId = if (layoutId == -1L) null else layoutId
-
-        // 前回と同じIDを編集しようとしている場合は、処理をスキップ（画面回転時の再読み込みを防ぐ）
         if (currentEditingId == newId && !_uiState.value.isLoading) {
             Timber.d("Request to load same layout ($newId). Skipping.")
             return
         }
-
-        // 新しい編集セッションが始まったと判断し、IDを更新
         currentEditingId = newId
         Timber.d("Starting new editing session for layoutId: $newId")
-
         if (newId != null) {
             loadLayout(newId)
         } else {
@@ -70,10 +60,8 @@ class KeyboardEditorViewModel @Inject constructor(
         Timber.d("loadLayout called with id = $id")
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-
             val layoutName = repository.getLayoutName(id) ?: "名称未設定"
             val loadedLayout = repository.getFullLayout(id).first()
-
             _uiState.update {
                 it.copy(
                     layoutId = id,
@@ -109,16 +97,11 @@ class KeyboardEditorViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _uiState.value
             val idToSave = currentEditingId
-
-            // 1. 保存前に名前の重複をチェック
             val nameExists = repository.doesNameExist(currentState.name, idToSave)
-
             if (nameExists) {
-                // 2. もし名前が重複していたら、エラー状態をtrueにして処理を中断
                 Timber.d("Save failed: Duplicate name found.")
                 _uiState.update { it.copy(duplicateNameError = true) }
             } else {
-                // 3. 重複がなければ、保存処理を実行
                 if (idToSave != null) {
                     repository.deleteLayout(idToSave)
                 }
@@ -134,15 +117,10 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
-    // ▼▼▼ ADDED: This function resets the ViewModel's state. ▼▼▼
-    /**
-     * Called when the user cancels the editing process (e.g., by pressing the back button).
-     * This resets the state to ensure a fresh start next time.
-     */
     fun onCancelEditing() {
         Timber.d("Editing cancelled. Resetting ViewModel state.")
-        currentEditingId = null // Reset the tracking ID
-        _uiState.value = EditorUiState() // Reset UI state to its initial default
+        currentEditingId = null
+        _uiState.value = EditorUiState()
     }
 
     fun clearDuplicateNameError() {
@@ -211,19 +189,6 @@ class KeyboardEditorViewModel @Inject constructor(
         )
     }
 
-    private fun createDefaultKey(row: Int, column: Int): KeyData {
-        return KeyData(
-            label = " ",
-            row = row,
-            column = column,
-            isFlickable = true,
-            isSpecialKey = true,
-            action = KeyAction.SwitchToNextIme,
-            keyId = UUID.randomUUID().toString(),
-            keyType = KeyType.PETAL_FLICK,
-        )
-    }
-
     fun selectKeyForEditing(keyId: String?) {
         _uiState.update { it.copy(selectedKeyIdentifier = keyId) }
     }
@@ -238,7 +203,6 @@ class KeyboardEditorViewModel @Inject constructor(
             Timber.e("FATAL: updateKeyAndFlicks received a KeyData with a null keyId! Aborting update.")
             return
         }
-
         _uiState.update { currentState ->
             Timber.d("Executing _uiState.update block for keyId: $keyId")
             val newKeys =
@@ -251,6 +215,33 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
+    fun swapKeys(draggedKeyId: String, targetKeyId: String) {
+        _uiState.update { currentState ->
+            val keys = currentState.layout.keys
+            val draggedKeyIndex = keys.indexOfFirst { it.keyId == draggedKeyId }
+            val targetKeyIndex = keys.indexOfFirst { it.keyId == targetKeyId }
+
+            if (draggedKeyIndex == -1 || targetKeyIndex == -1) {
+                Timber.w("Could not find one or both keys to swap. Dragged: $draggedKeyId, Target: $targetKeyId")
+                return@update currentState
+            }
+
+            val draggedKey = keys[draggedKeyIndex]
+            val targetKey = keys[targetKeyIndex]
+
+            val newKeys = keys.toMutableList()
+            newKeys[draggedKeyIndex] =
+                draggedKey.copy(row = targetKey.row, column = targetKey.column)
+            newKeys[targetKeyIndex] =
+                targetKey.copy(row = draggedKey.row, column = draggedKey.column)
+
+            Timber.d("Swapped keys: ${draggedKey.label} and ${targetKey.label}")
+
+            val newLayout = currentState.layout.copy(keys = newKeys)
+            currentState.copy(layout = newLayout)
+        }
+    }
+
     fun updateIsRomaji(isRomaji: Boolean) {
         _uiState.update { it.copy(isRomaji = isRomaji) }
     }
@@ -259,12 +250,10 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { it.copy(navigateBack = false) }
     }
 
-    // Function for the Fragment to call to get data for export
     suspend fun getLayoutsForExport(): List<FullKeyboardLayout> {
         return repository.getAllFullLayoutsForExport()
     }
 
-    // Function for the Fragment to call to import data
     fun importLayouts(layouts: List<FullKeyboardLayout>) {
         viewModelScope.launch {
             repository.importLayouts(layouts)
