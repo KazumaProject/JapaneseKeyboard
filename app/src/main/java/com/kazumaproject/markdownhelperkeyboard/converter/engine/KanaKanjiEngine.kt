@@ -27,6 +27,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberE
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
@@ -768,10 +770,12 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input)
-        } else {
-            emptyList()
+        val englishDeferred = withContext(Dispatchers.IO) {
+            if (input.isAllEnglishLetters()) {
+                englishEngine.getCandidates(input)
+            } else {
+                emptyList()
+            }
         }
         if (input.length == 1) return resultNBestFinalDeferred + englishDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
