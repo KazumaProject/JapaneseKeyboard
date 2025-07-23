@@ -38,9 +38,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardEditorBinding.bind(view)
-
         setupToolbarAndMenu()
-
         viewModel.start(args.layoutId)
         setupUIListeners()
         observeViewModel()
@@ -51,7 +49,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             title = getString(R.string.edit_keyboard)
             setDisplayHomeAsUpEnabled(true)
         }
-
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
@@ -79,19 +76,16 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
 
     private fun setupUIListeners() {
         binding.flickKeyboardView.setOnKeyEditListener(this)
-
         binding.keyboardNameEdittext.doAfterTextChanged { text ->
             if (text.toString() != viewModel.uiState.value.name) {
                 viewModel.updateName(text.toString())
             }
         }
-
         binding.switchRomaji.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked != viewModel.uiState.value.isRomaji) {
                 viewModel.updateIsRomaji(isChecked)
             }
         }
-
         binding.buttonAddRow.setOnClickListener { viewModel.addRow() }
         binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
@@ -154,13 +148,22 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
     }
 
-    /**
-     * キーがドラッグ＆ドロップで入れ替えられたときに呼ばれる
-     */
     override fun onKeysSwapped(draggedKeyId: String, targetKeyId: String) {
         Timber.d("onKeysSwapped: dragged=$draggedKeyId, target=$targetKeyId")
         viewModel.swapKeys(draggedKeyId, targetKeyId)
     }
+
+    // ▼▼▼ ここから追加 ▼▼▼
+    override fun onRowDeleted(rowIndex: Int) {
+        Timber.d("onRowDeleted: rowIndex = $rowIndex")
+        viewModel.deleteRowAt(rowIndex)
+    }
+
+    override fun onColumnDeleted(columnIndex: Int) {
+        Timber.d("onColumnDeleted: columnIndex = $columnIndex")
+        viewModel.deleteColumnAt(columnIndex)
+    }
+    // ▲▲▲ ここまで追加 ▲▲▲
 
     override fun onDestroyView() {
         super.onDestroyView()
