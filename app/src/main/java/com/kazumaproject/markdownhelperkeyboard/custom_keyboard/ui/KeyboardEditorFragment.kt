@@ -35,8 +35,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     private var _binding: FragmentKeyboardEditorBinding? = null
     private val binding get() = _binding!!
 
-    // The deprecated setHasOptionsMenu call in onCreate has been removed.
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardEditorBinding.bind(view)
@@ -49,22 +47,18 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     }
 
     private fun setupToolbarAndMenu() {
-        // Set up the activity's action bar
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = getString(R.string.edit_keyboard) // Set a title for the screen
-            setDisplayHomeAsUpEnabled(true) // Show the back arrow
+            title = getString(R.string.edit_keyboard)
+            setDisplayHomeAsUpEnabled(true)
         }
 
-        // Add the menu provider, which is the modern way to handle menus in fragments.
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                // Add menu items here
                 menuInflater.inflate(R.menu.menu_keyboard_editor, menu)
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // Handle the menu selection
                 return when (menuItem.itemId) {
                     android.R.id.home -> {
                         findNavController().popBackStack()
@@ -82,8 +76,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
-
-    // The deprecated onCreateOptionsMenu and onOptionsItemSelected overrides have been removed.
 
     private fun setupUIListeners() {
         binding.flickKeyboardView.setOnKeyEditListener(this)
@@ -109,7 +101,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // UI update and navigation observation
                 launch {
                     viewModel.uiState.collect { state ->
                         updateUi(state)
@@ -119,13 +110,11 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
                         }
                     }
                 }
-
-                // Observe for duplicate name errors
                 launch {
                     viewModel.uiState.collect { state ->
                         if (state.duplicateNameError) {
                             showDuplicateNameDialog()
-                            viewModel.clearDuplicateNameError() // Reset the error state after showing the dialog
+                            viewModel.clearDuplicateNameError()
                         }
                     }
                 }
@@ -148,18 +137,14 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             binding.editModePanel.isVisible = false
             return
         }
-
         binding.editModePanel.isVisible = true
-
         if (binding.keyboardNameEdittext.text.toString() != state.name) {
             binding.keyboardNameEdittext.setText(state.name)
             binding.keyboardNameEdittext.setSelection(state.name.length)
         }
-
         if (binding.switchRomaji.isChecked != state.isRomaji) {
             binding.switchRomaji.isChecked = state.isRomaji
         }
-
         binding.flickKeyboardView.setKeyboard(state.layout)
     }
 
@@ -169,10 +154,16 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
     }
 
+    /**
+     * キーがドラッグ＆ドロップで入れ替えられたときに呼ばれる
+     */
+    override fun onKeysSwapped(draggedKeyId: String, targetKeyId: String) {
+        Timber.d("onKeysSwapped: dragged=$draggedKeyId, target=$targetKeyId")
+        viewModel.swapKeys(draggedKeyId, targetKeyId)
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
-        // Good practice to clean up action bar modifications.
-        // The MenuProvider is automatically removed by the lifecycle owner, so no need for manual removal.
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = null
             setDisplayHomeAsUpEnabled(false)
