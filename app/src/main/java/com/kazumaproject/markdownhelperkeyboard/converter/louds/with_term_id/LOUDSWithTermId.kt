@@ -10,6 +10,7 @@ import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
@@ -584,6 +585,119 @@ class LOUDSWithTermId {
             }
         }
         return LOUDSWithTermId(LBS, labels, isLeaf, termIdsSaved)
+    }
+
+    // LOUDSWithTermId.kt に追加・修正するコード
+
+    /**
+     * 修飾キー省略を考慮した共通接頭辞検索を行います。
+     *
+     * @return OmissionSearchResultのリスト。省略が発生したかのフラグを含む。
+     */
+    fun commonPrefixSearchWithOmission(
+        str: String,
+        succinctBitVector: SuccinctBitVector
+    ): List<OmissionSearchResult> {
+        val results = mutableSetOf<OmissionSearchResult>()
+        // 最初の省略回数は0で探索を開始
+        searchRecursiveWithOmission(str, 0, 0, "", 0, results, succinctBitVector)
+        return results.toList()
+    }
+
+    /**
+     * 修飾キー省略検索のための再帰的なヘルパー関数。
+     *
+     * @param omissionOccurred これまでの探索パスで省略が発生したか
+     */
+    private fun searchRecursiveWithOmission(
+        originalStr: String,
+        strIndex: Int,
+        currentNodeIndex: Int,
+        currentYomi: String,
+        omissionCount: Int, // BooleanからIntに変更
+        results: MutableSet<OmissionSearchResult>,
+        succinctBitVector: SuccinctBitVector
+    ) {
+        if (isLeaf[currentNodeIndex]) {
+            // 結果を追加する際に、省略回数も一緒に格納
+            results.add(OmissionSearchResult(currentYomi, omissionCount))
+        }
+
+        if (strIndex >= originalStr.length) {
+            return
+        }
+
+        val charToMatch = originalStr[strIndex]
+        val charVariations = getCharVariations(charToMatch)
+
+        for (variant in charVariations) {
+            var childPos = firstChild(currentNodeIndex, succinctBitVector)
+            while (childPos >= 0 && LBS[childPos]) {
+                val labelNodeId = succinctBitVector.rank1(childPos)
+                if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
+
+                    // このステップで省略が発生した場合は、カウントをインクリメント
+                    val newOmissionCount = if (variant != charToMatch) {
+                        omissionCount + 1
+                    } else {
+                        omissionCount
+                    }
+
+                    searchRecursiveWithOmission(
+                        originalStr,
+                        strIndex + 1,
+                        childPos,
+                        currentYomi + variant,
+                        newOmissionCount, // 更新したカウントを渡す
+                        results,
+                        succinctBitVector
+                    )
+                    break
+                }
+                childPos++
+            }
+        }
+    }
+
+    /**
+     * 文字のバリエーションを返すヘルパー関数。
+     * （濁点、半濁音、小文字など）
+     *
+     * @param char 変換元の文字
+     * @return 変換後の文字のリスト
+     */
+    private fun getCharVariations(char: Char): List<Char> {
+        return when (char) {
+            'か' -> listOf('か', 'が')
+            'き' -> listOf('き', 'ぎ')
+            'く' -> listOf('く', 'ぐ')
+            'け' -> listOf('け', 'げ')
+            'こ' -> listOf('こ', 'ご')
+            'さ' -> listOf('さ', 'ざ')
+            'し' -> listOf('し', 'じ')
+            'す' -> listOf('す', 'ず')
+            'せ' -> listOf('せ', 'ぜ')
+            'そ' -> listOf('そ', 'ぞ')
+            'た' -> listOf('た', 'だ')
+            'ち' -> listOf('ち', 'ぢ')
+            'つ' -> listOf('つ', 'づ', 'っ')
+            'て' -> listOf('て', 'で')
+            'と' -> listOf('と', 'ど')
+            'は' -> listOf('は', 'ば', 'ぱ')
+            'ひ' -> listOf('ひ', 'び', 'ぴ')
+            'ふ' -> listOf('ふ', 'ぶ', 'ぷ')
+            'へ' -> listOf('へ', 'べ', 'ぺ')
+            'ほ' -> listOf('ほ', 'ぼ', 'ぽ')
+            'や' -> listOf('や', 'ゃ')
+            'ゆ' -> listOf('ゆ', 'ゅ')
+            'よ' -> listOf('よ', 'ょ')
+            'あ' -> listOf('あ', 'ぁ')
+            'い' -> listOf('い', 'ぃ',)
+            'う' -> listOf('う', 'ぅ')
+            'え' -> listOf('え', 'ぇ')
+            'お' -> listOf('お', 'ぉ')
+            else -> listOf(char) // 上記以外はそのまま
+        }
     }
 
 }

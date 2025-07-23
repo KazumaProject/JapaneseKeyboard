@@ -293,6 +293,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private var isFlickOnlyMode: Boolean? = false
+    private var isOmissionSearchEnable: Boolean? = false
     private var delayTime: Int? = 1000
     private var isLearnDictionaryMode: Boolean? = false
     private var isUserDictionaryEnable: Boolean? = false
@@ -485,6 +486,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mozcUTNeologd = mozc_ut_neologd_preference ?: false
             mozcUTWeb = mozc_ut_web_preference ?: false
             isFlickOnlyMode = flick_input_only_preference ?: false
+            isOmissionSearchEnable = omission_search_preference ?: false
             delayTime = time_same_pronounce_typing_preference ?: 1000
             isLearnDictionaryMode = learn_dictionary_preference ?: true
             isUserDictionaryEnable = user_dictionary_preference ?: true
@@ -600,6 +602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (mozcUTNeologd == true) kanaKanjiEngine.releaseNeologdDictionary()
         if (mozcUTWeb == true) kanaKanjiEngine.releaseWebDictionary()
         isFlickOnlyMode = null
+        isOmissionSearchEnable = null
         delayTime = null
         isLearnDictionaryMode = null
         isUserDictionaryEnable = null
@@ -4595,7 +4598,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mozcUTWeb = mozcUTWeb,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            ngWords = ngWords
+            ngWords = ngWords,
+            isOmissionSearchEnable = isOmissionSearchEnable ?: false
         )
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
