@@ -318,3 +318,39 @@ fun String.addCommasToNumber(): String {
     }
 }
 
+// この関数をどこか（例えば NumberConverter.kt の末尾）に追加します
+fun Long.toKanji(): String {
+    if (this == 0L) return "〇"
+
+    val kanjiDigits = listOf("〇", "一", "二", "三", "四", "五", "六", "七", "八", "九")
+    val kanjiUnits = listOf("", "十", "百", "千")
+    val kanjiBigUnits = listOf("", "万", "億", "兆", "京")
+
+    var num = this
+    var result = ""
+    var bigUnitIndex = 0
+
+    while (num > 0) {
+        val chunk = (num % 10000).toInt()
+        if (chunk > 0) {
+            var chunkStr = ""
+            var n = chunk
+            var unitIndex = 0
+            while (n > 0) {
+                val digit = n % 10
+                if (digit > 0) {
+                    // 10, 100, 1000 の場合、先頭の「一」は省略する
+                    val digitStr = if (digit == 1 && unitIndex > 0) "" else kanjiDigits[digit]
+                    chunkStr = digitStr + kanjiUnits[unitIndex] + chunkStr
+                }
+                n /= 10
+                unitIndex++
+            }
+            result = chunkStr + kanjiBigUnits[bigUnitIndex] + result
+        }
+        num /= 10000
+        bigUnitIndex++
+    }
+    return result
+}
+
