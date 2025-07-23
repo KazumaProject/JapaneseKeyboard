@@ -556,7 +556,8 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>
+        ngWords: List<String>,
+        isOmissionSearchEnable: Boolean
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -599,6 +600,7 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
+            isOmissionSearchEnable = isOmissionSearchEnable
         )
 
         val resultNBestFinalDeferred: List<Candidate> =
