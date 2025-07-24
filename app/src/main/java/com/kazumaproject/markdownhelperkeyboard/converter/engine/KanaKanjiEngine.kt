@@ -21,6 +21,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPat
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
@@ -607,6 +608,7 @@ class KanaKanjiEngine {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
 
         if (input.isDigitsOnly()) {
+            // 1. Generate full-width, time, and date candidates as before.
             val fullWidth = Candidate(
                 string = input.toFullWidthDigitsEfficient(),
                 type = 22,
@@ -617,7 +619,62 @@ class KanaKanjiEngine {
             )
             val timeConversion = createCandidatesForTime(input)
             val dateConversion = createCandidatesForDateInDigit(input)
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth
+
+            // 2. Correctly generate number-to-Kanji/comma candidates.
+            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
+            val numberCandidates = if (numberValue != null) {
+                buildList {
+                    // Full Kanji style (e.g., 百二十三)
+                    add(
+                        Candidate(
+                            string = numberValue.toKanji(),
+                            type = 17, // Using 17 for Kanji
+                            score = 2000,
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                    // Comma-separated style (e.g., 1,234)
+                    add(
+                        Candidate(
+                            string = input.addCommasToNumber(),
+                            type = 19,
+                            score = 8001,
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                    // Original number string itself (e.g., 123)
+                    add(
+                        Candidate(
+                            string = input,
+                            type = 18,
+                            score = 8002,
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                    // Mixed Kanji style (e.g., 12万3456)
+                    add(
+                        Candidate(
+                            string = numberValue.convertToKanjiNotation(),
+                            type = 23, // Using a different type for this style
+                            score = 7900, // Lower score for the mixed style
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                }
+            } else {
+                emptyList()
+            }
+
+            // 3. Combine and return all generated candidates.
+            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + numberCandidates
         }
 
         val hirakanaAndKana = listOf(
@@ -716,6 +773,7 @@ class KanaKanjiEngine {
         } else {
             emptyList()
         }
+
         if (input.length == 1) return resultNBestFinalDeferred + englishDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = if (input.length > 16) {
@@ -893,85 +951,7 @@ class KanaKanjiEngine {
             else -> emptyList()
         }
 
-        val numPair = input.toNumber()
-        val expoPair = input.toNumberExponent()
-
-        val numbersDeferred = if (numPair != null && expoPair != null) {
-            val (firstNum, secondNum) = numPair
-            val listOfNums = listOf(firstNum, secondNum)
-
-            listOf(
-                Candidate(
-                    string = firstNum.toLong().convertToKanjiNotation(),
-                    type = 17,
-                    length = input.length.toUByte(),
-                    score = 8000,
-                    leftId = 2040,
-                    rightId = 2040
-                )
-            ) + listOfNums.map {
-                Candidate(
-                    string = firstNum.addCommasToNumber(),
-                    type = 19,
-                    length = input.length.toUByte(),
-                    score = 8001,
-                    leftId = 2040,
-                    rightId = 2040
-                )
-            } + listOfNums.map {
-                Candidate(
-                    string = it,
-                    type = 18,
-                    length = input.length.toUByte(),
-                    score = 8002,
-                    leftId = 2040,
-                    rightId = 2040
-                )
-            } + listOf(
-                Candidate(
-                    string = expoPair.first,  // or whatever you need here
-                    type = 20,
-                    length = input.length.toUByte(),
-                    score = 8003,
-                    leftId = 2040,
-                    rightId = 2040
-                )
-            )
-        } else if (numPair != null) {
-            val (firstNum, secondNum) = numPair
-            val listOfNums = listOf(firstNum, secondNum)
-
-            listOf(
-                Candidate(
-                    string = firstNum.toLong().convertToKanjiNotation(),
-                    type = 17,
-                    length = input.length.toUByte(),
-                    score = 8000,
-                    leftId = 2040,
-                    rightId = 2040
-                )
-            ) + listOfNums.map {
-                Candidate(
-                    string = firstNum.addCommasToNumber(),
-                    type = 19,
-                    length = input.length.toUByte(),
-                    score = 8001,
-                    leftId = 2040,
-                    rightId = 2040
-                )
-            } + listOfNums.map {
-                Candidate(
-                    string = it,
-                    type = 18,
-                    length = input.length.toUByte(),
-                    score = 8002,
-                    leftId = 2040,
-                    rightId = 2040
-                )
-            }
-        } else {
-            emptyList()
-        }
+        val numbersDeferred = generateNumberCandidates(input)
 
         val mozcUTPersonNames =
             if (mozcUtPersonName == true) getMozcUTPersonNames(input) else emptyList()
@@ -981,13 +961,13 @@ class KanaKanjiEngine {
         val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + kotowazaListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred
+            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
             resultList
                 .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + convertYearToEra + symbolHalfWidthListDeferred + englishDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + kotowazaListDeferred + symbolHalfWidthListDeferred + englishDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
     }
 
@@ -1618,5 +1598,92 @@ class KanaKanjiEngine {
             4
         )
     }
+
+    private fun generateNumberCandidates(input: String): List<Candidate> {
+        val numPair = input.toNumber()
+        val expoPair = input.toNumberExponent()
+
+        return if (numPair != null) {
+            val (firstNum, secondNum) = numPair // firstNum: 全角, secondNum: 半角
+            val numberAsLong = secondNum.toLongOrNull()
+
+            // 候補リストを構築
+            val candidates = mutableListOf<Candidate>()
+
+            // 1. 伝統的な漢数字 (例: 十, 百二十三)
+            if (numberAsLong != null) {
+                candidates.add(
+                    Candidate(
+                        string = numberAsLong.toKanji(),
+                        type = 21, // 新しいタイプ
+                        length = input.length.toUByte(),
+                        score = 6100, // 優先度を調整
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+            }
+
+            // 2. 単位付き漢数字 (例: 1億2345万)
+            if (numberAsLong != null) {
+                candidates.add(
+                    Candidate(
+                        string = numberAsLong.convertToKanjiNotation(),
+                        type = 17,
+                        length = input.length.toUByte(),
+                        score = 8000,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+            }
+
+            // 3. 全角・半角数字 (例: １２３, 123)
+            listOf(firstNum, secondNum).forEach {
+                candidates.add(
+                    Candidate(
+                        string = it,
+                        type = 18,
+                        length = input.length.toUByte(),
+                        score = 8002,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+            }
+
+            // 4. カンマ区切り数字 (例: 123,456)
+            candidates.add(
+                Candidate(
+                    string = secondNum.addCommasToNumber(),
+                    type = 19,
+                    length = input.length.toUByte(),
+                    score = 8001,
+                    leftId = 2040,
+                    rightId = 2040
+                )
+            )
+
+            // 5. 指数表記 (例: 10⁸)
+            if (expoPair != null) {
+                candidates.add(
+                    Candidate(
+                        string = expoPair.first,
+                        type = 20,
+                        length = input.length.toUByte(),
+                        score = 8003,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+            }
+
+            candidates
+
+        } else {
+            emptyList()
+        }
+    }
+
 
 }

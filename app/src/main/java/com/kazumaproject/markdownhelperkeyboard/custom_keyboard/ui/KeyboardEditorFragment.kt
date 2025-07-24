@@ -35,36 +35,27 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     private var _binding: FragmentKeyboardEditorBinding? = null
     private val binding get() = _binding!!
 
-    // The deprecated setHasOptionsMenu call in onCreate has been removed.
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardEditorBinding.bind(view)
-
         setupToolbarAndMenu()
-
         viewModel.start(args.layoutId)
         setupUIListeners()
         observeViewModel()
     }
 
     private fun setupToolbarAndMenu() {
-        // Set up the activity's action bar
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = getString(R.string.edit_keyboard) // Set a title for the screen
-            setDisplayHomeAsUpEnabled(true) // Show the back arrow
+            title = getString(R.string.edit_keyboard)
+            setDisplayHomeAsUpEnabled(true)
         }
-
-        // Add the menu provider, which is the modern way to handle menus in fragments.
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                // Add menu items here
                 menuInflater.inflate(R.menu.menu_keyboard_editor, menu)
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // Handle the menu selection
                 return when (menuItem.itemId) {
                     android.R.id.home -> {
                         findNavController().popBackStack()
@@ -83,33 +74,33 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    // The deprecated onCreateOptionsMenu and onOptionsItemSelected overrides have been removed.
-
     private fun setupUIListeners() {
         binding.flickKeyboardView.setOnKeyEditListener(this)
-
         binding.keyboardNameEdittext.doAfterTextChanged { text ->
             if (text.toString() != viewModel.uiState.value.name) {
                 viewModel.updateName(text.toString())
             }
         }
-
         binding.switchRomaji.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked != viewModel.uiState.value.isRomaji) {
                 viewModel.updateIsRomaji(isChecked)
             }
         }
-
         binding.buttonAddRow.setOnClickListener { viewModel.addRow() }
         binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
         binding.buttonRemoveCol.setOnClickListener { viewModel.removeColumn() }
+
+        // ▼▼▼ ここから追加 ▼▼▼
+        binding.buttonSelectTemplate.setOnClickListener {
+            showTemplateSelectionDialog()
+        }
+        // ▲▲▲ ここまで追加 ▲▲▲
     }
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                // UI update and navigation observation
                 launch {
                     viewModel.uiState.collect { state ->
                         updateUi(state)
@@ -119,13 +110,11 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
                         }
                     }
                 }
-
-                // Observe for duplicate name errors
                 launch {
                     viewModel.uiState.collect { state ->
                         if (state.duplicateNameError) {
                             showDuplicateNameDialog()
-                            viewModel.clearDuplicateNameError() // Reset the error state after showing the dialog
+                            viewModel.clearDuplicateNameError()
                         }
                     }
                 }
@@ -143,23 +132,41 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             .show()
     }
 
+    // ▼▼▼ ここから追加 ▼▼▼
+    private fun showTemplateSelectionDialog() {
+        val templates = viewModel.availableTemplates
+        val templateNames = templates.map { it.name }.toTypedArray()
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("テンプレートを選択")
+            .setItems(templateNames) { dialog, which ->
+                // 選択されたテンプレートを取得
+                val selectedTemplate = templates[which]
+                Timber.d("Template selected: ${selectedTemplate.name}")
+                // ViewModelにテンプレートの適用を指示
+                viewModel.applyTemplate(selectedTemplate.layout)
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+    // ▲▲▲ ここまで追加 ▲▲▲
+
     private fun updateUi(state: EditorUiState) {
         if (state.isLoading) {
             binding.editModePanel.isVisible = false
             return
         }
-
         binding.editModePanel.isVisible = true
-
         if (binding.keyboardNameEdittext.text.toString() != state.name) {
             binding.keyboardNameEdittext.setText(state.name)
             binding.keyboardNameEdittext.setSelection(state.name.length)
         }
-
         if (binding.switchRomaji.isChecked != state.isRomaji) {
             binding.switchRomaji.isChecked = state.isRomaji
         }
-
         binding.flickKeyboardView.setKeyboard(state.layout)
     }
 
@@ -169,10 +176,23 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
     }
 
+    override fun onKeysSwapped(draggedKeyId: String, targetKeyId: String) {
+        Timber.d("onKeysSwapped: dragged=$draggedKeyId, target=$targetKeyId")
+        viewModel.swapKeys(draggedKeyId, targetKeyId)
+    }
+
+    override fun onRowDeleted(rowIndex: Int) {
+        Timber.d("onRowDeleted: rowIndex = $rowIndex")
+        viewModel.deleteRowAt(rowIndex)
+    }
+
+    override fun onColumnDeleted(columnIndex: Int) {
+        Timber.d("onColumnDeleted: columnIndex = $columnIndex")
+        viewModel.deleteColumnAt(columnIndex)
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
-        // Good practice to clean up action bar modifications.
-        // The MenuProvider is automatically removed by the lifecycle owner, so no need for manual removal.
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = null
             setDisplayHomeAsUpEnabled(false)
