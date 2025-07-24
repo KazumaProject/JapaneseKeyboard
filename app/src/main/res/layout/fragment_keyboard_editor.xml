@@ -4,13 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- The AppBarLayout and MaterialToolbar have been removed from here. -->
-    <!-- The Fragment will now manage the ActionBar. -->
-
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-        <!-- The app:layout_behavior attribute is removed as it's no longer needed without the AppBarLayout. -->
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -39,6 +35,14 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:text="@string/enable_romaji_input" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button_select_template"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="テンプレートから読み込む" />
 
             <TextView
                 android:id="@+id/preview_output_text"

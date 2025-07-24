@@ -2,7 +2,8 @@
     android:width="100dp"
     android:height="100dp"
     android:viewportWidth="100"
-    android:viewportHeight="100">
+    android:viewportHeight="100"
+    android:tint="@color/keyboard_icon_color">
   <path
       android:fillColor="#FF000000"
       android:pathData="M39.92,35.66l-0.58,7.51l-1.6,0l-0.58,-7.51l2.77,-0ZM45.25,35.66l-0.58,7.51l-1.6,0l-0.58,-7.51l2.77,-0Z"
