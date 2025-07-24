@@ -1900,8 +1900,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    KeyAction.MoveCursorLeft -> {}
-                    KeyAction.MoveCursorRight -> {}
+                    KeyAction.MoveCursorLeft -> {
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
+                        handleLeftLongPress()
+                        leftCursorKeyLongKeyPressed.set(true)
+                        if (selectMode.value) {
+                            clearDeletedBufferWithoutResetLayout()
+                        } else {
+                            clearDeletedBuffer()
+                        }
+                        suggestionAdapter?.setUndoEnabled(false)
+                        updateClipboardPreview()
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
+                        handleRightLongPress()
+                        rightCursorKeyLongKeyPressed.set(true)
+                        if (selectMode.value) {
+                            clearDeletedBufferWithoutResetLayout()
+                        } else {
+                            clearDeletedBuffer()
+                        }
+                        suggestionAdapter?.setUndoEnabled(false)
+                        updateClipboardPreview()
+                    }
+
                     KeyAction.Paste -> {}
                     KeyAction.SelectAll -> {}
                     KeyAction.SelectLeft -> {}
@@ -1936,8 +1962,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.Enter -> {}
                     is KeyAction.InputText -> {}
-                    KeyAction.MoveCursorLeft -> {}
-                    KeyAction.MoveCursorRight -> {}
+                    KeyAction.MoveCursorLeft -> {
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
+                    }
+
+                    KeyAction.MoveCursorRight -> {
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
+                    }
+
                     KeyAction.NewLine -> {}
                     KeyAction.Paste -> {}
                     KeyAction.SelectAll -> {}
