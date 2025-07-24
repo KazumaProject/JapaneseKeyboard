@@ -7,6 +7,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +32,8 @@ data class EditorUiState(
     val isRomaji: Boolean = false
 )
 
+data class LayoutTemplate(val name: String, val layout: KeyboardLayout)
+
 @HiltViewModel
 class KeyboardEditorViewModel @Inject constructor(
     private val repository: KeyboardRepository,
@@ -40,6 +43,11 @@ class KeyboardEditorViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var currentEditingId: Long? = null
+
+    val availableTemplates: List<LayoutTemplate> = listOf(
+        LayoutTemplate("かな入力", KeyboardDefaultLayouts.createFlickKanaTemplateLayout(true)),
+        LayoutTemplate("数字入力", KeyboardDefaultLayouts.createNumberTemplateLayout())
+    )
 
     fun start(layoutId: Long) {
         val newId = if (layoutId == -1L) null else layoutId
@@ -182,19 +190,11 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
-    // ▼▼▼ ここから追加 ▼▼▼
-    /**
-     * 指定されたインデックスの行を削除する
-     */
     fun deleteRowAt(rowIndex: Int) {
         _uiState.update { currentState ->
             val layout = currentState.layout
-            if (layout.rowCount <= 1) return@update currentState // 最後の1行は消せない
-
-            // 1. 指定された行以外のキーを保持
+            if (layout.rowCount <= 1) return@update currentState
             val remainingKeys = layout.keys.filter { it.row != rowIndex }
-
-            // 2. 削除された行より下の行のインデックスを1つずつ上に詰める
             val updatedKeys = remainingKeys.map { key ->
                 if (key.row > rowIndex) {
                     key.copy(row = key.row - 1)
@@ -202,25 +202,16 @@ class KeyboardEditorViewModel @Inject constructor(
                     key
                 }
             }
-
-            // 3. 行数を1つ減らしてレイアウトを更新
             val newLayout = layout.copy(keys = updatedKeys, rowCount = layout.rowCount - 1)
             currentState.copy(layout = newLayout)
         }
     }
 
-    /**
-     * 指定されたインデックスの列を削除する
-     */
     fun deleteColumnAt(columnIndex: Int) {
         _uiState.update { currentState ->
             val layout = currentState.layout
-            if (layout.columnCount <= 1) return@update currentState // 最後の1列は消せない
-
-            // 1. 指定された列以外のキーを保持
+            if (layout.columnCount <= 1) return@update currentState
             val remainingKeys = layout.keys.filter { it.column != columnIndex }
-
-            // 2. 削除された列より右の列のインデックスを1つずつ左に詰める
             val updatedKeys = remainingKeys.map { key ->
                 if (key.column > columnIndex) {
                     key.copy(column = key.column - 1)
@@ -228,13 +219,10 @@ class KeyboardEditorViewModel @Inject constructor(
                     key
                 }
             }
-
-            // 3. 列数を1つ減らしてレイアウトを更新
             val newLayout = layout.copy(keys = updatedKeys, columnCount = layout.columnCount - 1)
             currentState.copy(layout = newLayout)
         }
     }
-    // ▲▲▲ ここまで追加 ▲▲▲
 
     private fun createEmptyKey(row: Int, column: Int): KeyData {
         return KeyData(
@@ -258,13 +246,11 @@ class KeyboardEditorViewModel @Inject constructor(
             return
         }
         _uiState.update { currentState ->
-            Timber.d("Executing _uiState.update block for keyId: $keyId")
             val newKeys =
                 currentState.layout.keys.map { if (it.keyId == keyId) keyData else it }
             val newFlickMaps = currentState.layout.flickKeyMaps.toMutableMap()
             newFlickMaps[keyId] = listOf(flickMap)
             val newLayout = currentState.layout.copy(keys = newKeys, flickKeyMaps = newFlickMaps)
-            Timber.d("SUCCESS: State update finished. The new KeyData for this key is: $keyData")
             currentState.copy(layout = newLayout)
         }
     }
@@ -274,23 +260,16 @@ class KeyboardEditorViewModel @Inject constructor(
             val keys = currentState.layout.keys
             val draggedKeyIndex = keys.indexOfFirst { it.keyId == draggedKeyId }
             val targetKeyIndex = keys.indexOfFirst { it.keyId == targetKeyId }
-
             if (draggedKeyIndex == -1 || targetKeyIndex == -1) {
-                Timber.w("Could not find one or both keys to swap. Dragged: $draggedKeyId, Target: $targetKeyId")
                 return@update currentState
             }
-
             val draggedKey = keys[draggedKeyIndex]
             val targetKey = keys[targetKeyIndex]
-
             val newKeys = keys.toMutableList()
             newKeys[draggedKeyIndex] =
                 draggedKey.copy(row = targetKey.row, column = targetKey.column)
             newKeys[targetKeyIndex] =
                 targetKey.copy(row = draggedKey.row, column = draggedKey.column)
-
-            Timber.d("Swapped keys: ${draggedKey.label} and ${targetKey.label}")
-
             val newLayout = currentState.layout.copy(keys = newKeys)
             currentState.copy(layout = newLayout)
         }
@@ -302,6 +281,46 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun onDoneNavigating() {
         _uiState.update { it.copy(navigateBack = false) }
+    }
+
+    /**
+     * 選択されたテンプレートのレイアウトを現在のUI状態に適用する
+     */
+    fun applyTemplate(templateLayout: KeyboardLayout) {
+        // --- STEP 1: 全てのキーにユニークなIDを割り当てる ---
+        val keysWithEnsuredIds = templateLayout.keys.map { key ->
+            if (key.keyId == null) {
+                key.copy(keyId = UUID.randomUUID().toString())
+            } else {
+                key
+            }
+        }
+
+        // --- STEP 2: 「ラベル」から新しい「keyId」への変換マップを作成する ---
+        val labelToIdMap = keysWithEnsuredIds
+            .filter { it.label.isNotEmpty() && it.keyId != null }
+            .associate { it.label to it.keyId!! }
+
+        // --- STEP 3: flickKeyMapsのキーを「ラベル」から「keyId」に変換する ---
+        val reKeyedFlickMaps = templateLayout.flickKeyMaps.mapNotNull { (labelKey, flickActions) ->
+            val newKeyId = labelToIdMap[labelKey] // ラベルに対応する新しいIDを検索
+            if (newKeyId != null) {
+                newKeyId to flickActions // 新しいIDをキーにして新しいマップエントリを作成
+            } else {
+                null // 対応するキーが見つからなければ、このフリック設定は無視
+            }
+        }.toMap()
+
+        // --- STEP 4: IDが保証されたキーリストと、キーが変換されたフリックマップで最終的なレイアウトを作成 ---
+        val finalLayout = templateLayout.copy(
+            keys = keysWithEnsuredIds,
+            flickKeyMaps = reKeyedFlickMaps
+        )
+
+        // --- STEP 5: 修正されたレイアウトでUI状態を更新 ---
+        _uiState.update { currentState ->
+            currentState.copy(layout = finalLayout)
+        }
     }
 
     suspend fun getLayoutsForExport(): List<FullKeyboardLayout> {
