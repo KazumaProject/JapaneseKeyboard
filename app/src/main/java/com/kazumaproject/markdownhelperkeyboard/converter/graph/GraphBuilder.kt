@@ -146,7 +146,7 @@ class GraphBuilder {
                                 r = tokenArray.rightIds[it.posTableIndex.toInt()],
                                 score = when {
                                     omissionResult.omissionCount > 0 && omissionResult.yomi.length == 1 ->
-                                        it.wordCost + 900
+                                        it.wordCost + 1500
 
                                     omissionResult.omissionCount > 0 ->
                                         it.wordCost + (SCORE_BONUS_PER_OMISSION * omissionResult.omissionCount)
