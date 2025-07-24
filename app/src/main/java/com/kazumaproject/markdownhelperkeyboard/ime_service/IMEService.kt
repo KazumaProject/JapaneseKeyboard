@@ -1817,12 +1817,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (text.isEmpty()) return
                         if (text.length == 1) {
                             if (isCustomLayoutRomajiMode) {
-                                Timber.d("handleOnKeyForSumire called $text ${inputString.value}")
-//                                romajiConverter?.let { converter ->
-//                                    handleOnKeyForSumire(
-//                                        converter.convert(text), mainView, isFlick
-//                                    )
-//                                }
                                 val insertString = inputString.value
                                 val sb = StringBuilder()
                                 sb.append(insertString).append(text)
@@ -5493,7 +5487,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else {
-            if (!onKeyboardSwitchLongPressUp) {
+            if (!onKeyboardSwitchLongPressUp && qwertyMode.value != TenKeyQWERTYMode.Custom) {
                 switchNextKeyboard()
             }
         }
