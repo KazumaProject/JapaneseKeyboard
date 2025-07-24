@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
 import android.graphics.Color
-import android.os.Build
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
@@ -78,12 +77,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     val mimeTypes = arrayOf("text/plain")
                     val data = ClipData(clipText, mimeTypes, item)
                     val dragShadow = DragShadowBuilder(view)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        view.startDragAndDrop(data, dragShadow, view, 0)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        view.startDrag(data, dragShadow, view, 0)
-                    }
+                    view.startDragAndDrop(data, dragShadow, view, 0)
                 }
                 true
             }

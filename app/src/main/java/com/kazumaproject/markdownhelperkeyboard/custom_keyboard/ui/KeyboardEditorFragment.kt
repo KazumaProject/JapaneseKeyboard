@@ -90,6 +90,12 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
         binding.buttonRemoveCol.setOnClickListener { viewModel.removeColumn() }
+
+        // ▼▼▼ ここから追加 ▼▼▼
+        binding.buttonSelectTemplate.setOnClickListener {
+            showTemplateSelectionDialog()
+        }
+        // ▲▲▲ ここまで追加 ▲▲▲
     }
 
     private fun observeViewModel() {
@@ -126,6 +132,28 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             .show()
     }
 
+    // ▼▼▼ ここから追加 ▼▼▼
+    private fun showTemplateSelectionDialog() {
+        val templates = viewModel.availableTemplates
+        val templateNames = templates.map { it.name }.toTypedArray()
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("テンプレートを選択")
+            .setItems(templateNames) { dialog, which ->
+                // 選択されたテンプレートを取得
+                val selectedTemplate = templates[which]
+                Timber.d("Template selected: ${selectedTemplate.name}")
+                // ViewModelにテンプレートの適用を指示
+                viewModel.applyTemplate(selectedTemplate.layout)
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+    // ▲▲▲ ここまで追加 ▲▲▲
+
     private fun updateUi(state: EditorUiState) {
         if (state.isLoading) {
             binding.editModePanel.isVisible = false
@@ -153,7 +181,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         viewModel.swapKeys(draggedKeyId, targetKeyId)
     }
 
-    // ▼▼▼ ここから追加 ▼▼▼
     override fun onRowDeleted(rowIndex: Int) {
         Timber.d("onRowDeleted: rowIndex = $rowIndex")
         viewModel.deleteRowAt(rowIndex)
@@ -163,7 +190,6 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         Timber.d("onColumnDeleted: columnIndex = $columnIndex")
         viewModel.deleteColumnAt(columnIndex)
     }
-    // ▲▲▲ ここまで追加 ▲▲▲
 
     override fun onDestroyView() {
         super.onDestroyView()
