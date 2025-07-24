@@ -35,6 +35,11 @@ object KeyActionMapper {
             "IME切替",
             com.kazumaproject.core.R.drawable.language_24dp
         ),
+        DisplayAction(
+            KeyAction.ToggleDakuten,
+            "濁点、小文字",
+            com.kazumaproject.core.R.drawable.kana_small
+        ),
         // --- アイコンがないアクション ---
         DisplayAction(
             KeyAction.MoveCursorLeft,

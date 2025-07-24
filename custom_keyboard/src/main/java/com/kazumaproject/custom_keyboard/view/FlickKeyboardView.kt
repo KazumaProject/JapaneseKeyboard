@@ -393,6 +393,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                 KeyType.NORMAL -> {
                     keyData.action?.let { action ->
+                        Log.d("NORMAL", "$action")
                         var isLongPressTriggered = false
                         keyView.setOnClickListener {
                             this@FlickKeyboardView.listener?.onAction(
