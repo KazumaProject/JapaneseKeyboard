@@ -45,7 +45,17 @@ class KeyboardEditorViewModel @Inject constructor(
     private var currentEditingId: Long? = null
 
     val availableTemplates: List<LayoutTemplate> = listOf(
-        LayoutTemplate("かな入力", KeyboardDefaultLayouts.createFlickKanaTemplateLayout(true)),
+        LayoutTemplate(
+            "かな入力 (カーソル)",
+            KeyboardDefaultLayouts.createFlickKanaTemplateLayout(true)
+        ),
+        LayoutTemplate(
+            "英語入力 (カーソル)",
+            KeyboardDefaultLayouts.createFlickEnglishTemplateLayout(
+                isDefaultKey = true,
+                isUpperCase = false
+            )
+        ),
         LayoutTemplate("数字入力", KeyboardDefaultLayouts.createNumberTemplateLayout())
     )
 
