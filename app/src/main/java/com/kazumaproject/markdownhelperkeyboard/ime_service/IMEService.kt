@@ -852,6 +852,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 return true
                             }
                             return super.onKeyDown(keyCode, event)
+                        } else if (e.isCtrlPressed) {
+                            val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+                            char?.let { c ->
+                                Timber.d("isCtrlPressed: $c")
+                                when (c) {
+                                    'A' -> selectAllText()
+                                    'C' -> copyAction()
+                                    'V' -> pasteAction()
+                                    'X' -> cutAction()
+                                    'W' -> showOrHideKeyboard()
+                                }
+                                return true
+                            }
                         }
                     }
 
@@ -2396,6 +2409,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         rightLongPressJob = null
     }
 
+    private fun copyAction() {
+        val selectedText = getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            clipboardUtil.setClipBoard(selectedText.toString())
+            suggestionAdapter?.apply {
+                setPasteEnabled(true)
+                setClipboardPreview(selectedText.toString())
+            }
+        }
+    }
+
     /**
      * クリップボードからの貼り付けアクション。テキストと画像の両方に対応。
      */
@@ -2419,6 +2443,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.setUndoEnabled(false)
         // ★修正点: UIを正しく更新する新しい関数を呼び出す
         updateClipboardPreview()
+    }
+
+    private fun cutAction() {
+        val selectedText = getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            clipboardUtil.setClipBoard(selectedText.toString())
+            suggestionAdapter?.apply {
+                setPasteEnabled(true)
+                setClipboardPreview(selectedText.toString())
+            }
+            sendKeyEvent(
+                KeyEvent(
+                    KeyEvent.ACTION_DOWN,
+                    KeyEvent.KEYCODE_DEL
+                )
+            )
+        }
+    }
+
+    private fun showOrHideKeyboard() {
+        if (isInputViewShown) {
+            requestHideSelf(0)
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                requestShowSelf(0)
+            } else {
+                val token = window?.window?.attributes?.token
+                val imm =
+                    getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInputFromInputMethod(
+                    token,
+                    InputMethodManager.SHOW_IMPLICIT
+                )
+            }
+        }
     }
 
     private fun pasteImageAction(bitmap: Bitmap) {
