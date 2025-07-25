@@ -617,6 +617,14 @@ class KanaKanjiEngine {
                 leftId = 2040,
                 rightId = 2040
             )
+            val halfWidth = Candidate(
+                string = input.convertFullWidthToHalfWidth(),
+                type = 31,
+                length = input.length.toUByte(),
+                score = 8000,
+                leftId = 2040,
+                rightId = 2040
+            )
             val timeConversion = createCandidatesForTime(input)
             val dateConversion = createCandidatesForDateInDigit(input)
 
@@ -674,7 +682,7 @@ class KanaKanjiEngine {
             }
 
             // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + numberCandidates
+            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
         }
 
         val hirakanaAndKana = listOf(
@@ -1615,7 +1623,7 @@ class KanaKanjiEngine {
                 candidates.add(
                     Candidate(
                         string = numberAsLong.toKanji(),
-                        type = 21, // 新しいタイプ
+                        type = 32, // 新しいタイプ
                         length = input.length.toUByte(),
                         score = 6100, // 優先度を調整
                         leftId = 2040,
@@ -1643,7 +1651,7 @@ class KanaKanjiEngine {
                 candidates.add(
                     Candidate(
                         string = it,
-                        type = 18,
+                        type = if (it == firstNum) (30).toByte() else (31).toByte(),
                         length = input.length.toUByte(),
                         score = 8002,
                         leftId = 2040,
