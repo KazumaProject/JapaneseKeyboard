@@ -1,5 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
+import com.kazumaproject.core.domain.extensions.isAllFullWidthAscii
+import com.kazumaproject.core.domain.extensions.isAllHalfWidthAscii
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
@@ -40,7 +42,11 @@ class FindPath {
                     if (!resultFinal.map { it.string }.contains(stringFromNode)) {
                         val candidate = Candidate(
                             string = stringFromNode,
-                            type = (1).toByte(),
+                            type = when {
+                                stringFromNode.isAllFullWidthAscii() -> (30).toByte()
+                                stringFromNode.isAllHalfWidthAscii() -> (31).toByte()
+                                else -> (1).toByte()
+                            },
                             length = length.toUByte(),
                             score = if (stringFromNode.any { it.isDigit() }) node.second + 2000 else node.second,
                             leftId = node.first.next?.l,

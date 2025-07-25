@@ -43,3 +43,37 @@ fun String.katakanaToHiragana(): String = buildString {
         }
     }
 }
+
+/**
+ * 文字が半角の英数記号（ASCIIの表示可能文字）であるかを判定します。
+ * スペースも半角と見なします。
+ */
+fun Char.isHalfWidthAscii(): Boolean {
+    // 半角の感嘆符(!)からチルダ(~)まで、および半角スペース
+    return this in '\u0020'..'\u007E'
+}
+
+/**
+ * 文字が全角の英数記号であるかを判定します。
+ * 全角スペースも全角と見なします。
+ */
+fun Char.isFullWidthAscii(): Boolean {
+    // 全角の感嘆符(！)からチルダ(～)まで、および全角スペース
+    return this in '\uFF01'..'\uFF5E' || this == '\u3000'
+}
+
+/**
+ * 文字列がすべて半角の英数記号で構成されているかを判定します。
+ */
+fun String.isAllHalfWidthAscii(): Boolean {
+    if (this.isEmpty()) return false
+    return this.all { it.isHalfWidthAscii() }
+}
+
+/**
+ * 文字列がすべて全角の英数記号で構成されているかを判定します。
+ */
+fun String.isAllFullWidthAscii(): Boolean {
+    if (this.isEmpty()) return false
+    return this.all { it.isFullWidthAscii() }
+}

@@ -15,6 +15,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.extensions.isAllFullWidthAscii
+import com.kazumaproject.core.domain.extensions.isAllHalfWidthAscii
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -366,7 +368,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             /** 顔文字 **/
             (12).toByte() -> "  "
             /** 記号 **/
-            (13).toByte() -> "  "
+            (13).toByte() -> {
+                when {
+                    suggestion.string.isAllHalfWidthAscii() -> "[半]"
+                    suggestion.string.isAllFullWidthAscii() -> "[全]"
+                    else -> "  "
+                }
+            }
             /** 日付 **/
             (14).toByte() -> "[日付]"
             /** 修正 **/
@@ -390,8 +398,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (19).toByte() -> ""
             /** 学習 **/
             (20).toByte() -> ""
-            /** 記号半角 **/
-            (21).toByte() -> ""
+            /** 記号 **/
+            (21).toByte() -> when {
+                suggestion.string.isAllHalfWidthAscii() -> "[半]"
+                suggestion.string.isAllFullWidthAscii() -> "[全]"
+                else -> "  "
+            }
             /** 全角数字 **/
             (22).toByte() -> "[全]"
             /** Mozc UT Names **/
@@ -407,6 +419,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (28).toByte() -> ""
             /** 英語 **/
             (29).toByte() -> ""
+            /** 全角 **/
+            (30).toByte() -> "[全]"
+            /** 半角 **/
+            (31).toByte() -> "[半]"
+            /** 漢数字 **/
+            (32).toByte() -> ""
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition
