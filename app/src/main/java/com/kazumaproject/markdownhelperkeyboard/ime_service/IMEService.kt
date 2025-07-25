@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
+import android.hardware.input.InputManager
 import android.inputmethodservice.InputMethodService
 import android.net.Uri
 import android.os.Build
@@ -22,6 +23,7 @@ import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.Gravity
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -158,7 +160,7 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
-    ClipboardHistoryToggleListener {
+    ClipboardHistoryToggleListener, InputManager.InputDeviceListener {
 
     @Inject
     lateinit var learnMultiple: LearnMultiple
@@ -279,6 +281,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val keyboardSymbolViewState: StateFlow<Boolean> = _keyboardSymbolViewState.asStateFlow()
     private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
     private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
+    private val _physicalKeyboardEnable = MutableStateFlow(false)
+    private val physicalKeyboardEnable = _physicalKeyboardEnable.asStateFlow()
+
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
@@ -339,6 +344,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
+
+    private lateinit var inputManager: InputManager
 
     private val cachedSpaceDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
@@ -431,6 +438,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
+
+        inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
+        inputManager.registerInputDeviceListener(this, null)
+        checkForPhysicalKeyboard()
     }
 
     override fun onCreateInputView(): View? {
@@ -624,6 +635,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
+        inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
     }
@@ -668,6 +680,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentNightMode = newNightMode
         }
 
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean {
+        super.onEvaluateInputViewShown()
+        return true
     }
 
     private fun setupKeyboardView() {
@@ -3113,6 +3130,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ngWordRepository.getAllNgWordsFlow().collectLatest { ngWords ->
                 _ngWordsList.value = ngWords.distinct()
                 _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }.toRegex()
+            }
+        }
+
+        launch {
+            physicalKeyboardEnable.collectLatest { isPhysicalKeyboardEnable ->
+                Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
         }
 
@@ -5920,6 +5943,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun isDevicePhysicalKeyboard(device: InputDevice?): Boolean {
+        // A device is a physical keyboard if it's not virtual and has a keyboard source.
+        return device != null && !device.isVirtual &&
+                (device.sources and InputDevice.SOURCE_KEYBOARD) != 0
+    }
+
+    private fun checkForPhysicalKeyboard() {
+        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
+            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
+        }
+        if (hasPhysicalKeyboard) {
+            Timber.d("A physical keyboard is connected.")
+            _physicalKeyboardEnable.update { true }
+        } else {
+            Timber.d("No physical keyboard is connected.")
+            _physicalKeyboardEnable.update { false }
+        }
+    }
+
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
 
@@ -6057,5 +6099,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onToggled(isEnabled: Boolean) {
         isClipboardHistoryFeatureEnabled = isEnabled
         appPreference.clipboard_history_enable = isEnabled
+    }
+
+    override fun onInputDeviceAdded(p0: Int) {
+        val device = inputManager.getInputDevice(p0)
+        if (isDevicePhysicalKeyboard(device)) {
+            Timber.d("Physical keyboard connected: ${device?.name}")
+            _physicalKeyboardEnable.update { true }
+        }
+    }
+
+    override fun onInputDeviceChanged(p0: Int) {
+        Timber.d("Input device removed: ID $p0")
+        checkForPhysicalKeyboard()
+    }
+
+    override fun onInputDeviceRemoved(p0: Int) {
+        val device = inputManager.getInputDevice(p0)
+        Timber.d("Input device changed: ${device?.name}")
+        _physicalKeyboardEnable.update { false }
     }
 }

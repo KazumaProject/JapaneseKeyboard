@@ -15,8 +15,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.domain.extensions.isAllFullWidthAscii
-import com.kazumaproject.core.domain.extensions.isAllHalfWidthAscii
+import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
+import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -370,8 +370,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             /** 記号 **/
             (13).toByte() -> {
                 when {
-                    suggestion.string.isAllHalfWidthAscii() -> "[半]"
-                    suggestion.string.isAllFullWidthAscii() -> "[全]"
+                    suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
+                    suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
                     else -> "  "
                 }
             }
@@ -400,8 +400,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (20).toByte() -> ""
             /** 記号 **/
             (21).toByte() -> when {
-                suggestion.string.isAllHalfWidthAscii() -> "[半]"
-                suggestion.string.isAllFullWidthAscii() -> "[全]"
+                suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
+                suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
                 else -> "  "
             }
             /** 全角数字 **/
