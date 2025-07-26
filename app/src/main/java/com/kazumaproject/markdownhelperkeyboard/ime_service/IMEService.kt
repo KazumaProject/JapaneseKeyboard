@@ -456,7 +456,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // もしコンテナがまだ一度も作成されていない場合（初回起動時）のみ、
         // 作成とセットアップを行う。
         if (keyboardContainer == null) {
-            Timber.d("Creating keyboardContainer for the first time.")
             isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
             keyboardContainer = FrameLayout(this)
 
@@ -561,7 +560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
             setKeyboardSize()
-        }else{
+        } else {
             checkForPhysicalKeyboard(true)
         }
         resetKeyboard()
@@ -874,7 +873,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                                 }
                                 suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "入力: 英語"
+                                    text = "A"
                                 )
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
@@ -1032,7 +1031,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                                 }
                                 suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "入力: 数字"
+                                    text = "数"
                                 )
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
@@ -1059,7 +1058,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                                 }
                                 suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "入力: かな"
+                                    text = "あ"
                                 )
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
@@ -3301,9 +3300,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (isPhysicalKeyboardEnable) {
                     suggestionAdapter?.setPhysicalInputModeText(
                         text = when (mainView.keyboardView.currentInputMode.value) {
-                            InputMode.ModeJapanese -> "入力: かな"
-                            InputMode.ModeEnglish -> "入力: 英語"
-                            InputMode.ModeNumber -> "入力: 数字"
+                            InputMode.ModeJapanese -> "あ"
+                            InputMode.ModeEnglish -> "A"
+                            InputMode.ModeNumber -> "数"
                         }
                     )
                     hideAllKeyboards()
@@ -3789,9 +3788,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || tabletView.isVisible) {
                         suggestionAdapter?.setPhysicalInputModeText(
                             text = when (mainView.keyboardView.currentInputMode.value) {
-                                InputMode.ModeJapanese -> "入力: かな"
-                                InputMode.ModeEnglish -> "入力: 英語"
-                                InputMode.ModeNumber -> "入力: 数字"
+                                InputMode.ModeJapanese -> "あ"
+                                InputMode.ModeEnglish -> "A"
+                                InputMode.ModeNumber -> "数"
                             }
                         )
                         hideAllKeyboards()
@@ -3809,7 +3808,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (keyboardOrder.isEmpty()) return@apply
                         showKeyboard(keyboardOrder[0])
                         setKeyboardSize()
-                        suggestionAdapter?.setPhysicalInputModeText(text = "")
+                        suggestionAdapter?.setPhysicalInputModeText("")
                     }
                 }
             }
@@ -6180,6 +6179,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
             scope.launch {
+                delay(32)
                 _physicalKeyboardEnable.emit(true)
             }
         } else {

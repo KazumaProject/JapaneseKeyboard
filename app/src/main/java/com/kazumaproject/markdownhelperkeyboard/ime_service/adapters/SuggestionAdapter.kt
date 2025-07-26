@@ -69,7 +69,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var currentMode: TenKeyQWERTYMode = TenKeyQWERTYMode.Default
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
 
-    private var physicalInputModeText: String = "入力: かな"
+    private var physicalInputModeText: String = ""
 
     private var isPhysicalKeyboardActive: Boolean = false
 
@@ -306,6 +306,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private fun onBindPhysicalKeyboardViewHolder(holder: PhysicalKeyboardViewHolder) {
         holder.messageTextView.text = physicalInputModeText
+        holder.messageTextView.isVisible = physicalInputModeText.isNotEmpty()
         holder.showSoftKeyboardButton.setOnClickListener {
             onShowSoftKeyboardClick?.invoke()
         }
