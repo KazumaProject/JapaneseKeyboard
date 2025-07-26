@@ -840,7 +840,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     event?.let { e ->
                         Timber.d("onKeyDown: ${e.keyCode} $keyCode $e")
-                        if (e.isShiftPressed) {
+                        if (e.isShiftPressed || e.isCapsLockOn) {
                             val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
                             char?.let { c ->
                                 if (insertString.isNotEmpty()) {
