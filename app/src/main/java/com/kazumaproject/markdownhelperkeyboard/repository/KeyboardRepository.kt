@@ -168,6 +168,8 @@ class KeyboardRepository @Inject constructor(
 
     suspend fun duplicateLayout(id: Long) {
         val originalLayout = dao.getFullLayoutOneShot(id) ?: return
+
+        // 新しいレイアウト名の生成ロジックは変更なし
         val newName = originalLayout.layout.name + " (コピー)"
         var nameExists = dao.findLayoutByName(newName) != null
         var counter = 2
@@ -178,15 +180,32 @@ class KeyboardRepository @Inject constructor(
             counter++
         }
         val newLayoutInfo = originalLayout.layout.copy(
-            layoutId = 0,
+            layoutId = 0, // 新規作成なのでIDを0にする
             name = finalName,
             createdAt = System.currentTimeMillis()
         )
-        val keys = originalLayout.keysWithFlicks.map { it.key }
-        val flicksMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
-            keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
+
+        // ★★★★★ 以下を修正 ★★★★★
+
+        // 1. キーの新しいインスタンスを作成する
+        //    主キー(keyId)と外部キー(ownerLayoutId)を0にリセットし、
+        //    Roomに新しいレコードとして扱わせる
+        val newKeys = originalLayout.keysWithFlicks.map { keyWithFlicks ->
+            keyWithFlicks.key.copy(keyId = 0, ownerLayoutId = 0)
         }
-        dao.insertFullKeyboardLayout(newLayoutInfo, keys, flicksMap)
+
+        // 2. フリックの新しいインスタンスを作成する
+        //    各フリック情報も外部キー(ownerKeyId)を0にリセットする
+        val newFlicksMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val newFlicks = keyWithFlicks.flicks.map { flick ->
+                flick.copy(ownerKeyId = 0)
+            }
+            // keyIdentifierはキーとフリックを関連付けるためそのまま使う
+            keyWithFlicks.key.keyIdentifier to newFlicks
+        }
+
+        // 3. 新しく作ったインスタンスでデータベースに登録する
+        dao.insertFullKeyboardLayout(newLayoutInfo, newKeys, newFlicksMap)
     }
 
     private fun convertToUiModel(dbLayout: FullKeyboardLayout): KeyboardLayout {
