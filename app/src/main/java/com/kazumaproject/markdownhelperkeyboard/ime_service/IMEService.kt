@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
+import android.hardware.input.InputManager
 import android.inputmethodservice.InputMethodService
 import android.net.Uri
 import android.os.Build
@@ -22,6 +23,7 @@ import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.Gravity
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -57,6 +59,7 @@ import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
@@ -133,6 +136,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -158,7 +162,7 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
-    ClipboardHistoryToggleListener {
+    ClipboardHistoryToggleListener, InputManager.InputDeviceListener {
 
     @Inject
     lateinit var learnMultiple: LearnMultiple
@@ -279,6 +283,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val keyboardSymbolViewState: StateFlow<Boolean> = _keyboardSymbolViewState.asStateFlow()
     private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
     private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
+    private val _physicalKeyboardEnable = MutableSharedFlow<Boolean>(replay = 1)
+    private val physicalKeyboardEnable: SharedFlow<Boolean> = _physicalKeyboardEnable
+
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
@@ -339,6 +346,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
+
+    private lateinit var inputManager: InputManager
 
     private val cachedSpaceDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
@@ -431,6 +440,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
+
+        inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
+        inputManager.registerInputDeviceListener(this, null)
     }
 
     override fun onCreateInputView(): View? {
@@ -444,7 +456,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // もしコンテナがまだ一度も作成されていない場合（初回起動時）のみ、
         // 作成とセットアップを行う。
         if (keyboardContainer == null) {
-            Timber.d("Creating keyboardContainer for the first time.")
             isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
             keyboardContainer = FrameLayout(this)
 
@@ -541,10 +552,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
-        Timber.d("onUpdate onStartInputView called $restarting")
+        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
+            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
+        }
+        Timber.d("onUpdate onStartInputView called $restarting $hasPhysicalKeyboard")
         setCurrentInputType(editorInfo)
         updateClipboardPreview()
-        setKeyboardSize()
+        if (!hasPhysicalKeyboard) {
+            setKeyboardSize()
+        } else {
+            checkForPhysicalKeyboard(true)
+        }
         resetKeyboard()
         keyboardSelectionPopupWindow?.dismiss()
         mainLayoutBinding?.let { mainView ->
@@ -624,6 +642,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
+        inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
     }
@@ -668,6 +687,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentNightMode = newNightMode
         }
 
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean {
+        super.onEvaluateInputViewShown()
+        return true
     }
 
     private fun setupKeyboardView() {
@@ -814,10 +838,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                     val sb = StringBuilder()
 
-                    Timber.d("onKeyDown: $event")
-
                     event?.let { e ->
-                        if (e.isShiftPressed) {
+                        Timber.d("onKeyDown: ${e.keyCode} $keyCode $e")
+                        if (e.isShiftPressed || e.isCapsLockOn) {
                             val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
                             char?.let { c ->
                                 if (insertString.isNotEmpty()) {
@@ -835,6 +858,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 return true
                             }
                             return super.onKeyDown(keyCode, event)
+                        } else if (e.isCtrlPressed) {
+                            if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                                customKeyboardMode = when (customKeyboardMode) {
+                                    KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                                    KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                                }
+                                updateKeyboardLayout()
+
+                                val inputMode = when (customKeyboardMode) {
+                                    KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+                                    KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+                                }
+                                suggestionAdapter?.setPhysicalInputModeText(
+                                    text = "A"
+                                )
+                                mainView.keyboardView.setCurrentMode(inputMode)
+                                return true
+                            }
+                            val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+                            char?.let { c ->
+                                Timber.d("isCtrlPressed: $c")
+                                when (c) {
+                                    'A' -> {
+                                        selectAllText()
+                                        return true
+                                    }
+
+                                    'C' -> {
+                                        copyAction()
+                                        return true
+                                    }
+
+                                    'V' -> {
+                                        pasteAction()
+                                        return true
+                                    }
+
+                                    'X' -> {
+                                        cutAction()
+                                        return true
+                                    }
+
+                                    'W' -> {
+                                        showOrHideKeyboard()
+                                        return true
+                                    }
+
+                                    else -> {
+
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -908,6 +985,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
                             event?.let { e ->
+                                scope.launch {
+                                    _physicalKeyboardEnable.emit(true)
+                                }
                                 romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
                                     if (insertString.isNotEmpty()) {
                                         sb.append(
@@ -934,7 +1014,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
-                else -> {
+                InputMode.ModeEnglish -> {
+                    event?.let { e ->
+                        if (e.isCtrlPressed) {
+                            if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                                customKeyboardMode = when (customKeyboardMode) {
+                                    KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                                    KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                                }
+                                updateKeyboardLayout()
+
+                                val inputMode = when (customKeyboardMode) {
+                                    KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+                                    KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+                                }
+                                suggestionAdapter?.setPhysicalInputModeText(
+                                    text = "数"
+                                )
+                                mainView.keyboardView.setCurrentMode(inputMode)
+                                return true
+                            }
+                        }
+                    }
+                    return super.onKeyDown(keyCode, event)
+                }
+
+                InputMode.ModeNumber -> {
+                    event?.let { e ->
+                        if (e.isCtrlPressed) {
+                            if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                                customKeyboardMode = when (customKeyboardMode) {
+                                    KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                                    KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                                }
+                                updateKeyboardLayout()
+
+                                val inputMode = when (customKeyboardMode) {
+                                    KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+                                    KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+                                }
+                                suggestionAdapter?.setPhysicalInputModeText(
+                                    text = "あ"
+                                )
+                                mainView.keyboardView.setCurrentMode(inputMode)
+                                return true
+                            }
+                        }
+                    }
                     return super.onKeyDown(keyCode, event)
                 }
             }
@@ -2379,6 +2509,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         rightLongPressJob = null
     }
 
+    private fun copyAction() {
+        val selectedText = getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            clipboardUtil.setClipBoard(selectedText.toString())
+            suggestionAdapter?.apply {
+                setPasteEnabled(true)
+                setClipboardPreview(selectedText.toString())
+            }
+        }
+    }
+
     /**
      * クリップボードからの貼り付けアクション。テキストと画像の両方に対応。
      */
@@ -2402,6 +2543,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.setUndoEnabled(false)
         // ★修正点: UIを正しく更新する新しい関数を呼び出す
         updateClipboardPreview()
+    }
+
+    private fun cutAction() {
+        val selectedText = getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            clipboardUtil.setClipBoard(selectedText.toString())
+            suggestionAdapter?.apply {
+                setPasteEnabled(true)
+                setClipboardPreview(selectedText.toString())
+            }
+            sendKeyEvent(
+                KeyEvent(
+                    KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL
+                )
+            )
+        }
+    }
+
+    private fun showOrHideKeyboard() {
+        if (isInputViewShown) {
+            requestHideSelf(0)
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                requestShowSelf(0)
+            } else {
+                val token = window?.window?.attributes?.token
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInputFromInputMethod(
+                    token, InputMethodManager.SHOW_IMPLICIT
+                )
+            }
+        }
     }
 
     private fun pasteImageAction(bitmap: Bitmap) {
@@ -2871,7 +3044,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     if (!mainView.suggestionVisibility.isVisible) {
-                        animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                        if (physicalKeyboardEnable.replayCache.isNotEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible || !physicalKeyboardEnable.replayCache.first())) {
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, true
+                            )
+                        }
                     }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
@@ -3113,6 +3290,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ngWordRepository.getAllNgWordsFlow().collectLatest { ngWords ->
                 _ngWordsList.value = ngWords.distinct()
                 _ngPattern.value = ngWords.joinToString("|") { Pattern.quote(it.tango) }.toRegex()
+            }
+        }
+
+        launch {
+            physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
+                Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
+                suggestionAdapter?.setPhysicalKeyboardActive(isPhysicalKeyboardEnable)
+                if (isPhysicalKeyboardEnable) {
+                    suggestionAdapter?.setPhysicalInputModeText(
+                        text = when (mainView.keyboardView.currentInputMode.value) {
+                            InputMode.ModeJapanese -> "あ"
+                            InputMode.ModeEnglish -> "A"
+                            InputMode.ModeNumber -> "数"
+                        }
+                    )
+                    hideAllKeyboards()
+                    val heightPx = dpToPx(40f)
+                    val widthPx = ViewGroup.LayoutParams.MATCH_PARENT
+                    (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                        params.bottomMargin = heightPx
+                        mainView.suggestionViewParent.layoutParams = params
+                    }
+                    (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                        params.width = widthPx
+                        mainView.root.layoutParams = params
+                    }
+                } else {
+                    setKeyboardSize()
+                }
+                Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
         }
 
@@ -3573,6 +3780,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     registerNGWord(
                         insertString = insertString, candidate = candidate, candidatePosition = i
                     )
+                }
+            }
+
+            adapter.setOnPhysicalKeyboardListener {
+                mainView.apply {
+                    if (keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || tabletView.isVisible) {
+                        suggestionAdapter?.setPhysicalInputModeText(
+                            text = when (mainView.keyboardView.currentInputMode.value) {
+                                InputMode.ModeJapanese -> "あ"
+                                InputMode.ModeEnglish -> "A"
+                                InputMode.ModeNumber -> "数"
+                            }
+                        )
+                        hideAllKeyboards()
+                        val heightPx = dpToPx(40f)
+                        val widthPx = ViewGroup.LayoutParams.MATCH_PARENT
+                        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                            params.bottomMargin = heightPx
+                            mainView.suggestionViewParent.layoutParams = params
+                        }
+                        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                            params.width = widthPx
+                            mainView.root.layoutParams = params
+                        }
+                    } else {
+                        if (keyboardOrder.isEmpty()) return@apply
+                        showKeyboard(keyboardOrder[0])
+                        setKeyboardSize()
+                        suggestionAdapter?.setPhysicalInputModeText("")
+                    }
                 }
             }
 
@@ -5920,6 +6157,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun isDevicePhysicalKeyboard(device: InputDevice?): Boolean {
+        if (device == null) return false
+
+        // Checks that it's not the software keyboard
+        val isNotVirtual = !device.isVirtual
+
+        // Checks that it has keyboard-like buttons
+        val hasKeyboardSource = (device.sources and InputDevice.SOURCE_KEYBOARD) != 0
+
+        // THIS IS THE CRITICAL FIX:
+        // Checks that it's a full alphabetic keyboard, not just a few buttons.
+        val isAlphabetic = device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
+
+        return isNotVirtual && hasKeyboardSource && isAlphabetic
+    }
+
+    private fun checkForPhysicalKeyboard(
+        hasPhysicalKeyboard: Boolean
+    ) {
+        if (hasPhysicalKeyboard) {
+            Timber.d("A physical keyboard is connected.")
+            scope.launch {
+                delay(32)
+                _physicalKeyboardEnable.emit(true)
+            }
+        } else {
+            Timber.d("No physical keyboard is connected.")
+            scope.launch {
+                _physicalKeyboardEnable.emit(false)
+            }
+        }
+    }
+
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
 
@@ -6057,5 +6327,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onToggled(isEnabled: Boolean) {
         isClipboardHistoryFeatureEnabled = isEnabled
         appPreference.clipboard_history_enable = isEnabled
+    }
+
+    override fun onInputDeviceAdded(p0: Int) {
+        val device = inputManager.getInputDevice(p0)
+        if (isDevicePhysicalKeyboard(device)) {
+            Timber.d("Physical keyboard connected: ${device?.name}")
+            scope.launch {
+                _physicalKeyboardEnable.emit(true)
+            }
+        }
+    }
+
+    override fun onInputDeviceChanged(p0: Int) {
+        Timber.d("Input device removed: ID $p0")
+        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
+            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
+        }
+        checkForPhysicalKeyboard(hasPhysicalKeyboard)
+    }
+
+    override fun onInputDeviceRemoved(p0: Int) {
+        val device = inputManager.getInputDevice(p0)
+        Timber.d("Input device changed: ${device?.name}")
+        scope.launch {
+            _physicalKeyboardEnable.emit(false)
+        }
     }
 }
