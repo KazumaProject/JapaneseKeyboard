@@ -3044,10 +3044,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     if (!mainView.suggestionVisibility.isVisible) {
-                        if (physicalKeyboardEnable.replayCache.isNotEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible || !physicalKeyboardEnable.replayCache.first())) {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, true
-                            )
+                        when {
+                            physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                                animateSuggestionImageViewVisibility(
+                                    mainView.suggestionVisibility, true
+                                )
+                            }
+
+                            physicalKeyboardEnable.replayCache.isNotEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                                animateSuggestionImageViewVisibility(
+                                    mainView.suggestionVisibility, true
+                                )
+                            }
                         }
                     }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
