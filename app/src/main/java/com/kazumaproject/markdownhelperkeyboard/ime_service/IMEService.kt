@@ -283,8 +283,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val keyboardSymbolViewState: StateFlow<Boolean> = _keyboardSymbolViewState.asStateFlow()
     private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
     private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
-    private val _physicalKeyboardEnable =
-        MutableSharedFlow<Boolean>(replay = 1)
+    private val _physicalKeyboardEnable = MutableSharedFlow<Boolean>(replay = 1)
     private val physicalKeyboardEnable: SharedFlow<Boolean> = _physicalKeyboardEnable
 
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
@@ -554,7 +553,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
-        Timber.d("onUpdate onStartInputView called $restarting")
+        Timber.d("onUpdate onStartInputView called $restarting ${physicalKeyboardEnable.replayCache}")
         setCurrentInputType(editorInfo)
         updateClipboardPreview()
         setKeyboardSize()
@@ -3039,8 +3038,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
-                    if (!mainView.suggestionVisibility.isVisible && physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
-                        animateSuggestionImageViewVisibility(mainView.suggestionVisibility, true)
+                    if (!mainView.suggestionVisibility.isVisible) {
+                        if (physicalKeyboardEnable.replayCache.isNotEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible || !physicalKeyboardEnable.replayCache.first())) {
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, true
+                            )
+                        }
                     }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
@@ -3292,7 +3295,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (isPhysicalKeyboardEnable) {
                     suggestionAdapter?.setPhysicalInputModeText(
                         text = when (mainView.keyboardView.currentInputMode.value) {
-                            InputMode.ModeJapanese -> "入力: 日本語"
+                            InputMode.ModeJapanese -> "入力: かな"
                             InputMode.ModeEnglish -> "入力: 英語"
                             InputMode.ModeNumber -> "入力: 数字"
                         }
@@ -3777,12 +3780,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             adapter.setOnPhysicalKeyboardListener {
                 mainView.apply {
-                    if (keyboardView.isVisible || customLayoutDefault.isVisible ||
-                        qwertyView.isVisible || tabletView.isVisible
-                    ) {
+                    if (keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || tabletView.isVisible) {
                         suggestionAdapter?.setPhysicalInputModeText(
                             text = when (mainView.keyboardView.currentInputMode.value) {
-                                InputMode.ModeJapanese -> "入力: 日本語"
+                                InputMode.ModeJapanese -> "入力: かな"
                                 InputMode.ModeEnglish -> "入力: 英語"
                                 InputMode.ModeNumber -> "入力: 数字"
                             }
