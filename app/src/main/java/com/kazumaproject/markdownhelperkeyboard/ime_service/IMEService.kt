@@ -553,12 +553,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
-        Timber.d("onUpdate onStartInputView called $restarting ${physicalKeyboardEnable.replayCache}")
+        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
+            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
+        }
+        Timber.d("onUpdate onStartInputView called $restarting $hasPhysicalKeyboard")
         setCurrentInputType(editorInfo)
         updateClipboardPreview()
-        setKeyboardSize()
+        if (!hasPhysicalKeyboard) {
+            setKeyboardSize()
+        }else{
+            checkForPhysicalKeyboard(true)
+        }
         resetKeyboard()
-        checkForPhysicalKeyboard()
         keyboardSelectionPopupWindow?.dismiss()
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
@@ -6153,18 +6159,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun isDevicePhysicalKeyboard(device: InputDevice?): Boolean {
-        // A device is a physical keyboard if it's not virtual and has a keyboard source.
-        return device != null && !device.isVirtual && (device.sources and InputDevice.SOURCE_KEYBOARD) != 0
+        if (device == null) return false
+
+        // Checks that it's not the software keyboard
+        val isNotVirtual = !device.isVirtual
+
+        // Checks that it has keyboard-like buttons
+        val hasKeyboardSource = (device.sources and InputDevice.SOURCE_KEYBOARD) != 0
+
+        // THIS IS THE CRITICAL FIX:
+        // Checks that it's a full alphabetic keyboard, not just a few buttons.
+        val isAlphabetic = device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
+
+        return isNotVirtual && hasKeyboardSource && isAlphabetic
     }
 
-    private fun checkForPhysicalKeyboard() {
-        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
-            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
-        }
+    private fun checkForPhysicalKeyboard(
+        hasPhysicalKeyboard: Boolean
+    ) {
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
             scope.launch {
-                delay(32)
                 _physicalKeyboardEnable.emit(true)
             }
         } else {
@@ -6326,7 +6341,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onInputDeviceChanged(p0: Int) {
         Timber.d("Input device removed: ID $p0")
-        checkForPhysicalKeyboard()
+        val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
+            isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
+        }
+        checkForPhysicalKeyboard(hasPhysicalKeyboard)
     }
 
     override fun onInputDeviceRemoved(p0: Int) {
