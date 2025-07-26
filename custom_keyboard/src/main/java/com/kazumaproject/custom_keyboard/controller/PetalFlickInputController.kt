@@ -26,8 +26,7 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 
 class PetalFlickInputController(
-    private val context: Context,
-    private val flickSensitivity: Int
+    private val context: Context, private val flickSensitivity: Int
 ) {
 
     interface PetalFlickListener {
@@ -88,9 +87,6 @@ class PetalFlickInputController(
         )
 
         val currentAnchor = anchorView ?: return
-        val keyWidth = currentAnchor.width
-        val keyHeight = currentAnchor.height
-        val lengthExtension = 1.4f
 
         directions.forEach { direction ->
             val text = characterMap[direction] ?: ""
@@ -101,31 +97,36 @@ class PetalFlickInputController(
                     setFlickDirection(direction)
                 }
 
-                val popupWidth: Int
-                val popupHeight: Int
-                when (direction) {
-                    FlickDirection.TAP -> {
-                        popupWidth = keyWidth; popupHeight = keyHeight
-                    }
-
+                val popupHeight = when (direction) {
                     FlickDirection.UP, FlickDirection.DOWN -> {
-                        popupWidth = keyWidth; popupHeight = (keyHeight * lengthExtension).toInt()
+                        currentAnchor.height + (currentAnchor.height / 2 - currentAnchor.height / 4)
                     }
 
-                    FlickDirection.UP_LEFT_FAR, FlickDirection.UP_RIGHT_FAR -> {
-                        popupWidth = (keyWidth * lengthExtension).toInt(); popupHeight = keyHeight
+                    FlickDirection.TAP -> {
+                        currentAnchor.height
                     }
 
                     else -> {
-                        popupWidth = keyWidth; popupHeight = keyHeight
+                        currentAnchor.height
+                    }
+                }
+
+                val popupWidth = when (direction) {
+                    FlickDirection.UP, FlickDirection.DOWN -> {
+                        currentAnchor.width
+                    }
+
+                    FlickDirection.TAP -> {
+                        currentAnchor.width
+                    }
+
+                    else -> {
+                        currentAnchor.width + (currentAnchor.width / 2 - currentAnchor.width / 4)
                     }
                 }
 
                 val popup = PopupWindow(
-                    popupView,
-                    popupWidth,
-                    popupHeight,
-                    false
+                    popupView, popupWidth, popupHeight, false
                 ).apply {
                     isClippingEnabled = false
                     elevation = 8f
@@ -295,8 +296,7 @@ class PetalFlickInputController(
                     val finalDirection = calculateDirection(dx, dy)
                     characterMap[finalDirection]?.let {
                         listener?.onFlick(
-                            it,
-                            isFlick = finalDirection != FlickDirection.TAP
+                            it, isFlick = finalDirection != FlickDirection.TAP
                         )
                     }
                 }
