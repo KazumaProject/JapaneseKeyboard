@@ -1020,7 +1020,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (keyCode == KeyEvent.KEYCODE_SPACE) {
                                 customKeyboardMode = when (customKeyboardMode) {
                                     KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
-                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.HIRAGANA
                                     KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
                                 }
                                 updateKeyboardLayout()
@@ -1028,10 +1028,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val inputMode = when (customKeyboardMode) {
                                     KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
                                     KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
-                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeJapanese
                                 }
                                 suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "数"
+                                    text = "あ"
                                 )
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
@@ -3310,7 +3310,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         text = when (mainView.keyboardView.currentInputMode.value) {
                             InputMode.ModeJapanese -> "あ"
                             InputMode.ModeEnglish -> "A"
-                            InputMode.ModeNumber -> "数"
+                            InputMode.ModeNumber -> "A"
                         }
                     )
                     hideAllKeyboards()
@@ -3798,7 +3798,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             text = when (mainView.keyboardView.currentInputMode.value) {
                                 InputMode.ModeJapanese -> "あ"
                                 InputMode.ModeEnglish -> "A"
-                                InputMode.ModeNumber -> "数"
+                                InputMode.ModeNumber -> "A"
                             }
                         )
                         hideAllKeyboards()
