@@ -6164,6 +6164,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
             scope.launch {
+                delay(32)
                 _physicalKeyboardEnable.emit(true)
             }
         } else {
