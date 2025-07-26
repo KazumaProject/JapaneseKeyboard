@@ -7,6 +7,7 @@ import android.text.style.RelativeSizeSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
@@ -15,6 +16,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
+import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -36,6 +39,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         private const val VIEW_TYPE_EMPTY = 0
         private const val VIEW_TYPE_SUGGESTION = 1
         private const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
+        private const val VIEW_TYPE_PHYSICAL_KEYBOARD = 3
     }
 
     enum class HelperIcon {
@@ -48,6 +52,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
     private var onItemHelperIconLongClickListener: ((HelperIcon) -> Unit)? = null
     private var onCustomLayoutItemClickListener: ((Int) -> Unit)? = null
+    private var onShowSoftKeyboardClick: (() -> Unit)? = null
 
     private val adapterScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     var onListUpdated: (() -> Unit)? = null
@@ -63,6 +68,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var currentMode: TenKeyQWERTYMode = TenKeyQWERTYMode.Default
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
+
+    private var physicalInputModeText: String = ""
+
+    private var isPhysicalKeyboardActive: Boolean = false
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -84,12 +93,31 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.onCustomLayoutItemClickListener = listener
     }
 
+    fun setPhysicalKeyboardActive(isActive: Boolean) {
+        isPhysicalKeyboardActive = isActive
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
+    fun setOnPhysicalKeyboardListener(listener: () -> Unit) {
+        this.onShowSoftKeyboardClick = listener
+    }
+
+    fun setPhysicalInputModeText(text: String) {
+        physicalInputModeText = text
+        if (suggestions.isEmpty() && isPhysicalKeyboardActive) {
+            notifyItemChanged(0)
+        }
+    }
+
     fun release() {
         onItemClickListener = null
         onItemLongClickListener = null
         onItemHelperIconClickListener = null
         onItemHelperIconLongClickListener = null
         onCustomLayoutItemClickListener = null
+        onShowSoftKeyboardClick = null
         onListUpdated = null
         adapterScope.cancel()
     }
@@ -195,11 +223,19 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val nameTextView: MaterialTextView = itemView.findViewById(R.id.custom_layout_name)
     }
 
+    inner class PhysicalKeyboardViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val messageTextView: MaterialTextView =
+            itemView.findViewById(R.id.physical_keyboard_input_mode_text)
+        val showSoftKeyboardButton: ImageButton = itemView.findViewById(R.id.show_soft_keyboard_btn)
+    }
+
     override fun getItemViewType(position: Int): Int {
         return if (suggestions.isNotEmpty()) {
             VIEW_TYPE_SUGGESTION
         } else {
-            if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
+            if (isPhysicalKeyboardActive) {
+                VIEW_TYPE_PHYSICAL_KEYBOARD
+            } else if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
                 VIEW_TYPE_CUSTOM_LAYOUT_PICKER
             } else {
                 VIEW_TYPE_EMPTY
@@ -228,6 +264,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 EmptyViewHolder(emptyView)
             }
 
+            VIEW_TYPE_PHYSICAL_KEYBOARD -> {
+                val physicalView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.suggestion_physical_keyboard_layout, parent, false)
+                PhysicalKeyboardViewHolder(physicalView)
+            }
+
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> {
                 val customView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.suggestion_custom_layout_item, parent, false)
@@ -251,14 +293,22 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         when (holder.itemViewType) {
             VIEW_TYPE_EMPTY -> onBindEmptyViewHolder(holder as EmptyViewHolder)
             VIEW_TYPE_SUGGESTION -> onBindSuggestionViewHolder(
-                holder as SuggestionViewHolder,
-                position
+                holder as SuggestionViewHolder, position
             )
 
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> onBindCustomLayoutViewHolder(
-                holder as CustomLayoutViewHolder,
-                position
+                holder as CustomLayoutViewHolder, position
             )
+
+            VIEW_TYPE_PHYSICAL_KEYBOARD -> onBindPhysicalKeyboardViewHolder(holder as PhysicalKeyboardViewHolder)
+        }
+    }
+
+    private fun onBindPhysicalKeyboardViewHolder(holder: PhysicalKeyboardViewHolder) {
+        holder.messageTextView.text = physicalInputModeText
+        holder.messageTextView.isVisible = physicalInputModeText.isNotEmpty()
+        holder.showSoftKeyboardButton.setOnClickListener {
+            onShowSoftKeyboardClick?.invoke()
         }
     }
 
@@ -341,16 +391,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
         val readingCorrectionString =
             if (suggestion.type == (15).toByte()) suggestion.string.correctReading() else Pair(
-                "",
-                ""
+                "", ""
             )
         holder.text.text = if (suggestion.type == (15).toByte()) {
-            readingCorrectionString.first
-                .padStart(readingCorrectionString.first.length + paddingLength)
+            readingCorrectionString.first.padStart(readingCorrectionString.first.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
         } else {
-            suggestion.string
-                .padStart(suggestion.string.length + paddingLength)
+            suggestion.string.padStart(suggestion.string.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
         }
         holder.typeText.text = when (suggestion.type) {
@@ -366,17 +413,20 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             /** 顔文字 **/
             (12).toByte() -> "  "
             /** 記号 **/
-            (13).toByte() -> "  "
+            (13).toByte() -> {
+                when {
+                    suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
+                    suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
+                    else -> "  "
+                }
+            }
             /** 日付 **/
             (14).toByte() -> "[日付]"
             /** 修正 **/
             (15).toByte() -> {
                 val spannable = SpannableString("[読] ${readingCorrectionString.second}")
                 spannable.setSpan(
-                    RelativeSizeSpan(1.25f),
-                    4,
-                    spannable.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                    RelativeSizeSpan(1.25f), 4, spannable.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                 )
                 spannable
             }
@@ -390,8 +440,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (19).toByte() -> ""
             /** 学習 **/
             (20).toByte() -> ""
-            /** 記号半角 **/
-            (21).toByte() -> ""
+            /** 記号 **/
+            (21).toByte() -> when {
+                suggestion.string.isAllHalfWidthNumericSymbol() -> "[半]"
+                suggestion.string.isAllFullWidthNumericSymbol() -> "[全]"
+                else -> "  "
+            }
             /** 全角数字 **/
             (22).toByte() -> "[全]"
             /** Mozc UT Names **/
@@ -407,6 +461,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (28).toByte() -> ""
             /** 英語 **/
             (29).toByte() -> ""
+            /** 全角 **/
+            (30).toByte() -> "[全]"
+            /** 半角 **/
+            (31).toByte() -> "[半]"
+            /** 漢数字 **/
+            (32).toByte() -> ""
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition
