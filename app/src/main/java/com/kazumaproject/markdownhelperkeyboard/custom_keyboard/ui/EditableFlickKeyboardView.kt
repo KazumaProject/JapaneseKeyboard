@@ -13,7 +13,6 @@ import android.view.DragEvent
 import android.view.Gravity
 import android.view.View
 import android.view.View.OnDragListener
-import android.widget.Button
 import android.widget.GridLayout
 import android.widget.ImageButton
 import androidx.annotation.AttrRes
@@ -24,6 +23,7 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
+import com.kazumaproject.custom_keyboard.view.AutoSizeButton
 import com.google.android.material.R as MaterialR
 
 @SuppressLint("ClickableViewAccessibility")
@@ -164,23 +164,46 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    // ▼▼▼ createKeyViewにオフセット引数を追加 ▼▼▼
+    // createKeyViewにオフセット引数を追加
     private fun createKeyView(
         keyData: KeyData,
         rowOffset: Int,
         colOffset: Int
     ): View {
         val isDarkTheme = context.isDarkThemeOn()
+
+        // ▼▼▼ 変更点1: マージン値をここで定義 ▼▼▼
+        val (leftMargin, topMargin, rightMargin, bottomMargin) = if (keyData.isSpecialKey) {
+            // isSpecialKey の場合のマージン
+            listOf(dpToPx(2), dpToPx(6), dpToPx(2), dpToPx(6))
+        } else {
+            // 通常キーの場合のマージin
+            listOf(dpToPx(2), dpToPx(3), dpToPx(2), dpToPx(3))
+        }
+
         val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
             AppCompatImageButton(context).apply {
                 isFocusable = false; isClickable = true
                 elevation = 2f
                 setImageResource(keyData.drawableResId!!)
                 contentDescription = keyData.label
-                setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
+
+                // ▼▼▼ 変更点2: InsetDrawable を使用 ▼▼▼
+                val originalBg = ContextCompat.getDrawable(
+                    context,
+                    if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                )
+                val insetBg = android.graphics.drawable.InsetDrawable(
+                    originalBg,
+                    leftMargin,
+                    topMargin,
+                    rightMargin,
+                    bottomMargin
+                )
+                background = insetBg
             }
         } else {
-            Button(context).apply {
+            AutoSizeButton(context).apply {
                 isFocusable = false; isClickable = true
                 isAllCaps = false
                 if (keyData.label.contains("\n")) {
@@ -210,24 +233,17 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 } else {
                     text = keyData.label
                     gravity = Gravity.CENTER
-                    val englishOnlyRegex = Regex("^[a-zA-Z@#/_'\"().,?! ]+$")
-                    val symbolRegex = Regex("^[()\\[\\],./ -]+$")
-                    if (englishOnlyRegex.matches(keyData.label)) setTextSize(
-                        TypedValue.COMPLEX_UNIT_SP,
-                        14f
-                    )
-                    else if (symbolRegex.matches(keyData.label)) setTextSize(
-                        TypedValue.COMPLEX_UNIT_SP,
-                        14f
-                    )
-                    else setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
                 }
 
-                when {
+                // ▼▼▼ 変更点3: 背景設定ロジックを InsetDrawable を使うように変更 ▼▼▼
+                val originalBg = when {
                     keyData.isSpecialKey -> {
                         elevation = 2f
-                        setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                        ContextCompat.getDrawable(
+                            context,
+                            if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                        )
                     }
 
                     keyData.keyType == KeyType.STANDARD_FLICK -> {
@@ -238,33 +254,43 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                         val keyHighlightColor =
                             context.getColorFromAttr(MaterialR.attr.colorSecondaryContainer)
                         val keyTextColor = context.getColorFromAttr(MaterialR.attr.colorOnSurface)
-                        val segmentedDrawable = SegmentedBackgroundDrawable(
+                        setTextColor(Color.TRANSPARENT)
+                        SegmentedBackgroundDrawable(
                             label = keyData.label,
                             baseColor = keyBaseColor,
                             highlightColor = keyHighlightColor,
                             textColor = keyTextColor,
                             cornerRadius = 20f
                         )
-                        background = segmentedDrawable
-                        setTextColor(Color.TRANSPARENT)
                     }
 
                     else -> {
-                        setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light)
+                        ContextCompat.getDrawable(
+                            context,
+                            if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                        )
                     }
                 }
+                val insetBg = android.graphics.drawable.InsetDrawable(
+                    originalBg,
+                    leftMargin,
+                    topMargin,
+                    rightMargin,
+                    bottomMargin
+                )
+                background = insetBg
             }
         }
 
         val params = LayoutParams().apply {
-            // ▼▼▼ オフセットを適用して正しい位置に配置 ▼▼▼
             rowSpec = spec(keyData.row + rowOffset, keyData.rowSpan, FILL, 1f)
             columnSpec = spec(keyData.column + colOffset, keyData.colSpan, FILL, 1f)
             width = 0
             height = 0
             elevation = 2f
-            if (keyData.isSpecialKey) setMargins(6, 12, 6, 6)
-            else setMargins(6, 9, 6, 9)
+            // ▼▼▼ 変更点4: setMargins の呼び出しを完全に削除 ▼▼▼
+            // if (keyData.isSpecialKey) setMargins(6, 12, 6, 6)
+            // else setMargins(6, 9, 6, 9)
         }
         keyView.layoutParams = params
         return keyView
