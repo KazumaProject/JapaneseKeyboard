@@ -18,89 +18,27 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     fun handleKeyEvent(event: KeyEvent): Pair<String, Int> {
 
         val unicode = when (event.keyCode) {
-            KeyEvent.KEYCODE_COMMA -> {
-                '、'.code
-            }
-
-            KeyEvent.KEYCODE_PERIOD -> {
-                '。'.code
-            }
-
-            KeyEvent.KEYCODE_BACKSLASH -> {
-                '￥'.code
-            }
-
-            KeyEvent.KEYCODE_LEFT_BRACKET -> {
-                '「'.code
-            }
-
-            KeyEvent.KEYCODE_RIGHT_BRACKET -> {
-                '」'.code
-            }
-
-            KeyEvent.KEYCODE_SEMICOLON -> {
-                '；'.code
-            }
-
-            KeyEvent.KEYCODE_APOSTROPHE -> {
-                '\u2019'.code
-            }
-
-            KeyEvent.KEYCODE_MINUS -> {
-                'ー'.code
-            }
-
-            KeyEvent.KEYCODE_EQUALS -> {
-                '＝'.code
-            }
-
-            KeyEvent.KEYCODE_1 -> {
-                '１'.code
-            }
-
-            KeyEvent.KEYCODE_2 -> {
-                '２'.code
-            }
-
-            KeyEvent.KEYCODE_3 -> {
-                '３'.code
-            }
-
-            KeyEvent.KEYCODE_4 -> {
-                '４'.code
-            }
-
-            KeyEvent.KEYCODE_5 -> {
-                '５'.code
-            }
-
-            KeyEvent.KEYCODE_6 -> {
-                '６'.code
-            }
-
-            KeyEvent.KEYCODE_7 -> {
-                '７'.code
-            }
-
-            KeyEvent.KEYCODE_8 -> {
-                '８'.code
-            }
-
-            KeyEvent.KEYCODE_9 -> {
-                '９'.code
-            }
-
-            KeyEvent.KEYCODE_0 -> {
-                '０'.code
-            }
-
-            KeyEvent.KEYCODE_GRAVE -> {
-                '｀'.code
-            }
-
-            else -> {
-                event.unicodeChar
-            }
+            KeyEvent.KEYCODE_COMMA -> '、'.code
+            KeyEvent.KEYCODE_PERIOD -> '。'.code
+            KeyEvent.KEYCODE_BACKSLASH -> '￥'.code
+            KeyEvent.KEYCODE_LEFT_BRACKET -> '「'.code
+            KeyEvent.KEYCODE_RIGHT_BRACKET -> '」'.code
+            KeyEvent.KEYCODE_SEMICOLON -> '；'.code
+            KeyEvent.KEYCODE_APOSTROPHE -> '\u2019'.code
+            KeyEvent.KEYCODE_MINUS -> 'ー'.code
+            KeyEvent.KEYCODE_EQUALS -> '＝'.code
+            KeyEvent.KEYCODE_1 -> '１'.code
+            KeyEvent.KEYCODE_2 -> '２'.code
+            KeyEvent.KEYCODE_3 -> '３'.code
+            KeyEvent.KEYCODE_4 -> '４'.code
+            KeyEvent.KEYCODE_5 -> '５'.code
+            KeyEvent.KEYCODE_6 -> '６'.code
+            KeyEvent.KEYCODE_7 -> '７'.code
+            KeyEvent.KEYCODE_8 -> '８'.code
+            KeyEvent.KEYCODE_9 -> '９'.code
+            KeyEvent.KEYCODE_0 -> '０'.code
+            KeyEvent.KEYCODE_GRAVE -> '｀'.code
+            else -> event.unicodeChar
         }
 
         if (unicode == 0) return Pair("", 0)
@@ -109,12 +47,17 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
 
         // ────────── 1) 英字以外は確定 ──────────
         if (c !in 'a'..'z') {
-            // ① buffer に残っている未確定ローマ字を確定して surface に積む
+            // バッファに'n'が残っている状態で記号などが入力された場合の処理
             if (buffer.isNotEmpty()) {
-                surface.append(buffer.toString())
+                // バッファが"n"なら"ん"に変換して確定させる
+                val toCommit = if (buffer.toString() == "n") "ん" else buffer.toString()
+                val toDelete = buffer.length
+                surface.append(toCommit)
                 buffer.clear()
+                // 確定した文字と、今回入力された記号を両方表示
+                return Pair("$toCommit$c", toDelete)
             }
-            // ② この文字を確定して画面に表示
+            // バッファが空なら、入力された記号をそのまま表示
             surface.append(c)
             return Pair(c.toString(), 0)
         }
@@ -131,14 +74,8 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
                 val mapping = romajiToKana[tail]
                 if (mapping != null) {
                     val (kana, consume) = mapping
-                    // ① 画面上の「未確定分」を消す
-                    //    → 前回 buffer の内容(長さ=consume) を消す
-                    //    （consume が 2 なら "ka" の 'k','a'分を2文字消す）
                     val toDelete = (consume - 1).coerceAtLeast(0)
-                    // ② surface に確定かなを追加
                     surface.append(kana)
-
-                    // ③ buffer をクリア
                     buffer.clear()
                     when (tail) {
                         "qq", "vv", "ww", "ll", "xx", "kk", "gg", "ss", "zz", "jj", "tt", "dd", "hh", "ff", "bb", "pp", "mm", "yy", "rr", "cc" -> {
@@ -158,22 +95,27 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
         }
 
         // ────────── 4) プレフィックスマッチのみ（未確定） ──────────
-        // たとえば "s" → "sh" → ここに入るa
         if (buffer.toString() in validPrefixes) {
             val str = buffer.toString()
-            // 前回表示した str.dropLast(1) を消す
             val toDelete = buffer.length - 1
             return Pair(str, toDelete)
         }
 
         // ────────── 5) それ以外（プレフィックスにも乗らない） ──────────
-        // たとえば "nk" のように、2文字以上・マップ外
         if (buffer.length >= 2) {
             val str = buffer.toString()
+
+            // 「n」の次に子音が入力された場合の処理
+            val firstChar = str[0]
+            val secondChar = str[1]
+            if (firstChar == 'n' && secondChar !in "aiueoyn") {
+                surface.append("ん")
+                buffer.delete(0, 1)
+                // 画面上の"n"(1文字)を削除し、"ん"＋子音を表示する
+                return Pair("ん${buffer.toString()}", 1)
+            }
+
             val toDelete = buffer.length - 1
-            // buffer の先頭以外を画面に残して、先頭だけ確定とみなすなら……
-            // surface.append(str.dropLast(1))
-            // buffer.delete(0, str.length-1)
             return Pair(str, toDelete)
         }
 
@@ -212,63 +154,57 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
      *   convert("a")   == "あ"
      *   convert("shi") == "し"
      *   convert("konnichiwa") == "こんにちは"
-     */
-    /**
      * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
      * 二重子音（qq,vv,ww,…,tch など）は「っ+子音」に。
+     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
+     * 「n」の後に母音(a,i,u,e,o)や「y」「n」が続かない場合は「ん」として処理します。
      */
     fun convert(text: String): String {
         val result = StringBuilder()
         var i = 0
 
         while (i < text.length) {
-
-            when (text[i]) {
-                '.' -> {
-                    result.append('.')
-                    i++
-                    continue
-                }
-
-                ',' -> {
-                    result.append(',')
-                    i++
-                    continue
-                }
+            // ★★★ 最重要の変更点 ★★★
+            // 1. まず「n」の特別ルールをチェックする
+            //    - 次の文字が存在し、それが「a,i,u,e,o,y,n」のいずれでもない場合
+            if (text[i] == 'n' && i + 1 < text.length && text[i + 1] !in "aiueoyn") {
+                // 先に「ん」を追加し、インデックスを1つ進める
+                result.append("ん")
+                i++
+                // このループは終了し、次の文字（子音や記号など）の処理に移る
+                continue
             }
 
             var matched = false
-
-            // できるだけ長いキーからマッチを試みる
+            // 2. 上記のルールに当てはまらない場合、通常通りもっとも長い組み合わせから探す
             for (len in maxKeyLength downTo 1) {
                 if (i + len > text.length) continue
+
                 val segment = text.substring(i, i + len)
                 val mapping = romajiToKana[segment]
+
                 if (mapping != null) {
                     val (kana, consume) = mapping
 
-                    // ─── 促音（っ）が返ってきたら、末尾の子音を付け足す ───
+                    // 促音の処理
                     if (kana == "っ" && segment.length >= 2) {
-                        // segment[0] が子音なので、"っ"+子音 を出力
                         result.append("っ").append(segment[0])
                     } else {
-                        // 普通のマッピング結果
                         result.append(kana)
                     }
 
                     i += consume
                     matched = true
-                    break
+                    break // マッチしたので内側のループを抜ける
                 }
             }
 
+            // 3. マッチしなかった文字はそのまま追加
             if (!matched) {
-                // マップにない文字はそのまま
                 result.append(text[i])
                 i++
             }
         }
-
         return result.toString()
     }
 
