@@ -432,7 +432,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
-                mainLayoutBinding?.suggestionRecyclerView?.scrollToPosition(0)
+                mainLayoutBinding?.apply {
+                    suggestionRecyclerView.scrollToPosition(0)
+                }
             }
         }
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
@@ -3056,19 +3058,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
-                    if (!mainView.suggestionVisibility.isVisible) {
-                        when {
-                            physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
-                                animateSuggestionImageViewVisibility(
-                                    mainView.suggestionVisibility, true
-                                )
-                            }
+                    when {
+                        physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, true
+                            )
+                        }
 
-                            physicalKeyboardEnable.replayCache.isNotEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
-                                animateSuggestionImageViewVisibility(
-                                    mainView.suggestionVisibility, true
-                                )
-                            }
+                        physicalKeyboardEnable.replayCache.isNotEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, true
+                            )
                         }
                     }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
@@ -3360,7 +3360,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
-
+        hideFirstRowCandidatesInFullScreen(mainView)
         if (isVisible) {
             mainLayoutBinding?.apply {
                 if (customLayoutDefault.isInvisible) {
@@ -3436,6 +3436,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.scaleX = 1f
                         mainView.scaleY = 1f
                     }.start()
+            }
+        }
+    }
+
+    private fun hideFirstRowCandidatesInFullScreen(
+        mainView: MainLayoutBinding
+    ) {
+        mainView.candidatesRowView.post {
+            if (!mainView.candidatesRowView.canScrollVertically(-1)) {
+
+                val flexboxManager =
+                    mainView.candidatesRowView.layoutManager as? FlexboxLayoutManager ?: return@post
+                val flexLines = flexboxManager.flexLines
+
+                if (flexLines.isNotEmpty()) {
+                    val firstRowHeight = flexLines[0].crossSize
+                    mainView.candidatesRowView.scrollBy(0, firstRowHeight)
+                }
             }
         }
     }
