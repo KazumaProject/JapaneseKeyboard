@@ -971,7 +971,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         KeyEvent.KEYCODE_ENTER -> {
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                if (isLiveConversionEnable != true) {
+                                if (isLiveConversionEnable == true) {
                                     if (suggestions.isEmpty()) return true
                                     val lastCharN =
                                         romajiConverter?.flush(suggestions.first().string)?.first
