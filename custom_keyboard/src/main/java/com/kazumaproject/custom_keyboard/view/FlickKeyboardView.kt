@@ -85,6 +85,13 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.isFocusable = false
 
         layout.keys.forEach { keyData ->
+            // ▼ 変更点1: マージン値をピクセル単位のインセット値として定義
+            val (leftInset, topInset, rightInset, bottomInset) = if (keyData.isSpecialKey) {
+                listOf(6, 12, 6, 6)
+            } else {
+                listOf(6, 9, 6, 9)
+            }
+
             val isDarkTheme = context.isDarkThemeOn()
             val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
                 AppCompatImageButton(context).apply {
@@ -92,13 +99,23 @@ class FlickKeyboardView @JvmOverloads constructor(
                     elevation = 2f
                     setImageResource(keyData.drawableResId)
                     contentDescription = keyData.label
-                    setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
+
+                    // ▼ 変更点2: 背景に InsetDrawable を使用
+                    val originalBg = ContextCompat.getDrawable(
+                        context,
+                        if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                    )
+                    val insetBg = android.graphics.drawable.InsetDrawable(
+                        originalBg, leftInset, topInset, rightInset, bottomInset
+                    )
+                    background = insetBg
+
                     if (keyData.isHiLighted) {
                         isPressed = true
                     }
                 }
             } else {
-                Button(context).apply {
+                AutoSizeButton(context).apply {
                     isFocusable = false
                     isAllCaps = false
                     if (keyData.label.contains("\n")) {
@@ -122,45 +139,46 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
                         this.maxLines = 2
                         this.setLineSpacing(0f, 0.9f)
-                        // This padding was removed in the original code, re-add if needed for text positioning
                         this.setPadding(0, dpToPx(4), 0, dpToPx(4))
                         this.gravity = Gravity.CENTER
                         this.text = spannable
                     } else {
                         text = keyData.label
                         gravity = Gravity.CENTER
-                        val englishOnlyRegex = Regex("^[a-zA-Z@#/_'\"().,?! ]+$")
-                        val symbolRegex = Regex("^[()\\[\\],./ -]+$")
-                        if (englishOnlyRegex.matches(keyData.label)) {
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                        } else if (symbolRegex.matches(keyData.label)) {
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                        } else {
-                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
-                        }
                     }
-                    if (keyData.isSpecialKey) {
-                        elevation = 2f
-                        setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                    } else if (keyData.keyType != KeyType.STANDARD_FLICK) {
-                        setBackgroundResource(if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light)
+
+                    val originalBg: android.graphics.drawable.Drawable? =
+                        if (keyData.isSpecialKey) {
+                            elevation = 2f
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                            ContextCompat.getDrawable(
+                                context,
+                                if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                            )
+                        } else if (keyData.keyType != KeyType.STANDARD_FLICK) {
+                            ContextCompat.getDrawable(
+                                context,
+                                if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                            )
+                        } else {
+                            null
+                        }
+
+                    originalBg?.let {
+                        val insetBg = android.graphics.drawable.InsetDrawable(
+                            it, leftInset, topInset, rightInset, bottomInset
+                        )
+                        background = insetBg
                     }
                 }
             }
-            // REVERTED CHANGE: We are using margins again to create the visual gaps
+
             val params = LayoutParams().apply {
                 rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
                 columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
                 width = 0
                 height = 0
                 elevation = 2f
-                if (keyData.isSpecialKey) {
-                    elevation = 2f
-                    setMargins(6, 12, 6, 6)
-                } else {
-                    setMargins(6, 9, 6, 9)
-                }
             }
             keyView.layoutParams = params
 
@@ -192,8 +210,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             setPopupColors(dynamicColorTheme)
                             this.listener = object : FlickInputController.FlickListener {
                                 override fun onStateChanged(
-                                    view: View,
-                                    newMap: Map<FlickDirection, String>
+                                    view: View, newMap: Map<FlickDirection, String>
                                 ) {
                                 }
 
@@ -242,8 +259,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 override fun onFlick(flickAction: FlickAction) {
                                     when (flickAction) {
                                         is FlickAction.Input -> this@FlickKeyboardView.listener?.onKey(
-                                            flickAction.char,
-                                            isFlick = true
+                                            flickAction.char, isFlick = true
                                         )
 
                                         is FlickAction.Action -> this@FlickKeyboardView.listener?.onAction(
@@ -306,8 +322,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 object : StandardFlickInputController.StandardFlickListener {
                                     override fun onFlick(character: String) {
                                         this@FlickKeyboardView.listener?.onKey(
-                                            character,
-                                            isFlick = true
+                                            character, isFlick = true
                                         )
                                     }
                                 }
@@ -345,8 +360,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                     if (flickActionMap != null) {
                         val controller = PetalFlickInputController(
-                            context,
-                            flickSensitivity
+                            context, flickSensitivity
                         ).apply {
                             val secondaryColor =
                                 context.getColorFromAttr(R.attr.colorSecondaryContainer)
@@ -377,8 +391,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             this.listener = object : PetalFlickInputController.PetalFlickListener {
                                 override fun onFlick(character: String, isFlick: Boolean) {
                                     this@FlickKeyboardView.listener?.onKey(
-                                        character,
-                                        isFlick = isFlick
+                                        character, isFlick = isFlick
                                     )
                                 }
                             }
@@ -580,12 +593,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val downTime = pointerDownTime[pointerId]!!
                     // この指専用の「ACTION_UP」イベントを自作
                     val newEvent = MotionEvent.obtain(
-                        downTime,
-                        event.eventTime,
-                        MotionEvent.ACTION_UP, // ジェスチャーの終了として偽装
-                        x,
-                        y,
-                        event.metaState
+                        downTime, event.eventTime, MotionEvent.ACTION_UP, // ジェスチャーの終了として偽装
+                        x, y, event.metaState
                     )
                     newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
                     target.dispatchTouchEvent(newEvent)
@@ -609,12 +618,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val downTime = pointerDownTime[pointerId]!!
                     // この指専用のUP/CANCELイベントを自作
                     val newEvent = MotionEvent.obtain(
-                        downTime,
-                        event.eventTime,
-                        actionToDispatch,
-                        x,
-                        y,
-                        event.metaState
+                        downTime, event.eventTime, actionToDispatch, x, y, event.metaState
                     )
                     newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
                     target.dispatchTouchEvent(newEvent)
@@ -645,9 +649,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {
         val typedValue = TypedValue()
         theme.resolveAttribute(
-            attrRes,
-            typedValue,
-            true
+            attrRes, typedValue, true
         )
         return ContextCompat.getColor(this, typedValue.resourceId)
     }
