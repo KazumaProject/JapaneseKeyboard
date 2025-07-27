@@ -971,9 +971,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         KeyEvent.KEYCODE_ENTER -> {
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                val stringWithLastCharN =
-                                    romajiConverter?.flush(insertString)?.first ?: insertString
-                                commitText(stringWithLastCharN, 1)
+                                if (isLiveConversionEnable == true) {
+                                    if (suggestions.isEmpty()) return true
+                                    val lastCharN =
+                                        romajiConverter?.flush(suggestions.first().string)?.first
+                                            ?: insertString
+                                    commitText(lastCharN, 1)
+                                } else {
+                                    val lastCharN =
+                                        romajiConverter?.flush(insertString)?.first ?: insertString
+                                    commitText(lastCharN, 1)
+                                }
                             }
                             if (insertString.isNotEmpty()) {
                                 handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
@@ -5179,8 +5187,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (isHenkan.get()) {
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
-                            finishInputEnterKey()
-                            setCusrorLeftAfterCloseBracket(insertString)
+                            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.qwertyView.isVisible) {
+                                if (isLiveConversionEnable == true) {
+                                    if (suggestions.isEmpty()) return
+                                    val lastCharN =
+                                        romajiConverter?.flush(suggestions.first().string)?.first
+                                            ?: insertString
+                                    commitText(lastCharN, 1)
+                                } else {
+                                    val lastCharN =
+                                        romajiConverter?.flush(insertString)?.first ?: insertString
+                                    commitText(lastCharN, 1)
+                                }
+                                finishInputEnterKey()
+                                setCusrorLeftAfterCloseBracket(insertString)
+                            } else {
+                                finishInputEnterKey()
+                                setCusrorLeftAfterCloseBracket(insertString)
+                            }
                         }
                     }
 
@@ -5197,10 +5221,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (isHenkan.get()) {
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
-                            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
-                                val lastCharN =
-                                    romajiConverter?.flush(insertString)?.first ?: insertString
-                                commitText(lastCharN, 1)
+                            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.qwertyView.isVisible) {
+                                if (isLiveConversionEnable == true) {
+                                    if (suggestions.isEmpty()) return
+                                    val lastCharN =
+                                        romajiConverter?.flush(suggestions.first().string)?.first
+                                            ?: insertString
+                                    commitText(lastCharN, 1)
+                                } else {
+                                    val lastCharN =
+                                        romajiConverter?.flush(insertString)?.first ?: insertString
+                                    commitText(lastCharN, 1)
+                                }
                                 finishInputEnterKey()
                                 setCusrorLeftAfterCloseBracket(insertString)
                             } else {
