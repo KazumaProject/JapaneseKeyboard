@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana
 
 import android.view.KeyEvent
+import timber.log.Timber
 
 class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int>>) {
     private val buffer = StringBuilder()
@@ -206,6 +207,34 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
             }
         }
         return result.toString()
+    }
+
+    /**
+     * バッファに残っている未確定文字列を確定させ、UIに表示すべき文字列を返します。
+     * 末尾の 'n' は 'ん' に変換します。
+     * @return Pair( toShow, toDelete )
+     */
+    fun flush(string: String): Pair<String, Int> {
+        Timber.d("Enter Key flush: $string")
+        if (string.isEmpty()) {
+            return Pair("", 0)
+        }
+
+        // バッファの末尾が "n" なら "ん" に変換し、そうでなければバッファの文字をそのまま確定
+        val toCommit = if (string.endsWith("n")) {
+            // "n" より前の部分と "ん" を結合する (例: "ろn" -> "ろ" + "ん")
+            string.dropLast(1) + "ん"
+        } else {
+            string
+        }
+
+        // UI上で削除すべき文字数は、変換前のバッファ全体の文字数
+        // 元のコードでは '1' に固定されていましたが、"ろn" (2文字) などを正しく置換するために、
+        // 本来はこちらが意図した動作だと思われます。
+        val toDelete = string.length
+
+        // 確定した文字列と、削除すべき文字数を返す
+        return Pair(toCommit, toDelete)
     }
 
     fun clear() {
