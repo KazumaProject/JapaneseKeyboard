@@ -212,6 +212,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
+    private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -515,6 +516,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             vibrationTimingStr = vibration_timing_preference ?: "both"
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
             symbolKeyboardFirstItem = symbol_mode_preference
+            isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -656,6 +658,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
+        isCustomKeyboardTwoWordsOutputEnable = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
@@ -2000,9 +2003,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 )
                             }
                         } else {
-                            finishComposingText()
-                            setComposingText("", 0)
-                            commitText(text, 1)
+                            if (isCustomKeyboardTwoWordsOutputEnable == true) {
+                                finishComposingText()
+                                setComposingText("", 0)
+                                commitText(text, 1)
+                            } else {
+                                if (isCustomLayoutRomajiMode) {
+                                    val insertString = inputString.value
+                                    val sb = StringBuilder()
+                                    sb.append(insertString).append(text)
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(sb.toString())
+                                        }
+                                    }
+                                } else {
+                                    val insertString = inputString.value
+                                    val sb = StringBuilder()
+                                    sb.append(insertString).append(text)
+                                    _inputString.update {
+                                        sb.toString()
+                                    }
+                                }
+                            }
                         }
                     }
 

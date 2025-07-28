@@ -30,6 +30,9 @@ object AppPreference {
     private val MOZCUT_NEOLOGD = Pair("mozc_ut_neologd_preference", false)
     private val MOZCUT_WEB = Pair("mozc_ut_web_preference", false)
 
+    private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
+        Pair("custom_keyboard_two_words_preference", true)
+
     private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
@@ -70,6 +73,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CLIPBOARD_HISTORY_ENABLE.first, value ?: false)
+        }
+
+    var custom_keyboard_two_words_output: Boolean?
+        get() = preferences.getBoolean(
+            CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.first,
+            CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.first, value ?: false)
         }
 
     var keyboard_order: List<KeyboardType>
