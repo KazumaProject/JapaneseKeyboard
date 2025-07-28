@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ImageView
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.AsyncListDiffer
@@ -73,6 +74,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var isPhysicalKeyboardActive: Boolean = false
 
+    private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
+
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
     }
@@ -119,7 +122,19 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onCustomLayoutItemClickListener = null
         onShowSoftKeyboardClick = null
         onListUpdated = null
+        incognitoIconDrawable = null
         adapterScope.cancel()
+    }
+
+    /**
+     * ★新しい関数: シークレットモードのアイコンを設定します。
+     * Drawableがnullでなければアイコンを表示し、nullなら非表示にします。
+     */
+    fun setIncognitoIcon(drawable: android.graphics.drawable.Drawable?) {
+        this.incognitoIconDrawable = drawable
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
     }
 
     fun setUndoEnabled(enabled: Boolean) {
@@ -217,6 +232,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             itemView.findViewById(R.id.clipboard_text_preview)
         val clipboardPreviewTextDescription: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_preview_text_description)
+        val incognitoIcon: AppCompatImageButton? = itemView.findViewById(R.id.incognito_icon)
     }
 
     inner class CustomLayoutViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -315,6 +331,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private fun onBindEmptyViewHolder(holder: EmptyViewHolder) {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         holder.apply {
+            incognitoIcon?.apply {
+                if (incognitoIconDrawable != null) {
+                    visibility = View.VISIBLE
+                    setImageDrawable(incognitoIconDrawable)
+                } else {
+                    visibility = View.GONE
+                }
+            }
+
             undoIcon?.apply {
                 isVisible = isUndoEnabled
                 isFocusable = false
