@@ -24,7 +24,7 @@
                 app:showSeekBarValue="true" />
 
         </PreferenceCategory>
-        
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="flick_input_only_preference"
@@ -84,6 +84,15 @@
                 android:key="symbol_mode_preference"
                 android:summary="記号キーボードの初期画面を選択します"
                 android:title="記号キーボードの初期画面" />
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="カスタムキーボード">
+            <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="custom_keyboard_two_words_preference"
+                android:title="２文字以上の出力を自動で確定"
+                app:summaryOff="カスタムキーで2文字以上を出力しても、自動で確定しません。"
+                app:summaryOn="カスタムキーで2文字以上を出力したとき、自動で確定します。" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="@string/clipboard_history_title">
