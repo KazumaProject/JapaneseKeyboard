@@ -325,6 +325,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
     private val ngPattern: StateFlow<Regex> = _ngPattern
+    private var isPrivateMode = false
 
     private var keyboardContainer: FrameLayout? = null
 
@@ -485,7 +486,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
-        Timber.d("onUpdate onStartInput called $restarting")
+        Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         resetAllFlags()
         if (suggestionCache == null) {
             suggestionCache = mutableMapOf()
@@ -557,7 +558,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        Timber.d("onUpdate onStartInputView called $restarting $hasPhysicalKeyboard")
+        editorInfo?.let { info ->
+            if (info.imeOptions == 318767106) {
+                isPrivateMode = true
+                suggestionAdapter?.setIncognitoIcon(
+                    ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
+                )
+            } else {
+                isPrivateMode = false
+                suggestionAdapter?.setIncognitoIcon(null)
+            }
+        }
+        Timber.d("onUpdate onStartInputView called $isPrivateMode")
         setCurrentInputType(editorInfo)
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
@@ -4439,7 +4451,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
@@ -4468,7 +4480,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate,
         insertString: String
     ) {
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
