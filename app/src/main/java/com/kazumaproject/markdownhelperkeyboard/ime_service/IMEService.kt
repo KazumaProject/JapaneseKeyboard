@@ -939,7 +939,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         KeyEvent.KEYCODE_SPACE -> {
-                            handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            when (mainView.keyboardView.currentInputMode.value) {
+                                InputMode.ModeJapanese -> {
+                                    val insertStringEndWithN =
+                                        romajiConverter?.flush(insertString)?.first
+                                    if (insertStringEndWithN == null) {
+                                        _inputString.update { insertString }
+                                        if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                            mainView, suggestions, insertString
+                                        )
+                                    } else {
+                                        _inputString.update { insertStringEndWithN }
+                                        scope.launch {
+                                            delay(64)
+                                            val newSuggestionList =
+                                                suggestionAdapter?.suggestions ?: emptyList()
+                                            if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                                mainView, newSuggestionList, insertStringEndWithN
+                                            )
+                                        }
+                                    }
+                                }
+
+                                else -> {
+                                    handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                                }
+                            }
                             return true
                         }
 
@@ -972,19 +997,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         KeyEvent.KEYCODE_ENTER -> {
-                            if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                if (isLiveConversionEnable == true) {
-                                    if (suggestions.isEmpty()) return true
-                                    val lastCharN =
-                                        romajiConverter?.flush(suggestions.first().string)?.first
-                                            ?: insertString
-                                    commitText(lastCharN, 1)
-                                } else {
-                                    val lastCharN =
-                                        romajiConverter?.flush(insertString)?.first ?: insertString
-                                    commitText(lastCharN, 1)
-                                }
-                            }
                             if (insertString.isNotEmpty()) {
                                 handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
                             } else {
@@ -5165,9 +5177,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isNotBlank()) {
             mainView.apply {
                 when (mainView.keyboardView.currentInputMode.value) {
-                    InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
-                        this, suggestions, insertString
-                    )
+                    InputMode.ModeJapanese -> {
+                        val insertStringEndWithN =
+                            romajiConverter?.flush(insertString)?.first
+                        if (insertStringEndWithN == null) {
+                            _inputString.update { insertString }
+                            if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                this@apply, suggestions, insertString
+                            )
+                        } else {
+                            _inputString.update { insertStringEndWithN }
+                            scope.launch {
+                                delay(64)
+                                val newSuggestionList =
+                                    suggestionAdapter?.suggestions ?: emptyList()
+                                if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                    this@apply, newSuggestionList, insertStringEndWithN
+                                )
+                            }
+                        }
+                    }
 
                     else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
                 }
@@ -5206,17 +5235,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.qwertyView.isVisible) {
-                                if (isLiveConversionEnable == true) {
-                                    if (suggestions.isEmpty()) return
-                                    val lastCharN =
-                                        romajiConverter?.flush(suggestions.first().string)?.first
-                                            ?: insertString
-                                    commitText(lastCharN, 1)
-                                } else {
-                                    val lastCharN =
-                                        romajiConverter?.flush(insertString)?.first ?: insertString
-                                    commitText(lastCharN, 1)
-                                }
                                 finishInputEnterKey()
                                 setCusrorLeftAfterCloseBracket(insertString)
                             } else {
@@ -5240,17 +5258,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.qwertyView.isVisible) {
-                                if (isLiveConversionEnable == true) {
-                                    if (suggestions.isEmpty()) return
-                                    val lastCharN =
-                                        romajiConverter?.flush(suggestions.first().string)?.first
-                                            ?: insertString
-                                    commitText(lastCharN, 1)
-                                } else {
-                                    val lastCharN =
-                                        romajiConverter?.flush(insertString)?.first ?: insertString
-                                    commitText(lastCharN, 1)
-                                }
                                 finishInputEnterKey()
                                 setCusrorLeftAfterCloseBracket(insertString)
                             } else {
