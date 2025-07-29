@@ -54,6 +54,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.android.flexbox.FlexDirection
@@ -95,6 +96,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -219,6 +221,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var floatingCandidateWindow: PopupWindow? = null
     private lateinit var floatingCandidateView: View
+    private lateinit var listAdapter: FloatingCandidateListAdapter
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -454,6 +457,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.registerInputDeviceListener(this, null)
         floatingCandidateView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
+        listAdapter = FloatingCandidateListAdapter()
     }
 
     override fun onCreateInputView(): View? {
@@ -567,12 +571,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        floatingCandidateWindow = PopupWindow(
-            floatingCandidateView,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT
-        ).apply {
-            isOutsideTouchable = true
+        if (hasPhysicalKeyboard) {
+            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
+            val recyclerView =
+                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
+            recyclerView.adapter = listAdapter
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            floatingCandidateWindow = PopupWindow(
+                popupContentView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            ).apply {
+                isOutsideTouchable = true
+            }
         }
         editorInfo?.let { info ->
             if (info.imeOptions == 318767106) {
@@ -585,7 +596,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapter?.setIncognitoIcon(null)
             }
         }
-        Timber.d("onUpdate onStartInputView called $isPrivateMode")
+        Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard")
         setCurrentInputType(editorInfo)
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
@@ -631,6 +642,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+        floatingCandidateWindow?.dismiss()
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
@@ -642,6 +654,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
         clearSymbols()
+        floatingCandidateWindow = null
         keyboardSelectionPopupWindow = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
@@ -690,6 +703,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        if (listAdapter.currentList.isEmpty()) {
+            floatingCandidateWindow?.dismiss()
+            return
+        }
+
         if (cursorAnchorInfo == null || floatingCandidateWindow == null) {
             return
         }
@@ -697,8 +715,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
         Timber.d("onUpdateCursorAnchorInfo: top:${cursorAnchorInfo.insertionMarkerTop}")
         Timber.d("onUpdateCursorAnchorInfo: horizontal:${cursorAnchorInfo.insertionMarkerHorizontal}")
-        val x = cursorAnchorInfo.insertionMarkerHorizontal.toInt()
-        val y = cursorAnchorInfo.insertionMarkerBottom.toInt()
+        val x = cursorAnchorInfo.insertionMarkerBaseline.toInt() + 64
+        val y = cursorAnchorInfo.insertionMarkerBottom.toInt() + 64
         val currentPopupWindow = floatingCandidateWindow!!
         if (currentPopupWindow.isShowing) {
             // すでに表示されている場合は位置を更新
@@ -1230,6 +1248,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("Long Press: $key")
                 }
             })
+        }
+    }
+
+    private fun updateSuggestionsForFloatingCandidate(suggestions: List<String>) {
+        Timber.d("updateSuggestionsForFloatingCandidate: $suggestions")
+        listAdapter.submitList(suggestions)
+        if (suggestions.isEmpty()) {
+            floatingCandidateWindow?.dismiss()
         }
     }
 
@@ -3579,6 +3605,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             hasConvertedKatakana = false
             resetInputString()
+            if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+                updateSuggestionsForFloatingCandidate(emptyList())
+            }
             if (isTablet == true) {
                 mainView.tabletView.apply {
                     setSideKeySpaceDrawable(
@@ -4946,7 +4975,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
-        suggestionAdapter?.suggestions = filtered
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            updateSuggestionsForFloatingCandidate(filtered.map { it.string }.subList(0, 5))
+        } else {
+            suggestionAdapter?.suggestions = filtered
+        }
         updateUIinHenkan(mainView, insertString)
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
