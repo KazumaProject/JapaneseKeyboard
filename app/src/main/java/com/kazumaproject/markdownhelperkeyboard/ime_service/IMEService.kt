@@ -31,6 +31,7 @@ import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
+import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
@@ -70,6 +71,7 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.core.domain.window.getScreenHeight
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -662,6 +664,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
+    }
+
+    override fun onComputeInsets(outInsets: Insets?) {
+        super.onComputeInsets(outInsets)
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            val inputHeight = window.window?.decorView?.height ?: 0
+            outInsets?.contentTopInsets = inputHeight
+            outInsets?.visibleTopInsets = inputHeight
+            outInsets?.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+        }
+    }
+
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
+        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        Timber.d("onUpdateCursorAnchorInfo: ")
     }
 
     override fun onWindowHidden() {
@@ -3374,17 +3391,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     )
                     hideAllKeyboards()
-                    val heightPx = dpToPx(40f)
-                    val widthPx = ViewGroup.LayoutParams.MATCH_PARENT
-                    (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                        params.bottomMargin = heightPx
-                        mainView.suggestionViewParent.layoutParams = params
-                    }
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                        params.width = widthPx
+                        params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                        params.height = getScreenHeight(this@IMEService)
                         mainView.root.layoutParams = params
                     }
+                    mainView.root.alpha = 0f
                 } else {
+                    mainView.root.alpha = 1f
                     setKeyboardSize()
                 }
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
