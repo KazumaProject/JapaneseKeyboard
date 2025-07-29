@@ -28,6 +28,7 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
@@ -215,6 +216,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
+
+    private var floatingCandidateWindow: PopupWindow? = null
+    private lateinit var floatingCandidateView: View
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -449,6 +453,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.registerInputDeviceListener(this, null)
+        floatingCandidateView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
     }
 
     override fun onCreateInputView(): View? {
@@ -561,6 +566,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInputView(editorInfo, restarting)
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
+        }
+        floatingCandidateWindow = PopupWindow(
+            floatingCandidateView,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT
+        ).apply {
+            isOutsideTouchable = true
         }
         editorInfo?.let { info ->
             if (info.imeOptions == 318767106) {
@@ -678,7 +690,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
-        Timber.d("onUpdateCursorAnchorInfo: ")
+        if (cursorAnchorInfo == null || floatingCandidateWindow == null) {
+            return
+        }
+        Timber.d("onUpdateCursorAnchorInfo: baseLine:${cursorAnchorInfo.insertionMarkerBaseline}")
+        Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
+        Timber.d("onUpdateCursorAnchorInfo: top:${cursorAnchorInfo.insertionMarkerTop}")
+        Timber.d("onUpdateCursorAnchorInfo: horizontal:${cursorAnchorInfo.insertionMarkerHorizontal}")
+        val x = cursorAnchorInfo.insertionMarkerHorizontal.toInt()
+        val y = cursorAnchorInfo.insertionMarkerBottom.toInt()
+        val currentPopupWindow = floatingCandidateWindow!!
+        if (currentPopupWindow.isShowing) {
+            // すでに表示されている場合は位置を更新
+            currentPopupWindow.update(x, y, -1, -1)
+        } else {
+            // 表示されていない場合は指定した位置に表示
+            currentPopupWindow.showAtLocation(
+                window.window?.decorView, // 親ビュー
+                Gravity.NO_GRAVITY,      // スクリーン座標で直接指定
+                x,                       // x座標
+                y                        // y座標
+            )
+        }
     }
 
     override fun onWindowHidden() {
@@ -3390,16 +3423,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             InputMode.ModeNumber -> "A"
                         }
                     )
-                    hideAllKeyboards()
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                         params.width = ViewGroup.LayoutParams.MATCH_PARENT
                         params.height = getScreenHeight(this@IMEService)
                         mainView.root.layoutParams = params
                     }
                     mainView.root.alpha = 0f
+                    requestCursorUpdates(
+                        InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
+                    )
                 } else {
                     mainView.root.alpha = 1f
                     setKeyboardSize()
+                    requestCursorUpdates(0)
                 }
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
