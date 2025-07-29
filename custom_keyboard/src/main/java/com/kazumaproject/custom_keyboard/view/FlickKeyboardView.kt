@@ -179,6 +179,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                 width = 0
                 height = 0
                 elevation = 2f
+                if (keyData.keyType == KeyType.STANDARD_FLICK){
+                    setMargins(6, 9, 6, 9)
+                }
             }
             keyView.layoutParams = params
 
