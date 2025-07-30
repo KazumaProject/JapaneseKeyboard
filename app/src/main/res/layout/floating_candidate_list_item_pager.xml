@@ -3,7 +3,7 @@
     android:id="@+id/text_view_item"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:background="?attr/selectableItemBackground"
+    android:background="@drawable/pager_item_background"
     android:gravity="center"
     android:paddingStart="12dp"
     android:paddingTop="8dp"
