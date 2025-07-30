@@ -104,6 +104,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctRe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
@@ -223,6 +225,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingCandidateWindow: PopupWindow? = null
     private lateinit var floatingCandidateView: View
     private lateinit var listAdapter: FloatingCandidateListAdapter
+
+    private var floatingDockWindow: PopupWindow? = null
+    private lateinit var floatingDockView: FloatingDockView
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -586,31 +591,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        if (hasPhysicalKeyboard) {
-            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
-            val recyclerView =
-                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
-            recyclerView.adapter = listAdapter
-            recyclerView.layoutManager = LinearLayoutManager(this)
-            floatingCandidateWindow = PopupWindow(
-                popupContentView,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            ).apply {
-                isOutsideTouchable = false
-            }
-        }
-        editorInfo?.let { info ->
-            if (info.imeOptions == 318767106) {
-                isPrivateMode = true
-                suggestionAdapter?.setIncognitoIcon(
-                    ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
-                )
-            } else {
-                isPrivateMode = false
-                suggestionAdapter?.setIncognitoIcon(null)
-            }
-        }
         Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard")
         setCurrentInputType(editorInfo)
         updateClipboardPreview()
@@ -627,6 +607,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
             }
+        }
+        editorInfo?.let { info ->
+            if (info.imeOptions == 318767106) {
+                isPrivateMode = true
+                suggestionAdapter?.setIncognitoIcon(
+                    ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
+                )
+            } else {
+                isPrivateMode = false
+                suggestionAdapter?.setIncognitoIcon(null)
+            }
+        }
+        if (hasPhysicalKeyboard) {
+            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
+            val recyclerView =
+                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
+            recyclerView.adapter = listAdapter
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            floatingCandidateWindow = PopupWindow(
+                popupContentView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            ).apply {
+                isOutsideTouchable = false
+            }
+
+            floatingDockWindow = PopupWindow(
+                floatingDockView,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
         }
     }
 
@@ -658,6 +669,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         floatingCandidateWindow?.dismiss()
+        floatingDockWindow?.dismiss()
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
@@ -670,6 +682,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionCache = null
         clearSymbols()
         floatingCandidateWindow = null
+        floatingDockWindow = null
         keyboardSelectionPopupWindow = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
@@ -704,6 +717,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
+        dismissFloatingDock()
     }
 
     override fun onComputeInsets(outInsets: Insets?) {
@@ -800,6 +814,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
+    /**
+     * FloatingDockViewを非表示にします。
+     */
+    private fun dismissFloatingDock() {
+        if (floatingDockWindow?.isShowing == true) {
+            floatingDockWindow?.dismiss()
+            floatingDockWindow = null
+        }
+    }
+
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         // Determine the correct, themed context
@@ -811,6 +835,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         } else {
             ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+        }
+
+        floatingDockView = FloatingDockView(ctx).apply {
+            setText("あ")
+            setOnFloatingDockListener(object : FloatingDockListener {
+                override fun onDockClick() {
+                    Timber.d("setOnFloatingDockListener: Dockがクリックされました")
+                }
+
+                override fun onIconClick() {
+                    Timber.d("setOnFloatingDockListener: Iconがクリックされました")
+                    scope.launch {
+                        _physicalKeyboardEnable.emit(false)
+                        floatingDockWindow?.dismiss()
+                    }
+                }
+            })
         }
 
         // Inflate the new layout
@@ -3765,10 +3806,68 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     requestCursorUpdates(
                         InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
                     )
+                    floatingDockWindow?.showAtLocation(
+                        mainView.root,
+                        Gravity.BOTTOM,
+                        0,
+                        0
+                    )
                 } else {
                     mainView.root.alpha = 1f
-                    setKeyboardSize()
                     requestCursorUpdates(0)
+                    setKeyboardSize()
+                    val heightPref = appPreference.keyboard_height ?: 280
+                    val widthPref = appPreference.keyboard_width ?: 100
+                    val positionPref = appPreference.keyboard_position ?: true
+
+                    // 3) Get screen metrics
+                    val density = resources.displayMetrics.density
+                    val screenWidth = resources.displayMetrics.widthPixels
+                    val isPortrait =
+                        resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+                    val heightPx = when {
+                        keyboardSymbolViewState.value -> { // Emoji keyboard state
+                            val height = if (isPortrait) 320 else 220
+                            (height * density).toInt()
+                        }
+
+                        else -> {
+                            val clampedHeight = heightPref.coerceIn(180, 420)
+                            (clampedHeight * density).toInt()
+                        }
+                    }
+                    val widthPx = when {
+                        widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        }
+
+                        else -> {
+                            (screenWidth * (widthPref / 100f)).toInt()
+                        }
+                    }
+                    val gravity = if (positionPref) {
+                        Gravity.BOTTOM or Gravity.END
+                    } else {
+                        Gravity.BOTTOM or Gravity.START
+                    }
+                    (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                        params.bottomMargin = heightPx
+                        params.gravity = gravity
+                        mainView.suggestionViewParent.layoutParams = params
+                    }
+
+                    // Finally, update the root view's width and gravity
+                    (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                        params.width = widthPx
+                        params.height =
+                            heightPx + applicationContext.dpToPx(110)
+                        params.gravity = gravity
+                        mainView.root.layoutParams = params
+                    }
+
+                    floatingCandidateWindow?.dismiss()
+
                 }
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
