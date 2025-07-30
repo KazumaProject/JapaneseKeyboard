@@ -7,6 +7,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.markdownhelperkeyboard.R
 import timber.log.Timber
 
@@ -15,10 +16,10 @@ private const val VIEW_TYPE_PAGER = 2
 
 class FloatingCandidateListAdapter(
     private val pageSize: Int,
-) : ListAdapter<String, RecyclerView.ViewHolder>(DiffCallback()) {
+) : ListAdapter<CandidateItem, RecyclerView.ViewHolder>(DiffCallback()) {
 
     // --- Public Callbacks ---
-    var onSuggestionClicked: ((suggestion: String) -> Unit)? = null
+    var onSuggestionClicked: ((suggestion: CandidateItem) -> Unit)? = null
     var onPagerClicked: (() -> Unit)? = null
 
     // --- Highlight State ---
@@ -39,7 +40,7 @@ class FloatingCandidateListAdapter(
         }
     }
 
-    fun getHighlightedItem(): String? {
+    fun getHighlightedItem(): CandidateItem? {
         return if (highlightedPosition in 0 until itemCount) {
             getItem(highlightedPosition)
         } else {
@@ -111,15 +112,17 @@ class FloatingCandidateListAdapter(
 
         val currentItem = getItem(position)
         when (holder) {
-            is SuggestionViewHolder -> holder.bind(currentItem)
-            is PagerViewHolder -> holder.bind(currentItem)
+            is SuggestionViewHolder -> holder.bind(currentItem.word)
+            is PagerViewHolder -> holder.bind(currentItem.word)
         }
     }
 
     // --- DiffUtil Callback ---
-    private class DiffCallback : DiffUtil.ItemCallback<String>() {
-        override fun areItemsTheSame(oldItem: String, newItem: String): Boolean = oldItem == newItem
-        override fun areContentsTheSame(oldItem: String, newItem: String): Boolean =
+    private class DiffCallback : DiffUtil.ItemCallback<CandidateItem>() {
+        override fun areItemsTheSame(oldItem: CandidateItem, newItem: CandidateItem): Boolean =
+            oldItem.word == newItem.word
+
+        override fun areContentsTheSame(oldItem: CandidateItem, newItem: CandidateItem): Boolean =
             oldItem == newItem
     }
 }
