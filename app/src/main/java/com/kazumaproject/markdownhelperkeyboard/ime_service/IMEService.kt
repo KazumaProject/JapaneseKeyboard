@@ -62,6 +62,7 @@ import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.key.Key
@@ -439,7 +440,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var currentPage: Int = 0
     private var currentHighlightIndex: Int = RecyclerView.NO_POSITION
-    private var fullSuggestionsList: List<String> = emptyList()
+    private var fullSuggestionsList: List<CandidateItem> = emptyList()
 
     override fun onCreate() {
         super.onCreate()
@@ -465,8 +466,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listAdapter = FloatingCandidateListAdapter(
             pageSize = PAGE_SIZE,
         )
-        listAdapter.onSuggestionClicked = { suggestion: String ->
-            commitText(suggestion, 1)
+        listAdapter.onSuggestionClicked = { suggestion: CandidateItem ->
+            commitText(suggestion.word, 1)
             finishComposingText()
         }
     }
@@ -1045,10 +1046,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
                                         if (insertStringEndWithN == null) {
                                             _inputString.update { insertString }
-                                            floatingCandidateNextItem()
+                                            floatingCandidateNextItem(insertString)
                                         } else {
                                             _inputString.update { insertStringEndWithN }
-                                            floatingCandidateNextItem()
+                                            floatingCandidateNextItem(insertString)
                                             scope.launch {
                                                 delay(64)
                                                 val newSuggestionList =
@@ -1070,7 +1071,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 else -> {
                                     handleSpaceKeyClick(false, insertString, suggestions.map {
                                         Candidate(
-                                            string = it,
+                                            string = it.word,
                                             type = (1).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 0
@@ -1083,7 +1084,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
                             if (isHenkan.get()) {
-                                floatingCandidatePreviousItem()
+                                floatingCandidatePreviousItem(insertString)
                                 return true
                             } else {
                                 handleLeftKeyPress(
@@ -1097,7 +1098,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
                             if (isHenkan.get()) {
                                 Timber.d("KEYCODE_DPAD_RIGHT: called")
-                                floatingCandidateNextItem()
+                                floatingCandidateNextItem(insertString)
                                 return true
                             } else {
                                 actionInRightKeyPressed(
@@ -1111,7 +1112,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_DPAD_UP -> {
                             if (insertString.isNotEmpty()) {
                                 if (isHenkan.get()) {
-                                    floatingCandidatePreviousItem()
+                                    floatingCandidatePreviousItem(insertString)
                                     return true
                                 } else {
                                     when (mainView.keyboardView.currentInputMode.value) {
@@ -1124,10 +1125,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
                                                 if (insertStringEndWithN == null) {
                                                     _inputString.update { insertString }
-                                                    floatingCandidateNextItem()
+                                                    floatingCandidateNextItem(insertString)
                                                 } else {
                                                     _inputString.update { insertStringEndWithN }
-                                                    floatingCandidateNextItem()
+                                                    floatingCandidateNextItem(insertString)
                                                     scope.launch {
                                                         delay(64)
                                                         val newSuggestionList =
@@ -1153,7 +1154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 insertString,
                                                 suggestions.map {
                                                     Candidate(
-                                                        string = it,
+                                                        string = it.word,
                                                         type = (1).toByte(),
                                                         length = insertString.length.toUByte(),
                                                         score = 0
@@ -1171,7 +1172,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_DPAD_DOWN -> {
                             if (insertString.isNotEmpty()) {
                                 if (isHenkan.get()) {
-                                    floatingCandidateNextItem()
+                                    floatingCandidateNextItem(insertString)
                                     return true
                                 } else {
                                     when (mainView.keyboardView.currentInputMode.value) {
@@ -1184,10 +1185,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
                                                 if (insertStringEndWithN == null) {
                                                     _inputString.update { insertString }
-                                                    floatingCandidateNextItem()
+                                                    floatingCandidateNextItem(insertString)
                                                 } else {
                                                     _inputString.update { insertStringEndWithN }
-                                                    floatingCandidateNextItem()
+                                                    floatingCandidateNextItem(insertString)
                                                     scope.launch {
                                                         delay(64)
                                                         val newSuggestionList =
@@ -1213,7 +1214,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 insertString,
                                                 suggestions.map {
                                                     Candidate(
-                                                        string = it,
+                                                        string = it.word,
                                                         type = (1).toByte(),
                                                         length = insertString.length.toUByte(),
                                                         score = 0
@@ -1232,10 +1233,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (insertString.isNotEmpty()) {
                                 if (isHenkan.get()) {
                                     floatingCandidateEnterPressed()
+                                    return true
                                 } else {
                                     handleNonEmptyInputEnterKey(suggestions.map {
                                         Candidate(
-                                            string = it,
+                                            string = it.word,
                                             type = (1).toByte(),
                                             length = insertString.length.toUByte(),
                                             score = 0
@@ -1342,7 +1344,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return super.onKeyDown(keyCode, event)
     }
 
-    private fun floatingCandidateNextItem() {
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_ENTER -> {
+                Timber.d("onKeyUp KEYCODE_ENTER: ${inputString.value} ${isHenkan.get()}")
+                if (isHenkan.get()) {
+                    return true
+                }
+                return super.onKeyUp(keyCode, event)
+            }
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    private fun floatingCandidateNextItem(insertString: String) {
         Timber.d("floatingCandidateNextItem called. Current highlight: $currentHighlightIndex")
         if (listAdapter.currentList.isEmpty()) return
 
@@ -1359,14 +1374,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             scope.launch {
                 delay(64)
                 Timber.d("floatingCandidateNextItem hasNextPage: ${listAdapter.getHighlightedItem()}")
-                displayComposingTextInHardwareKeyboardConnected()
+                displayComposingTextInHardwareKeyboardConnected(insertString)
             }
         } else if (currentHighlightIndex == suggestionCount - 1 && !hasNextPage) {
             currentPage = -1
             scope.launch {
                 delay(64)
                 Timber.d("floatingCandidateNextItem hasNextPage: ${listAdapter.getHighlightedItem()}")
-                displayComposingTextInHardwareKeyboardConnected()
+                displayComposingTextInHardwareKeyboardConnected(insertString)
             }
         } else {
             // 上記以外の場合は、現在のページ内でハイライトをループさせる
@@ -1376,12 +1391,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (currentHighlightIndex + 1) % suggestionCount
             }
             listAdapter.updateHighlightPosition(currentHighlightIndex)
-            displayComposingTextInHardwareKeyboardConnected()
+            displayComposingTextInHardwareKeyboardConnected(insertString)
             Timber.d("floatingCandidateNextItem: ${listAdapter.getHighlightedItem()} ${inputString.value} $stringInTail")
         }
     }
 
-    private fun floatingCandidatePreviousItem() {
+    private fun floatingCandidatePreviousItem(insertString: String) {
         if (listAdapter.currentList.isEmpty()) return
         val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
         if (suggestionCount == 0) return
@@ -1397,29 +1412,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentHighlightIndex - 1
             }
             listAdapter.updateHighlightPosition(currentHighlightIndex)
-            displayComposingTextInHardwareKeyboardConnected()
+            displayComposingTextInHardwareKeyboardConnected(insertString = insertString)
             Timber.d("floatingCandidatePreviousItem: ${listAdapter.getHighlightedItem()}")
         }
     }
 
-    private fun displayComposingTextInHardwareKeyboardConnected() {
+    private fun displayComposingTextInHardwareKeyboardConnected(
+        insertString: String
+    ) {
         val selectedSuggestion = listAdapter.currentList[currentHighlightIndex]
-        val spannableString = if (selectedSuggestion.length == selectedSuggestion?.length) {
-            SpannableString(selectedSuggestion + stringInTail)
+        if (insertString.length > selectedSuggestion.length.toInt()) {
+            val subString = insertString.substring(selectedSuggestion.length.toInt())
+            stringInTail.set(subString)
+            Timber.d("displayComposingTextInHardwareKeyboardConnected: ${selectedSuggestion.word} ${selectedSuggestion.length} $insertString $subString ${insertString.length} ${selectedSuggestion.length.toInt()}")
         } else {
             stringInTail.set("")
-            SpannableString(selectedSuggestion)
         }
+        val spannableString = SpannableString(selectedSuggestion.word + stringInTail)
         setComposingTextAfterEdit(
-            selectedSuggestion, spannableString
+            selectedSuggestion.word, spannableString
         )
     }
 
     private fun floatingCandidateEnterPressed() {
         val selectedSuggestion = listAdapter.getHighlightedItem()
         if (selectedSuggestion != null) {
-            commitText(selectedSuggestion, 1)
-            updateSuggestionsForFloatingCandidate(emptyList())
+            val subString = stringInTail.get()
+            if (subString.isNotEmpty()) {
+                commitText(selectedSuggestion.word, 1)
+                updateSuggestionsForFloatingCandidate(emptyList())
+                _inputString.update { subString }
+                listAdapter.updateHighlightPosition(-1)
+                currentHighlightIndex = -1
+                scope.launch {
+                    delay(64)
+                    floatingCandidateNextItem(insertString = subString)
+                }
+            } else {
+                commitText(selectedSuggestion.word, 1)
+                updateSuggestionsForFloatingCandidate(emptyList())
+            }
         }
     }
 
@@ -1492,7 +1524,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun updateSuggestionsForFloatingCandidate(suggestions: List<String>) {
+    private fun updateSuggestionsForFloatingCandidate(suggestions: List<CandidateItem>) {
         Timber.d("updateSuggestionsForFloatingCandidate: $suggestions")
         fullSuggestionsList = suggestions
         currentPage = 0
@@ -1510,13 +1542,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val endIndex = (startIndex + PAGE_SIZE).coerceAtMost(fullSuggestionsList.size)
         val suggestionsForPage = fullSuggestionsList.subList(startIndex, endIndex)
 
-        val itemsToShow = mutableListOf<String>()
+        val itemsToShow = mutableListOf<CandidateItem>()
         itemsToShow.addAll(suggestionsForPage)
 
         val totalPages = (fullSuggestionsList.size + PAGE_SIZE - 1) / PAGE_SIZE
         if (totalPages > 1) {
             val pagerLabel = "▶ (${currentPage + 1}/$totalPages)"
-            itemsToShow.add(pagerLabel)
+            itemsToShow.add(CandidateItem(word = pagerLabel, length = (1).toUByte()))
         }
         listAdapter.submitList(itemsToShow) {
             listAdapter.updateHighlightPosition(currentHighlightIndex)
@@ -5243,7 +5275,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidates
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
-            updateSuggestionsForFloatingCandidate(filtered.map { it.string })
+            updateSuggestionsForFloatingCandidate(filtered.map {
+                CandidateItem(
+                    word = it.string,
+                    length = it.length
+                )
+            })
         } else {
             suggestionAdapter?.suggestions = filtered
         }
