@@ -1043,7 +1043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         Timber.d("KEYCODE_SPACE is pressed")
                                         val insertStringEndWithN =
                                             romajiConverter?.flush(insertString)?.first
-                                        Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
+                                        Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
                                         if (insertStringEndWithN == null) {
                                             _inputString.update { insertString }
                                             floatingCandidateNextItem(insertString)
@@ -1349,7 +1349,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyEvent.KEYCODE_ENTER -> {
                 Timber.d("onKeyUp KEYCODE_ENTER: ${inputString.value} ${isHenkan.get()}")
                 if (isHenkan.get()) {
-                    return true
+                    if (inputString.value.isNotEmpty()){
+                        return true
+                    }
+                    isHenkan.set(false)
                 }
                 return super.onKeyUp(keyCode, event)
             }
@@ -1358,7 +1361,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun floatingCandidateNextItem(insertString: String) {
-        Timber.d("floatingCandidateNextItem called. Current highlight: $currentHighlightIndex")
+        Timber.d("floatingCandidateNextItem called. Current highlight: $currentHighlightIndex ${stringInTail.get()}")
         if (listAdapter.currentList.isEmpty()) return
 
         val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
@@ -1425,8 +1428,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val subString = insertString.substring(selectedSuggestion.length.toInt())
             stringInTail.set(subString)
             Timber.d("displayComposingTextInHardwareKeyboardConnected: ${selectedSuggestion.word} ${selectedSuggestion.length} $insertString $subString ${insertString.length} ${selectedSuggestion.length.toInt()}")
-        } else {
-            stringInTail.set("")
         }
         val spannableString = SpannableString(selectedSuggestion.word + stringInTail)
         setComposingTextAfterEdit(
