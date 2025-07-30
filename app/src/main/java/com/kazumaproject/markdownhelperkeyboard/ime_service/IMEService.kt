@@ -434,7 +434,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     companion object {
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
+        private const val PAGE_SIZE: Int = 5
     }
+
+    private var currentPage: Int = 0
+    private var currentHighlightIndex: Int = RecyclerView.NO_POSITION
+    private var fullSuggestionsList: List<String> = emptyList()
 
     override fun onCreate() {
         super.onCreate()
@@ -457,7 +462,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.registerInputDeviceListener(this, null)
         floatingCandidateView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
-        listAdapter = FloatingCandidateListAdapter()
+        listAdapter = FloatingCandidateListAdapter(
+            pageSize = PAGE_SIZE,
+        )
+        listAdapter.onSuggestionClicked = { suggestion: String ->
+            commitText(suggestion, 1)
+            finishComposingText()
+        }
     }
 
     override fun onCreateInputView(): View? {
@@ -582,7 +593,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT
             ).apply {
-                isOutsideTouchable = true
+                isOutsideTouchable = false
             }
         }
         editorInfo?.let { info ->
@@ -1024,15 +1035,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_SPACE -> {
                             when (mainView.keyboardView.currentInputMode.value) {
                                 InputMode.ModeJapanese -> {
+                                    Timber.d("KEYCODE_SPACE is pressed")
                                     val insertStringEndWithN =
                                         romajiConverter?.flush(insertString)?.first
+                                    Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
                                     if (insertStringEndWithN == null) {
                                         _inputString.update { insertString }
-                                        if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                            mainView, suggestions, insertString
-                                        )
+                                        floatingCandidateNextItem()
                                     } else {
                                         _inputString.update { insertStringEndWithN }
+                                        floatingCandidateNextItem()
                                         scope.launch {
                                             delay(64)
                                             val newSuggestionList =
@@ -1182,6 +1194,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return super.onKeyDown(keyCode, event)
     }
 
+    private fun floatingCandidateNextItem() {
+        Timber.d("floatingCandidateNextItem called. Current highlight: $currentHighlightIndex")
+        if (listAdapter.currentList.isEmpty()) return
+
+        val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
+        if (suggestionCount == 0) return
+
+        // 次のページが存在するかどうかを確認
+        val maxPage = (fullSuggestionsList.size - 1) / PAGE_SIZE
+        val hasNextPage = currentPage < maxPage
+
+        // ハイライトがページの最後尾 かつ 次のページが存在する場合
+        if (currentHighlightIndex == suggestionCount - 1 && hasNextPage) {
+            goToNextPageForFloatingCandidate() // 次のページに移動
+        } else if (currentHighlightIndex == suggestionCount - 1 && !hasNextPage) {
+            currentPage = -1
+        } else {
+            // 上記以外の場合は、現在のページ内でハイライトをループさせる
+            currentHighlightIndex = if (currentHighlightIndex == RecyclerView.NO_POSITION) {
+                0
+            } else {
+                (currentHighlightIndex + 1) % suggestionCount
+            }
+            listAdapter.updateHighlightPosition(currentHighlightIndex)
+            Timber.d("floatingCandidateNextItem: ${listAdapter.getHighlightedItem()}")
+        }
+    }
+
+    private fun floatingCandidatePreviousItem() {
+        if (listAdapter.currentList.isEmpty()) return
+        val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
+        if (suggestionCount == 0) return
+
+        currentHighlightIndex = if (currentHighlightIndex <= 0) {
+            suggestionCount - 1
+        } else {
+            currentHighlightIndex - 1
+        }
+        listAdapter.updateHighlightPosition(currentHighlightIndex)
+    }
+
+    private fun floatingCandidateEnterPressed() {
+        val selectedSuggestion = listAdapter.getHighlightedItem()
+        if (selectedSuggestion != null) {
+            commitText(selectedSuggestion, 1)
+            updateSuggestionsForFloatingCandidate(emptyList())
+        }
+    }
+
     private fun setTenKeyListeners(
         mainView: MainLayoutBinding
     ) {
@@ -1253,9 +1314,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun updateSuggestionsForFloatingCandidate(suggestions: List<String>) {
         Timber.d("updateSuggestionsForFloatingCandidate: $suggestions")
-        listAdapter.submitList(suggestions)
-        if (suggestions.isEmpty()) {
+        fullSuggestionsList = suggestions
+        currentPage = 0
+        displayCurrentPage()
+    }
+
+    private fun displayCurrentPage() {
+        if (fullSuggestionsList.isEmpty()) {
+            listAdapter.submitList(emptyList())
             floatingCandidateWindow?.dismiss()
+            return
+        }
+
+        val startIndex = currentPage * PAGE_SIZE
+        val endIndex = (startIndex + PAGE_SIZE).coerceAtMost(fullSuggestionsList.size)
+        val suggestionsForPage = fullSuggestionsList.subList(startIndex, endIndex)
+
+        val itemsToShow = mutableListOf<String>()
+        itemsToShow.addAll(suggestionsForPage)
+
+        val totalPages = (fullSuggestionsList.size + PAGE_SIZE - 1) / PAGE_SIZE
+        if (totalPages > 1) {
+            val pagerLabel = "▶ (${currentPage + 1}/$totalPages)"
+            itemsToShow.add(pagerLabel)
+        }
+        listAdapter.submitList(itemsToShow) {
+            listAdapter.updateHighlightPosition(currentHighlightIndex)
         }
     }
 
@@ -3607,6 +3691,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resetInputString()
             if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
                 updateSuggestionsForFloatingCandidate(emptyList())
+                listAdapter.updateHighlightPosition(-1)
+                currentHighlightIndex = -1
             }
             if (isTablet == true) {
                 mainView.tabletView.apply {
@@ -4976,7 +5062,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidates
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
-            updateSuggestionsForFloatingCandidate(filtered.map { it.string }.subList(0, 5))
+            updateSuggestionsForFloatingCandidate(filtered.map { it.string })
         } else {
             suggestionAdapter?.suggestions = filtered
         }
@@ -6367,6 +6453,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isAlphabetic = device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
 
         return isNotVirtual && hasKeyboardSource && isAlphabetic
+    }
+
+    /**
+     * Handles moving to the next page and looping back to the start.
+     */
+    private fun goToNextPageForFloatingCandidate() {
+        if (fullSuggestionsList.isEmpty()) return
+        val maxPage = (fullSuggestionsList.size - 1) / PAGE_SIZE
+        currentPage = if (currentPage >= maxPage) 0 else currentPage + 1
+        currentHighlightIndex = 0
+        displayCurrentPage()
     }
 
     private fun checkForPhysicalKeyboard(
