@@ -442,6 +442,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentHighlightIndex: Int = RecyclerView.NO_POSITION
     private var fullSuggestionsList: List<CandidateItem> = emptyList()
 
+    private var initialCursorDetectInFloatingCandidateView = false
+    private var initialCursorXPosition: Int = 0
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -727,8 +730,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
         Timber.d("onUpdateCursorAnchorInfo: top:${cursorAnchorInfo.insertionMarkerTop}")
         Timber.d("onUpdateCursorAnchorInfo: horizontal:${cursorAnchorInfo.insertionMarkerHorizontal}")
-        val x = cursorAnchorInfo.insertionMarkerBaseline.toInt() + 64
+        val x = if (initialCursorDetectInFloatingCandidateView) {
+            initialCursorXPosition
+        } else {
+            cursorAnchorInfo.insertionMarkerHorizontal.toInt() + 150
+        }
         val y = cursorAnchorInfo.insertionMarkerBottom.toInt() + 64
+        initialCursorXPosition = x
+        initialCursorDetectInFloatingCandidateView = true
         val currentPopupWindow = floatingCandidateWindow!!
         if (currentPopupWindow.isShowing) {
             // すでに表示されている場合は位置を更新
@@ -1349,7 +1358,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyEvent.KEYCODE_ENTER -> {
                 Timber.d("onKeyUp KEYCODE_ENTER: ${inputString.value} ${isHenkan.get()}")
                 if (isHenkan.get()) {
-                    if (inputString.value.isNotEmpty()){
+                    if (inputString.value.isNotEmpty()) {
                         return true
                     }
                     isHenkan.set(false)
@@ -3903,6 +3912,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             hasConvertedKatakana = false
             resetInputString()
+            initialCursorDetectInFloatingCandidateView = false
+            initialCursorXPosition = 0
             if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
                 updateSuggestionsForFloatingCandidate(emptyList())
                 listAdapter.updateHighlightPosition(-1)
@@ -4943,6 +4954,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hasConvertedKatakana = false
         romajiConverter?.clear()
         resetSumireKeyboardDakutenMode()
+        initialCursorDetectInFloatingCandidateView = false
+        initialCursorXPosition = 0
     }
 
     private fun actionInDestroy() {
