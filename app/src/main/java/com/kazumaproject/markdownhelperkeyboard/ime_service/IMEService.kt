@@ -642,6 +642,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.WRAP_CONTENT
             )
+
+            floatingDockView.setText("あ")
         }
     }
 
@@ -865,8 +867,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("setOnFloatingDockListener: Iconがクリックされました")
                     scope.launch {
                         _physicalKeyboardEnable.emit(false)
-                        floatingDockWindow?.dismiss()
                     }
+                    floatingDockWindow?.dismiss()
                 }
             })
         }
@@ -1041,6 +1043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     InputMode.ModeEnglish -> "A"
                                     InputMode.ModeNumber -> "A"
                                 }
+                                Timber.d("e.isCtrlPressed Space: $inputMode $showInputModeText")
                                 floatingDockView.setText(showInputModeText)
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
@@ -1372,9 +1375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeJapanese
                                 }
-                                suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "あ"
-                                )
+                                floatingDockView.setText("あ")
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
                             }
@@ -1399,9 +1400,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                                 }
-                                suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "あ"
-                                )
+                                floatingDockView.setText("あ")
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
                             }
