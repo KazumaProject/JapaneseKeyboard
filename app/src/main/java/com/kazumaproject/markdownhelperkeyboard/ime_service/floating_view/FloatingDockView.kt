@@ -21,6 +21,11 @@ class FloatingDockView @JvmOverloads constructor(
         setupClickListeners()
     }
 
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        listener = null
+    }
+
     /**
      * クリックリスナーを設定します。
      */
@@ -51,5 +56,6 @@ class FloatingDockView @JvmOverloads constructor(
             it.cancelPendingInputEvents()
             listener?.onIconClick()
         }
+
     }
 }
