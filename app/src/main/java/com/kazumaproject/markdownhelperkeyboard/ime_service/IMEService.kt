@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.hardware.input.InputManager
 import android.inputmethodservice.InputMethodService
@@ -28,9 +29,11 @@ import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
 import android.view.inputmethod.CorrectionInfo
+import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
@@ -52,6 +55,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.android.flexbox.FlexDirection
@@ -59,6 +63,7 @@ import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.key.Key
@@ -70,6 +75,7 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.core.domain.window.getScreenHeight
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -92,12 +98,15 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
@@ -213,6 +222,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
+
+    private var floatingCandidateWindow: PopupWindow? = null
+    private lateinit var floatingCandidateView: View
+    private lateinit var listAdapter: FloatingCandidateListAdapter
+
+    private var floatingDockWindow: PopupWindow? = null
+    private lateinit var floatingDockView: FloatingDockView
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -425,7 +441,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     companion object {
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
+        private const val PAGE_SIZE: Int = 5
     }
+
+    private var currentPage: Int = 0
+    private var currentHighlightIndex: Int = RecyclerView.NO_POSITION
+    private var fullSuggestionsList: List<CandidateItem> = emptyList()
+
+    private var initialCursorDetectInFloatingCandidateView = false
+    private var initialCursorXPosition: Int = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -447,6 +471,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.registerInputDeviceListener(this, null)
+        floatingCandidateView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
+        listAdapter = FloatingCandidateListAdapter(
+            pageSize = PAGE_SIZE,
+        )
+        listAdapter.onSuggestionClicked = { suggestion: CandidateItem ->
+            commitText(suggestion.word, 1)
+            finishComposingText()
+        }
+        listAdapter.onPagerClicked = {
+            goToNextPageForFloatingCandidate()
+        }
     }
 
     override fun onCreateInputView(): View? {
@@ -560,18 +595,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        editorInfo?.let { info ->
-            if (info.imeOptions == 318767106) {
-                isPrivateMode = true
-                suggestionAdapter?.setIncognitoIcon(
-                    ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
-                )
-            } else {
-                isPrivateMode = false
-                suggestionAdapter?.setIncognitoIcon(null)
-            }
-        }
-        Timber.d("onUpdate onStartInputView called $isPrivateMode")
+        Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard")
         setCurrentInputType(editorInfo)
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
@@ -587,6 +611,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
             }
+        }
+        editorInfo?.let { info ->
+            if (info.imeOptions == 318767106) {
+                isPrivateMode = true
+                suggestionAdapter?.setIncognitoIcon(
+                    ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
+                )
+            } else {
+                isPrivateMode = false
+                suggestionAdapter?.setIncognitoIcon(null)
+            }
+        }
+        if (hasPhysicalKeyboard) {
+            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
+            val recyclerView =
+                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
+            recyclerView.adapter = listAdapter
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            floatingCandidateWindow = PopupWindow(
+                popupContentView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            ).apply {
+                isOutsideTouchable = false
+            }
+
+            floatingDockWindow = PopupWindow(
+                floatingDockView,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+
+            floatingDockView.setText("あ")
         }
     }
 
@@ -617,6 +674,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+        floatingCandidateWindow?.dismiss()
+        floatingDockWindow?.dismiss()
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
@@ -628,6 +687,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         suggestionCache = null
         clearSymbols()
+        floatingCandidateWindow = null
+        floatingDockWindow = null
         keyboardSelectionPopupWindow = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
@@ -662,6 +723,67 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
+        dismissFloatingDock()
+    }
+
+    override fun onComputeInsets(outInsets: Insets?) {
+        super.onComputeInsets(outInsets)
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            val inputHeight = window.window?.decorView?.height ?: 0
+            outInsets?.contentTopInsets = inputHeight
+            outInsets?.visibleTopInsets = inputHeight
+            outInsets?.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+        }
+    }
+
+    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
+        super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
+        if (listAdapter.currentList.isEmpty()) {
+            floatingCandidateWindow?.dismiss()
+            return
+        }
+
+        if (cursorAnchorInfo == null || floatingCandidateWindow == null) {
+            return
+        }
+        Timber.d("onUpdateCursorAnchorInfo: baseLine:${cursorAnchorInfo.insertionMarkerBaseline}")
+        Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
+        Timber.d("onUpdateCursorAnchorInfo: top:${cursorAnchorInfo.insertionMarkerTop}")
+        Timber.d("onUpdateCursorAnchorInfo: horizontal:${cursorAnchorInfo.insertionMarkerHorizontal}")
+        val matrix: Matrix = cursorAnchorInfo.matrix
+        // カーソルのローカル座標を取得
+        val cursorX = cursorAnchorInfo.insertionMarkerHorizontal
+        val cursorY = cursorAnchorInfo.insertionMarkerTop
+        // スクリーン座標に変換するための配列
+        val screenCoords = floatArrayOf(cursorX, cursorY)
+        // 行列を適用してスクリーン座標に変換
+        matrix.mapPoints(screenCoords)
+        val screenX = screenCoords[0]
+        val screenY = screenCoords[1]
+        Timber.d("onUpdateCursorAnchorInfo X: $screenX")
+        Timber.d("onUpdateCursorAnchorInfo Y: $screenY")
+
+        val x = if (initialCursorDetectInFloatingCandidateView) {
+            initialCursorXPosition
+        } else {
+            (screenX - 32).coerceAtLeast(0f).toInt()
+        }
+        val y = screenY.toInt()
+        initialCursorXPosition = x
+        initialCursorDetectInFloatingCandidateView = true
+        val currentPopupWindow = floatingCandidateWindow!!
+        if (currentPopupWindow.isShowing) {
+            // すでに表示されている場合は位置を更新
+            currentPopupWindow.update(x, y, -1, -1)
+        } else {
+            // 表示されていない場合は指定した位置に表示
+            currentPopupWindow.showAtLocation(
+                window.window?.decorView, // 親ビュー
+                Gravity.NO_GRAVITY,      // スクリーン座標で直接指定
+                x,                       // x座標
+                y                        // y座標
+            )
+        }
     }
 
     override fun onWindowHidden() {
@@ -711,6 +833,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
+    /**
+     * FloatingDockViewを非表示にします。
+     */
+    private fun dismissFloatingDock() {
+        if (floatingDockWindow?.isShowing == true) {
+            floatingDockWindow?.dismiss()
+            floatingDockWindow = null
+        }
+    }
+
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         // Determine the correct, themed context
@@ -722,6 +854,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         } else {
             ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+        }
+
+        floatingDockView = FloatingDockView(ctx).apply {
+            setText("あ")
+            setOnFloatingDockListener(object : FloatingDockListener {
+                override fun onDockClick() {
+                    Timber.d("setOnFloatingDockListener: Dockがクリックされました")
+                }
+
+                override fun onIconClick() {
+                    Timber.d("setOnFloatingDockListener: Iconがクリックされました")
+                    scope.launch {
+                        _physicalKeyboardEnable.emit(false)
+                    }
+                    floatingDockWindow?.dismiss()
+                }
+            })
         }
 
         // Inflate the new layout
@@ -852,7 +1001,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             when (mainView.keyboardView.currentInputMode.value) {
                 InputMode.ModeJapanese -> {
                     val insertString = inputString.value
-                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                    val suggestions = listAdapter.currentList
                     val sb = StringBuilder()
 
                     event?.let { e ->
@@ -889,9 +1038,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                                 }
-                                suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "A"
-                                )
+                                val showInputModeText = when (inputMode) {
+                                    InputMode.ModeJapanese -> "あ"
+                                    InputMode.ModeEnglish -> "A"
+                                    InputMode.ModeNumber -> "A"
+                                }
+                                Timber.d("e.isCtrlPressed Space: $inputMode $showInputModeText")
+                                floatingDockView.setText(showInputModeText)
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
                             }
@@ -938,6 +1091,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 insertString.isNotEmpty() -> {
                                     if (isHenkan.get()) {
                                         cancelHenkanByLongPressDeleteKey()
+                                        listAdapter.updateHighlightPosition(-1)
+                                        currentHighlightIndex = -1
                                         return true
                                     } else {
                                         deleteStringCommon(insertString)
@@ -956,28 +1111,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_SPACE -> {
                             when (mainView.keyboardView.currentInputMode.value) {
                                 InputMode.ModeJapanese -> {
-                                    val insertStringEndWithN =
-                                        romajiConverter?.flush(insertString)?.first
-                                    if (insertStringEndWithN == null) {
-                                        _inputString.update { insertString }
-                                        if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                            mainView, suggestions, insertString
-                                        )
-                                    } else {
-                                        _inputString.update { insertStringEndWithN }
-                                        scope.launch {
-                                            delay(64)
-                                            val newSuggestionList =
-                                                suggestionAdapter?.suggestions ?: emptyList()
-                                            if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                                mainView, newSuggestionList, insertStringEndWithN
-                                            )
+                                    if (insertString.isNotEmpty()) {
+                                        isHenkan.set(true)
+                                        Timber.d("KEYCODE_SPACE is pressed")
+                                        val insertStringEndWithN =
+                                            romajiConverter?.flush(insertString)?.first
+                                        Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
+                                        if (insertStringEndWithN == null) {
+                                            _inputString.update { insertString }
+                                            floatingCandidateNextItem(insertString)
+                                        } else {
+                                            _inputString.update { insertStringEndWithN }
+                                            floatingCandidateNextItem(insertString)
+                                            scope.launch {
+                                                delay(64)
+                                                val newSuggestionList =
+                                                    suggestionAdapter?.suggestions ?: emptyList()
+                                                if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                                    mainView,
+                                                    newSuggestionList,
+                                                    insertStringEndWithN
+                                                )
+                                            }
                                         }
+                                    } else {
+                                        if (stringInTail.get().isNotEmpty()) return true
+                                        val isFlick = hankakuPreference ?: false
+                                        setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
                                     }
                                 }
 
                                 else -> {
-                                    handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                                    handleSpaceKeyClick(false, insertString, suggestions.map {
+                                        Candidate(
+                                            string = it.word,
+                                            type = (1).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 0
+                                        )
+                                    }, mainView)
                                 }
                             }
                             return true
@@ -985,7 +1157,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         KeyEvent.KEYCODE_DPAD_LEFT -> {
                             if (isHenkan.get()) {
-                                handleDeleteKeyInHenkan(suggestions, insertString)
+                                floatingCandidatePreviousItem(insertString)
                                 return true
                             } else {
                                 handleLeftKeyPress(
@@ -997,10 +1169,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            if (isHenkan.get() && suggestions.isNotEmpty()) {
-                                handleJapaneseModeSpaceKey(
-                                    mainView, suggestions, insertString
-                                )
+                            if (isHenkan.get()) {
+                                Timber.d("KEYCODE_DPAD_RIGHT: called")
+                                floatingCandidateNextItem(insertString)
                                 return true
                             } else {
                                 actionInRightKeyPressed(
@@ -1011,9 +1182,141 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             return true
                         }
 
+                        KeyEvent.KEYCODE_DPAD_UP -> {
+                            if (insertString.isNotEmpty()) {
+                                if (isHenkan.get()) {
+                                    floatingCandidatePreviousItem(insertString)
+                                    return true
+                                } else {
+                                    when (mainView.keyboardView.currentInputMode.value) {
+                                        InputMode.ModeJapanese -> {
+                                            if (insertString.isNotEmpty()) {
+                                                isHenkan.set(true)
+                                                Timber.d("KEYCODE_SPACE is pressed")
+                                                val insertStringEndWithN =
+                                                    romajiConverter?.flush(insertString)?.first
+                                                Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
+                                                if (insertStringEndWithN == null) {
+                                                    _inputString.update { insertString }
+                                                    floatingCandidateNextItem(insertString)
+                                                } else {
+                                                    _inputString.update { insertStringEndWithN }
+                                                    floatingCandidateNextItem(insertString)
+                                                    scope.launch {
+                                                        delay(64)
+                                                        val newSuggestionList =
+                                                            suggestionAdapter?.suggestions
+                                                                ?: emptyList()
+                                                        if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                                            mainView,
+                                                            newSuggestionList,
+                                                            insertStringEndWithN
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                if (stringInTail.get().isNotEmpty()) return true
+                                                val isFlick = hankakuPreference ?: false
+                                                setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
+                                            }
+                                        }
+
+                                        else -> {
+                                            handleSpaceKeyClick(
+                                                false,
+                                                insertString,
+                                                suggestions.map {
+                                                    Candidate(
+                                                        string = it.word,
+                                                        type = (1).toByte(),
+                                                        length = insertString.length.toUByte(),
+                                                        score = 0
+                                                    )
+                                                },
+                                                mainView
+                                            )
+                                        }
+                                    }
+                                    return true
+                                }
+                            }
+                        }
+
+                        KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            if (insertString.isNotEmpty()) {
+                                if (isHenkan.get()) {
+                                    floatingCandidateNextItem(insertString)
+                                    return true
+                                } else {
+                                    when (mainView.keyboardView.currentInputMode.value) {
+                                        InputMode.ModeJapanese -> {
+                                            if (insertString.isNotEmpty()) {
+                                                isHenkan.set(true)
+                                                Timber.d("KEYCODE_SPACE is pressed")
+                                                val insertStringEndWithN =
+                                                    romajiConverter?.flush(insertString)?.first
+                                                Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
+                                                if (insertStringEndWithN == null) {
+                                                    _inputString.update { insertString }
+                                                    floatingCandidateNextItem(insertString)
+                                                } else {
+                                                    _inputString.update { insertStringEndWithN }
+                                                    floatingCandidateNextItem(insertString)
+                                                    scope.launch {
+                                                        delay(64)
+                                                        val newSuggestionList =
+                                                            suggestionAdapter?.suggestions
+                                                                ?: emptyList()
+                                                        if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                                            mainView,
+                                                            newSuggestionList,
+                                                            insertStringEndWithN
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                if (stringInTail.get().isNotEmpty()) return true
+                                                val isFlick = hankakuPreference ?: false
+                                                setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
+                                            }
+                                        }
+
+                                        else -> {
+                                            handleSpaceKeyClick(
+                                                false,
+                                                insertString,
+                                                suggestions.map {
+                                                    Candidate(
+                                                        string = it.word,
+                                                        type = (1).toByte(),
+                                                        length = insertString.length.toUByte(),
+                                                        score = 0
+                                                    )
+                                                },
+                                                mainView
+                                            )
+                                        }
+                                    }
+                                    return true
+                                }
+                            }
+                        }
+
                         KeyEvent.KEYCODE_ENTER -> {
                             if (insertString.isNotEmpty()) {
-                                handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                                if (isHenkan.get()) {
+                                    floatingCandidateEnterPressed()
+                                    return true
+                                } else {
+                                    handleNonEmptyInputEnterKey(suggestions.map {
+                                        Candidate(
+                                            string = it.word,
+                                            type = (1).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 0
+                                        )
+                                    }, mainView, insertString)
+                                }
                             } else {
                                 handleEmptyInputEnterKey(mainView)
                             }
@@ -1072,9 +1375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeJapanese
                                 }
-                                suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "あ"
-                                )
+                                floatingDockView.setText("あ")
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
                             }
@@ -1099,9 +1400,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                                 }
-                                suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "あ"
-                                )
+                                floatingDockView.setText("あ")
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
                             }
@@ -1112,6 +1411,118 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            KeyEvent.KEYCODE_ENTER -> {
+                Timber.d("onKeyUp KEYCODE_ENTER: ${inputString.value} ${isHenkan.get()}")
+                if (isHenkan.get()) {
+                    if (inputString.value.isNotEmpty()) {
+                        return true
+                    }
+                    isHenkan.set(false)
+                }
+                return super.onKeyUp(keyCode, event)
+            }
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    private fun floatingCandidateNextItem(insertString: String) {
+        Timber.d("floatingCandidateNextItem called. Current highlight: $currentHighlightIndex ${stringInTail.get()}")
+        if (listAdapter.currentList.isEmpty()) return
+
+        val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
+        if (suggestionCount == 0) return
+
+        // 次のページが存在するかどうかを確認
+        val maxPage = (fullSuggestionsList.size - 1) / PAGE_SIZE
+        val hasNextPage = currentPage < maxPage
+
+        // ハイライトがページの最後尾 かつ 次のページが存在する場合
+        if (currentHighlightIndex == suggestionCount - 1 && hasNextPage) {
+            goToNextPageForFloatingCandidate() // 次のページに移動
+            scope.launch {
+                delay(64)
+                Timber.d("floatingCandidateNextItem hasNextPage: ${listAdapter.getHighlightedItem()}")
+                displayComposingTextInHardwareKeyboardConnected(insertString)
+            }
+        } else if (currentHighlightIndex == suggestionCount - 1 && !hasNextPage) {
+            currentPage = -1
+            scope.launch {
+                delay(64)
+                Timber.d("floatingCandidateNextItem hasNextPage: ${listAdapter.getHighlightedItem()}")
+                displayComposingTextInHardwareKeyboardConnected(insertString)
+            }
+        } else {
+            // 上記以外の場合は、現在のページ内でハイライトをループさせる
+            currentHighlightIndex = if (currentHighlightIndex == RecyclerView.NO_POSITION) {
+                0
+            } else {
+                (currentHighlightIndex + 1) % suggestionCount
+            }
+            listAdapter.updateHighlightPosition(currentHighlightIndex)
+            displayComposingTextInHardwareKeyboardConnected(insertString)
+            Timber.d("floatingCandidateNextItem: ${listAdapter.getHighlightedItem()} ${inputString.value} $stringInTail")
+        }
+    }
+
+    private fun floatingCandidatePreviousItem(insertString: String) {
+        if (listAdapter.currentList.isEmpty()) return
+        val suggestionCount = listAdapter.currentList.size.coerceAtMost(PAGE_SIZE)
+        if (suggestionCount == 0) return
+        val hasPreviousPage = currentPage > 0
+
+        if (currentHighlightIndex <= 0 && hasPreviousPage) {
+            goToPreviousPageForFloatingCandidate()
+            Timber.d("floatingCandidatePreviousItem hasPreviousPage: ${listAdapter.getHighlightedItem()}")
+        } else {
+            currentHighlightIndex = if (currentHighlightIndex <= 0) {
+                suggestionCount - 1
+            } else {
+                currentHighlightIndex - 1
+            }
+            listAdapter.updateHighlightPosition(currentHighlightIndex)
+            displayComposingTextInHardwareKeyboardConnected(insertString = insertString)
+            Timber.d("floatingCandidatePreviousItem: ${listAdapter.getHighlightedItem()}")
+        }
+    }
+
+    private fun displayComposingTextInHardwareKeyboardConnected(
+        insertString: String
+    ) {
+        val selectedSuggestion = listAdapter.currentList[currentHighlightIndex]
+        if (insertString.length > selectedSuggestion.length.toInt()) {
+            val subString = insertString.substring(selectedSuggestion.length.toInt())
+            stringInTail.set(subString)
+            Timber.d("displayComposingTextInHardwareKeyboardConnected: ${selectedSuggestion.word} ${selectedSuggestion.length} $insertString $subString ${insertString.length} ${selectedSuggestion.length.toInt()}")
+        }
+        val spannableString = SpannableString(selectedSuggestion.word + stringInTail)
+        setComposingTextAfterEdit(
+            selectedSuggestion.word, spannableString
+        )
+    }
+
+    private fun floatingCandidateEnterPressed() {
+        val selectedSuggestion = listAdapter.getHighlightedItem()
+        if (selectedSuggestion != null) {
+            val subString = stringInTail.get()
+            if (subString.isNotEmpty()) {
+                commitText(selectedSuggestion.word, 1)
+                updateSuggestionsForFloatingCandidate(emptyList())
+                _inputString.update { subString }
+                listAdapter.updateHighlightPosition(-1)
+                currentHighlightIndex = -1
+                scope.launch {
+                    delay(64)
+                    floatingCandidateNextItem(insertString = subString)
+                }
+            } else {
+                commitText(selectedSuggestion.word, 1)
+                updateSuggestionsForFloatingCandidate(emptyList())
+            }
+        }
     }
 
     private fun setTenKeyListeners(
@@ -1180,6 +1591,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("Long Press: $key")
                 }
             })
+        }
+    }
+
+    private fun updateSuggestionsForFloatingCandidate(suggestions: List<CandidateItem>) {
+        Timber.d("updateSuggestionsForFloatingCandidate: $suggestions")
+        fullSuggestionsList = suggestions
+        currentPage = 0
+        displayCurrentPage()
+    }
+
+    private fun displayCurrentPage() {
+        if (fullSuggestionsList.isEmpty()) {
+            listAdapter.submitList(emptyList())
+            floatingCandidateWindow?.dismiss()
+            return
+        }
+
+        val startIndex = currentPage * PAGE_SIZE
+        val endIndex = (startIndex + PAGE_SIZE).coerceAtMost(fullSuggestionsList.size)
+        val suggestionsForPage = fullSuggestionsList.subList(startIndex, endIndex)
+
+        val itemsToShow = mutableListOf<CandidateItem>()
+        itemsToShow.addAll(suggestionsForPage)
+
+        val totalPages = (fullSuggestionsList.size + PAGE_SIZE - 1) / PAGE_SIZE
+        if (totalPages > 1) {
+            val pagerLabel = "▶ (${currentPage + 1}/$totalPages)"
+            itemsToShow.add(CandidateItem(word = pagerLabel, length = (1).toUByte()))
+        }
+        listAdapter.submitList(itemsToShow) {
+            listAdapter.updateHighlightPosition(currentHighlightIndex)
+            Timber.d("floatingCandidateNextItem (after update): ${listAdapter.getHighlightedItem()}")
         }
     }
 
@@ -3373,19 +3816,85 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             InputMode.ModeNumber -> "A"
                         }
                     )
-                    hideAllKeyboards()
-                    val heightPx = dpToPx(40f)
-                    val widthPx = ViewGroup.LayoutParams.MATCH_PARENT
-                    (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                        params.bottomMargin = heightPx
-                        mainView.suggestionViewParent.layoutParams = params
-                    }
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                        params.width = widthPx
+                        params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                        params.height = getScreenHeight(this@IMEService)
                         mainView.root.layoutParams = params
                     }
+                    mainView.root.alpha = 0f
+                    requestCursorUpdates(
+                        InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
+                    )
+                    floatingDockWindow?.apply {
+                        if (!this.isShowing) {
+                            showAtLocation(
+                                mainView.root,
+                                Gravity.BOTTOM,
+                                0,
+                                0
+                            )
+                        }
+                    }
+
+                    listAdapter.updateHighlightPosition(-1)
+                    currentHighlightIndex = -1
+                    isHenkan.set(false)
+
                 } else {
+                    mainView.root.alpha = 1f
+                    requestCursorUpdates(0)
                     setKeyboardSize()
+                    val heightPref = appPreference.keyboard_height ?: 280
+                    val widthPref = appPreference.keyboard_width ?: 100
+                    val positionPref = appPreference.keyboard_position ?: true
+
+                    // 3) Get screen metrics
+                    val density = resources.displayMetrics.density
+                    val screenWidth = resources.displayMetrics.widthPixels
+                    val isPortrait =
+                        resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+                    val heightPx = when {
+                        keyboardSymbolViewState.value -> { // Emoji keyboard state
+                            val height = if (isPortrait) 320 else 220
+                            (height * density).toInt()
+                        }
+
+                        else -> {
+                            val clampedHeight = heightPref.coerceIn(180, 420)
+                            (clampedHeight * density).toInt()
+                        }
+                    }
+                    val widthPx = when {
+                        widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        }
+
+                        else -> {
+                            (screenWidth * (widthPref / 100f)).toInt()
+                        }
+                    }
+                    val gravity = if (positionPref) {
+                        Gravity.BOTTOM or Gravity.END
+                    } else {
+                        Gravity.BOTTOM or Gravity.START
+                    }
+                    (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                        params.bottomMargin = heightPx
+                        params.gravity = gravity
+                        mainView.suggestionViewParent.layoutParams = params
+                    }
+
+                    // Finally, update the root view's width and gravity
+                    (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                        params.width = widthPx
+                        params.height =
+                            heightPx + applicationContext.dpToPx(110)
+                        params.gravity = gravity
+                        mainView.root.layoutParams = params
+                    }
+                    floatingCandidateWindow?.dismiss()
+                    floatingDockWindow?.dismiss()
                 }
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
@@ -3529,6 +4038,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             hasConvertedKatakana = false
             resetInputString()
+            initialCursorDetectInFloatingCandidateView = false
+            initialCursorXPosition = 0
+            if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+                updateSuggestionsForFloatingCandidate(emptyList())
+                listAdapter.updateHighlightPosition(-1)
+                currentHighlightIndex = -1
+            }
             if (isTablet == true) {
                 mainView.tabletView.apply {
                     setSideKeySpaceDrawable(
@@ -4564,6 +5080,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hasConvertedKatakana = false
         romajiConverter?.clear()
         resetSumireKeyboardDakutenMode()
+        initialCursorDetectInFloatingCandidateView = false
+        initialCursorXPosition = 0
     }
 
     private fun actionInDestroy() {
@@ -4896,7 +5414,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
-        suggestionAdapter?.suggestions = filtered
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            updateSuggestionsForFloatingCandidate(filtered.map {
+                CandidateItem(
+                    word = it.string,
+                    length = it.length
+                )
+            })
+        } else {
+            suggestionAdapter?.suggestions = filtered
+        }
         updateUIinHenkan(mainView, insertString)
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
@@ -6286,17 +6813,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return isNotVirtual && hasKeyboardSource && isAlphabetic
     }
 
+    /**
+     * Handles moving to the next page and looping back to the start.
+     */
+    private fun goToNextPageForFloatingCandidate() {
+        if (fullSuggestionsList.isEmpty()) return
+        val maxPage = (fullSuggestionsList.size - 1) / PAGE_SIZE
+        currentPage = if (currentPage >= maxPage) 0 else currentPage + 1
+        currentHighlightIndex = 0
+        displayCurrentPage()
+    }
+
+    private fun goToPreviousPageForFloatingCandidate() {
+        // Only proceed if we are not on the first page
+        if (currentPage > 0) {
+            currentPage--
+            // When moving to a previous page, set the highlight
+            // to the last possible position.
+            currentHighlightIndex = PAGE_SIZE - 1
+            displayCurrentPage()
+        }
+    }
+
     private fun checkForPhysicalKeyboard(
         hasPhysicalKeyboard: Boolean
     ) {
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
+            floatingDockWindow?.dismiss()
+            floatingCandidateWindow?.dismiss()
             scope.launch {
                 delay(32)
                 _physicalKeyboardEnable.emit(true)
             }
         } else {
             Timber.d("No physical keyboard is connected.")
+            floatingDockWindow?.dismiss()
+            floatingCandidateWindow?.dismiss()
             scope.launch {
                 _physicalKeyboardEnable.emit(false)
             }
