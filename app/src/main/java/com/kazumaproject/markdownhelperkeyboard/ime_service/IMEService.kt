@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.hardware.input.InputManager
 import android.inputmethodservice.InputMethodService
@@ -478,6 +479,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             commitText(suggestion.word, 1)
             finishComposingText()
         }
+        listAdapter.onPagerClicked = {
+            goToNextPageForFloatingCandidate()
+        }
     }
 
     override fun onCreateInputView(): View? {
@@ -744,12 +748,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
         Timber.d("onUpdateCursorAnchorInfo: top:${cursorAnchorInfo.insertionMarkerTop}")
         Timber.d("onUpdateCursorAnchorInfo: horizontal:${cursorAnchorInfo.insertionMarkerHorizontal}")
+        val matrix: Matrix = cursorAnchorInfo.matrix
+        // カーソルのローカル座標を取得
+        val cursorX = cursorAnchorInfo.insertionMarkerHorizontal
+        val cursorY = cursorAnchorInfo.insertionMarkerTop
+        // スクリーン座標に変換するための配列
+        val screenCoords = floatArrayOf(cursorX, cursorY)
+        // 行列を適用してスクリーン座標に変換
+        matrix.mapPoints(screenCoords)
+        val screenX = screenCoords[0]
+        val screenY = screenCoords[1]
+        Timber.d("onUpdateCursorAnchorInfo X: $screenX")
+        Timber.d("onUpdateCursorAnchorInfo Y: $screenY")
+
         val x = if (initialCursorDetectInFloatingCandidateView) {
             initialCursorXPosition
         } else {
-            cursorAnchorInfo.insertionMarkerHorizontal.toInt() + 150
+            (screenX - 32).coerceAtLeast(0f).toInt()
         }
-        val y = cursorAnchorInfo.insertionMarkerBottom.toInt() + 64
+        val y = screenY.toInt()
         initialCursorXPosition = x
         initialCursorDetectInFloatingCandidateView = true
         val currentPopupWindow = floatingCandidateWindow!!
@@ -1019,9 +1036,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                                     KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                                 }
-                                suggestionAdapter?.setPhysicalInputModeText(
-                                    text = "A"
-                                )
+                                val showInputModeText = when (inputMode) {
+                                    InputMode.ModeJapanese -> "あ"
+                                    InputMode.ModeEnglish -> "A"
+                                    InputMode.ModeNumber -> "A"
+                                }
+                                floatingDockView.setText(showInputModeText)
                                 mainView.keyboardView.setCurrentMode(inputMode)
                                 return true
                             }
@@ -3806,12 +3826,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     requestCursorUpdates(
                         InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
                     )
-                    floatingDockWindow?.showAtLocation(
-                        mainView.root,
-                        Gravity.BOTTOM,
-                        0,
-                        0
-                    )
+                    floatingDockWindow?.apply {
+                        if (!this.isShowing) {
+                            showAtLocation(
+                                mainView.root,
+                                Gravity.BOTTOM,
+                                0,
+                                0
+                            )
+                        }
+                    }
+
+                    listAdapter.updateHighlightPosition(-1)
+                    currentHighlightIndex = -1
+                    isHenkan.set(false)
+
                 } else {
                     mainView.root.alpha = 1f
                     requestCursorUpdates(0)
@@ -3865,9 +3894,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         params.gravity = gravity
                         mainView.root.layoutParams = params
                     }
-
                     floatingCandidateWindow?.dismiss()
-
+                    floatingDockWindow?.dismiss()
                 }
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
@@ -6813,12 +6841,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
+            floatingDockWindow?.dismiss()
+            floatingCandidateWindow?.dismiss()
             scope.launch {
                 delay(32)
                 _physicalKeyboardEnable.emit(true)
             }
         } else {
             Timber.d("No physical keyboard is connected.")
+            floatingDockWindow?.dismiss()
+            floatingCandidateWindow?.dismiss()
             scope.launch {
                 _physicalKeyboardEnable.emit(false)
             }
