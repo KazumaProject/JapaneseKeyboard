@@ -5619,7 +5619,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("Enter key: called 3\n")
                 sendKeyEvent(
                     KeyEvent(
-                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
+                        KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER
                     )
                 )
             }
