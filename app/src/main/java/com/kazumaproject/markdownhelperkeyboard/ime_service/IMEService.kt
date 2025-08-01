@@ -1820,30 +1820,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     when (key) {
                         /** コピー **/
                         Key.KeyA -> {
-                            val selectedText = getSelectedText(0)
-                            if (!selectedText.isNullOrEmpty()) {
-                                clipboardUtil.setClipBoard(selectedText.toString())
-                                suggestionAdapter?.apply {
-                                    setPasteEnabled(true)
-                                    setClipboardPreview(selectedText.toString())
-                                }
-                            }
+                            copyAction()
                         }
                         /** 切り取り **/
                         Key.KeySA -> {
-                            val selectedText = getSelectedText(0)
-                            if (!selectedText.isNullOrEmpty()) {
-                                clipboardUtil.setClipBoard(selectedText.toString())
-                                suggestionAdapter?.apply {
-                                    setPasteEnabled(true)
-                                    setClipboardPreview(selectedText.toString())
-                                    sendKeyEvent(
-                                        KeyEvent(
-                                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL
-                                        )
-                                    )
-                                }
-                            }
+                            cutAction()
                         }
                         /** 全て選択 **/
                         Key.KeyMA -> {
@@ -4791,7 +4772,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 cachedEmoticons = emoticonDeferred.await()
                 cachedSymbols = symbolDeferred.await()
             }
-            val historyDeferred = async(Dispatchers.IO) { clickedSymbolRepository.getAll() }
+            val historyDeferred = async(Dispatchers.Default) { clickedSymbolRepository.getAll() }
             cachedClickedSymbolHistory =
                 historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
         }
@@ -5617,6 +5598,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.TextEditTextInWebView,
                 -> {
                 Timber.d("Enter key: called 3\n")
+                sendKeyEvent(
+                    KeyEvent(
+                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
+                    )
+                )
                 sendKeyEvent(
                     KeyEvent(
                         KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER
