@@ -113,7 +113,7 @@ class PetalFlickInputController(
 
                 val popupWidth = when (direction) {
                     FlickDirection.UP, FlickDirection.DOWN -> {
-                        currentAnchor.width
+                        currentAnchor.width - (currentAnchor.height / 4)
                     }
 
                     FlickDirection.TAP -> {
