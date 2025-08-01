@@ -3845,12 +3845,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ){
         val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val positionPref = appPreference.keyboard_position ?: true
-
-        // 3) Get screen metrics
         val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
         val isPortrait =
             resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
@@ -3865,32 +3860,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val widthPx = when {
-            widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-        val gravity = if (positionPref) {
-            Gravity.BOTTOM or Gravity.END
-        } else {
-            Gravity.BOTTOM or Gravity.START
-        }
-        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            mainView.suggestionViewParent.layoutParams = params
-        }
-
-        // Finally, update the root view's width and gravity
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.width = widthPx
             params.height =
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(110)
-            params.gravity = gravity
             mainView.root.layoutParams = params
         }
     }
