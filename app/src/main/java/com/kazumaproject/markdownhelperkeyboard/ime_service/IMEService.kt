@@ -3888,6 +3888,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVisible
         )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
+        mainView.candidatesRowView.scrollToPosition(0)
         hideFirstRowCandidatesInFullScreen(mainView)
         if (isVisible) {
             mainLayoutBinding?.apply {
@@ -3973,7 +3974,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         mainView.candidatesRowView.post {
             if (!mainView.candidatesRowView.canScrollVertically(-1)) {
-
                 val flexboxManager =
                     mainView.candidatesRowView.layoutManager as? FlexboxLayoutManager ?: return@post
                 val flexLines = flexboxManager.flexLines
