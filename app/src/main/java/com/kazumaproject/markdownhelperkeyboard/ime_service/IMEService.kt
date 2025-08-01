@@ -3863,9 +3863,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
         } else {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                110
-            )
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    110
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    65
+                )
+            }
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
