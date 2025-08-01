@@ -3624,6 +3624,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 setKeyboardSize()
+                setKeyboardSizeForHeight(mainView)
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
                         animateViewVisibility(
@@ -3825,55 +3826,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView.root.alpha = 1f
                     requestCursorUpdates(0)
                     setKeyboardSize()
-                    val heightPref = appPreference.keyboard_height ?: 280
-                    val widthPref = appPreference.keyboard_width ?: 100
-                    val positionPref = appPreference.keyboard_position ?: true
-
-                    // 3) Get screen metrics
-                    val density = resources.displayMetrics.density
-                    val screenWidth = resources.displayMetrics.widthPixels
-                    val isPortrait =
-                        resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
-                    val heightPx = when {
-                        keyboardSymbolViewState.value -> { // Emoji keyboard state
-                            val height = if (isPortrait) 320 else 220
-                            (height * density).toInt()
-                        }
-
-                        else -> {
-                            val clampedHeight = heightPref.coerceIn(180, 420)
-                            (clampedHeight * density).toInt()
-                        }
-                    }
-                    val widthPx = when {
-                        widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        }
-
-                        else -> {
-                            (screenWidth * (widthPref / 100f)).toInt()
-                        }
-                    }
-                    val gravity = if (positionPref) {
-                        Gravity.BOTTOM or Gravity.END
-                    } else {
-                        Gravity.BOTTOM or Gravity.START
-                    }
-                    (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                        params.bottomMargin = heightPx
-                        params.gravity = gravity
-                        mainView.suggestionViewParent.layoutParams = params
-                    }
-
-                    // Finally, update the root view's width and gravity
-                    (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                        params.width = widthPx
-                        params.height =
-                            heightPx + applicationContext.dpToPx(110)
-                        params.gravity = gravity
-                        mainView.root.layoutParams = params
-                    }
+                    setKeyboardSizeForHeight(mainView)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
                 }
@@ -3885,6 +3838,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inputString.collectLatest { string ->
                 processInputString(string, mainView)
             }
+        }
+    }
+
+    private fun setKeyboardSizeForHeight(
+        mainView: MainLayoutBinding
+    ){
+        val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
+        val positionPref = appPreference.keyboard_position ?: true
+
+        // 3) Get screen metrics
+        val density = resources.displayMetrics.density
+        val screenWidth = resources.displayMetrics.widthPixels
+        val isPortrait =
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val heightPx = when {
+            keyboardSymbolViewState.value -> { // Emoji keyboard state
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+            else -> {
+                val clampedHeight = heightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+        val widthPx = when {
+            widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+        val gravity = if (positionPref) {
+            Gravity.BOTTOM or Gravity.END
+        } else {
+            Gravity.BOTTOM or Gravity.START
+        }
+        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            mainView.suggestionViewParent.layoutParams = params
+        }
+
+        // Finally, update the root view's width and gravity
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.width = widthPx
+            params.height =
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(110)
+            params.gravity = gravity
+            mainView.root.layoutParams = params
         }
     }
 
