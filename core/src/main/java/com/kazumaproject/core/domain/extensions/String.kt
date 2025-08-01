@@ -78,7 +78,7 @@ fun Char.isFullWidthNumericSymbol(): Boolean {
  * 文字列がすべて半角の「数字または記号」で構成されているかを判定します。
  */
 fun String.isAllHalfWidthNumericSymbol(): Boolean {
-    if (this.isEmpty()) return false
+    if (this.isEmpty() || this.length > 2) return false
     return this.all { it.isHalfWidthNumericSymbol() }
 }
 
@@ -86,6 +86,6 @@ fun String.isAllHalfWidthNumericSymbol(): Boolean {
  * 文字列がすべて全角の「数字または記号」で構成されているかを判定します。
  */
 fun String.isAllFullWidthNumericSymbol(): Boolean {
-    if (this.isEmpty()) return false
+    if (this.isEmpty() || this.length > 2) return false
     return this.all { it.isFullWidthNumericSymbol() }
 }
