@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import android.content.Context
+import android.os.Build
 import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
@@ -734,18 +735,34 @@ class KanaKanjiEngine {
             type = 12
         )
 
-        val symbolListDeferred = deferredFromDictionarySymbols(
-            input = input,
-            commonPrefixListString = symbolCommonPrefixDeferred,
-            yomiTrie = symbolYomiTrie,
-            tokenArray = symbolTokenArray,
-            tangoTrie = symbolTangoTrie,
-            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-            type = 13
-        )
+        val symbolListDeferred =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                deferredFromDictionarySymbols(
+                    input = input,
+                    commonPrefixListString = symbolCommonPrefixDeferred,
+                    yomiTrie = symbolYomiTrie,
+                    tokenArray = symbolTokenArray,
+                    tangoTrie = symbolTangoTrie,
+                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                    type = 13
+                ).filterNot { it.string.containsHentaigana() }
+            } else {
+                deferredFromDictionarySymbols(
+                    input = input,
+                    commonPrefixListString = symbolCommonPrefixDeferred,
+                    yomiTrie = symbolYomiTrie,
+                    tokenArray = symbolTokenArray,
+                    tangoTrie = symbolTangoTrie,
+                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                    type = 13
+                )
+            }
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
             input = input,
@@ -997,21 +1014,43 @@ class KanaKanjiEngine {
         )
     }
 
-    fun getSymbolCandidates(): List<Symbol> = symbolTokenArray.getNodeIds().map {
-        if (it >= 0) {
-            symbolTangoTrie.getLetterShortArray(
-                it, symbolSuccinctBitVectorTangoLBS
-            )
-        } else {
-            ""
+    fun getSymbolCandidates(): List<Symbol> {
+        // Generate the initial list of symbols
+        val initialSymbols = symbolTokenArray.getNodeIds().map {
+            if (it >= 0) {
+                // Corrected: Restored the original 'symbolTangoTrie' variable name
+                symbolTangoTrie.getLetterShortArray(
+                    it, symbolSuccinctBitVectorTangoLBS
+                )
+            } else {
+                ""
+            }
         }
-    }
-        .distinct()
-        .filterNot { it.isBlank() }.map { symbol ->
+            .distinct()
+            .filterNot { it.isBlank() }
+
+        val filteredSymbols = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            initialSymbols.filterNot { it.containsHentaigana() }
+        } else {
+            initialSymbols
+        }
+
+        return filteredSymbols.map { symbol ->
             Symbol(
                 symbol = symbol, category = symbol.toSymbolCategory()
             )
         }
+    }
+
+    /**
+     * 文字列に変体仮名が含まれているかを確認する拡張関数
+     * 変体仮名のUnicode範囲: U+1B000..U+1B0FF
+     */
+    private fun String.containsHentaigana(): Boolean {
+        return this.codePoints().anyMatch { codePoint ->
+            codePoint in 0x1B000..0x1B0FF
+        }
+    }
 
     private fun createCandidatesForDate(
         calendar: Calendar, input: String
@@ -1625,7 +1664,7 @@ class KanaKanjiEngine {
                         string = numberAsLong.toKanji(),
                         type = 32, // 新しいタイプ
                         length = input.length.toUByte(),
-                        score = 6100, // 優先度を調整
+                        score = 8000, // 優先度を調整
                         leftId = 2040,
                         rightId = 2040
                     )
