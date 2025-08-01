@@ -1,0 +1,41 @@
+Sumire is a fully offline Japanese keyboard (IME) for Android. Even without an internet connection, you can type in Japanese; all input, learning data, and your user dictionary are processed and stored on your device. Nothing is ever sent to external servers, so you can use it with confidence if you value privacy and security. Whether you are underground, in airplane mode, roaming overseas, or in areas with weak signal, Sumire delivers uninterrupted Japanese typing.
+
+■ Concept
+“Your words stay on your device.” Sumire is a privacy-first Japanese input app with no ads and no tracking. It’s lightweight, low-latency, and ready for everything from daily chats to business email and long-form writing.
+
+■ Key Features
+・Fully offline: Works with zero data usage. Type anywhere without signal and keep battery impact to a minimum.
+・Privacy by design: On-device storage and processing only. No external transmission—ideal for sensitive information.
+・Fast input engine: Low-latency taps and flicks. Candidate suggestions appear quickly, so even long text feels smooth.
+・Optimized predictions: Covers common words, everyday phrases, and work terms to reduce taps and speed up input.
+・Flick and QWERTY layouts: Choose one-handed flick input or a QWERTY keyboard for romaji and physical-keyboard use.
+・Simple, intuitive UI: Clear settings and easy switching. Friendly for first-time users.
+・Black & White modern theme: High-contrast, minimal design that stays readable in dark or light environments.
+・Lightweight build: Quick launch and switching, smooth even on low-spec devices.
+・Free and ad-free: No payments or subscriptions—clean experience that lasts.
+
+■ Feature Details
+・Prediction and learning: Offers suitable conversion candidates based on your input trends. Learning is on-device only, improving efficiency while protecting privacy.
+・Flick input optimization: Move naturally from the center of the vowel key to each direction for fast “a/i/u/…” entry—great for one-handed thumb typing.
+・QWERTY for Japanese: Smooth romaji input for everything from short messages to documents.
+・Refined conversion: Comfortable punctuation, symbols, and numbers. Context-aware candidates help keep your writing flow.
+・User dictionary: Register frequently used terms and proper nouns to boost efficiency—stored on device for peace of mind.
+・Stability and reliability: With no ads or tracking scripts, there’s no extra overhead—just a consistently fast, stable typing experience.
+
+■ Recommended For
+・Typing Japanese offline on subways, flights, and overseas trips
+・Business users handling confidential data such as customer info or internal documents
+・One-handed flick typers who want fast chats and social posts
+・Students and professionals who prefer efficient romaji input on a QWERTY keyboard
+・Anyone seeking a safe, ad-free Japanese keyboard for Android
+
+■ Example Use Cases
+・Replying to messages or taking notes during commutes (works smoothly even with unstable signal)
+・Secure note-taking in meetings or on the go (no network required)
+・Writing journals or drafts in airplane mode or in remote areas (fully offline)
+・Privacy-sensitive conversations (all processing stays on device)
+
+■ Why You Can Trust It
+Sumire is built on the core requirements of a Japanese keyboard—fast input, accurate prediction, lightweight performance, and easy one-hand use—while putting privacy first. With no external transmission, it fits strict security environments and scales from personal use to work use. It offers the essentials you expect from an IME with a minimal UI that lets you start right away without confusion.
+
+Fully offline, privacy-first, fast flick input, lightweight, and ad-free. Sumire delivers a comfortable, safe Japanese typing experience for everyone on Android. Install now and enter your words “safely, swiftly, and beautifully.”
