@@ -435,11 +435,23 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 orderedKeys.forEach { category ->
                     if (symbolMap.containsKey(category)) {
                         val tabText = when (category) {
+                            SymbolCategory.BRACKETS_AND_QUOTES -> "括弧と引用符"
+                            SymbolCategory.PUNCTUATION_AND_DIACRITICS -> "区切り文字と発音区別符号"
                             SymbolCategory.GENERAL -> "全般"
-                            SymbolCategory.HALF -> "半角"
-                            SymbolCategory.PARENTHESIS -> "括弧"
-                            SymbolCategory.ARROW -> "矢印"
-                            SymbolCategory.MATH -> "数"
+                            SymbolCategory.ARROWS -> "矢印"
+                            SymbolCategory.MATH_AND_UNITS -> "数学と単位"
+                            SymbolCategory.GEOMETRIC_SHAPES -> "図形"
+                            SymbolCategory.ALPHABET_LATIN -> "ラテン文字"
+                            SymbolCategory.ALPHABET_GREEK -> "ギリシャ文字"
+                            SymbolCategory.ALPHABET_CYRILLIC -> "キリル文字"
+                            SymbolCategory.BOX_DRAWING -> "罫線"
+                            SymbolCategory.PICTOGRAPHS_AND_ICONS -> "アイコン"
+                            SymbolCategory.ROMAN_NUMERALS -> "ローマ数字"
+                            SymbolCategory.ENCLOSED_CHARACTERS -> "囲み文字"
+                            SymbolCategory.PHONETIC_SYMBOLS -> "発音記号"
+                            SymbolCategory.JAPANESE_KANA_AND_VARIANTS -> "日本語仮名・特殊文字"
+                            SymbolCategory.CJK_AND_RADICALS -> "CJK・部首"
+                            SymbolCategory.CONTROL_CHARACTERS -> "制御文字"
                         }
                         categoryTab.addTab(categoryTab.newTab().setText(tabText))
                     }
