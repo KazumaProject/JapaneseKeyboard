@@ -28,14 +28,19 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirect
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingAdapter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyEditorBinding
+import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
+
+    @Inject
+    lateinit var keyboardRepository: KeyboardRepository
 
     private val viewModel: KeyboardEditorViewModel by hiltNavGraphViewModels(R.id.mobile_navigation)
 

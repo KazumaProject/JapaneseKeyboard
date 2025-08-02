@@ -106,7 +106,7 @@
         <PreferenceCategory
             android:key="sumire_input_preference_category"
             android:title="スミレ入力キーボード"
-            app:isPreferenceVisible="false">
+            app:isPreferenceVisible="true">
             <ListPreference
                 android:defaultValue="flick-default"
                 android:dialogTitle="選択してください"

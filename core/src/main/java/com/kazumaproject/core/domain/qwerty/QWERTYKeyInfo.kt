@@ -510,7 +510,7 @@ sealed class QWERTYKeyInfo {
     object KeyApostrophe : QWERTYVariation() {
         override val tap: Char get() = '\''
         override val capChar: Char? get() = null
-        override val variations: List<Char> get() = listOf('\'', '‚', '‘', '’', '‹', '›')
+        override val variations: List<Char> get() = listOf('\'', '`', '‚', '‘', '’', '‹', '›')
         override val capVariations: List<Char>? get() = null
     }
 
@@ -901,6 +901,7 @@ sealed class QWERTYKeyInfo {
                 '&',
                 '%',
                 '"',
+                '”',
                 '\'',
                 '@',
                 '-',

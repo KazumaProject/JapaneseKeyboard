@@ -3005,7 +3005,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleJapaneseModeSpaceKey(
                                     mainView, suggestions, insertString
                                 )
-                            }else{
+                            } else {
                                 actionInRightKeyPressed(GestureType.Tap, insertString)
                             }
                         }
@@ -3895,15 +3895,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
-                suggestionAdapter?.setPhysicalKeyboardActive(isPhysicalKeyboardEnable)
+                //suggestionAdapter?.setPhysicalKeyboardActive(isPhysicalKeyboardEnable)
                 if (isPhysicalKeyboardEnable) {
-                    suggestionAdapter?.setPhysicalInputModeText(
-                        text = when (mainView.keyboardView.currentInputMode.value) {
-                            InputMode.ModeJapanese -> "あ"
-                            InputMode.ModeEnglish -> "A"
-                            InputMode.ModeNumber -> "A"
-                        }
-                    )
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                         params.width = ViewGroup.LayoutParams.MATCH_PARENT
                         params.height = getScreenHeight(this@IMEService)
@@ -4466,13 +4459,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnPhysicalKeyboardListener {
                 mainView.apply {
                     if (keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || tabletView.isVisible) {
-                        suggestionAdapter?.setPhysicalInputModeText(
-                            text = when (mainView.keyboardView.currentInputMode.value) {
-                                InputMode.ModeJapanese -> "あ"
-                                InputMode.ModeEnglish -> "A"
-                                InputMode.ModeNumber -> "A"
-                            }
-                        )
                         hideAllKeyboards()
                         val heightPx = dpToPx(40f)
                         val widthPx = ViewGroup.LayoutParams.MATCH_PARENT
@@ -4488,7 +4474,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (keyboardOrder.isEmpty()) return@apply
                         showKeyboard(keyboardOrder[0])
                         setKeyboardSize()
-                        suggestionAdapter?.setPhysicalInputModeText("")
                     }
                 }
             }
