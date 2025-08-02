@@ -26,6 +26,10 @@ object KeyActionMapper {
             com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
         ),
         DisplayAction(
+            KeyAction.NewLine,
+            "改行",
+        ),
+        DisplayAction(
             KeyAction.Paste,
             "貼り付け",
             com.kazumaproject.core.R.drawable.content_paste_24px
