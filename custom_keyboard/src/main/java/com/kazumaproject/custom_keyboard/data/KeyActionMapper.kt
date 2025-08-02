@@ -12,8 +12,13 @@ object KeyActionMapper {
         DisplayAction(KeyAction.Delete, "削除", com.kazumaproject.core.R.drawable.backspace_24px),
         DisplayAction(
             KeyAction.Space,
-            "空白/変換",
+            "空白",
             com.kazumaproject.core.R.drawable.baseline_space_bar_24
+        ),
+        DisplayAction(
+            KeyAction.Convert,
+            "変換",
+            com.kazumaproject.core.R.drawable.henkan
         ),
         DisplayAction(
             KeyAction.Enter,
@@ -39,6 +44,21 @@ object KeyActionMapper {
             KeyAction.ToggleDakuten,
             "濁点、小文字",
             com.kazumaproject.core.R.drawable.kana_small
+        ),
+        DisplayAction(
+            KeyAction.ToggleCase,
+            "英語、小文字",
+            com.kazumaproject.core.R.drawable.english_small
+        ),
+        DisplayAction(
+            KeyAction.SwitchToKanaLayout,
+            "日本語モード切り替え",
+            com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
+        ),
+        DisplayAction(
+            KeyAction.SwitchToEnglishLayout,
+            "英語モード切り替え",
+            com.kazumaproject.core.R.drawable.input_mode_english_custom
         ),
         // --- アイコンがないアクション ---
         DisplayAction(
@@ -80,6 +100,10 @@ object KeyActionMapper {
             is KeyAction.ChangeInputMode -> "ChangeInputMode"
             is KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard"
             is KeyAction.SwitchToNextIme -> "SwitchToNextIme"
+            is KeyAction.ToggleDakuten -> "小゛゜"
+            is KeyAction.ToggleCase -> "a/A"
+            is KeyAction.SwitchToKanaLayout -> "SwitchToKana"
+            is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
             else -> null
         }
     }
@@ -104,6 +128,10 @@ object KeyActionMapper {
             "ChangeInputMode" -> KeyAction.ChangeInputMode
             "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
             "SwitchToNextIme" -> KeyAction.SwitchToNextIme
+            "小゛゜" -> KeyAction.ToggleDakuten
+            "a/A" -> KeyAction.ToggleCase
+            "SwitchToKana" -> KeyAction.SwitchToKanaLayout
+            "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
             else -> null
         }
     }
