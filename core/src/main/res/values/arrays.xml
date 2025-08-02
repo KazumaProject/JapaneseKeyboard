@@ -25,12 +25,14 @@
     </string-array>
 
     <string-array name="sumire_keyboard_input_options">
+        <item>トグル入力 - Default</item>
         <item>フリック入力 - Default</item>
         <item>フリック入力 - Circle</item>
         <item>スミレ入力</item>
     </string-array>
 
     <string-array name="sumire_keyboard_input_values">
+        <item>toggle-default</item>
         <item>flick-default</item>
         <item>flick-circle</item>
         <item>flick-sumire</item>
