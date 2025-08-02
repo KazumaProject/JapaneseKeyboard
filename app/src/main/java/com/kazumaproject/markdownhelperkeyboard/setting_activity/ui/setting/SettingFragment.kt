@@ -11,7 +11,6 @@ import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
@@ -39,7 +38,6 @@ class SettingFragment : PreferenceFragmentCompat() {
     lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     private var count = 0
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,7 +99,54 @@ class SettingFragment : PreferenceFragmentCompat() {
         )
 
         val sumireInputPreference =
-            findPreference<PreferenceCategory>("sumire_input_preference_category")
+            findPreference<ListPreference>("sumire_keyboard_input_type_preference")
+
+        val originalEntries = sumireInputPreference?.entries
+        val originalEntryValues = sumireInputPreference?.entryValues
+
+        sumireInputPreference?.apply {
+            // 現在の値に基づいてsummaryを初期設定
+            summary = when (value) {
+                "flick-default" -> "フリック入力 - Default"
+                "flick-circle" -> "フリック入力 - Circle"
+                "flick-sumire" -> "スミレ入力"
+                else -> "入力スタイルを選択"
+            }
+
+            // ダイアログが表示される直前のクリックイベントをリッスン
+            setOnPreferenceClickListener { pref ->
+                // ★★★ 変更点：countの値に基づいて表示するリストを切り替える ★★★
+                if (originalEntries != null && originalEntryValues != null) {
+                    if (count >= 5) {
+                        // countが5以上なら、元の完全なリストを復元
+                        entries = originalEntries
+                        entryValues = originalEntryValues
+                    } else {
+                        // countが5未満なら、最後のアイテムを除いたリストを表示
+                        if (originalEntries.isNotEmpty()) {
+                            entries = originalEntries.copyOfRange(0, originalEntries.size - 1)
+                            entryValues =
+                                originalEntryValues.copyOfRange(0, originalEntryValues.size - 1)
+                        }
+                    }
+                }
+                // trueを返して通常のダイアログ表示処理を続行
+                true
+            }
+
+            // 値が変更されたときにsummaryを更新
+            setOnPreferenceChangeListener { preference, newValue ->
+                if (newValue is String) {
+                    preference.summary = when (newValue) {
+                        "flick-default" -> "フリック入力 - Default"
+                        "flick-circle" -> "フリック入力 - Circle"
+                        "flick-sumire" -> "スミレ入力"
+                        else -> preference.summary
+                    }
+                }
+                true
+            }
+        }
 
         val appVersionPreference = findPreference<Preference>("app_version_preference")
         appVersionPreference?.apply {
@@ -112,9 +157,6 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
             setOnPreferenceClickListener {
                 count += 1
-                if (count >= 5) {
-                    sumireInputPreference?.isVisible = true
-                }
                 true
             }
         }
