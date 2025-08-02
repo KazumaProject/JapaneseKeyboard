@@ -68,6 +68,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var currentMode: TenKeyQWERTYMode = TenKeyQWERTYMode.Default
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
 
+    private var showCustomTab: Boolean = true
+
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
@@ -172,6 +174,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    fun updateCustomTabVisibility(visibility: Boolean) {
+        showCustomTab = visibility
+    }
+
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
             return oldItem.string == newItem.string
@@ -223,7 +229,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return if (suggestions.isNotEmpty()) {
             VIEW_TYPE_SUGGESTION
         } else {
-            if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
+            if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty() && showCustomTab) {
                 VIEW_TYPE_CUSTOM_LAYOUT_PICKER
             } else {
                 VIEW_TYPE_EMPTY
