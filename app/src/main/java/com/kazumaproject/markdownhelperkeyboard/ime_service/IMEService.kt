@@ -2337,6 +2337,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 KeyboardType.CUSTOM -> {
                     Timber.d("updateKeyboardLayout CUSTOM: $isFlickOnlyMode $sumireInputKeyType")
                     setInitialKeyboardTab()
+                    setKeyboardTab(0)
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     } else {
@@ -2413,7 +2414,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentCustomKeyboardPosition = pos
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
-                return@launch
+                Timber.d("setKeyboardTab: customLayouts.isEmpty()")
+                customLayouts = keyboardRepository.getLayoutsNotFlow()
             }
             val id = customLayouts[pos].layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
