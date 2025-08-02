@@ -46,6 +46,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
 import androidx.appcompat.view.ContextThemeWrapper
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -105,6 +106,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctRe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
+import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
@@ -230,6 +232,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingDockWindow: PopupWindow? = null
     private lateinit var floatingDockView: FloatingDockView
 
+    private var floatingModeSwitchWindow: PopupWindow? = null
+    private lateinit var floatingModeSwitchView: BubbleTextView
+
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
      */
@@ -338,6 +343,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
     private var isNgWordEnable: Boolean? = false
+    private var deleteKeyHighLight: Boolean? = true
+    private var customKeyboardSuggestionPreference: Boolean? = true
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -362,7 +369,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var currentNightMode: Int = 0
 
-    private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
     private lateinit var inputManager: InputManager
@@ -451,6 +457,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var initialCursorDetectInFloatingCandidateView = false
     private var initialCursorXPosition: Int = 0
 
+    private var physicalKeyboardFloatingXPosition = 200
+    private var physicalKeyboardFloatingYPosition = 150
+
+    private var dismissJob: Job? = null
+
+    private var currentCustomKeyboardPosition = 0
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -524,9 +537,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         resetAllFlags()
-        if (suggestionCache == null) {
-            suggestionCache = mutableMapOf()
-        }
+        physicalKeyboardFloatingXPosition = 200
+        physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
         appPreference.apply {
             keyboardOrder = keyboard_order
@@ -546,6 +558,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             nBest = n_best_preference ?: 4
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             isNgWordEnable = ng_word_preference ?: true
+            deleteKeyHighLight = delete_key_high_light_preference ?: true
+            customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
             userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -588,6 +602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+        suggestionAdapter?.updateCustomTabVisibility(customKeyboardSuggestionPreference ?: true)
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -644,6 +659,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
 
             floatingDockView.setText("あ")
+
+            floatingModeSwitchWindow = PopupWindow(
+                floatingModeSwitchView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            floatingModeSwitchWindow?.isTouchable = false
         }
     }
 
@@ -676,6 +698,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
+        floatingModeSwitchWindow?.dismiss()
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
@@ -684,11 +707,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onDestroy()
         suggestionAdapter?.release()
         suggestionAdapter = null
+        dismissJob = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-        suggestionCache = null
         clearSymbols()
         floatingCandidateWindow = null
         floatingDockWindow = null
+        floatingModeSwitchWindow = null
         keyboardSelectionPopupWindow = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
@@ -717,6 +741,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputKeyType = null
         isTablet = null
         isNgWordEnable = null
+        deleteKeyHighLight = null
+        customKeyboardSuggestionPreference = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
@@ -769,20 +795,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (screenX - 32).coerceAtLeast(0f).toInt()
         }
         val y = screenY.toInt()
+        physicalKeyboardFloatingXPosition = x
+        physicalKeyboardFloatingYPosition = y
         initialCursorXPosition = x
         initialCursorDetectInFloatingCandidateView = true
-        val currentPopupWindow = floatingCandidateWindow!!
-        if (currentPopupWindow.isShowing) {
-            // すでに表示されている場合は位置を更新
-            currentPopupWindow.update(x, y, -1, -1)
-        } else {
-            // 表示されていない場合は指定した位置に表示
-            currentPopupWindow.showAtLocation(
-                window.window?.decorView, // 親ビュー
-                Gravity.NO_GRAVITY,      // スクリーン座標で直接指定
-                x,                       // x座標
-                y                        // y座標
-            )
+        val currentPopupWindow = floatingCandidateWindow
+        currentPopupWindow?.let { currentWindow ->
+            if (currentWindow.isShowing) {
+                currentWindow.update(x, y, -1, -1)
+            } else {
+                // 表示されていない場合は指定した位置に表示
+                currentWindow.showAtLocation(
+                    window.window?.decorView, // 親ビュー
+                    Gravity.NO_GRAVITY,      // スクリーン座標で直接指定
+                    x,                       // x座標
+                    y                        // y座標
+                )
+            }
         }
     }
 
@@ -869,8 +898,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _physicalKeyboardEnable.emit(false)
                     }
                     floatingDockWindow?.dismiss()
+                    floatingModeSwitchWindow?.dismiss()
                 }
             })
+        }
+
+        floatingModeSwitchView = BubbleTextView(ctx).apply {
+            text = "あ"
         }
 
         // Inflate the new layout
@@ -1046,6 +1080,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Timber.d("e.isCtrlPressed Space: $inputMode $showInputModeText")
                                 floatingDockView.setText(showInputModeText)
                                 mainView.keyboardView.setCurrentMode(inputMode)
+
+                                showFloatingModeSwitchView(showInputModeText)
                                 return true
                             }
                             val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
@@ -1377,6 +1413,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                                 floatingDockView.setText("あ")
                                 mainView.keyboardView.setCurrentMode(inputMode)
+
+                                showFloatingModeSwitchView("あ")
                                 return true
                             }
                         }
@@ -1402,6 +1440,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                                 floatingDockView.setText("あ")
                                 mainView.keyboardView.setCurrentMode(inputMode)
+
+                                showFloatingModeSwitchView("あ")
                                 return true
                             }
                         }
@@ -1427,6 +1467,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         return super.onKeyUp(keyCode, event)
+    }
+
+    private fun showFloatingModeSwitchView(showInputModeText: String) {
+        // 以前のdismiss処理がスケジュールされていればキャンセルする
+        dismissJob?.cancel()
+
+        floatingModeSwitchView.text = showInputModeText
+        floatingModeSwitchWindow?.dismiss()
+        val modeSwitchPopupWindow = floatingModeSwitchWindow
+        modeSwitchPopupWindow?.let { switchWindow ->
+            switchWindow.isTouchable = false
+            if (switchWindow.isShowing) {
+                switchWindow.update(
+                    physicalKeyboardFloatingXPosition,
+                    physicalKeyboardFloatingYPosition,
+                    -1,
+                    -1
+                )
+            } else {
+                switchWindow.showAtLocation(
+                    window.window?.decorView,
+                    Gravity.NO_GRAVITY,
+                    physicalKeyboardFloatingXPosition,
+                    physicalKeyboardFloatingYPosition
+                )
+            }
+            // 新しいコルーチンを開始し、そのJobを保存する
+            dismissJob = scope.launch {
+                delay(1500)
+                switchWindow.dismiss()
+            }
+        }
     }
 
     private fun floatingCandidateNextItem(insertString: String) {
@@ -1749,7 +1821,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeyCursorLeft -> {
                 if (!leftCursorKeyLongKeyPressed.get()) {
-                    handleLeftCursor(gestureType, insertString)
+                    if (isHenkan.get()) {
+                        handleDeleteKeyInHenkan(suggestions, insertString)
+                    } else {
+                        handleLeftCursor(gestureType, insertString)
+                    }
                 }
                 onLeftKeyLongPressUp.set(true)
                 leftCursorKeyLongKeyPressed.set(false)
@@ -1759,7 +1835,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeyCursorRight -> {
                 if (!rightCursorKeyLongKeyPressed.get()) {
-                    actionInRightKeyPressed(gestureType, insertString)
+                    if (isHenkan.get()) {
+                        handleJapaneseModeSpaceKey(
+                            mainView, suggestions, insertString
+                        )
+                    } else {
+                        actionInRightKeyPressed(gestureType, insertString)
+                    }
                 }
                 onRightKeyLongPressUp.set(true)
                 rightCursorKeyLongKeyPressed.set(false)
@@ -2241,7 +2323,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 "enter_key" to 0, "dakuten_toggle_key" to 0
                             ),
                             inputType = sumireInputKeyType ?: "flick-default",
-                            isFlick = isFlickOnlyMode
                         )
                         customLayoutDefault.setKeyboard(hiraganaLayout)
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -2254,6 +2335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 KeyboardType.CUSTOM -> {
+                    Timber.d("updateKeyboardLayout CUSTOM: $isFlickOnlyMode $sumireInputKeyType")
                     setInitialKeyboardTab()
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
@@ -2297,7 +2379,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mode = customKeyboardMode,
                     dynamicKeyStates = dynamicStates,
                     inputType = sumireInputKeyType ?: "flick-default",
-                    isFlick = isFlickOnlyMode
                 )
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -2312,6 +2393,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutRomajiMode = false
 
     private fun setInitialKeyboardTab() {
+        Timber.d("setInitialKeyboardTab")
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
                 return@launch
@@ -2320,7 +2402,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val dbLayout = keyboardRepository.getFullLayout(id).first()
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
 
-            Timber.d("setInitialKeyboardTab ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
             isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
@@ -2329,6 +2410,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardTab(pos: Int) {
+        currentCustomKeyboardPosition = pos
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
                 return@launch
@@ -2517,6 +2599,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.MoveCursorLeft -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         cancelLeftLongPress()
                         cancelRightLongPress()
                         handleLeftLongPress()
@@ -2524,13 +2608,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (selectMode.value) {
                             clearDeletedBufferWithoutResetLayout()
                         } else {
-                            clearDeletedBuffer()
+                            if (isHenkan.get()) {
+                                handleDeleteKeyInHenkan(suggestions, insertString)
+                            } else {
+                                clearDeletedBuffer()
+                            }
                         }
                         suggestionAdapter?.setUndoEnabled(false)
                         updateClipboardPreview()
                     }
 
                     KeyAction.MoveCursorRight -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         cancelLeftLongPress()
                         cancelRightLongPress()
                         handleRightLongPress()
@@ -2538,7 +2628,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (selectMode.value) {
                             clearDeletedBufferWithoutResetLayout()
                         } else {
-                            clearDeletedBuffer()
+                            if (isHenkan.get()) {
+                                handleJapaneseModeSpaceKey(
+                                    mainView, suggestions, insertString
+                                )
+                            } else {
+                                clearDeletedBuffer()
+                            }
                         }
                         suggestionAdapter?.setUndoEnabled(false)
                         updateClipboardPreview()
@@ -2559,6 +2655,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
@@ -2600,6 +2698,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
@@ -2679,16 +2779,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ToggleCase -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.ToggleDakuten -> {
-
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
@@ -2762,18 +2864,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.SwitchToNextIme -> {}
-                    KeyAction.ToggleCase -> {}
+                    KeyAction.ToggleCase -> {
+                        dakutenSmallActionForSumire()
+                    }
+
                     KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
-            override fun onAction(action: KeyAction) {
+            override fun onAction(action: KeyAction, view: View) {
                 vibrate()
 
                 Timber.d("onAction: $action")
@@ -2891,8 +2998,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCursorLeft -> {
                         val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         if (!leftCursorKeyLongKeyPressed.get()) {
-                            handleLeftCursor(GestureType.Tap, insertString)
+                            if (isHenkan.get()) {
+                                handleDeleteKeyInHenkan(suggestions, insertString)
+                            } else {
+                                handleLeftCursor(GestureType.Tap, insertString)
+                            }
                         }
                         cancelRightLongPress()
                         cancelLeftLongPress()
@@ -2900,8 +3012,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCursorRight -> {
                         val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         if (!rightCursorKeyLongKeyPressed.get()) {
-                            actionInRightKeyPressed(GestureType.Tap, insertString)
+                            if (isHenkan.get()) {
+                                handleJapaneseModeSpaceKey(
+                                    mainView, suggestions, insertString
+                                )
+                            } else {
+                                actionInRightKeyPressed(GestureType.Tap, insertString)
+                            }
                         }
                         cancelRightLongPress()
                         cancelLeftLongPress()
@@ -2929,13 +3048,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
-                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.ShowEmojiKeyboard -> {
+                        _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                        stringInTail.set("")
+                        finishComposingText()
+                        setComposingText("", 0)
+                    }
+
                     KeyAction.ToggleCase -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.SwitchToEnglishLayout -> {
@@ -2957,6 +3082,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateKeyboardLayout()
                         val inputMode = InputMode.ModeNumber
                         mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
+                    KeyAction.ShiftKey -> {
+                        isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
+                        if (view is AppCompatImageButton) {
+                            view.setImageDrawable(
+                                ContextCompat.getDrawable(
+                                    this@IMEService,
+                                    if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_24px else com.kazumaproject.core.R.drawable.shift_fill_24px
+                                )
+                            )
+                        }
+                    }
+
+                    KeyAction.MoveCustomKeyboardTab -> {
+                        scope.launch {
+                            val customKeyboardLayouts = keyboardRepository.getLayoutsNotFlow()
+                            if (customKeyboardLayouts.isNotEmpty()) {
+                                val position =
+                                    (currentCustomKeyboardPosition + 1) % customKeyboardLayouts.size
+                                setKeyboardTab(position)
+                            }
+                        }
                     }
                 }
             }
@@ -3247,28 +3395,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-
-    private fun dakutenSmallActionForSumire(mainView: MainLayoutBinding) {
+    private fun dakutenSmallActionForSumire() {
         val insertString = inputString.value
         val sb = StringBuilder()
-        mainView.keyboardView.let {
-            when (it.currentInputMode.value) {
-                InputMode.ModeJapanese -> {
-                    dakutenSmallLetter(
-                        sb, insertString, GestureType.Tap
-                    )
-                }
-
-                InputMode.ModeEnglish -> {
-                    smallConversionEnglish(sb, insertString)
-                }
-
-                InputMode.ModeNumber -> {
-
-                }
+        if (insertString.isNotEmpty()) {
+            if (insertString.last().isLatinAlphabet()) {
+                smallConversionEnglish(sb, insertString)
+            } else if (insertString.last().isHiragana()) {
+                dakutenSmallLetter(
+                    sb, insertString, GestureType.Tap
+                )
             }
         }
     }
+
 
     private fun smallConversionEnglish(
         sb: StringBuilder, insertString: String,
@@ -3789,15 +3929,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
-                suggestionAdapter?.setPhysicalKeyboardActive(isPhysicalKeyboardEnable)
+                //suggestionAdapter?.setPhysicalKeyboardActive(isPhysicalKeyboardEnable)
                 if (isPhysicalKeyboardEnable) {
-                    suggestionAdapter?.setPhysicalInputModeText(
-                        text = when (mainView.keyboardView.currentInputMode.value) {
-                            InputMode.ModeJapanese -> "あ"
-                            InputMode.ModeEnglish -> "A"
-                            InputMode.ModeNumber -> "A"
-                        }
-                    )
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                         params.width = ViewGroup.LayoutParams.MATCH_PARENT
                         params.height = getScreenHeight(this@IMEService)
@@ -4360,13 +4493,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnPhysicalKeyboardListener {
                 mainView.apply {
                     if (keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || tabletView.isVisible) {
-                        suggestionAdapter?.setPhysicalInputModeText(
-                            text = when (mainView.keyboardView.currentInputMode.value) {
-                                InputMode.ModeJapanese -> "あ"
-                                InputMode.ModeEnglish -> "A"
-                                InputMode.ModeNumber -> "A"
-                            }
-                        )
                         hideAllKeyboards()
                         val heightPx = dpToPx(40f)
                         val widthPx = ViewGroup.LayoutParams.MATCH_PARENT
@@ -4382,7 +4508,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (keyboardOrder.isEmpty()) return@apply
                         showKeyboard(keyboardOrder[0])
                         setKeyboardSize()
-                        suggestionAdapter?.setPhysicalInputModeText("")
                     }
                 }
             }
@@ -5029,6 +5154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
+        currentCustomKeyboardPosition = 0
         isHenkan.set(false)
         isContinuousTapInputEnabled.set(false)
         leftCursorKeyLongKeyPressed.set(false)
@@ -5635,7 +5761,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when {
             insertString.isNotEmpty() -> {
                 if (isHenkan.get()) {
-                    handleDeleteKeyInHenkan(suggestions, insertString)
+                    if (deleteKeyHighLight == true) {
+                        handleDeleteKeyInHenkan(suggestions, insertString)
+                    } else {
+                        cancelHenkanByLongPressDeleteKey()
+                        hasConvertedKatakana = isLiveConversionEnable == true
+                    }
                 } else {
                     deleteStringCommon(insertString)
                     resetFlagsDeleteKey()
@@ -5978,8 +6109,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             lastFlickConvertedNextHiragana.set(true)
             isContinuousTapInputEnabled.set(true)
             asyncRightLongPress()
-        } else {
-            sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
         }
     }
 
@@ -6818,6 +6947,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
             floatingDockWindow?.dismiss()
+            floatingModeSwitchWindow?.dismiss()
             floatingCandidateWindow?.dismiss()
             scope.launch {
                 delay(32)
@@ -6827,6 +6957,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("No physical keyboard is connected.")
             floatingDockWindow?.dismiss()
             floatingCandidateWindow?.dismiss()
+            floatingModeSwitchWindow?.dismiss()
             scope.launch {
                 _physicalKeyboardEnable.emit(false)
             }

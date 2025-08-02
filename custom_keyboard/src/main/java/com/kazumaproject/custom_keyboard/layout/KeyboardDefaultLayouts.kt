@@ -19,39 +19,42 @@ object KeyboardDefaultLayouts {
         mode: KeyboardInputMode,
         dynamicKeyStates: Map<String, Int>,
         inputType: String,
-        isFlick: Boolean?
     ): KeyboardLayout {
         val baseLayout = when (inputType) {
-            "flick-default" -> {
+            "toggle-default" -> {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
-                        if (isFlick == true) {
-                            createFlickKanaLayout(isDefaultKey = true)
-                        } else {
-                            createHiraganaStandardFlickLayout(isDefaultKey = true)
-                        }
+                        createHiraganaStandardFlickLayout(isDefaultKey = true)
                     }
 
                     KeyboardInputMode.ENGLISH -> {
-                        if (isFlick == true) {
-                            createFlickEnglishLayout(
-                                isDefaultKey = true,
-                                isUpperCase = false
-                            )
-                        } else {
-                            createEnglishStandardFlickLayout(
-                                isUpperCase = false,
-                                isDefaultKey = true
-                            )
-                        }
+                        createEnglishStandardFlickLayout(
+                            isUpperCase = false,
+                            isDefaultKey = true
+                        )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        if (isFlick == true) {
-                            createFlickNumberLayout(isDefaultKey = true)
-                        } else {
-                            createSymbolStandardFlickLayout(isDefaultKey = true)
-                        }
+                        createSymbolStandardFlickLayout(isDefaultKey = true)
+                    }
+                }
+            }
+
+            "flick-default" -> {
+                when (mode) {
+                    KeyboardInputMode.HIRAGANA -> {
+                        createFlickKanaLayout(isDefaultKey = true)
+                    }
+
+                    KeyboardInputMode.ENGLISH -> {
+                        createFlickEnglishLayout(
+                            isDefaultKey = true,
+                            isUpperCase = false
+                        )
+                    }
+
+                    KeyboardInputMode.SYMBOLS -> {
+                        createFlickNumberLayout(isDefaultKey = true)
                     }
                 }
             }

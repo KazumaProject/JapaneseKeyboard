@@ -7,7 +7,6 @@ import android.text.style.RelativeSizeSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageButton
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -40,7 +39,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         private const val VIEW_TYPE_EMPTY = 0
         private const val VIEW_TYPE_SUGGESTION = 1
         private const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
-        private const val VIEW_TYPE_PHYSICAL_KEYBOARD = 3
     }
 
     enum class HelperIcon {
@@ -70,9 +68,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var currentMode: TenKeyQWERTYMode = TenKeyQWERTYMode.Default
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
 
-    private var physicalInputModeText: String = ""
-
-    private var isPhysicalKeyboardActive: Boolean = false
+    private var showCustomTab: Boolean = true
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
@@ -96,22 +92,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.onCustomLayoutItemClickListener = listener
     }
 
-    fun setPhysicalKeyboardActive(isActive: Boolean) {
-        isPhysicalKeyboardActive = isActive
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
-    }
-
     fun setOnPhysicalKeyboardListener(listener: () -> Unit) {
         this.onShowSoftKeyboardClick = listener
-    }
-
-    fun setPhysicalInputModeText(text: String) {
-        physicalInputModeText = text
-        if (suggestions.isEmpty() && isPhysicalKeyboardActive) {
-            notifyItemChanged(0)
-        }
     }
 
     fun release() {
@@ -192,6 +174,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    fun updateCustomTabVisibility(visibility: Boolean) {
+        showCustomTab = visibility
+    }
+
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
         override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
             return oldItem.string == newItem.string
@@ -239,19 +225,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val nameTextView: MaterialTextView = itemView.findViewById(R.id.custom_layout_name)
     }
 
-    inner class PhysicalKeyboardViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val messageTextView: MaterialTextView =
-            itemView.findViewById(R.id.physical_keyboard_input_mode_text)
-        val showSoftKeyboardButton: ImageButton = itemView.findViewById(R.id.show_soft_keyboard_btn)
-    }
-
     override fun getItemViewType(position: Int): Int {
         return if (suggestions.isNotEmpty()) {
             VIEW_TYPE_SUGGESTION
         } else {
-            if (isPhysicalKeyboardActive) {
-                VIEW_TYPE_PHYSICAL_KEYBOARD
-            } else if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
+            if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty() && showCustomTab) {
                 VIEW_TYPE_CUSTOM_LAYOUT_PICKER
             } else {
                 VIEW_TYPE_EMPTY
@@ -278,12 +256,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 val emptyView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.suggestion_empty_layout, parent, false)
                 EmptyViewHolder(emptyView)
-            }
-
-            VIEW_TYPE_PHYSICAL_KEYBOARD -> {
-                val physicalView = LayoutInflater.from(parent.context)
-                    .inflate(R.layout.suggestion_physical_keyboard_layout, parent, false)
-                PhysicalKeyboardViewHolder(physicalView)
             }
 
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> {
@@ -315,16 +287,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> onBindCustomLayoutViewHolder(
                 holder as CustomLayoutViewHolder, position
             )
-
-            VIEW_TYPE_PHYSICAL_KEYBOARD -> onBindPhysicalKeyboardViewHolder(holder as PhysicalKeyboardViewHolder)
-        }
-    }
-
-    private fun onBindPhysicalKeyboardViewHolder(holder: PhysicalKeyboardViewHolder) {
-        holder.messageTextView.text = physicalInputModeText
-        holder.messageTextView.isVisible = physicalInputModeText.isNotEmpty()
-        holder.showSoftKeyboardButton.setOnClickListener {
-            onShowSoftKeyboardClick?.invoke()
         }
     }
 
