@@ -42,7 +42,11 @@ object AppPreference {
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val SUMIRE_INPUT_SELECTION_PREFERENCE =
-        Pair("sumire_keyboard_input_type_preference", "flick-default")
+        Pair("sumire_keyboard_input_type_preference", "toggle-default")
+
+    private val DELETE_KEY_HIGH_LIGHT = Pair("henkan_delete_key_action_preference", true)
+    private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
+        Pair("custom_keyboard_suggestion_preference", true)
 
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(
@@ -276,12 +280,24 @@ object AppPreference {
             it.putBoolean(LIVE_CONVERSION_ENABLE.first, value ?: false)
         }
 
+    var delete_key_high_light_preference: Boolean?
+        get() = preferences.getBoolean(DELETE_KEY_HIGH_LIGHT.first, DELETE_KEY_HIGH_LIGHT.second)
+        set(value) = preferences.edit {
+            it.putBoolean(DELETE_KEY_HIGH_LIGHT.first, value ?: true)
+        }
+
+    var custom_keyboard_suggestion_preference: Boolean?
+        get() = preferences.getBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.second)
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
+        }
+
     var sumire_input_selection_preference: String?
         get() = preferences.getString(
             SUMIRE_INPUT_SELECTION_PREFERENCE.first,
             SUMIRE_INPUT_SELECTION_PREFERENCE.second
         )
         set(value) = preferences.edit {
-            it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "flick-default")
+            it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "toggle-default")
         }
 }

@@ -12,13 +12,22 @@ object KeyActionMapper {
         DisplayAction(KeyAction.Delete, "削除", com.kazumaproject.core.R.drawable.backspace_24px),
         DisplayAction(
             KeyAction.Space,
-            "空白/変換",
+            "空白",
             com.kazumaproject.core.R.drawable.baseline_space_bar_24
+        ),
+        DisplayAction(
+            KeyAction.Convert,
+            "変換",
+            com.kazumaproject.core.R.drawable.henkan
         ),
         DisplayAction(
             KeyAction.Enter,
             "エンター",
             com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+        ),
+        DisplayAction(
+            KeyAction.NewLine,
+            "改行",
         ),
         DisplayAction(
             KeyAction.Paste,
@@ -36,9 +45,29 @@ object KeyActionMapper {
             com.kazumaproject.core.R.drawable.language_24dp
         ),
         DisplayAction(
+            KeyAction.ShowEmojiKeyboard,
+            "絵文字キーボード",
+            com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
+        ),
+        DisplayAction(
             KeyAction.ToggleDakuten,
             "濁点、小文字",
             com.kazumaproject.core.R.drawable.kana_small
+        ),
+        DisplayAction(
+            KeyAction.ToggleCase,
+            "英語、小文字",
+            com.kazumaproject.core.R.drawable.english_small
+        ),
+        DisplayAction(
+            KeyAction.ShiftKey,
+            "ローマ字、英語切り替え",
+            com.kazumaproject.core.R.drawable.shift_24px
+        ),
+        DisplayAction(
+            KeyAction.MoveCustomKeyboardTab,
+            "タブの変更",
+            com.kazumaproject.core.R.drawable.keyboard_command_key_24px
         ),
         // --- アイコンがないアクション ---
         DisplayAction(
@@ -78,8 +107,14 @@ object KeyActionMapper {
             is KeyAction.Paste -> "Paste"
             is KeyAction.Copy -> "Copy"
             is KeyAction.ChangeInputMode -> "ChangeInputMode"
-            is KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard"
+            is KeyAction.ShowEmojiKeyboard -> "^_^"
             is KeyAction.SwitchToNextIme -> "SwitchToNextIme"
+            is KeyAction.ToggleDakuten -> "小゛゜"
+            is KeyAction.ToggleCase -> "a/A"
+            is KeyAction.SwitchToKanaLayout -> "SwitchToKana"
+            is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
+            is KeyAction.ShiftKey -> "ShiftKeyPressed"
+            is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
             else -> null
         }
     }
@@ -102,8 +137,14 @@ object KeyActionMapper {
             "Paste" -> KeyAction.Paste
             "Copy" -> KeyAction.Copy
             "ChangeInputMode" -> KeyAction.ChangeInputMode
-            "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
+            "^_^" -> KeyAction.ShowEmojiKeyboard
             "SwitchToNextIme" -> KeyAction.SwitchToNextIme
+            "小゛゜" -> KeyAction.ToggleDakuten
+            "a/A" -> KeyAction.ToggleCase
+            "SwitchToKana" -> KeyAction.SwitchToKanaLayout
+            "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
+            "ShiftKeyPressed" -> KeyAction.ShiftKey
+            "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
             else -> null
         }
     }
