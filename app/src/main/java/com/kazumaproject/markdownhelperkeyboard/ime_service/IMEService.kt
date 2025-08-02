@@ -46,6 +46,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
 import androidx.appcompat.view.ContextThemeWrapper
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -2650,6 +2651,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
                 }
             }
 
@@ -2691,6 +2693,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
                 }
             }
 
@@ -2770,16 +2773,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ToggleCase -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
                 }
             }
 
@@ -2854,20 +2858,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ShiftKey -> {}
                 }
             }
 
-            override fun onAction(action: KeyAction) {
+            override fun onAction(action: KeyAction, view: View) {
                 vibrate()
 
                 Timber.d("onAction: $action")
@@ -3037,11 +3042,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.ToggleCase -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.ToggleDakuten -> {
-                        dakutenSmallActionForSumire(mainView)
+                        dakutenSmallActionForSumire()
                     }
 
                     KeyAction.SwitchToEnglishLayout -> {
@@ -3063,6 +3068,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateKeyboardLayout()
                         val inputMode = InputMode.ModeNumber
                         mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
+                    KeyAction.ShiftKey -> {
+                        isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
+                        if (view is AppCompatImageButton) {
+                            view.setImageDrawable(
+                                ContextCompat.getDrawable(
+                                    this@IMEService,
+                                    if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_24px else com.kazumaproject.core.R.drawable.shift_fill_24px
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -3353,28 +3370,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-
-    private fun dakutenSmallActionForSumire(mainView: MainLayoutBinding) {
+    private fun dakutenSmallActionForSumire() {
         val insertString = inputString.value
         val sb = StringBuilder()
-        mainView.keyboardView.let {
-            when (it.currentInputMode.value) {
-                InputMode.ModeJapanese -> {
-                    dakutenSmallLetter(
-                        sb, insertString, GestureType.Tap
-                    )
-                }
-
-                InputMode.ModeEnglish -> {
-                    smallConversionEnglish(sb, insertString)
-                }
-
-                InputMode.ModeNumber -> {
-
-                }
+        if (insertString.isNotEmpty()) {
+            if (insertString.last().isLatinAlphabet()) {
+                smallConversionEnglish(sb, insertString)
+            } else if (insertString.last().isHiragana()) {
+                dakutenSmallLetter(
+                    sb, insertString, GestureType.Tap
+                )
             }
         }
     }
+
 
     private fun smallConversionEnglish(
         sb: StringBuilder, insertString: String,

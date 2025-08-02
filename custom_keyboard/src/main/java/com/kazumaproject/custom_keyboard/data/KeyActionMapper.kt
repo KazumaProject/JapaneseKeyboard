@@ -55,14 +55,9 @@ object KeyActionMapper {
             com.kazumaproject.core.R.drawable.english_small
         ),
         DisplayAction(
-            KeyAction.SwitchToKanaLayout,
-            "日本語モード切り替え",
-            com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
-        ),
-        DisplayAction(
-            KeyAction.SwitchToEnglishLayout,
-            "英語モード切り替え",
-            com.kazumaproject.core.R.drawable.input_mode_english_custom
+            KeyAction.ShiftKey,
+            "シフトキー",
+            com.kazumaproject.core.R.drawable.shift_24px
         ),
         // --- アイコンがないアクション ---
         DisplayAction(
@@ -108,6 +103,7 @@ object KeyActionMapper {
             is KeyAction.ToggleCase -> "a/A"
             is KeyAction.SwitchToKanaLayout -> "SwitchToKana"
             is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
+            is KeyAction.ShiftKey -> "ShiftKeyPressed"
             else -> null
         }
     }
@@ -136,6 +132,7 @@ object KeyActionMapper {
             "a/A" -> KeyAction.ToggleCase
             "SwitchToKana" -> KeyAction.SwitchToKanaLayout
             "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
+            "ShiftKeyPressed" -> KeyAction.ShiftKey
             else -> null
         }
     }

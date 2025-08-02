@@ -42,7 +42,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     interface OnKeyboardActionListener {
         fun onKey(text: String, isFlick: Boolean)
-        fun onAction(action: KeyAction)
+        fun onAction(action: KeyAction, view: View)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
         fun onFlickDirectionChanged(direction: FlickDirection)
@@ -179,7 +179,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 width = 0
                 height = 0
                 elevation = 2f
-                if (keyData.keyType == KeyType.STANDARD_FLICK){
+                if (keyData.keyType == KeyType.STANDARD_FLICK) {
                     setMargins(6, 9, 6, 9)
                 }
             }
@@ -266,7 +266,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         )
 
                                         is FlickAction.Action -> this@FlickKeyboardView.listener?.onAction(
-                                            flickAction.action
+                                            flickAction.action, view = keyView
                                         )
                                     }
                                 }
@@ -413,7 +413,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         var isLongPressTriggered = false
                         keyView.setOnClickListener {
                             this@FlickKeyboardView.listener?.onAction(
-                                action
+                                action, view = keyView
                             )
                         }
                         keyView.setOnLongClickListener {
