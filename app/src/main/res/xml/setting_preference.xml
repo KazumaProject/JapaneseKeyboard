@@ -67,6 +67,13 @@
             app:seekBarIncrement="10"
             app:showSeekBarValue="true" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="henkan_delete_key_action_preference"
+            android:summaryOff="削除キータップ：ハイライト解除"
+            android:summaryOn="削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す"
+            android:title="候補ハイライト時の削除キー動作" />
+
         <PreferenceCategory android:title="ローマ字変換">
             <Preference
                 android:icon="@drawable/outline_border_color_24"
@@ -93,6 +100,13 @@
                 android:title="２文字以上の出力を自動で確定"
                 app:summaryOff="カスタムキーで2文字以上を出力しても、自動で確定しません。"
                 app:summaryOn="カスタムキーで2文字以上を出力したとき、自動で確定します。" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="custom_keyboard_suggestion_preference"
+                android:summaryOff="文字を入力していないときは、標準の表示（クリップボードなど）のままにします。"
+                android:summaryOn="文字を入力していないときは、カスタムタブの一覧を表示します。"
+                android:title="未入力時の表示" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="@string/clipboard_history_title">

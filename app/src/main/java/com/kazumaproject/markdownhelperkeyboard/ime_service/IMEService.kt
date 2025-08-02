@@ -343,6 +343,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
     private var isNgWordEnable: Boolean? = false
+    private var deleteKeyHighLight: Boolean? = true
+    private var customKeyboardSuggestionPreference: Boolean? = true
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -367,7 +369,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var currentNightMode: Int = 0
 
-    private var suggestionCache: MutableMap<String, List<Candidate>>? = null
     private lateinit var lifecycleRegistry: LifecycleRegistry
 
     private lateinit var inputManager: InputManager
@@ -461,6 +462,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var dismissJob: Job? = null
 
+    private var currentCustomKeyboardPosition = 0
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -534,9 +537,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         resetAllFlags()
-        if (suggestionCache == null) {
-            suggestionCache = mutableMapOf()
-        }
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
@@ -558,6 +558,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             nBest = n_best_preference ?: 4
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             isNgWordEnable = ng_word_preference ?: true
+            deleteKeyHighLight = delete_key_high_light_preference ?: true
+            customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
             userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -600,6 +602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+        suggestionAdapter?.updateCustomTabVisibility(customKeyboardSuggestionPreference ?: true)
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -706,7 +709,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter = null
         dismissJob = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
-        suggestionCache = null
         clearSymbols()
         floatingCandidateWindow = null
         floatingDockWindow = null
@@ -739,6 +741,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputKeyType = null
         isTablet = null
         isNgWordEnable = null
+        deleteKeyHighLight = null
+        customKeyboardSuggestionPreference = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
@@ -2319,7 +2323,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 "enter_key" to 0, "dakuten_toggle_key" to 0
                             ),
                             inputType = sumireInputKeyType ?: "flick-default",
-                            isFlick = isFlickOnlyMode
                         )
                         customLayoutDefault.setKeyboard(hiraganaLayout)
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -2332,6 +2335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 KeyboardType.CUSTOM -> {
+                    Timber.d("updateKeyboardLayout CUSTOM: $isFlickOnlyMode $sumireInputKeyType")
                     setInitialKeyboardTab()
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
@@ -2375,7 +2379,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mode = customKeyboardMode,
                     dynamicKeyStates = dynamicStates,
                     inputType = sumireInputKeyType ?: "flick-default",
-                    isFlick = isFlickOnlyMode
                 )
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -2390,6 +2393,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutRomajiMode = false
 
     private fun setInitialKeyboardTab() {
+        Timber.d("setInitialKeyboardTab")
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
                 return@launch
@@ -2398,7 +2402,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val dbLayout = keyboardRepository.getFullLayout(id).first()
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
 
-            Timber.d("setInitialKeyboardTab ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
             isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
@@ -2407,6 +2410,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardTab(pos: Int) {
+        currentCustomKeyboardPosition = pos
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
                 return@launch
@@ -2652,6 +2656,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
@@ -2694,6 +2699,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
@@ -2784,6 +2790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
@@ -2869,6 +2876,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {}
                 }
             }
 
@@ -3040,7 +3048,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
-                    KeyAction.ShowEmojiKeyboard -> {}
+                    KeyAction.ShowEmojiKeyboard -> {
+                        _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                        stringInTail.set("")
+                        finishComposingText()
+                        setComposingText("", 0)
+                    }
+
                     KeyAction.ToggleCase -> {
                         dakutenSmallActionForSumire()
                     }
@@ -3079,6 +3093,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_24px else com.kazumaproject.core.R.drawable.shift_fill_24px
                                 )
                             )
+                        }
+                    }
+
+                    KeyAction.MoveCustomKeyboardTab -> {
+                        scope.launch {
+                            val customKeyboardLayouts = keyboardRepository.getLayoutsNotFlow()
+                            if (customKeyboardLayouts.isNotEmpty()) {
+                                val position =
+                                    (currentCustomKeyboardPosition + 1) % customKeyboardLayouts.size
+                                setKeyboardTab(position)
+                            }
                         }
                     }
                 }
@@ -5129,6 +5154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
+        currentCustomKeyboardPosition = 0
         isHenkan.set(false)
         isContinuousTapInputEnabled.set(false)
         leftCursorKeyLongKeyPressed.set(false)
@@ -5735,7 +5761,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when {
             insertString.isNotEmpty() -> {
                 if (isHenkan.get()) {
-                    handleDeleteKeyInHenkan(suggestions, insertString)
+                    if (deleteKeyHighLight == true) {
+                        handleDeleteKeyInHenkan(suggestions, insertString)
+                    } else {
+                        cancelHenkanByLongPressDeleteKey()
+                        hasConvertedKatakana = isLiveConversionEnable == true
+                    }
                 } else {
                     deleteStringCommon(insertString)
                     resetFlagsDeleteKey()
