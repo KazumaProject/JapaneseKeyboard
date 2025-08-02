@@ -44,6 +44,8 @@ sealed class KeyAction {
     data object SwitchToKanaLayout : KeyAction()
     data object SwitchToEnglishLayout : KeyAction()
     data object SwitchToNumberLayout : KeyAction()
+    data object ShiftKey : KeyAction()
+    data object MoveCustomKeyboardTab: KeyAction()
 
     // ひらがな・英語用
     data object ToggleDakuten : KeyAction() // 濁点・半濁点・小文字化
