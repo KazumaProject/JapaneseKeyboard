@@ -328,6 +328,10 @@ class SettingFragment : PreferenceFragmentCompat() {
 
         sumireKeyboardInputModePreference?.apply {
             when (value) {
+                "toggle-default" -> {
+                    summary = "トグル入力 - Default"
+                }
+
                 "flick-default" -> {
                     summary = "フリック入力 - Default"
                 }
@@ -343,6 +347,10 @@ class SettingFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { preference, newValue ->
                 if (newValue is String) {
                     when (newValue) {
+                        "toggle-default" -> {
+                            preference.summary = "トグル入力 - Default"
+                        }
+
                         "flick-default" -> {
                             preference.summary = "フリック入力 - Default"
                         }
