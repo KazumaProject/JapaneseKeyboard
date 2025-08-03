@@ -190,6 +190,11 @@ class RomajiMapRepository @Inject constructor(
             "ze" to Pair("ぜ", 2),
             "zo" to Pair("ぞ", 2),
 
+            "jya" to Pair("じゃ", 3),
+            "jyi" to Pair("じぃ", 3),
+            "jyu" to Pair("じゅ", 3),
+            "jye" to Pair("じぇ", 3),
+            "jyo" to Pair("じょ", 3),
             "ja" to Pair("じゃ", 2),
             "ji" to Pair("じ", 2),
             "ju" to Pair("じゅ", 2),
