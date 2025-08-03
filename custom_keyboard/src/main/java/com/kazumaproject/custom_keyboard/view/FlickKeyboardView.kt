@@ -35,6 +35,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.pow
 import kotlin.math.sqrt
+import com.kazumaproject.custom_keyboard.view.FlickDirection as TfbiFlickDirection
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -431,6 +432,60 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
                     }
                 }
+
+                KeyType.TWO_STEP_FLICK -> {
+                    // 1. TfbiButton をインスタンス化し、既存のキーとスタイルを合わせる
+                    val tfbiButton = TfbiButton(context).apply {
+                        text = keyData.label // ボタン自体のテキスト（主にデバッグ用）
+                        isFocusable = false
+
+                        // 他のキーと同様の背景を設定
+                        val originalBg = ContextCompat.getDrawable(
+                            context,
+                            if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material
+                            else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                        )
+                        val insetBg = android.graphics.drawable.InsetDrawable(
+                            originalBg, leftInset, topInset, rightInset, bottomInset
+                        )
+                        background = insetBg
+                    }
+
+                    // 2. レイアウトパラメータを設定
+                    tfbiButton.layoutParams = params
+
+                    // 3. KeyboardLayoutから2段階フリック用の文字マップを取得
+                    val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
+
+                    if (twoStepMap != null) {
+                        // 4. TfbiButtonにリスナーと文字プロバイダーを設定
+                        tfbiButton.setOnTwoStepFlickListener(
+                            listener = object : TfbiButton.OnTwoStepFlickListener {
+                                override fun onFlick(
+                                    first: TfbiFlickDirection,
+                                    second: TfbiFlickDirection
+                                ) {
+                                    // マップから対応する文字を取得
+                                    val character = twoStepMap[first]?.get(second) ?: ""
+                                    if (character.isNotEmpty()) {
+                                        // FlickKeyboardView のリスナーを呼び出して文字入力を通知
+                                        this@FlickKeyboardView.listener?.onKey(
+                                            text = character,
+                                            isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
+                                        )
+                                    }
+                                }
+                            },
+                            provider = { first, second ->
+                                // ポップアップ表示やフリック方向判定のために文字を返す
+                                twoStepMap[first]?.get(second) ?: ""
+                            }
+                        )
+                    }
+                    // 5. 作成したボタンをGridLayoutに追加
+                    this.addView(tfbiButton)
+                }
+
             }
             this.addView(keyView)
         }
