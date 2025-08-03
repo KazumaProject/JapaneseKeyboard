@@ -1041,21 +1041,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     event?.let { e ->
                         Timber.d("onKeyDown: ${e.keyCode} $keyCode $e")
                         if (e.isShiftPressed || e.isCapsLockOn) {
-                            val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
-                            char?.let { c ->
-                                if (insertString.isNotEmpty()) {
-                                    sb.append(
-                                        insertString
-                                    ).append(c)
-                                    _inputString.update {
-                                        sb.toString()
+                            if (insertString.isNotEmpty()) {
+                                val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+                                char?.let { c ->
+                                    if (insertString.isNotEmpty()) {
+                                        sb.append(
+                                            insertString
+                                        ).append(c)
+                                        _inputString.update {
+                                            sb.toString()
+                                        }
+                                    } else {
+                                        _inputString.update {
+                                            c.toString()
+                                        }
                                     }
-                                } else {
-                                    _inputString.update {
-                                        c.toString()
-                                    }
+                                    return true
                                 }
-                                return true
                             }
                             return super.onKeyDown(keyCode, event)
                         } else if (e.isCtrlPressed) {
@@ -1082,42 +1084,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 mainView.keyboardView.setCurrentMode(inputMode)
 
                                 showFloatingModeSwitchView(showInputModeText)
+                                finishComposingText()
+                                _inputString.update { "" }
                                 return true
                             }
-                            val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
-                            char?.let { c ->
-                                Timber.d("isCtrlPressed: $c")
-                                when (c) {
-                                    'A' -> {
-                                        selectAllText()
-                                        return true
-                                    }
-
-                                    'C' -> {
-                                        copyAction()
-                                        return true
-                                    }
-
-                                    'V' -> {
-                                        pasteAction()
-                                        return true
-                                    }
-
-                                    'X' -> {
-                                        cutAction()
-                                        return true
-                                    }
-
-                                    'W' -> {
-                                        showOrHideKeyboard()
-                                        return true
-                                    }
-
-                                    else -> {
-
-                                    }
-                                }
-                            }
+                            if (insertString.isNotEmpty()) return true
+                            return super.onKeyDown(keyCode, event)
                         }
                     }
 
