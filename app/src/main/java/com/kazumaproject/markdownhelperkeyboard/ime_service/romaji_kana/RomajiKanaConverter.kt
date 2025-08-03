@@ -12,6 +12,105 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
         romajiToKana.keys.flatMap { key -> (1..key.length).map { key.substring(0, it) } }.toSet()
 
     /**
+     * かなからローマ字への逆引きマップ。
+     * 初期化時に一度だけ生成されるように `lazy` を使用します。
+     * 例: { "あ" -> "a", "し" -> "shi" }
+     */
+    private val kanaToRomaji: Map<String, String> by lazy {
+        romajiToKana.entries
+            // 促音(っ)のマッピングは文脈に依存するため、逆引きマップからは除外する
+            .filterNot { it.value.first == "っ" }
+            .groupBy(
+                keySelector = { it.value.first }, // keyは "か" などの「かな」
+                valueTransform = { it.key }       // valueは "ka" などの「ローマ字」
+            )
+            .mapValues { (_, romajiList) ->
+                // 同じかなに複数のローマ字が割り当てられている場合 (例: し -> shi, si)、
+                // 最も短いものを代表として選択する。
+                romajiList.minByOrNull { it.length } ?: ""
+            }
+    }
+
+    /**
+     * ひらがな（またはカタカナ）の文字列をローマ字に変換します。
+     *
+     * @param kanaText ひらがな、カタカナ、記号などを含む変換対象の文字列。
+     * @return 変換後のローマ字文字列。
+     *
+     * 機能:
+     * - 「がっこう」 -> "gakkou" (促音 'っ' の処理)
+     * - 「ラーメン」 -> "raamen" (長音 'ー' の処理)
+     * - 「こんにちは」 -> "konnichiha" (基本的なかな変換)
+     * - 変換テーブルにない文字（漢字など）はそのまま出力します。
+     */
+    fun hiraganaToRomaji(kanaText: String): String {
+        val result = StringBuilder()
+        var i = 0
+        // 変換マップのかなの最大長を取得（例：「きゃ」は2文字）
+        val maxKanaLength = kanaToRomaji.keys.maxOfOrNull { it.length } ?: 1
+
+        while (i < kanaText.length) {
+            val char = kanaText[i]
+
+            // 1. 促音 'っ' (ひらがな) または 'ッ' (カタカナ) の処理
+            if (char == 'っ' || char == 'ッ') {
+                if (i + 1 < kanaText.length) {
+                    var nextRomaji: String? = null
+                    // 次に来る文字（群）に一致するローマ字を探す（最長一致）
+                    for (len in maxKanaLength downTo 1) {
+                        if (i + 1 + len > kanaText.length) continue
+                        val nextKana = kanaText.substring(i + 1, i + 1 + len)
+                        if (kanaToRomaji.containsKey(nextKana)) {
+                            nextRomaji = kanaToRomaji[nextKana]
+                            break
+                        }
+                    }
+
+                    if (nextRomaji != null && nextRomaji.isNotEmpty()) {
+                        // 次のかなのローマ字表記の最初の子音を追加して、'っ'をスキップ
+                        result.append(nextRomaji[0])
+                        i++
+                        continue
+                    }
+                }
+            }
+
+            // 2. 長音 'ー' の処理
+            if (char == 'ー') {
+                if (result.isNotEmpty()) {
+                    val lastCharInResult = result.last().lowercaseChar()
+                    // 直前の文字が母音なら、その母音を繰り返す
+                    if (lastCharInResult in "aiueo") {
+                        result.append(lastCharInResult)
+                        i++
+                        continue
+                    }
+                }
+            }
+
+            // 3. 通常のかな・記号の変換（最長一致）
+            var matched = false
+            for (len in maxKanaLength downTo 1) {
+                if (i + len > kanaText.length) continue
+                val segment = kanaText.substring(i, i + len)
+                kanaToRomaji[segment]?.let { romaji ->
+                    result.append(romaji)
+                    i += len
+                    matched = true
+                }
+                if (matched) break
+            }
+
+            // 4. マップにない文字（漢字など）の処理
+            if (!matched) {
+                result.append(kanaText[i])
+                i++
+            }
+        }
+        return result.toString()
+    }
+
+    /**
      * @return Pair( toShow, toDelete )
      *   - toShow: 新たに“追加”表示する文字列
      *   - toDelete: 画面上で“直前に”消すべき文字数
