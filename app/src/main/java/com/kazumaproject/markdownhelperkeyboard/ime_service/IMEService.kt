@@ -3762,9 +3762,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (customLayoutDefault.isVisible) customLayoutDefault.visibility =
                             View.INVISIBLE
                     } else {
-                        animateViewVisibility(
-                            if (isTablet == true) this.tabletView else this.keyboardView, true
-                        )
+                        if (isTablet == true) {
+                            when (qwertyMode.value) {
+                                TenKeyQWERTYMode.Custom -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Default -> {
+                                    animateViewVisibility(
+                                        this.tabletView, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Number -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Sumire -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.TenKeyQWERTY -> {
+                                    animateViewVisibility(
+                                        this.qwertyView, true
+                                    )
+                                }
+                            }
+                        } else {
+                            animateViewVisibility(
+                                if (isTablet == true) this.tabletView else this.keyboardView, true
+                            )
+                        }
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
                         if (customLayoutDefault.isInvisible) customLayoutDefault.visibility =
