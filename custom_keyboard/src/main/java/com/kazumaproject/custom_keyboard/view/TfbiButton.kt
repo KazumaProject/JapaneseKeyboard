@@ -1,5 +1,6 @@
 package com.kazumaproject.custom_keyboard.view
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
@@ -7,15 +8,18 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
+import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.R
+import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
 
-enum class FlickDirection {
+enum class TfbiFlickDirection {
     UP, DOWN, LEFT, RIGHT,
     UP_RIGHT, DOWN_RIGHT, DOWN_LEFT, UP_LEFT,
     TAP
@@ -28,41 +32,47 @@ class TfbiButton @JvmOverloads constructor(
 ) : AppCompatButton(context, attrs, defStyleAttr) {
 
     interface OnTwoStepFlickListener {
-        fun onFlick(first: FlickDirection, second: FlickDirection)
+        fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
     }
 
     companion object {
         private const val FIRST_FLICK_THRESHOLD = 65f
-        private const val SECOND_FLICK_THRESHOLD = 40f
+        private const val SECOND_FLICK_THRESHOLD = 100f
+
+        //許容する最大角度差 (これより大きい場合はTAPとみなす)
+        private const val MAX_ANGLE_DIFFERENCE = 40.0
     }
 
     private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
 
     private var flickState: FlickState = FlickState.NEUTRAL
-    private var firstFlickDirection: FlickDirection = FlickDirection.TAP
-    private var currentSecondFlickDirection: FlickDirection = FlickDirection.TAP
+    private var firstFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
+    private var currentSecondFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
 
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var intermediateTouchX = 0f
     private var intermediateTouchY = 0f
 
-    private val highlightPopupColor = Color.parseColor("#FF6200EE")
-    private val defaultPopupColor = Color.parseColor("#8037474F")
+    private val highlightPopupColor = "#FF6200EE".toColorInt()
+    private val defaultPopupColor = "#8037474F".toColorInt()
 
     private var onTwoStepFlickListener: OnTwoStepFlickListener? = null
-    private var characterMapProvider: ((FlickDirection, FlickDirection) -> String)? = null
-    private val petalPopups = mutableMapOf<FlickDirection, PopupWindow>()
+
+    private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
+    private val petalPopups = mutableMapOf<TfbiFlickDirection, PopupWindow>()
     private var arePopupsVisible: Boolean = false
+    private var tapPopup: PopupWindow? = null
 
     fun setOnTwoStepFlickListener(
         listener: OnTwoStepFlickListener,
-        provider: (FlickDirection, FlickDirection) -> String
+        provider: (TfbiFlickDirection, TfbiFlickDirection) -> String
     ) {
         this.onTwoStepFlickListener = listener
         this.characterMapProvider = provider
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> handleTouchDown(event)
@@ -74,11 +84,11 @@ class TfbiButton @JvmOverloads constructor(
 
     private fun handleTouchDown(event: MotionEvent) {
         flickState = FlickState.NEUTRAL
-        firstFlickDirection = FlickDirection.TAP
+        firstFlickDirection = TfbiFlickDirection.TAP
         initialTouchX = event.x
         initialTouchY = event.y
-        // 1段階目のフリック候補（TAPを終点とする文字）からポップアップを生成
-        createPetalPopups(getEnabledFirstFlickDirections())
+
+        createAndShowTapPopup(TfbiFlickDirection.TAP)
     }
 
     private fun handleTouchMove(event: MotionEvent) {
@@ -88,39 +98,34 @@ class TfbiButton @JvmOverloads constructor(
             val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
             if (distance >= FIRST_FLICK_THRESHOLD) {
-                // 【FIXED】1段階目として有効な方向のみを取得
                 val enabledFirstDirections = getEnabledFirstFlickDirections()
                 val determinedDirection =
                     calculateDirection(dx, dy, FIRST_FLICK_THRESHOLD, enabledFirstDirections)
 
-                if (determinedDirection == FlickDirection.TAP) return
+                if (determinedDirection == TfbiFlickDirection.TAP) return
 
                 firstFlickDirection = determinedDirection
                 intermediateTouchX = event.x
                 intermediateTouchY = event.y
                 flickState = FlickState.FIRST_FLICK_DETERMINED
 
-                // 2段階目のポップアップに更新
-                updatePetalCharacters(firstFlickDirection)
+                setupSecondStageUI(firstFlickDirection)
+                highlightForDirection(TfbiFlickDirection.TAP)
             }
-        } else {
+        } else { // flickState == FlickState.FIRST_FLICK_DETERMINED
             val dx = event.x - intermediateTouchX
             val dy = event.y - intermediateTouchY
 
-            // 2段階目として有効な方向を取得
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             val secondDirection =
                 calculateDirection(dx, dy, SECOND_FLICK_THRESHOLD, enabledSecondDirections)
 
-            if (!arePopupsVisible) {
-                showPetalPopups()
-            }
-            highlightPetalFor(secondDirection)
+            highlightForDirection(secondDirection)
         }
     }
 
     private fun handleTouchUp(event: MotionEvent) {
-        val finalSecondDirection: FlickDirection
+        val finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
             val dx = event.x - intermediateTouchX
             val dy = event.y - intermediateTouchY
@@ -130,33 +135,34 @@ class TfbiButton @JvmOverloads constructor(
         } else {
             val dx = event.x - initialTouchX
             val dy = event.y - initialTouchY
-            // 【FIXED】1段階目として有効な方向のみを取得
             val enabledFirstDirections = getEnabledFirstFlickDirections()
             firstFlickDirection =
                 calculateDirection(dx, dy, FIRST_FLICK_THRESHOLD, enabledFirstDirections)
-            finalSecondDirection = FlickDirection.TAP
+            finalSecondDirection = TfbiFlickDirection.TAP
         }
         onTwoStepFlickListener?.onFlick(firstFlickDirection, finalSecondDirection)
         resetState()
     }
 
-    /**
-     * 【NEW】1段階目のフリックとして有効な方向（= その方向を起点とし、TAPを終点とする文字が存在する）のセットを取得
-     */
-    private fun getEnabledFirstFlickDirections(): Set<FlickDirection> {
+    private fun setupSecondStageUI(firstDirection: TfbiFlickDirection) {
+        resetPopups()
+        createAndShowTapPopup(firstDirection)
+        val enabledSecondDirections = getEnabledSecondFlickDirections(firstDirection)
+        createPetalPopups(enabledSecondDirections, baseDirectionForChar = firstDirection)
+        showPetalPopups()
+    }
+
+    private fun getEnabledFirstFlickDirections(): Set<TfbiFlickDirection> {
         val provider = characterMapProvider ?: return emptySet()
-        return FlickDirection.values().filter {
-            it != FlickDirection.TAP && provider(it, FlickDirection.TAP).isNotEmpty()
+        return TfbiFlickDirection.entries.filter {
+            it != TfbiFlickDirection.TAP && provider(it, TfbiFlickDirection.TAP).isNotEmpty()
         }.toSet()
     }
 
-    /**
-     * 【NEW】2段階目のフリックとして有効な方向のセットを取得
-     */
-    private fun getEnabledSecondFlickDirections(baseDirection: FlickDirection): Set<FlickDirection> {
+    private fun getEnabledSecondFlickDirections(baseDirection: TfbiFlickDirection): Set<TfbiFlickDirection> {
         val provider = characterMapProvider ?: return emptySet()
-        return FlickDirection.values().filter {
-            it != FlickDirection.TAP && provider(baseDirection, it).isNotEmpty()
+        return TfbiFlickDirection.entries.filter {
+            it != TfbiFlickDirection.TAP && provider(baseDirection, it).isNotEmpty()
         }.toSet()
     }
 
@@ -164,84 +170,110 @@ class TfbiButton @JvmOverloads constructor(
         dx: Float,
         dy: Float,
         threshold: Float,
-        enabledDirections: Set<FlickDirection>
-    ): FlickDirection {
+        enabledDirections: Set<TfbiFlickDirection>
+    ): TfbiFlickDirection {
         val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-        if (distance < threshold) return FlickDirection.TAP
-        if (enabledDirections.isEmpty()) return FlickDirection.TAP
+        if (distance < threshold) {
+            return TfbiFlickDirection.TAP
+        }
+        if (enabledDirections.isEmpty()) {
+            return TfbiFlickDirection.TAP
+        }
+
+        val centerAngles = mapOf(
+            TfbiFlickDirection.RIGHT to 0.0,
+            TfbiFlickDirection.DOWN_RIGHT to 45.0,
+            TfbiFlickDirection.DOWN to 90.0,
+            TfbiFlickDirection.DOWN_LEFT to 135.0,
+            TfbiFlickDirection.LEFT to 180.0,
+            TfbiFlickDirection.UP_LEFT to -135.0,
+            TfbiFlickDirection.UP to -90.0,
+            TfbiFlickDirection.UP_RIGHT to -45.0
+        )
 
         val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
 
-        val ranges = mutableMapOf(
-            FlickDirection.RIGHT to (-22.5..22.5),
-            FlickDirection.DOWN_RIGHT to (22.5..67.5),
-            FlickDirection.DOWN to (67.5..112.5),
-            FlickDirection.DOWN_LEFT to (112.5..157.5),
-            FlickDirection.LEFT to (157.5..180.0),
-            FlickDirection.UP_LEFT to (-157.5..-112.5),
-            FlickDirection.UP to (-112.5..-67.5),
-            FlickDirection.UP_RIGHT to (-67.5..-22.5)
-        )
-        val leftRange2 = -180.0..-157.5
+        // 各有効方向と現在のフリック角度との差を計算
+        val closestDirectionData = enabledDirections.map { direction ->
+            val targetAngle =
+                // ±180度の境界をまたぐ場合に対応するための特殊処理
+                if (direction == TfbiFlickDirection.LEFT && angle < 0) -180.0 else centerAngles[direction]!!
 
-        if (!enabledDirections.contains(FlickDirection.UP_RIGHT)) {
-            ranges[FlickDirection.UP] = ranges.getValue(FlickDirection.UP).start..-45.0
-            ranges[FlickDirection.RIGHT] = -45.0..ranges.getValue(FlickDirection.RIGHT).endInclusive
-        }
-        if (!enabledDirections.contains(FlickDirection.DOWN_RIGHT)) {
-            ranges[FlickDirection.RIGHT] = ranges.getValue(FlickDirection.RIGHT).start..45.0
-            ranges[FlickDirection.DOWN] = 45.0..ranges.getValue(FlickDirection.DOWN).endInclusive
-        }
-        if (!enabledDirections.contains(FlickDirection.DOWN_LEFT)) {
-            ranges[FlickDirection.DOWN] = ranges.getValue(FlickDirection.DOWN).start..135.0
-            ranges[FlickDirection.LEFT] = 135.0..ranges.getValue(FlickDirection.LEFT).endInclusive
-        }
-        if (!enabledDirections.contains(FlickDirection.UP_LEFT)) {
-            ranges[FlickDirection.UP] = -135.0..ranges.getValue(FlickDirection.UP).endInclusive
-            // leftRange2 の開始点を変更
-            // ranges[FlickDirection.LEFT] は 157.5..180.0 のまま
-        }
-
-
-        for (direction in FlickDirection.values()) {
-            if (direction == FlickDirection.TAP || !enabledDirections.contains(direction)) continue
-
-            if (direction == FlickDirection.LEFT) {
-                // UP_LEFTが無効な場合、LEFTの判定範囲を [-180, -135] と [135, 180] に広げる
-                val currentLeftRange2 =
-                    if (!enabledDirections.contains(FlickDirection.UP_LEFT)) -180.0..-135.0 else leftRange2
-                if (angle in ranges.getValue(FlickDirection.LEFT) || angle in currentLeftRange2) {
-                    return FlickDirection.LEFT
-                }
-            } else {
-                if (angle in ranges.getValue(direction)) {
-                    return direction
-                }
+            var diff = abs(angle - targetAngle)
+            // 角度の差が180度を超える場合は、逆方向から計算する (例: 350度と10度は10度差)
+            if (diff > 180) {
+                diff = 360 - diff
             }
+            // 方向と角度差をペアで保持
+            Pair(direction, diff)
+        }.minByOrNull { it.second } // 角度差(second)が最も小さいものを選ぶ
+
+        // 最も近い方向が見つからない、またはその角度差がしきい値より大きい場合はTAPとする
+        if (closestDirectionData == null || closestDirectionData.second > MAX_ANGLE_DIFFERENCE) {
+            return TfbiFlickDirection.TAP
         }
-        return FlickDirection.TAP
+
+        // しきい値以内であれば、その方向を返す
+        return closestDirectionData.first
     }
 
-    /**
-     * 【MODIFIED】ポップアップ生成ロジックを汎用化
-     */
+    @SuppressLint("InflateParams")
+    private fun createAndShowTapPopup(baseDirection: TfbiFlickDirection) {
+        dismissTapPopup()
+        val tapCharacter = characterMapProvider?.invoke(baseDirection, TfbiFlickDirection.TAP)
+        if (tapCharacter.isNullOrEmpty()) return
+
+        val inflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        val popupView = inflater.inflate(R.layout.popup_flick, null)
+        val popupTextView = popupView.findViewById<TextView>(R.id.popupTextView)
+        popupTextView.text = tapCharacter
+
+        tapPopup = PopupWindow(
+            popupView,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            false
+        ).apply {
+            isTouchable = false
+            isFocusable = false
+            (contentView.background as? GradientDrawable)?.let {
+                val background = it.mutate() as GradientDrawable
+                background.setColor(defaultPopupColor) // 初期色はデフォルト
+                background.setStroke(2, Color.WHITE)
+                contentView.background = background
+            }
+        }
+
+        if (!isAttachedToWindow) return
+        val location = IntArray(2).also { getLocationInWindow(it) }
+        val popupContent = tapPopup?.contentView ?: return
+        popupContent.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+        val popupWidth = popupContent.measuredWidth
+        val popupHeight = popupContent.measuredHeight
+        val offsetX = location[0] + (width - popupWidth) / 2
+        val offsetY = location[1] + (height - popupHeight) / 2
+        tapPopup?.showAtLocation(this, Gravity.NO_GRAVITY, offsetX, offsetY)
+    }
+
+    private fun dismissTapPopup() {
+        tapPopup?.dismiss()
+        tapPopup = null
+    }
+
+    @SuppressLint("InflateParams")
     private fun createPetalPopups(
-        enabledDirections: Set<FlickDirection>,
-        baseDirectionForChar: FlickDirection = FlickDirection.TAP
+        enabledDirections: Set<TfbiFlickDirection>,
+        baseDirectionForChar: TfbiFlickDirection
     ) {
         petalPopups.values.forEach { it.dismiss() }
         petalPopups.clear()
-
         val inflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-
         for (direction in enabledDirections) {
-            val character = characterMapProvider?.invoke(
-                if (baseDirectionForChar == FlickDirection.TAP) direction else baseDirectionForChar, // 1段階目と2段階目で文字取得方法を切り替え
-                if (baseDirectionForChar == FlickDirection.TAP) FlickDirection.TAP else direction
-            ) ?: ""
-
+            val character = characterMapProvider?.invoke(baseDirectionForChar, direction) ?: ""
             if (character.isEmpty()) continue
-
             val popupView = inflater.inflate(R.layout.popup_flick, null)
             val popupTextView = popupView.findViewById<TextView>(R.id.popupTextView)
             popupTextView.text = character
@@ -253,12 +285,9 @@ class TfbiButton @JvmOverloads constructor(
             ).apply {
                 isTouchable = false
                 isFocusable = false
-                val background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(defaultPopupColor)
-                    setStroke(2, Color.WHITE)
-                }
-                contentView.background = background
+                contentView.setBackgroundResource(R.drawable.popup_background)
+                val background = contentView.background.mutate() as? GradientDrawable
+                background?.setColor(defaultPopupColor)
             }
             petalPopups[direction] = popup
         }
@@ -269,40 +298,37 @@ class TfbiButton @JvmOverloads constructor(
         val location = IntArray(2).also { getLocationInWindow(it) }
         val anchorX = location[0]
         val anchorY = location[1]
-
         petalPopups.forEach { (direction, popup) ->
             if (popup.isShowing) return@forEach
             popup.contentView.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED)
             val popupWidth = popup.contentView.measuredWidth
             val popupHeight = popup.contentView.measuredHeight
-
-            // ポップアップ位置の微調整
             val offset = 20
             val (x, y) = when (direction) {
-                FlickDirection.UP -> Pair(
+                TfbiFlickDirection.UP -> Pair(
                     anchorX + width / 2 - popupWidth / 2,
                     anchorY - popupHeight - offset
                 )
 
-                FlickDirection.DOWN -> Pair(
+                TfbiFlickDirection.DOWN -> Pair(
                     anchorX + width / 2 - popupWidth / 2,
                     anchorY + height + offset
                 )
 
-                FlickDirection.LEFT -> Pair(
+                TfbiFlickDirection.LEFT -> Pair(
                     anchorX - popupWidth - offset,
                     anchorY + height / 2 - popupHeight / 2
                 )
 
-                FlickDirection.RIGHT -> Pair(
+                TfbiFlickDirection.RIGHT -> Pair(
                     anchorX + width + offset,
                     anchorY + height / 2 - popupHeight / 2
                 )
 
-                FlickDirection.UP_RIGHT -> Pair(anchorX + width, anchorY - popupHeight)
-                FlickDirection.DOWN_RIGHT -> Pair(anchorX + width, anchorY + height)
-                FlickDirection.DOWN_LEFT -> Pair(anchorX - popupWidth, anchorY + height)
-                FlickDirection.UP_LEFT -> Pair(anchorX - popupWidth, anchorY - popupHeight)
+                TfbiFlickDirection.UP_RIGHT -> Pair(anchorX + width, anchorY - popupHeight)
+                TfbiFlickDirection.DOWN_RIGHT -> Pair(anchorX + width, anchorY + height)
+                TfbiFlickDirection.DOWN_LEFT -> Pair(anchorX - popupWidth, anchorY + height)
+                TfbiFlickDirection.UP_LEFT -> Pair(anchorX - popupWidth, anchorY - popupHeight)
                 else -> Pair(0, 0)
             }
             popup.showAtLocation(this, Gravity.NO_GRAVITY, x, y)
@@ -310,28 +336,40 @@ class TfbiButton @JvmOverloads constructor(
         arePopupsVisible = true
     }
 
-    private fun highlightPetalFor(direction: FlickDirection) {
+    private fun highlightForDirection(direction: TfbiFlickDirection) {
         if (direction == currentSecondFlickDirection) return
         currentSecondFlickDirection = direction
+
+        tapPopup?.let { popup ->
+            val background = popup.contentView.background as? GradientDrawable
+            val color =
+                if (direction == TfbiFlickDirection.TAP) highlightPopupColor else defaultPopupColor
+            background?.setColor(color)
+        }
+
         petalPopups.forEach { (dir, popup) ->
             val background = popup.contentView.background as? GradientDrawable
-            background?.setColor(if (dir == direction) highlightPopupColor else defaultPopupColor)
+            val color = if (dir == direction) highlightPopupColor else defaultPopupColor
+            background?.setColor(color)
         }
     }
 
-    /**
-     * 【MODIFIED】2段階目の文字でポップアップを更新
-     */
-    private fun updatePetalCharacters(firstDirection: FlickDirection) {
+    private fun updatePetalCharacters(firstDirection: TfbiFlickDirection) {
         val enabledSecondDirections = getEnabledSecondFlickDirections(firstDirection)
         createPetalPopups(enabledSecondDirections, baseDirectionForChar = firstDirection)
     }
 
-    private fun resetState() {
+    private fun resetPopups() {
+        dismissTapPopup()
         petalPopups.values.forEach { it.dismiss() }
+        petalPopups.clear()
         arePopupsVisible = false
+    }
+
+    private fun resetState() {
+        resetPopups()
         flickState = FlickState.NEUTRAL
-        firstFlickDirection = FlickDirection.TAP
-        currentSecondFlickDirection = FlickDirection.TAP
+        firstFlickDirection = TfbiFlickDirection.TAP
+        currentSecondFlickDirection = TfbiFlickDirection.TAP
     }
 }

@@ -28,7 +28,7 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                  *  131073 : EditText in Android App
                  *  409601 : Line
                  * */
-                InputType.TYPE_TEXT_FLAG_MULTI_LINE, 180385, 131073, 409601 -> InputTypeForIME.TextMultiLine
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE, 180385, 409601 -> InputTypeForIME.TextMultiLine
 
                 /**
                  *  180225 : Twitter Tweet & Messenger
@@ -73,9 +73,10 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                  *  524449: Brave SearchView on the top in WebView
                  *  1: SearchView in Nova Launcher, File Manager App
                  *  65537: SearchView in Default Message App
+                 *  131073: Instagram Search
                  * **/
                 524465, 589825, 1048577, 524289, 540833,
-                177, 573601, 655521, 524449,
+                177, 573601, 655521, 524449, 131073,
                 65537 -> InputTypeForIME.TextSearchView
 
                 1 -> {
