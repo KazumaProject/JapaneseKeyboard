@@ -67,6 +67,9 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.toHankakuKatakana
+import com.kazumaproject.core.domain.extensions.toHiragana
+import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
@@ -105,6 +108,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardU
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
@@ -1029,6 +1033,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private var hardKeyboardShiftPressd = false
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
 
@@ -1041,23 +1047,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     event?.let { e ->
                         Timber.d("onKeyDown: ${e.keyCode} $keyCode $e")
                         if (e.isShiftPressed || e.isCapsLockOn) {
-                            if (insertString.isNotEmpty()) {
-                                val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
-                                char?.let { c ->
-                                    if (insertString.isNotEmpty()) {
-                                        sb.append(
-                                            insertString
-                                        ).append(c)
-                                        _inputString.update {
-                                            sb.toString()
-                                        }
-                                    } else {
-                                        _inputString.update {
-                                            c.toString()
-                                        }
+                            if (e.isCtrlPressed) return super.onKeyDown(keyCode, event)
+                            hardKeyboardShiftPressd = true
+                            val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+                            char?.let { c ->
+                                if (insertString.isNotEmpty()) {
+                                    sb.append(
+                                        insertString
+                                    ).append(c)
+                                    _inputString.update {
+                                        sb.toString()
                                     }
-                                    return true
+                                } else {
+                                    _inputString.update {
+                                        c.toString()
+                                    }
                                 }
+                                return true
                             }
                             return super.onKeyDown(keyCode, event)
                         } else if (e.isCtrlPressed) {
@@ -1094,6 +1100,97 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     when (keyCode) {
+                        KeyEvent.KEYCODE_F6 -> {
+                            if (insertString.isNotEmpty()) {
+                                Timber.d("onKeyDown: F6 Pressed $insertString")
+                                if (insertString.isAllEnglishLetters()) {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(insertString.lowercase()).toHiragana()
+                                        }
+                                    }
+                                } else {
+                                    _inputString.update {
+                                        insertString.toHiragana()
+                                    }
+                                }
+                                return true
+                            }
+                        }
+
+                        KeyEvent.KEYCODE_F7 -> {
+                            if (insertString.isNotEmpty()) {
+                                Timber.d("onKeyDown: F7 Pressed $insertString")
+                                if (insertString.isAllEnglishLetters()) {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(insertString.lowercase())
+                                                .toZenkakuKatakana()
+                                        }
+                                    }
+                                } else {
+                                    _inputString.update {
+                                        insertString.toZenkakuKatakana()
+                                    }
+                                }
+                                return true
+                            }
+                        }
+
+                        KeyEvent.KEYCODE_F8 -> {
+                            if (insertString.isNotEmpty()) {
+                                Timber.d("onKeyDown: F8 Pressed $insertString")
+                                if (insertString.isAllEnglishLetters()) {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(insertString.lowercase())
+                                                .toHankakuKatakana()
+                                        }
+                                    }
+                                } else {
+                                    _inputString.update {
+                                        insertString.toHankakuKatakana()
+                                    }
+                                }
+                                return true
+                            }
+                        }
+
+                        KeyEvent.KEYCODE_F9 -> {
+                            if (insertString.isNotEmpty()) {
+                                Timber.d("onKeyDown: F9 Pressed")
+                                if (insertString.isAllEnglishLetters()) {
+                                    _inputString.update {
+                                        insertString.lowercase().uppercase()
+                                    }
+                                } else {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                                .uppercase()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        KeyEvent.KEYCODE_F10 -> {
+                            if (insertString.isNotEmpty()) {
+                                Timber.d("onKeyDown: F10 Pressed ${insertString.isAllEnglishLetters()} ${insertString.lowercase()}")
+                                if (insertString.isAllEnglishLetters()) {
+                                    _inputString.update {
+                                        insertString.lowercase()
+                                    }
+                                } else {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         KeyEvent.KEYCODE_DEL -> {
                             when {
                                 insertString.isNotEmpty() -> {
@@ -1341,17 +1438,49 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 scope.launch {
                                     _physicalKeyboardEnable.emit(true)
                                 }
-                                romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
-                                    if (insertString.isNotEmpty()) {
-                                        sb.append(
-                                            insertString.dropLast((romajiResult.second))
-                                        ).append(romajiResult.first)
-                                        _inputString.update {
-                                            sb.toString()
+                                if (isHenkan.get()) {
+                                    listAdapter.selectHighlightedItem()
+                                    scope.launch {
+                                        delay(32)
+                                        romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
+                                            Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
+                                            _inputString.update {
+                                                romajiResult.first
+                                            }
                                         }
-                                    } else {
-                                        _inputString.update {
-                                            romajiResult.first
+                                    }
+                                    return true
+                                }
+                                if (hardKeyboardShiftPressd) {
+                                    val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+                                    char?.let { c ->
+                                        if (insertString.isNotEmpty()) {
+                                            sb.append(
+                                                insertString
+                                            ).append(c)
+                                            _inputString.update {
+                                                sb.toString()
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                c.toString()
+                                            }
+                                        }
+                                        return true
+                                    }
+                                } else {
+                                    romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
+                                        if (insertString.isNotEmpty()) {
+                                            sb.append(
+                                                insertString.dropLast((romajiResult.second))
+                                            ).append(romajiResult.first)
+                                            _inputString.update {
+                                                sb.toString()
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                romajiResult.first
+                                            }
                                         }
                                     }
                                 }
@@ -3762,9 +3891,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (customLayoutDefault.isVisible) customLayoutDefault.visibility =
                             View.INVISIBLE
                     } else {
-                        animateViewVisibility(
-                            if (isTablet == true) this.tabletView else this.keyboardView, true
-                        )
+                        if (isTablet == true) {
+                            when (qwertyMode.value) {
+                                TenKeyQWERTYMode.Custom -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Default -> {
+                                    animateViewVisibility(
+                                        this.tabletView, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Number -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Sumire -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.TenKeyQWERTY -> {
+                                    animateViewVisibility(
+                                        this.qwertyView, true
+                                    )
+                                }
+                            }
+                        } else {
+                            animateViewVisibility(
+                                if (isTablet == true) this.tabletView else this.keyboardView, true
+                            )
+                        }
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
                         if (customLayoutDefault.isInvisible) customLayoutDefault.visibility =
@@ -4129,6 +4292,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             hasConvertedKatakana = false
             resetInputString()
+            hardKeyboardShiftPressd = false
             initialCursorDetectInFloatingCandidateView = false
             initialCursorXPosition = 0
             if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
@@ -5163,6 +5327,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _selectMode.update { false }
         hasConvertedKatakana = false
         romajiConverter?.clear()
+        hardKeyboardShiftPressd = false
         resetSumireKeyboardDakutenMode()
         initialCursorDetectInFloatingCandidateView = false
         initialCursorXPosition = 0
