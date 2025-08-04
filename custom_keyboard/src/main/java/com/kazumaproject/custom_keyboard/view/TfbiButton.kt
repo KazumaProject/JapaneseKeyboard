@@ -8,7 +8,6 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
-import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupWindow
 import android.widget.TextView
@@ -227,18 +226,20 @@ class TfbiButton @JvmOverloads constructor(
         val popupView = inflater.inflate(R.layout.popup_flick, null)
         val popupTextView = popupView.findViewById<TextView>(R.id.popupTextView)
         popupTextView.text = tapCharacter
+        // Optional but recommended: Center the text inside the now larger popup view.
+        popupTextView.gravity = Gravity.CENTER
 
         tapPopup = PopupWindow(
             popupView,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+            width, // 1. Use the button's width
+            height, // 2. Use the button's height
             false
         ).apply {
             isTouchable = false
             isFocusable = false
             (contentView.background as? GradientDrawable)?.let {
                 val background = it.mutate() as GradientDrawable
-                background.setColor(defaultPopupColor) // 初期色はデフォルト
+                background.setColor(defaultPopupColor)
                 background.setStroke(2, Color.WHITE)
                 contentView.background = background
             }
@@ -246,15 +247,12 @@ class TfbiButton @JvmOverloads constructor(
 
         if (!isAttachedToWindow) return
         val location = IntArray(2).also { getLocationInWindow(it) }
-        val popupContent = tapPopup?.contentView ?: return
-        popupContent.measure(
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
-            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
-        )
-        val popupWidth = popupContent.measuredWidth
-        val popupHeight = popupContent.measuredHeight
-        val offsetX = location[0] + (width - popupWidth) / 2
-        val offsetY = location[1] + (height - popupHeight) / 2
+
+        // 3. Simplify positioning logic.
+        // The popup is the same size as the button, so it can be shown at the button's exact location.
+        val offsetX = location[0]
+        val offsetY = location[1]
+
         tapPopup?.showAtLocation(this, Gravity.NO_GRAVITY, offsetX, offsetY)
     }
 
