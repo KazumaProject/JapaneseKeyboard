@@ -1438,6 +1438,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 scope.launch {
                                     _physicalKeyboardEnable.emit(true)
                                 }
+                                if (isHenkan.get()) {
+                                    listAdapter.selectHighlightedItem()
+                                    scope.launch {
+                                        delay(64)
+                                        romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
+                                            Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
+                                            _inputString.update {
+                                                romajiResult.first
+                                            }
+                                        }
+                                    }
+                                    return true
+                                }
                                 if (hardKeyboardShiftPressd) {
                                     val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
                                     char?.let { c ->

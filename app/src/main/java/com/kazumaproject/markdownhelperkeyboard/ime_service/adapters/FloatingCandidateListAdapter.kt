@@ -125,4 +125,28 @@ class FloatingCandidateListAdapter(
         override fun areContentsTheSame(oldItem: CandidateItem, newItem: CandidateItem): Boolean =
             oldItem == newItem
     }
+
+    /**
+     * ハイライトされているアイテムを選択し、対応するクリックイベントをトリガーします。
+     * アイテムが通常の候補（Suggestion）の場合にのみ onSuggestionClicked を呼び出します。
+     */
+    fun selectHighlightedItem() {
+        // highlightedPosition が有効な範囲にあるか確認
+        if (highlightedPosition == RecyclerView.NO_POSITION || highlightedPosition >= itemCount) {
+            Timber.w("No item selected or invalid position: $highlightedPosition")
+            return
+        }
+
+        // ハイライトされているアイテムがページャー（VIEW_TYPE_PAGER）でないことを確認
+        if (getItemViewType(highlightedPosition) == VIEW_TYPE_SUGGESTION) {
+            getHighlightedItem()?.let { item ->
+                Timber.d("Programmatically selecting item: ${item.word}")
+                onSuggestionClicked?.invoke(item)
+            }
+        } else {
+            // 必要であればページャーが選択された際の処理もここに書ける
+            Timber.d("Highlighted item is a pager. Not triggering onSuggestionClicked.")
+            // onPagerClicked?.invoke() などを呼び出すことも可能
+        }
+    }
 }
