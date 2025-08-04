@@ -343,6 +343,10 @@ class SettingFragment : PreferenceFragmentCompat() {
                 "flick-sumire" -> {
                     summary = "スミレ入力"
                 }
+
+                "second-flick" -> {
+                    summary = "２段フリック入力"
+                }
             }
             setOnPreferenceChangeListener { preference, newValue ->
                 if (newValue is String) {
@@ -361,6 +365,10 @@ class SettingFragment : PreferenceFragmentCompat() {
 
                         "flick-sumire" -> {
                             preference.summary = "スミレ入力"
+                        }
+
+                        "second-flick" -> {
+                            preference.summary = "２段フリック入力"
                         }
                     }
                 }

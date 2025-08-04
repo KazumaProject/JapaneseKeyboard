@@ -2,7 +2,6 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.view.Gravity
@@ -11,7 +10,7 @@ import android.view.MotionEvent
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
-import androidx.core.graphics.toColorInt
+import androidx.core.content.ContextCompat
 import com.kazumaproject.custom_keyboard.R
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -34,11 +33,14 @@ class TfbiButton @JvmOverloads constructor(
     }
 
     companion object {
-        private const val FIRST_FLICK_THRESHOLD = 65f
-        private const val SECOND_FLICK_THRESHOLD = 65f
+        private const val FIRST_FLICK_THRESHOLD = 70f
+        private const val SECOND_FLICK_THRESHOLD = 70f
 
-        //許容する最大角度差 (これより大きい場合はTAPとみなす)
-        private const val MAX_ANGLE_DIFFERENCE = 65.0
+        // The maximum allowed angle difference (if greater, it's considered a TAP)
+        private const val MAX_ANGLE_DIFFERENCE = 70.0
+
+        // ★ MODIFICATION ★: Added a threshold to detect when the finger returns to the center to cancel a flick.
+        private const val CANCEL_THRESHOLD = 60f
     }
 
     private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
@@ -52,8 +54,10 @@ class TfbiButton @JvmOverloads constructor(
     private var intermediateTouchX = 0f
     private var intermediateTouchY = 0f
 
-    private val highlightPopupColor = "#FF6200EE".toColorInt()
-    private val defaultPopupColor = "#8037474F".toColorInt()
+    private val highlightPopupColor =
+        ContextCompat.getColor(context, com.kazumaproject.core.R.color.popup_bg_active)
+    private val defaultPopupColor =
+        ContextCompat.getColor(context, com.kazumaproject.core.R.color.popup_bg)
 
     private var onTwoStepFlickListener: OnTwoStepFlickListener? = null
 
@@ -111,6 +115,22 @@ class TfbiButton @JvmOverloads constructor(
                 highlightForDirection(TfbiFlickDirection.TAP)
             }
         } else { // flickState == FlickState.FIRST_FLICK_DETERMINED
+            // ★ MODIFICATION ★: Check for cancellation before processing the second flick.
+            val distanceFromInitial = hypot(
+                (event.x - initialTouchX).toDouble(),
+                (event.y - initialTouchY).toDouble()
+            ).toFloat()
+
+            if (distanceFromInitial < CANCEL_THRESHOLD) {
+                // The finger has returned to the center. Reset the state to neutral.
+                resetState()
+                // Re-show the initial tap popup since resetState() clears all popups.
+                createAndShowTapPopup(TfbiFlickDirection.TAP)
+                // Stop further processing for this move event.
+                return
+            }
+
+            // If not cancelled, continue with the original logic for the second flick.
             val dx = event.x - intermediateTouchX
             val dy = event.y - intermediateTouchY
 
@@ -191,27 +211,21 @@ class TfbiButton @JvmOverloads constructor(
 
         val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
 
-        // 各有効方向と現在のフリック角度との差を計算
         val closestDirectionData = enabledDirections.map { direction ->
             val targetAngle =
-                // ±180度の境界をまたぐ場合に対応するための特殊処理
                 if (direction == TfbiFlickDirection.LEFT && angle < 0) -180.0 else centerAngles[direction]!!
 
             var diff = abs(angle - targetAngle)
-            // 角度の差が180度を超える場合は、逆方向から計算する (例: 350度と10度は10度差)
             if (diff > 180) {
                 diff = 360 - diff
             }
-            // 方向と角度差をペアで保持
             Pair(direction, diff)
-        }.minByOrNull { it.second } // 角度差(second)が最も小さいものを選ぶ
+        }.minByOrNull { it.second }
 
-        // 最も近い方向が見つからない、またはその角度差がしきい値より大きい場合はTAPとする
         if (closestDirectionData == null || closestDirectionData.second > MAX_ANGLE_DIFFERENCE) {
             return TfbiFlickDirection.TAP
         }
 
-        // しきい値以内であれば、その方向を返す
         return closestDirectionData.first
     }
 
@@ -225,13 +239,12 @@ class TfbiButton @JvmOverloads constructor(
         val popupView = inflater.inflate(R.layout.popup_flick, null)
         val popupTextView = popupView.findViewById<TextView>(R.id.popupTextView)
         popupTextView.text = tapCharacter
-        // Optional but recommended: Center the text inside the now larger popup view.
         popupTextView.gravity = Gravity.CENTER
 
         tapPopup = PopupWindow(
             popupView,
-            width, // 1. Use the button's width
-            height, // 2. Use the button's height
+            width,
+            height,
             false
         ).apply {
             isTouchable = false
@@ -239,16 +252,19 @@ class TfbiButton @JvmOverloads constructor(
             (contentView.background as? GradientDrawable)?.let {
                 val background = it.mutate() as GradientDrawable
                 background.setColor(defaultPopupColor)
-                background.setStroke(2, Color.WHITE)
+                background.setStroke(
+                    2,
+                    ContextCompat.getColor(
+                        context,
+                        com.kazumaproject.core.R.color.keyboard_icon_color
+                    )
+                )
                 contentView.background = background
             }
         }
 
         if (!isAttachedToWindow) return
         val location = IntArray(2).also { getLocationInWindow(it) }
-
-        // 3. Simplify positioning logic.
-        // The popup is the same size as the button, so it can be shown at the button's exact location.
         val offsetX = location[0]
         val offsetY = location[1]
 
@@ -274,12 +290,10 @@ class TfbiButton @JvmOverloads constructor(
             val popupView = inflater.inflate(R.layout.popup_flick, null)
             val popupTextView = popupView.findViewById<TextView>(R.id.popupTextView)
             popupTextView.text = character
-            // この行を追加して、テキストを中央揃えにする
             popupTextView.gravity = Gravity.CENTER
 
             val popup = PopupWindow(
                 popupView,
-                // WRAP_CONTENT からボタンの幅と高さに変更
                 width,
                 height,
                 false
@@ -289,7 +303,13 @@ class TfbiButton @JvmOverloads constructor(
                 contentView.setBackgroundResource(R.drawable.popup_background)
                 (contentView.background.mutate() as? GradientDrawable)?.let { background ->
                     background.setColor(defaultPopupColor)
-                    background.setStroke(2, Color.WHITE)
+                    background.setStroke(
+                        2,
+                        ContextCompat.getColor(
+                            context,
+                            com.kazumaproject.core.R.color.keyboard_icon_color
+                        )
+                    )
                 }
             }
             petalPopups[direction] = popup
@@ -305,17 +325,14 @@ class TfbiButton @JvmOverloads constructor(
         petalPopups.forEach { (direction, popup) ->
             if (popup.isShowing) return@forEach
 
-            // ❗️ 不正確な測定を削除し、ボタン自身のサイズを直接使う
             val popupWidth = width
             val popupHeight = height
 
-            // ❗️ 正確な値に基づいた、よりシンプルな位置計算
             val (x, y) = when (direction) {
                 TfbiFlickDirection.UP -> Pair(anchorX, anchorY - popupHeight)
                 TfbiFlickDirection.DOWN -> Pair(anchorX, anchorY + height)
                 TfbiFlickDirection.LEFT -> Pair(anchorX - popupWidth, anchorY)
                 TfbiFlickDirection.RIGHT -> Pair(anchorX + width, anchorY)
-
                 TfbiFlickDirection.UP_RIGHT -> Pair(anchorX + width, anchorY - popupHeight)
                 TfbiFlickDirection.DOWN_RIGHT -> Pair(anchorX + width, anchorY + height)
                 TfbiFlickDirection.DOWN_LEFT -> Pair(anchorX - popupWidth, anchorY + height)
@@ -343,11 +360,6 @@ class TfbiButton @JvmOverloads constructor(
             val color = if (dir == direction) highlightPopupColor else defaultPopupColor
             background?.setColor(color)
         }
-    }
-
-    private fun updatePetalCharacters(firstDirection: TfbiFlickDirection) {
-        val enabledSecondDirections = getEnabledSecondFlickDirections(firstDirection)
-        createPetalPopups(enabledSecondDirections, baseDirectionForChar = firstDirection)
     }
 
     private fun resetPopups() {
