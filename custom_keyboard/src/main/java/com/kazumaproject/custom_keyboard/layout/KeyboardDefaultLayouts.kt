@@ -4769,6 +4769,10 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to mapOf(
                     TfbiFlickDirection.TAP to "や",
                 ),
+                TfbiFlickDirection.UP_RIGHT to mapOf(
+                    TfbiFlickDirection.TAP to "や",
+                    TfbiFlickDirection.UP_RIGHT to "ゃ",
+                ),
                 TfbiFlickDirection.LEFT to mapOf(
                     TfbiFlickDirection.TAP to "や",
                     TfbiFlickDirection.LEFT to "(",
