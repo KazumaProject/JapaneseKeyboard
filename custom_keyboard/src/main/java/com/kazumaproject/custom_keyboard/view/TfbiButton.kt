@@ -8,7 +8,6 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
-import android.view.ViewGroup
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
@@ -36,10 +35,10 @@ class TfbiButton @JvmOverloads constructor(
 
     companion object {
         private const val FIRST_FLICK_THRESHOLD = 65f
-        private const val SECOND_FLICK_THRESHOLD = 100f
+        private const val SECOND_FLICK_THRESHOLD = 65f
 
         //許容する最大角度差 (これより大きい場合はTAPとみなす)
-        private const val MAX_ANGLE_DIFFERENCE = 40.0
+        private const val MAX_ANGLE_DIFFERENCE = 65.0
     }
 
     private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
@@ -275,17 +274,23 @@ class TfbiButton @JvmOverloads constructor(
             val popupView = inflater.inflate(R.layout.popup_flick, null)
             val popupTextView = popupView.findViewById<TextView>(R.id.popupTextView)
             popupTextView.text = character
+            // この行を追加して、テキストを中央揃えにする
+            popupTextView.gravity = Gravity.CENTER
+
             val popup = PopupWindow(
                 popupView,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                // WRAP_CONTENT からボタンの幅と高さに変更
+                width,
+                height,
                 false
             ).apply {
                 isTouchable = false
                 isFocusable = false
                 contentView.setBackgroundResource(R.drawable.popup_background)
-                val background = contentView.background.mutate() as? GradientDrawable
-                background?.setColor(defaultPopupColor)
+                (contentView.background.mutate() as? GradientDrawable)?.let { background ->
+                    background.setColor(defaultPopupColor)
+                    background.setStroke(2, Color.WHITE)
+                }
             }
             petalPopups[direction] = popup
         }
@@ -296,32 +301,20 @@ class TfbiButton @JvmOverloads constructor(
         val location = IntArray(2).also { getLocationInWindow(it) }
         val anchorX = location[0]
         val anchorY = location[1]
+
         petalPopups.forEach { (direction, popup) ->
             if (popup.isShowing) return@forEach
-            popup.contentView.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED)
-            val popupWidth = popup.contentView.measuredWidth
-            val popupHeight = popup.contentView.measuredHeight
-            val offset = 20
+
+            // ❗️ 不正確な測定を削除し、ボタン自身のサイズを直接使う
+            val popupWidth = width
+            val popupHeight = height
+
+            // ❗️ 正確な値に基づいた、よりシンプルな位置計算
             val (x, y) = when (direction) {
-                TfbiFlickDirection.UP -> Pair(
-                    anchorX + width / 2 - popupWidth / 2,
-                    anchorY - popupHeight - offset
-                )
-
-                TfbiFlickDirection.DOWN -> Pair(
-                    anchorX + width / 2 - popupWidth / 2,
-                    anchorY + height + offset
-                )
-
-                TfbiFlickDirection.LEFT -> Pair(
-                    anchorX - popupWidth - offset,
-                    anchorY + height / 2 - popupHeight / 2
-                )
-
-                TfbiFlickDirection.RIGHT -> Pair(
-                    anchorX + width + offset,
-                    anchorY + height / 2 - popupHeight / 2
-                )
+                TfbiFlickDirection.UP -> Pair(anchorX, anchorY - popupHeight)
+                TfbiFlickDirection.DOWN -> Pair(anchorX, anchorY + height)
+                TfbiFlickDirection.LEFT -> Pair(anchorX - popupWidth, anchorY)
+                TfbiFlickDirection.RIGHT -> Pair(anchorX + width, anchorY)
 
                 TfbiFlickDirection.UP_RIGHT -> Pair(anchorX + width, anchorY - popupHeight)
                 TfbiFlickDirection.DOWN_RIGHT -> Pair(anchorX + width, anchorY + height)

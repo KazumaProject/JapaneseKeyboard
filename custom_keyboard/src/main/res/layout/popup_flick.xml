@@ -5,8 +5,8 @@
     android:layout_height="wrap_content"
     android:background="@drawable/popup_background"
     android:gravity="center"
-    android:padding="16dp"
+    android:padding="8dp"
     android:text="い"
     android:textColor="@android:color/white"
-    android:textSize="24sp"
+    android:textSize="16sp"
     android:textStyle="bold" />
