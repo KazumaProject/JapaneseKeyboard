@@ -66,7 +66,6 @@ import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
-import com.kazumaproject.core.domain.extensions.hiraganaToHankakuKatakana
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHiragana
@@ -109,6 +108,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardU
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
@@ -1103,8 +1103,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_F6 -> {
                             if (insertString.isNotEmpty()) {
                                 Timber.d("onKeyDown: F6 Pressed $insertString")
-                                _inputString.update {
-                                    insertString.toHiragana()
+                                if (insertString.isAllEnglishLetters()) {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(insertString.lowercase()).toHiragana()
+                                        }
+                                    }
+                                } else {
+                                    _inputString.update {
+                                        insertString.toHiragana()
+                                    }
                                 }
                                 return true
                             }
@@ -1113,8 +1121,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_F7 -> {
                             if (insertString.isNotEmpty()) {
                                 Timber.d("onKeyDown: F7 Pressed $insertString")
-                                _inputString.update {
-                                    insertString.toZenkakuKatakana()
+                                if (insertString.isAllEnglishLetters()) {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(insertString.lowercase())
+                                                .toZenkakuKatakana()
+                                        }
+                                    }
+                                } else {
+                                    _inputString.update {
+                                        insertString.toZenkakuKatakana()
+                                    }
                                 }
                                 return true
                             }
@@ -1123,19 +1140,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyEvent.KEYCODE_F8 -> {
                             if (insertString.isNotEmpty()) {
                                 Timber.d("onKeyDown: F8 Pressed $insertString")
-                                _inputString.update {
-                                    insertString.toHankakuKatakana()
+                                if (insertString.isAllEnglishLetters()) {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.convert(insertString.lowercase())
+                                                .toHankakuKatakana()
+                                        }
+                                    }
+                                } else {
+                                    _inputString.update {
+                                        insertString.toHankakuKatakana()
+                                    }
                                 }
                                 return true
                             }
                         }
 
                         KeyEvent.KEYCODE_F9 -> {
-                            Timber.d("onKeyDown: F9 Pressed")
+                            if (insertString.isNotEmpty()) {
+                                Timber.d("onKeyDown: F9 Pressed")
+                                if (insertString.isAllEnglishLetters()) {
+                                    _inputString.update {
+                                        insertString.lowercase().uppercase()
+                                    }
+                                } else {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                                .uppercase()
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         KeyEvent.KEYCODE_F10 -> {
-                            Timber.d("onKeyDown: F10 Pressed")
+                            if (insertString.isNotEmpty()) {
+                                Timber.d("onKeyDown: F10 Pressed ${insertString.isAllEnglishLetters()} ${insertString.lowercase()}")
+                                if (insertString.isAllEnglishLetters()) {
+                                    _inputString.update {
+                                        insertString.lowercase()
+                                    }
+                                } else {
+                                    romajiConverter?.let { converter ->
+                                        _inputString.update {
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         KeyEvent.KEYCODE_DEL -> {
