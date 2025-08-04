@@ -1,6 +1,7 @@
 package com.kazumaproject.custom_keyboard.data
 
 import androidx.annotation.DrawableRes
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection as TfbiFlickDirection
 
 // キーボードの見た目ではなく、入力の「モード」を定義する
 enum class KeyboardInputMode {
@@ -45,7 +46,7 @@ sealed class KeyAction {
     data object SwitchToEnglishLayout : KeyAction()
     data object SwitchToNumberLayout : KeyAction()
     data object ShiftKey : KeyAction()
-    data object MoveCustomKeyboardTab: KeyAction()
+    data object MoveCustomKeyboardTab : KeyAction()
 
     // ひらがな・英語用
     data object ToggleDakuten : KeyAction() // 濁点・半濁点・小文字化
@@ -74,7 +75,8 @@ data class KeyboardLayout(
     val flickKeyMaps: Map<String, List<Map<FlickDirection, FlickAction>>>,
     val columnCount: Int,
     val rowCount: Int,
-    val isRomaji: Boolean = false
+    val isRomaji: Boolean = false,
+    val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
 )
 
 /**
@@ -92,7 +94,9 @@ enum class KeyType {
 
     STANDARD_FLICK,
 
-    PETAL_FLICK
+    PETAL_FLICK,
+
+    TWO_STEP_FLICK
 }
 
 enum class ShapeType {

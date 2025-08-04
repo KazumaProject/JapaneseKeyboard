@@ -28,6 +28,7 @@
         <item>トグル入力 - Default</item>
         <item>フリック入力 - Default</item>
         <item>フリック入力 - Circle</item>
+        <item>２段フリック入力</item>
         <item>スミレ入力</item>
     </string-array>
 
@@ -35,6 +36,7 @@
         <item>toggle-default</item>
         <item>flick-default</item>
         <item>flick-circle</item>
+        <item>second-flick</item>
         <item>flick-sumire</item>
     </string-array>
 
