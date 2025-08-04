@@ -1441,7 +1441,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 if (isHenkan.get()) {
                                     listAdapter.selectHighlightedItem()
                                     scope.launch {
-                                        delay(64)
+                                        delay(32)
                                         romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
                                             Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
                                             _inputString.update {
