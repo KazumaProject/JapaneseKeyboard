@@ -35,7 +35,6 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.pow
 import kotlin.math.sqrt
-import com.kazumaproject.custom_keyboard.view.FlickDirection as TfbiFlickDirection
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0

@@ -1,7 +1,7 @@
 package com.kazumaproject.custom_keyboard.data
 
 import androidx.annotation.DrawableRes
-import com.kazumaproject.custom_keyboard.view.FlickDirection as TfbiFlickDirection
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection as TfbiFlickDirection
 
 // キーボードの見た目ではなく、入力の「モード」を定義する
 enum class KeyboardInputMode {

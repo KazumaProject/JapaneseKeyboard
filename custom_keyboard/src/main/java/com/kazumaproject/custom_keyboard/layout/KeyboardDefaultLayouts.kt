@@ -7,7 +7,7 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
-import com.kazumaproject.custom_keyboard.view.FlickDirection as TfbiFlickDirection
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
     /**
@@ -4570,7 +4570,7 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.LEFT to mapOf(
                     TfbiFlickDirection.TAP to "あ",
                     TfbiFlickDirection.LEFT to "い",
-                    TfbiFlickDirection.DOWN_LEFT to "ぃ"
+                    TfbiFlickDirection.DOWN_LEFT to "ぃ",
                 ),
                 TfbiFlickDirection.UP to mapOf(
                     TfbiFlickDirection.TAP to "あ",
