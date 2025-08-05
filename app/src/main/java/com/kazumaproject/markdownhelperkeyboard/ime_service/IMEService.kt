@@ -2921,9 +2921,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            override fun onFlickActionUpAfterLongPress(action: KeyAction) {
+            override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
                 vibrate()
-                Timber.d("onFlickActionUpAfterLongPress: $action")
+                Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
                 when (action) {
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
@@ -2988,6 +2988,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Convert, KeyAction.Space -> {
                         isSpaceKeyLongPressed = false
+                        val isHankaku = hankakuPreference == true
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (isHankaku) {
+                            if (isFlick) {
+                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            } else {
+                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                            }
+                        } else {
+                            if (isFlick) {
+                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                            } else {
+                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            }
+                        }
                     }
 
                     KeyAction.SwitchToNextIme -> {}
@@ -3007,10 +3023,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            override fun onAction(action: KeyAction, view: View) {
+            override fun onAction(action: KeyAction, view: View, isFlick: Boolean) {
                 vibrate()
 
-                Timber.d("onAction: $action")
+                Timber.d("onAction: $action $isFlick")
                 if (action != KeyAction.Delete) {
                     clearDeleteBufferWithView()
                 }
@@ -3115,9 +3131,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             _cursorMoveMode.update { false }
                         } else {
                             if (!isSpaceKeyLongPressed) {
-                                handleSpaceKeyClick(
-                                    hankakuPreference ?: false, insertString, suggestions, mainView
-                                )
+                                val isHankaku = hankakuPreference == true
+                                if (isHankaku) {
+                                    if (isFlick) {
+                                        handleSpaceKeyClick(
+                                            false, insertString, suggestions, mainView
+                                        )
+                                    } else {
+                                        handleSpaceKeyClick(
+                                            true, insertString, suggestions, mainView
+                                        )
+                                    }
+                                } else {
+                                    if (isFlick) {
+                                        handleSpaceKeyClick(
+                                            true, insertString, suggestions, mainView
+                                        )
+                                    } else {
+                                        handleSpaceKeyClick(
+                                            false, insertString, suggestions, mainView
+                                        )
+                                    }
+                                }
                             }
                         }
                         isSpaceKeyLongPressed = false
