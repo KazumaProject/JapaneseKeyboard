@@ -1168,7 +1168,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     romajiConverter?.let { converter ->
                                         _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana()).toZenkakuAlphabet()
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                                .toZenkakuAlphabet()
                                         }
                                     }
                                 }
@@ -1185,11 +1186,40 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     romajiConverter?.let { converter ->
                                         _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana()).toHankakuAlphabet()
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                                .toHankakuAlphabet()
                                         }
                                     }
                                 }
                             }
+                        }
+
+                        KeyEvent.KEYCODE_HENKAN -> {
+                            customKeyboardMode = KeyboardInputMode.HIRAGANA
+                            updateKeyboardLayout()
+                            val inputMode = InputMode.ModeJapanese
+                            val showInputModeText = "あ"
+                            Timber.d("KEYCODE_HENKAN: $inputMode $showInputModeText")
+                            floatingDockView.setText(showInputModeText)
+                            mainView.keyboardView.setCurrentMode(inputMode)
+                            showFloatingModeSwitchView(showInputModeText)
+                            finishComposingText()
+                            _inputString.update { "" }
+                            return true
+                        }
+
+                        KeyEvent.KEYCODE_MUHENKAN -> {
+                            customKeyboardMode = KeyboardInputMode.ENGLISH
+                            updateKeyboardLayout()
+                            val inputMode = InputMode.ModeEnglish
+                            val showInputModeText = "A"
+                            Timber.d("KEYCODE_MUHENKAN: $inputMode $showInputModeText")
+                            floatingDockView.setText(showInputModeText)
+                            mainView.keyboardView.setCurrentMode(inputMode)
+                            showFloatingModeSwitchView(showInputModeText)
+                            finishComposingText()
+                            _inputString.update { "" }
+                            return true
                         }
 
                         KeyEvent.KEYCODE_DEL -> {
@@ -1458,13 +1488,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         if (insertString.isNotEmpty()) {
                                             sb.append(
                                                 insertString
-                                            ).append(c)
+                                            ).append(c.lowercase())
                                             _inputString.update {
                                                 sb.toString()
                                             }
                                         } else {
                                             _inputString.update {
-                                                c.toString()
+                                                c.lowercase()
                                             }
                                         }
                                         return true
@@ -1983,8 +2013,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
-                        val isHankaku = isFlick || hankakuPreference == true
-                        handleSpaceKeyClick(isHankaku, insertString, suggestions, mainView)
+                        if (gestureType == GestureType.FlickLeft) {
+                            val isHankaku = hankakuPreference == true
+                            if (isHankaku) {
+                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            } else {
+                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                            }
+                        } else {
+                            val isHankaku = hankakuPreference == true
+                            handleSpaceKeyClick(isHankaku, insertString, suggestions, mainView)
+                        }
                     }
                 }
                 isSpaceKeyLongPressed = false
@@ -2910,9 +2949,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            override fun onFlickActionUpAfterLongPress(action: KeyAction) {
+            override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
                 vibrate()
-                Timber.d("onFlickActionUpAfterLongPress: $action")
+                Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
                 when (action) {
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
@@ -2977,6 +3016,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Convert, KeyAction.Space -> {
                         isSpaceKeyLongPressed = false
+                        val isHankaku = hankakuPreference == true
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (isHankaku) {
+                            if (isFlick) {
+                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            } else {
+                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                            }
+                        } else {
+                            if (isFlick) {
+                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                            } else {
+                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            }
+                        }
                     }
 
                     KeyAction.SwitchToNextIme -> {}
@@ -2996,10 +3051,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            override fun onAction(action: KeyAction, view: View) {
+            override fun onAction(action: KeyAction, view: View, isFlick: Boolean) {
                 vibrate()
 
-                Timber.d("onAction: $action")
+                Timber.d("onAction: $action $isFlick")
                 if (action != KeyAction.Delete) {
                     clearDeleteBufferWithView()
                 }
@@ -3104,9 +3159,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             _cursorMoveMode.update { false }
                         } else {
                             if (!isSpaceKeyLongPressed) {
-                                handleSpaceKeyClick(
-                                    hankakuPreference ?: false, insertString, suggestions, mainView
-                                )
+                                val isHankaku = hankakuPreference == true
+                                if (isHankaku) {
+                                    if (isFlick) {
+                                        handleSpaceKeyClick(
+                                            false, insertString, suggestions, mainView
+                                        )
+                                    } else {
+                                        handleSpaceKeyClick(
+                                            true, insertString, suggestions, mainView
+                                        )
+                                    }
+                                } else {
+                                    if (isFlick) {
+                                        handleSpaceKeyClick(
+                                            true, insertString, suggestions, mainView
+                                        )
+                                    } else {
+                                        handleSpaceKeyClick(
+                                            false, insertString, suggestions, mainView
+                                        )
+                                    }
+                                }
                             }
                         }
                         isSpaceKeyLongPressed = false
@@ -6953,13 +7027,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val heightPref = appPreference.keyboard_height ?: 280
         val widthPref = appPreference.keyboard_width ?: 100
         val positionPref = appPreference.keyboard_position ?: true
+        val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
 
         // 3) Get screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
-        // --- REFACTORED LOGIC ---
+        val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
 
         // 4) Determine the final height in pixels
         // This now respects the user's preference for the default keyboard,
@@ -7029,6 +7103,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         (binding.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.width = widthPx
             params.gravity = gravity
+            params.bottomMargin = keyboardMarginBottom
             binding.root.layoutParams = params
         }
     }
