@@ -303,9 +303,9 @@ class SettingFragment : PreferenceFragmentCompat() {
                     "空白を全角入力"
                 }
                 this.summary = if (it) {
-                    "現在、半角入力です"
+                    "現在、半角入力です。\n左フリックで全角の空白"
                 } else {
-                    "現在、全角入力です"
+                    "現在、全角入力です。\n左フリックで半角の空白"
                 }
             }
             this.setOnPreferenceChangeListener { _, newValue ->
@@ -315,9 +315,9 @@ class SettingFragment : PreferenceFragmentCompat() {
                     "空白を全角入力"
                 }
                 this.summary = if (newValue == true) {
-                    "現在、半角入力です"
+                    "現在、半角入力です。\n左フリックで全角の空白"
                 } else {
-                    "現在、全角入力です"
+                    "現在、全角入力です。\n左フリックで半角の空白"
                 }
                 true
             }

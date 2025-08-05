@@ -10,6 +10,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
@@ -60,6 +61,7 @@ class KeyboardSettingFragment : Fragment() {
         setupResetButton() // Call the new setup function here
         updateKeyboardAlignment()
         setupResizeHandles()
+        setupMoveHandle()
     }
 
     /**
@@ -87,25 +89,62 @@ class KeyboardSettingFragment : Fragment() {
     private fun setInitialKeyboardView() {
         val heightFromPreference = appPreference.keyboard_height ?: maxHeightDp
         val widthFromPreference = appPreference.keyboard_width ?: maxWidthPercent
+        val marginBottomFromPreference = appPreference.keyboard_vertical_margin_bottom ?: 0
+
         val density = resources.displayMetrics.density
         val heightInPx = (heightFromPreference * density).toInt()
+        val marginBottomInPx = (marginBottomFromPreference * density).toInt()
 
         val screenWidth = WindowMetricsCalculator.getOrCreate()
             .computeCurrentWindowMetrics(requireActivity()).bounds.width()
 
-        binding.keyboardContainer.layoutParams = binding.keyboardContainer.layoutParams.apply {
-            height = heightInPx
-            width = if (widthFromPreference == maxWidthPercent) {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            } else {
-                (screenWidth * (widthFromPreference / 100f)).toInt()
-            }
+        val layoutParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
+        layoutParams.height = heightInPx
+        layoutParams.width = if (widthFromPreference == maxWidthPercent) {
+            ViewGroup.LayoutParams.MATCH_PARENT
+        } else {
+            (screenWidth * (widthFromPreference / 100f)).toInt()
         }
-        binding.keyboardContainer.requestLayout()
-
-
+        layoutParams.bottomMargin = marginBottomInPx
+        binding.keyboardContainer.layoutParams = layoutParams
         binding.keyboardView.setOnTouchListener { _, _ ->
             true
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupMoveHandle() {
+        var initialY = 0f
+        var initialBottomMargin = 0
+
+        val density = resources.displayMetrics.density
+
+        binding.handleMove.setOnTouchListener { _, event ->
+            val layoutParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    initialY = event.rawY
+                    initialBottomMargin = layoutParams.bottomMargin
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val deltaY = event.rawY - initialY
+                    // Yが小さい（上方向）にドラッグするとdeltaYは負になるため、マージンは増加する
+                    val newBottomMargin = initialBottomMargin - deltaY
+                    // 画面外にドラッグできないようにマージンを制限（例: 0以上）
+                    layoutParams.bottomMargin = newBottomMargin.toInt().coerceAtLeast(0)
+                    binding.keyboardContainer.requestLayout()
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    // dpに変換して設定を保存
+                    val finalMarginDp = (layoutParams.bottomMargin / density).roundToInt()
+                    appPreference.keyboard_vertical_margin_bottom = finalMarginDp
+                    Timber.d("savePreferences: vertical margin bottom = $finalMarginDp dp")
+                    true
+                }
+                else -> false
+            }
         }
     }
 
@@ -241,6 +280,7 @@ class KeyboardSettingFragment : Fragment() {
             appPreference.keyboard_height = 220
             appPreference.keyboard_width = maxWidthPercent
             appPreference.keyboard_position = true // Default to right-aligned
+            appPreference.keyboard_vertical_margin_bottom = 0
 
             // Update local state and UI
             isRightAligned = true

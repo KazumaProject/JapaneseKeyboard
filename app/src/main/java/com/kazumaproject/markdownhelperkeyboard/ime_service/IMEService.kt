@@ -1168,7 +1168,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     romajiConverter?.let { converter ->
                                         _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana()).toZenkakuAlphabet()
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                                .toZenkakuAlphabet()
                                         }
                                     }
                                 }
@@ -1185,7 +1186,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     romajiConverter?.let { converter ->
                                         _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana()).toHankakuAlphabet()
+                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                                .toHankakuAlphabet()
                                         }
                                     }
                                 }
@@ -1983,8 +1985,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
-                        val isHankaku = isFlick || hankakuPreference == true
-                        handleSpaceKeyClick(isHankaku, insertString, suggestions, mainView)
+                        if (gestureType == GestureType.FlickLeft) {
+                            val isHankaku = hankakuPreference == true
+                            if (isHankaku) {
+                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                            } else {
+                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                            }
+                        } else {
+                            val isHankaku = hankakuPreference == true
+                            handleSpaceKeyClick(isHankaku, insertString, suggestions, mainView)
+                        }
                     }
                 }
                 isSpaceKeyLongPressed = false
@@ -6953,13 +6964,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val heightPref = appPreference.keyboard_height ?: 280
         val widthPref = appPreference.keyboard_width ?: 100
         val positionPref = appPreference.keyboard_position ?: true
+        val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
 
         // 3) Get screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-
-        // --- REFACTORED LOGIC ---
+        val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
 
         // 4) Determine the final height in pixels
         // This now respects the user's preference for the default keyboard,
@@ -7029,6 +7040,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         (binding.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.width = widthPx
             params.gravity = gravity
+            params.bottomMargin = keyboardMarginBottom
             binding.root.layoutParams = params
         }
     }
