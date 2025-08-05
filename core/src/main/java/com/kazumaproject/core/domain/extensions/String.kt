@@ -184,6 +184,44 @@ fun String.toHankakuKatakana(): String {
     }
 }
 
+/**
+ * 文字列に含まれる全角アルファベット（Ａ-Ｚ, ａ-ｚ）と全角スペース（　）を半角に変換します。
+ * その他の文字はそのまま維持されます。
+ */
+fun String.toHankakuAlphabet(): String {
+    return buildString(this.length) {
+        for (char in this@toHankakuAlphabet) {
+            // 全角アルファベットのUnicode範囲内かチェック
+            // 'Ａ'(U+FF21) から 'A'(U+0041) の差は 0xFEE0
+            val convertedChar = when (char) {
+                in 'Ａ'..'Ｚ', in 'ａ'..'ｚ' -> (char.code - 0xFEE0).toChar()
+                '　' -> ' ' // 全角スペースを半角スペースに
+                else -> char
+            }
+            append(convertedChar)
+        }
+    }
+}
+
+/**
+ * 文字列に含まれる半角アルファベット（A-Z, a-z）と半角スペース（ ）を全角に変換します。
+ * その他の文字はそのまま維持されます。
+ */
+fun String.toZenkakuAlphabet(): String {
+    return buildString(this.length) {
+        for (char in this@toZenkakuAlphabet) {
+            // 半角アルファベットのUnicode範囲内かチェック
+            // 'A'(U+0041) から 'Ａ'(U+FF21) の差は 0xFEE0
+            val convertedChar = when (char) {
+                in 'A'..'Z', in 'a'..'z' -> (char.code + 0xFEE0).toChar()
+                ' ' -> '　' // 半角スペースを全角スペースに
+                else -> char
+            }
+            append(convertedChar)
+        }
+    }
+}
+
 
 /**
  * Extension function to convert all Katakana characters in this String to their corresponding Hiragana.
