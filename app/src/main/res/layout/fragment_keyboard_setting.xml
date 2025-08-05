@@ -60,6 +60,15 @@
                 android:layout_height="match_parent"
                 android:clickable="false"
                 android:focusable="false" />
+
+            <ImageView
+                android:id="@+id/handle_move"
+                android:layout_width="128dp"
+                android:layout_height="128dp"
+                android:layout_gravity="center"
+                android:background="@drawable/arrows_output_24px"
+                android:contentDescription="キーボードを移動"
+                android:foregroundGravity="center" />
         </FrameLayout>
 
         <View

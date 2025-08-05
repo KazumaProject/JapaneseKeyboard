@@ -42,12 +42,12 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     interface OnKeyboardActionListener {
         fun onKey(text: String, isFlick: Boolean)
-        fun onAction(action: KeyAction, view: View)
+        fun onAction(action: KeyAction, view: View, isFlick: Boolean)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
         fun onFlickDirectionChanged(direction: FlickDirection)
         fun onFlickActionLongPress(action: KeyAction)
-        fun onFlickActionUpAfterLongPress(action: KeyAction)
+        fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean)
     }
 
     private var listener: OnKeyboardActionListener? = null
@@ -259,14 +259,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                     if (flickActionMap != null) {
                         val controller = CrossFlickInputController(context).apply {
                             this.listener = object : CrossFlickInputController.CrossFlickListener {
-                                override fun onFlick(flickAction: FlickAction) {
+                                override fun onFlick(flickAction: FlickAction, isFlick: Boolean) {
                                     when (flickAction) {
                                         is FlickAction.Input -> this@FlickKeyboardView.listener?.onKey(
                                             flickAction.char, isFlick = true
                                         )
 
                                         is FlickAction.Action -> this@FlickKeyboardView.listener?.onAction(
-                                            flickAction.action, view = keyView
+                                            flickAction.action, view = keyView, isFlick = isFlick
                                         )
                                     }
                                 }
@@ -281,10 +281,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     }
                                 }
 
-                                override fun onFlickUpAfterLongPress(flickAction: FlickAction) {
+                                override fun onFlickUpAfterLongPress(
+                                    flickAction: FlickAction,
+                                    isFlick: Boolean
+                                ) {
                                     when (flickAction) {
                                         is FlickAction.Action -> this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
-                                            flickAction.action
+                                            flickAction.action, isFlick = isFlick
                                         )
 
                                         is FlickAction.Input -> {}
@@ -413,7 +416,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         var isLongPressTriggered = false
                         keyView.setOnClickListener {
                             this@FlickKeyboardView.listener?.onAction(
-                                action, view = keyView
+                                action, view = keyView, isFlick = false
                             )
                         }
                         keyView.setOnLongClickListener {

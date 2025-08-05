@@ -303,9 +303,9 @@ class SettingFragment : PreferenceFragmentCompat() {
                     "空白を全角入力"
                 }
                 this.summary = if (it) {
-                    "現在、半角入力です"
+                    "現在、半角入力です。\n左フリックで全角の空白"
                 } else {
-                    "現在、全角入力です"
+                    "現在、全角入力です。\n左フリックで半角の空白"
                 }
             }
             this.setOnPreferenceChangeListener { _, newValue ->
@@ -315,9 +315,9 @@ class SettingFragment : PreferenceFragmentCompat() {
                     "空白を全角入力"
                 }
                 this.summary = if (newValue == true) {
-                    "現在、半角入力です"
+                    "現在、半角入力です。\n左フリックで全角の空白"
                 } else {
-                    "現在、全角入力です"
+                    "現在、全角入力です。\n左フリックで半角の空白"
                 }
                 true
             }
@@ -329,15 +329,19 @@ class SettingFragment : PreferenceFragmentCompat() {
         sumireKeyboardInputModePreference?.apply {
             when (value) {
                 "toggle-default" -> {
-                    summary = "トグル入力 - Default"
+                    summary = "トグル入力 - Toggle"
                 }
 
                 "flick-default" -> {
-                    summary = "フリック入力 - Default"
+                    summary = "フリック入力 - Flick"
                 }
 
                 "flick-circle" -> {
-                    summary = "フリック入力 - Circle"
+                    summary = "サークル入力 - Toggle"
+                }
+
+                "flick-circle-flick" -> {
+                    summary = "サークル入力 - Flick"
                 }
 
                 "flick-sumire" -> {
@@ -345,22 +349,30 @@ class SettingFragment : PreferenceFragmentCompat() {
                 }
 
                 "second-flick" -> {
-                    summary = "２段フリック入力"
+                    summary = "２段フリック入力 - Toggle"
+                }
+
+                "second-flick-flick" -> {
+                    summary = "２段フリック入力 - Flick"
                 }
             }
             setOnPreferenceChangeListener { preference, newValue ->
                 if (newValue is String) {
                     when (newValue) {
                         "toggle-default" -> {
-                            preference.summary = "トグル入力 - Default"
+                            preference.summary = "トグル入力 - Toggle"
                         }
 
                         "flick-default" -> {
-                            preference.summary = "フリック入力 - Default"
+                            preference.summary = "フリック入力 - Flick"
                         }
 
                         "flick-circle" -> {
-                            preference.summary = "フリック入力 - Circle"
+                            preference.summary = "サークル入力 - Toggle"
+                        }
+
+                        "flick-circle-flick" -> {
+                            preference.summary = "サークル入力 - Flick"
                         }
 
                         "flick-sumire" -> {
@@ -368,7 +380,11 @@ class SettingFragment : PreferenceFragmentCompat() {
                         }
 
                         "second-flick" -> {
-                            preference.summary = "２段フリック入力"
+                            preference.summary = "２段フリック入力 - Toggle"
+                        }
+
+                        "second-flick-flick" -> {
+                            preference.summary = "２段フリック入力 - Flick"
                         }
                     }
                 }
