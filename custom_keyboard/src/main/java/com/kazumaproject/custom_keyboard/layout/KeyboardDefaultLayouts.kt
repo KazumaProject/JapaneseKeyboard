@@ -4853,6 +4853,10 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to mapOf(
                     TfbiFlickDirection.TAP to "わ",
                 ),
+                TfbiFlickDirection.UP_RIGHT to mapOf(
+                    TfbiFlickDirection.TAP to "わ",
+                    TfbiFlickDirection.UP_RIGHT to "ゎ",
+                ),
                 TfbiFlickDirection.LEFT to mapOf(
                     TfbiFlickDirection.TAP to "わ",
                     TfbiFlickDirection.LEFT to "を",
@@ -5482,6 +5486,10 @@ object KeyboardDefaultLayouts {
             "わ" to mapOf(
                 TfbiFlickDirection.TAP to mapOf(
                     TfbiFlickDirection.TAP to "わ",
+                ),
+                TfbiFlickDirection.UP_RIGHT to mapOf(
+                    TfbiFlickDirection.TAP to "わ",
+                    TfbiFlickDirection.UP_RIGHT to "ゎ",
                 ),
                 TfbiFlickDirection.LEFT to mapOf(
                     TfbiFlickDirection.TAP to "わ",

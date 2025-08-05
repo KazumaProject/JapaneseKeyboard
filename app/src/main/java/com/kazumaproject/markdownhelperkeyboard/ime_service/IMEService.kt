@@ -1194,6 +1194,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
 
+                        KeyEvent.KEYCODE_HENKAN -> {
+                            customKeyboardMode = KeyboardInputMode.HIRAGANA
+                            updateKeyboardLayout()
+                            val inputMode = InputMode.ModeJapanese
+                            val showInputModeText = "あ"
+                            Timber.d("KEYCODE_HENKAN: $inputMode $showInputModeText")
+                            floatingDockView.setText(showInputModeText)
+                            mainView.keyboardView.setCurrentMode(inputMode)
+                            showFloatingModeSwitchView(showInputModeText)
+                            finishComposingText()
+                            _inputString.update { "" }
+                            return true
+                        }
+
+                        KeyEvent.KEYCODE_MUHENKAN -> {
+                            customKeyboardMode = KeyboardInputMode.ENGLISH
+                            updateKeyboardLayout()
+                            val inputMode = InputMode.ModeEnglish
+                            val showInputModeText = "A"
+                            Timber.d("KEYCODE_MUHENKAN: $inputMode $showInputModeText")
+                            floatingDockView.setText(showInputModeText)
+                            mainView.keyboardView.setCurrentMode(inputMode)
+                            showFloatingModeSwitchView(showInputModeText)
+                            finishComposingText()
+                            _inputString.update { "" }
+                            return true
+                        }
+
                         KeyEvent.KEYCODE_DEL -> {
                             when {
                                 insertString.isNotEmpty() -> {
@@ -1460,13 +1488,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         if (insertString.isNotEmpty()) {
                                             sb.append(
                                                 insertString
-                                            ).append(c)
+                                            ).append(c.lowercase())
                                             _inputString.update {
                                                 sb.toString()
                                             }
                                         } else {
                                             _inputString.update {
-                                                c.toString()
+                                                c.lowercase()
                                             }
                                         }
                                         return true
