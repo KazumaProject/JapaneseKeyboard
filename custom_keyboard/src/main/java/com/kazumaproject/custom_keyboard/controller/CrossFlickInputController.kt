@@ -27,9 +27,9 @@ class CrossFlickInputController(private val context: Context) {
      * ロングプレス後の指離しイベント用のリスナーメソッドを追加
      */
     interface CrossFlickListener {
-        fun onFlick(flickAction: FlickAction)
+        fun onFlick(flickAction: FlickAction, isFlick: Boolean)
         fun onFlickLongPress(flickAction: FlickAction)
-        fun onFlickUpAfterLongPress(flickAction: FlickAction)
+        fun onFlickUpAfterLongPress(flickAction: FlickAction, isFlick: Boolean)
     }
     // ▲▲▲ 修正 ▲▲▲
 
@@ -152,12 +152,14 @@ class CrossFlickInputController(private val context: Context) {
                     flickActionMap[FlickDirection.TAP]
                 }
 
+                val isFlick = currentDirection != CrossDirection.TAP
+
                 if (isLongPressTriggered) {
                     // ロングプレスが発火済みの場合は、UpAfterLongPress を呼び出す
-                    flickActionToCommit?.let { listener?.onFlickUpAfterLongPress(it) }
+                    flickActionToCommit?.let { listener?.onFlickUpAfterLongPress(it, isFlick) }
                 } else {
                     // ロングプレスが発火していない場合は、通常の onFlick を呼び出す
-                    flickActionToCommit?.let { listener?.onFlick(it) }
+                    flickActionToCommit?.let { listener?.onFlick(it, isFlick) }
                 }
                 // ▲▲▲ 修正 ▲▲▲
 
