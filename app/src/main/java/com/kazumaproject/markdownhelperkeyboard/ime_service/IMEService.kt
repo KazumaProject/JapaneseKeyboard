@@ -67,8 +67,10 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHiragana
+import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
@@ -1161,13 +1163,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Timber.d("onKeyDown: F9 Pressed")
                                 if (insertString.isAllEnglishLetters()) {
                                     _inputString.update {
-                                        insertString.lowercase().uppercase()
+                                        insertString.lowercase().toZenkakuAlphabet()
                                     }
                                 } else {
                                     romajiConverter?.let { converter ->
                                         _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana())
-                                                .uppercase()
+                                            converter.hiraganaToRomaji(insertString.toHiragana()).toZenkakuAlphabet()
                                         }
                                     }
                                 }
@@ -1179,12 +1180,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Timber.d("onKeyDown: F10 Pressed ${insertString.isAllEnglishLetters()} ${insertString.lowercase()}")
                                 if (insertString.isAllEnglishLetters()) {
                                     _inputString.update {
-                                        insertString.lowercase()
+                                        insertString.lowercase().toHankakuAlphabet()
                                     }
                                 } else {
                                     romajiConverter?.let { converter ->
                                         _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana())
+                                            converter.hiraganaToRomaji(insertString.toHiragana()).toHankakuAlphabet()
                                         }
                                     }
                                 }

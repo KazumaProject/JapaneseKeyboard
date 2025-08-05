@@ -4530,6 +4530,7 @@ object KeyboardDefaultLayouts {
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
+            "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
             "あ" to listOf(a),
             "か" to listOf(ka),
