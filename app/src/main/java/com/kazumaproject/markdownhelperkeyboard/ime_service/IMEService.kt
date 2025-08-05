@@ -572,6 +572,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
+
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -3954,7 +3955,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 setKeyboardSize()
-                setKeyboardSizeForHeight(mainView)
+                //setKeyboardSizeForHeight(mainView)
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
                         animateViewVisibility(
@@ -4183,7 +4184,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView.root.alpha = 1f
                     requestCursorUpdates(0)
                     setKeyboardSize()
-                    setKeyboardSizeForHeight(mainView)
+                    //setKeyboardSizeForHeight(mainView)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
                 }
@@ -4202,6 +4203,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         val heightPref = appPreference.keyboard_height ?: 280
+        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait =
             resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -4232,6 +4234,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
+            params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
     }
@@ -7050,6 +7053,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
+
+        Timber.d("setKeyboardSize: $heightPx $keyboardMarginBottom")
 
         // 5) Determine the final width in pixels
         // **FIXED**: This logic is now simplified and directly reflects the user's percentage
