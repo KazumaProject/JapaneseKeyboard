@@ -36,6 +36,8 @@ object AppPreference {
     private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
+    private val KEYBOARD_VERTICAL_MARGIN_BOTTOM =
+        Pair("keyboard_vertical_margin_bottom_preference", 0)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
@@ -250,6 +252,14 @@ object AppPreference {
             it.putBoolean(KEYBOARD_POSITION.first, value ?: true)
         }
 
+    var keyboard_vertical_margin_bottom: Int?
+        get() = preferences.getInt(
+            KEYBOARD_VERTICAL_MARGIN_BOTTOM.first, KEYBOARD_VERTICAL_MARGIN_BOTTOM.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_VERTICAL_MARGIN_BOTTOM.first, value ?: 0)
+        }
+
     var flick_input_only_preference: Boolean?
         get() = preferences.getBoolean(FLICK_INPUT_ONLY.first, FLICK_INPUT_ONLY.second)
         set(value) = preferences.edit {
@@ -287,7 +297,10 @@ object AppPreference {
         }
 
     var custom_keyboard_suggestion_preference: Boolean?
-        get() = preferences.getBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.second)
+        get() = preferences.getBoolean(
+            CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first,
+            CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.second
+        )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
         }
