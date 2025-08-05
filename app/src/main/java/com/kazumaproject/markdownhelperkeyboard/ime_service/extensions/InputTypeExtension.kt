@@ -23,13 +23,18 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                 InputType.TYPE_TEXT_FLAG_CAP_SENTENCES -> InputTypeForIME.TextCapSentences
                 InputType.TYPE_TEXT_FLAG_AUTO_CORRECT -> InputTypeForIME.TextAutoCorrect
                 InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE -> InputTypeForIME.TextAutoComplete
-                InputType.TYPE_TEXT_FLAG_MULTI_LINE,-> InputTypeForIME.TextMultiLine
+                /**
+                 *  180385 : Gmail content
+                 *  131073 : EditText in Android App
+                 *  409601 : Line
+                 * */
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE, 180385, 409601 -> InputTypeForIME.TextMultiLine
 
                 /**
                  *  180225 : Twitter Tweet & Messenger
                  *  147457 : Facebook Messenger
                  * */
-                InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE -> InputTypeForIME.TextImeMultiLine
+                InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE, 180225, 147457 -> InputTypeForIME.TextImeMultiLine
                 InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS -> InputTypeForIME.TextNoSuggestion
                 InputType.TYPE_TEXT_VARIATION_URI -> InputTypeForIME.TextUri
                 InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS -> InputTypeForIME.TextEmailAddress
@@ -45,7 +50,17 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                 InputType.TYPE_TEXT_VARIATION_PHONETIC -> InputTypeForIME.TextPhonetic
                 InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> InputTypeForIME.TextWebEmailAddress
                 InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD -> InputTypeForIME.TextWebPassword
+                /**
+                 * TD Bank Book First, Last Name and Phone Number
+                 * EditTexts in WebView in Chrome
+                 * **/
+                49313 -> {
+                    InputTypeForIME.TextEditTextInWebView
+                }
+
                 524305 -> InputTypeForIME.TextWebSearchView
+                17 -> InputTypeForIME.TextWebSearchViewFireFox
+                294913 -> InputTypeForIME.TextNotCursorUpdate
                 /**
                  *  524465 : Twitter (X) SearchView
                  *  589825 : SearchView in Android App
@@ -58,14 +73,20 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                  *  524449: Brave SearchView on the top in WebView
                  *  1: SearchView in Nova Launcher, File Manager App
                  *  65537: SearchView in Default Message App
+                 *  131073: Instagram Search
                  * **/
                 524465, 589825, 1048577, 524289, 540833,
-                177, 573601, 655521, 524449,
+                177, 573601, 655521, 524449, 131073,
                 65537 -> InputTypeForIME.TextSearchView
 
                 1 -> {
                     editorInfo.imeOptions.inputTypeFromImeOptions(editorInfo)
                 }
+                /**
+                 *  33 : Gmail To section
+                 *  442417 : Gmail Subject
+                 * */
+                33, 442417 -> InputTypeForIME.TextNextLine
                 else -> {
                     editorInfo.imeOptions.inputTypeFromImeOptions(editorInfo)
                 }
