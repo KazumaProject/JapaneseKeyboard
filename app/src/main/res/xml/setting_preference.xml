@@ -4,14 +4,16 @@
 
     <PreferenceCategory android:title="キーボード">
         <Preference
+            android:icon="@drawable/outline_border_color_24"
             android:key="keyboard_selection_preference"
             android:summary="キーボードの追加、削除ができます"
             android:title="キーボード" />
 
         <Preference
+            android:icon="@drawable/outline_border_color_24"
             android:key="keyboard_screen_preference"
-            android:summary="キーボードのサイズの設定を変更できます"
-            android:title="サイズの設定" />
+            android:summary="キーボードの位置とサイズの設定を変更できます"
+            android:title="位置とサイズの設定" />
 
         <PreferenceCategory android:title="変換候補">
             <SeekBarPreference
