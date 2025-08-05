@@ -470,6 +470,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var currentCustomKeyboardPosition = 0
 
+    private var hasHardwareKeyboardConnected: Boolean? = false
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -721,6 +723,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingDockWindow = null
         floatingModeSwitchWindow = null
         keyboardSelectionPopupWindow = null
+        hasHardwareKeyboardConnected = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
         if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
@@ -3955,7 +3958,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 setKeyboardSize()
-                //setKeyboardSizeForHeight(mainView)
+                setKeyboardSizeForHeight(mainView)
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
                         animateViewVisibility(
@@ -4184,7 +4187,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView.root.alpha = 1f
                     requestCursorUpdates(0)
                     setKeyboardSize()
-                    //setKeyboardSizeForHeight(mainView)
+                    setKeyboardSizeForHeight(mainView)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
                 }
@@ -4202,6 +4205,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setKeyboardSizeForHeight(
         mainView: MainLayoutBinding
     ) {
+        if (hasHardwareKeyboardConnected != true) return
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -7178,6 +7182,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (hasPhysicalKeyboard) {
             Timber.d("A physical keyboard is connected.")
+            hasHardwareKeyboardConnected = true
             floatingDockWindow?.dismiss()
             floatingModeSwitchWindow?.dismiss()
             floatingCandidateWindow?.dismiss()
@@ -7339,6 +7344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val device = inputManager.getInputDevice(p0)
         if (isDevicePhysicalKeyboard(device)) {
             Timber.d("Physical keyboard connected: ${device?.name}")
+            hasHardwareKeyboardConnected = true
             scope.launch {
                 _physicalKeyboardEnable.emit(true)
             }
@@ -7356,6 +7362,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onInputDeviceRemoved(p0: Int) {
         val device = inputManager.getInputDevice(p0)
         Timber.d("Input device changed: ${device?.name}")
+        hasHardwareKeyboardConnected = false
         scope.launch {
             _physicalKeyboardEnable.emit(false)
         }
