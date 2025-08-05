@@ -4845,8 +4845,8 @@ object KeyboardDefaultLayouts {
                     TfbiFlickDirection.TAP to "、",
                 ),
                 TfbiFlickDirection.LEFT to mapOf(
-                    TfbiFlickDirection.TAP to "。",
-                    TfbiFlickDirection.LEFT to "、",
+                    TfbiFlickDirection.TAP to "、",
+                    TfbiFlickDirection.LEFT to "。",
                 ),
                 TfbiFlickDirection.UP to mapOf(
                     TfbiFlickDirection.TAP to "、",
