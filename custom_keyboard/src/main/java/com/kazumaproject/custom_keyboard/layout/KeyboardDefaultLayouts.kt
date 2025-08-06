@@ -1,5 +1,6 @@
 package com.kazumaproject.custom_keyboard.layout
 
+import android.util.Log
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
@@ -21,6 +22,7 @@ object KeyboardDefaultLayouts {
         dynamicKeyStates: Map<String, Int>,
         inputType: String,
     ): KeyboardLayout {
+        Log.d("createFinalLayout:", "$dynamicKeyStates")
         val baseLayout = when (inputType) {
             "toggle-default" -> {
                 when (mode) {
@@ -165,7 +167,10 @@ object KeyboardDefaultLayouts {
         FlickAction.Action(KeyAction.NewLine, "改行"),
         FlickAction.Action(KeyAction.Confirm, "確定"),
         FlickAction.Action(
-            KeyAction.Enter, "実行", com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            KeyAction.Enter, "実行",
+        ),
+        FlickAction.Action(
+            KeyAction.Enter, "検索",
         ),
     )
 

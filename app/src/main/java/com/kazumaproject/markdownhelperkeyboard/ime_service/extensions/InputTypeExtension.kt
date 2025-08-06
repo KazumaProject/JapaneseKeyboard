@@ -28,7 +28,7 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                  *  131073 : EditText in Android App
                  *  409601 : Line
                  * */
-                InputType.TYPE_TEXT_FLAG_MULTI_LINE, 180385, 409601 -> InputTypeForIME.TextMultiLine
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE, 180385, 409601, 131073 -> InputTypeForIME.TextMultiLine
 
                 /**
                  *  180225 : Twitter Tweet & Messenger
