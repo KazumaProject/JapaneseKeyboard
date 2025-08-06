@@ -28,7 +28,7 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                  *  131073 : EditText in Android App
                  *  409601 : Line
                  * */
-                InputType.TYPE_TEXT_FLAG_MULTI_LINE, 180385, 409601, 131073 -> InputTypeForIME.TextMultiLine
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE, 409601 -> InputTypeForIME.TextMultiLine
 
                 /**
                  *  180225 : Twitter Tweet & Messenger
@@ -76,7 +76,7 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                  *  131073: Instagram Search
                  * **/
                 524465, 589825, 1048577, 524289, 540833,
-                177, 573601, 655521, 524449, 131073,
+                177, 573601, 655521, 524449,
                 65537 -> InputTypeForIME.TextSearchView
 
                 1 -> {
@@ -145,6 +145,8 @@ fun Int.inputTypeFromImeOptions(
         else -> {
             editorInfo.hintText?.toString()?.let {
                 if (it.contains("検索")) return InputTypeForIME.TextSearchView
+                if (it.contains("レビューを書き込んでください（任意）")) return InputTypeForIME.TextMultiLine
+                if (it.contains("Describe your experience (optional)")) return InputTypeForIME.TextMultiLine
                 if (it.contains("搜索")) return InputTypeForIME.TextSearchView
                 if (it.contains("검색")) return InputTypeForIME.TextSearchView
                 if (it.contains("Search")) return InputTypeForIME.TextSearchView
