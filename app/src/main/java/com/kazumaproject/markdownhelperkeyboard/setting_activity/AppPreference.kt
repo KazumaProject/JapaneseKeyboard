@@ -33,6 +33,12 @@ object AppPreference {
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
 
+    private val QWERTY_SHOW_IME_SWITCH_BUTTON =
+        Pair("qwerty_show_switch_ime_button_preference", true)
+
+    private val QWERTY_SHOW_CURSOR_BUTTONS =
+        Pair("qwerty_show_cursor_buttons_preference", true)
+
     private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
@@ -88,6 +94,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.first, value ?: false)
+        }
+
+    var qwerty_show_ime_button: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_IME_SWITCH_BUTTON.first,
+            QWERTY_SHOW_IME_SWITCH_BUTTON.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_IME_SWITCH_BUTTON.first, value ?: true)
+        }
+
+    var qwerty_show_cursor_buttons: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_CURSOR_BUTTONS.first,
+            QWERTY_SHOW_CURSOR_BUTTONS.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_CURSOR_BUTTONS.first, value ?: false)
         }
 
     var keyboard_order: List<KeyboardType>
