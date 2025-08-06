@@ -123,7 +123,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val longPressEnabledKeys = setOf(
         QWERTYKey.QWERTYKeyDelete,
         QWERTYKey.QWERTYKeySpace,
-        QWERTYKey.QWERTYKeySwitchDefaultLayout
+        QWERTYKey.QWERTYKeySwitchDefaultLayout,
+        QWERTYKey.QWERTYKeyCursorLeft,
+        QWERTYKey.QWERTYKeyCursorRight
     )
 
     init {
@@ -455,7 +457,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keySwitchDefault to QWERTYKey.QWERTYKeySwitchDefaultLayout,
             binding.key123 to QWERTYKey.QWERTYKeySwitchMode,   // AppCompatButton
             binding.keySpace to QWERTYKey.QWERTYKeySpace,      // QWERTYButton
-            binding.keyReturn to QWERTYKey.QWERTYKeyReturn     // AppCompatButton
+            binding.keyReturn to QWERTYKey.QWERTYKeyReturn,
+            binding.cursorLeft to QWERTYKey.QWERTYKeyCursorLeft,
+            binding.cursorRight to QWERTYKey.QWERTYKeyCursorRight
         )
     }
 
@@ -763,8 +767,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         shiftDoubleTapped = false
                     } else {
                         val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                        logVariationIfNeeded(qwertyKey)
-                        setToggleShiftState(view)
+                        when (qwertyKey) {
+                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight -> {
+                                qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
+                            }
+
+                            else -> {
+                                logVariationIfNeeded(qwertyKey)
+                                setToggleShiftState(view)
+                            }
+                        }
                     }
                 }
                 pointerButtonMap.remove(pointerId)
@@ -815,8 +827,20 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 } else {
                                     val qwertyKey =
                                         qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                                    logVariationIfNeeded(qwertyKey)
-                                    setToggleShiftState(view)
+                                    when (qwertyKey) {
+                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight -> {
+                                            qwertyKeyListener?.onReleasedQWERTYKey(
+                                                qwertyKey,
+                                                null,
+                                                null
+                                            )
+                                        }
+
+                                        else -> {
+                                            logVariationIfNeeded(qwertyKey)
+                                            setToggleShiftState(view)
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -912,7 +936,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             // ⑥ Show preview for non‐edge, non‐icon keys
-            if (it.id != binding.keySpace.id && it.id != binding.keyDelete.id && it.id != binding.keyShift.id && it.id != binding.key123.id && it.id != binding.keyReturn.id && it.id != binding.keySwitchDefault.id) {
+            if (it.id != binding.keySpace.id &&
+                it.id != binding.keyDelete.id &&
+                it.id != binding.keyShift.id &&
+                it.id != binding.key123.id &&
+                it.id != binding.keyReturn.id &&
+                it.id != binding.keySwitchDefault.id &&
+                it.id != binding.cursorLeft.id &&
+                it.id != binding.cursorRight.id
+            ) {
                 showKeyPreview(it)
             }
 
@@ -1353,6 +1385,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             characterKeys.forEach { it.text = "" }
             keySpace.text = ""
         }
+    }
+
+    /**
+     * 特定のキーの表示・非表示を切り替えます。
+     * @param showCursors trueの場合、左右のカーソルキーを表示します。
+     * @param showSwitchKey trueの場合、レイアウト切り替えキーを表示します。
+     */
+    fun setSpecialKeyVisibility(showCursors: Boolean, showSwitchKey: Boolean) {
+        binding.cursorLeft.isVisible = showCursors
+        binding.cursorRight.isVisible = showCursors
+        binding.keySwitchDefault.isVisible = showSwitchKey
     }
 
 }

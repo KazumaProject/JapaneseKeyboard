@@ -84,6 +84,22 @@
                 app:summary="ローマ字の変換表を作成、選択します" />
         </PreferenceCategory>
 
+        <PreferenceCategory android:title="QWERTY キーボード">
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="qwerty_show_cursor_buttons_preference"
+                android:summaryOff="QWERTY キーボードにカーソルボタンを表示しません。"
+                android:summaryOn="QWERTY キーボードにカーソルボタンを表示します。"
+                android:title="カーソルボタン" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="qwerty_show_switch_ime_button_preference"
+                android:summaryOff="キーボード切り替え（地球儀アイコン）ボタンを表示しません。"
+                android:summaryOn="キーボード切り替え（地球儀アイコン）ボタンを表示します。"
+                android:title="IME 切り替えボタン" />
+        </PreferenceCategory>
+
         <PreferenceCategory android:title="記号キーボード">
             <ListPreference
                 android:defaultValue="EMOJI"
