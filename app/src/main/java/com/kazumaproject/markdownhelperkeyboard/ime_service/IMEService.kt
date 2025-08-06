@@ -2562,7 +2562,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
                             mode = KeyboardInputMode.HIRAGANA,
                             dynamicKeyStates = mapOf(
-                                "enter_key" to currentEnterKeyIndex, "dakuten_toggle_key" to currentDakutenKeyIndex
+                                "enter_key" to currentEnterKeyIndex,
+                                "dakuten_toggle_key" to currentDakutenKeyIndex
                             ),
                             inputType = sumireInputKeyType ?: "flick-default",
                         )
@@ -4644,7 +4645,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME(this)
-            Timber.d("setCurrentInputType: $currentInputType $inputType")
+            Timber.d("setCurrentInputType: $currentInputType $inputType ${attribute.hintText} ${attribute.actionId} ${attribute.fieldName}")
             if (isTablet == true) {
                 mainLayoutBinding?.tabletView?.apply {
                     when (currentInputType) {
