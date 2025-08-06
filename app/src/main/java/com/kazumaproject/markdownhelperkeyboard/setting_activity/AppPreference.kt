@@ -37,7 +37,7 @@ object AppPreference {
         Pair("qwerty_show_switch_ime_button_preference", true)
 
     private val QWERTY_SHOW_CURSOR_BUTTONS =
-        Pair("qwerty_show_cursor_buttons_preference", true)
+        Pair("qwerty_show_cursor_buttons_preference", false)
 
     private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
