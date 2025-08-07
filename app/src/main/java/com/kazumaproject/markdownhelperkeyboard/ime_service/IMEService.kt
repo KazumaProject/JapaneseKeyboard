@@ -3308,7 +3308,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Convert, KeyAction.Space -> {
                         isSpaceKeyLongPressed = false
-                        if (inputString.value.isEmpty()){
+                        if (inputString.value.isEmpty()) {
                             val isHankaku = hankakuPreference == true
                             val insertString = inputString.value
                             val suggestions = suggestionAdapter?.suggestions ?: emptyList()
@@ -5432,7 +5432,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         QWERTYKey.QWERTYKeyCursorLeft -> {
                             Timber.d("QWERTYKey.QWERTYKeyCursorLeft")
                             if (!leftCursorKeyLongKeyPressed.get()) {
-                                handleLeftCursor(GestureType.Tap, insertString)
+                                if (isHenkan.get()) {
+                                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                                    handleDeleteKeyInHenkan(suggestions, insertString)
+                                } else {
+                                    handleLeftCursor(GestureType.Tap, insertString)
+                                }
                             }
                             onLeftKeyLongPressUp.set(true)
                             leftCursorKeyLongKeyPressed.set(false)
@@ -5443,7 +5448,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         QWERTYKey.QWERTYKeyCursorRight -> {
                             Timber.d("QWERTYKey.QWERTYKeyCursorRight")
                             if (!rightCursorKeyLongKeyPressed.get()) {
-                                actionInRightKeyPressed(GestureType.Tap, insertString)
+                                if (isHenkan.get()) {
+                                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                                    handleJapaneseModeSpaceKey(
+                                        mainView, suggestions, insertString
+                                    )
+                                } else {
+                                    actionInRightKeyPressed(GestureType.Tap, insertString)
+                                }
                             }
                             onRightKeyLongPressUp.set(true)
                             rightCursorKeyLongKeyPressed.set(false)
