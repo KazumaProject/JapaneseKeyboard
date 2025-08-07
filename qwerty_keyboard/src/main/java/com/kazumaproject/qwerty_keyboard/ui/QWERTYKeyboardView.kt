@@ -296,8 +296,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         binding.apply {
                             keySpace.text =
                                 resources.getString(com.kazumaproject.core.R.string.space_japanese)
-                            keyReturn.text =
-                                resources.getString(com.kazumaproject.core.R.string.return_japanese)
                             keyA.setMarginStart(9f)
                             keyL.setMarginEnd(9f)
                             keyShift.setMarginStart(4f)
@@ -344,8 +342,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
                             keySpace.text =
                                 resources.getString(com.kazumaproject.core.R.string.space_english)
-                            keyReturn.text =
-                                resources.getString(com.kazumaproject.core.R.string.return_english)
                             keyA.setMarginStart(23f)
                             keyL.apply {
                                 setMarginEnd(23f)
@@ -881,23 +877,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
 
-    fun resetQWERTYKeyboard() {
+    fun resetQWERTYKeyboard(
+        enterKyeText: String
+    ) {
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
         binding.apply {
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
-            keyReturn.text = resources.getString(com.kazumaproject.core.R.string.return_english)
+            keyReturn.text = enterKyeText
         }
     }
 
-    fun setRomajiKeyboard() {
+    fun setRomajiKeyboard(
+        enterKeyText: String
+    ) {
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { true }
         binding.apply {
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_japanese)
-            keyReturn.text = resources.getString(com.kazumaproject.core.R.string.return_japanese)
+            keyReturn.text = enterKeyText
         }
     }
 
