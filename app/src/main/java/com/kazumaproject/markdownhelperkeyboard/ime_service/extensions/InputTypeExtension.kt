@@ -146,7 +146,7 @@ fun Int.inputTypeFromImeOptions(
             editorInfo.hintText?.toString()?.let {
                 if (it.contains("検索")) return InputTypeForIME.TextSearchView
                 if (it.contains("レビューを書き込んでください（任意）")) return InputTypeForIME.TextMultiLine
-                if (it.contains("Describe your experience (optional)")) return InputTypeForIME.TextMultiLine
+                if (it.contains("Describe your experience")) return InputTypeForIME.TextMultiLine
                 if (it.contains("搜索")) return InputTypeForIME.TextSearchView
                 if (it.contains("검색")) return InputTypeForIME.TextSearchView
                 if (it.contains("Search")) return InputTypeForIME.TextSearchView
