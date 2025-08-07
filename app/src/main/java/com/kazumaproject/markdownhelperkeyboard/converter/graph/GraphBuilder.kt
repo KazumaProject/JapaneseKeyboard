@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.converter.graph
 
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
@@ -16,7 +15,7 @@ import timber.log.Timber
 class GraphBuilder {
 
     companion object {
-        private const val SCORE_BONUS_PER_OMISSION = 350
+        private const val SCORE_BONUS_PER_OMISSION = 250
     }
 
 
@@ -118,16 +117,16 @@ class GraphBuilder {
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(node)
             }
 
+            Timber.d("learnedWords: $learnedWords")
+
             // 3. システム辞書からCommon Prefix Searchを実行
-            if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
+            if (isOmissionSearchEnable) {
                 val commonPrefixSearchSystem: List<OmissionSearchResult> =
                     yomiTrie.commonPrefixSearchWithOmission(
                         str = subStr,
                         succinctBitVector = succinctBitVectorLBSYomi
                     )
                 if (commonPrefixSearchSystem.isNotEmpty()) foundInAnyDictionary = true
-
-                Timber.d("omissionResult: ${commonPrefixSearchSystem.size} $str $subStr")
 
                 for (omissionResult in commonPrefixSearchSystem) {
                     val nodeIndex = yomiTrie.getNodeIndex(
