@@ -359,3 +359,12 @@ fun String.isAllFullWidthNumericSymbol(): Boolean {
     if (this.isEmpty() || this.length > 2) return false
     return this.all { it.isFullWidthNumericSymbol() }
 }
+
+/**
+ * (拡張関数)
+ * 文字列内に同じ文字がN文字以上連続して出現するかどうかを判定します。
+ */
+fun String.hasNConsecutiveChars(n: Int): Boolean {
+    val regex = Regex("(.)\\1{$n,}")
+    return regex.containsMatchIn(this)
+}
