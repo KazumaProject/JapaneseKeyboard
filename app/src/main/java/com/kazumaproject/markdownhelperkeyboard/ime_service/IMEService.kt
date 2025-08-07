@@ -2458,7 +2458,71 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                        qwertyView.resetQWERTYKeyboard()
+                        val qwertyEnterKeyText = when (currentInputType) {
+                            InputTypeForIME.Text,
+                            InputTypeForIME.TextAutoComplete,
+                            InputTypeForIME.TextAutoCorrect,
+                            InputTypeForIME.TextCapCharacters,
+                            InputTypeForIME.TextCapSentences,
+                            InputTypeForIME.TextCapWords,
+                            InputTypeForIME.TextFilter,
+                            InputTypeForIME.TextNoSuggestion,
+                            InputTypeForIME.TextPersonName,
+                            InputTypeForIME.TextPhonetic,
+                            InputTypeForIME.TextWebEditText,
+                                -> {
+                                "return"
+                            }
+
+                            InputTypeForIME.TextMultiLine,
+                            InputTypeForIME.TextImeMultiLine,
+                            InputTypeForIME.TextShortMessage,
+                            InputTypeForIME.TextLongMessage,
+                                -> {
+                                "return"
+                            }
+
+                            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                                "return"
+                            }
+
+                            InputTypeForIME.TextDone -> {
+                                "return"
+                            }
+
+                            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                                "search"
+                            }
+
+                            InputTypeForIME.TextEditTextInWebView,
+                            InputTypeForIME.TextUri,
+                            InputTypeForIME.TextPostalAddress,
+                            InputTypeForIME.TextWebEmailAddress,
+                            InputTypeForIME.TextPassword,
+                            InputTypeForIME.TextVisiblePassword,
+                            InputTypeForIME.TextWebPassword,
+                                -> {
+                                "return"
+                            }
+
+                            InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                                "return"
+                            }
+
+                            InputTypeForIME.Number,
+                            InputTypeForIME.NumberDecimal,
+                            InputTypeForIME.NumberPassword,
+                            InputTypeForIME.NumberSigned,
+                            InputTypeForIME.Phone,
+                            InputTypeForIME.Date,
+                            InputTypeForIME.Datetime,
+                            InputTypeForIME.Time,
+                                -> {
+                                "return"
+                            }
+
+                        }
+                        qwertyView.resetQWERTYKeyboard(qwertyEnterKeyText)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -2477,7 +2541,73 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                        qwertyView.setRomajiKeyboard()
+                        val qwertyEnterKeyText = when (currentInputType) {
+                            InputTypeForIME.Text,
+                            InputTypeForIME.TextAutoComplete,
+                            InputTypeForIME.TextAutoCorrect,
+                            InputTypeForIME.TextCapCharacters,
+                            InputTypeForIME.TextCapSentences,
+                            InputTypeForIME.TextCapWords,
+                            InputTypeForIME.TextFilter,
+                            InputTypeForIME.TextNoSuggestion,
+                            InputTypeForIME.TextPersonName,
+                            InputTypeForIME.TextPhonetic,
+                            InputTypeForIME.TextWebEditText,
+                                -> {
+                                "確定"
+                            }
+
+                            InputTypeForIME.TextMultiLine,
+                            InputTypeForIME.TextImeMultiLine,
+                            InputTypeForIME.TextShortMessage,
+                            InputTypeForIME.TextLongMessage,
+                                -> {
+                                "改行"
+                            }
+
+                            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                                "確定"
+                            }
+
+                            InputTypeForIME.TextDone -> {
+                                "確定"
+                            }
+
+                            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                                "検索"
+                            }
+
+                            InputTypeForIME.TextEditTextInWebView,
+                            InputTypeForIME.TextUri,
+                            InputTypeForIME.TextPostalAddress,
+                            InputTypeForIME.TextWebEmailAddress,
+                            InputTypeForIME.TextPassword,
+                            InputTypeForIME.TextVisiblePassword,
+                            InputTypeForIME.TextWebPassword,
+                                -> {
+                                "確定"
+                            }
+
+                            InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                                "確定"
+                            }
+
+                            InputTypeForIME.Number,
+                            InputTypeForIME.NumberDecimal,
+                            InputTypeForIME.NumberPassword,
+                            InputTypeForIME.NumberSigned,
+                            InputTypeForIME.Phone,
+                            InputTypeForIME.Date,
+                            InputTypeForIME.Datetime,
+                            InputTypeForIME.Time,
+                                -> {
+                                "確定"
+                            }
+
+                        }
+                        qwertyView.setRomajiKeyboard(
+                            qwertyEnterKeyText
+                        )
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -3178,20 +3308,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Convert, KeyAction.Space -> {
                         isSpaceKeyLongPressed = false
-                        val isHankaku = hankakuPreference == true
-                        val insertString = inputString.value
-                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                        if (isHankaku) {
-                            if (isFlick) {
-                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                        if (inputString.value.isEmpty()){
+                            val isHankaku = hankakuPreference == true
+                            val insertString = inputString.value
+                            val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                            if (isHankaku) {
+                                if (isFlick) {
+                                    handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                                } else {
+                                    handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                                }
                             } else {
-                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
-                            }
-                        } else {
-                            if (isFlick) {
-                                handleSpaceKeyClick(true, insertString, suggestions, mainView)
-                            } else {
-                                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                                if (isFlick) {
+                                    handleSpaceKeyClick(true, insertString, suggestions, mainView)
+                                } else {
+                                    handleSpaceKeyClick(false, insertString, suggestions, mainView)
+                                }
                             }
                         }
                     }
@@ -4039,6 +4171,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setSpaceKeyText("変換")
                             setReturnKeyText("確定")
                         }
+                    } else if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
+                        mainView.qwertyView.setReturnKeyText("done")
                     }
                     if (mainView.customLayoutDefault.isVisible) {
                         setSumireKeyboardDakutenKey()
@@ -4093,8 +4227,138 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                             mainView.qwertyView.apply {
                                 setSpaceKeyText("空白")
-                                setReturnKeyText("改行")
+                                val qwertyEnterKeyText = when (currentInputType) {
+                                    InputTypeForIME.Text,
+                                    InputTypeForIME.TextAutoComplete,
+                                    InputTypeForIME.TextAutoCorrect,
+                                    InputTypeForIME.TextCapCharacters,
+                                    InputTypeForIME.TextCapSentences,
+                                    InputTypeForIME.TextCapWords,
+                                    InputTypeForIME.TextFilter,
+                                    InputTypeForIME.TextNoSuggestion,
+                                    InputTypeForIME.TextPersonName,
+                                    InputTypeForIME.TextPhonetic,
+                                    InputTypeForIME.TextWebEditText,
+                                        -> {
+                                        "確定"
+                                    }
+
+                                    InputTypeForIME.TextMultiLine,
+                                    InputTypeForIME.TextImeMultiLine,
+                                    InputTypeForIME.TextShortMessage,
+                                    InputTypeForIME.TextLongMessage,
+                                        -> {
+                                        "改行"
+                                    }
+
+                                    InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                                        "確定"
+                                    }
+
+                                    InputTypeForIME.TextDone -> {
+                                        "確定"
+                                    }
+
+                                    InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                                        "検索"
+                                    }
+
+                                    InputTypeForIME.TextEditTextInWebView,
+                                    InputTypeForIME.TextUri,
+                                    InputTypeForIME.TextPostalAddress,
+                                    InputTypeForIME.TextWebEmailAddress,
+                                    InputTypeForIME.TextPassword,
+                                    InputTypeForIME.TextVisiblePassword,
+                                    InputTypeForIME.TextWebPassword,
+                                        -> {
+                                        "確定"
+                                    }
+
+                                    InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                                        "確定"
+                                    }
+
+                                    InputTypeForIME.Number,
+                                    InputTypeForIME.NumberDecimal,
+                                    InputTypeForIME.NumberPassword,
+                                    InputTypeForIME.NumberSigned,
+                                    InputTypeForIME.Phone,
+                                    InputTypeForIME.Date,
+                                    InputTypeForIME.Datetime,
+                                    InputTypeForIME.Time,
+                                        -> {
+                                        "確定"
+                                    }
+
+                                }
+                                setReturnKeyText(qwertyEnterKeyText)
                             }
+                        } else if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
+                            val qwertyEnterKeyText = when (currentInputType) {
+                                InputTypeForIME.Text,
+                                InputTypeForIME.TextAutoComplete,
+                                InputTypeForIME.TextAutoCorrect,
+                                InputTypeForIME.TextCapCharacters,
+                                InputTypeForIME.TextCapSentences,
+                                InputTypeForIME.TextCapWords,
+                                InputTypeForIME.TextFilter,
+                                InputTypeForIME.TextNoSuggestion,
+                                InputTypeForIME.TextPersonName,
+                                InputTypeForIME.TextPhonetic,
+                                InputTypeForIME.TextWebEditText,
+                                    -> {
+                                    "return"
+                                }
+
+                                InputTypeForIME.TextMultiLine,
+                                InputTypeForIME.TextImeMultiLine,
+                                InputTypeForIME.TextShortMessage,
+                                InputTypeForIME.TextLongMessage,
+                                    -> {
+                                    "return"
+                                }
+
+                                InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                                    "return"
+                                }
+
+                                InputTypeForIME.TextDone -> {
+                                    "return"
+                                }
+
+                                InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                                    "search"
+                                }
+
+                                InputTypeForIME.TextEditTextInWebView,
+                                InputTypeForIME.TextUri,
+                                InputTypeForIME.TextPostalAddress,
+                                InputTypeForIME.TextWebEmailAddress,
+                                InputTypeForIME.TextPassword,
+                                InputTypeForIME.TextVisiblePassword,
+                                InputTypeForIME.TextWebPassword,
+                                    -> {
+                                    "return"
+                                }
+
+                                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                                    "return"
+                                }
+
+                                InputTypeForIME.Number,
+                                InputTypeForIME.NumberDecimal,
+                                InputTypeForIME.NumberPassword,
+                                InputTypeForIME.NumberSigned,
+                                InputTypeForIME.Phone,
+                                InputTypeForIME.Date,
+                                InputTypeForIME.Datetime,
+                                InputTypeForIME.Time,
+                                    -> {
+                                    "return"
+                                }
+
+                            }
+                            mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
                         }
                     }
 
