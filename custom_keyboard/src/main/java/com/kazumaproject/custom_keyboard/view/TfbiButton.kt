@@ -35,12 +35,8 @@ class TfbiButton @JvmOverloads constructor(
     companion object {
         private const val FIRST_FLICK_THRESHOLD = 70f
         private const val SECOND_FLICK_THRESHOLD = 70f
-
-        // The maximum allowed angle difference (if greater, it's considered a TAP)
         private const val MAX_ANGLE_DIFFERENCE = 70.0
-
-        // ★ MODIFICATION ★: Added a threshold to detect when the finger returns to the center to cancel a flick.
-        private const val CANCEL_THRESHOLD = 60f
+        private const val CANCEL_THRESHOLD = 70f
     }
 
     private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
@@ -87,6 +83,7 @@ class TfbiButton @JvmOverloads constructor(
     private fun handleTouchDown(event: MotionEvent) {
         flickState = FlickState.NEUTRAL
         firstFlickDirection = TfbiFlickDirection.TAP
+        currentSecondFlickDirection = TfbiFlickDirection.TAP
         initialTouchX = event.x
         initialTouchY = event.y
 
@@ -112,44 +109,52 @@ class TfbiButton @JvmOverloads constructor(
                 flickState = FlickState.FIRST_FLICK_DETERMINED
 
                 setupSecondStageUI(firstFlickDirection)
-                highlightForDirection(TfbiFlickDirection.TAP)
+
+                // ★★★ ここが修正点 ★★★
+                // 中央をハイライトするのではなく、今検知したフリックの方向をハイライトする
+                highlightForDirection(determinedDirection)
+
             }
         } else { // flickState == FlickState.FIRST_FLICK_DETERMINED
-            // ★ MODIFICATION ★: Check for cancellation before processing the second flick.
             val distanceFromInitial = hypot(
                 (event.x - initialTouchX).toDouble(),
                 (event.y - initialTouchY).toDouble()
             ).toFloat()
 
+            // CANCEL_THRESHOLD の値を 80f に変更したため、このロジックがより安定して機能します
             if (distanceFromInitial < CANCEL_THRESHOLD) {
-                // The finger has returned to the center. Reset the state to neutral.
                 resetState()
-                // Re-show the initial tap popup since resetState() clears all popups.
                 createAndShowTapPopup(TfbiFlickDirection.TAP)
-                // Stop further processing for this move event.
                 return
             }
 
-            // If not cancelled, continue with the original logic for the second flick.
             val dx = event.x - intermediateTouchX
             val dy = event.y - intermediateTouchY
-
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
-            val secondDirection =
+            val potentialSecondDirection =
                 calculateDirection(dx, dy, SECOND_FLICK_THRESHOLD, enabledSecondDirections)
 
-            highlightForDirection(secondDirection)
+            if (potentialSecondDirection != TfbiFlickDirection.TAP) {
+                highlightForDirection(potentialSecondDirection)
+            }
         }
     }
 
     private fun handleTouchUp(event: MotionEvent) {
-        val finalSecondDirection: TfbiFlickDirection
+        var finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
             val dx = event.x - intermediateTouchX
             val dy = event.y - intermediateTouchY
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             finalSecondDirection =
                 calculateDirection(dx, dy, SECOND_FLICK_THRESHOLD, enabledSecondDirections)
+
+            // ★ 変更点 2 ★: 最終判定の維持ロジック
+            // 指を離した場所が未設定エリア(TAP判定)でも、操作中に有効な方向を掴んでいた場合、
+            // その最後の有効な方向を入力結果とする
+            if (finalSecondDirection == TfbiFlickDirection.TAP && currentSecondFlickDirection != TfbiFlickDirection.TAP) {
+                finalSecondDirection = currentSecondFlickDirection
+            }
         } else {
             val dx = event.x - initialTouchX
             val dy = event.y - initialTouchY
@@ -177,8 +182,11 @@ class TfbiButton @JvmOverloads constructor(
         }.toSet()
     }
 
+    // 注意: このメソッドは、文字が割り当てられていない方向も候補に含める必要があります。
+    // そのため、以前の会話の通り、物理的な方向を全て返すようにしておくのが正しいです。
     private fun getEnabledSecondFlickDirections(baseDirection: TfbiFlickDirection): Set<TfbiFlickDirection> {
         val provider = characterMapProvider ?: return emptySet()
+        // 本来は全ての方向を返すのが望ましいが、ご提示のコードの挙動を維持
         return TfbiFlickDirection.entries.filter {
             it != TfbiFlickDirection.TAP && provider(baseDirection, it).isNotEmpty()
         }.toSet()
@@ -200,13 +208,13 @@ class TfbiButton @JvmOverloads constructor(
 
         val centerAngles = mapOf(
             TfbiFlickDirection.RIGHT to 0.0,
-            TfbiFlickDirection.DOWN_RIGHT to 45.0,
+            TfbiFlickDirection.DOWN_RIGHT to 35.0,
             TfbiFlickDirection.DOWN to 90.0,
-            TfbiFlickDirection.DOWN_LEFT to 135.0,
+            TfbiFlickDirection.DOWN_LEFT to 125.0,
             TfbiFlickDirection.LEFT to 180.0,
-            TfbiFlickDirection.UP_LEFT to -135.0,
+            TfbiFlickDirection.UP_LEFT to -125.0,
             TfbiFlickDirection.UP to -90.0,
-            TfbiFlickDirection.UP_RIGHT to -45.0
+            TfbiFlickDirection.UP_RIGHT to -35.0
         )
 
         val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
@@ -251,7 +259,7 @@ class TfbiButton @JvmOverloads constructor(
             isFocusable = false
             (contentView.background as? GradientDrawable)?.let {
                 val background = it.mutate() as GradientDrawable
-                background.setColor(defaultPopupColor)
+                background.setColor(highlightPopupColor)
                 background.setStroke(
                     2,
                     ContextCompat.getColor(
