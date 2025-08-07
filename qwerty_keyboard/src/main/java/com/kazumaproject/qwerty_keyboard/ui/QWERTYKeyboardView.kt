@@ -406,6 +406,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             keySwitchDefault.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
             keyReturn.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
             key123.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+
+            cursorLeft.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+            cursorRight.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
         }
     }
 
