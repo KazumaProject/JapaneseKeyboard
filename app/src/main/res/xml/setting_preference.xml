@@ -231,7 +231,7 @@
             android:defaultValue="true"
             android:key="user_template_preference"
             android:summaryOff="定型文を無効化"
-            android:summaryOn="定型文を有効化\n登録した単語を変換候補を表示します"
+            android:summaryOn="定型文を有効化\n登録した単語を変換候補に表示します"
             android:title="定型文" />
     </PreferenceCategory>
 
