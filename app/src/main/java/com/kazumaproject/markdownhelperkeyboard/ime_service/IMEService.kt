@@ -4425,9 +4425,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                             }
                         } else {
-                            animateViewVisibility(
-                                if (isTablet == true) this.tabletView else this.keyboardView, true
-                            )
+                            when (qwertyMode.value) {
+                                TenKeyQWERTYMode.Custom -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Default -> {
+                                    animateViewVisibility(
+                                        this.keyboardView, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Number -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.Sumire -> {
+                                    animateViewVisibility(
+                                        this.customLayoutDefault, true
+                                    )
+                                }
+
+                                TenKeyQWERTYMode.TenKeyQWERTY -> {
+                                    animateViewVisibility(
+                                        this.qwertyView, true
+                                    )
+                                }
+                            }
                         }
                         animateViewVisibility(keyboardSymbolView, false)
                         suggestionRecyclerView.isVisible = true
