@@ -799,7 +799,29 @@ class KanaKanjiEngine {
             emptyList()
         }
 
-        if (input.length == 1) return resultNBestFinalDeferred + englishDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
+        val englishZenkaku = if (input.isAllEnglishLetters()) {
+            val fullWidthInput = input.map { char ->
+                (char.code + 0xFEE0).toChar()
+            }.joinToString("")
+            listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 20000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 20000
+                )
+            )
+        } else {
+            emptyList()
+        }
+
+        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = if (input.length > 16) {
             emptyList()
@@ -992,7 +1014,7 @@ class KanaKanjiEngine {
             resultList
                 .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + symbolHalfWidthListDeferred + englishDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
     }
 
