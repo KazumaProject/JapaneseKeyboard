@@ -808,13 +808,13 @@ class KanaKanjiEngine {
                     string = fullWidthInput.lowercase(),
                     type = (30).toByte(),
                     length = input.length.toUByte(),
-                    score = 20000
+                    score = 30000
                 ),
                 Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
                     length = input.length.toUByte(),
-                    score = 20000
+                    score = 30000
                 )
             )
         } else {
