@@ -81,7 +81,11 @@ class EnglishEngine {
                     string = input.replaceFirstChar { it.uppercaseChar() },
                     type = defaultType,
                     length = input.length.toUByte(),
-                    score = 10001
+                    score = if (input.first().isUpperCase()) {
+                        8500
+                    } else {
+                        10001
+                    }
                 ),
 
                 Candidate(
