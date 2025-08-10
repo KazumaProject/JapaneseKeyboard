@@ -589,24 +589,59 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_DOWN -> {
-                // 新しい指が追加された
+                if (this.visibility != View.VISIBLE) {
+                    return false
+                }
+                motionTargets.keys.toList().forEach { existingPointerId ->
+                    val target = motionTargets[existingPointerId]
+                    val downTime = pointerDownTime[existingPointerId]
+
+                    if (target != null && downTime != null) {
+                        // 1本目の指の現在の座標を取得
+                        val existingPointerIndex = event.findPointerIndex(existingPointerId)
+                        if (existingPointerIndex != -1) {
+                            val x = event.getX(existingPointerIndex)
+                            val y = event.getY(existingPointerIndex)
+
+                            // 1本目の指に対して「ACTION_UP」イベントを自作して送る
+                            val upEvent = MotionEvent.obtain(
+                                downTime,
+                                event.eventTime,
+                                MotionEvent.ACTION_UP, // ジェスチャー終了としてUPイベントを偽装
+                                x,
+                                y,
+                                event.metaState
+                            )
+                            upEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
+                            target.dispatchTouchEvent(upEvent) // ターゲットにUPイベントをディスパッチ
+                            upEvent.recycle()
+                        }
+                    }
+                }
+
+                // 既存のポインター情報をすべてクリア
+                motionTargets.clear()
+                pointerDownTime.clear()
+
+                // 2. 新しい指（2本目）のジェスチャーを新しく開始する
+                val newPointerId = event.getPointerId(pointerIndex)
                 val x = event.getX(pointerIndex)
                 val y = event.getY(pointerIndex)
 
                 // 新しい指の情報を保存
-                pointerDownTime[pointerId] = event.eventTime // このイベント時刻を「押下開始時刻」とする
+                pointerDownTime[newPointerId] = event.eventTime
                 val targetView = findTargetView(x, y)
 
                 targetView?.let {
-                    motionTargets[pointerId] = it
+                    motionTargets[newPointerId] = it
                     // この指専用の「ACTION_DOWN」イベントを自作する
                     val newEvent = MotionEvent.obtain(
-                        pointerDownTime[pointerId]!!, // downTime
-                        event.eventTime,              // eventTime
-                        MotionEvent.ACTION_DOWN,      // action (新しいジェスチャーの開始として偽装)
-                        x,                            // x
-                        y,                            // y
-                        event.metaState               // metaState
+                        event.eventTime, // 新しいジェスチャーなのでdownTimeは現在のeventTime
+                        event.eventTime,
+                        MotionEvent.ACTION_DOWN,
+                        x,
+                        y,
+                        event.metaState
                     )
                     // 自作したきれいなDOWNイベントをターゲットにディスパッチ
                     newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
@@ -645,6 +680,9 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_UP -> {
+                if (this.visibility != View.VISIBLE) {
+                    return false
+                }
                 // 最初の指以外の指が離された
                 val x = event.getX(pointerIndex)
                 val y = event.getY(pointerIndex)
