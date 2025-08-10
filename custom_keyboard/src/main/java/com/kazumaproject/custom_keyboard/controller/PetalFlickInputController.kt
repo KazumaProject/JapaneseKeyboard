@@ -311,7 +311,7 @@ class PetalFlickInputController(
         return false
     }
 
-    private fun dismissAllPopups() {
+    fun dismissAllPopups() {
         currentVisiblePopup?.dismiss()
         currentVisiblePopup = null
         if (gridPopup.isShowing) gridPopup.dismiss()
