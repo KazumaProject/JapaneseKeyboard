@@ -193,6 +193,10 @@ class CrossFlickInputController(private val context: Context) {
         val flickAction = flickActionMap[flickDir] ?: return
         val anchor = anchorView ?: return
 
+        if (anchor.windowToken == null) {
+            return
+        }
+
         val popupView = CrossFlickPopupView(context).apply {
             setContent(flickAction)
             setHighlight(true)
@@ -224,7 +228,9 @@ class CrossFlickInputController(private val context: Context) {
     private fun showAllPopups() {
         dismissAllPopups()
         val anchor = anchorView ?: return
-
+        if (anchor.windowToken == null) {
+            return
+        }
         directionMapping.forEach { (crossDir, flickDir) ->
             flickActionMap[flickDir]?.let { flickAction ->
                 val popupView = CrossFlickPopupView(context).apply { setContent(flickAction) }

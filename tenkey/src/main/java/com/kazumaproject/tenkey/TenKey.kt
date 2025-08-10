@@ -569,6 +569,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View?, event: MotionEvent?): Boolean {
         if (view != null && event != null) {
+            if (view.visibility != View.VISIBLE) {
+                return false
+            }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
                     val key = pressedKeyByMotionEvent(event, 0)
@@ -886,11 +889,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 when (gestureType) {
                                     GestureType.Null -> {}
                                     GestureType.Down -> {}
-                                    GestureType.Tap -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.tap
-                                    )
+                                    GestureType.Tap -> {
+                                        flickListener?.onFlick(
+                                            gestureType = gestureType,
+                                            key = pressedKey.key,
+                                            char = keyInfo.tap
+                                        )
+                                    }
 
                                     GestureType.FlickLeft -> flickListener?.onFlick(
                                         gestureType = gestureType,
