@@ -3038,10 +3038,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     is KeyAction.InputText -> {
                         if (action.text == "^_^") {
-                            _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
-                            stringInTail.set("")
-                            finishComposingText()
-                            setComposingText("", 0)
+                            val insertString = inputString.value
+                            Timber.d("InputText: emoji: $insertString")
+                            if (insertString.isNotEmpty()) {
+                                val sb = StringBuilder()
+                                val c = insertString.last()
+                                c.getDakutenFlickTop()?.let { dakutenChar ->
+                                    setStringBuilderForConvertStringInHiragana(
+                                        dakutenChar, sb, insertString
+                                    )
+                                }
+                            } else {
+                                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                                stringInTail.set("")
+                                finishComposingText()
+                                setComposingText("", 0)
+                            }
                         }
                     }
 
@@ -3358,10 +3370,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     is KeyAction.InputText -> {
                         when (action.text) {
                             "^_^" -> {
-                                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
-                                stringInTail.set("")
-                                finishComposingText()
-                                setComposingText("", 0)
+                                val insertString = inputString.value
+                                Timber.d("InputText: emoji: $insertString")
+                                if (insertString.isNotEmpty()) {
+                                    val sb = StringBuilder()
+                                    val c = insertString.last()
+                                    c.getDakutenFlickTop()?.let { dakutenChar ->
+                                        setStringBuilderForConvertStringInHiragana(
+                                            dakutenChar, sb, insertString
+                                        )
+                                    }
+                                } else {
+                                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                                    stringInTail.set("")
+                                    finishComposingText()
+                                    setComposingText("", 0)
+                                }
                             }
 
                             "ひらがな小文字" -> {
@@ -3537,6 +3561,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         stringInTail.set("")
                         finishComposingText()
                         setComposingText("", 0)
+                        _inputString.update { "" }
                     }
 
                     KeyAction.ToggleCase -> {
@@ -4383,77 +4408,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setKeyboardSizeForHeight(mainView)
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
-                        animateViewVisibility(
-                            if (isTablet == true) this.tabletView else this.keyboardView, false
-                        )
+                        when {
+                            customLayoutDefault.isVisible -> {
+                                customLayoutDefault.visibility = View.INVISIBLE
+                            }
+
+                            tabletView.isVisible -> {
+                                tabletView.visibility = View.INVISIBLE
+                            }
+
+                            keyboardView.isVisible -> {
+                                keyboardView.visibility = View.INVISIBLE
+                            }
+
+                            qwertyView.isVisible -> {
+                                qwertyView.visibility = View.INVISIBLE
+                            }
+                        }
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
                         setSymbols(mainView)
-                        if (customLayoutDefault.isVisible) customLayoutDefault.visibility =
-                            View.INVISIBLE
                     } else {
                         if (isTablet == true) {
-                            when (qwertyMode.value) {
-                                TenKeyQWERTYMode.Custom -> {
-                                    animateViewVisibility(
-                                        this.customLayoutDefault, true
-                                    )
+                            when {
+                                tabletView.isInvisible -> {
+                                    tabletView.isVisible = true
                                 }
 
-                                TenKeyQWERTYMode.Default -> {
-                                    animateViewVisibility(
-                                        this.tabletView, true
-                                    )
+                                qwertyView.isInvisible -> {
+                                    qwertyView.isVisible = true
                                 }
 
-                                TenKeyQWERTYMode.Number -> {
-                                    animateViewVisibility(
-                                        this.customLayoutDefault, true
-                                    )
-                                }
-
-                                TenKeyQWERTYMode.Sumire -> {
-                                    animateViewVisibility(
-                                        this.customLayoutDefault, true
-                                    )
-                                }
-
-                                TenKeyQWERTYMode.TenKeyQWERTY -> {
-                                    animateViewVisibility(
-                                        this.qwertyView, true
-                                    )
+                                customLayoutDefault.isInvisible -> {
+                                    customLayoutDefault.isVisible = true
                                 }
                             }
                         } else {
-                            when (qwertyMode.value) {
-                                TenKeyQWERTYMode.Custom -> {
-                                    animateViewVisibility(
-                                        this.customLayoutDefault, true
-                                    )
+                            when {
+                                keyboardView.isInvisible -> {
+                                    keyboardView.isVisible = true
                                 }
 
-                                TenKeyQWERTYMode.Default -> {
-                                    animateViewVisibility(
-                                        this.keyboardView, true
-                                    )
+                                qwertyView.isInvisible -> {
+                                    qwertyView.isVisible = true
                                 }
 
-                                TenKeyQWERTYMode.Number -> {
-                                    animateViewVisibility(
-                                        this.customLayoutDefault, true
-                                    )
-                                }
-
-                                TenKeyQWERTYMode.Sumire -> {
-                                    animateViewVisibility(
-                                        this.customLayoutDefault, true
-                                    )
-                                }
-
-                                TenKeyQWERTYMode.TenKeyQWERTY -> {
-                                    animateViewVisibility(
-                                        this.qwertyView, true
-                                    )
+                                customLayoutDefault.isInvisible -> {
+                                    customLayoutDefault.isVisible = true
                                 }
                             }
                         }
