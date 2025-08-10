@@ -80,6 +80,11 @@ class TfbiButton @JvmOverloads constructor(
         return true
     }
 
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        resetState()
+    }
+
     private fun handleTouchDown(event: MotionEvent) {
         flickState = FlickState.NEUTRAL
         firstFlickDirection = TfbiFlickDirection.TAP

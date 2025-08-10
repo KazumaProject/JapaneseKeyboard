@@ -500,6 +500,9 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
+            if (this.visibility != View.VISIBLE) {
+                return false
+            }
             if (skipNextTouches) {
                 if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_POINTER_UP) {
                     skipNextTouches = false
