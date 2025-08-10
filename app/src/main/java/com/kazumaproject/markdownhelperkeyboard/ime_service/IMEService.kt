@@ -4398,12 +4398,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             suggestionViewStatus.collectLatest { isVisible ->
+                Timber.d("suggestionViewStatus: $isVisible")
                 updateSuggestionViewVisibility(mainView, isVisible)
             }
         }
 
         launch {
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
+                Timber.d("keyboardSymbolViewState: $isSymbolKeyboardShow")
                 setKeyboardSize()
                 setKeyboardSizeForHeight(mainView)
                 mainView.apply {
@@ -4697,25 +4699,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
-        val qwertyMode = qwertyMode.value
-        animateViewVisibility(
-            if (qwertyMode == TenKeyQWERTYMode.TenKeyQWERTY) mainView.qwertyView else if (isTablet == true) mainView.tabletView else mainView.keyboardView,
-            isVisible
-        )
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
         mainView.candidatesRowView.scrollToPosition(0)
         hideFirstRowCandidatesInFullScreen(mainView)
         if (isVisible) {
             mainLayoutBinding?.apply {
-                if (customLayoutDefault.isInvisible) {
-                    animateViewVisibility(
-                        customLayoutDefault, isVisible = true, true
-                    )
+                when {
+                    customLayoutDefault.isInvisible -> {
+                        animateViewVisibility(
+                            customLayoutDefault, isVisible = true, true
+                        )
+                    }
+
+                    keyboardView.isInvisible -> {
+                        animateViewVisibility(
+                            keyboardView, isVisible = true, true
+                        )
+                    }
+
+                    qwertyView.isInvisible -> {
+                        animateViewVisibility(
+                            qwertyView, isVisible = true, true
+                        )
+                    }
+
+                    tabletView.isInvisible -> {
+                        animateViewVisibility(
+                            tabletView, isVisible = true, true
+                        )
+                    }
                 }
             }
         } else {
             mainLayoutBinding?.apply {
-                if (customLayoutDefault.isVisible) customLayoutDefault.visibility = View.INVISIBLE
+                when {
+                    keyboardView.isVisible -> keyboardView.visibility = View.INVISIBLE
+                    qwertyView.isVisible -> qwertyView.visibility = View.INVISIBLE
+                    customLayoutDefault.isVisible -> customLayoutDefault.visibility = View.INVISIBLE
+                    tabletView.isVisible -> tabletView.visibility = View.INVISIBLE
+                }
             }
         }
 
