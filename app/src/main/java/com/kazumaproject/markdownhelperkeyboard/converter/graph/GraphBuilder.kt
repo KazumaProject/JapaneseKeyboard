@@ -115,7 +115,7 @@ class GraphBuilder {
 
             // 3. システム辞書からCommon Prefix Searchを実行
             if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
-                val commonPrefixSearchSystem: List<OmissionSearchResult> =
+                val commonPrefixSearchSystem: List<String> =
                     yomiTrie.commonPrefixSearchWithOmission(
                         str = subStr,
                         succinctBitVector = succinctBitVectorLBSYomi
@@ -126,7 +126,7 @@ class GraphBuilder {
 
                 for (omissionResult in commonPrefixSearchSystem) {
                     val nodeIndex = yomiTrie.getNodeIndex(
-                        omissionResult.yomi,
+                        omissionResult,
                         succinctBitVectorLBSYomi,
                     )
                     if (nodeIndex > 0) { // ルートノードは除く
@@ -144,20 +144,20 @@ class GraphBuilder {
                                 f = it.wordCost.toInt(),
                                 g = it.wordCost.toInt(),
                                 tango = when (it.nodeId) {
-                                    -2 -> omissionResult.yomi
-                                    -1 -> omissionResult.yomi.hiraToKata()
+                                    -2 -> omissionResult
+                                    -1 -> omissionResult.hiraToKata()
                                     else -> tangoTrie.getLetter(
                                         it.nodeId,
                                         succinctBitVector = succinctBitVectorTangoLBS
                                     )
                                 },
-                                len = omissionResult.yomi.length.toShort(),
+                                len = omissionResult.length.toShort(),
                                 sPos = i,
                             )
                         }.filter { cand ->
                             ngWords.none { ng -> ng == cand.tango }
                         }
-                        val endIndex = i + omissionResult.yomi.length
+                        val endIndex = i + omissionResult.length
                         graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
                     }
                 }
