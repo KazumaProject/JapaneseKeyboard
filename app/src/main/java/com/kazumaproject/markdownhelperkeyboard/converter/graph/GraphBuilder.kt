@@ -15,11 +15,6 @@ import timber.log.Timber
 
 class GraphBuilder {
 
-    companion object {
-        private const val SCORE_BONUS_PER_OMISSION = 350
-    }
-
-
     suspend fun constructGraph(
         str: String,
         yomiTrie: LOUDSWithTermId,
@@ -145,16 +140,7 @@ class GraphBuilder {
                             Node(
                                 l = tokenArray.leftIds[it.posTableIndex.toInt()],
                                 r = tokenArray.rightIds[it.posTableIndex.toInt()],
-                                score = when {
-                                    omissionResult.omissionCount > 0 && omissionResult.yomi.length == 1 ->
-                                        it.wordCost + 1500
-
-                                    omissionResult.omissionCount > 0 ->
-                                        it.wordCost + (SCORE_BONUS_PER_OMISSION * omissionResult.omissionCount)
-
-                                    else ->
-                                        (it.wordCost - 100).coerceAtLeast(0)
-                                },
+                                score = it.wordCost.toInt(),
                                 f = it.wordCost.toInt(),
                                 g = it.wordCost.toInt(),
                                 tango = when (it.nodeId) {
