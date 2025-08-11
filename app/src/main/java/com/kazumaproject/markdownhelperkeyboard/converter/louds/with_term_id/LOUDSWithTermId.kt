@@ -10,7 +10,6 @@ import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
-import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
@@ -597,8 +596,8 @@ class LOUDSWithTermId {
     fun commonPrefixSearchWithOmission(
         str: String,
         succinctBitVector: SuccinctBitVector
-    ): List<OmissionSearchResult> {
-        val results = mutableSetOf<OmissionSearchResult>()
+    ): List<String> {
+        val results = mutableSetOf<String>()
         // 最初の省略回数は0で探索を開始
         searchRecursiveWithOmission(str, 0, 0, "", 0, results, succinctBitVector)
         return results.toList()
@@ -615,12 +614,11 @@ class LOUDSWithTermId {
         currentNodeIndex: Int,
         currentYomi: String,
         omissionCount: Int, // BooleanからIntに変更
-        results: MutableSet<OmissionSearchResult>,
+        results: MutableSet<String>,
         succinctBitVector: SuccinctBitVector
     ) {
         if (isLeaf[currentNodeIndex]) {
-            // 結果を追加する際に、省略回数も一緒に格納
-            results.add(OmissionSearchResult(currentYomi, omissionCount))
+            results.add(currentYomi)
         }
 
         if (strIndex >= originalStr.length) {
