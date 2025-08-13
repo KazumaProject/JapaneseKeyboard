@@ -28,6 +28,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberE
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
@@ -560,56 +563,9 @@ class KanaKanjiEngine {
         learnRepository: LearnRepository?,
         ngWords: List<String>,
         isOmissionSearchEnable: Boolean
-    ): List<Candidate> {
-
-        val graph = graphBuilder.constructGraph(
-            input,
-            systemYomiTrie,
-            systemTangoTrie,
-            systemTokenArray,
-            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
-            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
-            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
-            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
-            userDictionaryRepository = userDictionaryRepository,
-            learnRepository = learnRepository,
-            ngWords = ngWords,
-            wikiYomiTrie = wikiYomiTrie,
-            wikiTangoTrie = wikiTangoTrie,
-            wikiTokenArray = wikiTokenArray,
-            succinctBitVectorLBSWikiYomi = wikiSuccinctBitVectorLBSYomi,
-            succinctBitVectorWikiTangoLBS = wikiSuccinctBitVectorLBSTango,
-            succinctBitVectorWikiTokenArray = wikiSuccinctBitVectorTokenArray,
-            succinctBitVectorIsLeafWikiYomi = wikiSuccinctBitVectorIsLeaf,
-            webYomiTrie = webYomiTrie,
-            webTangoTrie = webTangoTrie,
-            webTokenArray = webTokenArray,
-            succinctBitVectorLBSwebYomi = webSuccinctBitVectorLBSYomi,
-            succinctBitVectorwebTangoLBS = webSuccinctBitVectorLBSTango,
-            succinctBitVectorwebTokenArray = webSuccinctBitVectorTokenArray,
-            succinctBitVectorIsLeafwebYomi = webSuccinctBitVectorIsLeaf,
-            personYomiTrie = personYomiTrie,
-            personTangoTrie = personTangoTrie,
-            personTokenArray = personTokenArray,
-            succinctBitVectorLBSpersonYomi = personSuccinctBitVectorLBSYomi,
-            succinctBitVectorpersonTangoLBS = personSuccinctBitVectorLBSTango,
-            succinctBitVectorpersonTokenArray = personSuccinctBitVectorTokenArray,
-            succinctBitVectorIsLeafpersonYomi = personSuccinctBitVectorIsLeaf,
-            neologdYomiTrie = neologdYomiTrie,
-            neologdTangoTrie = neologdTangoTrie,
-            neologdTokenArray = neologdTokenArray,
-            succinctBitVectorLBSneologdYomi = neologdSuccinctBitVectorLBSYomi,
-            succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
-            succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
-            succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = isOmissionSearchEnable
-        )
-
-        val resultNBestFinalDeferred: List<Candidate> =
-            findPath.backwardAStar(graph, input.length, connectionIds, n)
+    ): List<Candidate> = coroutineScope {
 
         if (input.isDigitsOnly()) {
-            // 1. Generate full-width, time, and date candidates as before.
             val fullWidth = Candidate(
                 string = input.toFullWidthDigitsEfficient(),
                 type = 22,
@@ -628,23 +584,19 @@ class KanaKanjiEngine {
             )
             val timeConversion = createCandidatesForTime(input)
             val dateConversion = createCandidatesForDateInDigit(input)
-
-            // 2. Correctly generate number-to-Kanji/comma candidates.
-            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
+            val numberValue = input.toLongOrNull()
             val numberCandidates = if (numberValue != null) {
                 buildList {
-                    // Full Kanji style (e.g., 百二十三)
                     add(
                         Candidate(
                             string = numberValue.toKanji(),
-                            type = 17, // Using 17 for Kanji
+                            type = 17,
                             score = 2000,
                             length = input.length.toUByte(),
                             leftId = 2040,
                             rightId = 2040
                         )
                     )
-                    // Comma-separated style (e.g., 1,234)
                     add(
                         Candidate(
                             string = input.addCommasToNumber(),
@@ -655,7 +607,6 @@ class KanaKanjiEngine {
                             rightId = 2040
                         )
                     )
-                    // Original number string itself (e.g., 123)
                     add(
                         Candidate(
                             string = input,
@@ -666,12 +617,11 @@ class KanaKanjiEngine {
                             rightId = 2040
                         )
                     )
-                    // Mixed Kanji style (e.g., 12万3456)
                     add(
                         Candidate(
                             string = numberValue.convertToKanjiNotation(),
-                            type = 23, // Using a different type for this style
-                            score = 7900, // Lower score for the mixed style
+                            type = 23,
+                            score = 7900,
                             length = input.length.toUByte(),
                             leftId = 2040,
                             rightId = 2040
@@ -681,9 +631,52 @@ class KanaKanjiEngine {
             } else {
                 emptyList()
             }
-
-            // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+            val mainGraphJob = async(Dispatchers.Default) {
+                val graph = graphBuilder.constructGraph(
+                    input,
+                    systemYomiTrie,
+                    systemTangoTrie,
+                    systemTokenArray,
+                    succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+                    succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+                    succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+                    succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+                    userDictionaryRepository = userDictionaryRepository,
+                    learnRepository = learnRepository,
+                    ngWords = ngWords,
+                    wikiYomiTrie = wikiYomiTrie,
+                    wikiTangoTrie = wikiTangoTrie,
+                    wikiTokenArray = wikiTokenArray,
+                    succinctBitVectorLBSWikiYomi = wikiSuccinctBitVectorLBSYomi,
+                    succinctBitVectorWikiTangoLBS = wikiSuccinctBitVectorLBSTango,
+                    succinctBitVectorWikiTokenArray = wikiSuccinctBitVectorTokenArray,
+                    succinctBitVectorIsLeafWikiYomi = wikiSuccinctBitVectorIsLeaf,
+                    webYomiTrie = webYomiTrie,
+                    webTangoTrie = webTangoTrie,
+                    webTokenArray = webTokenArray,
+                    succinctBitVectorLBSwebYomi = webSuccinctBitVectorLBSYomi,
+                    succinctBitVectorwebTangoLBS = webSuccinctBitVectorLBSTango,
+                    succinctBitVectorwebTokenArray = webSuccinctBitVectorTokenArray,
+                    succinctBitVectorIsLeafwebYomi = webSuccinctBitVectorIsLeaf,
+                    personYomiTrie = personYomiTrie,
+                    personTangoTrie = personTangoTrie,
+                    personTokenArray = personTokenArray,
+                    succinctBitVectorLBSpersonYomi = personSuccinctBitVectorLBSYomi,
+                    succinctBitVectorpersonTangoLBS = personSuccinctBitVectorLBSTango,
+                    succinctBitVectorpersonTokenArray = personSuccinctBitVectorTokenArray,
+                    succinctBitVectorIsLeafpersonYomi = personSuccinctBitVectorIsLeaf,
+                    neologdYomiTrie = neologdYomiTrie,
+                    neologdTangoTrie = neologdTangoTrie,
+                    neologdTokenArray = neologdTokenArray,
+                    succinctBitVectorLBSneologdYomi = neologdSuccinctBitVectorLBSYomi,
+                    succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
+                    succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
+                    succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
+                    isOmissionSearchEnable = isOmissionSearchEnable
+                )
+                findPath.backwardAStar(graph, input.length, connectionIds, n)
+            }
+            return@coroutineScope mainGraphJob.await() + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
         }
 
         val hirakanaAndKana = listOf(
@@ -691,98 +684,92 @@ class KanaKanjiEngine {
             Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
         )
 
-        val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
-            input = input,
-            yomiTrie = emojiYomiTrie,
-            succinctBitVector = emojiSuccinctBitVectorLBSYomi
-        )
+        val emojiListJob = async(Dispatchers.Default) {
+            val commonPrefix = deferredPredictionEmojiSymbols(
+                input = input,
+                yomiTrie = emojiYomiTrie,
+                succinctBitVector = emojiSuccinctBitVectorLBSYomi
+            )
+            deferredFromDictionarySymbols(
+                input = input,
+                commonPrefixListString = commonPrefix,
+                yomiTrie = emojiYomiTrie,
+                tokenArray = emojiTokenArray,
+                tangoTrie = emojiTangoTrie,
+                succinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
+                type = 11
+            )
+        }
 
-        val emoticonCommonPrefixDeferred = deferredPredictionEmojiSymbols(
-            input = input,
-            yomiTrie = emoticonYomiTrie,
-            succinctBitVector = emoticonSuccinctBitVectorLBSYomi,
-        )
+        val emoticonListJob = async(Dispatchers.Default) {
+            val commonPrefix = deferredPredictionEmojiSymbols(
+                input = input,
+                yomiTrie = emoticonYomiTrie,
+                succinctBitVector = emoticonSuccinctBitVectorLBSYomi,
+            )
+            deferredFromDictionarySymbols(
+                input = input,
+                commonPrefixListString = commonPrefix,
+                yomiTrie = emoticonYomiTrie,
+                tokenArray = emoticonTokenArray,
+                tangoTrie = emoticonTangoTrie,
+                succinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = emoticonSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = emoticonSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = emoticonSuccinctBitVectorTangoLBS,
+                type = 12
+            )
+        }
 
-        val symbolCommonPrefixDeferred = deferredPredictionEmojiSymbols(
-            input = input,
-            yomiTrie = symbolYomiTrie,
-            succinctBitVector = symbolSuccinctBitVectorLBSYomi,
-        )
-
-        val emojiListDeferred = deferredFromDictionarySymbols(
-            input = input,
-            commonPrefixListString = emojiCommonPrefixDeferred,
-            yomiTrie = emojiYomiTrie,
-            tokenArray = emojiTokenArray,
-            tangoTrie = emojiTangoTrie,
-            succinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
-            succinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
-            succinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
-            succinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
-            type = 11
-        )
-
-        val emoticonListDeferred = deferredFromDictionarySymbols(
-            input = input,
-            commonPrefixListString = emoticonCommonPrefixDeferred,
-            yomiTrie = emoticonYomiTrie,
-            tokenArray = emoticonTokenArray,
-            tangoTrie = emoticonTangoTrie,
-            succinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi,
-            succinctBitVectorIsLeafYomi = emoticonSuccinctBitVectorIsLeafYomi,
-            succinctBitVectorTokenArray = emoticonSuccinctBitVectorTokenArray,
-            succinctBitVectorTangoLBS = emoticonSuccinctBitVectorTangoLBS,
-            type = 12
-        )
-
-        val symbolListDeferred =
+        val symbolListJob = async(Dispatchers.Default) {
+            val commonPrefix = deferredPredictionEmojiSymbols(
+                input = input,
+                yomiTrie = symbolYomiTrie,
+                succinctBitVector = symbolSuccinctBitVectorLBSYomi,
+            )
+            val list = deferredFromDictionarySymbols(
+                input = input,
+                commonPrefixListString = commonPrefix,
+                yomiTrie = symbolYomiTrie,
+                tokenArray = symbolTokenArray,
+                tangoTrie = symbolTangoTrie,
+                succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                type = 13
+            )
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                ).filterNot { it.string.containsHentaigana() }
+                list.filterNot { it.string.containsHentaigana() }
             } else {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                )
+                list
             }
+        }
 
-        val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
-            input = input,
-            yomiTrie = singleKanjiYomiTrie,
-            tokenArray = singleKanjiTokenArray,
-            tangoTrie = singleKanjiTangoTrie,
-            succinctBitVectorLBSYomi = singleKanjiSuccinctBitVectorLBSYomi,
-            succinctBitVectorIsLeafYomi = singleKanjiSuccinctBitVectorIsLeafYomi,
-            succinctBitVectorTokenArray = singleKanjiSuccinctBitVectorTokenArray,
-            succinctBitVectorTangoLBS = singleKanjiSuccinctBitVectorTangoLBS,
-            type = 7
-        )
+        val singleKanjiListJob = async(Dispatchers.Default) {
+            deferredFromDictionarySingleKanji(
+                input = input,
+                yomiTrie = singleKanjiYomiTrie,
+                tokenArray = singleKanjiTokenArray,
+                tangoTrie = singleKanjiTangoTrie,
+                succinctBitVectorLBSYomi = singleKanjiSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = singleKanjiSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = singleKanjiSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = singleKanjiSuccinctBitVectorTangoLBS,
+                type = 7
+            )
+        }
 
-        val symbolCommonPrefixDeferredHalfWidth =
-            if (input.all { !it.isLetterOrDigit() && !it.isWhitespace() }) listOf(input.convertFullWidthToHalfWidth())
-            else emptyList()
+        val symbolHalfWidthListJob = async(Dispatchers.Default) {
+            val commonPrefixHalfWidth =
+                if (input.all { !it.isLetterOrDigit() && !it.isWhitespace() }) listOf(input.convertFullWidthToHalfWidth())
+                else emptyList()
 
-        val symbolHalfWidthListDeferred =
-            if (symbolCommonPrefixDeferredHalfWidth.isEmpty()) emptyList() else deferredFromDictionary(
-                commonPrefixListString = symbolCommonPrefixDeferredHalfWidth,
+            if (commonPrefixHalfWidth.isEmpty()) emptyList() else deferredFromDictionary(
+                commonPrefixListString = commonPrefixHalfWidth,
                 yomiTrie = symbolYomiTrie,
                 tokenArray = symbolTokenArray,
                 tangoTrie = symbolTangoTrie,
@@ -792,64 +779,132 @@ class KanaKanjiEngine {
                 succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
                 type = 21
             )
-
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input)
-        } else {
-            emptyList()
         }
 
-        val englishZenkaku = if (input.isAllEnglishLetters()) {
-            val fullWidthInput = input.map { char ->
-                (char.code + 0xFEE0).toChar()
-            }.joinToString("")
-            listOf(
-                Candidate(
-                    string = fullWidthInput.lowercase(),
-                    type = (30).toByte(),
-                    length = input.length.toUByte(),
-                    score = 30000
-                ),
-                Candidate(
-                    string = fullWidthInput.uppercase(),
-                    type = (30).toByte(),
-                    length = input.length.toUByte(),
-                    score = 30000
+        val englishJob = async(Dispatchers.Default) {
+            if (input.isAllEnglishLetters()) {
+                englishEngine.getCandidates(input)
+            } else {
+                emptyList()
+            }
+        }
+
+        val englishZenkakuJob = async(Dispatchers.Default) {
+            if (input.isAllEnglishLetters()) {
+                val fullWidthInput =
+                    input.map { char -> (char.code + 0xFEE0).toChar() }.joinToString("")
+                listOf(
+                    Candidate(
+                        string = fullWidthInput.lowercase(),
+                        type = (30).toByte(),
+                        length = input.length.toUByte(),
+                        score = 30000
+                    ),
+                    Candidate(
+                        string = fullWidthInput.uppercase(),
+                        type = (30).toByte(),
+                        length = input.length.toUByte(),
+                        score = 30000
+                    )
                 )
+            } else {
+                emptyList()
+            }
+        }
+
+        val mainGraphJob = async(Dispatchers.Default) {
+            val graph = graphBuilder.constructGraph(
+                input,
+                systemYomiTrie,
+                systemTangoTrie,
+                systemTokenArray,
+                succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = learnRepository,
+                ngWords = ngWords,
+                wikiYomiTrie = wikiYomiTrie,
+                wikiTangoTrie = wikiTangoTrie,
+                wikiTokenArray = wikiTokenArray,
+                succinctBitVectorLBSWikiYomi = wikiSuccinctBitVectorLBSYomi,
+                succinctBitVectorWikiTangoLBS = wikiSuccinctBitVectorLBSTango,
+                succinctBitVectorWikiTokenArray = wikiSuccinctBitVectorTokenArray,
+                succinctBitVectorIsLeafWikiYomi = wikiSuccinctBitVectorIsLeaf,
+                webYomiTrie = webYomiTrie,
+                webTangoTrie = webTangoTrie,
+                webTokenArray = webTokenArray,
+                succinctBitVectorLBSwebYomi = webSuccinctBitVectorLBSYomi,
+                succinctBitVectorwebTangoLBS = webSuccinctBitVectorLBSTango,
+                succinctBitVectorwebTokenArray = webSuccinctBitVectorTokenArray,
+                succinctBitVectorIsLeafwebYomi = webSuccinctBitVectorIsLeaf,
+                personYomiTrie = personYomiTrie,
+                personTangoTrie = personTangoTrie,
+                personTokenArray = personTokenArray,
+                succinctBitVectorLBSpersonYomi = personSuccinctBitVectorLBSYomi,
+                succinctBitVectorpersonTangoLBS = personSuccinctBitVectorLBSTango,
+                succinctBitVectorpersonTokenArray = personSuccinctBitVectorTokenArray,
+                succinctBitVectorIsLeafpersonYomi = personSuccinctBitVectorIsLeaf,
+                neologdYomiTrie = neologdYomiTrie,
+                neologdTangoTrie = neologdTangoTrie,
+                neologdTokenArray = neologdTokenArray,
+                succinctBitVectorLBSneologdYomi = neologdSuccinctBitVectorLBSYomi,
+                succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
+                succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
+                succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
+                isOmissionSearchEnable = isOmissionSearchEnable
             )
-        } else {
-            emptyList()
+            findPath.backwardAStar(graph, input.length, connectionIds, n)
         }
 
-        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
-
-        val yomiPartOfDeferred = if (input.length > 16) {
-            emptyList()
-        } else {
-            systemYomiTrie.commonPrefixSearch(
-                str = input, succinctBitVector = systemSuccinctBitVectorLBSYomi
-            ).asReversed()
+        if (input.length == 1) {
+            return@coroutineScope mainGraphJob.await() + (englishJob.await() + englishZenkakuJob.await()).sortedBy { it.score } + hirakanaAndKana + emojiListJob.await() + emoticonListJob.await() + symbolListJob.await() + symbolHalfWidthListJob.await() + singleKanjiListJob.await()
         }
 
-        val predictiveSearchDeferred = deferredPrediction(
-            input = input,
-            yomiTrie = systemYomiTrie,
-            succinctBitVector = systemSuccinctBitVectorLBSYomi
-        )
+        val yomiPartOfJob = async(Dispatchers.Default) {
+            val yomiPartOfDeferred = if (input.length > 16) {
+                emptyList()
+            } else {
+                systemYomiTrie.commonPrefixSearch(
+                    str = input, succinctBitVector = systemSuccinctBitVectorLBSYomi
+                ).asReversed()
+            }
 
-        val readingCorrectionCommonPrefixDeferred = deferredPrediction(
-            input = input,
-            yomiTrie = readingCorrectionYomiTrie,
-            succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi
-        )
+            yomiPartOfDeferred.flatMap { yomi ->
+                val termId = systemYomiTrie.getTermId(
+                    systemYomiTrie.getNodeIndex(
+                        yomi,
+                        systemSuccinctBitVectorLBSYomi,
+                    ), systemSuccinctBitVectorIsLeafYomi
+                )
+                systemTokenArray.getListDictionaryByYomiTermId(
+                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
+                ).map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> systemTangoTrie.getLetter(
+                                it.nodeId, systemSuccinctBitVectorTangoLBS
+                            )
+                        },
+                        type = if (yomi.length == input.length) 2 else 5,
+                        length = yomi.length.toUByte(),
+                        score = it.wordCost.toInt(),
+                        leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
+            }
+        }
 
-        val kotowazaCommonPrefixDeferred = deferredPrediction(
-            input = input,
-            yomiTrie = kotowazaYomiTrie,
-            succinctBitVector = kotowazaSuccinctBitVectorLBSYomi
-        )
-
-        val predictiveSearchResult: List<Candidate> =
+        val predictiveSearchJob = async(Dispatchers.Default) {
+            val predictiveSearchDeferred = deferredPrediction(
+                input = input,
+                yomiTrie = systemYomiTrie,
+                succinctBitVector = systemSuccinctBitVectorLBSYomi
+            )
             predictiveSearchDeferred.filter { it.length != input.length }.flatMap { yomi ->
                 val nodeIndex = systemYomiTrie.getNodeIndex(
                     yomi, succinctBitVector = systemSuccinctBitVectorLBSYomi
@@ -857,8 +912,6 @@ class KanaKanjiEngine {
                 val termId = systemYomiTrie.getTermId(
                     nodeIndex, systemSuccinctBitVectorIsLeafYomi
                 )
-
-                // 2) build Candidates
                 systemTokenArray.getListDictionaryByYomiTermId(
                     termId, succinctBitVector = systemSuccinctBitVectorTokenArray
                 ).map { token ->
@@ -884,36 +937,15 @@ class KanaKanjiEngine {
                     )
                 }
             }.sortedBy { it.score }.take(n)
-
-        val yomiPartListDeferred: List<Candidate> = yomiPartOfDeferred.flatMap { yomi ->
-            val termId = systemYomiTrie.getTermId(
-                systemYomiTrie.getNodeIndex(
-                    yomi,
-                    systemSuccinctBitVectorLBSYomi,
-                ), systemSuccinctBitVectorIsLeafYomi
-            )
-            systemTokenArray.getListDictionaryByYomiTermId(
-                termId, succinctBitVector = systemSuccinctBitVectorTokenArray
-            ).map {
-                Candidate(
-                    string = when (it.nodeId) {
-                        -2 -> yomi
-                        -1 -> yomi.hiraToKata()
-                        else -> systemTangoTrie.getLetter(
-                            it.nodeId, systemSuccinctBitVectorTangoLBS
-                        )
-                    },
-                    type = if (yomi.length == input.length) 2 else 5,
-                    length = yomi.length.toUByte(),
-                    score = it.wordCost.toInt(),
-                    leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
-                    rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
-                )
-            }
         }
 
-        val readingCorrectionListDeferred: List<Candidate> =
-            readingCorrectionCommonPrefixDeferred.flatMap { yomi ->
+        val readingCorrectionJob = async(Dispatchers.Default) {
+            val commonPrefix = deferredPrediction(
+                input = input,
+                yomiTrie = readingCorrectionYomiTrie,
+                succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi
+            )
+            commonPrefix.flatMap { yomi ->
                 val termId = readingCorrectionYomiTrie.getTermIdShortArray(
                     readingCorrectionYomiTrie.getNodeIndex(
                         yomi, readingCorrectionSuccinctBitVectorLBSYomi
@@ -938,84 +970,111 @@ class KanaKanjiEngine {
                     )
                 }
             }
+        }
 
-        val kotowazaListDeferred: List<Candidate> = kotowazaCommonPrefixDeferred.flatMap { yomi ->
-            val termId = kotowazaYomiTrie.getTermIdShortArray(
-                kotowazaYomiTrie.getNodeIndex(
-                    yomi, kotowazaSuccinctBitVectorLBSYomi
-                ), kotowazaSuccinctBitVectorIsLeafYomi
+        val kotowazaJob = async(Dispatchers.Default) {
+            val commonPrefix = deferredPrediction(
+                input = input,
+                yomiTrie = kotowazaYomiTrie,
+                succinctBitVector = kotowazaSuccinctBitVectorLBSYomi
             )
-            kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
-                termId, kotowazaSuccinctBitVectorTokenArray
-            ).map {
-                Candidate(
-                    string = when (it.nodeId) {
-                        -2 -> yomi
-                        -1 -> yomi.hiraToKata()
-                        else -> kotowazaTangoTrie.getLetterShortArray(
-                            it.nodeId, kotowazaSuccinctBitVectorTangoLBS
-                        )
-                    },
-                    type = 16,
-                    length = yomi.length.toUByte(),
-                    score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length),
-                    leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
-                    rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
+            commonPrefix.flatMap { yomi ->
+                val termId = kotowazaYomiTrie.getTermIdShortArray(
+                    kotowazaYomiTrie.getNodeIndex(
+                        yomi, kotowazaSuccinctBitVectorLBSYomi
+                    ), kotowazaSuccinctBitVectorIsLeafYomi
                 )
+                kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
+                    termId, kotowazaSuccinctBitVectorTokenArray
+                ).map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> kotowazaTangoTrie.getLetterShortArray(
+                                it.nodeId, kotowazaSuccinctBitVectorTangoLBS
+                            )
+                        },
+                        type = 16,
+                        length = yomi.length.toUByte(),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length),
+                        leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
+        val todayDateJob = async(Dispatchers.Default) {
+            when (input) {
+                "きょう" -> {
+                    val today = Calendar.getInstance()
+                    createCandidatesForDate(today, input)
+                }
 
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
+                "きのう" -> {
+                    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+                    createCandidatesForDate(yesterday, input)
+                }
 
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
+                "あした" -> {
+                    val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                    createCandidatesForDate(tomorrow, input)
+                }
 
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
+                "いま" -> {
+                    val now = Calendar.getInstance()
+                    createCandidatesForTime(now, input)
+                }
 
-            else -> emptyList()
+                else -> emptyList()
+            }
         }
 
-        val convertYearToEra: List<Candidate> = when {
-            input.matches(Regex("""\d{1,4}ねん""")) -> {
-                val year = input.removeSuffix("ねん").toIntOrNull()
-                if (year != null) createCandidatesForEra(year, input) else emptyList()
-            }
+        val eraJob = async(Dispatchers.Default) {
+            when {
+                input.matches(Regex("""\d{1,4}ねん""")) -> {
+                    val year = input.removeSuffix("ねん").toIntOrNull()
+                    if (year != null) createCandidatesForEra(year, input) else emptyList()
+                }
 
-            else -> emptyList()
+                else -> emptyList()
+            }
         }
 
-        val numbersDeferred = generateNumberCandidates(input)
+        val numbersJob = async(Dispatchers.Default) {
+            generateNumberCandidates(input)
+        }
 
-        val mozcUTPersonNames =
+        val mozcPersonJob = async(Dispatchers.Default) {
             if (mozcUtPersonName == true) getMozcUTPersonNames(input) else emptyList()
-        val mozcUTPlacesList = if (mozcUTPlaces == true) getMozcUTPlace(input) else emptyList()
-        val mozcUTWikiList = if (mozcUTWiki == true) getMozcUTWiki(input) else emptyList()
-        val mozcUTNeologdList = if (mozcUTNeologd == true) getMozcUTNeologd(input) else emptyList()
-        val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
+        }
+        val mozcPlacesJob = async(Dispatchers.Default) {
+            if (mozcUTPlaces == true) getMozcUTPlace(input) else emptyList()
+        }
+        val mozcWikiJob = async(Dispatchers.Default) {
+            if (mozcUTWiki == true) getMozcUTWiki(input) else emptyList()
+        }
+        val mozcNeologdJob = async(Dispatchers.Default) {
+            if (mozcUTNeologd == true) getMozcUTNeologd(input) else emptyList()
+        }
+        val mozcWebJob = async(Dispatchers.Default) {
+            if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
+        }
 
         val resultList =
-            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            mainGraphJob.await() + readingCorrectionJob.await() + predictiveSearchJob.await() +
+                    mozcPersonJob.await() + mozcPlacesJob.await() + mozcWikiJob.await() +
+                    mozcNeologdJob.await() + mozcWebJob.await() + todayDateJob.await() +
+                    numbersJob.await() + eraJob.await()
 
         val resultListFinal =
-            resultList
-                .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
-
+        return@coroutineScope resultListFinal + kotowazaJob.await() + symbolHalfWidthListJob.await() +
+                (englishJob.await() + englishZenkakuJob.await()).sortedBy { it.score } +
+                (emojiListJob.await() + emoticonListJob.await()).sortedBy { it.score } +
+                symbolListJob.await() + hirakanaAndKana + yomiPartOfJob.await() + singleKanjiListJob.await()
     }
 
     fun getSymbolEmojiCandidates(): List<Emoji> = emojiTokenArray.getNodeIds().map { nodeId ->
