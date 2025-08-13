@@ -3701,6 +3701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL
                 )
             )
+            sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
         }
     }
 
@@ -5328,6 +5329,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!deleteKeyLongKeyPressed.get()) {
                         vibrate()
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
                     }
                     stopDeleteLongPress()
                 }
@@ -6394,10 +6396,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
             else CandidateShowFlag.Updating
             _suggestionFlag.emit(flag)
-
         }
         if (!selectMode.value) {
             deleteLongPressJob?.invokeOnCompletion {
+                sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
                 appPreference.undo_enable_preference?.let {
                     if (it) {
                         if (inputStringInBeginning.isEmpty()) {
@@ -6549,6 +6551,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
                 sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
             }
         }
     }
@@ -6702,6 +6705,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
                 )
             )
+            sendKeyEvent(
+                KeyEvent(
+                    KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
+                )
+            )
         }
     }
 
@@ -6788,37 +6796,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
             when (gestureType) {
                 GestureType.FlickRight -> {
-                    if (!isCursorAtBeginning()) sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                    if (!isCursorAtBeginning()) {
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                            )
                         )
-                    )
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
+                            )
+                        )
+                    }
                 }
 
                 GestureType.FlickTop -> {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP))
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_UP))
                 }
 
                 GestureType.FlickLeft -> {
-                    if (!isCursorAtBeginning()) sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                    if (!isCursorAtBeginning()) {
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                            )
                         )
-                    )
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
+                            )
+                        )
+                    }
                 }
 
                 GestureType.FlickBottom -> {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN))
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_DOWN))
                 }
 
                 GestureType.Null -> {}
                 GestureType.Down -> {}
                 GestureType.Tap -> {
-                    if (!isCursorAtBeginning()) sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                    if (!isCursorAtBeginning()) {
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
+                            )
                         )
-                    )
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
+                            )
+                        )
+                    }
                 }
             }
         } else if (!isHenkan.get()) {
@@ -6873,6 +6904,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 // tail があり composing が空 → Idle で抜ける
                 if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Idle
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
                     break
                 }
 
@@ -6954,37 +6986,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (stringInTail.get().isEmpty()) {
             when (gestureType) {
                 GestureType.FlickRight -> {
-                    if (!isCursorAtEnd()) sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                    if (!isCursorAtEnd()) {
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                            )
                         )
-                    )
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT
+                            )
+                        )
+                    }
                 }
 
                 GestureType.FlickTop -> {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP))
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_UP))
                 }
 
                 GestureType.FlickLeft -> {
-                    if (!isCursorAtEnd()) sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                    if (!isCursorAtEnd()) {
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                            )
                         )
-                    )
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT
+                            )
+                        )
+                    }
                 }
 
                 GestureType.FlickBottom -> {
                     sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN))
+                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_DOWN))
                 }
 
                 GestureType.Null -> {}
                 GestureType.Down -> {}
                 GestureType.Tap -> {
-                    if (!isCursorAtEnd()) sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                    if (!isCursorAtEnd()) {
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
+                            )
                         )
-                    )
+                        sendKeyEvent(
+                            KeyEvent(
+                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT
+                            )
+                        )
+                    }
                 }
             }
         } else {
