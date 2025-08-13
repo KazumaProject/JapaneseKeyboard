@@ -599,7 +599,7 @@ class LOUDSWithTermId {
     ): List<String> {
         val results = mutableSetOf<String>()
         // 最初の省略回数は0で探索を開始
-        searchRecursiveWithOmission(str, 0, 0, "", 0, results, succinctBitVector)
+        searchRecursiveWithOmission(str, 0, 0, "", results, succinctBitVector)
         return results.toList()
     }
 
@@ -613,7 +613,6 @@ class LOUDSWithTermId {
         strIndex: Int,
         currentNodeIndex: Int,
         currentYomi: String,
-        omissionCount: Int, // BooleanからIntに変更
         results: MutableSet<String>,
         succinctBitVector: SuccinctBitVector
     ) {
@@ -634,19 +633,11 @@ class LOUDSWithTermId {
                 val labelNodeId = succinctBitVector.rank1(childPos)
                 if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
 
-                    // このステップで省略が発生した場合は、カウントをインクリメント
-                    val newOmissionCount = if (variant != charToMatch) {
-                        omissionCount + 1
-                    } else {
-                        omissionCount
-                    }
-
                     searchRecursiveWithOmission(
                         originalStr,
                         strIndex + 1,
                         childPos,
                         currentYomi + variant,
-                        newOmissionCount, // 更新したカウントを渡す
                         results,
                         succinctBitVector
                     )
@@ -690,7 +681,7 @@ class LOUDSWithTermId {
             'ゆ' -> listOf('ゆ', 'ゅ')
             'よ' -> listOf('よ', 'ょ')
             'あ' -> listOf('あ', 'ぁ')
-            'い' -> listOf('い', 'ぃ',)
+            'い' -> listOf('い', 'ぃ')
             'う' -> listOf('う', 'ぅ')
             'え' -> listOf('え', 'ぇ')
             'お' -> listOf('お', 'ぉ')
