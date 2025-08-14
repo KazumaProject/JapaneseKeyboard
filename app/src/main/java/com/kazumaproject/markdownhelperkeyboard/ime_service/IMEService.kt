@@ -3701,7 +3701,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL
                 )
             )
-            sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
         }
     }
 
@@ -5329,7 +5328,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!deleteKeyLongKeyPressed.get()) {
                         vibrate()
                         sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
                     }
                     stopDeleteLongPress()
                 }
@@ -6324,19 +6322,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = kanaKanjiEngine.getCandidates(
-            input = insertString,
-            n = nBest ?: 4,
-            mozcUtPersonName = mozcUTPersonName,
-            mozcUTPlaces = mozcUTPlaces,
-            mozcUTWiki = mozcUTWiki,
-            mozcUTNeologd = mozcUTNeologd,
-            mozcUTWeb = mozcUTWeb,
-            userDictionaryRepository = userDictionaryRepository,
-            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            ngWords = ngWords,
-            isOmissionSearchEnable = isOmissionSearchEnable ?: false
-        )
+        val engineCandidates = withContext(Dispatchers.Default) {
+            kanaKanjiEngine.getCandidates(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false
+            )
+        }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
@@ -6370,7 +6370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                             }
                         }
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                        deleteSurroundingText(1, 0)
                     } else {
                         break
                     }
@@ -6399,7 +6399,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (!selectMode.value) {
             deleteLongPressJob?.invokeOnCompletion {
-                sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
                 appPreference.undo_enable_preference?.let {
                     if (it) {
                         if (inputStringInBeginning.isEmpty()) {
@@ -6550,8 +6549,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
                 }
-                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
-                sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL))
+                deleteSurroundingText(1, 0)
             }
         }
     }
@@ -6700,17 +6698,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setCusrorLeftAfterCloseBracket(insertString: String) {
         if (insertString.isOnlyTwoCharBracketPair()) {
-            sendKeyEvent(
-                KeyEvent(
-                    KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
-                )
-            )
-            sendKeyEvent(
-                KeyEvent(
-                    KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
-                )
-            )
+            handleLeftCursorMoveAction()
         }
+    }
+
+    private fun handleLeftCursorMoveAction() {
+        val extractedText = getExtractedText(ExtractedTextRequest(), 0) ?: return
+        val currentSelectionStart = extractedText.selectionStart
+        val newPosition = (currentSelectionStart - 1).coerceAtLeast(0) // 0未満にならないようにする
+        setSelection(newPosition, newPosition)
+    }
+
+    private fun handleRightCursorMoveAction() {
+        val extractedText = getExtractedText(ExtractedTextRequest(), 0) ?: return
+        val currentSelectionStart = extractedText.selectionStart
+        val textLength = extractedText.text.length
+        val newPosition = (currentSelectionStart + 1).coerceAtMost(textLength)
+        setSelection(newPosition, newPosition)
     }
 
     private fun handleDeleteKeyInHenkan(suggestions: List<Candidate>, insertString: String) {
@@ -6797,16 +6801,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             when (gestureType) {
                 GestureType.FlickRight -> {
                     if (!isCursorAtBeginning()) {
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
-                            )
-                        )
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
-                            )
-                        )
+                        handleLeftCursorMoveAction()
                     }
                 }
 
@@ -6817,16 +6812,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 GestureType.FlickLeft -> {
                     if (!isCursorAtBeginning()) {
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
-                            )
-                        )
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
-                            )
-                        )
+                        handleLeftCursorMoveAction()
                     }
                 }
 
@@ -6839,16 +6825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 GestureType.Down -> {}
                 GestureType.Tap -> {
                     if (!isCursorAtBeginning()) {
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT
-                            )
-                        )
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT
-                            )
-                        )
+                        handleLeftCursorMoveAction()
                     }
                 }
             }
@@ -6904,7 +6881,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 // tail があり composing が空 → Idle で抜ける
                 if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Idle
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
+                    handleLeftCursorMoveAction()
                     break
                 }
 
@@ -6914,7 +6891,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (selectMode.value) {
                         extendOrShrinkLeftOneChar()
                     } else {
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                        handleLeftCursorMoveAction()
                     }
                 }
 
@@ -6987,16 +6964,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             when (gestureType) {
                 GestureType.FlickRight -> {
                     if (!isCursorAtEnd()) {
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
-                            )
-                        )
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT
-                            )
-                        )
+                        handleRightCursorMoveAction()
                     }
                 }
 
@@ -7007,16 +6975,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 GestureType.FlickLeft -> {
                     if (!isCursorAtEnd()) {
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
-                            )
-                        )
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT
-                            )
-                        )
+                        handleRightCursorMoveAction()
                     }
                 }
 
@@ -7029,16 +6988,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 GestureType.Down -> {}
                 GestureType.Tap -> {
                     if (!isCursorAtEnd()) {
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
-                            )
-                        )
-                        sendKeyEvent(
-                            KeyEvent(
-                                KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT
-                            )
-                        )
+                        handleRightCursorMoveAction()
                     }
                 }
             }
@@ -7072,11 +7022,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 extendOrShrinkSelectionRight()
             } else {
                 if (!isCursorAtEnd()) {
-                    sendKeyEvent(
-                        KeyEvent(
-                            KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT
-                        )
-                    )
+                    handleRightCursorMoveAction()
                 }
             }
         } else {
