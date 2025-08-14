@@ -6362,13 +6362,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val beforeChar = getLastCharacterAsString(currentInputConnection)
                                 if (beforeChar.isNotEmpty()) {
                                     deletedBuffer.append(beforeChar)
-                                    if (beforeChar == "ァ゙" || beforeChar == "ィ゙" || beforeChar == "ゥ゙" || beforeChar == "ェ゙" || beforeChar == "ォ゙" || beforeChar == "ッ゙" || beforeChar == "ャ゙" || beforeChar == "ュ゙" || beforeChar == "ョ゙") {
-                                        deleteSurroundingTextInCodePoints(2, 0)
-                                    }
                                 }
                             }
                         }
-                        deleteSurroundingText(1, 0)
+                        deleteLastGrapheme()
                     } else {
                         break
                     }
@@ -6539,15 +6536,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     setUndoEnabled(true)
                                     setUndoPreviewText(deletedBuffer.toString())
                                 }
-                                if (beforeChar == "ァ゙" || beforeChar == "ィ゙" || beforeChar == "ゥ゙" || beforeChar == "ェ゙" || beforeChar == "ォ゙" || beforeChar == "ッ゙" || beforeChar == "ャ゙" || beforeChar == "ュ゙" || beforeChar == "ョ゙") {
-                                    deleteSurroundingTextInCodePoints(2, 0)
-                                    return
-                                }
                             }
                         }
                     }
                 }
-                deleteSurroundingText(1, 0)
+                deleteLastGrapheme()
             }
         }
     }
@@ -6792,6 +6785,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         finishComposingText()
         setComposingText("", 0)
         resetFlagsEnterKeyNotHenkan()
+    }
+
+    /**
+     * Deletes the last grapheme cluster before the cursor.
+     * This correctly handles complex emojis (e.g., with skin tones or ZWJ sequences).
+     */
+    private fun deleteLastGrapheme() {
+        // Get a chunk of text before the cursor to analyze. 100 chars should be plenty.
+        val beforeText = getTextBeforeCursor(100, 0)
+
+        if (beforeText.isNullOrEmpty()) {
+            deleteSurroundingTextInCodePoints(1, 0)
+            return
+        }
+
+        // Use BreakIterator to find the boundary of the last user-perceived character.
+        val breakIterator = BreakIterator.getCharacterInstance()
+        breakIterator.setText(beforeText.toString())
+
+        val end = breakIterator.last()
+        val start = breakIterator.previous()
+
+        if (start != BreakIterator.DONE) {
+            // Calculate how many chars are in the last grapheme cluster.
+            val charsToDelete = end - start
+            // Delete that many chars.
+            deleteSurroundingText(charsToDelete, 0)
+        } else {
+            // Fallback if iteration fails for some reason.
+            deleteSurroundingTextInCodePoints(1, 0)
+        }
     }
 
     private fun handleLeftKeyPress(gestureType: GestureType, insertString: String) {
