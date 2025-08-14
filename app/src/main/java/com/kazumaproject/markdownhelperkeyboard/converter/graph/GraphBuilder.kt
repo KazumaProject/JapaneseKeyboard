@@ -15,6 +15,10 @@ import timber.log.Timber
 
 class GraphBuilder {
 
+    companion object {
+        const val SCORE_BONUS_PER_OMISSION = 250
+    }
+
     suspend fun constructGraph(
         str: String,
         yomiTrie: LOUDSWithTermId,
@@ -115,7 +119,7 @@ class GraphBuilder {
 
             // 3. システム辞書からCommon Prefix Searchを実行
             if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
-                val commonPrefixSearchSystem: List<String> =
+                val commonPrefixSearchSystem: List<OmissionSearchResult> =
                     yomiTrie.commonPrefixSearchWithOmission(
                         str = subStr,
                         succinctBitVector = succinctBitVectorLBSYomi
@@ -126,7 +130,7 @@ class GraphBuilder {
 
                 for (omissionResult in commonPrefixSearchSystem) {
                     val nodeIndex = yomiTrie.getNodeIndex(
-                        omissionResult,
+                        omissionResult.yomi,
                         succinctBitVectorLBSYomi,
                     )
                     if (nodeIndex > 0) { // ルートノードは除く
@@ -140,24 +144,36 @@ class GraphBuilder {
                             Node(
                                 l = tokenArray.leftIds[it.posTableIndex.toInt()],
                                 r = tokenArray.rightIds[it.posTableIndex.toInt()],
-                                score = it.wordCost.toInt(),
+                                score = when {
+                                    omissionResult.omissionCount > 0 && omissionResult.yomi.length == 1 ->
+                                        it.wordCost + 1500
+
+                                    omissionResult.omissionCount > 0 ->
+                                        it.wordCost + (SCORE_BONUS_PER_OMISSION * omissionResult.omissionCount)
+
+                                    else ->
+                                        (it.wordCost - 100).coerceAtLeast(0)
+                                },
                                 f = it.wordCost.toInt(),
                                 g = it.wordCost.toInt(),
                                 tango = when (it.nodeId) {
-                                    -2 -> omissionResult
-                                    -1 -> omissionResult.hiraToKata()
+                                    -2 -> omissionResult.yomi
+                                    -1 -> omissionResult.yomi.hiraToKata()
                                     else -> tangoTrie.getLetter(
                                         it.nodeId,
                                         succinctBitVector = succinctBitVectorTangoLBS
                                     )
                                 },
-                                len = omissionResult.length.toShort(),
+                                len = omissionResult.yomi.length.toShort(),
                                 sPos = i,
                             )
-                        }.filter { cand ->
-                            ngWords.none { ng -> ng == cand.tango }
                         }
-                        val endIndex = i + omissionResult.length
+                            .sortedBy { it.score }
+                            .take(4)
+                            .filter { cand ->
+                                ngWords.none { ng -> ng == cand.tango }
+                            }
+                        val endIndex = i + omissionResult.yomi.length
                         graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
                     }
                 }
