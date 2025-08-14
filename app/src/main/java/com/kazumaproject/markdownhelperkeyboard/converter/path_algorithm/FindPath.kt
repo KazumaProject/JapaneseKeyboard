@@ -22,6 +22,7 @@ class FindPath {
             connectionIds
         )
         val resultFinal: MutableList<Candidate> = mutableListOf()
+        val foundStrings = HashSet<String>() // ★★★ 改善点：重複チェック用のHashSetを追加
         val pQueue: PriorityQueue<Pair<Node, Int>> =
             PriorityQueue(
                 compareBy<Pair<Node, Int>> { it.second }    // ①総コスト
@@ -39,7 +40,9 @@ class FindPath {
             node?.let {
                 if (node.first.tango == "BOS") {
                     val stringFromNode = getStringFromNode(node.first)
-                    if (!resultFinal.map { it.string }.contains(stringFromNode)) {
+
+                    // ★★★ 改善点：HashSetを使い、高速で効率的な重複チェックを行う
+                    if (foundStrings.add(stringFromNode)) {
                         val candidate = Candidate(
                             string = stringFromNode,
                             type = when {
