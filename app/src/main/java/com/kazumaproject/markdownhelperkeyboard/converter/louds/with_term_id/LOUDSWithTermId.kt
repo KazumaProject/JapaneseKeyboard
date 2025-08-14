@@ -10,6 +10,7 @@ import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
@@ -586,8 +587,6 @@ class LOUDSWithTermId {
         return LOUDSWithTermId(LBS, labels, isLeaf, termIdsSaved)
     }
 
-    // LOUDSWithTermId.kt に追加・修正するコード
-
     /**
      * 修飾キー省略を考慮した共通接頭辞検索を行います。
      *
@@ -596,10 +595,9 @@ class LOUDSWithTermId {
     fun commonPrefixSearchWithOmission(
         str: String,
         succinctBitVector: SuccinctBitVector
-    ): List<String> {
-        val results = mutableSetOf<String>()
-        // 最初の省略回数は0で探索を開始
-        searchRecursiveWithOmission(str, 0, 0, "", results, succinctBitVector)
+    ): List<OmissionSearchResult> {
+        val results = mutableSetOf<OmissionSearchResult>()
+        searchRecursiveWithOmission(str, 0, 0, "", 0, results, succinctBitVector)
         return results.toList()
     }
 
@@ -613,11 +611,12 @@ class LOUDSWithTermId {
         strIndex: Int,
         currentNodeIndex: Int,
         currentYomi: String,
-        results: MutableSet<String>,
+        omissionCount: Int, // BooleanからIntに変更
+        results: MutableSet<OmissionSearchResult>,
         succinctBitVector: SuccinctBitVector
     ) {
         if (isLeaf[currentNodeIndex]) {
-            results.add(currentYomi)
+            results.add(OmissionSearchResult(currentYomi, omissionCount))
         }
 
         if (strIndex >= originalStr.length) {
@@ -633,11 +632,18 @@ class LOUDSWithTermId {
                 val labelNodeId = succinctBitVector.rank1(childPos)
                 if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
 
+                    val newOmissionCount = if (variant != charToMatch) {
+                        omissionCount + 1
+                    } else {
+                        omissionCount
+                    }
+
                     searchRecursiveWithOmission(
                         originalStr,
                         strIndex + 1,
                         childPos,
                         currentYomi + variant,
+                        newOmissionCount,
                         results,
                         succinctBitVector
                     )
