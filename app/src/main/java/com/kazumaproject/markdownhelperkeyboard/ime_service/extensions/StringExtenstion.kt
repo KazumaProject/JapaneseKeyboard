@@ -19,6 +19,34 @@ fun Char.isEnglishLetter(): Boolean {
 fun String.isAllEnglishLetters(): Boolean =
     isNotEmpty() && all { it.isEnglishLetter() }
 
+/**
+ * 1. 文字が半角ASCII（英数記号）であるかチェックする拡張関数
+ * U+0020 (スペース) から U+007E (~) までの範囲をチェックします。
+ */
+fun Char.isHalfWidthAscii(): Boolean {
+    return this in '\u0020'..'\u007E'
+}
+
+/**
+ * 2. 文字列全体が半角ASCII（英数記号）で構成されているかチェックする拡張関数
+ */
+fun String.isAllHalfWidthAscii(): Boolean =
+    isNotEmpty() && all { it.isHalfWidthAscii() }
+
+/**
+ * 3. 半角ASCII文字列を全角に変換する拡張関数
+ * - スペースは例外的にU+3000に変換します。
+ * - その他の文字は、基本的にオフセット `0xFEE0` を加算して変換します。
+ */
+fun String.toFullWidth(): String {
+    return this.map { char ->
+        when (char) {
+            ' ' -> '　' // 半角スペース(U+0020)は全角スペース(U+3000)へ
+            else -> (char.code + 0xFEE0).toChar()
+        }
+    }.joinToString("")
+}
+
 private fun Char.isHiragana(): Boolean =
     this in '\u3041'..'\u3096'
 
