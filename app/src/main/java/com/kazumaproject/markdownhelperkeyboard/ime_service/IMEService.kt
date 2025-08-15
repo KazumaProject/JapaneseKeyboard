@@ -6365,7 +6365,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                             }
                         }
-                        deleteLastGrapheme()
+                        deleteLastGraphemeOrSelection()
                     } else {
                         break
                     }
@@ -6540,7 +6540,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
                 }
-                deleteLastGrapheme()
+                deleteLastGraphemeOrSelection()
             }
         }
     }
@@ -6788,33 +6788,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     /**
-     * Deletes the last grapheme cluster before the cursor.
-     * This correctly handles complex emojis (e.g., with skin tones or ZWJ sequences).
+     * Deletes the last grapheme cluster before the cursor or deletes the current selection.
+     * This correctly handles complex emojis and user text selections.
      */
-    private fun deleteLastGrapheme() {
-        // Get a chunk of text before the cursor to analyze. 100 chars should be plenty.
-        val beforeText = getTextBeforeCursor(100, 0)
-
-        if (beforeText.isNullOrEmpty()) {
-            deleteSurroundingTextInCodePoints(1, 0)
-            return
-        }
-
-        // Use BreakIterator to find the boundary of the last user-perceived character.
-        val breakIterator = BreakIterator.getCharacterInstance()
-        breakIterator.setText(beforeText.toString())
-
-        val end = breakIterator.last()
-        val start = breakIterator.previous()
-
-        if (start != BreakIterator.DONE) {
-            // Calculate how many chars are in the last grapheme cluster.
-            val charsToDelete = end - start
-            // Delete that many chars.
-            deleteSurroundingText(charsToDelete, 0)
+    private fun deleteLastGraphemeOrSelection() {
+        val selectedText = getSelectedText(0)
+        if (!selectedText.isNullOrEmpty()) {
+            commitText("", 1)
         } else {
-            // Fallback if iteration fails for some reason.
-            deleteSurroundingTextInCodePoints(1, 0)
+            val beforeText = getTextBeforeCursor(100, 0)
+
+            if (beforeText.isNullOrEmpty()) {
+                deleteSurroundingTextInCodePoints(1, 0)
+                return
+            }
+
+            val breakIterator = BreakIterator.getCharacterInstance()
+            breakIterator.setText(beforeText.toString())
+
+            val end = breakIterator.last()
+            val start = breakIterator.previous()
+
+            if (start != BreakIterator.DONE) {
+                val charsToDelete = end - start
+                deleteSurroundingText(charsToDelete, 0)
+            } else {
+                deleteSurroundingTextInCodePoints(1, 0)
+            }
         }
     }
 
