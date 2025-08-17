@@ -55,6 +55,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
+    private val tfbiControllers = mutableListOf<TfbiInputController>()
 
     private val hitRect = Rect()
 
@@ -79,6 +80,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         standardFlickControllers.clear()
         petalFlickControllers.forEach { it.cancel() }
         petalFlickControllers.clear()
+        tfbiControllers.forEach { it.cancel() }
+        tfbiControllers.clear()
 
         this.columnCount = layout.columnCount
         this.rowCount = layout.rowCount
@@ -436,56 +439,35 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
 
                 KeyType.TWO_STEP_FLICK -> {
-                    // 1. TfbiButton をインスタンス化し、既存のキーとスタイルを合わせる
-                    val tfbiButton = TfbiButton(context).apply {
-                        text = keyData.label // ボタン自体のテキスト（主にデバッグ用）
-                        isFocusable = false
-
-                        // 他のキーと同様の背景を設定
-                        val originalBg = ContextCompat.getDrawable(
-                            context,
-                            if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material
-                            else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
-                        )
-                        val insetBg = android.graphics.drawable.InsetDrawable(
-                            originalBg, leftInset, topInset, rightInset, bottomInset
-                        )
-                        background = insetBg
-                    }
-
-                    // 2. レイアウトパラメータを設定
-                    tfbiButton.layoutParams = params
-
-                    // 3. KeyboardLayoutから2段階フリック用の文字マップを取得
                     val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
-
                     if (twoStepMap != null) {
-                        // 4. TfbiButtonにリスナーと文字プロバイダーを設定
-                        tfbiButton.setOnTwoStepFlickListener(
-                            listener = object : TfbiButton.OnTwoStepFlickListener {
+                        val controller = TfbiInputController(
+                            context,
+                            flickSensitivity = flickSensitivity.toFloat()
+                        ).apply {
+                            this.listener = object : TfbiInputController.TfbiListener {
                                 override fun onFlick(
                                     first: TfbiFlickDirection,
                                     second: TfbiFlickDirection
                                 ) {
-                                    // マップから対応する文字を取得
                                     val character = twoStepMap[first]?.get(second) ?: ""
                                     if (character.isNotEmpty()) {
-                                        // FlickKeyboardView のリスナーを呼び出して文字入力を通知
                                         this@FlickKeyboardView.listener?.onKey(
                                             text = character,
                                             isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
                                         )
                                     }
                                 }
-                            },
-                            provider = { first, second ->
-                                // ポップアップ表示やフリック方向判定のために文字を返す
-                                twoStepMap[first]?.get(second) ?: ""
                             }
-                        )
+                            attach(
+                                view = keyView,
+                                provider = { first, second ->
+                                    twoStepMap[first]?.get(second) ?: ""
+                                }
+                            )
+                        }
+                        tfbiControllers.add(controller)
                     }
-                    // 5. 作成したボタンをGridLayoutに追加
-                    this.addView(tfbiButton)
                 }
 
             }
@@ -738,6 +720,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
         petalFlickControllers.forEach { it.cancel() }
+        tfbiControllers.forEach { it.cancel() }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
