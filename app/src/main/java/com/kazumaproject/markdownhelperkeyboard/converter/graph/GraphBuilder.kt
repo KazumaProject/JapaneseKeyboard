@@ -169,7 +169,7 @@ class GraphBuilder {
                             )
                         }
                             .sortedBy { it.score }
-                            .take(4)
+                            .take(5)
                             .filter { cand ->
                                 ngWords.none { ng -> ng == cand.tango }
                             }
