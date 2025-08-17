@@ -441,7 +441,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                 KeyType.TWO_STEP_FLICK -> {
                     val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
                     if (twoStepMap != null) {
-                        val controller = TfbiInputController(context).apply {
+                        val controller = TfbiInputController(
+                            context,
+                            flickSensitivity = flickSensitivity.toFloat()
+                        ).apply {
                             this.listener = object : TfbiInputController.TfbiListener {
                                 override fun onFlick(
                                     first: TfbiFlickDirection,
