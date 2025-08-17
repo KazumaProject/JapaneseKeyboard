@@ -4488,97 +4488,9 @@ object KeyboardDefaultLayouts {
             )
         )
 
-        val a = mapOf(
-            FlickDirection.TAP to FlickAction.Input("あ"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("い"),
-            FlickDirection.UP to FlickAction.Input("う"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("え"),
-            FlickDirection.DOWN to FlickAction.Input("お")
-        )
-        val ka = mapOf(
-            FlickDirection.TAP to FlickAction.Input("か"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("き"),
-            FlickDirection.UP to FlickAction.Input("く"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("け"),
-            FlickDirection.DOWN to FlickAction.Input("こ")
-        )
-        val sa = mapOf(
-            FlickDirection.TAP to FlickAction.Input("さ"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("し"),
-            FlickDirection.UP to FlickAction.Input("す"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("せ"),
-            FlickDirection.DOWN to FlickAction.Input("そ")
-        )
-        val ta = mapOf(
-            FlickDirection.TAP to FlickAction.Input("た"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ち"),
-            FlickDirection.UP to FlickAction.Input("つ"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("て"),
-            FlickDirection.DOWN to FlickAction.Input("と")
-        )
-        val na = mapOf(
-            FlickDirection.TAP to FlickAction.Input("な"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("に"),
-            FlickDirection.UP to FlickAction.Input("ぬ"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ね"),
-            FlickDirection.DOWN to FlickAction.Input("の")
-        )
-        val ha = mapOf(
-            FlickDirection.TAP to FlickAction.Input("は"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ひ"),
-            FlickDirection.UP to FlickAction.Input("ふ"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("へ"),
-            FlickDirection.DOWN to FlickAction.Input("ほ")
-        )
-        val ma = mapOf(
-            FlickDirection.TAP to FlickAction.Input("ま"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("み"),
-            FlickDirection.UP to FlickAction.Input("む"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("め"),
-            FlickDirection.DOWN to FlickAction.Input("も")
-        )
-        val ya = mapOf(
-            FlickDirection.TAP to FlickAction.Input("や"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
-            FlickDirection.UP to FlickAction.Input("ゆ"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-            FlickDirection.DOWN to FlickAction.Input("よ")
-        )
-        val ra = mapOf(
-            FlickDirection.TAP to FlickAction.Input("ら"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("り"),
-            FlickDirection.UP to FlickAction.Input("る"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("れ"),
-            FlickDirection.DOWN to FlickAction.Input("ろ")
-        )
-        val wa = mapOf(
-            FlickDirection.TAP to FlickAction.Input("わ"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
-            FlickDirection.UP to FlickAction.Input("ん"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
-        )
-        val symbols = mapOf(
-            FlickDirection.TAP to FlickAction.Input("、"),
-            FlickDirection.UP to FlickAction.Input("？"),
-            FlickDirection.UP_LEFT_FAR to FlickAction.Input("。"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
-            FlickDirection.DOWN to FlickAction.Input("…")
-        )
-
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> = mutableMapOf(
             "PasteActionKey" to listOf(pasteActionMap),
             "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "あ" to listOf(a),
-            "か" to listOf(ka),
-            "さ" to listOf(sa),
-            "た" to listOf(ta),
-            "な" to listOf(na),
-            "は" to listOf(ha),
-            "ま" to listOf(ma),
-            "や" to listOf(ya),
-            "ら" to listOf(ra),
-            "わ" to listOf(wa),
-            "、。?!" to listOf(symbols),
         )
 
         dakutenToggleStates.getOrNull(0)?.label?.let { label ->
