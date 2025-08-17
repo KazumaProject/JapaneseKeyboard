@@ -19,7 +19,10 @@ enum class TfbiFlickDirection {
 }
 
 @SuppressLint("ClickableViewAccessibility")
-class TfbiInputController(private val context: Context) {
+class TfbiInputController(
+    private val context: Context,
+    private val flickSensitivity: Float
+) {
 
     interface TfbiListener {
         fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
@@ -28,13 +31,10 @@ class TfbiInputController(private val context: Context) {
     private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
 
     companion object {
-        private const val FIRST_FLICK_THRESHOLD = 70f
-        private const val SECOND_FLICK_THRESHOLD = 70f
         private const val MAX_ANGLE_DIFFERENCE = 70.0
         private const val CANCEL_THRESHOLD = 70f
     }
 
-    // ... (状態変数は変更なし)
     private var flickState: FlickState = FlickState.NEUTRAL
     private var firstFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
     private var currentSecondFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
@@ -113,11 +113,11 @@ class TfbiInputController(private val context: Context) {
             val dy = event.y - initialTouchY
             val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
-            if (distance >= FIRST_FLICK_THRESHOLD) {
+            if (distance >= flickSensitivity) {
                 // ★ 長押しタイマーのキャンセル処理は不要になった
                 val enabledFirstDirections = getEnabledFirstFlickDirections()
                 val determinedDirection =
-                    calculateDirection(dx, dy, FIRST_FLICK_THRESHOLD, enabledFirstDirections)
+                    calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
                 if (determinedDirection == TfbiFlickDirection.TAP) return
 
                 firstFlickDirection = determinedDirection
@@ -145,7 +145,7 @@ class TfbiInputController(private val context: Context) {
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
 
             var highlightTargetDirection =
-                calculateDirection(dx, dy, SECOND_FLICK_THRESHOLD, enabledSecondDirections)
+                calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
 
             if (highlightTargetDirection == TfbiFlickDirection.TAP) {
                 highlightTargetDirection = firstFlickDirection
@@ -166,7 +166,7 @@ class TfbiInputController(private val context: Context) {
             val dy = event.y - intermediateTouchY
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             finalSecondDirection =
-                calculateDirection(dx, dy, SECOND_FLICK_THRESHOLD, enabledSecondDirections)
+                calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
             if (finalSecondDirection == TfbiFlickDirection.TAP && currentSecondFlickDirection != TfbiFlickDirection.TAP) {
                 finalSecondDirection = currentSecondFlickDirection
             }
@@ -175,7 +175,7 @@ class TfbiInputController(private val context: Context) {
             val dy = event.y - initialTouchY
             val enabledFirstDirections = getEnabledFirstFlickDirections()
             firstFlickDirection =
-                calculateDirection(dx, dy, FIRST_FLICK_THRESHOLD, enabledFirstDirections)
+                calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
             finalSecondDirection = TfbiFlickDirection.TAP
         }
         listener?.onFlick(firstFlickDirection, finalSecondDirection)
