@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -33,6 +34,7 @@ class TfbiInputController(private val context: Context) {
         private const val CANCEL_THRESHOLD = 70f
     }
 
+    // ... (状態変数は変更なし)
     private var flickState: FlickState = FlickState.NEUTRAL
     private var firstFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
     private var currentSecondFlickDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
@@ -48,12 +50,29 @@ class TfbiInputController(private val context: Context) {
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
 
+    // ★ GestureDetectorをプロパティとして宣言
+    private lateinit var gestureDetector: GestureDetector
+
     fun attach(
         view: View,
         provider: (TfbiFlickDirection, TfbiFlickDirection) -> String
     ) {
         this.attachedView = view
         this.characterMapProvider = provider
+
+        // ★ GestureDetectorを初期化
+        gestureDetector =
+            GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+                override fun onLongPress(e: MotionEvent) {
+                    // 長押しが検知されたら、フリックが開始前であることを確認して
+                    // 花びら付きのポップアップを表示する
+                    if (flickState == FlickState.NEUTRAL) {
+                        popupWindow?.dismiss()
+                        showPopup(view, TfbiFlickDirection.TAP, true)
+                    }
+                }
+            })
+
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
 
@@ -64,6 +83,9 @@ class TfbiInputController(private val context: Context) {
     }
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
+        // ★ タッチイベントをまずGestureDetectorに渡す
+        gestureDetector.onTouchEvent(event)
+
         val view = attachedView ?: return false
         when (event.action) {
             MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
@@ -74,11 +96,14 @@ class TfbiInputController(private val context: Context) {
     }
 
     private fun handleTouchDown(event: MotionEvent, view: View) {
+        // 状態リセットはここで行う
+        resetState()
         flickState = FlickState.NEUTRAL
-        firstFlickDirection = TfbiFlickDirection.TAP
-        currentSecondFlickDirection = TfbiFlickDirection.TAP
         initialTouchX = event.x
         initialTouchY = event.y
+
+        // ★ 長押しタイマーのロジックは不要になった
+        // 最初は必ず花びらなしのポップアップを表示する
         showPopup(view, TfbiFlickDirection.TAP, false)
     }
 
@@ -89,6 +114,7 @@ class TfbiInputController(private val context: Context) {
             val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
             if (distance >= FIRST_FLICK_THRESHOLD) {
+                // ★ 長押しタイマーのキャンセル処理は不要になった
                 val enabledFirstDirections = getEnabledFirstFlickDirections()
                 val determinedDirection =
                     calculateDirection(dx, dy, FIRST_FLICK_THRESHOLD, enabledFirstDirections)
@@ -104,6 +130,7 @@ class TfbiInputController(private val context: Context) {
                 currentSecondFlickDirection = determinedDirection
             }
         } else {
+            // (変更なし)
             val distanceFromInitial = hypot(
                 (event.x - initialTouchX).toDouble(),
                 (event.y - initialTouchY).toDouble()
@@ -117,17 +144,13 @@ class TfbiInputController(private val context: Context) {
             val dy = event.y - intermediateTouchY
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
 
-            // 2段階目のフリック方向を計算
             var highlightTargetDirection =
                 calculateDirection(dx, dy, SECOND_FLICK_THRESHOLD, enabledSecondDirections)
 
-            // 移動量が少なく方向がTAPと判定された場合、
-            // ハイライトは2段階目UIの中心（＝1段階目のフリック方向）を指し続けるべき
             if (highlightTargetDirection == TfbiFlickDirection.TAP) {
                 highlightTargetDirection = firstFlickDirection
             }
 
-            // 実際にハイライトされている方向と異なれば更新
             if (highlightTargetDirection != currentSecondFlickDirection) {
                 popupView?.highlightDirection(highlightTargetDirection)
                 currentSecondFlickDirection = highlightTargetDirection
@@ -136,6 +159,7 @@ class TfbiInputController(private val context: Context) {
     }
 
     private fun handleTouchUp(event: MotionEvent) {
+        // ★ 長押しタイマーのキャンセル処理は不要になった
         var finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
             val dx = event.x - intermediateTouchX
@@ -163,13 +187,17 @@ class TfbiInputController(private val context: Context) {
         baseDirection: TfbiFlickDirection,
         showPetals: Boolean
     ) {
-        if (popupWindow?.isShowing == true) return
+        if (popupWindow?.isShowing == true && !showPetals) return
+
         val tapCharacter = characterMapProvider?.invoke(baseDirection, TfbiFlickDirection.TAP) ?: ""
 
         val petalChars = if (showPetals) {
             val enabledDirections = getEnabledFirstFlickDirections()
-            enabledDirections.associateWith {
-                characterMapProvider?.invoke(it, TfbiFlickDirection.TAP) ?: ""
+            // For each direction, get the character by using that direction for BOTH arguments.
+            // This aligns with how your `twoStepFlickMaps` is structured.
+            // For example, for the 'あ' key, provider(LEFT, LEFT) correctly returns 'い'.
+            enabledDirections.associateWith { direction ->
+                characterMapProvider?.invoke(direction, direction) ?: ""
             }
         } else {
             emptyMap()
@@ -185,11 +213,7 @@ class TfbiInputController(private val context: Context) {
             isTouchable = false
             isFocusable = false
             setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
-
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★
-            // この一行を追加してください
             isClippingEnabled = false
-            // ★★★★★★★★★★★★★★★★★★★★★★★★★★
         }
         if (!anchorView.isAttachedToWindow) return
         val location = IntArray(2).also { anchorView.getLocationInWindow(it) }
@@ -208,7 +232,9 @@ class TfbiInputController(private val context: Context) {
         popupView?.setCharacters(tapCharacter, petalChars)
     }
 
+
     private fun resetState() {
+        // ★ Handler関連の処理は不要になった
         popupWindow?.dismiss()
         popupWindow = null
         popupView = null
@@ -231,7 +257,6 @@ class TfbiInputController(private val context: Context) {
         }.toSet()
     }
 
-    // Your original, unmodified calculateDirection function is restored here.
     private fun calculateDirection(
         dx: Float,
         dy: Float,
