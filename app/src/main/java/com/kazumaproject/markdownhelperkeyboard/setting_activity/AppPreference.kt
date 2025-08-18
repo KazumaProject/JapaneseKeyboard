@@ -44,6 +44,7 @@ object AppPreference {
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val KEYBOARD_VERTICAL_MARGIN_BOTTOM =
         Pair("keyboard_vertical_margin_bottom_preference", 0)
+    private val KEYBOARD_FLOATING_PREFERENCE = Pair("keyboard_floating_preference", false)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
@@ -336,5 +337,13 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "toggle-default")
+        }
+
+    var is_floating_mode: Boolean?
+        get() = preferences.getBoolean(
+            KEYBOARD_FLOATING_PREFERENCE.first, KEYBOARD_FLOATING_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_FLOATING_PREFERENCE.first, value ?: false)
         }
 }

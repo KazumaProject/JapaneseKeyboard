@@ -103,6 +103,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
@@ -241,6 +242,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingModeSwitchWindow: PopupWindow? = null
     private lateinit var floatingModeSwitchView: BubbleTextView
 
+    private var floatingKeyboardView: PopupWindow? = null
+    private var floatingKeyboardBinding: FloatingKeyboardLayoutBinding? = null
+    private var isKeyboardFloatingMode: Boolean? = false
+
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
      */
@@ -358,6 +363,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _ngPattern = MutableStateFlow("".toRegex())
     private val ngPattern: StateFlow<Regex> = _ngPattern
     private var isPrivateMode = false
+
+    private val _keyboardFloatingMode = MutableStateFlow(false)
+    private val keyboardFloatingMode = _keyboardFloatingMode.asStateFlow()
 
     private var keyboardContainer: FrameLayout? = null
 
@@ -581,6 +589,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
+            isKeyboardFloatingMode = is_floating_mode ?: false
+            _keyboardFloatingMode.update { is_floating_mode ?: false }
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -631,6 +641,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
             setKeyboardSize()
+            applyFloatingModeState(keyboardFloatingMode.value)
         } else {
             checkForPhysicalKeyboard(true)
         }
@@ -719,6 +730,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
+        floatingKeyboardView?.dismiss()
         mainLayoutBinding?.suggestionRecyclerView?.isVisible = true
     }
 
@@ -732,6 +744,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearSymbols()
         floatingCandidateWindow = null
         floatingDockWindow = null
+        floatingKeyboardView = null
         floatingModeSwitchWindow = null
         keyboardSelectionPopupWindow = null
         hasHardwareKeyboardConnected = null
@@ -769,6 +782,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
+        isKeyboardFloatingMode = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
@@ -777,7 +791,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onComputeInsets(outInsets: Insets?) {
         super.onComputeInsets(outInsets)
-        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+        if ((physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) || keyboardFloatingMode.value) {
             val inputHeight = window.window?.decorView?.height ?: 0
             outInsets?.contentTopInsets = inputHeight
             outInsets?.visibleTopInsets = inputHeight
@@ -929,6 +943,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingModeSwitchView = BubbleTextView(ctx).apply {
             text = "あ"
         }
+
+        floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
+        floatingKeyboardBinding?.keyboardViewFloating?
+        floatingKeyboardView = PopupWindow(
+            floatingKeyboardBinding?.root,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+        )
 
         // Inflate the new layout
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
@@ -1763,6 +1785,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitText(selectedSuggestion.word, 1)
                 updateSuggestionsForFloatingCandidate(emptyList())
             }
+        }
+    }
+
+    /**
+     * フローティングモードの状態に応じて、キーボードの表示/非表示やレイアウトを適用します。
+     * @param isFloatingMode フローティングモードが有効かどうかのフラグ
+     */
+    private fun applyFloatingModeState(isFloatingMode: Boolean) {
+        val mainView = mainLayoutBinding ?: return
+
+        Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode")
+        if (isFloatingMode) {
+            (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                params.width = ViewGroup.LayoutParams.MATCH_PARENT
+                params.height = getScreenHeight(this@IMEService)
+                mainView.root.layoutParams = params
+            }
+            mainView.root.alpha = 0f
+            floatingKeyboardView?.apply {
+                if (!this.isShowing) {
+                    val anchorView = window.window?.decorView
+                    if (anchorView != null && anchorView.windowToken != null) {
+                        showAtLocation(
+                            anchorView,
+                            Gravity.BOTTOM,
+                            0,
+                            0
+                        )
+                    } else {
+                        Timber.w("Could not show floating keyboard, window token is not available yet.")
+                    }
+                }
+            }
+        } else {
+            mainView.root.alpha = 1f
+            setKeyboardSize()
+            setKeyboardSizeForHeightForFloatingMode(mainView)
+            floatingKeyboardView?.dismiss()
         }
     }
 
@@ -4608,9 +4668,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
+            keyboardFloatingMode.collectLatest { isFloatingMode ->
+                Timber.d("keyboardFloatingMode state changed: $isFloatingMode")
+                applyFloatingModeState(isFloatingMode)
+            }
+        }
+
+        launch {
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
-                //suggestionAdapter?.setPhysicalKeyboardActive(isPhysicalKeyboardEnable)
                 if (isPhysicalKeyboardEnable) {
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                         params.width = ViewGroup.LayoutParams.MATCH_PARENT
@@ -4659,6 +4725,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         if (hasHardwareKeyboardConnected != true) return
+        val heightPref = appPreference.keyboard_height ?: 280
+        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val density = resources.displayMetrics.density
+        val isPortrait =
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val heightPx = when {
+            keyboardSymbolViewState.value -> { // Emoji keyboard state
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+            else -> {
+                val clampedHeight = heightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
+        } else {
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    110
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    65
+                )
+            }
+        }
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.height = keyboardHeight
+            params.bottomMargin = keyboardBottomMargin
+            mainView.root.layoutParams = params
+        }
+    }
+
+    private fun setKeyboardSizeForHeightForFloatingMode(
+        mainView: MainLayoutBinding
+    ) {
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -5937,6 +6043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter = null
         }
         mainLayoutBinding = null
+        floatingKeyboardBinding = null
         closeConnection()
         scope.cancel()
         ioScope.cancel()

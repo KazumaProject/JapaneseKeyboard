@@ -34,6 +34,7 @@ class KeyboardSettingFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var isRightAligned = true
+    private var isFloatingMode = false // フローティングモードの状態を管理する変数
 
     // Define min/max dimensions for the keyboard
     private val minHeightDp = 170
@@ -53,13 +54,17 @@ class KeyboardSettingFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupMenu()
+        // SharedPreferencesから状態を読み込む
         isRightAligned = appPreference.keyboard_position ?: true
+        isFloatingMode = appPreference.is_floating_mode ?: false
 
         // Set initial state and setup listeners
         setInitialKeyboardView()
         setupKeyboardPositionButton()
-        setupResetButton() // Call the new setup function here
+        setupFloatingButton() // フローティングボタンのリスナーをセットアップ
+        setupResetButton()
         updateKeyboardAlignment()
+        updateFloatingModeUI() // UIの初期状態をセットアップ
         setupResizeHandles()
         setupMoveHandle()
     }
@@ -120,13 +125,15 @@ class KeyboardSettingFragment : Fragment() {
         val density = resources.displayMetrics.density
 
         binding.handleMove.setOnTouchListener { _, event ->
-            val layoutParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
+            val layoutParams =
+                binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     initialY = event.rawY
                     initialBottomMargin = layoutParams.bottomMargin
                     true
                 }
+
                 MotionEvent.ACTION_MOVE -> {
                     val deltaY = event.rawY - initialY
                     // Yが小さい（上方向）にドラッグするとdeltaYは負になるため、マージンは増加する
@@ -136,6 +143,7 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.requestLayout()
                     true
                 }
+
                 MotionEvent.ACTION_UP -> {
                     // dpに変換して設定を保存
                     val finalMarginDp = (layoutParams.bottomMargin / density).roundToInt()
@@ -143,6 +151,7 @@ class KeyboardSettingFragment : Fragment() {
                     Timber.d("savePreferences: vertical margin bottom = $finalMarginDp dp")
                     true
                 }
+
                 else -> false
             }
         }
@@ -272,6 +281,17 @@ class KeyboardSettingFragment : Fragment() {
     }
 
     /**
+     * フローティングボタンのクリックリスナーをセットアップ
+     */
+    private fun setupFloatingButton() {
+        binding.floatingKeyboardSettingBtn.setOnClickListener {
+            isFloatingMode = !isFloatingMode
+            appPreference.is_floating_mode = isFloatingMode // 設定を保存
+            updateFloatingModeUI()
+        }
+    }
+
+    /**
      * Sets up the listener for the new reset button.
      */
     private fun setupResetButton() {
@@ -281,11 +301,14 @@ class KeyboardSettingFragment : Fragment() {
             appPreference.keyboard_width = maxWidthPercent
             appPreference.keyboard_position = true // Default to right-aligned
             appPreference.keyboard_vertical_margin_bottom = 0
+            appPreference.is_floating_mode = false // フローティングモードをOFFにリセット
 
             // Update local state and UI
             isRightAligned = true
+            isFloatingMode = false // ローカルの状態もリセット
             setInitialKeyboardView()
             updateKeyboardAlignment()
+            updateFloatingModeUI() // フローティングボタンのUIを更新
         }
     }
 
@@ -331,6 +354,30 @@ class KeyboardSettingFragment : Fragment() {
         }
         constraintSet.applyTo(constraintLayout)
     }
+
+    /**
+     * フローティングモードの状態に基づいてUIを更新
+     */
+    private fun updateFloatingModeUI() {
+        if (isFloatingMode) {
+            binding.floatingKeyboardSettingBtn.text = "フローティング ON"
+            binding.floatingKeyboardSettingBtn.setBackgroundColor(
+                ContextCompat.getColor(
+                    requireContext(),
+                    com.kazumaproject.core.R.color.blue
+                )
+            )
+        } else {
+            binding.floatingKeyboardSettingBtn.text = "フローティング OFF"
+            binding.floatingKeyboardSettingBtn.setBackgroundColor(
+                ContextCompat.getColor(
+                    requireContext(),
+                    com.kazumaproject.core.R.color.qwety_key_bg_color
+                )
+            )
+        }
+    }
+
 
     override fun onDestroyView() {
         super.onDestroyView()
