@@ -4,13 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
-    android:background="@color/keyboard_bg">
+    android:background="@color/keyboard_bg"
+    android:fitsSystemWindows="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- Container for Suggestion List and Visibility Icon -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/suggestionView_parent"
             android:layout_width="match_parent"
@@ -51,7 +51,21 @@
             android:layout_height="@dimen/keyboard_height"
             android:clickable="true"
             android:focusable="true"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            android:layout_marginBottom="16dp"
+            app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
+
+        <ImageView
+            android:id="@+id/drag_handle"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:contentDescription="Drag to move keyboard"
+            android:scaleType="center"
+            android:src="@drawable/ic_drag_handle"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:tint="@color/keyboard_icon_color" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
