@@ -57,6 +57,9 @@ object AppPreference {
     private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
         Pair("custom_keyboard_suggestion_preference", true)
 
+    private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
+    private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
+
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(
             KeyboardType.TENKEY,
@@ -345,5 +348,21 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(KEYBOARD_FLOATING_PREFERENCE.first, value ?: false)
+        }
+
+    var keyboard_floating_position_x: Int
+        get() = preferences.getInt(
+            KEYBOARD_FLOATING_POSITION_X.first, KEYBOARD_FLOATING_POSITION_X.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_FLOATING_POSITION_X.first, value)
+        }
+
+    var keyboard_floating_position_y: Int
+        get() = preferences.getInt(
+            KEYBOARD_FLOATING_POSITION_Y.first, KEYBOARD_FLOATING_POSITION_Y.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_FLOATING_POSITION_Y.first, value)
         }
 }
