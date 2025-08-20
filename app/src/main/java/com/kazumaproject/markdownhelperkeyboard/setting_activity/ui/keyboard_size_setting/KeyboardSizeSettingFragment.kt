@@ -37,9 +37,9 @@ class KeyboardSettingFragment : Fragment() {
     private var isFloatingMode = false // フローティングモードの状態を管理する変数
 
     // Define min/max dimensions for the keyboard
-    private val minHeightDp = 170
+    private val minHeightDp = 100
     private val maxHeightDp = 420
-    private val minWidthPercent = 74
+    private val minWidthPercent = 32
     private val maxWidthPercent = 100
 
     override fun onCreateView(

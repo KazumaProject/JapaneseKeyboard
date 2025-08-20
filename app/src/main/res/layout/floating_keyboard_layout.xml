@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
-    android:background="@color/keyboard_bg"
+    android:background="@drawable/rounded_corners_bg"
     android:fitsSystemWindows="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -15,7 +15,6 @@
             android:id="@+id/suggestionView_parent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/keyboard_bg"
             app:layout_constraintBottom_toTopOf="@+id/keyboard_view_floating">
 
             <!-- RecyclerView for Suggestions -->
@@ -48,10 +47,20 @@
         <com.kazumaproject.tenkey.TenKey
             android:id="@+id/keyboard_view_floating"
             android:layout_width="match_parent"
-            android:layout_height="@dimen/keyboard_height"
+            android:layout_height="200dp"
+            android:layout_marginBottom="16dp"
             android:clickable="true"
             android:focusable="true"
+            app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
+
+        <com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
+            android:id="@+id/floating_symbol_keyboard"
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
             android:layout_marginBottom="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"
             app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
 
         <ImageView
@@ -66,6 +75,16 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:tint="@color/keyboard_icon_color" />
+
+        <ImageView
+            android:id="@+id/floating_hide_keyboard_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:layout_marginStart="16dp"
+            android:src="@drawable/baseline_keyboard_arrow_down_24"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

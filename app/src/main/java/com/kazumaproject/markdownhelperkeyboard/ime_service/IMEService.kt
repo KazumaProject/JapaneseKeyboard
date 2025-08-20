@@ -654,6 +654,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         if (isKeyboardFloatingMode == true) {
+            val widthPref = appPreference.keyboard_width ?: 100
+
+            val density = resources.displayMetrics.density
+            val screenWidth = resources.displayMetrics.widthPixels
+
+            val screenWidthDp = (screenWidth / density).toInt()
+            val widthDp = (screenWidthDp * (widthPref / 100f)).toInt()
+            changeFloatingKeyboardSize(
+                newWidthDp = widthDp
+            )
+
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
@@ -719,6 +730,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     })
                 }
+                floatingKeyboardLayoutBinding.keyboardViewFloating
             }
         }
 
@@ -814,8 +826,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
         super.onDestroy()
-        mainLayoutBinding?.keyboardView?.cancelTenKeyScope()
-        floatingKeyboardBinding?.keyboardViewFloating?.cancelTenKeyScope()
+        mainLayoutBinding?.apply {
+            keyboardView.cancelTenKeyScope()
+            keyboardSymbolView.release()
+        }
+        floatingKeyboardBinding?.apply {
+            keyboardViewFloating.cancelTenKeyScope()
+            floatingSymbolKeyboard.release()
+        }
         suggestionAdapter?.release()
         suggestionAdapter = null
         dismissJob = null
@@ -988,6 +1006,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    /**
+     * Dynamically changes the size of the floating keyboard view.
+     * Pass null for a dimension you don't want to change.
+     *
+     * @param newWidthDp The desired new width in DP, or null to keep the current width.
+     */
+    private fun changeFloatingKeyboardSize(newWidthDp: Int? = null) {
+        val popupWindow = floatingKeyboardView ?: return
+
+        val density = resources.displayMetrics.density
+        val newWidthPx = newWidthDp?.let { (it * density).toInt() } ?: popupWindow.width
+
+        val savedX = appPreference.keyboard_floating_position_x
+        val savedY = appPreference.keyboard_floating_position_y
+
+        popupWindow.update(
+            savedX,
+            savedY,
+            newWidthPx,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+    }
+
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         // Determine the correct, themed context
@@ -1033,25 +1074,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setFloatingKeyboardListeners(floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding)
             val heightPref = appPreference.keyboard_height ?: 280
             val widthPref = appPreference.keyboard_width ?: 100
-            val positionPref = appPreference.keyboard_position ?: true
             val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
-
-            // 3) Get screen metrics
             val density = resources.displayMetrics.density
             val screenWidth = resources.displayMetrics.widthPixels
-            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+            val isPortrait =
+                resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
-
-            // 4) Determine the final height in pixels
-            // This now respects the user's preference for the default keyboard,
-            // while still allowing overrides for special keyboards like Emoji or full QWERTY.
             val heightPx = when {
                 keyboardSymbolViewState.value -> { // Emoji keyboard state
                     val height = if (isPortrait) 320 else 220
                     (height * density).toInt()
                 }
-                // For the default keyboard, use the user's preference.
-                // **FIXED**: Clamp the height to the same range as the settings UI (180-280).
+
                 else -> {
                     val clampedHeight = heightPref.coerceIn(180, 420)
                     (clampedHeight * density).toInt()
@@ -1060,22 +1094,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Timber.d("setKeyboardSize: $heightPx $keyboardMarginBottom")
 
-            // 5) Determine the final width in pixels
-            // **FIXED**: This logic is now simplified and directly reflects the user's percentage
-            // choice, removing the complex and incorrect landscape calculation.
             val widthPx = when {
-                // Special keyboards and 100% width setting should match the parent
-                widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
+                widthPref == 100 || keyboardSymbolViewState.value -> {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 }
-                // Otherwise, calculate the width based on the screen percentage
+
                 else -> {
                     (screenWidth * (widthPref / 100f)).toInt()
                 }
             }
             floatingKeyboardView = PopupWindow(
                 floatingKeyboardLayoutBinding.root,
-                screenWidth - (screenWidth / 5),
+                widthPx,
                 WindowManager.LayoutParams.WRAP_CONTENT,
             )
         }
@@ -1917,8 +1947,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun applyFloatingModeState(isFloatingMode: Boolean) {
         val mainView = mainLayoutBinding ?: return
-
         Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode")
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            floatingKeyboardView?.dismiss()
+            return
+        }
         if (isFloatingMode) {
             (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                 params.width = ViewGroup.LayoutParams.MATCH_PARENT
@@ -1930,12 +1963,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (!this.isShowing) {
                     val anchorView = window.window?.decorView
                     if (anchorView != null && anchorView.windowToken != null) {
-                        showAtLocation(
-                            anchorView,
-                            Gravity.BOTTOM or Gravity.END,
-                            0,
-                            0
-                        )
+                        val savedX = appPreference.keyboard_floating_position_x
+                        val savedY = appPreference.keyboard_floating_position_y
+                        if (savedX != -1 && savedY != -1) {
+                            showAtLocation(
+                                anchorView,
+                                Gravity.NO_GRAVITY,
+                                savedX,
+                                savedY
+                            )
+                        } else {
+                            showAtLocation(
+                                anchorView,
+                                Gravity.BOTTOM or Gravity.END,
+                                0,
+                                0
+                            )
+                        }
                     } else {
                         Timber.w("Could not show floating keyboard, window token is not available yet.")
                     }
@@ -2039,6 +2083,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     MotionEvent.ACTION_MOVE -> {
                         val newX = initialX + (event.rawX - initialTouchX)
                         val newY = initialY + (event.rawY - initialTouchY)
+                        appPreference.keyboard_floating_position_x = newX.toInt()
+                        appPreference.keyboard_floating_position_y = newY.toInt()
                         Timber.d("dragHandle.setOnTouchListene: $newX $newY")
                         floatingKeyboardView?.update(newX.toInt(), newY.toInt(), -1, -1)
                         true
@@ -2046,6 +2092,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     else -> false
                 }
+            }
+            floatingHideKeyboardBtn.setOnClickListener {
+                requestHideSelf(InputMethodManager.HIDE_NOT_ALWAYS)
             }
         }
     }
@@ -4700,11 +4749,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                         if (mainView.customLayoutDefault.isVisible) {
                             resetSumireKeyboardDakutenMode()
-                            //setSumireKeyboardSpaceKey(0)
                         }
                         suggestionAdapter?.apply {
                             if (deletedBuffer.isEmpty()) {
-                                // getPrimaryClipContentでクリップボードの内容を取得
                                 when (val item = clipboardUtil.getPrimaryClipContent()) {
                                     is ClipboardItem.Image -> {
                                         // 画像だった場合の処理
@@ -4888,6 +4935,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("keyboardSymbolViewState: $isSymbolKeyboardShow")
                 setKeyboardSize()
                 setKeyboardSizeForHeight(mainView)
+                if (isKeyboardFloatingMode == true) {
+                    floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                        setSymbolsFloating(floatingKeyboardLayoutBinding)
+                        if (isSymbolKeyboardShow) {
+                            floatingKeyboardLayoutBinding.keyboardViewFloating.isVisible = false
+                            floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
+                        } else {
+                            floatingKeyboardLayoutBinding.keyboardViewFloating.isVisible = true
+                            floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = false
+                        }
+                    }
+                }
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
                         when {
@@ -5098,6 +5157,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
+                    floatingKeyboardView?.dismiss()
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                         params.width = ViewGroup.LayoutParams.MATCH_PARENT
                         params.height = getScreenHeight(this@IMEService)
@@ -5944,11 +6004,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.candidatesRowView.layoutManager = flexboxLayoutManagerRow
 
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                floatingKeyboardLayoutBinding.suggestionRecyclerView.adapter = this
-                floatingKeyboardLayoutBinding.suggestionRecyclerView.layoutManager =
-                    FlexboxLayoutManager(applicationContext).apply {
-                        flexDirection = FlexDirection.COLUMN
-                    }
+                floatingKeyboardLayoutBinding.suggestionRecyclerView.let { sRecyclerView ->
+                    sRecyclerView.adapter = this
+                    sRecyclerView.layoutManager =
+                        FlexboxLayoutManager(applicationContext).apply {
+                            flexDirection = FlexDirection.COLUMN
+                        }
+                    sRecyclerView.itemAnimator = null
+                    sRecyclerView.isFocusable = false
+                }
             }
         }
         mainView.suggestionVisibility.setOnClickListener {
@@ -5960,6 +6024,85 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardSymbolView.apply {
+            setLifecycleOwner(this@IMEService)
+            setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
+                override fun onClick() {
+                    vibrate()
+                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                    finishComposingText()
+                    setComposingText("", 0)
+                }
+            })
+            setOnDeleteButtonSymbolViewClickListener(object : DeleteButtonSymbolViewClickListener {
+                override fun onClick() {
+                    if (!deleteKeyLongKeyPressed.get()) {
+                        vibrate()
+                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                    }
+                    stopDeleteLongPress()
+                }
+            })
+
+            setOnDeleteButtonFingerUpListener {
+                stopDeleteLongPress()
+            }
+            setOnDeleteButtonSymbolViewLongClickListener(object :
+                DeleteButtonSymbolViewLongClickListener {
+                override fun onLongClickListener() {
+                    onDeleteLongPressUp.set(true)
+                    deleteLongPress()
+                    _dakutenPressed.value = false
+                    englishSpaceKeyPressed.set(false)
+                    deleteKeyLongKeyPressed.set(true)
+                }
+            })
+            /** ここで絵文字を追加 **/
+            setOnSymbolRecyclerViewItemClickListener(object : SymbolRecyclerViewItemClickListener {
+                override fun onClick(symbol: ClickedSymbol) {
+                    vibrate()
+                    commitText(symbol.symbol, 1)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        clickedSymbolRepository.insert(
+                            mode = symbol.mode, symbol = symbol.symbol
+                        )
+                    }
+                }
+            })
+            setOnSymbolRecyclerViewItemLongClickListener(object :
+                SymbolRecyclerViewItemLongClickListener {
+                override fun onLongClick(symbol: ClickedSymbol, position: Int) {
+                    vibrate()
+                    CoroutineScope(Dispatchers.IO).launch {
+                        clickedSymbolRepository.delete(
+                            mode = symbol.mode, symbol = symbol.symbol
+                        )
+                    }
+                }
+            })
+            setOnImageItemClickListener { bitmap -> pasteImageAction(bitmap) }
+            setOnClipboardItemLongClickListener { item, _ ->
+                when (item) {
+                    ClipboardItem.Empty -> {}
+                    is ClipboardItem.Image -> {
+                        vibrate()
+                        ioScope.launch {
+                            clipboardHistoryRepository.deleteById(item.id)
+                        }
+                    }
+
+                    is ClipboardItem.Text -> {
+                        vibrate()
+                        ioScope.launch {
+                            clipboardHistoryRepository.deleteById(item.id)
+                        }
+                    }
+                }
+            }
+            setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
+            setOnClipboardHistoryToggleListener(this@IMEService)
+        }
+
+        floatingKeyboardBinding?.floatingSymbolKeyboard?.apply {
             setLifecycleOwner(this@IMEService)
             setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
                 override fun onClick() {
@@ -6287,6 +6430,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
         }
         mainView.keyboardSymbolView.setSymbolLists(
+            emojiList = cachedEmoji ?: emptyList(),
+            emoticons = cachedEmoticons ?: emptyList(),
+            symbols = cachedSymbols ?: emptyList(),
+            clipBoardItems = currentClipboardItems,
+            symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
+            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI
+
+        )
+    }
+
+    private suspend fun setSymbolsFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
+        coroutineScope {
+            if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
+                val emojiDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
+                val emoticonDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmoticonCandidates() }
+                val symbolDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolCandidates() }
+                cachedEmoji = emojiDeferred.await()
+                cachedEmoticons = emoticonDeferred.await()
+                cachedSymbols = symbolDeferred.await()
+            }
+            val historyDeferred = async(Dispatchers.Default) { clickedSymbolRepository.getAll() }
+            cachedClickedSymbolHistory =
+                historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
+        }
+        floatingKeyboardLayoutBinding.floatingSymbolKeyboard.setSymbolLists(
             emojiList = cachedEmoji ?: emptyList(),
             emoticons = cachedEmoticons ?: emptyList(),
             symbols = cachedSymbols ?: emptyList(),
