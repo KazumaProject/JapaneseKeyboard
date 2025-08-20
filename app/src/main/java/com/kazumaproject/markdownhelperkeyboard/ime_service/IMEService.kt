@@ -502,6 +502,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainLayoutBinding?.apply {
                     suggestionRecyclerView.scrollToPosition(0)
                 }
+                if (isKeyboardFloatingMode == true) {
+                    floatingKeyboardBinding?.apply {
+                        suggestionRecyclerView.scrollToPosition(0)
+                    }
+                }
             }
         }
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
@@ -725,7 +730,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     })
                     setOnLongPressListener(object : LongPressListener {
                         override fun onLongPress(key: Key) {
-                            handleLongPress(key)
+                            handleLongPressFloating(key)
                             Timber.d("Long Press: $key")
                         }
                     })
@@ -888,7 +893,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onComputeInsets(outInsets: Insets?) {
         super.onComputeInsets(outInsets)
-        if ((physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) || keyboardFloatingMode.value) {
+        if ((physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) || isKeyboardFloatingMode == true) {
             val inputHeight = window.window?.decorView?.height ?: 0
             outInsets?.contentTopInsets = inputHeight
             outInsets?.visibleTopInsets = inputHeight
@@ -1122,6 +1127,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.apply {
                             root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                             suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                            suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                        }
+                        floatingKeyboardBinding?.apply {
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                         }
                     }
@@ -1647,6 +1655,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 scope.launch {
                                     _physicalKeyboardEnable.emit(true)
                                 }
+                                isKeyboardFloatingMode = false
                                 if (isHenkan.get()) {
                                     listAdapter.selectHighlightedItem()
                                     scope.launch {
@@ -2712,6 +2721,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Key.SideKeyEnter -> {}
             Key.KeyDakutenSmall -> {
                 showListPopup()
+            }
+
+            Key.SideKeyCursorLeft -> {
+                handleLeftLongPress()
+                leftCursorKeyLongKeyPressed.set(true)
+                if (selectMode.value) {
+                    clearDeletedBufferWithoutResetLayout()
+                } else {
+                    clearDeletedBuffer()
+                }
+                suggestionAdapter?.setUndoEnabled(false)
+                updateClipboardPreview()
+            }
+
+            Key.SideKeyCursorRight -> {
+                handleRightLongPress()
+                rightCursorKeyLongKeyPressed.set(true)
+                if (selectMode.value) {
+                    clearDeletedBufferWithoutResetLayout()
+                } else {
+                    clearDeletedBuffer()
+                }
+                suggestionAdapter?.setUndoEnabled(false)
+                updateClipboardPreview()
+            }
+
+            Key.SideKeyDelete -> {
+                handleDeleteLongPress()
+            }
+
+            Key.SideKeyInputMode -> {}
+            Key.SideKeyPreviousChar -> {}
+            Key.SideKeySpace -> {
+                handleSpaceLongAction()
+            }
+
+            Key.SideKeySymbol -> {}
+            else -> {}
+        }
+    }
+
+    private fun handleLongPressFloating(
+        key: Key
+    ) {
+        when (key) {
+            Key.NotSelected -> {}
+            Key.SideKeyEnter -> {}
+            Key.KeyDakutenSmall -> {
+                //showListPopup()
             }
 
             Key.SideKeyCursorLeft -> {
@@ -4708,17 +4766,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionFlag.collectLatest { currentFlag ->
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
+                        physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
+                            floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                                animateSuggestionImageViewVisibility(
+                                    floatingKeyboardLayoutBinding.suggestionVisibility, true
+                                )
+                            }
+                        }
+
                         physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
                         }
 
-                        physicalKeyboardEnable.replayCache.isNotEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                        (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
                         }
+
                     }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
@@ -4743,10 +4810,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
-                        animateSuggestionImageViewVisibility(
-                            mainView.suggestionVisibility, false
-
-                        )
+                        if (isKeyboardFloatingMode == true) {
+                            floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                                animateSuggestionImageViewVisibility(
+                                    floatingKeyboardLayoutBinding.suggestionVisibility, false
+                                )
+                            }
+                        } else {
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, false
+                            )
+                        }
                         if (mainView.customLayoutDefault.isVisible) {
                             resetSumireKeyboardDakutenMode()
                         }
@@ -5285,6 +5359,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateSuggestionViewVisibility(
         mainView: MainLayoutBinding, isVisible: Boolean
     ) {
+        if (isKeyboardFloatingMode == true) {
+            floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                animateViewVisibility(floatingKeyboardLayoutBinding.candidatesRowView, !isVisible)
+                floatingKeyboardLayoutBinding.keyboardViewFloating.isVisible = isVisible
+                hideFirstRowCandidatesInFullScreenFloating(floatingKeyboardLayoutBinding)
+                floatingKeyboardLayoutBinding.candidatesRowView.scrollToPosition(0)
+                if (isVisible) {
+                    if (floatingKeyboardLayoutBinding.keyboardViewFloating.isInvisible) {
+                        animateViewVisibility(
+                            floatingKeyboardLayoutBinding.keyboardViewFloating,
+                            isVisible = true,
+                            true
+                        )
+                    }
+                } else {
+                    floatingKeyboardLayoutBinding.keyboardViewFloating.visibility = View.INVISIBLE
+                }
+                floatingKeyboardLayoutBinding.suggestionVisibility.apply {
+                    this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
+                }
+            }
+        }
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
         mainView.candidatesRowView.scrollToPosition(0)
         hideFirstRowCandidatesInFullScreen(mainView)
@@ -5326,7 +5422,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
-
         mainView.suggestionVisibility.apply {
             this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
         }
@@ -5404,6 +5499,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (flexLines.isNotEmpty()) {
                     val firstRowHeight = flexLines[0].crossSize
                     mainView.candidatesRowView.scrollBy(0, firstRowHeight)
+                }
+            }
+        }
+    }
+
+    private fun hideFirstRowCandidatesInFullScreenFloating(
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
+    ) {
+        floatingKeyboardLayoutBinding.candidatesRowView.post {
+            if (!floatingKeyboardLayoutBinding.candidatesRowView.canScrollVertically(-1)) {
+                val flexboxManager =
+                    floatingKeyboardLayoutBinding.candidatesRowView.layoutManager as? FlexboxLayoutManager
+                        ?: return@post
+                val flexLines = flexboxManager.flexLines
+
+                if (flexLines.isNotEmpty()) {
+                    val firstRowHeight = flexLines[0].crossSize
+                    floatingKeyboardLayoutBinding.candidatesRowView.scrollBy(0, firstRowHeight)
                 }
             }
         }
@@ -5856,7 +5969,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
                             -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                            setCurrentMode(InputMode.ModeNumber)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
                         }
 
                     }
@@ -6013,10 +6130,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     sRecyclerView.itemAnimator = null
                     sRecyclerView.isFocusable = false
                 }
+
+                floatingKeyboardLayoutBinding.candidatesRowView.let { fullCandidateView ->
+                    fullCandidateView.itemAnimator = null
+                    fullCandidateView.isFocusable = false
+
+                    fullCandidateView.adapter = this
+                    fullCandidateView.layoutManager =
+                        FlexboxLayoutManager(applicationContext).apply {
+                            flexDirection = FlexDirection.ROW
+                            justifyContent = JustifyContent.FLEX_START
+                        }
+                }
             }
         }
         mainView.suggestionVisibility.setOnClickListener {
             _suggestionViewStatus.update { !it }
+        }
+        floatingKeyboardBinding?.suggestionVisibility?.setOnClickListener {
+            _suggestionViewStatus.update { !it }
+            Timber.d("floatingKeyboardBinding suggestionVisibility: ${suggestionViewStatus.value}")
         }
     }
 
@@ -8847,6 +8980,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 delay(32)
                 _physicalKeyboardEnable.emit(true)
             }
+            isKeyboardFloatingMode = false
         } else {
             Timber.d("No physical keyboard is connected.")
             floatingDockWindow?.dismiss()
@@ -8855,6 +8989,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             scope.launch {
                 _physicalKeyboardEnable.emit(false)
             }
+            isKeyboardFloatingMode = appPreference.is_floating_mode ?: false
         }
     }
 
@@ -9005,6 +9140,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             scope.launch {
                 _physicalKeyboardEnable.emit(true)
             }
+            isKeyboardFloatingMode = false
         }
     }
 
