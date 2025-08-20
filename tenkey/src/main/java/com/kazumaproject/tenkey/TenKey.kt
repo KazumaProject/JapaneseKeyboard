@@ -7,6 +7,7 @@ import android.content.res.Configuration
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.AttributeSet
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -445,6 +446,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // ← NEW: launch a coroutine to observe changes to currentInputMode
         scope.launch {
             currentInputMode.collect { inputMode ->
+                Log.d("TenKey", "currentInputMode: $inputMode")
                 // Whenever inputMode changes, update all keys and switch UI
                 handleCurrentInputModeSwitch(inputMode)
                 binding.keySwitchKeyMode.setInputMode(inputMode, false)
@@ -553,6 +555,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         longPressJob = null
         isCursorMode = false
         // ← CANCEL the observing coroutine when the view is detached
+        //scope.coroutineContext.cancelChildren()
+    }
+
+    fun cancelTenKeyScope() {
         scope.coroutineContext.cancelChildren()
     }
 

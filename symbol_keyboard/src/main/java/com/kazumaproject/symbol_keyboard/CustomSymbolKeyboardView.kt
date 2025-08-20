@@ -132,7 +132,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             }
             if (historyList.isNotEmpty()
                 && categoryTab.selectedTabPosition == 0
-                && pos in 0 until historyList.size
+                && pos in historyList.indices
             ) {
                 itemLongClickListener?.onLongClick(
                     ClickedSymbol(mode = currentMode, symbol = str),
@@ -580,8 +580,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         if (i < last) categoryTab.getTabAt(i + 1)?.select()
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
+    fun release() {
         pagingJob?.cancel()
         pagingJob = null
         lifecycleOwner = null

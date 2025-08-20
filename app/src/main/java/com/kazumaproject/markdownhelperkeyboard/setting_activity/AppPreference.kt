@@ -44,6 +44,7 @@ object AppPreference {
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
     private val KEYBOARD_VERTICAL_MARGIN_BOTTOM =
         Pair("keyboard_vertical_margin_bottom_preference", 0)
+    private val KEYBOARD_FLOATING_PREFERENCE = Pair("keyboard_floating_preference", false)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
@@ -55,6 +56,9 @@ object AppPreference {
     private val DELETE_KEY_HIGH_LIGHT = Pair("henkan_delete_key_action_preference", true)
     private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
         Pair("custom_keyboard_suggestion_preference", true)
+
+    private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
+    private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
 
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(
@@ -336,5 +340,29 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "toggle-default")
+        }
+
+    var is_floating_mode: Boolean?
+        get() = preferences.getBoolean(
+            KEYBOARD_FLOATING_PREFERENCE.first, KEYBOARD_FLOATING_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_FLOATING_PREFERENCE.first, value ?: false)
+        }
+
+    var keyboard_floating_position_x: Int
+        get() = preferences.getInt(
+            KEYBOARD_FLOATING_POSITION_X.first, KEYBOARD_FLOATING_POSITION_X.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_FLOATING_POSITION_X.first, value)
+        }
+
+    var keyboard_floating_position_y: Int
+        get() = preferences.getInt(
+            KEYBOARD_FLOATING_POSITION_Y.first, KEYBOARD_FLOATING_POSITION_Y.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_FLOATING_POSITION_Y.first, value)
         }
 }
