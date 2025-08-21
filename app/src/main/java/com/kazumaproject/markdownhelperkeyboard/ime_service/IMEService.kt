@@ -1130,6 +1130,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                         }
                         floatingKeyboardBinding?.apply {
+                            root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                            suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                         }
                     }
@@ -6149,7 +6151,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         floatingKeyboardBinding?.suggestionVisibility?.setOnClickListener {
             _suggestionViewStatus.update { !it }
-            Timber.d("floatingKeyboardBinding suggestionVisibility: ${suggestionViewStatus.value}")
         }
     }
 
