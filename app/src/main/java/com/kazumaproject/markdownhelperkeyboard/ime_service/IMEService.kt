@@ -5542,6 +5542,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 onDeleteLongPressUp.set(true)
             } else {
                 setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
+                if (isKeyboardFloatingMode == true) {
+                    floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                        setDrawableToEnterKeyCorrespondingToImeOptionsFloating(
+                            floatingKeyboardLayoutBinding
+                        )
+                    }
+                }
                 onLeftKeyLongPressUp.set(true)
                 onRightKeyLongPressUp.set(true)
                 onDeleteLongPressUp.set(true)
