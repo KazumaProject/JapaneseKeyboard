@@ -57,7 +57,6 @@ import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
-import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -494,6 +493,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var initialY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
+    private var systemBottomInset = 0
 
     override fun onCreate() {
         super.onCreate()
@@ -972,25 +972,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Configuration.ORIENTATION_PORTRAIT -> {
                 finishComposingText()
                 setComposingText("", 0)
-                resetViewInset()
+                Timber.d("onConfigurationChanged: ORIENTATION_PORTRAIT")
             }
 
             Configuration.ORIENTATION_LANDSCAPE -> {
                 finishComposingText()
                 setComposingText("", 0)
-                resetViewInset()
+                Timber.d("onConfigurationChanged: ORIENTATION_LANDSCAPE")
             }
 
             Configuration.ORIENTATION_UNDEFINED -> {
                 finishComposingText()
                 setComposingText("", 0)
-                resetViewInset()
+                Timber.d("onConfigurationChanged: ORIENTATION_UNDEFINED")
             }
 
             else -> {
                 finishComposingText()
                 setComposingText("", 0)
-                resetViewInset()
+                Timber.d("onConfigurationChanged: else")
             }
         }
 
@@ -1006,21 +1006,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onEvaluateInputViewShown(): Boolean {
         super.onEvaluateInputViewShown()
         return true
-    }
-
-    private fun resetViewInset(){
-        mainLayoutBinding?.let { mainView ->
-            ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { view, windowInsets ->
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                view.updatePadding(
-                    left = insets.left,
-                    top = insets.top,
-                    right = insets.right,
-                    bottom = insets.bottom
-                )
-                WindowInsetsCompat.CONSUMED
-            }
-        }
     }
 
     /**
@@ -1094,6 +1079,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
 
+
         floatingKeyboardBinding =
             FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
 
@@ -1156,6 +1142,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                         }
+                    }
+                    ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { view, windowInsets ->
+                        val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                        systemBottomInset = insets.bottom
+                        windowInsets
                     }
                     setupCustomKeyboardListeners(mainView)
                     setSuggestionRecyclerView(
@@ -5303,6 +5294,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         if (hasHardwareKeyboardConnected != true) return
+        Timber.d("setKeyboardSizeForHeight: called")
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -8935,6 +8927,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardMarginBottom
             binding.root.layoutParams = params
         }
+        binding.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private val vibratorManager by lazy {
