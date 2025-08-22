@@ -5370,6 +5370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun updateSuggestionViewVisibility(
