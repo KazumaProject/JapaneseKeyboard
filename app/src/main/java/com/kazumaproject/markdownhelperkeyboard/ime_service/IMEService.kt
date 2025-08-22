@@ -746,16 +746,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardSelectionPopupWindow?.dismiss()
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
-                ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { view, windowInsets ->
-                    val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                    view.updatePadding(
-                        left = insets.left,
-                        top = insets.top,
-                        right = insets.right,
-                        bottom = insets.bottom
-                    )
-                    WindowInsetsCompat.CONSUMED
-                }
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -982,21 +972,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Configuration.ORIENTATION_PORTRAIT -> {
                 finishComposingText()
                 setComposingText("", 0)
+                resetViewInset()
             }
 
             Configuration.ORIENTATION_LANDSCAPE -> {
                 finishComposingText()
                 setComposingText("", 0)
+                resetViewInset()
             }
 
             Configuration.ORIENTATION_UNDEFINED -> {
                 finishComposingText()
                 setComposingText("", 0)
+                resetViewInset()
             }
 
             else -> {
                 finishComposingText()
                 setComposingText("", 0)
+                resetViewInset()
             }
         }
 
@@ -1012,6 +1006,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onEvaluateInputViewShown(): Boolean {
         super.onEvaluateInputViewShown()
         return true
+    }
+
+    private fun resetViewInset(){
+        mainLayoutBinding?.let { mainView ->
+            ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { view, windowInsets ->
+                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                view.updatePadding(
+                    left = insets.left,
+                    top = insets.top,
+                    right = insets.right,
+                    bottom = insets.bottom
+                )
+                WindowInsetsCompat.CONSUMED
+            }
+        }
     }
 
     /**
