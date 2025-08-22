@@ -51,10 +51,13 @@ import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
+import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -743,6 +746,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardSelectionPopupWindow?.dismiss()
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
+                ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { view, windowInsets ->
+                    val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                    view.updatePadding(
+                        left = insets.left,
+                        top = insets.top,
+                        right = insets.right,
+                        bottom = insets.bottom
+                    )
+                    WindowInsetsCompat.CONSUMED
+                }
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
