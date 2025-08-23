@@ -12,6 +12,19 @@
 </p>
 
 <p align="center">
+  <a href="https://f-droid.org/packages/com.kazumaproject.markdownhelperkeyboard/">
+    <!-- 公式 F-Droid ボタン（PNG／60px高） -->
+    <img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
+         alt="Get it on F-Droid" height="60">
+  </a>
+  <a href="https://f-droid.org/packages/com.kazumaproject.markdownhelperkeyboard/">
+    <!-- Shields.io のバージョンバッジ（for-the-badge スタイル） -->
+    <img src="https://img.shields.io/github/v/release/KazumaProject/JapaneseKeyboard?style=for-the-badge"
+         alt="F-Droid Version">
+  </a>
+</p>
+
+<p align="center">
   <a href="https://github.com/KazumaProject/JapaneseKeyboard/actions/workflows/android.yml"><img src="https://github.com/KazumaProject/JapaneseKeyboard/actions/workflows/android.yml/badge.svg" alt="Android CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/minSdk-24-blue" alt="minSdk 24">
