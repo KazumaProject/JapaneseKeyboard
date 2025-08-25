@@ -25,56 +25,66 @@
                 app:min="2"
                 app:showSeekBarValue="true" />
 
+            <ListPreference
+                android:defaultValue="1"
+                android:dialogTitle="候補の列数を選んでください"
+                android:entries="@array/candidate_column_entries"
+                android:entryValues="@array/candidate_column_values"
+                android:key="candidate_column_preference"
+                android:summary="変換候補を表示するときの列数を設定します"
+                android:title="変換候補の列数" />
         </PreferenceCategory>
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="flick_input_only_preference"
-            android:summaryOff="トグル入力を有効にします"
-            android:summaryOn="フリック入力のみを使用し、トグル入力を無効にする"
-            android:title="フリック・トグル入力" />
+        <PreferenceCategory android:title="機能">
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="flick_input_only_preference"
+                android:summaryOff="トグル入力を有効にします"
+                android:summaryOn="フリック入力のみを使用し、トグル入力を無効にする"
+                android:title="フリック・トグル入力" />
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="undo_enable_preference"
-            android:summary="元に戻す機能を無効にする"
-            android:title="元に戻す機能" />
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="undo_enable_preference"
+                android:summary="元に戻す機能を無効にする"
+                android:title="元に戻す機能" />
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="space_key_preference"
-            android:summary="空白を半角入力"
-            android:title="空白を半角入力" />
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="space_key_preference"
+                android:summary="空白を半角入力"
+                android:title="空白を半角入力" />
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="live_conversion_preference"
-            android:summaryOff="ライブ変換は無効です"
-            android:summaryOn="ライブ変換は有効です"
-            android:title="ライブ変換 β" />
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="live_conversion_preference"
+                android:summaryOff="ライブ変換は無効です"
+                android:summaryOn="ライブ変換は有効です"
+                android:title="ライブ変換 β" />
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="omission_search_preference"
-            android:summaryOff="修飾キー省略入力は無効です"
-            android:summaryOn="修飾キー省略入力は有効です\nかつこう → がっこう"
-            android:title="修飾キー省略入力" />
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="omission_search_preference"
+                android:summaryOff="修飾キー省略入力は無効です"
+                android:summaryOn="修飾キー省略入力は有効です\nかつこう → がっこう"
+                android:title="修飾キー省略入力" />
 
-        <SeekBarPreference
-            android:defaultValue="100"
-            android:key="flick_sensitivity_preference"
-            android:max="200"
-            android:title="フリック入力の感度"
-            app:min="10"
-            app:seekBarIncrement="10"
-            app:showSeekBarValue="true" />
+            <SeekBarPreference
+                android:defaultValue="100"
+                android:key="flick_sensitivity_preference"
+                android:max="200"
+                android:title="フリック入力の感度"
+                app:min="10"
+                app:seekBarIncrement="10"
+                app:showSeekBarValue="true" />
 
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="henkan_delete_key_action_preference"
-            android:summaryOff="削除キータップ：ハイライト解除"
-            android:summaryOn="削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す"
-            android:title="候補ハイライト時の削除キー動作" />
+            <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="henkan_delete_key_action_preference"
+                android:summaryOff="削除キータップ：ハイライト解除"
+                android:summaryOn="削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す"
+                android:title="候補ハイライト時の削除キー動作" />
+        </PreferenceCategory>
 
         <PreferenceCategory android:title="ローマ字変換">
             <Preference

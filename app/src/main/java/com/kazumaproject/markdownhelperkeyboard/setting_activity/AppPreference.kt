@@ -72,6 +72,8 @@ object AppPreference {
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
     private val SYMBOL_MODE_PREFERENCE = Pair("symbol_mode_preference", "EMOJI")
 
+    private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -364,5 +366,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(KEYBOARD_FLOATING_POSITION_Y.first, value)
+        }
+
+    var candidate_column_preference: String
+        get() = preferences.getString(
+            CANDIDATE_COLUMN_PREFERENCE.first,
+            CANDIDATE_COLUMN_PREFERENCE.second
+        ) ?: "1"
+        set(value) = preferences.edit {
+            it.putString(CANDIDATE_COLUMN_PREFERENCE.first, value)
         }
 }
