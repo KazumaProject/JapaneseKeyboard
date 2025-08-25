@@ -74,11 +74,22 @@
         <item>クリップボード履歴</item>
     </string-array>
 
-    <!-- SymbolMode の選択肢に対応する値 (プログラム側で扱う値) -->
     <string-array name="symbol_mode_values">
         <item>EMOJI</item>
         <item>EMOTICON</item>
         <item>SYMBOL</item>
         <item>CLIPBOARD</item>
+    </string-array>
+
+    <string-array name="candidate_column_entries">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="candidate_column_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
     </string-array>
 </resources>
