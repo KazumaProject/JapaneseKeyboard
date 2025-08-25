@@ -49,6 +49,7 @@ import android.widget.ListView
 import android.widget.PopupWindow
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.ViewCompat
@@ -119,6 +120,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurren
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
@@ -742,7 +744,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     })
                 }
-                floatingKeyboardLayoutBinding.keyboardViewFloating
             }
         }
 
@@ -1085,7 +1086,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
 
-
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
 
         floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
@@ -1128,13 +1128,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
 
-        // Ensure the container is not null and add the new view to it
         keyboardContainer?.let { container ->
-            container.removeAllViews() // Remove the old keyboard view
+            container.removeAllViews()
             mainLayoutBinding?.root?.let { newRootView ->
-                container.addView(newRootView) // Add the newly inflated view
-
-                // All your listener and setup code goes here
+                container.addView(newRootView)
                 mainLayoutBinding?.let { mainView ->
                     if (isDynamicColorsEnable) {
                         mainView.apply {
@@ -1157,9 +1154,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setSuggestionRecyclerView(
                         mainView,
                         FlexboxLayoutManager(applicationContext).apply {
-                            flexDirection = FlexDirection.COLUMN
-                        },
-                        FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
                             justifyContent = JustifyContent.FLEX_START
                         })
@@ -1172,7 +1166,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     setKeyboardSize()
                     updateClipboardPreview()
-                    mainLayoutBinding?.suggestionRecyclerView?.isVisible =
+                    mainView.suggestionRecyclerView.isVisible =
                         suggestionViewStatus.value
                 }
             }
@@ -2081,10 +2075,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
         floatingKeyboardLayoutBinding.apply {
-            dragHandle.setOnTouchListener { view, event ->
+            dragHandle.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
-                        // ドラッグ開始時のウィンドウとタッチの初期位置を記録します
                         val location = IntArray(2)
                         floatingKeyboardView?.contentView?.getLocationOnScreen(location)
                         initialX = location[0]
@@ -4758,6 +4751,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
+                val suppressSuggestions =
+                    currentInputType.isPassword() ||
+                            currentInputType == InputTypeForIME.TextNoSuggestion
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
                         physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
@@ -4769,9 +4765,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, true
-                            )
+                            if (!suppressSuggestions){
+                                animateSuggestionImageViewVisibility(
+                                    mainView.suggestionVisibility, true
+                                )
+                            }
                             setKeyboardHeightWithAdditional(mainView)
                         }
 
@@ -4807,15 +4805,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         if (isKeyboardFloatingMode == true) {
-                            floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                                animateSuggestionImageViewVisibility(
-                                    floatingKeyboardLayoutBinding.suggestionVisibility, false
-                                )
+                            if (!suppressSuggestions){
+                                floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                                    animateSuggestionImageViewVisibility(
+                                        floatingKeyboardLayoutBinding.suggestionVisibility, false
+                                    )
+                                }
                             }
                         } else {
-                            animateSuggestionImageViewVisibility(
-                                mainView.suggestionVisibility, false
-                            )
+                            if (!suppressSuggestions){
+                                animateSuggestionImageViewVisibility(
+                                    mainView.suggestionVisibility, false
+                                )
+                            }
                         }
                         if (mainView.customLayoutDefault.isVisible) {
                             resetSumireKeyboardDakutenMode()
@@ -5291,11 +5293,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    110
+                    100
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5331,11 +5333,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    110
+                    100
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5352,8 +5354,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
+        if (currentInputType.isPassword() || currentInputType == InputTypeForIME.TextNoSuggestion) return
         val columnNum = candidateColumns ?: "1"
-        if (columnNum == "1") return
+        if (columnNum == "1") {
+            val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
+            params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+            mainView.suggestionVisibility.layoutParams = params
+            return
+        }
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -5371,11 +5379,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    110
+                    100
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5384,16 +5392,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val additionalKeyboardHeight = when (columnNum) {
-            "1" -> {
-                0
-            }
-
             "2" -> {
-                80
+                150
             }
 
             "3" -> {
-                160
+                300
             }
 
             else -> {
@@ -5406,11 +5410,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.root.layoutParams = params
         }
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
+        params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
+        params.setMargins(0, 8, 0, 0)
+        mainView.suggestionVisibility.layoutParams = params
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
         val columnNum = candidateColumns ?: "1"
-        if (columnNum == "1") return
+        if (columnNum == "1" || isKeyboardFloatingMode == true) {
+            return
+        }
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -5428,11 +5438,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    110
+                    100
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5774,7 +5784,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME(this)
-            Timber.d("setCurrentInputType: $currentInputType $inputType ${attribute.hintText} ${attribute.actionId} ${attribute.fieldName}")
+            Timber.d("setCurrentInputType: $currentInputType $inputType ${attribute.hintText} ${attribute.actionId} ${attribute.fieldName} ${attribute.inputType} ")
             if (isTablet == true) {
                 mainLayoutBinding?.tabletView?.apply {
                     when (currentInputType) {
@@ -6083,7 +6093,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setSuggestionRecyclerView(
         mainView: MainLayoutBinding,
-        flexboxLayoutManagerColumn: FlexboxLayoutManager,
         flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
         suggestionAdapter?.let { adapter ->
@@ -6595,17 +6604,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         handleTap(tap, insertString, sb, mainView)
                                     } else {
                                         sb.append(insertString).append(tap)
+                                        val stringToUpdate = sb.toString()
                                         romajiConverter?.let { converter ->
-                                            _inputString.update {
-                                                converter.convert(sb.toString())
+                                            if (stringToUpdate == "[]") {
+                                                _inputString.update {
+                                                    stringToUpdate
+                                                }
+                                            } else {
+                                                _inputString.update {
+                                                    converter.convert(sb.toString())
+                                                }
                                             }
                                         }
                                     }
                                 } else {
                                     tap?.let { c ->
                                         romajiConverter?.let { converter ->
-                                            _inputString.update {
-                                                converter.convert(c.toString())
+                                            if (c == '[' || c == ']') {
+                                                _inputString.update {
+                                                    c.toString()
+                                                }
+                                            } else {
+                                                _inputString.update {
+                                                    converter.convert(c.toString())
+                                                }
                                             }
                                         }
                                     }
@@ -7446,9 +7468,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setSuggestionOnView(
         mainView: MainLayoutBinding, inputString: String
     ) {
-        if (inputString.isNotEmpty() && suggestionClickNum == 0) {
-            setCandidates(mainView, inputString)
-        }
+        if (inputString.isEmpty() || suggestionClickNum != 0) return
+        setCandidates(mainView, inputString)
     }
 
     private suspend fun setCandidates(
@@ -7461,14 +7482,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
+        val suppressSuggestions =
+            currentInputType.isPassword() ||
+                    currentInputType == InputTypeForIME.TextNoSuggestion
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
-            updateSuggestionsForFloatingCandidate(filtered.map {
-                CandidateItem(
-                    word = it.string, length = it.length
-                )
-            })
+            if (!suppressSuggestions) {
+                updateSuggestionsForFloatingCandidate(filtered.map {
+                    CandidateItem(
+                        word = it.string, length = it.length
+                    )
+                })
+            }
         } else {
-            suggestionAdapter?.suggestions = filtered
+            if (!suppressSuggestions) {
+                suggestionAdapter?.suggestions = filtered
+            }
+
         }
         if (isKeyboardFloatingMode == true) {
             floatingKeyboardBinding?.let { floatingKeyboard ->
