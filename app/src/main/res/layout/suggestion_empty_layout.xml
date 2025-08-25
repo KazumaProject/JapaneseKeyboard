@@ -2,7 +2,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/empty_icons_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="58dp">
 
     <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/incognito_icon"
