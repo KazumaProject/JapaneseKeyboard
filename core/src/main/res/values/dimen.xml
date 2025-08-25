@@ -60,4 +60,6 @@
     <dimen name="qwerty_side_key_text_size">12sp</dimen>
     <dimen name="qwerty_side_key_switch_mode_text_size">10sp</dimen>
     <dimen name="qwerty_side_key_elevation_size">1dp</dimen>
+
+    <dimen name="grid_spacing">0dp</dimen>
 </resources>
