@@ -60,6 +60,7 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
@@ -110,6 +111,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -356,6 +358,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
     private var sumireInputKeyType: String? = "flick-default"
+    private var candidateColumns: String? = "1"
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
@@ -602,6 +605,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
+            candidateColumns = candidate_column_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             isKeyboardFloatingMode = is_floating_mode ?: false
@@ -754,6 +758,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true
                 )
             }
+            val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
+                flexDirection = FlexDirection.COLUMN
+            }
+            setMainSuggestionColumn(mainView, flexboxLayoutManagerColumn)
         }
         editorInfo?.let { info ->
             if (info.imeOptions == 318767106) {
@@ -880,6 +888,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTNeologd = null
         mozcUTWeb = null
         sumireInputKeyType = null
+        candidateColumns = null
         isTablet = null
         isNgWordEnable = null
         deleteKeyHighLight = null
@@ -1034,10 +1043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val savedY = appPreference.keyboard_floating_position_y
 
         popupWindow.update(
-            savedX,
-            savedY,
-            newWidthPx,
-            ViewGroup.LayoutParams.WRAP_CONTENT
+            savedX, savedY, newWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT
         )
     }
 
@@ -1080,8 +1086,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
 
 
-        floatingKeyboardBinding =
-            FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
+        floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
 
         floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
             setFloatingKeyboardListeners(floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding)
@@ -1143,7 +1148,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                         }
                     }
-                    ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { view, windowInsets ->
+                    ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
                         systemBottomInset = insets.bottom
                         windowInsets
@@ -1560,17 +1565,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                                         else -> {
                                             handleSpaceKeyClick(
-                                                false,
-                                                insertString,
-                                                suggestions.map {
+                                                false, insertString, suggestions.map {
                                                     Candidate(
                                                         string = it.word,
                                                         type = (1).toByte(),
                                                         length = insertString.length.toUByte(),
                                                         score = 0
                                                     )
-                                                },
-                                                mainView
+                                                }, mainView
                                             )
                                         }
                                     }
@@ -1620,17 +1622,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                                         else -> {
                                             handleSpaceKeyClick(
-                                                false,
-                                                insertString,
-                                                suggestions.map {
+                                                false, insertString, suggestions.map {
                                                     Candidate(
                                                         string = it.word,
                                                         type = (1).toByte(),
                                                         length = insertString.length.toUByte(),
                                                         score = 0
                                                     )
-                                                },
-                                                mainView
+                                                }, mainView
                                             )
                                         }
                                     }
@@ -1848,10 +1847,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             switchWindow.isTouchable = false
             if (switchWindow.isShowing) {
                 switchWindow.update(
-                    physicalKeyboardFloatingXPosition,
-                    physicalKeyboardFloatingYPosition,
-                    -1,
-                    -1
+                    physicalKeyboardFloatingXPosition, physicalKeyboardFloatingYPosition, -1, -1
                 )
             } else {
                 switchWindow.showAtLocation(
@@ -1991,17 +1987,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val savedY = appPreference.keyboard_floating_position_y
                         if (savedX != -1 && savedY != -1) {
                             showAtLocation(
-                                anchorView,
-                                Gravity.NO_GRAVITY,
-                                savedX,
-                                savedY
+                                anchorView, Gravity.NO_GRAVITY, savedX, savedY
                             )
                         } else {
                             showAtLocation(
-                                anchorView,
-                                Gravity.BOTTOM or Gravity.END,
-                                0,
-                                0
+                                anchorView, Gravity.BOTTOM or Gravity.END, 0, 0
                             )
                         }
                     } else {
@@ -2448,9 +2438,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Key.SideKeyEnter -> {
                 if (insertString.isNotEmpty()) {
                     handleNonEmptyInputEnterKeyFloating(
-                        suggestions,
-                        floatingKeyboardLayoutBinding,
-                        insertString
+                        suggestions, floatingKeyboardLayoutBinding, insertString
                     )
                 } else {
                     handleEmptyInputEnterKeyFloating(floatingKeyboardLayoutBinding)
@@ -2534,26 +2522,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             val isHankaku = hankakuPreference == true
                             if (isHankaku) {
                                 handleSpaceKeyClickFloating(
-                                    false,
-                                    insertString,
-                                    suggestions,
-                                    floatingKeyboardLayoutBinding
+                                    false, insertString, suggestions, floatingKeyboardLayoutBinding
                                 )
                             } else {
                                 handleSpaceKeyClickFloating(
-                                    true,
-                                    insertString,
-                                    suggestions,
-                                    floatingKeyboardLayoutBinding
+                                    true, insertString, suggestions, floatingKeyboardLayoutBinding
                                 )
                             }
                         } else {
                             val isHankaku = hankakuPreference == true
                             handleSpaceKeyClickFloating(
-                                isHankaku,
-                                insertString,
-                                suggestions,
-                                floatingKeyboardLayoutBinding
+                                isHankaku, insertString, suggestions, floatingKeyboardLayoutBinding
                             )
                         }
                     }
@@ -4793,12 +4772,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
+                            setKeyboardHeightWithAdditional(mainView)
                         }
 
                         (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
+                            setKeyboardHeightWithAdditional(mainView)
                         }
 
                     }
@@ -5001,6 +4982,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
                         }
+                        setKeyboardHeightDefault(mainView)
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -5259,10 +5241,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingDockWindow?.apply {
                         if (!this.isShowing) {
                             showAtLocation(
-                                mainView.root,
-                                Gravity.BOTTOM,
-                                0,
-                                0
+                                mainView.root, Gravity.BOTTOM, 0, 0
                             )
                         }
                     }
@@ -5298,11 +5277,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
-        val isPortrait =
-            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
         val heightPx = when {
-            keyboardSymbolViewState.value -> { // Emoji keyboard state
+            keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
@@ -5330,6 +5308,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardSizeForHeightForFloatingMode(
@@ -5338,11 +5317,107 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
-        val isPortrait =
-            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
         val heightPx = when {
-            keyboardSymbolViewState.value -> { // Emoji keyboard state
+            keyboardSymbolViewState.value -> {
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+            else -> {
+                val clampedHeight = heightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
+        } else {
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    110
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    65
+                )
+            }
+        }
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.height = keyboardHeight
+            params.bottomMargin = keyboardBottomMargin
+            mainView.root.layoutParams = params
+        }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+    }
+
+    private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
+        val columnNum = candidateColumns ?: "1"
+        if (columnNum == "1") return
+        val heightPref = appPreference.keyboard_height ?: 280
+        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val density = resources.displayMetrics.density
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val heightPx = when {
+            keyboardSymbolViewState.value -> {
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+            else -> {
+                val clampedHeight = heightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(58)
+        } else {
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    110
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    65
+                )
+            }
+        }
+        val additionalKeyboardHeight = when (columnNum) {
+            "1" -> {
+                0
+            }
+
+            "2" -> {
+                80
+            }
+
+            "3" -> {
+                160
+            }
+
+            else -> {
+                0
+            }
+        }
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.height = keyboardHeight + additionalKeyboardHeight
+            params.bottomMargin = keyboardBottomMargin
+            mainView.root.layoutParams = params
+        }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+    }
+
+    private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
+        val columnNum = candidateColumns ?: "1"
+        if (columnNum == "1") return
+        val heightPref = appPreference.keyboard_height ?: 280
+        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val density = resources.displayMetrics.density
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val heightPx = when {
+            keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
@@ -6139,18 +6214,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         suggestionAdapter.apply {
             mainView.suggestionRecyclerView.adapter = this
-            mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManagerColumn
-
             mainView.candidatesRowView.adapter = this
             mainView.candidatesRowView.layoutManager = flexboxLayoutManagerRow
 
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 floatingKeyboardLayoutBinding.suggestionRecyclerView.let { sRecyclerView ->
                     sRecyclerView.adapter = this
-                    sRecyclerView.layoutManager =
-                        FlexboxLayoutManager(applicationContext).apply {
-                            flexDirection = FlexDirection.COLUMN
-                        }
+                    sRecyclerView.layoutManager = FlexboxLayoutManager(applicationContext).apply {
+                        flexDirection = FlexDirection.COLUMN
+                    }
                     sRecyclerView.itemAnimator = null
                     sRecyclerView.isFocusable = false
                 }
@@ -6174,6 +6246,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardBinding?.suggestionVisibility?.setOnClickListener {
             _suggestionViewStatus.update { !it }
         }
+    }
+
+    private fun setMainSuggestionColumn(
+        mainView: MainLayoutBinding,
+        flexboxLayoutManagerColumn: FlexboxLayoutManager
+    ) {
+        val columnNum = candidateColumns ?: "1"
+
+        val adapter = mainView.suggestionRecyclerView.adapter
+        mainView.suggestionRecyclerView.adapter = null
+
+        if (mainView.suggestionRecyclerView.itemDecorationCount > 0) {
+            mainView.suggestionRecyclerView.removeItemDecorationAt(0)
+        }
+
+        when (columnNum) {
+            "1" -> {
+                mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManagerColumn
+            }
+
+            "2", "3" -> {
+                val spanCount = columnNum.toInt()
+                val gridLayoutManager = GridLayoutManager(
+                    this@IMEService, spanCount, GridLayoutManager.HORIZONTAL, false
+                )
+                val spacingInPixels =
+                    resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.grid_spacing)
+
+                mainView.suggestionRecyclerView.layoutManager = gridLayoutManager
+                mainView.suggestionRecyclerView.addItemDecoration(
+                    GridSpacingItemDecoration(
+                        spanCount, spacingInPixels, true
+                    )
+                )
+            }
+        }
+        mainView.suggestionRecyclerView.adapter = adapter
     }
 
     private fun setSymbolKeyboard(
@@ -7142,8 +7251,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setTenkeyIconsInHenkanFloating(
-        insertString: String,
-        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
+        insertString: String, floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             Timber.d("setTenkeyIconsInHenkanFloating: ${currentInputMode.value}")
@@ -7154,9 +7262,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                     setSideKeyPreviousState(true)
                     if (insertString.isNotEmpty()) {
-                        if (insertString.isNotEmpty() && insertString.last()
-                                .isLatinAlphabet()
-                        ) {
+                        if (insertString.isNotEmpty() && insertString.last().isLatinAlphabet()) {
                             setBackgroundSmallLetterKey(
                                 cachedEnglishDrawable
                             )
@@ -7287,8 +7393,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun updateUIinHenkanFloating(
-        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
-        insertString: String
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding, insertString: String
     ) {
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             setSideKeyEnterDrawable(
@@ -7359,8 +7464,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             updateSuggestionsForFloatingCandidate(filtered.map {
                 CandidateItem(
-                    word = it.string,
-                    length = it.length
+                    word = it.string, length = it.length
                 )
             })
         } else {
@@ -7713,8 +7817,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.apply {
                 when (mainView.keyboardView.currentInputMode.value) {
                     InputMode.ModeJapanese -> {
-                        val insertStringEndWithN =
-                            romajiConverter?.flush(insertString)?.first
+                        val insertStringEndWithN = romajiConverter?.flush(insertString)?.first
                         if (insertStringEndWithN == null) {
                             _inputString.update { insertString }
                             if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
@@ -7774,10 +7877,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
         }
         setConvertLetterInJapaneseFromButtonFloating(
-            suggestions,
-            true,
-            floatingKeyboardLayoutBinding,
-            insertString
+            suggestions, true, floatingKeyboardLayoutBinding, insertString
         )
     }
 
@@ -8840,31 +8940,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardSize() {
-        // 1) Early-return if the binding isn't available
         val binding = mainLayoutBinding ?: return
 
-        // 2) Read preferences with the same defaults as the settings screen
         val heightPref = appPreference.keyboard_height ?: 280
         val widthPref = appPreference.keyboard_width ?: 100
         val positionPref = appPreference.keyboard_position ?: true
         val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
-
-        // 3) Get screen metrics
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
 
-        // 4) Determine the final height in pixels
-        // This now respects the user's preference for the default keyboard,
-        // while still allowing overrides for special keyboards like Emoji or full QWERTY.
         val heightPx = when {
-            keyboardSymbolViewState.value -> { // Emoji keyboard state
+            keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
-            // For the default keyboard, use the user's preference.
-            // **FIXED**: Clamp the height to the same range as the settings UI (180-280).
+
             else -> {
                 val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
@@ -8873,28 +8965,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         Timber.d("setKeyboardSize: $heightPx $keyboardMarginBottom")
 
-        // 5) Determine the final width in pixels
-        // **FIXED**: This logic is now simplified and directly reflects the user's percentage
-        // choice, removing the complex and incorrect landscape calculation.
         val widthPx = when {
-            // Special keyboards and 100% width setting should match the parent
             widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
                 ViewGroup.LayoutParams.MATCH_PARENT
             }
-            // Otherwise, calculate the width based on the screen percentage
+
             else -> {
                 (screenWidth * (widthPref / 100f)).toInt()
             }
         }
 
-        // 6) Determine gravity for alignment
         val gravity = if (positionPref) {
             Gravity.BOTTOM or Gravity.END
         } else {
             Gravity.BOTTOM or Gravity.START
         }
 
-        // 7) Apply size and gravity to all relevant views
         fun applyHeightAndGravity(view: View) {
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                 params.height = heightPx
@@ -8903,7 +8989,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        // Apply to keyboard views
         if (isTablet == true) {
             applyHeightAndGravity(binding.tabletView)
         } else {
@@ -8914,14 +8999,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyHeightAndGravity(binding.qwertyView)
         applyHeightAndGravity(binding.customLayoutDefault)
 
-        // Adjust the margin for the suggestion view parent
         (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.bottomMargin = heightPx
             params.gravity = gravity
             binding.suggestionViewParent.layoutParams = params
         }
 
-        // Finally, update the root view's width and gravity
         (binding.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.width = widthPx
             params.gravity = gravity
