@@ -33,6 +33,15 @@
                 android:key="candidate_column_preference"
                 android:summary="変換候補を表示するときの列数を設定します"
                 android:title="変換候補の列数" />
+
+            <ListPreference
+                android:defaultValue="2"
+                android:dialogTitle="変換候補を表示する View の高さを選んでください"
+                android:entries="@array/candidate_view_height_entries"
+                android:entryValues="@array/candidate_view_height_values"
+                android:key="candidate_view_height_preference"
+                android:summary="変換候補を表示する View の高さの設定"
+                android:title="変換候補の高さ" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="機能">
