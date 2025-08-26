@@ -693,7 +693,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
-                            Timber.d("floating Flick: $char $key $gestureType")
                             val insertString = inputString.value
                             val sb = StringBuilder()
                             val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
