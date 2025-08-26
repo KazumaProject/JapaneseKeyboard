@@ -112,6 +112,13 @@
                 android:title="カーソルボタン" />
 
             <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="qwerty_show_kutouten_buttons_preference"
+                android:summaryOff="QWERTY キーボードに句読点（、。）ボタンを表示しません。"
+                android:summaryOn="QWERTY キーボードに句読点（、。）ボタンを表示します。"
+                android:title="句読点ボタン" />
+
+            <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="qwerty_show_switch_ime_button_preference"
                 android:summaryOff="キーボード切り替え（地球儀アイコン）ボタンを表示しません。"
