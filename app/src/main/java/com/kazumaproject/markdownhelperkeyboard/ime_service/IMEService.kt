@@ -8674,6 +8674,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun dakutenSmallLetterFloating(
+        sb: StringBuilder, insertString: String, gestureType: GestureType
+    ) {
+        _dakutenPressed.value = true
+        englishSpaceKeyPressed.set(false)
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
+            insertPosition.let { c ->
+                if (c.isHiragana()) {
+                    when (gestureType) {
+                        GestureType.Tap, GestureType.FlickBottom -> {
+                            c.getDakutenSmallChar()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickLeft -> {
+                            c.getDakutenFlickLeft()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickRight -> {
+                            c.getDakutenFlickRight()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickTop -> {
+                            c.getDakutenFlickTop()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        else -> {}
+                    }
+                }
+            }
+        }
+    }
+
     // 2) 次のモードに切り替える関数
     fun switchNextKeyboard() {
         if (keyboardOrder.isEmpty()) return
@@ -8717,6 +8766,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (!onKeyboardSwitchLongPressUp) {
                 switchNextKeyboard()
+            }
+        }
+    }
+
+    private fun smallBigLetterConversionEnglishFloating(
+        sb: StringBuilder, insertString: String,
+    ) {
+        _dakutenPressed.value = true
+        englishSpaceKeyPressed.set(false)
+
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
+            insertPosition.let { c ->
+                if (!c.isHiragana()) {
+                    c.getDakutenSmallChar()?.let { dakutenChar ->
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
+                    }
+                }
             }
         }
     }
@@ -8795,13 +8862,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.let {
             when (it.currentInputMode.value) {
                 InputMode.ModeJapanese -> {
-                    dakutenSmallLetter(
+                    dakutenSmallLetterFloating(
                         sb, insertString, gestureType
                     )
                 }
 
                 InputMode.ModeEnglish -> {
-                    smallBigLetterConversionEnglish(sb, insertString)
+                    smallBigLetterConversionEnglishFloating(sb, insertString)
                 }
 
                 InputMode.ModeNumber -> {
