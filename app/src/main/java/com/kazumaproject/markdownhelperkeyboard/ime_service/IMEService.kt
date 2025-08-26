@@ -353,6 +353,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
+    private var showCandidateInPasswordPreference: Boolean? = true
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
     private var mozcUTPersonName: Boolean? = false
@@ -605,6 +606,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
+            showCandidateInPasswordPreference = show_candidates_password ?: true
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
@@ -673,9 +675,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             checkForPhysicalKeyboard(true)
         }
 
-        suppressSuggestions =
+        suppressSuggestions = if (showCandidateInPasswordPreference == true) {
             currentInputType.isPassword() ||
                     currentInputType == InputTypeForIME.TextNoSuggestion
+        } else {
+            false
+        }
 
         if (isKeyboardFloatingMode == true) {
             val widthPref = appPreference.keyboard_width ?: 100
@@ -891,6 +896,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
         qwertyShowKutoutenButtonsPreference = null
+        showCandidateInPasswordPreference = null
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
