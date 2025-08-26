@@ -216,10 +216,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             binding.apply {
                                 if (!romajiModeState.value) {
                                     keyAtMark.isVisible = false
-                                }
-                                keyV.isVisible = true
-                                keyB.isVisible = true
-                                if (!romajiModeState.value) {
                                     keyA.setMarginStart(
                                         23f
                                     )
@@ -227,6 +223,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         23f
                                     )
                                 }
+                                keyV.isVisible = true
+                                keyB.isVisible = true
                                 keyShift.setMarginStart(4f)
                                 keyDelete.setMarginEnd(4f)
                                 keyShift.setImageResource(
@@ -333,6 +331,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
                             key123.text =
                                 resources.getString(com.kazumaproject.core.R.string.string_123)
+                            keyKuten.text = "。"
+                            keyTouten.text = "、"
                         }
                     } else {
                         binding.apply {
@@ -351,6 +351,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             keyDelete.setMarginEnd(4f)
                             key123.text =
                                 resources.getString(com.kazumaproject.core.R.string.string_123)
+                            keyKuten.text = "."
+                            keyTouten.text = ","
                         }
                     }
                 }
@@ -458,7 +460,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keySpace to QWERTYKey.QWERTYKeySpace,      // QWERTYButton
             binding.keyReturn to QWERTYKey.QWERTYKeyReturn,
             binding.cursorLeft to QWERTYKey.QWERTYKeyCursorLeft,
-            binding.cursorRight to QWERTYKey.QWERTYKeyCursorRight
+            binding.cursorRight to QWERTYKey.QWERTYKeyCursorRight,
+            binding.keyTouten to QWERTYKey.QWERTYKeyTouten,
+            binding.keyKuten to QWERTYKey.QWERTYKeyKuten
         )
     }
 
@@ -1395,10 +1399,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * @param showCursors trueの場合、左右のカーソルキーを表示します。
      * @param showSwitchKey trueの場合、レイアウト切り替えキーを表示します。
      */
-    fun setSpecialKeyVisibility(showCursors: Boolean, showSwitchKey: Boolean) {
+    fun setSpecialKeyVisibility(
+        showCursors: Boolean,
+        showSwitchKey: Boolean,
+        showKutouten: Boolean
+    ) {
         binding.cursorLeft.isVisible = showCursors
         binding.cursorRight.isVisible = showCursors
         binding.keySwitchDefault.isVisible = showSwitchKey
+        binding.keyKuten.isVisible = showKutouten
+        binding.keyTouten.isVisible = showKutouten
     }
 
 }

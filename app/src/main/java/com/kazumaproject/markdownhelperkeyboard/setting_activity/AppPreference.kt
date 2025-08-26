@@ -39,6 +39,12 @@ object AppPreference {
     private val QWERTY_SHOW_CURSOR_BUTTONS =
         Pair("qwerty_show_cursor_buttons_preference", false)
 
+    private val CANDIDATE_IN_PASSWORD =
+        Pair("hide_candidate_password_preference", true)
+
+    private val QWERTY_SHOW_KUTOUTEN_BUTTONS =
+        Pair("qwerty_show_kutouten_buttons_preference", false)
+
     private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
@@ -73,6 +79,8 @@ object AppPreference {
     private val SYMBOL_MODE_PREFERENCE = Pair("symbol_mode_preference", "EMOJI")
 
     private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
+
+    private val CANDIDATE_VIEW_HEIGHT_PREFERENCE = Pair("candidate_view_height_preference", "2")
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -118,6 +126,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_CURSOR_BUTTONS.first, value ?: false)
+        }
+
+    var show_candidates_password: Boolean?
+        get() = preferences.getBoolean(
+            CANDIDATE_IN_PASSWORD.first,
+            CANDIDATE_IN_PASSWORD.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_IN_PASSWORD.first, value ?: true)
+        }
+
+    var qwerty_show_kutouten_buttons: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_KUTOUTEN_BUTTONS.first,
+            QWERTY_SHOW_KUTOUTEN_BUTTONS.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_KUTOUTEN_BUTTONS.first, value ?: false)
         }
 
     var keyboard_order: List<KeyboardType>
@@ -375,5 +401,14 @@ object AppPreference {
         ) ?: "1"
         set(value) = preferences.edit {
             it.putString(CANDIDATE_COLUMN_PREFERENCE.first, value)
+        }
+
+    var candidate_view_height_preference: String
+        get() = preferences.getString(
+            CANDIDATE_VIEW_HEIGHT_PREFERENCE.first,
+            CANDIDATE_VIEW_HEIGHT_PREFERENCE.second
+        ) ?: "2"
+        set(value) = preferences.edit {
+            it.putString(CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, value)
         }
 }
