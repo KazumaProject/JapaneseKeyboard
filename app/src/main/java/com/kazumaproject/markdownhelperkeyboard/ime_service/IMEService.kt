@@ -352,6 +352,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var flickSensitivityPreferenceValue: Int? = 100
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowCursorButtonsPreference: Boolean? = false
+    private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
     private var mozcUTPersonName: Boolean? = false
@@ -603,6 +604,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
+            qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
@@ -764,7 +766,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
-                    showSwitchKey = qwertyShowIMEButtonPreference ?: true
+                    showSwitchKey = qwertyShowIMEButtonPreference ?: true,
+                    showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
             }
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
@@ -888,6 +891,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
+        qwertyShowKutoutenButtonsPreference = null
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
