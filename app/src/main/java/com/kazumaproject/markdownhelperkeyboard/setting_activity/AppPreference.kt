@@ -39,6 +39,9 @@ object AppPreference {
     private val QWERTY_SHOW_CURSOR_BUTTONS =
         Pair("qwerty_show_cursor_buttons_preference", false)
 
+    private val CANDIDATE_IN_PASSWORD =
+        Pair("hide_candidate_password_preference", true)
+
     private val QWERTY_SHOW_KUTOUTEN_BUTTONS =
         Pair("qwerty_show_kutouten_buttons_preference", false)
 
@@ -123,6 +126,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_CURSOR_BUTTONS.first, value ?: false)
+        }
+
+    var show_candidates_password: Boolean?
+        get() = preferences.getBoolean(
+            CANDIDATE_IN_PASSWORD.first,
+            CANDIDATE_IN_PASSWORD.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_IN_PASSWORD.first, value ?: true)
         }
 
     var qwerty_show_kutouten_buttons: Boolean?
