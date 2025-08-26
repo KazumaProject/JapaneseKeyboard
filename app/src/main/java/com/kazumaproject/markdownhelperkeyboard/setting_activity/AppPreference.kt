@@ -39,6 +39,9 @@ object AppPreference {
     private val QWERTY_SHOW_CURSOR_BUTTONS =
         Pair("qwerty_show_cursor_buttons_preference", false)
 
+    private val QWERTY_SHOW_KUTOUTEN_BUTTONS =
+        Pair("qwerty_show_kutouten_buttons_preference", false)
+
     private val KEYBOARD_HEIGHT = Pair("keyboard_height_preference", 220)
     private val KEYBOARD_WIDTH = Pair("keyboard_width_preference", 100)
     private val KEYBOARD_POSITION = Pair("keyboard_position_preference", true)
@@ -120,6 +123,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_CURSOR_BUTTONS.first, value ?: false)
+        }
+
+    var qwerty_show_kutouten_buttons: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_KUTOUTEN_BUTTONS.first,
+            QWERTY_SHOW_KUTOUTEN_BUTTONS.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_KUTOUTEN_BUTTONS.first, value ?: false)
         }
 
     var keyboard_order: List<KeyboardType>
