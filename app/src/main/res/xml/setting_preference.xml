@@ -42,6 +42,13 @@
                 android:key="candidate_view_height_preference"
                 android:summary="変換候補を表示する View の高さの設定"
                 android:title="変換候補の高さ" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="hide_candidate_password_preference"
+                android:summaryOff="パスワード入力中に変換候補を表示します"
+                android:summaryOn="パスワード入力中は変換候補を表示しません"
+                android:title="パスワード入力時の変換候補" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="機能">
