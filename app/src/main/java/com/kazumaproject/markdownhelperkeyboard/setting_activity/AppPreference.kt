@@ -74,6 +74,8 @@ object AppPreference {
 
     private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
 
+    private val CANDIDATE_VIEW_HEIGHT_PREFERENCE = Pair("candidate_view_height_preference", "2")
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -375,5 +377,14 @@ object AppPreference {
         ) ?: "1"
         set(value) = preferences.edit {
             it.putString(CANDIDATE_COLUMN_PREFERENCE.first, value)
+        }
+
+    var candidate_view_height_preference: String
+        get() = preferences.getString(
+            CANDIDATE_VIEW_HEIGHT_PREFERENCE.first,
+            CANDIDATE_VIEW_HEIGHT_PREFERENCE.second
+        ) ?: "2"
+        set(value) = preferences.edit {
+            it.putString(CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, value)
         }
 }
