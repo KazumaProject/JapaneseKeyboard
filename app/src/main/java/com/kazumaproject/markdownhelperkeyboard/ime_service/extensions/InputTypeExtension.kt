@@ -34,6 +34,7 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                 /**
                  *  180225 : Twitter Tweet & Messenger
                  *  147457 : Facebook Messenger
+                 *  131201 : TB Bank Password
                  * */
                 InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE, 180225, 147457 -> InputTypeForIME.TextImeMultiLine
                 InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS, 557217 -> InputTypeForIME.TextNoSuggestion
@@ -44,7 +45,7 @@ fun getCurrentInputTypeForIME(editorInfo: EditorInfo): InputTypeForIME {
                 InputType.TYPE_TEXT_VARIATION_LONG_MESSAGE -> InputTypeForIME.TextLongMessage
                 InputType.TYPE_TEXT_VARIATION_PERSON_NAME -> InputTypeForIME.TextPersonName
                 InputType.TYPE_TEXT_VARIATION_POSTAL_ADDRESS -> InputTypeForIME.TextPostalAddress
-                InputType.TYPE_TEXT_VARIATION_PASSWORD, 129, 225, 16545 -> InputTypeForIME.TextPassword
+                InputType.TYPE_TEXT_VARIATION_PASSWORD, 129, 225, 16545, 131201 -> InputTypeForIME.TextPassword
                 InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD -> InputTypeForIME.TextVisiblePassword
                 InputType.TYPE_TEXT_VARIATION_WEB_EDIT_TEXT -> InputTypeForIME.TextWebEditText
                 InputType.TYPE_TEXT_VARIATION_FILTER -> InputTypeForIME.TextFilter
@@ -151,6 +152,8 @@ fun Int.inputTypeFromImeOptions(
                 if (it.contains("搜索")) return InputTypeForIME.TextSearchView
                 if (it.contains("검색")) return InputTypeForIME.TextSearchView
                 if (it.contains("Search")) return InputTypeForIME.TextSearchView
+                if (it.contains("Password")) return InputTypeForIME.TextPassword
+                if (it.contains("password")) return InputTypeForIME.TextPassword
             }
             return InputTypeForIME.Text
         }

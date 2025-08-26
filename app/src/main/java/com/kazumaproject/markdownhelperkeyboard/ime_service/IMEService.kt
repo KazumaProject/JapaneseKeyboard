@@ -352,6 +352,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var flickSensitivityPreferenceValue: Int? = 100
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowCursorButtonsPreference: Boolean? = false
+    private var qwertyShowKutoutenButtonsPreference: Boolean? = false
+    private var showCandidateInPasswordPreference: Boolean? = true
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
     private var mozcUTPersonName: Boolean? = false
@@ -361,6 +363,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTWeb: Boolean? = false
     private var sumireInputKeyType: String? = "flick-default"
     private var candidateColumns: String? = "1"
+    private var candidateViewHeight: String? = "2"
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
@@ -500,6 +503,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var initialTouchY = 0f
     private var systemBottomInset = 0
 
+    private var suppressSuggestions: Boolean = false
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -600,6 +605,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
+            qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
+            showCandidateInPasswordPreference = show_candidates_password ?: true
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
@@ -608,6 +615,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             vibrationTimingStr = vibration_timing_preference ?: "both"
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
             candidateColumns = candidate_column_preference
+            candidateViewHeight = candidate_view_height_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             isKeyboardFloatingMode = is_floating_mode ?: false
@@ -667,6 +675,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             checkForPhysicalKeyboard(true)
         }
 
+        suppressSuggestions = if (showCandidateInPasswordPreference == true) {
+            currentInputType.isPassword() ||
+                    currentInputType == InputTypeForIME.TextNoSuggestion
+        } else {
+            false
+        }
+
         if (isKeyboardFloatingMode == true) {
             val widthPref = appPreference.keyboard_width ?: 100
 
@@ -683,7 +698,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
-                            Timber.d("floating Flick: $char $key $gestureType")
                             val insertString = inputString.value
                             val sb = StringBuilder()
                             val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
@@ -756,7 +770,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
-                    showSwitchKey = qwertyShowIMEButtonPreference ?: true
+                    showSwitchKey = qwertyShowIMEButtonPreference ?: true,
+                    showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
             }
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
@@ -880,6 +895,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
+        qwertyShowKutoutenButtonsPreference = null
+        showCandidateInPasswordPreference = null
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -890,6 +907,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTWeb = null
         sumireInputKeyType = null
         candidateColumns = null
+        candidateViewHeight = null
         isTablet = null
         isNgWordEnable = null
         deleteKeyHighLight = null
@@ -4751,9 +4769,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
-                val suppressSuggestions =
-                    currentInputType.isPassword() ||
-                            currentInputType == InputTypeForIME.TextNoSuggestion
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
                         physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
@@ -4765,7 +4780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
-                            if (!suppressSuggestions){
+                            if (!suppressSuggestions) {
                                 animateSuggestionImageViewVisibility(
                                     mainView.suggestionVisibility, true
                                 )
@@ -4805,7 +4820,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
                         if (isKeyboardFloatingMode == true) {
-                            if (!suppressSuggestions){
+                            if (!suppressSuggestions) {
                                 floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                                     animateSuggestionImageViewVisibility(
                                         floatingKeyboardLayoutBinding.suggestionVisibility, false
@@ -4813,7 +4828,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                             }
                         } else {
-                            if (!suppressSuggestions){
+                            if (mainView.suggestionVisibility.isVisible) {
                                 animateSuggestionImageViewVisibility(
                                     mainView.suggestionVisibility, false
                                 )
@@ -5332,12 +5347,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
+        val additionalHeightInDp =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 58
+                }
+            } else {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 110
+                }
+            }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                additionalHeightInDp
+            )
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    100
+                    additionalHeightInDp
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5378,12 +5411,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
+        val additionalHeightInDp =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 58
+                }
+            } else {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 110
+                }
+            }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                additionalHeightInDp
+            )
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    100
+                    additionalHeightInDp
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5437,12 +5488,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
+        val additionalHeightInDp =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 58
+                }
+            } else {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 110
+                }
+            }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                additionalHeightInDp
+            )
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    100
+                    additionalHeightInDp
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5630,6 +5699,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("launchInputString: inputString: $string stringTail: $stringInTail")
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
+            if (suppressSuggestions) {
+                commitText(string, 1)
+                return
+            }
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
                 handleTenKeyQwertyInput(string)
             } else {
@@ -5735,7 +5808,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
         delay(timeToDelay)
 
-        // delay中にユーザーの入力が変わった場合は、古い処理を中断します。
         if (inputString.value != string) {
             return
         }
@@ -6604,30 +6676,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         handleTap(tap, insertString, sb, mainView)
                                     } else {
                                         sb.append(insertString).append(tap)
-                                        val stringToUpdate = sb.toString()
                                         romajiConverter?.let { converter ->
-                                            if (stringToUpdate == "[]") {
-                                                _inputString.update {
-                                                    stringToUpdate
-                                                }
-                                            } else {
-                                                _inputString.update {
-                                                    converter.convert(sb.toString())
-                                                }
+                                            _inputString.update {
+                                                converter.convertQWERTY(sb.toString())
                                             }
                                         }
                                     }
                                 } else {
                                     tap?.let { c ->
                                         romajiConverter?.let { converter ->
-                                            if (c == '[' || c == ']') {
-                                                _inputString.update {
-                                                    c.toString()
-                                                }
-                                            } else {
-                                                _inputString.update {
-                                                    converter.convert(c.toString())
-                                                }
+                                            _inputString.update {
+                                                converter.convertQWERTY(c.toString())
                                             }
                                         }
                                     }
@@ -6894,10 +6953,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handlePartialOrExcessLength(
-        insertString: String, candidateString: String, candidateLength: Int
+        insertString: String, candidate: Candidate
     ) {
+        val candidateLength = candidate.length.toInt()
+        val candidateString = candidate.string
         if (insertString.length > candidateLength) {
             stringInTail.set(insertString.substring(candidateLength))
+            ioScope.launch {
+                learnRepository.upsertLearnedData(
+                    LearnEntity(
+                        input = insertString.substring(0, candidateLength),
+                        out = candidateString,
+                        score = candidate.score.toShort(),
+                        leftId = candidate.leftId,
+                        rightId = candidate.rightId
+                    )
+                )
+            }
         }
         commitAndClearInput(candidateString)
     }
@@ -6927,8 +6999,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     handlePartialOrExcessLength(
                         insertString = insertString,
-                        candidateString = candidate.string,
-                        candidateLength = candidate.length.toInt()
+                        candidate = candidate
                     )
                 }
             }
@@ -7482,9 +7553,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
-        val suppressSuggestions =
-            currentInputType.isPassword() ||
-                    currentInputType == InputTypeForIME.TextNoSuggestion
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
                 updateSuggestionsForFloatingCandidate(filtered.map {
@@ -8611,6 +8679,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun dakutenSmallLetterFloating(
+        sb: StringBuilder, insertString: String, gestureType: GestureType
+    ) {
+        _dakutenPressed.value = true
+        englishSpaceKeyPressed.set(false)
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
+            insertPosition.let { c ->
+                if (c.isHiragana()) {
+                    when (gestureType) {
+                        GestureType.Tap, GestureType.FlickBottom -> {
+                            c.getDakutenSmallChar()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickLeft -> {
+                            c.getDakutenFlickLeft()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickRight -> {
+                            c.getDakutenFlickRight()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        GestureType.FlickTop -> {
+                            c.getDakutenFlickTop()?.let { dakutenChar ->
+                                setStringBuilderForConvertStringInHiragana(
+                                    dakutenChar, sb, insertString
+                                )
+                            }
+                        }
+
+                        else -> {}
+                    }
+                }
+            }
+        }
+    }
+
     // 2) 次のモードに切り替える関数
     fun switchNextKeyboard() {
         if (keyboardOrder.isEmpty()) return
@@ -8654,6 +8771,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (!onKeyboardSwitchLongPressUp) {
                 switchNextKeyboard()
+            }
+        }
+    }
+
+    private fun smallBigLetterConversionEnglishFloating(
+        sb: StringBuilder, insertString: String,
+    ) {
+        _dakutenPressed.value = true
+        englishSpaceKeyPressed.set(false)
+
+        if (insertString.isNotEmpty()) {
+            val insertPosition = insertString.last()
+            insertPosition.let { c ->
+                if (!c.isHiragana()) {
+                    c.getDakutenSmallChar()?.let { dakutenChar ->
+                        setStringBuilderForConvertStringInHiragana(dakutenChar, sb, insertString)
+                    }
+                }
             }
         }
     }
@@ -8732,13 +8867,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.let {
             when (it.currentInputMode.value) {
                 InputMode.ModeJapanese -> {
-                    dakutenSmallLetter(
+                    dakutenSmallLetterFloating(
                         sb, insertString, gestureType
                     )
                 }
 
                 InputMode.ModeEnglish -> {
-                    smallBigLetterConversionEnglish(sb, insertString)
+                    smallBigLetterConversionEnglishFloating(sb, insertString)
                 }
 
                 InputMode.ModeNumber -> {

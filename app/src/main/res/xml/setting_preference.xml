@@ -33,6 +33,22 @@
                 android:key="candidate_column_preference"
                 android:summary="変換候補を表示するときの列数を設定します"
                 android:title="変換候補の列数" />
+
+            <ListPreference
+                android:defaultValue="2"
+                android:dialogTitle="変換候補を表示する View の高さを選んでください"
+                android:entries="@array/candidate_view_height_entries"
+                android:entryValues="@array/candidate_view_height_values"
+                android:key="candidate_view_height_preference"
+                android:summary="変換候補を表示する View の高さの設定"
+                android:title="変換候補の高さ" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="hide_candidate_password_preference"
+                android:summaryOff="パスワード入力中に変換候補を表示します"
+                android:summaryOn="パスワード入力中は変換候補を表示しません"
+                android:title="パスワード入力時の変換候補" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="機能">
@@ -101,6 +117,13 @@
                 android:summaryOff="QWERTY キーボードにカーソルボタンを表示しません。"
                 android:summaryOn="QWERTY キーボードにカーソルボタンを表示します。"
                 android:title="カーソルボタン" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="qwerty_show_kutouten_buttons_preference"
+                android:summaryOff="QWERTY キーボードに句読点（、。）ボタンを表示しません。"
+                android:summaryOn="QWERTY キーボードに句読点（、。）ボタンを表示します。"
+                android:title="句読点ボタン" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="true"
