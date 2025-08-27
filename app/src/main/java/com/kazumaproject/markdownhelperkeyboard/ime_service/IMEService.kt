@@ -1142,7 +1142,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardView = PopupWindow(
                 floatingKeyboardLayoutBinding.root,
                 widthPx,
-                WindowManager.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
             )
         }
 
@@ -4769,6 +4769,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
+                val insertString = inputString.value
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
                         physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
@@ -4796,7 +4797,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                     }
-                    val insertString = inputString.value
                     if (isKeyboardFloatingMode == true) {
                         floatingKeyboardBinding?.let { floatingKeyboard ->
                             updateUIinHenkanFloating(floatingKeyboard, insertString)
@@ -5011,8 +5011,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateShowFlag.Updating -> {
-                        val inputString = inputString.value
-                        setSuggestionOnView(inputString)
+                        setSuggestionOnView(insertString)
                     }
                 }
                 prevFlag = currentFlag
