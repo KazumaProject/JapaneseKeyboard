@@ -4796,6 +4796,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                     }
+                    val insertString = inputString.value
+                    if (isKeyboardFloatingMode == true) {
+                        floatingKeyboardBinding?.let { floatingKeyboard ->
+                            updateUIinHenkanFloating(floatingKeyboard, insertString)
+                        }
+                    } else {
+                        updateUIinHenkan(mainView, insertString)
+                    }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
                             setSpaceKeyText("変換")
@@ -5004,7 +5012,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     CandidateShowFlag.Updating -> {
                         val inputString = inputString.value
-                        setSuggestionOnView(mainView, inputString)
+                        setSuggestionOnView(inputString)
                     }
                 }
                 prevFlag = currentFlag
@@ -7537,14 +7545,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSuggestionOnView(
-        mainView: MainLayoutBinding, inputString: String
+        inputString: String
     ) {
         if (inputString.isEmpty() || suggestionClickNum != 0) return
-        setCandidates(mainView, inputString)
+        setCandidates(inputString)
     }
 
     private suspend fun setCandidates(
-        mainView: MainLayoutBinding,
         insertString: String,
     ) {
         val candidates = getSuggestionList(insertString)
@@ -7566,13 +7573,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapter?.suggestions = filtered
             }
 
-        }
-        if (isKeyboardFloatingMode == true) {
-            floatingKeyboardBinding?.let { floatingKeyboard ->
-                updateUIinHenkanFloating(floatingKeyboard, insertString)
-            }
-        } else {
-            updateUIinHenkan(mainView, insertString)
         }
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
