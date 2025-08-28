@@ -758,6 +758,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     })
                 }
+                floatingKeyboardLayoutBinding.suggestionRecyclerView.adapter = suggestionAdapter
+                floatingKeyboardLayoutBinding.candidatesRowView.adapter = suggestionAdapter
+                mainLayoutBinding?.suggestionRecyclerView?.adapter = null
+                mainLayoutBinding?.candidatesRowView?.adapter = null
             }
         }
 
@@ -773,6 +777,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
                     showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
+                if (isKeyboardFloatingMode == true) {
+                    suggestionRecyclerView.adapter = null
+                    candidatesRowView.adapter = null
+                } else {
+                    suggestionRecyclerView.adapter = suggestionAdapter
+                    candidatesRowView.adapter = suggestionAdapter
+                }
             }
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
                 flexDirection = FlexDirection.COLUMN
@@ -6301,13 +6312,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         suggestionAdapter.apply {
-            mainView.suggestionRecyclerView.adapter = this
             mainView.candidatesRowView.adapter = this
             mainView.candidatesRowView.layoutManager = flexboxLayoutManagerRow
 
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 floatingKeyboardLayoutBinding.suggestionRecyclerView.let { sRecyclerView ->
-                    sRecyclerView.adapter = this
                     sRecyclerView.layoutManager = FlexboxLayoutManager(applicationContext).apply {
                         flexDirection = FlexDirection.COLUMN
                     }
