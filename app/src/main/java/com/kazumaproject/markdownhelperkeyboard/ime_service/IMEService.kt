@@ -297,6 +297,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private var suggestionAdapter: SuggestionAdapter? = null
+    private var suggestionAdapterFull: SuggestionAdapter? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -522,6 +523,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+        suggestionAdapterFull = SuggestionAdapter()
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         clipboardManager =
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -759,7 +761,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     })
                 }
                 floatingKeyboardLayoutBinding.suggestionRecyclerView.adapter = suggestionAdapter
-                floatingKeyboardLayoutBinding.candidatesRowView.adapter = suggestionAdapter
+                floatingKeyboardLayoutBinding.candidatesRowView.adapter = suggestionAdapterFull
                 mainLayoutBinding?.suggestionRecyclerView?.adapter = null
                 mainLayoutBinding?.candidatesRowView?.adapter = null
             }
@@ -782,7 +784,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidatesRowView.adapter = null
                 } else {
                     suggestionRecyclerView.adapter = suggestionAdapter
-                    candidatesRowView.adapter = suggestionAdapter
+                    candidatesRowView.adapter = suggestionAdapterFull
                 }
             }
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
@@ -879,6 +881,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapter?.release()
         suggestionAdapter = null
+        suggestionAdapterFull = null
         dismissJob = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         clearSymbols()
@@ -2819,7 +2822,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Key.SideKeyInputMode -> {}
             Key.SideKeyPreviousChar -> {}
             Key.SideKeySpace -> {
-                handleSpaceLongAction()
+                handleSpaceLongActionFloating()
             }
 
             Key.SideKeySymbol -> {}
@@ -3009,6 +3012,65 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isSpaceKeyLongPressed = true
         }
         Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+    }
+
+    private fun handleSpaceLongActionFloating() {
+        Timber.d("SideKeySpace LongPress Floting: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+        val insertString = inputString.value
+        if (insertString.isNotEmpty()) {
+            floatingKeyboardBinding?.let {
+                if (it.keyboardViewFloating.currentInputMode.value == InputMode.ModeJapanese) {
+                    if (isHenkan.get()) return
+                    isSpaceKeyLongPressed = true
+                    if (hasConvertedKatakana) {
+                        if (isLiveConversionEnable == true) {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString.hiraganaToKatakana(),
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        } else {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString,
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        }
+                    } else {
+                        if (isLiveConversionEnable == true) {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString,
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        } else {
+                            applyFirstSuggestion(
+                                Candidate(
+                                    string = insertString.hiraganaToKatakana(),
+                                    type = (3).toByte(),
+                                    length = insertString.length.toUByte(),
+                                    score = 4000
+                                )
+                            )
+                        }
+                    }
+                    hasConvertedKatakana = !hasConvertedKatakana
+                }
+            }
+        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+            _cursorMoveMode.update { true }
+            isSpaceKeyLongPressed = true
+        }
+        Timber.d("SideKeySpace LongPress Floating after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
 
     /**
@@ -5123,6 +5185,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             cursorMoveMode.collect { isCursorMoveMode ->
                 mainView.keyboardView.setTextToMoveCursorMode(isCursorMoveMode)
+                floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(isCursorMoveMode)
             }
         }
 
@@ -6284,6 +6347,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setKeyboardTab(position)
             }
         }
+        suggestionAdapterFull?.let { adapter ->
+            adapter.setOnItemClickListener { candidate, position ->
+                val insertString = inputString.value
+                val currentInputMode: InputMode =
+                    if (isTablet == true) mainView.tabletView.currentInputMode.get() else mainView.keyboardView.currentInputMode.value
+                vibrate()
+                setCandidateClick(
+                    candidate = candidate,
+                    insertString = insertString,
+                    currentInputMode = currentInputMode,
+                    position = position
+                )
+            }
+            adapter.setOnItemLongClickListener { candidate, i ->
+                Timber.d("Candidate long tap: $candidate $i")
+                val insertString = inputString.value
+                if (isNgWordEnable == true) {
+                    registerNGWord(
+                        insertString = insertString, candidate = candidate, candidatePosition = i
+                    )
+                }
+            }
+        }
         mainView.suggestionRecyclerView.apply {
             itemAnimator = null
             isFocusable = false
@@ -6311,10 +6397,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isFocusable = false
         }
 
+        val sharedPoolMain = RecyclerView.RecycledViewPool()
+        val sharedPoolFloating = RecyclerView.RecycledViewPool()
+        mainView.suggestionRecyclerView.setRecycledViewPool(sharedPoolMain)
+        mainView.candidatesRowView.setRecycledViewPool(sharedPoolMain)
         suggestionAdapter.apply {
-            mainView.candidatesRowView.adapter = this
             mainView.candidatesRowView.layoutManager = flexboxLayoutManagerRow
-
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 floatingKeyboardLayoutBinding.suggestionRecyclerView.let { sRecyclerView ->
                     sRecyclerView.layoutManager = FlexboxLayoutManager(applicationContext).apply {
@@ -6322,13 +6410,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     sRecyclerView.itemAnimator = null
                     sRecyclerView.isFocusable = false
+                    sRecyclerView.setRecycledViewPool(sharedPoolFloating)
                 }
-
                 floatingKeyboardLayoutBinding.candidatesRowView.let { fullCandidateView ->
                     fullCandidateView.itemAnimator = null
                     fullCandidateView.isFocusable = false
-
-                    fullCandidateView.adapter = this
+                    fullCandidateView.setRecycledViewPool(
+                        sharedPoolFloating
+                    )
                     fullCandidateView.layoutManager =
                         FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
@@ -7579,6 +7668,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (!suppressSuggestions) {
                 suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
             }
 
         }
