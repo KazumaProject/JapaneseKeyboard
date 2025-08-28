@@ -97,7 +97,10 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
         QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
         QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
-        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn
+        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
+
+        QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDot,
+        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyComma
     )
 
     private val listSymbol: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
@@ -138,7 +141,10 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
         QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
         QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
-        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn
+        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
+
+        QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDot,
+        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyComma
     )
 
     private val listDefaultJP: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
@@ -175,6 +181,7 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
         QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
         QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
+
         QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDotJP,
         QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyCommaJP
     )
@@ -217,7 +224,10 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
         QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
         QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
-        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn
+        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
+
+        QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDotJP,
+        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyCommaJP
     )
 
     private val listSymbolJP: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
@@ -258,7 +268,10 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
         QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
         QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
-        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn
+        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
+
+        QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDotJP,
+        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyCommaJP
     )
 
     override val keysDefault: Set<QWERTYKey>
