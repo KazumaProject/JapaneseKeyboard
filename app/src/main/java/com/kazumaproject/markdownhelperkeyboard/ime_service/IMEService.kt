@@ -758,6 +758,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     })
                 }
+                floatingKeyboardLayoutBinding.suggestionRecyclerView.adapter = suggestionAdapter
+                floatingKeyboardLayoutBinding.candidatesRowView.adapter = suggestionAdapter
+                mainLayoutBinding?.suggestionRecyclerView?.adapter = null
+                mainLayoutBinding?.candidatesRowView?.adapter = null
             }
         }
 
@@ -773,6 +777,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
                     showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
+                if (isKeyboardFloatingMode == true) {
+                    suggestionRecyclerView.adapter = null
+                    candidatesRowView.adapter = null
+                } else {
+                    suggestionRecyclerView.adapter = suggestionAdapter
+                    candidatesRowView.adapter = suggestionAdapter
+                }
             }
             val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
                 flexDirection = FlexDirection.COLUMN
@@ -1142,7 +1153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardView = PopupWindow(
                 floatingKeyboardLayoutBinding.root,
                 widthPx,
-                WindowManager.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
             )
         }
 
@@ -4769,6 +4780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
+                val insertString = inputString.value
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
                         physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
@@ -4795,6 +4807,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setKeyboardHeightWithAdditional(mainView)
                         }
 
+                    }
+                    if (isKeyboardFloatingMode == true) {
+                        floatingKeyboardBinding?.let { floatingKeyboard ->
+                            updateUIinHenkanFloating(floatingKeyboard, insertString)
+                        }
+                    } else {
+                        updateUIinHenkan(mainView, insertString)
                     }
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
@@ -5003,8 +5022,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateShowFlag.Updating -> {
-                        val inputString = inputString.value
-                        setSuggestionOnView(mainView, inputString)
+                        setSuggestionOnView(insertString)
                     }
                 }
                 prevFlag = currentFlag
@@ -6294,13 +6312,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         suggestionAdapter.apply {
-            mainView.suggestionRecyclerView.adapter = this
             mainView.candidatesRowView.adapter = this
             mainView.candidatesRowView.layoutManager = flexboxLayoutManagerRow
 
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                 floatingKeyboardLayoutBinding.suggestionRecyclerView.let { sRecyclerView ->
-                    sRecyclerView.adapter = this
                     sRecyclerView.layoutManager = FlexboxLayoutManager(applicationContext).apply {
                         flexDirection = FlexDirection.COLUMN
                     }
@@ -7537,14 +7553,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSuggestionOnView(
-        mainView: MainLayoutBinding, inputString: String
+        inputString: String
     ) {
         if (inputString.isEmpty() || suggestionClickNum != 0) return
-        setCandidates(mainView, inputString)
+        setCandidates(inputString)
     }
 
     private suspend fun setCandidates(
-        mainView: MainLayoutBinding,
         insertString: String,
     ) {
         val candidates = getSuggestionList(insertString)
@@ -7566,13 +7581,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapter?.suggestions = filtered
             }
 
-        }
-        if (isKeyboardFloatingMode == true) {
-            floatingKeyboardBinding?.let { floatingKeyboard ->
-                updateUIinHenkanFloating(floatingKeyboard, insertString)
-            }
-        } else {
-            updateUIinHenkan(mainView, insertString)
         }
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
