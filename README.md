@@ -19,7 +19,7 @@
   </a>
   <a href="https://f-droid.org/packages/com.kazumaproject.markdownhelperkeyboard/">
     <!-- Shields.io のバージョンバッジ（for-the-badge スタイル） -->
-    <img src="https://img.shields.io/github/v/release/KazumaProject/JapaneseKeyboard?style=for-the-badge"
+    <img src="https://img.shields.io/f-droid/v/com.kazumaproject.markdownhelperkeyboard?style=for-the-badge&logo=F-Droid&logoColor=white"
          alt="F-Droid Version">
   </a>
 </p>
