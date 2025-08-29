@@ -5102,7 +5102,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 Timber.d("keyboardSymbolViewState: $isSymbolKeyboardShow")
                 setKeyboardSize()
-                setKeyboardSizeForHeight(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                         setSymbolsFloating(floatingKeyboardLayoutBinding)
@@ -5114,6 +5113,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = false
                         }
                     }
+                }else{
+                    setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow)
                 }
                 mainView.apply {
                     if (isSymbolKeyboardShow) {
@@ -5185,7 +5186,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             cursorMoveMode.collect { isCursorMoveMode ->
                 mainView.keyboardView.setTextToMoveCursorMode(isCursorMoveMode)
-                floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(isCursorMoveMode)
+                floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(
+                    isCursorMoveMode
+                )
             }
         }
 
@@ -5371,7 +5374,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         if (hasHardwareKeyboardConnected != true) return
-        Timber.d("setKeyboardSizeForHeight: called")
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -5379,6 +5381,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+            else -> {
+                val clampedHeight = heightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
+        } else {
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    100
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    65
+                )
+            }
+        }
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.height = keyboardHeight
+            params.bottomMargin = keyboardBottomMargin
+            mainView.root.layoutParams = params
+        }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+    }
+
+    private fun setKeyboardSizeForHeightSymbol(
+        mainView: MainLayoutBinding,
+        isSymbol: Boolean
+    ) {
+        Timber.d("setKeyboardSizeForHeightSymbol: called")
+        val heightPref = appPreference.keyboard_height ?: 280
+        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val density = resources.displayMetrics.density
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val heightPx = when {
+            isSymbol -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
