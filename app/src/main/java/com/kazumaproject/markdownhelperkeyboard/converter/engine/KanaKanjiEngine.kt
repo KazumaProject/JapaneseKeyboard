@@ -1267,7 +1267,7 @@ class KanaKanjiEngine {
                     string = formatEra(name, eraYear),
                     type = 30,
                     length = length,
-                    score = 8000,
+                    score = 70000,
                     leftId = 1851,
                     rightId = 1851
                 )
