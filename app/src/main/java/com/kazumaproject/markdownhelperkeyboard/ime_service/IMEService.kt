@@ -6440,11 +6440,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             itemAnimator = null
             isFocusable = false
         }
-
-        val sharedPoolMain = RecyclerView.RecycledViewPool()
-        val sharedPoolFloating = RecyclerView.RecycledViewPool()
-        mainView.suggestionRecyclerView.setRecycledViewPool(sharedPoolMain)
-        mainView.candidatesRowView.setRecycledViewPool(sharedPoolMain)
         suggestionAdapter.apply {
             mainView.candidatesRowView.layoutManager = flexboxLayoutManagerRow
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
@@ -6454,14 +6449,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     sRecyclerView.itemAnimator = null
                     sRecyclerView.isFocusable = false
-                    sRecyclerView.setRecycledViewPool(sharedPoolFloating)
                 }
                 floatingKeyboardLayoutBinding.candidatesRowView.let { fullCandidateView ->
                     fullCandidateView.itemAnimator = null
                     fullCandidateView.isFocusable = false
-                    fullCandidateView.setRecycledViewPool(
-                        sharedPoolFloating
-                    )
                     fullCandidateView.layoutManager =
                         FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
