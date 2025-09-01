@@ -681,6 +681,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!restarting) {
             setCurrentInputType(editorInfo)
             resetKeyboard()
+            if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
+                mainLayoutBinding?.let { mainView ->
+                    when (mainView.keyboardView.currentInputMode.value) {
+                        InputMode.ModeJapanese -> {
+                            customKeyboardMode = KeyboardInputMode.HIRAGANA
+                            updateKeyboardLayout()
+                        }
+
+                        InputMode.ModeEnglish -> {
+                            customKeyboardMode = KeyboardInputMode.ENGLISH
+                            updateKeyboardLayout()
+                        }
+
+                        InputMode.ModeNumber -> {
+                            customKeyboardMode = KeyboardInputMode.SYMBOLS
+                            updateKeyboardLayout()
+                        }
+                    }
+                }
+            }
         }
         Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}")
         updateClipboardPreview()
@@ -6089,6 +6109,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.TextPersonName,
                         InputTypeForIME.TextPhonetic,
                         InputTypeForIME.TextWebEditText,
+                        InputTypeForIME.TextUri,
                             -> {
                             currentInputMode.set(InputMode.ModeJapanese)
                             setInputModeSwitchState()
@@ -6139,7 +6160,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         InputTypeForIME.TextEditTextInWebView,
-                        InputTypeForIME.TextUri,
                         InputTypeForIME.TextPostalAddress,
                         InputTypeForIME.TextWebEmailAddress,
                         InputTypeForIME.TextPassword,
@@ -6196,6 +6216,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.TextPersonName,
                         InputTypeForIME.TextPhonetic,
                         InputTypeForIME.TextWebEditText,
+                        InputTypeForIME.TextUri,
                             -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
@@ -6216,7 +6237,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
-                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                        InputTypeForIME.TextEmailAddress,
+                        InputTypeForIME.TextEmailSubject,
+                        InputTypeForIME.TextNextLine -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
@@ -6232,7 +6255,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
-                        InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                        InputTypeForIME.TextWebSearchView,
+                        InputTypeForIME.TextWebSearchViewFireFox,
+                        InputTypeForIME.TextSearchView -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
@@ -6241,7 +6266,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         InputTypeForIME.TextEditTextInWebView,
-                        InputTypeForIME.TextUri,
                         InputTypeForIME.TextPostalAddress,
                         InputTypeForIME.TextWebEmailAddress,
                         InputTypeForIME.TextPassword,
