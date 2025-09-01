@@ -516,6 +516,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var countToggleKatakana = 0
 
+    private lateinit var linearLayoutManager: LinearLayoutManager
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -550,6 +552,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listAdapter.onPagerClicked = {
             goToNextPageForFloatingCandidate()
         }
+        linearLayoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
     }
 
     override fun onCreateInputView(): View? {
@@ -591,7 +594,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
-        if (!restarting) resetAllFlags()
+        if (!restarting) {
+            resetAllFlags()
+        } else {
+            _inputString.update { "" }
+        }
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
@@ -820,10 +827,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidatesRowView.adapter = suggestionAdapterFull
                 }
             }
-            val flexboxLayoutManagerColumn = FlexboxLayoutManager(applicationContext).apply {
-                flexDirection = FlexDirection.COLUMN
-            }
-            setMainSuggestionColumn(mainView, flexboxLayoutManagerColumn)
+            setMainSuggestionColumn(mainView)
         }
         editorInfo?.let { info ->
             if (info.imeOptions == 318767106) {
@@ -4963,12 +4967,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateUIinHenkan(mainView, insertString)
                     }
                     setSumireKeyboardSwitchNumberAndKatakanaKey(1)
-                    if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                    if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
                             setSpaceKeyText("変換")
                             setReturnKeyText("確定")
                         }
-                    } else if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
+                    } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) ||
+                        qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish
+                    ) {
                         mainView.qwertyView.setReturnKeyText("done")
                     }
                     if (mainView.customLayoutDefault.isVisible) {
@@ -5030,7 +5036,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 setPasteEnabled(false)
                             }
                         }
-                        if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                        if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                             mainView.qwertyView.apply {
                                 setSpaceKeyText("空白")
                                 val qwertyEnterKeyText = when (currentInputType) {
@@ -5057,8 +5063,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         "改行"
                                     }
 
-                                    InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                                    InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject -> {
                                         "確定"
+                                    }
+
+                                    InputTypeForIME.TextNextLine -> {
+                                        "次"
                                     }
 
                                     InputTypeForIME.TextDone -> {
@@ -5099,7 +5109,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                                 setReturnKeyText(qwertyEnterKeyText)
                             }
-                        } else if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
+                        } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) ||
+                            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish
+                        ) {
                             val qwertyEnterKeyText = when (currentInputType) {
                                 InputTypeForIME.Text,
                                 InputTypeForIME.TextAutoComplete,
@@ -5124,8 +5136,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     "return"
                                 }
 
-                                InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                                InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject -> {
                                     "return"
+                                }
+
+                                InputTypeForIME.TextNextLine -> {
+                                    "next"
                                 }
 
                                 InputTypeForIME.TextDone -> {
@@ -5621,17 +5637,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
         if (currentInputType.isPassword() || currentInputType == InputTypeForIME.TextNoSuggestion) return
         val columnNum = candidateColumns ?: "1"
+
+        // If only one column, use simpler layout logic and exit
         if (columnNum == "1") {
             val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
             params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
             mainView.suggestionVisibility.layoutParams = params
             return
         }
+
+        // --- Start of height calculation ---
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
+        // Calculate base keyboard height in pixels, scaled by density
         val heightPx = when {
             keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
@@ -5643,30 +5664,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val additionalHeightInDp =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                when (candidateViewHeight) {
-                    "1" -> 52
-                    "2" -> 58
-                    "3" -> 64
-                    else -> 58
-                }
-            } else {
-                when (candidateViewHeight) {
-                    "1" -> 100
-                    "2" -> 110
-                    "3" -> 120
-                    else -> 110
-                }
-            }
+
+        // Determine additional height for suggestion bar in dp
+        val suggestionHeightInDp = when (candidateViewHeight) {
+            "1" -> 52
+            "2" -> 58
+            "3" -> 64
+            else -> 58
+        }
+
+        // Calculate the main keyboard height including suggestions, all in pixels
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                additionalHeightInDp
+                suggestionHeightInDp
             )
         } else {
             if (isPortrait) {
                 if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    additionalHeightInDp
+                    suggestionHeightInDp
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
@@ -5674,30 +5689,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-        val additionalKeyboardHeight = when (columnNum) {
-            "2" -> {
-                150
-            }
 
-            "3" -> {
-                300
-            }
-
-            else -> {
-                0
-            }
+        // ★★★ CORRECTED SECTION ★★★
+        // 1. Define the additional height for columns in DP for proper scaling.
+        //    (Using 75dp and 150dp as examples; adjust these values as needed for your design).
+        val additionalHeightForColumnsInDp = when (columnNum) {
+            "2" -> 75
+            "3" -> 150
+            else -> 0
         }
+        // 2. Convert the DP value to pixels.
+        val additionalKeyboardHeight = applicationContext.dpToPx(additionalHeightForColumnsInDp)
+
+        // Calculate the total height by adding the pixel values
         val totalHeight = keyboardHeight + additionalKeyboardHeight
 
+        // --- Apply the calculated height ---
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            // 高さに paddingBottom の分も含める
+            // Set the final calculated height and bottom margin
             params.height = totalHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
+
+        // Adjust suggestion view constraints since it's no longer attached to the parent bottom
         val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
         params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
-        params.setMargins(0, 8, 0, 0)
+        params.setMargins(0, 8, 0, 0) // Example margin
         mainView.suggestionVisibility.layoutParams = params
     }
 
@@ -6570,8 +6588,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setMainSuggestionColumn(
-        mainView: MainLayoutBinding,
-        flexboxLayoutManagerColumn: FlexboxLayoutManager
+        mainView: MainLayoutBinding
     ) {
         val columnNum = candidateColumns ?: "1"
 
@@ -6584,7 +6601,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         when (columnNum) {
             "1" -> {
-                mainView.suggestionRecyclerView.layoutManager = flexboxLayoutManagerColumn
+                mainView.suggestionRecyclerView.layoutManager = linearLayoutManager
             }
 
             "2", "3" -> {
