@@ -56,6 +56,9 @@ object AppPreference {
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
+    private const val OLD_SUMIRE_PREFERENCE_KEY = "sumire_keyboard_input_type_preference"
+    private const val NEW_SUMIRE_STYLE_KEY = "sumire_keyboard_style_preference"
+    private const val NEW_SUMIRE_METHOD_KEY = "sumire_input_method_preference"
     private val SUMIRE_INPUT_SELECTION_PREFERENCE =
         Pair("sumire_keyboard_input_type_preference", "toggle-default")
 
@@ -370,6 +373,18 @@ object AppPreference {
             it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "toggle-default")
         }
 
+    var sumire_keyboard_style: String
+        get() = preferences.getString(NEW_SUMIRE_STYLE_KEY, "default") ?: "default"
+        set(value) = preferences.edit {
+            it.putString(NEW_SUMIRE_STYLE_KEY, value)
+        }
+
+    var sumire_input_method: String
+        get() = preferences.getString(NEW_SUMIRE_METHOD_KEY, "toggle") ?: "toggle"
+        set(value) = preferences.edit {
+            it.putString(NEW_SUMIRE_METHOD_KEY, value)
+        }
+
     var is_floating_mode: Boolean?
         get() = preferences.getBoolean(
             KEYBOARD_FLOATING_PREFERENCE.first, KEYBOARD_FLOATING_PREFERENCE.second
@@ -411,4 +426,30 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putString(CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, value)
         }
+
+    fun migrateSumirePreferenceIfNeeded() {
+        // 古いキーが存在する場合のみ移行処理を実行
+        if (preferences.contains(OLD_SUMIRE_PREFERENCE_KEY)) {
+            val oldValue = preferences.getString(OLD_SUMIRE_PREFERENCE_KEY, "toggle-default")
+
+            val (newStyle, newMethod) = when (oldValue) {
+                "toggle-default" -> "default" to "toggle"
+                "flick-default" -> "default" to "flick"
+                "flick-circle" -> "circle" to "toggle"
+                "flick-circle-flick" -> "circle" to "flick"
+                "second-flick" -> "second-flick" to "toggle"
+                "second-flick-flick" -> "second-flick" to "flick"
+                "flick-sumire" -> "sumire" to "flick"
+                else -> "default" to "toggle"
+            }
+
+            preferences.edit {
+                // 新しいキーで値を保存
+                it.putString(NEW_SUMIRE_STYLE_KEY, newStyle)
+                it.putString(NEW_SUMIRE_METHOD_KEY, newMethod)
+                // 移行が完了したので古いキーを削除
+                it.remove(OLD_SUMIRE_PREFERENCE_KEY)
+            }
+        }
+    }
 }
