@@ -708,8 +708,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+        } else {
+            setCurrentInputTypeRestart(editorInfo)
         }
-        Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}")
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
             setKeyboardSize()
@@ -718,9 +719,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             checkForPhysicalKeyboard(true)
         }
 
+        Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}")
         suppressSuggestions = if (showCandidateInPasswordPreference == true) {
-            currentInputType.isPassword() ||
-                    currentInputType == InputTypeForIME.TextNoSuggestion
+            currentInputType.isPassword()
         } else {
             false
         }
@@ -5635,7 +5636,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
-        if (currentInputType.isPassword() || currentInputType == InputTypeForIME.TextNoSuggestion) return
+        if (currentInputType.isPassword()) return
         val columnNum = candidateColumns ?: "1"
 
         // If only one column, use simpler layout logic and exit
@@ -6418,6 +6419,438 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                     }
+                }
+            }
+        }
+    }
+
+    private fun setCurrentInputTypeRestart(attribute: EditorInfo?) {
+        val keyboardType =
+            if (keyboardOrder.isEmpty()) KeyboardType.TENKEY else keyboardOrder[currentKeyboardOrder]
+        attribute?.apply {
+            currentInputType = getCurrentInputTypeForIME2(this)
+            Timber.d("setCurrentInputTypeRestart: $currentInputType $inputType $keyboardType")
+            if (isTablet == true) {
+                mainLayoutBinding?.tabletView?.apply {
+                    when (currentInputType) {
+                        InputTypeForIME.Text,
+                        InputTypeForIME.TextAutoComplete,
+                        InputTypeForIME.TextAutoCorrect,
+                        InputTypeForIME.TextCapCharacters,
+                        InputTypeForIME.TextCapSentences,
+                        InputTypeForIME.TextCapWords,
+                        InputTypeForIME.TextFilter,
+                        InputTypeForIME.TextNoSuggestion,
+                        InputTypeForIME.TextPersonName,
+                        InputTypeForIME.TextPhonetic,
+                        InputTypeForIME.TextWebEditText,
+                        InputTypeForIME.TextUri,
+                            -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextMultiLine,
+                        InputTypeForIME.TextImeMultiLine,
+                        InputTypeForIME.TextShortMessage,
+                        InputTypeForIME.TextLongMessage,
+                            -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedReturnDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedTabDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextDone -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedCheckDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSearchDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEditTextInWebView,
+                        InputTypeForIME.TextPostalAddress,
+                        InputTypeForIME.TextWebEmailAddress,
+                        InputTypeForIME.TextPassword,
+                        InputTypeForIME.TextVisiblePassword,
+                        InputTypeForIME.TextWebPassword,
+                            -> {
+                            currentInputMode.set(InputMode.ModeEnglish)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.Number,
+                        InputTypeForIME.NumberDecimal,
+                        InputTypeForIME.NumberPassword,
+                        InputTypeForIME.NumberSigned,
+                        InputTypeForIME.Phone,
+                        InputTypeForIME.Date,
+                        InputTypeForIME.Datetime,
+                        InputTypeForIME.Time,
+                            -> {
+                            currentInputMode.set(InputMode.ModeNumber)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(false)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                    }
+                }
+            } else {
+                mainLayoutBinding?.keyboardView?.apply {
+                    when (currentInputType) {
+                        InputTypeForIME.Text,
+                        InputTypeForIME.TextAutoComplete,
+                        InputTypeForIME.TextAutoCorrect,
+                        InputTypeForIME.TextCapCharacters,
+                        InputTypeForIME.TextCapSentences,
+                        InputTypeForIME.TextCapWords,
+                        InputTypeForIME.TextFilter,
+                        InputTypeForIME.TextNoSuggestion,
+                        InputTypeForIME.TextPersonName,
+                        InputTypeForIME.TextPhonetic,
+                        InputTypeForIME.TextWebEditText,
+                        InputTypeForIME.TextUri,
+                            -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextMultiLine,
+                        InputTypeForIME.TextImeMultiLine,
+                        InputTypeForIME.TextShortMessage,
+                        InputTypeForIME.TextLongMessage,
+                            -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedReturnDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEmailAddress,
+                        InputTypeForIME.TextEmailSubject,
+                        InputTypeForIME.TextNextLine -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedTabDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextDone -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedCheckDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextWebSearchView,
+                        InputTypeForIME.TextWebSearchViewFireFox,
+                        InputTypeForIME.TextSearchView -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSearchDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEditTextInWebView,
+                        InputTypeForIME.TextPostalAddress,
+                        InputTypeForIME.TextWebEmailAddress,
+                        InputTypeForIME.TextPassword,
+                        InputTypeForIME.TextVisiblePassword,
+                        InputTypeForIME.TextWebPassword,
+                            -> {
+                            setCurrentMode(InputMode.ModeEnglish)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.Number,
+                        InputTypeForIME.NumberDecimal,
+                        InputTypeForIME.NumberPassword,
+                        InputTypeForIME.NumberSigned,
+                        InputTypeForIME.Phone,
+                        InputTypeForIME.Date,
+                        InputTypeForIME.Datetime,
+                        InputTypeForIME.Time,
+                            -> {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                        }
+
+                    }
+                }
+            }
+            if (isKeyboardFloatingMode == true) {
+                floatingKeyboardBinding?.keyboardViewFloating?.apply {
+                    when (currentInputType) {
+                        InputTypeForIME.Text,
+                        InputTypeForIME.TextAutoComplete,
+                        InputTypeForIME.TextAutoCorrect,
+                        InputTypeForIME.TextCapCharacters,
+                        InputTypeForIME.TextCapSentences,
+                        InputTypeForIME.TextCapWords,
+                        InputTypeForIME.TextFilter,
+                        InputTypeForIME.TextNoSuggestion,
+                        InputTypeForIME.TextPersonName,
+                        InputTypeForIME.TextPhonetic,
+                        InputTypeForIME.TextWebEditText,
+                            -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextMultiLine,
+                        InputTypeForIME.TextImeMultiLine,
+                        InputTypeForIME.TextShortMessage,
+                        InputTypeForIME.TextLongMessage,
+                            -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedReturnDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedTabDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextDone -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedCheckDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSearchDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextEditTextInWebView,
+                        InputTypeForIME.TextUri,
+                        InputTypeForIME.TextPostalAddress,
+                        InputTypeForIME.TextWebEmailAddress,
+                        InputTypeForIME.TextPassword,
+                        InputTypeForIME.TextVisiblePassword,
+                        InputTypeForIME.TextWebPassword,
+                            -> {
+                            setCurrentMode(InputMode.ModeEnglish)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                        InputTypeForIME.Number,
+                        InputTypeForIME.NumberDecimal,
+                        InputTypeForIME.NumberPassword,
+                        InputTypeForIME.NumberSigned,
+                        InputTypeForIME.Phone,
+                        InputTypeForIME.Date,
+                        InputTypeForIME.Datetime,
+                        InputTypeForIME.Time,
+                            -> {
+                            setCurrentMode(InputMode.ModeNumber)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
+                        }
+
+                    }
+                }
+            }
+            val excludedInputTypes = setOf(
+                InputTypeForIME.Number,
+                InputTypeForIME.NumberDecimal,
+                InputTypeForIME.NumberPassword,
+                InputTypeForIME.NumberSigned,
+                InputTypeForIME.Phone,
+                InputTypeForIME.Date,
+                InputTypeForIME.Datetime,
+                InputTypeForIME.Time
+            )
+
+            if (currentInputType !in excludedInputTypes) {
+                if (currentInputType != InputTypeForIME.None) {
+                    when (keyboardType) {
+                        KeyboardType.TENKEY -> {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                        }
+
+                        KeyboardType.SUMIRE -> {
+                            currentEnterKeyIndex = when (currentInputType) {
+                                InputTypeForIME.Text,
+                                InputTypeForIME.TextAutoComplete,
+                                InputTypeForIME.TextAutoCorrect,
+                                InputTypeForIME.TextCapCharacters,
+                                InputTypeForIME.TextCapSentences,
+                                InputTypeForIME.TextCapWords,
+                                InputTypeForIME.TextFilter,
+                                InputTypeForIME.TextNoSuggestion,
+                                InputTypeForIME.TextPersonName,
+                                InputTypeForIME.TextPhonetic,
+                                InputTypeForIME.TextWebEditText,
+                                    -> {
+                                    1
+                                }
+
+                                InputTypeForIME.TextMultiLine,
+                                InputTypeForIME.TextImeMultiLine,
+                                InputTypeForIME.TextShortMessage,
+                                InputTypeForIME.TextLongMessage,
+                                    -> {
+                                    0
+                                }
+
+                                InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                                    4
+                                }
+
+                                InputTypeForIME.TextDone -> {
+                                    1
+                                }
+
+                                InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
+                                    3
+                                }
+
+                                InputTypeForIME.TextEditTextInWebView,
+                                InputTypeForIME.TextUri,
+                                InputTypeForIME.TextPostalAddress,
+                                InputTypeForIME.TextWebEmailAddress,
+                                InputTypeForIME.TextPassword,
+                                InputTypeForIME.TextVisiblePassword,
+                                InputTypeForIME.TextWebPassword,
+                                    -> {
+                                    1
+                                }
+
+                                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
+                                    1
+                                }
+
+                                InputTypeForIME.Number,
+                                InputTypeForIME.NumberDecimal,
+                                InputTypeForIME.NumberPassword,
+                                InputTypeForIME.NumberSigned,
+                                InputTypeForIME.Phone,
+                                InputTypeForIME.Date,
+                                InputTypeForIME.Datetime,
+                                InputTypeForIME.Time,
+                                    -> {
+                                    1
+                                }
+
+                            }
+                            val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
+                                mode = customKeyboardMode,
+                                dynamicKeyStates = mapOf(
+                                    "enter_key" to currentEnterKeyIndex,
+                                    "dakuten_toggle_key" to currentDakutenKeyIndex,
+                                    "katakana_toggle_key" to currentKatakanaKeyIndex,
+                                    "space_convert_key" to currentSpaceKeyIndex,
+                                ),
+                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                                inputStyle = sumireInputStyle ?: "default",
+                            )
+                            mainLayoutBinding?.customLayoutDefault?.setKeyboard(hiraganaLayout)
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                        }
+
+                        KeyboardType.QWERTY -> {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        }
+
+                        KeyboardType.ROMAJI -> {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
+                        }
+
+                        KeyboardType.CUSTOM -> {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+                        }
+                    }
+                }
+            } else {
+                if (keyboardType == KeyboardType.SUMIRE) {
+                    mainLayoutBinding?.customLayoutDefault?.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
                 }
             }
         }
