@@ -51,6 +51,14 @@
                 android:title="パスワード入力時の変換候補" />
 
             <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:dependency="hide_candidate_password_preference"
+                android:key="password_compose_preference"
+                android:summaryOff="パスワード入力中に確定文字として扱います。"
+                android:summaryOn="パスワード入力中に未確定文字として扱います。"
+                android:title="パスワード入力中の文字列の設定" />
+
+            <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="henkan_delete_key_action_preference"
                 android:summaryOff="削除キータップ：ハイライト解除"
