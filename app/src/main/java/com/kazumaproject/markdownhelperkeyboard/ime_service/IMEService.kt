@@ -124,7 +124,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPasswor
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
-import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -352,6 +351,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
     private var qwertyShowIMEButtonPreference: Boolean? = true
+    private var qwertyShowPopupWindowPreference: Boolean? = false
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
@@ -523,11 +523,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
-                mainLayoutBinding?.apply {
-                    suggestionRecyclerView.scrollToPosition(0)
-                }
-                if (isKeyboardFloatingMode == true) {
-                    floatingKeyboardBinding?.apply {
+                if (isKeyboardFloatingMode != true) {
+                    mainLayoutBinding?.apply {
                         suggestionRecyclerView.scrollToPosition(0)
                     }
                 }
@@ -617,6 +614,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
+            qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
             showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
@@ -792,6 +790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
                     showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
+                qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
                     candidatesRowView.adapter = null
@@ -922,6 +921,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
+        qwertyShowPopupWindowPreference = null
         qwertyShowKutoutenButtonsPreference = null
         showCandidateInPasswordPreference = null
         showCandidateInPasswordComposePreference = null
@@ -3219,7 +3219,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         qwertyView.isVisible = true
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
                         keyboardView.setCurrentMode(InputMode.ModeJapanese)
                         val qwertyEnterKeyText = when (currentInputType) {
                             InputTypeForIME.Text,
@@ -3431,6 +3431,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             TenKeyQWERTYMode.Default -> {}
             TenKeyQWERTYMode.TenKeyQWERTY -> {}
+            TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {}
             TenKeyQWERTYMode.Sumire -> {
                 val dynamicStates = mapOf(
                     "enter_key" to currentEnterKeyIndex,
@@ -3454,6 +3455,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val finalLayout = KeyboardDefaultLayouts.createNumberLayout()
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
+
         }
     }
 
@@ -5143,7 +5145,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
                         }
-                        setKeyboardHeightDefault(mainView)
+                        if ((candidateColumns ?: "1") != "1") {
+                            setKeyboardHeightDefault(mainView)
+                        }
                         setSumireKeyboardSwitchNumberAndKatakanaKey(0)
                         countToggleKatakana = 0
                     }
@@ -5287,6 +5291,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             qwertyView.isVisible = true
                             customLayoutDefault.isVisible = false
+                            qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
+                        }
+                    }
+
+                    TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
+                        )
+                        mainView.apply {
+                            if (isTablet == true) {
+                                tabletView.isVisible = false
+                            } else {
+                                keyboardView.isVisible = false
+                            }
+                            qwertyView.isVisible = true
+                            customLayoutDefault.isVisible = false
+                            qwertyView.setRomajiEnglishSwitchKeyVisibility(true)
                         }
                     }
 
@@ -5645,12 +5666,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 0
             }
         }
+        val totalHeight = keyboardHeight + additionalKeyboardHeight
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight + additionalKeyboardHeight
+            // 高さに paddingBottom の分も含める
+            params.height = totalHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
         val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
         params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
         params.setMargins(0, 8, 0, 0)
@@ -6486,23 +6509,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suggestionRecyclerView.apply {
             itemAnimator = null
             isFocusable = false
-            addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
-                suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
-                        if (suggestionViewStatus.value) {
-                            _suggestionViewStatus.update { false }
-                        }
-                    }
-                }
-            }, onSwipeUp = {
-                suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
-                        if (!suggestionViewStatus.value) {
-                            _suggestionViewStatus.update { true }
-                        }
-                    }
-                }
-            }))
         }
 
         mainView.candidatesRowView.apply {
@@ -6763,6 +6769,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    Timber.d("onReleasedQWERTYKey: $qwertyKey")
                     when (vibrationTimingStr) {
                         "both" -> {
                             vibrate()
@@ -6876,6 +6883,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
+                            val romajiMode = mainView.qwertyView.getRomajiMode()
+                            mainView.qwertyView.setRomajiMode(!romajiMode)
+                            if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                                mainView.qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(false)
+                            } else {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                mainView.qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
+                            }
                         }
 
                         else -> {
@@ -8953,7 +8972,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 KeyboardType.TENKEY -> TenKeyQWERTYMode.Default
                 KeyboardType.SUMIRE -> TenKeyQWERTYMode.Sumire
                 KeyboardType.QWERTY -> TenKeyQWERTYMode.TenKeyQWERTY
-                KeyboardType.ROMAJI -> TenKeyQWERTYMode.TenKeyQWERTY
+                KeyboardType.ROMAJI -> TenKeyQWERTYMode.TenKeyQWERTYRomaji
                 KeyboardType.CUSTOM -> TenKeyQWERTYMode.Custom
             }
             _tenKeyQWERTYMode.update { type }
