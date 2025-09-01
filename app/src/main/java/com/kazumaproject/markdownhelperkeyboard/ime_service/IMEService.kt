@@ -591,7 +591,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
-        resetAllFlags()
+        if (!restarting) resetAllFlags()
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
@@ -678,7 +678,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        setCurrentInputType(editorInfo)
+        if (!restarting) {
+            setCurrentInputType(editorInfo)
+            resetKeyboard()
+        }
         Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}")
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
@@ -777,8 +780,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainLayoutBinding?.candidatesRowView?.adapter = null
             }
         }
-
-        resetKeyboard()
         keyboardSelectionPopupWindow?.dismiss()
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
