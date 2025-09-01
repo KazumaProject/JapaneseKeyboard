@@ -355,6 +355,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
+    private var showCandidateInPasswordComposePreference: Boolean? = false
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
     private var mozcUTPersonName: Boolean? = false
@@ -618,6 +619,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
+            showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
@@ -922,6 +924,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowCursorButtonsPreference = null
         qwertyShowKutoutenButtonsPreference = null
         showCandidateInPasswordPreference = null
+        showCandidateInPasswordComposePreference = null
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -5887,7 +5890,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
-                commitText(string, 1)
+                if (showCandidateInPasswordComposePreference == false) {
+                    commitText(string, 1)
+                } else {
+                    setComposingText(string, 1)
+                }
                 return
             }
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
