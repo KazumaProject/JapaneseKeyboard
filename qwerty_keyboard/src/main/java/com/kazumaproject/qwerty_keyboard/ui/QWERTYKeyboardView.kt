@@ -4,7 +4,12 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Rect
+import android.graphics.Typeface
 import android.os.SystemClock
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
 import android.util.AttributeSet
 import android.util.Log
 import android.util.SparseArray
@@ -103,6 +108,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val qwertyMode: StateFlow<QWERTYMode> = _qwertyMode.asStateFlow()
 
     private var isTablet = false
+    private var showPopupView = true
 
     private var isDynamicColorsEnable = false
 
@@ -360,6 +366,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    fun setPopUpViewState(state: Boolean) {
+        this.showPopupView = state
+    }
+
     private fun setMaterialYouTheme(
         isDarkMode: Boolean, isDynamicColorEnable: Boolean
     ) {
@@ -411,6 +421,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             cursorLeft.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
             cursorRight.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+            switchRomajiEnglish.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
         }
     }
 
@@ -462,7 +473,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.cursorLeft to QWERTYKey.QWERTYKeyCursorLeft,
             binding.cursorRight to QWERTYKey.QWERTYKeyCursorRight,
             binding.keyTouten to QWERTYKey.QWERTYKeyTouten,
-            binding.keyKuten to QWERTYKey.QWERTYKeyKuten
+            binding.keyKuten to QWERTYKey.QWERTYKeyKuten,
+            binding.switchRomajiEnglish to QWERTYKey.QWERTYKeySwitchRomajiEnglish
         )
     }
 
@@ -771,7 +783,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     } else {
                         val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                         when (qwertyKey) {
-                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight -> {
+                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
                                 qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
                             }
 
@@ -831,7 +843,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     val qwertyKey =
                                         qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                                     when (qwertyKey) {
-                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight -> {
+                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
                                             qwertyKeyListener?.onReleasedQWERTYKey(
                                                 qwertyKey,
                                                 null,
@@ -1025,6 +1037,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private fun showKeyPreview(view: View) {
         if (isTablet) return
+        if (!showPopupView) return
         dismissKeyPreview()
         val previewHeight = dpToPx(view.height)
         val layoutRes = R.layout.key_preview_large
@@ -1323,6 +1336,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         _capsLockState.value = CapsLockState()
     }
 
+    fun getRomajiMode(): Boolean {
+        return romajiModeState.value
+    }
+
     fun setRomajiMode(state: Boolean) {
         _romajiModeState.update { state }
     }
@@ -1409,6 +1426,53 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         binding.keySwitchDefault.isVisible = showSwitchKey
         binding.keyKuten.isVisible = showKutouten
         binding.keyTouten.isVisible = showKutouten
+    }
+
+    fun setRomajiEnglishSwitchKeyVisibility(
+        showRomajiEnglishKey: Boolean
+    ) {
+        binding.switchRomajiEnglish.isVisible = showRomajiEnglishKey
+    }
+
+    fun setRomajiEnglishSwitchKeyTextWithStyle(showRomajiEnglishKey: Boolean) {
+        val text = "あa"
+        val spannableString = SpannableString(text)
+
+        if (showRomajiEnglishKey) {
+            spannableString.setSpan(
+                StyleSpan(Typeface.BOLD),
+                0,
+                1,
+                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+            )
+            spannableString.setSpan(
+                StyleSpan(Typeface.NORMAL),
+                1,
+                2,
+                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+            )
+        } else {
+            spannableString.setSpan(
+                StyleSpan(Typeface.NORMAL),
+                0,
+                1,
+                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+            )
+            spannableString.setSpan(
+                StyleSpan(Typeface.BOLD),
+                1,
+                2,
+                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+            )
+            spannableString.setSpan(
+                RelativeSizeSpan(1.7f),
+                1,
+                2,
+                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+            )
+        }
+
+        binding.switchRomajiEnglish.text = spannableString
     }
 
 }

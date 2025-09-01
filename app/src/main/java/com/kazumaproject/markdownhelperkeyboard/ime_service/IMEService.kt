@@ -116,7 +116,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacing
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
@@ -124,7 +124,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPasswor
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
-import com.kazumaproject.markdownhelperkeyboard.ime_service.listener.SwipeGestureListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -352,9 +351,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
     private var qwertyShowIMEButtonPreference: Boolean? = true
+    private var qwertyShowPopupWindowPreference: Boolean? = false
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
+    private var showCandidateInPasswordComposePreference: Boolean? = false
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
     private var mozcUTPersonName: Boolean? = false
@@ -362,7 +363,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTWiki: Boolean? = false
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
+
+    @Deprecated(
+        message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
+    )
     private var sumireInputKeyType: String? = "flick-default"
+    private var sumireInputKeyLayoutType: String? = "toggle"
+    private var sumireInputStyle: String? = "default"
     private var candidateColumns: String? = "1"
     private var candidateViewHeight: String? = "2"
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
@@ -497,6 +504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentEnterKeyIndex: Int = 0 // 0:改行, 1:確定,
     private var currentDakutenKeyIndex: Int = 0 // 0:^_^, 1:゛゜
     private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
+    private var currentKatakanaKeyIndex: Int = 0 // 0: SiwtchToNumber, 1: Katakana
 
     private var initialX = 0
     private var initialY = 0
@@ -506,6 +514,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var suppressSuggestions: Boolean = false
 
+    private var countToggleKatakana = 0
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -513,11 +523,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
-                mainLayoutBinding?.apply {
-                    suggestionRecyclerView.scrollToPosition(0)
-                }
-                if (isKeyboardFloatingMode == true) {
-                    floatingKeyboardBinding?.apply {
+                if (isKeyboardFloatingMode != true) {
+                    mainLayoutBinding?.apply {
                         suggestionRecyclerView.scrollToPosition(0)
                     }
                 }
@@ -584,7 +591,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
-        resetAllFlags()
+        if (!restarting) resetAllFlags()
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
@@ -607,8 +614,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
+            qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
+            showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
@@ -616,6 +625,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
             sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
+            sumireInputKeyLayoutType = sumire_input_method
+            sumireInputStyle = sumire_keyboard_style
             candidateColumns = candidate_column_preference
             candidateViewHeight = candidate_view_height_preference
             symbolKeyboardFirstItem = symbol_mode_preference
@@ -667,8 +678,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard")
-        setCurrentInputType(editorInfo)
+        if (!restarting) {
+            setCurrentInputType(editorInfo)
+            resetKeyboard()
+        }
+        Timber.d("onUpdate onStartInputView called $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}")
         updateClipboardPreview()
         if (!hasPhysicalKeyboard) {
             setKeyboardSize()
@@ -766,8 +780,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainLayoutBinding?.candidatesRowView?.adapter = null
             }
         }
-
-        resetKeyboard()
         keyboardSelectionPopupWindow?.dismiss()
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
@@ -779,6 +791,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
                     showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
+                qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
                     candidatesRowView.adapter = null
@@ -909,8 +922,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
+        qwertyShowPopupWindowPreference = null
         qwertyShowKutoutenButtonsPreference = null
         showCandidateInPasswordPreference = null
+        showCandidateInPasswordComposePreference = null
         isVibration = null
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -920,6 +935,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTNeologd = null
         mozcUTWeb = null
         sumireInputKeyType = null
+        sumireInputKeyLayoutType = null
+        sumireInputStyle = null
         candidateColumns = null
         candidateViewHeight = null
         isTablet = null
@@ -3102,7 +3119,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             tabletView.resetLayout()
                         } else {
                             keyboardView.isVisible = true
-                            keyboardView.setCurrentMode(InputMode.ModeJapanese)
                         }
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                     } else {
@@ -3204,7 +3220,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         qwertyView.isVisible = true
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
                         keyboardView.setCurrentMode(InputMode.ModeJapanese)
                         val qwertyEnterKeyText = when (currentInputType) {
                             InputTypeForIME.Text,
@@ -3285,11 +3301,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 KeyboardType.SUMIRE -> {
-                    customKeyboardMode = KeyboardInputMode.HIRAGANA
+                    Timber.d("showKeyboard keyboard: ${this.keyboardView.currentInputMode.value}")
                     customLayoutDefault.isVisible = true
-                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
-                        Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
                         currentEnterKeyIndex = when (currentInputType) {
                             InputTypeForIME.Text,
                             InputTypeForIME.TextAutoComplete,
@@ -3315,7 +3329,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
 
                             InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                                1
+                                4
                             }
 
                             InputTypeForIME.TextDone -> {
@@ -3358,9 +3372,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mode = KeyboardInputMode.HIRAGANA,
                             dynamicKeyStates = mapOf(
                                 "enter_key" to currentEnterKeyIndex,
-                                "dakuten_toggle_key" to currentDakutenKeyIndex
+                                "dakuten_toggle_key" to currentDakutenKeyIndex,
+                                "katakana_toggle_key" to currentKatakanaKeyIndex,
+                                "space_convert_key" to currentSpaceKeyIndex,
                             ),
-                            inputType = sumireInputKeyType ?: "flick-default",
+                            inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                            inputStyle = sumireInputStyle ?: "default",
                         )
                         customLayoutDefault.setKeyboard(hiraganaLayout)
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -3370,6 +3387,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
+
+                    customKeyboardMode = when (keyboardView.currentInputMode.value) {
+                        InputMode.ModeJapanese -> {
+                            KeyboardInputMode.HIRAGANA
+                        }
+
+                        InputMode.ModeEnglish -> {
+                            KeyboardInputMode.ENGLISH
+                        }
+
+                        InputMode.ModeNumber -> {
+                            KeyboardInputMode.SYMBOLS
+                        }
+                    }
                 }
 
                 KeyboardType.CUSTOM -> {
@@ -3401,11 +3432,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             TenKeyQWERTYMode.Default -> {}
             TenKeyQWERTYMode.TenKeyQWERTY -> {}
+            TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {}
             TenKeyQWERTYMode.Sumire -> {
                 val dynamicStates = mapOf(
                     "enter_key" to currentEnterKeyIndex,
                     "dakuten_toggle_key" to currentDakutenKeyIndex,
-                    "space_convert_key" to currentSpaceKeyIndex
+                    "space_convert_key" to currentSpaceKeyIndex,
+                    "katakana_toggle_key" to currentKatakanaKeyIndex
                 )
 
                 Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
@@ -3413,7 +3446,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
                     mode = customKeyboardMode,
                     dynamicKeyStates = dynamicStates,
-                    inputType = sumireInputKeyType ?: "flick-default",
+                    inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                    inputStyle = sumireInputStyle ?: "default",
                 )
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -3422,6 +3456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val finalLayout = KeyboardDefaultLayouts.createNumberLayout()
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
+
         }
     }
 
@@ -3491,14 +3526,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setSumireKeyboardEnterKey(index: Int) {
-        // 0と1を交互に切り替える
         currentEnterKeyIndex = index
         updateKeyboardLayout()
     }
 
     private fun setSumireKeyboardSpaceKey(index: Int) {
-        // 0と1を交互に切り替える
         currentSpaceKeyIndex = index
+        updateKeyboardLayout()
+    }
+
+    private fun setSumireKeyboardSwitchNumberAndKatakanaKey(index: Int) {
+        currentKatakanaKeyIndex = index
         updateKeyboardLayout()
     }
 
@@ -3529,7 +3567,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                1
+                4
             }
 
             InputTypeForIME.TextDone -> {
@@ -3781,6 +3819,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
+                    KeyAction.ToggleKatakana -> {}
                 }
             }
 
@@ -3824,6 +3863,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
+                    KeyAction.ToggleKatakana -> {}
                 }
             }
 
@@ -3915,6 +3955,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
+                    KeyAction.ToggleKatakana -> {}
                 }
             }
 
@@ -4019,6 +4060,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToNumberLayout -> {}
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
+                    KeyAction.ToggleKatakana -> {}
                 }
             }
 
@@ -4029,8 +4071,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (action != KeyAction.Delete) {
                     clearDeleteBufferWithView()
                 }
-                // 特殊キーがタップされた場合
-                // ▼▼▼ 変更 ▼▼▼ whenの対象がStringからKeyActionオブジェクトに変わります
                 when (action) {
                     is KeyAction.InputText -> {
                         when (action.text) {
@@ -4277,6 +4317,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val position =
                                     (currentCustomKeyboardPosition + 1) % customKeyboardLayouts.size
                                 setKeyboardTab(position)
+                            }
+                        }
+                    }
+
+                    KeyAction.ToggleKatakana -> {
+                        when (countToggleKatakana) {
+                            0 -> {
+                                _inputString.update {
+                                    it.hiraganaToKatakana()
+                                }
+                                countToggleKatakana++
+                            }
+
+                            1 -> {
+                                _inputString.update {
+                                    it.toHankakuKatakana()
+                                }
+                                countToggleKatakana++
+                            }
+
+                            2 -> {
+                                _inputString.update {
+                                    it.toHiragana()
+                                }
+                                countToggleKatakana = 0
                             }
                         }
                     }
@@ -4877,6 +4942,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         updateUIinHenkan(mainView, insertString)
                     }
+                    setSumireKeyboardSwitchNumberAndKatakanaKey(1)
                     if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                         mainView.qwertyView.apply {
                             setSpaceKeyText("変換")
@@ -5080,7 +5146,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
                         }
-                        setKeyboardHeightDefault(mainView)
+                        if ((candidateColumns ?: "1") != "1") {
+                            setKeyboardHeightDefault(mainView)
+                        }
+                        setSumireKeyboardSwitchNumberAndKatakanaKey(0)
+                        countToggleKatakana = 0
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -5113,7 +5183,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = false
                         }
                     }
-                }else{
+                } else {
                     setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow)
                 }
                 mainView.apply {
@@ -5222,6 +5292,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             qwertyView.isVisible = true
                             customLayoutDefault.isVisible = false
+                            qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
+                        }
+                    }
+
+                    TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                        suggestionAdapter?.updateState(
+                            TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
+                        )
+                        mainView.apply {
+                            if (isTablet == true) {
+                                tabletView.isVisible = false
+                            } else {
+                                keyboardView.isVisible = false
+                            }
+                            qwertyView.isVisible = true
+                            customLayoutDefault.isVisible = false
+                            qwertyView.setRomajiEnglishSwitchKeyVisibility(true)
                         }
                     }
 
@@ -5580,12 +5667,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 0
             }
         }
+        val totalHeight = keyboardHeight + additionalKeyboardHeight
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight + additionalKeyboardHeight
+            // 高さに paddingBottom の分も含める
+            params.height = totalHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
         val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
         params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
         params.setMargins(0, 8, 0, 0)
@@ -5825,7 +5914,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
-                commitText(string, 1)
+                if (showCandidateInPasswordComposePreference == false) {
+                    commitText(string, 1)
+                } else {
+                    setComposingText(string, 1)
+                }
                 return
             }
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
@@ -5980,7 +6073,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
-            currentInputType = getCurrentInputTypeForIME(this)
+            currentInputType = getCurrentInputTypeForIME2(this)
             Timber.d("setCurrentInputType: $currentInputType $inputType ${attribute.hintText} ${attribute.actionId} ${attribute.fieldName} ${attribute.inputType} ")
             if (isTablet == true) {
                 mainLayoutBinding?.tabletView?.apply {
@@ -6417,23 +6510,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suggestionRecyclerView.apply {
             itemAnimator = null
             isFocusable = false
-            addOnItemTouchListener(SwipeGestureListener(context = this@IMEService, onSwipeDown = {
-                suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
-                        if (suggestionViewStatus.value) {
-                            _suggestionViewStatus.update { false }
-                        }
-                    }
-                }
-            }, onSwipeUp = {
-                suggestionAdapter?.let { adapter ->
-                    if (adapter.suggestions.isNotEmpty() && inputString.value.isNotBlank() && inputString.value.isNotEmpty()) {
-                        if (!suggestionViewStatus.value) {
-                            _suggestionViewStatus.update { true }
-                        }
-                    }
-                }
-            }))
         }
 
         mainView.candidatesRowView.apply {
@@ -6694,6 +6770,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    Timber.d("onReleasedQWERTYKey: $qwertyKey")
                     when (vibrationTimingStr) {
                         "both" -> {
                             vibrate()
@@ -6807,6 +6884,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
+                            val romajiMode = mainView.qwertyView.getRomajiMode()
+                            mainView.qwertyView.setRomajiMode(!romajiMode)
+                            if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                                mainView.qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(false)
+                            } else {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                mainView.qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
+                            }
                         }
 
                         else -> {
@@ -7244,6 +7333,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetSumireKeyboardDakutenMode()
         initialCursorDetectInFloatingCandidateView = false
         initialCursorXPosition = 0
+        countToggleKatakana = 0
+        currentEnterKeyIndex = 0
+        currentSpaceKeyIndex = 0
+        currentKatakanaKeyIndex = 0
+        currentDakutenKeyIndex = 0
     }
 
     private fun actionInDestroy() {
@@ -8879,7 +8973,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 KeyboardType.TENKEY -> TenKeyQWERTYMode.Default
                 KeyboardType.SUMIRE -> TenKeyQWERTYMode.Sumire
                 KeyboardType.QWERTY -> TenKeyQWERTYMode.TenKeyQWERTY
-                KeyboardType.ROMAJI -> TenKeyQWERTYMode.TenKeyQWERTY
+                KeyboardType.ROMAJI -> TenKeyQWERTYMode.TenKeyQWERTYRomaji
                 KeyboardType.CUSTOM -> TenKeyQWERTYMode.Custom
             }
             _tenKeyQWERTYMode.update { type }

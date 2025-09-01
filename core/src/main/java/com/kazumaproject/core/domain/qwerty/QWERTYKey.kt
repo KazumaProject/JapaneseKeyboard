@@ -43,4 +43,6 @@ sealed class QWERTYKey {
     data object QWERTYKeyCursorRight : QWERTYKey()
     data object QWERTYKeyCursorUp : QWERTYKey()
     data object QWERTYKeyCursorDown : QWERTYKey()
+
+    data object QWERTYKeySwitchRomajiEnglish : QWERTYKey()
 }

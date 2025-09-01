@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:autoMirrored="true"
+    android:tint="@color/keyboard_icon_color"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+
+    <path
+        android:fillColor="@color/keyboard_icon_color"
+        android:pathData="M560,720L504,662L646,520L160,520L160,440L646,440L504,298L560,240L800,480L560,720Z" />
+
+</vector>

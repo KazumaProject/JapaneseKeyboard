@@ -24,24 +24,30 @@
         <item>both</item>
     </string-array>
 
-    <string-array name="sumire_keyboard_input_options">
-        <item>トグル入力 - Toggle</item>
-        <item>フリック入力 - Flick</item>
-        <item>サークル入力 - Toggle</item>
-        <item>サークル入力 - Flick</item>
-        <item>２段フリック入力 - Toggle</item>
-        <item>２段フリック入力 - Flick</item>
+    <string-array name="sumire_keyboard_style_options">
+        <item>通常入力</item>
+        <item>サークル入力</item>
+        <item>２段フリック入力</item>
         <item>スミレ入力</item>
     </string-array>
 
-    <string-array name="sumire_keyboard_input_values">
-        <item>toggle-default</item>
-        <item>flick-default</item>
-        <item>flick-circle</item>
-        <item>flick-circle-flick</item>
+    <string-array name="sumire_keyboard_style_values">
+        <item>default</item>
+        <item>circle</item>
         <item>second-flick</item>
-        <item>second-flick-flick</item>
-        <item>flick-sumire</item>
+        <item>sumire</item>
+    </string-array>
+
+    <string-array name="sumire_input_method_options">
+        <item>トグル入力</item>
+        <item>フリック入力</item>
+        <item>カーソル入力</item>
+    </string-array>
+
+    <string-array name="sumire_input_method_values">
+        <item>toggle</item>
+        <item>flick</item>
+        <item>switch-mode-effective</item>
     </string-array>
 
     <string-array name="parts_of_speech">
