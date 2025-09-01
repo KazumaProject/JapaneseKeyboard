@@ -98,51 +98,41 @@ class SettingFragment : PreferenceFragmentCompat() {
             requireContext().packageName, 0
         )
 
-        val sumireInputPreference =
-            findPreference<ListPreference>("sumire_keyboard_input_type_preference")
-
-        val originalEntries = sumireInputPreference?.entries
-        val originalEntryValues = sumireInputPreference?.entryValues
-
-        sumireInputPreference?.apply {
-            // 現在の値に基づいてsummaryを初期設定
-            summary = when (value) {
-                "flick-default" -> "フリック入力 - Default"
-                "flick-circle" -> "フリック入力 - Circle"
-                "flick-sumire" -> "スミレ入力"
-                else -> "入力スタイルを選択"
-            }
-
-            // ダイアログが表示される直前のクリックイベントをリッスン
-            setOnPreferenceClickListener { pref ->
-                // ★★★ 変更点：countの値に基づいて表示するリストを切り替える ★★★
-                if (originalEntries != null && originalEntryValues != null) {
-                    if (count >= 5) {
-                        // countが5以上なら、元の完全なリストを復元
-                        entries = originalEntries
-                        entryValues = originalEntryValues
-                    } else {
-                        // countが5未満なら、最後のアイテムを除いたリストを表示
-                        if (originalEntries.isNotEmpty()) {
-                            entries = originalEntries.copyOfRange(0, originalEntries.size - 1)
-                            entryValues =
-                                originalEntryValues.copyOfRange(0, originalEntryValues.size - 1)
-                        }
-                    }
+        val sumireStylePreference =
+            findPreference<ListPreference>("sumire_keyboard_style_preference")
+        sumireStylePreference?.apply {
+            val originalEntries = this.entries
+            val originalEntryValues = this.entryValues
+            setOnPreferenceClickListener {
+                if (count >= 5) {
+                    entries = originalEntries
+                    entryValues = originalEntryValues
+                } else {
+                    entries = originalEntries.dropLast(1).toTypedArray()
+                    entryValues = originalEntryValues.dropLast(1).toTypedArray()
                 }
-                // trueを返して通常のダイアログ表示処理を続行
+                return@setOnPreferenceClickListener true
+            }
+            summary = entries[findIndexOfValue(value)].toString()
+            setOnPreferenceChangeListener { preference, newValue ->
+                val listPreference = preference as ListPreference
+                val index = listPreference.findIndexOfValue(newValue as String)
+                if (index >= 0) {
+                    preference.summary = listPreference.entries[index].toString()
+                }
                 true
             }
+        }
 
-            // 値が変更されたときにsummaryを更新
+        val sumireMethodPreference =
+            findPreference<ListPreference>("sumire_input_method_preference")
+        sumireMethodPreference?.apply {
+            summary = entries[findIndexOfValue(value)].toString() // 現在の選択肢をサマリーに表示
             setOnPreferenceChangeListener { preference, newValue ->
-                if (newValue is String) {
-                    preference.summary = when (newValue) {
-                        "flick-default" -> "フリック入力 - Default"
-                        "flick-circle" -> "フリック入力 - Circle"
-                        "flick-sumire" -> "スミレ入力"
-                        else -> preference.summary
-                    }
+                val listPreference = preference as ListPreference
+                val index = listPreference.findIndexOfValue(newValue as String)
+                if (index >= 0) {
+                    preference.summary = listPreference.entries[index].toString()
                 }
                 true
             }

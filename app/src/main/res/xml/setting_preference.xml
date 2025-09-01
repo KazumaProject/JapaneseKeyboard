@@ -172,13 +172,23 @@
             android:key="sumire_input_preference_category"
             android:title="スミレ入力キーボード"
             app:isPreferenceVisible="true">
+
             <ListPreference
-                android:defaultValue="flick-default"
-                android:dialogTitle="選択してください"
-                android:entries="@array/sumire_keyboard_input_options"
-                android:entryValues="@array/sumire_keyboard_input_values"
-                android:key="sumire_keyboard_input_type_preference"
-                android:summary="フリック入力 - Default"
+                android:defaultValue="toggle"
+                android:dialogTitle="方式を選択"
+                android:entries="@array/sumire_input_method_options"
+                android:entryValues="@array/sumire_input_method_values"
+                android:key="sumire_input_method_preference"
+                android:summary="%s"
+                android:title="キーの配置" />
+
+            <ListPreference
+                android:defaultValue="default"
+                android:dialogTitle="スタイルを選択"
+                android:entries="@array/sumire_keyboard_style_options"
+                android:entryValues="@array/sumire_keyboard_style_values"
+                android:key="sumire_keyboard_style_preference"
+                android:summary="%s"
                 android:title="入力スタイル" />
         </PreferenceCategory>
 
