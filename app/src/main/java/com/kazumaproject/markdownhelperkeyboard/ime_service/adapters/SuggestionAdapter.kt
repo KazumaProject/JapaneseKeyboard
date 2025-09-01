@@ -29,8 +29,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -194,11 +192,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         set(value) {
             // submitListの第2引数にコールバックを渡す
             differ.submitList(value) {
-                adapterScope.launch {
-                    delay(50)
-                    // リストの更新が完了し、UIに反映された後にこのブロックが実行される
-                    onListUpdated?.invoke()
-                }
+                onListUpdated?.invoke()
             }
         }
 
