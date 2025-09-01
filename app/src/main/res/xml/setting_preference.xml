@@ -51,6 +51,14 @@
                 android:title="パスワード入力時の変換候補" />
 
             <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:dependency="hide_candidate_password_preference"
+                android:key="password_compose_preference"
+                android:summaryOff="パスワード入力中に確定文字として扱います。"
+                android:summaryOn="パスワード入力中に未確定文字として扱います。"
+                android:title="パスワード入力中の文字列の設定" />
+
+            <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="henkan_delete_key_action_preference"
                 android:summaryOff="削除キータップ：ハイライト解除"
@@ -112,6 +120,13 @@
 
         <PreferenceCategory android:title="QWERTY キーボード">
             <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="qwerty_show_popup_window_preference"
+                android:summaryOff="キーを検知した際にウィンドウを表示しません。"
+                android:summaryOn="キーを検知した際にウィンドウを表示します。"
+                android:title="ポップアップウィンドウの表示" />
+
+            <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="qwerty_show_cursor_buttons_preference"
                 android:summaryOff="QWERTY キーボードにカーソルボタンを表示しません。"
@@ -172,13 +187,23 @@
             android:key="sumire_input_preference_category"
             android:title="スミレ入力キーボード"
             app:isPreferenceVisible="true">
+
             <ListPreference
-                android:defaultValue="flick-default"
-                android:dialogTitle="選択してください"
-                android:entries="@array/sumire_keyboard_input_options"
-                android:entryValues="@array/sumire_keyboard_input_values"
-                android:key="sumire_keyboard_input_type_preference"
-                android:summary="フリック入力 - Default"
+                android:defaultValue="toggle"
+                android:dialogTitle="方式を選択"
+                android:entries="@array/sumire_input_method_options"
+                android:entryValues="@array/sumire_input_method_values"
+                android:key="sumire_input_method_preference"
+                android:summary="%s"
+                android:title="キーの配置" />
+
+            <ListPreference
+                android:defaultValue="default"
+                android:dialogTitle="スタイルを選択"
+                android:entries="@array/sumire_keyboard_style_options"
+                android:entryValues="@array/sumire_keyboard_style_values"
+                android:key="sumire_keyboard_style_preference"
+                android:summary="%s"
                 android:title="入力スタイル" />
         </PreferenceCategory>
 

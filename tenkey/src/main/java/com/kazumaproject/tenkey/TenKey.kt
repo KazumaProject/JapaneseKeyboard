@@ -512,6 +512,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun setCurrentMode(inputMode: InputMode) {
+        Log.d("setCurrentMode", "$inputMode")
         _currentInputMode.update { inputMode }
     }
 
