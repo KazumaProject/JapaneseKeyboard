@@ -52,8 +52,6 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isInvisible
@@ -1216,15 +1214,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                         }
                     }
-                    ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
-                        val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                        systemBottomInset = insets.bottom
-                        windowInsets
-                    }
                     setupCustomKeyboardListeners(mainView)
                     setSuggestionRecyclerView(
-                        mainView,
-                        FlexboxLayoutManager(applicationContext).apply {
+                        mainView, FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
                             justifyContent = JustifyContent.FLEX_START
                         })
@@ -1237,8 +1229,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     setKeyboardSize()
                     updateClipboardPreview()
-                    mainView.suggestionRecyclerView.isVisible =
-                        suggestionViewStatus.value
+                    mainView.suggestionRecyclerView.isVisible = suggestionViewStatus.value
                 }
             }
         }
@@ -4970,9 +4961,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setSpaceKeyText("変換")
                             setReturnKeyText("確定")
                         }
-                    } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) ||
-                        qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish
-                    ) {
+                    } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
                         mainView.qwertyView.setReturnKeyText("done")
                     }
                     if (mainView.customLayoutDefault.isVisible) {
@@ -5107,9 +5096,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                                 setReturnKeyText(qwertyEnterKeyText)
                             }
-                        } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) ||
-                            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish
-                        ) {
+                        } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
                             val qwertyEnterKeyText = when (currentInputType) {
                                 InputTypeForIME.Text,
                                 InputTypeForIME.TextAutoComplete,
@@ -5529,12 +5516,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardSizeForHeightSymbol(
-        mainView: MainLayoutBinding,
-        isSymbol: Boolean
+        mainView: MainLayoutBinding, isSymbol: Boolean
     ) {
         Timber.d("setKeyboardSizeForHeightSymbol: called")
         val heightPref = appPreference.keyboard_height ?: 280
@@ -5571,7 +5556,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardSizeForHeightForFloatingMode(
@@ -5629,7 +5613,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
@@ -5713,7 +5696,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // Adjust suggestion view constraints since it's no longer attached to the parent bottom
         val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
         params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
-        params.setMargins(0, 8, 0, 0) // Example margin
         mainView.suggestionVisibility.layoutParams = params
     }
 
@@ -5774,7 +5756,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun updateSuggestionViewVisibility(
@@ -6253,9 +6234,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
-                        InputTypeForIME.TextEmailAddress,
-                        InputTypeForIME.TextEmailSubject,
-                        InputTypeForIME.TextNextLine -> {
+                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
@@ -6271,9 +6250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
-                        InputTypeForIME.TextWebSearchView,
-                        InputTypeForIME.TextWebSearchViewFireFox,
-                        InputTypeForIME.TextSearchView -> {
+                        InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
@@ -6610,8 +6587,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setSuggestionRecyclerView(
-        mainView: MainLayoutBinding,
-        flexboxLayoutManagerRow: FlexboxLayoutManager
+        mainView: MainLayoutBinding, flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
         suggestionAdapter?.let { adapter ->
             adapter.setOnItemClickListener { candidate, position ->
@@ -7455,8 +7431,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                 } else {
                     handlePartialOrExcessLength(
-                        insertString = insertString,
-                        candidate = candidate
+                        insertString = insertString, candidate = candidate
                     )
                 }
             }
@@ -9630,7 +9605,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardMarginBottom
             binding.root.layoutParams = params
         }
-        binding.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private val vibratorManager by lazy {
