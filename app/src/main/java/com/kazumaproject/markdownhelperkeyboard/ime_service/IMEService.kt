@@ -516,8 +516,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var countToggleKatakana = 0
 
-    private lateinit var linearLayoutManager: LinearLayoutManager
-
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -552,7 +550,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listAdapter.onPagerClicked = {
             goToNextPageForFloatingCandidate()
         }
-        linearLayoutManager = LinearLayoutManager(this, RecyclerView.HORIZONTAL, false)
     }
 
     override fun onCreateInputView(): View? {
@@ -6790,7 +6787,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         when (columnNum) {
             "1" -> {
-                mainView.suggestionRecyclerView.layoutManager = linearLayoutManager
+                mainView.suggestionRecyclerView.layoutManager =
+                    LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
             }
 
             "2", "3" -> {
