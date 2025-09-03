@@ -71,6 +71,7 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.isGalaxyDevice
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHiragana
@@ -376,6 +377,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isNgWordEnable: Boolean? = false
     private var deleteKeyHighLight: Boolean? = true
     private var customKeyboardSuggestionPreference: Boolean? = true
+    private var keyboardHeightFixForSpecificDevicePreference: Boolean? = false
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -588,6 +590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         if (!restarting) {
             resetAllFlags()
@@ -623,6 +626,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
+            keyboardHeightFixForSpecificDevicePreference =
+                keyboard_height_fix_for_specific_device_preference ?: false
             userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -963,6 +968,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
+        keyboardHeightFixForSpecificDevicePreference = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
@@ -5481,6 +5487,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setKeyboardSizeForHeight(
         mainView: MainLayoutBinding
     ) {
+        Timber.d("Keyboard Height: setKeyboardSizeForHeight called")
         if (hasHardwareKeyboardConnected != true) return
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
@@ -5521,7 +5528,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setKeyboardSizeForHeightSymbol(
         mainView: MainLayoutBinding, isSymbol: Boolean
     ) {
-        Timber.d("setKeyboardSizeForHeightSymbol: called")
+        Timber.d("Keyboard Height: setKeyboardSizeForHeightSymbol called")
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -5538,18 +5545,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
-        } else {
-            if (isPortrait) {
-                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    100
-                )
+        val defaultHeightSizeByDevice =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
+                52
             } else {
-                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                    65
-                )
+                100
             }
+        val keyboardHeight = if (isPortrait) {
+            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                defaultHeightSizeByDevice
+            )
+        } else {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                65
+            )
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
@@ -5561,6 +5570,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setKeyboardSizeForHeightForFloatingMode(
         mainView: MainLayoutBinding
     ) {
+        Timber.d("Keyboard Height: setKeyboardSizeForHeightForFloatingMode called")
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -5578,7 +5588,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val additionalHeightInDp =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
                 when (candidateViewHeight) {
                     "1" -> 52
                     "2" -> 58
@@ -5593,20 +5603,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     else -> 100
                 }
             }
-        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+        val keyboardHeight = if (isPortrait) {
+            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
             )
         } else {
-            if (isPortrait) {
-                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    additionalHeightInDp
-                )
-            } else {
-                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                    65
-                )
-            }
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                65
+            )
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
@@ -5616,6 +5620,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
+        Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
         if (currentInputType.isPassword()) return
         val columnNum = candidateColumns ?: "1"
 
@@ -5671,19 +5676,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        val additionalHeightForColumnsInDp = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            when (columnNum) {
-                "2" -> 37
-                "3" -> 75
-                else -> 0
+        val additionalHeightForColumnsInDp =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                when (columnNum) {
+                    "2" -> 37
+                    "3" -> 75
+                    else -> 0
+                }
+            } else {
+                when (columnNum) {
+                    "2" -> 75
+                    "3" -> 150
+                    else -> 0
+                }
             }
-        } else{
-            when (columnNum) {
-                "2" -> 75
-                "3" -> 150
-                else -> 0
-            }
-        }
         // 2. Convert the DP value to pixels.
         val additionalKeyboardHeight = applicationContext.dpToPx(additionalHeightForColumnsInDp)
 
@@ -5709,6 +5715,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (columnNum == "1" || isKeyboardFloatingMode == true) {
             return
         }
+        Timber.d("Keyboard Height: setKeyboardHeightDefault called")
         val heightPref = appPreference.keyboard_height ?: 280
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
@@ -5726,19 +5733,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val additionalHeightInDp =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
                 when (candidateViewHeight) {
                     "1" -> 52
                     "2" -> 58
                     "3" -> 64
-                    else -> 58
+                    else -> 52
                 }
             } else {
                 when (candidateViewHeight) {
                     "1" -> 100
                     "2" -> 110
                     "3" -> 120
-                    else -> 110
+                    else -> 100
                 }
             }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
