@@ -5671,13 +5671,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        // ★★★ CORRECTED SECTION ★★★
-        // 1. Define the additional height for columns in DP for proper scaling.
-        //    (Using 75dp and 150dp as examples; adjust these values as needed for your design).
-        val additionalHeightForColumnsInDp = when (columnNum) {
-            "2" -> 75
-            "3" -> 150
-            else -> 0
+        val additionalHeightForColumnsInDp = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            when (columnNum) {
+                "2" -> 37
+                "3" -> 75
+                else -> 0
+            }
+        } else{
+            when (columnNum) {
+                "2" -> 75
+                "3" -> 150
+                else -> 0
+            }
         }
         // 2. Convert the DP value to pixels.
         val additionalKeyboardHeight = applicationContext.dpToPx(additionalHeightForColumnsInDp)
