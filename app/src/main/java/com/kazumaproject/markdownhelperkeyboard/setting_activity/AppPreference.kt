@@ -75,6 +75,9 @@ object AppPreference {
     private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
     private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
 
+    private val KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE =
+        Pair("keyboard_height_fix_enable_preference", false)
+
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(
             KeyboardType.TENKEY,
@@ -386,6 +389,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
+        }
+
+    var keyboard_height_fix_for_specific_device_preference: Boolean?
+        get() = preferences.getBoolean(
+            KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.first,
+            KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.first, value ?: false)
         }
 
     var sumire_input_selection_preference: String?
