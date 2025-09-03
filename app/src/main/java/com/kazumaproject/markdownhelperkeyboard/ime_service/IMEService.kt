@@ -5590,7 +5590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     "1" -> 100
                     "2" -> 110
                     "3" -> 120
-                    else -> 110
+                    else -> 100
                 }
             }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -5651,7 +5651,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             "1" -> 52
             "2" -> 58
             "3" -> 64
-            else -> 58
+            else -> 52
         }
 
         // Calculate the main keyboard height including suggestions, all in pixels
