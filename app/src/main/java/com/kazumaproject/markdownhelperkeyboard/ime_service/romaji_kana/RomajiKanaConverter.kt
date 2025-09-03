@@ -264,14 +264,23 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
         var i = 0
 
         while (i < text.length) {
-            // ★★★ 最重要の変更点 ★★★
+            val currentChar = text[i]
+
             // 1. まず「n」の特別ルールをチェックする
-            //    - 次の文字が存在し、それが「a,i,u,e,o,y,n」のいずれでもない場合
-            if (text[i] == 'n' && i + 1 < text.length && text[i + 1] !in "aiueoyn") {
-                // 先に「ん」を追加し、インデックスを1つ進める
+            if (currentChar == 'n' && i + 1 < text.length && text[i + 1] !in "aiueoyn") {
                 result.append("ん")
                 i++
-                // このループは終了し、次の文字（子音や記号など）の処理に移る
+                continue
+            }
+
+            // ★★★ 変更点①：促音（「っ」）の特別ルールを追加 ★★★
+            //    - 次の文字が存在し、現在の文字と同じ子音である場合（'n'を除く）
+            if (i + 1 < text.length &&
+                currentChar == text[i + 1] &&
+                currentChar in "kstcpbdfghjmqrvwz"
+            ) { // 促音になりうる子音を指定
+                result.append("っ")
+                i++ // ★重要★ インデックスを1つだけ進める
                 continue
             }
 
@@ -286,16 +295,12 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
                 if (mapping != null) {
                     val (kana, consume) = mapping
 
-                    // 促音の処理
-                    if (kana == "っ" && segment.length >= 2) {
-                        result.append("っ").append(segment[0])
-                    } else {
-                        result.append(kana)
-                    }
+                    // ★★★ 変更点②：複雑な促音処理を削除し、単純化 ★★★
+                    result.append(kana)
 
                     i += consume
                     matched = true
-                    break // マッチしたので内側のループを抜ける
+                    break
                 }
             }
 
@@ -315,6 +320,7 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
      * @param text 変換対象の文字列。
      * @return 変換後の文字列。
      */
+
     fun convertQWERTY(text: String): String {
         val result = StringBuilder()
         var i = 0
@@ -322,7 +328,6 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
         while (i < text.length) {
             val currentChar = text[i]
 
-            // ★★★ この関数の中核的な変更点 ★★★
             // 1. '[' または ']' の場合は、変換せずにそのまま追加し、次の文字へ進む
             if (currentChar == '[' || currentChar == ']') {
                 result.append(currentChar)
@@ -330,7 +335,19 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
                 continue
             }
 
-            // 2. 「n」の特別ルールをチェックする
+            // ★★★ この関数の中核的な変更点 ★★★
+            // 2. 促音（「っ」）のルールを追加
+            //    - 次の文字が存在し、現在の文字と同じ子音である場合（'n'を除く）
+            if (i + 1 < text.length &&
+                currentChar == text[i + 1] &&
+                currentChar in "kstcpbdfghljmqrvwxyz"
+            ) { // 促音になりうる子音を指定
+                result.append("っ")
+                i++ // ★重要★ インデックスを1つだけ進める
+                continue
+            }
+
+            // 3. 「n」の特別ルールをチェックする
             //    - 次の文字が存在し、それが「a,i,u,e,o,y,n」のいずれでもない場合
             if (currentChar == 'n' && i + 1 < text.length && text[i + 1] !in "aiueoyn") {
                 result.append("ん")
@@ -339,11 +356,12 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
             }
 
             var matched = false
-            // 3. 上記のルールに当てはまらない場合、通常通りもっとも長い組み合わせから探す
+            // 4. 上記のルールに当てはまらない場合、通常通りもっとも長い組み合わせから探す
             for (len in maxKeyLength downTo 1) {
                 if (i + len > text.length) continue
 
                 val segment = text.substring(i, i + len)
+                // 'ss'のような組み合わせはマッピングテーブルから削除するか、このロジックで処理されるので不要
                 val mapping = romajiToKana[segment]
 
                 if (mapping != null) {
@@ -355,7 +373,7 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
                 }
             }
 
-            // 4. マッチしなかった文字はそのまま追加
+            // 5. マッチしなかった文字はそのまま追加
             if (!matched) {
                 result.append(text[i])
                 i++

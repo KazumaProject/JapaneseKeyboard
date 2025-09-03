@@ -15,6 +15,13 @@
             android:summary="キーボードの位置とサイズの設定を変更できます"
             android:title="位置とサイズの設定" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="keyboard_height_fix_enable_preference"
+            android:summaryOff="一部端末向けの高さ補正は無効です。"
+            android:summaryOn="一部端末向けの高さ補正は有効です（例：Galaxy）。"
+            android:title="端末別の高さ補正" />
+
         <PreferenceCategory android:title="変換候補">
             <SeekBarPreference
                 android:defaultValue="4"
@@ -64,6 +71,7 @@
                 android:summaryOff="削除キータップ：ハイライト解除"
                 android:summaryOn="削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す"
                 android:title="候補ハイライト時の削除キー動作" />
+
         </PreferenceCategory>
 
         <PreferenceCategory android:title="機能">

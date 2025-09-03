@@ -1,6 +1,7 @@
 package com.kazumaproject.core.domain.extensions
 
 import android.content.Context
+import android.os.Build
 
 /**
  * Context 拡張: dp → px（Int 版）
@@ -65,3 +66,7 @@ fun android.view.View.dpToPx(dp: Int): Int =
  */
 fun android.view.View.pxToDp(px: Int): Int =
     context.pxToDp(px)
+
+fun isGalaxyDevice(): Boolean {
+    return Build.MANUFACTURER.equals("samsung", ignoreCase = true)
+}
