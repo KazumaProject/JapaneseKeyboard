@@ -5555,9 +5555,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val defaultHeightSizeByDevice =
             when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> 48
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> 52
-                else -> 100
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 48
+                        "2" -> 54
+                        "3" -> 60
+                        else -> 48
+                    }
+                }
+
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    when (candidateViewHeight) {
+                        "1" -> 52
+                        "2" -> 58
+                        "3" -> 64
+                        else -> 52
+                    }
+                }
+
+                else -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
             }
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
@@ -5598,11 +5621,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val additionalHeightInDp =
             when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> 48
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> 52
-                else -> 100
-            }
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 48
+                        "2" -> 54
+                        "3" -> 60
+                        else -> 48
+                    }
+                }
 
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    when (candidateViewHeight) {
+                        "1" -> 52
+                        "2" -> 58
+                        "3" -> 64
+                        else -> 52
+                    }
+                }
+
+                else -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
+            }
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
@@ -5653,22 +5698,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         // Determine additional height for suggestion bar in dp
-        val suggestionHeightInDp = when (candidateViewHeight) {
-            "1" -> 52
-            "2" -> 58
-            "3" -> 64
-            else -> 52
-        }
+        val suggestionHeightInDp =
+            when {
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 48
+                        "2" -> 54
+                        "3" -> 60
+                        else -> 48
+                    }
+                }
+
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    when (candidateViewHeight) {
+                        "1" -> 52
+                        "2" -> 58
+                        "3" -> 64
+                        else -> 52
+                    }
+                }
+
+                else -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
+            }
 
         // Calculate the main keyboard height including suggestions, all in pixels
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
                 suggestionHeightInDp
             )
         } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                65
-            )
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    suggestionHeightInDp
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    65
+                )
+            }
         }
 
         val additionalHeightForColumnsInDp =
@@ -5731,20 +5805,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val additionalHeightInDp =
             when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> 48
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> 52
-                else -> 100
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 48
+                        "2" -> 54
+                        "3" -> 60
+                        else -> 48
+                    }
+                }
+
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    when (candidateViewHeight) {
+                        "1" -> 52
+                        "2" -> 58
+                        "3" -> 64
+                        else -> 52
+                    }
+                }
+
+                else -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
             }
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
             )
         } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                65
-            )
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    additionalHeightInDp
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    65
+                )
+            }
         }
-
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
             params.bottomMargin = keyboardBottomMargin
