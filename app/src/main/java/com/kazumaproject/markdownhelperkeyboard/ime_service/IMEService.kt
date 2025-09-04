@@ -5554,10 +5554,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val defaultHeightSizeByDevice =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
-                52
-            } else {
-                100
+            when {
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> 48
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> 52
+                else -> 100
             }
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
@@ -5661,20 +5661,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         // Calculate the main keyboard height including suggestions, all in pixels
-        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+        val keyboardHeight = if (isPortrait) {
+            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 suggestionHeightInDp
             )
         } else {
-            if (isPortrait) {
-                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    suggestionHeightInDp
-                )
-            } else {
-                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                    65
-                )
-            }
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                65
+            )
         }
 
         val additionalHeightForColumnsInDp =
@@ -5736,36 +5730,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val additionalHeightInDp =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
-                when (candidateViewHeight) {
-                    "1" -> 52
-                    "2" -> 58
-                    "3" -> 64
-                    else -> 52
-                }
-            } else {
-                when (candidateViewHeight) {
-                    "1" -> 100
-                    "2" -> 110
-                    "3" -> 120
-                    else -> 100
-                }
+            when {
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> 48
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> 52
+                else -> 100
             }
-        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+        val keyboardHeight = if (isPortrait) {
+            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
             )
         } else {
-            if (isPortrait) {
-                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    additionalHeightInDp
-                )
-            } else {
-                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                    65
-                )
-            }
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                65
+            )
         }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
             params.bottomMargin = keyboardBottomMargin
