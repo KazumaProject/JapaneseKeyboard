@@ -52,6 +52,8 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import androidx.core.view.isInvisible
@@ -1219,6 +1221,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                         }
+                    }
+                    ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
+                        val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                        systemBottomInset = insets.bottom
+                        windowInsets
                     }
                     setupCustomKeyboardListeners(mainView)
                     setSuggestionRecyclerView(
@@ -5523,6 +5530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardSizeForHeightSymbol(
@@ -5565,6 +5573,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardSizeForHeightForFloatingMode(
@@ -5617,6 +5626,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
@@ -5708,6 +5718,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
         params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
         mainView.suggestionVisibility.layoutParams = params
+
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
@@ -5768,6 +5780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
     private fun updateSuggestionViewVisibility(
