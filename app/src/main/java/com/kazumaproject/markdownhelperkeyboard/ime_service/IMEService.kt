@@ -5597,21 +5597,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         val additionalHeightInDp =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
-                when (candidateViewHeight) {
-                    "1" -> 52
-                    "2" -> 58
-                    "3" -> 64
-                    else -> 58
-                }
-            } else {
-                when (candidateViewHeight) {
-                    "1" -> 100
-                    "2" -> 110
-                    "3" -> 120
-                    else -> 100
-                }
+            when {
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> 48
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> 52
+                else -> 100
             }
+
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
@@ -5687,7 +5678,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val additionalHeightForColumnsInDp =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
                 when (columnNum) {
                     "2" -> 37
                     "3" -> 75
