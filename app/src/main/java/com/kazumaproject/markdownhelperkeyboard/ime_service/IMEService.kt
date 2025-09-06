@@ -2973,6 +2973,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentKeyboardOrder = position
                 onKeyboardSwitchLongPressUp = false
                 val nextType = keyboardOrder[position]
+                when (nextType) {
+                    KeyboardType.TENKEY -> {
+                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    }
+
+                    KeyboardType.SUMIRE -> {
+                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    }
+
+                    KeyboardType.ROMAJI -> {
+                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    }
+
+                    KeyboardType.QWERTY -> {
+                        mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                    }
+
+                    KeyboardType.CUSTOM -> {}
+                }
                 showKeyboard(nextType)
                 keyboardSelectionPopupWindow?.dismiss()
             }
@@ -9262,6 +9281,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // モジュール演算で自動的に 0 に戻る
         val nextIndex = (currentKeyboardOrder + 1) % keyboardOrder.size
         val nextType = keyboardOrder[nextIndex]
+
+        when (nextType) {
+            KeyboardType.TENKEY -> {
+                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+            }
+
+            KeyboardType.SUMIRE -> {
+                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+            }
+
+            KeyboardType.ROMAJI -> {
+                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+            }
+
+            KeyboardType.QWERTY -> {
+                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeEnglish)
+            }
+
+            KeyboardType.CUSTOM -> {}
+        }
 
         // 統一された showKeyboard 関数を呼び出す
         showKeyboard(nextType)
