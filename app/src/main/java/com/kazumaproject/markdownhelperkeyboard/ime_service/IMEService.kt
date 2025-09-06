@@ -5542,21 +5542,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                     when (candidateViewHeight) {
                         "1" -> 52
                         "2" -> 58
                         "3" -> 64
                         else -> 52
+                    }
+                }
+
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
                     }
                 }
 
@@ -5626,21 +5626,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                     when (candidateViewHeight) {
                         "1" -> 52
                         "2" -> 58
                         "3" -> 64
                         else -> 52
+                    }
+                }
+
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
                     }
                 }
 
@@ -5710,21 +5710,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                     when (candidateViewHeight) {
                         "1" -> 52
                         "2" -> 58
                         "3" -> 64
                         else -> 52
+                    }
+                }
+
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
                     }
                 }
 
@@ -5807,21 +5807,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                     when (candidateViewHeight) {
                         "1" -> 52
                         "2" -> 58
                         "3" -> 64
                         else -> 52
+                    }
+                }
+
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
                     }
                 }
 
@@ -5957,15 +5957,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 isTablet == false && !isPortrait -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                !isPortrait && isTablet == false -> {
                     when (candidateViewHeight) {
                         "1" -> 52
                         "2" -> 58
