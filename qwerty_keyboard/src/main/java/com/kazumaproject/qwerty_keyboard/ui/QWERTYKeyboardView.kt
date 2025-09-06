@@ -962,7 +962,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 it.id != binding.keyReturn.id &&
                 it.id != binding.keySwitchDefault.id &&
                 it.id != binding.cursorLeft.id &&
-                it.id != binding.cursorRight.id
+                it.id != binding.cursorRight.id &&
+                it.id != binding.switchRomajiEnglish.id
             ) {
                 showKeyPreview(it)
             }
