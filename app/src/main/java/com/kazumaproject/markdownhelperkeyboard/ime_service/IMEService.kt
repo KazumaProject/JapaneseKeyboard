@@ -5531,18 +5531,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(52)
-        } else {
-            if (isPortrait) {
-                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                    100
-                )
-            } else {
-                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                    65
-                )
+        val defaultHeightSizeByDevice =
+            when {
+                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 48
+                        "2" -> 54
+                        "3" -> 60
+                        else -> 48
+                    }
+                }
+
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
+
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    when (candidateViewHeight) {
+                        "1" -> 52
+                        "2" -> 58
+                        "3" -> 64
+                        else -> 52
+                    }
+                }
+
+                else -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
             }
+        val keyboardHeight = if (isPortrait) {
+            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                defaultHeightSizeByDevice
+            )
+        } else {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                defaultHeightSizeByDevice
+            )
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
@@ -5583,6 +5617,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
+
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                     when (candidateViewHeight) {
                         "1" -> 52
@@ -5607,7 +5650,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         } else {
             if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                65
+                defaultHeightSizeByDevice
             )
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
@@ -5649,6 +5692,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
+
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                     when (candidateViewHeight) {
                         "1" -> 52
@@ -5673,7 +5725,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         } else {
             if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                65
+                additionalHeightInDp
             )
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
@@ -5728,6 +5780,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
+
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
                     when (candidateViewHeight) {
                         "1" -> 52
@@ -5759,7 +5820,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                    65
+                    suggestionHeightInDp
                 )
             }
         }
@@ -5772,10 +5833,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     else -> 0
                 }
             } else {
-                when (columnNum) {
-                    "2" -> 75
-                    "3" -> 150
-                    else -> 0
+                if (isTablet == true) {
+                    when (columnNum) {
+                        "2" -> 37
+                        "3" -> 75
+                        else -> 0
+                    }
+                } else {
+                    when (columnNum) {
+                        "2" -> 70
+                        "3" -> 140
+                        else -> 0
+                    }
                 }
             }
         // 2. Convert the DP value to pixels.
@@ -5833,7 +5902,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
+                isTablet == true -> {
+                    when (candidateViewHeight) {
+                        "1" -> 100
+                        "2" -> 110
+                        "3" -> 120
+                        else -> 100
+                    }
+                }
+
                 Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    when (candidateViewHeight) {
+                        "1" -> 52
+                        "2" -> 58
+                        "3" -> 64
+                        else -> 52
+                    }
+                }
+
+                isTablet == false && !isPortrait -> {
                     when (candidateViewHeight) {
                         "1" -> 52
                         "2" -> 58
@@ -5862,7 +5949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             } else {
                 if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                    65
+                    additionalHeightInDp
                 )
             }
         }
