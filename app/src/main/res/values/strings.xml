@@ -1,17 +1,181 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="edit_text">編集</string>
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="user_dictionary_title">ユーザー辞書</string>
-    <string name="duplicate_keyboard">キーボードを複製</string>
-    <string name="delete_keyboard">キーボードを削除</string>
-    <string name="edit_keyboard">キーボードを編集</string>
-    <string name="edit_key">キーを編集</string>
-    <string name="open_sorce_title">使用したライブラリ一覧</string>
-    <string name="user_template">定型文</string>
-    <string name="user_dictionary_explanation">この画面では、キーボードの予測変換に表示させたい単語を自由に登録できます。\n登録した単語は、その「読み」を設定した文字数以上入力することで、キーボードの変換候補として表示されるようになります。\n\n例：\n単語:「お疲れ様です。」 読み:「おつかれさまです」\n→「おつ」と入力すると「お疲れ様です。」が候補に表示されます。</string>
-    <string name="user_dictionary_about_title">ユーザー辞書とは</string>
-    <string name="user_template_explanation"><![CDATA[メールアドレスやコードスニペット、Markdownの表などを短い「読み」で登録できます。キーボードで登録した「読み」を正確に入力すると、変換候補に登録した全文が表示されます。\n\n例:\n- 読み: myemail\n 定型文: my.long.email.address@example.com\n- 読み: html5\n 定型文: <!DOCTYPE html><html>…</html>]]></string>
-    <string name="clipboard_history_title">クリップボードの履歴</string>
+    <string name="edit_text">Edit</string>
+    <string name="user_dictionary_title">User Dictionary</string>
+    <string name="duplicate_keyboard">Duplicate Keyboard</string>
+    <string name="delete_keyboard">Delete Keyboard</string>
+    <string name="edit_keyboard">Edit Keyboard</string>
+    <string name="edit_key">Edit Key</string>
+    <string name="open_sorce_title">Open source licenses</string>
+    <string name="user_template">User Template</string>
+    <string name="user_dictionary_explanation">On this screen, you can freely register words that you want to appear in the keyboard predictive conversion.\nRegistered words will appear as conversion candidates on the keyboard once you type at least the number of characters specified in their &quot;reading&quot;.</string>
+    <string name="user_dictionary_about_title">What is the User Dictionary?</string>
+    <string name="user_template_explanation"><![CDATA[You can register email addresses, code snippets, Markdown tables, and more with short "readings". When you type the registered "reading" exactly on the keyboard, the full registered text will appear as a conversion candidate.\n\nExamples:\n- Reading: myemail\n  Template: my.long.email.address@example.com\n- Reading: html5\n  Template: <!DOCTYPE html><html>…</html>]]></string>
+    <string name="clipboard_history_title">Clipboard History</string>
     <string name="dialog_image_description">dialog_image_description</string>
+    <string name="keyboard_selection_summary">You can add or remove keyboards</string>
+    <string name="keyboard_selection_preference_title">Keyboard Selection</string>
+    <string name="category_title_keyboard">Keyboard</string>
+    <string name="keyboard_screen_size_preference_title">Position and Size</string>
+    <string name="keyboard_screen_preference_summary">Adjust keyboard position and size</string>
+    <string name="keyboard_height_fix_specific_device_title">Height Adjustment by Device</string>
+    <string name="keyboard_height_fix_specific_device_summary_on">Height adjustment for certain devices is enabled (e.g., Galaxy).</string>
+    <string name="keyboard_height_fix_specific_device_summary_off">Height adjustment for certain devices is disabled.</string>
+    <string name="conversion_preference_title">Conversion</string>
+    <string name="n_best_preference_summary">Set the maximum number of conversion candidates to display.</string>
+    <string name="preference_title_num_columns_conversion">Number of columns for conversion candidates</string>
+    <string name="preference_summary_num_column_conversion">Set the number of columns when displaying conversion candidates.</string>
+    <string name="preference_dialog_title_num_columns_conversion">Please select the number of candidate columns.</string>
+    <string name="candidate_view_height_title">Height of conversion candidates</string>
+    <string name="candidate_view_height_summary">Setting for the height of the View that displays conversion candidates.</string>
+    <string name="candidate_height_dialog_title">Please select the height of the View that displays conversion candidates.</string>
+    <string name="hide_candidate_password_title">Conversion candidates for passwords</string>
+    <string name="hide_candidate_password_summary_on">Don\'t show conversion candidates while typing a password</string>
+    <string name="hide_candidate_password_summary_off">Show conversion candidates while typing a password</string>
+    <string name="password_compose_title">Text settings during password input</string>
+    <string name="password_compose_summary_on">Treat as pre-edit text during password input.</string>
+    <string name="password_compose_summary_off">Treat as committed text during password input.</string>
+    <string name="henkan_delete_key_action_title">Delete key action on highlighted candidate</string>
+    <string name="henkan_delete_key_action_summary_on">Long press Delete: Unhighlight\nTap Delete: Move selection back one place</string>
+    <string name="henkan_delete_key_action_summary_off">Tap Delete: Unhighlight</string>
+    <string name="category_function_title">Features</string>
+    <string name="category_romaji_conversion_title">Romaji Conversion</string>
+    <string name="category_qwerty_keyboard_title">QWERTY Keyboard</string>
+    <string name="category_symbol_keyboard_title">Symbol Keyboard</string>
+    <string name="category_custom_keyboard_title">Custom Keyboard</string>
+    <string name="category_sumire_input_keyboard_title">Sumire Input Keyboard</string>
+    <string name="category_operation_title">Operation</string>
+    <string name="category_vibration_title">Vibration</string>
+    <string name="category_ng_word_title">NG Words</string>
+    <string name="category_ng_word_summary">You can register words by long-pressing a conversion candidate.</string>
+    <string name="category_learning_dictionary_title">Learning Dictionary</string>
+    <string name="category_user_dictionary_title">User Dictionary</string>
+    <string name="category_template_title">Templates</string>
+
+    <string name="flick_input_only_title">Flick/Toggle Input</string>
+    <string name="flick_input_only_summary_on">Use only flick input and disable toggle input</string>
+    <string name="flick_input_only_summary_off">Enable toggle input</string>
+    <string name="undo_enable_title">Undo Function</string>
+    <string name="undo_enable_summary">Disable the undo function</string>
+    <string name="space_key_title">Half-width space input</string>
+    <string name="space_key_summary">Input spaces as half-width</string>
+    <string name="live_conversion_title">Live Conversion β</string>
+    <string name="live_conversion_summary_on">Live conversion is enabled</string>
+    <string name="live_conversion_summary_off">Live conversion is disabled</string>
+    <string name="omission_search_title">Omit Modifier Key Input</string>
+    <string name="omission_search_summary_on">Omit modifier key input is enabled\ne.g., "かつこう" → "がっこう"</string>
+    <string name="omission_search_summary_off">Omit modifier key input is disabled</string>
+    <string name="flick_sensitivity_title">Flick Input Sensitivity</string>
+
+    <string name="custom_romaji_title">Customize Romaji Conversion</string>
+    <string name="custom_romaji_summary">Create and select a Romaji conversion table</string>
+
+    <string name="qwerty_show_popup_window_title">Show Popup Window</string>
+    <string name="qwerty_show_popup_window_summary_on">Show a window when a key is detected.</string>
+    <string name="qwerty_show_popup_window_summary_off">Do not show a window when a key is detected.</string>
+    <string name="qwerty_show_cursor_buttons_title">Cursor Buttons</string>
+    <string name="qwerty_show_cursor_buttons_summary_on">Show cursor buttons on the QWERTY keyboard.</string>
+    <string name="qwerty_show_cursor_buttons_summary_off">Do not show cursor buttons on the QWERTY keyboard.</string>
+    <string name="qwerty_show_kutouten_buttons_title">Punctuation Buttons</string>
+    <string name="qwerty_show_kutouten_buttons_summary_on">Show punctuation (、。) buttons on the QWERTY keyboard.</string>
+    <string name="qwerty_show_kutouten_buttons_summary_off">Do not show punctuation (、。) buttons on the QWERTY keyboard.</string>
+    <string name="qwerty_show_switch_ime_button_title">Switch IME Button</string>
+    <string name="qwerty_show_switch_ime_button_summary_on">Show the keyboard switch (globe icon) button.</string>
+    <string name="qwerty_show_switch_ime_button_summary_off">Do not show the keyboard switch (globe icon) button.</string>
+
+    <string name="symbol_mode_title">Initial Screen for Symbol Keyboard</string>
+    <string name="symbol_mode_summary">Select the initial screen for the symbol keyboard</string>
+    <string name="symbol_mode_dialog_title">Select initial screen</string>
+
+    <string name="custom_keyboard_two_words_title">Auto-commit for 2+ characters</string>
+    <string name="custom_keyboard_two_words_summary_on">Automatically commits when a custom key outputs 2 or more characters.</string>
+    <string name="custom_keyboard_two_words_summary_off">Does not auto-commit even when a custom key outputs 2 or more characters.</string>
+    <string name="custom_keyboard_suggestion_title">Display when no text is entered</string>
+    <string name="custom_keyboard_suggestion_summary_on">Show a list from the custom tab when no text is entered.</string>
+    <string name="custom_keyboard_suggestion_summary_off">Keep the standard display (clipboard, etc.) when no text is entered.</string>
+
+    <string name="clipboard_history_fragment_title">Clipboard History</string>
+    <string name="clipboard_history_fragment_summary">Show clipboard history</string>
+
+    <string name="sumire_input_method_title">Key Layout</string>
+    <string name="sumire_input_method_dialog_title">Select method</string>
+    <string name="sumire_keyboard_style_title">Input Style</string>
+    <string name="sumire_keyboard_style_dialog_title">Select style</string>
+
+    <string name="time_same_pronounce_typing_title">Input Wait Time</string>
+    <string name="time_same_pronounce_typing_summary">Time to wait for the next input in toggle mode (milliseconds)</string>
+
+    <string name="vibration_title">Enable Vibration</string>
+    <string name="vibration_summary_on">Vibrates when a key is tapped</string>
+    <string name="vibration_summary_off">Does not vibrate when a key is tapped</string>
+    <string name="vibration_timing_title">Vibration Timing</string>
+    <string name="vibration_timing_summary">Select when to trigger vibration</string>
+    <string name="vibration_timing_dialog_title">Please select</string>
+
+    <string name="ng_word_list_title">List of words to hide</string>
+    <string name="ng_word_list_summary">Display the list of words to hide</string>
+
+    <string name="learn_dictionary_title">Learning Dictionary</string>
+    <string name="learn_dictionary_summary_on">Enable learning dictionary\nShows learned conversion candidates</string>
+    <string name="learn_dictionary_summary_off">Disable learning dictionary\nDoes not show learned conversion candidates</string>
+
+    <string name="user_dictionary_summary_on">Enable predictive conversion for user dictionary\nShows registered words as predictive candidates</string>
+    <string name="user_dictionary_summary_off">Disable predictive conversion for user dictionary</string>
+    <string name="user_dictionary_prefix_match_title">Predictive Conversion</string>
+
+    <string name="user_template_title">Templates</string>
+    <string name="user_template_summary_on">Enable templates\nShows registered words in conversion candidates</string>
+    <string name="user_template_summary_off">Disable templates</string>
+
+    <string name="category_mozc_ut_title">Mozc UT</string>
+    <string name="category_about_app_title">About the app</string>
+
+    <string name="mozc_ut_person_name_title">Personal Names</string>
+    <string name="mozc_ut_person_name_summary_on">Adds a personal name dictionary</string>
+    <string name="mozc_ut_person_name_summary_off">Disabled</string>
+
+    <string name="mozc_ut_places_title">Addresses</string>
+    <string name="mozc_ut_places_summary_on">Adds an address dictionary</string>
+    <string name="mozc_ut_places_summary_off">Disabled</string>
+
+    <string name="mozc_ut_web_title">Web</string>
+    <string name="mozc_ut_web_summary_on">Adds a dictionary created by extracting words common to both the latest Wikipedia and Neologd.</string>
+    <string name="mozc_ut_web_summary_off">Disabled</string>
+
+    <string name="mozc_ut_wiki_title">Wiki</string>
+    <string name="mozc_ut_wiki_summary_on">Adds a dictionary created by extracting words found only in the latest Wikipedia.</string>
+    <string name="mozc_ut_wiki_summary_off">Disabled</string>
+
+    <string name="mozc_ut_neologd_title">Neologd</string>
+    <string name="mozc_ut_neologd_summary_on">Adds a dictionary created by extracting words found only in Neologd.</string>
+    <string name="mozc_ut_neologd_summary_off">Disabled</string>
+
+    <string name="open_source_libraries_title">Open Source libraries used</string>
+    <string name="app_version_title">App version</string>
+
+    <string name="user_dictionary_prefix_match_summary">Shows words registered in the user dictionary as conversion candidates with a prefix match of %1$d characters</string>
+
+    <string name="undo_enable_summary_on">Enables the ability to undo when you delete committed text</string>
+    <string name="undo_enable_summary_off">Disables the ability to undo when you delete committed text</string>
+
+    <string name="space_key_title_hankaku">Half-width space input</string>
+    <string name="space_key_title_zenkaku">Full-width space input</string>
+    <string name="space_key_summary_hankaku">Currently in half-width input mode.\nFlick left for a full-width space</string>
+    <string name="space_key_summary_zenkaku">Currently in full-width input mode.\nFlick left for a half-width space</string>
+
+    <string name="ng_word_enable_title_on">Enable NG Words</string>
+    <string name="ng_word_enable_title_off">Disable NG Words</string>
+    <string name="ng_word_fragment_title">NG Words List</string>
+    <string name="romaji_map_fragment_title">Edit Romaji Map</string>
+    <string name="romaji_conversion_map_fragment_title">Custom Romaji Map</string>
+    <string name="clipboard_fragment_title">Clipboard History</string>
+    <string name="user_template_fragment_title">User Template</string>
+
+    <string name="setting_fragment_title">Settings</string>
+    <string name="custom_layout_fragment_title">Custom Keyboard</string>
+    <string name="learn_dictionary_fragment_title">Learning Dictionary</string>
+    <string name="category_language_title">Language</string>
+    <string name="language_display_title">Language to display in settings</string>
+    <string name="app_language_summary_on">Japanese</string>
+    <string name="app_language_summary_off">System language</string>
 </resources>
