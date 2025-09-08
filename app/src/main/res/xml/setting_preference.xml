@@ -74,183 +74,183 @@
 
         </PreferenceCategory>
 
-        <PreferenceCategory android:title="機能">
+        <PreferenceCategory android:title="@string/category_function_title">
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="flick_input_only_preference"
-                android:summaryOff="トグル入力を有効にします"
-                android:summaryOn="フリック入力のみを使用し、トグル入力を無効にする"
-                android:title="フリック・トグル入力" />
+                android:summaryOff="@string/flick_input_only_summary_off"
+                android:summaryOn="@string/flick_input_only_summary_on"
+                android:title="@string/flick_input_only_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="undo_enable_preference"
-                android:summary="元に戻す機能を無効にする"
-                android:title="元に戻す機能" />
+                android:summary="@string/undo_enable_summary"
+                android:title="@string/undo_enable_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="space_key_preference"
-                android:summary="空白を半角入力"
-                android:title="空白を半角入力" />
+                android:summary="@string/space_key_summary"
+                android:title="@string/space_key_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="live_conversion_preference"
-                android:summaryOff="ライブ変換は無効です"
-                android:summaryOn="ライブ変換は有効です"
-                android:title="ライブ変換 β" />
+                android:summaryOff="@string/live_conversion_summary_off"
+                android:summaryOn="@string/live_conversion_summary_on"
+                android:title="@string/live_conversion_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="omission_search_preference"
-                android:summaryOff="修飾キー省略入力は無効です"
-                android:summaryOn="修飾キー省略入力は有効です\nかつこう → がっこう"
-                android:title="修飾キー省略入力" />
+                android:summaryOff="@string/omission_search_summary_off"
+                android:summaryOn="@string/omission_search_summary_on"
+                android:title="@string/omission_search_title" />
 
             <SeekBarPreference
                 android:defaultValue="100"
                 android:key="flick_sensitivity_preference"
                 android:max="200"
-                android:title="フリック入力の感度"
+                android:title="@string/flick_sensitivity_title"
                 app:min="10"
                 app:seekBarIncrement="10"
                 app:showSeekBarValue="true" />
         </PreferenceCategory>
 
-        <PreferenceCategory android:title="ローマ字変換">
+        <PreferenceCategory android:title="@string/category_romaji_conversion_title">
             <Preference
                 android:icon="@drawable/outline_border_color_24"
                 android:key="custom_romaji_preference"
-                android:title="ローマ字変換のカスタマイズ"
-                app:summary="ローマ字の変換表を作成、選択します" />
+                android:title="@string/custom_romaji_title"
+                app:summary="@string/custom_romaji_summary" />
         </PreferenceCategory>
 
-        <PreferenceCategory android:title="QWERTY キーボード">
+        <PreferenceCategory android:title="@string/category_qwerty_keyboard_title">
             <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="qwerty_show_popup_window_preference"
-                android:summaryOff="キーを検知した際にウィンドウを表示しません。"
-                android:summaryOn="キーを検知した際にウィンドウを表示します。"
-                android:title="ポップアップウィンドウの表示" />
+                android:summaryOff="@string/qwerty_show_popup_window_summary_off"
+                android:summaryOn="@string/qwerty_show_popup_window_summary_on"
+                android:title="@string/qwerty_show_popup_window_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="qwerty_show_cursor_buttons_preference"
-                android:summaryOff="QWERTY キーボードにカーソルボタンを表示しません。"
-                android:summaryOn="QWERTY キーボードにカーソルボタンを表示します。"
-                android:title="カーソルボタン" />
+                android:summaryOff="@string/qwerty_show_cursor_buttons_summary_off"
+                android:summaryOn="@string/qwerty_show_cursor_buttons_summary_on"
+                android:title="@string/qwerty_show_cursor_buttons_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="qwerty_show_kutouten_buttons_preference"
-                android:summaryOff="QWERTY キーボードに句読点（、。）ボタンを表示しません。"
-                android:summaryOn="QWERTY キーボードに句読点（、。）ボタンを表示します。"
-                android:title="句読点ボタン" />
+                android:summaryOff="@string/qwerty_show_kutouten_buttons_summary_off"
+                android:summaryOn="@string/qwerty_show_kutouten_buttons_summary_on"
+                android:title="@string/qwerty_show_kutouten_buttons_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="qwerty_show_switch_ime_button_preference"
-                android:summaryOff="キーボード切り替え（地球儀アイコン）ボタンを表示しません。"
-                android:summaryOn="キーボード切り替え（地球儀アイコン）ボタンを表示します。"
-                android:title="IME 切り替えボタン" />
+                android:summaryOff="@string/qwerty_show_switch_ime_button_summary_off"
+                android:summaryOn="@string/qwerty_show_switch_ime_button_summary_on"
+                android:title="@string/qwerty_show_switch_ime_button_title" />
         </PreferenceCategory>
 
-        <PreferenceCategory android:title="記号キーボード">
+        <PreferenceCategory android:title="@string/category_symbol_keyboard_title">
             <ListPreference
                 android:defaultValue="EMOJI"
-                android:dialogTitle="初期画面を選択"
+                android:dialogTitle="@string/symbol_mode_dialog_title"
                 android:entries="@array/symbol_mode_entries"
                 android:entryValues="@array/symbol_mode_values"
                 android:key="symbol_mode_preference"
-                android:summary="記号キーボードの初期画面を選択します"
-                android:title="記号キーボードの初期画面" />
+                android:summary="@string/symbol_mode_summary"
+                android:title="@string/symbol_mode_title" />
         </PreferenceCategory>
 
-        <PreferenceCategory android:title="カスタムキーボード">
+        <PreferenceCategory android:title="@string/category_custom_keyboard_title">
             <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="custom_keyboard_two_words_preference"
-                android:title="２文字以上の出力を自動で確定"
-                app:summaryOff="カスタムキーで2文字以上を出力しても、自動で確定しません。"
-                app:summaryOn="カスタムキーで2文字以上を出力したとき、自動で確定します。" />
+                android:title="@string/custom_keyboard_two_words_title"
+                app:summaryOff="@string/custom_keyboard_two_words_summary_off"
+                app:summaryOn="@string/custom_keyboard_two_words_summary_on" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="custom_keyboard_suggestion_preference"
-                android:summaryOff="文字を入力していないときは、標準の表示（クリップボードなど）のままにします。"
-                android:summaryOn="文字を入力していないときは、カスタムタブの一覧を表示します。"
-                android:title="未入力時の表示" />
+                android:summaryOff="@string/custom_keyboard_suggestion_summary_off"
+                android:summaryOn="@string/custom_keyboard_suggestion_summary_on"
+                android:title="@string/custom_keyboard_suggestion_title" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="@string/clipboard_history_title">
             <Preference
                 android:icon="@drawable/outline_border_color_24"
                 android:key="clipboard_history_preference_fragment"
-                android:title="クリップボードの履歴"
-                app:summary="クリップボードの履歴を表示" />
+                android:title="@string/clipboard_history_fragment_title"
+                app:summary="@string/clipboard_history_fragment_summary" />
         </PreferenceCategory>
 
         <PreferenceCategory
             android:key="sumire_input_preference_category"
-            android:title="スミレ入力キーボード"
+            android:title="@string/category_sumire_input_keyboard_title"
             app:isPreferenceVisible="true">
 
             <ListPreference
                 android:defaultValue="toggle"
-                android:dialogTitle="方式を選択"
+                android:dialogTitle="@string/sumire_input_method_dialog_title"
                 android:entries="@array/sumire_input_method_options"
                 android:entryValues="@array/sumire_input_method_values"
                 android:key="sumire_input_method_preference"
                 android:summary="%s"
-                android:title="キーの配置" />
+                android:title="@string/sumire_input_method_title" />
 
             <ListPreference
                 android:defaultValue="default"
-                android:dialogTitle="スタイルを選択"
+                android:dialogTitle="@string/sumire_keyboard_style_dialog_title"
                 android:entries="@array/sumire_keyboard_style_options"
                 android:entryValues="@array/sumire_keyboard_style_values"
                 android:key="sumire_keyboard_style_preference"
                 android:summary="%s"
-                android:title="入力スタイル" />
+                android:title="@string/sumire_keyboard_style_title" />
         </PreferenceCategory>
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="操作">
+    <PreferenceCategory android:title="@string/category_operation_title">
         <SeekBarPreference
             android:defaultValue="1000"
             android:dependency=""
             android:key="time_same_pronounce_typing_preference"
             android:max="1000"
-            android:title="入力待機時間"
+            android:title="@string/time_same_pronounce_typing_title"
             app:min="1"
             app:showSeekBarValue="true"
-            app:summary="トグル入力で次の入力を待つ時間（ミリ秒）" />
+            app:summary="@string/time_same_pronounce_typing_summary" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="バイブレーション">
+    <PreferenceCategory android:title="@string/category_vibration_title">
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="vibration_preference"
-            android:summaryOff="キーをタップしても振動しません"
-            android:summaryOn="キーをタップすると振動します"
-            android:title="バイブレーションの有無" />
+            android:summaryOff="@string/vibration_summary_off"
+            android:summaryOn="@string/vibration_summary_on"
+            android:title="@string/vibration_title" />
 
         <ListPreference
             android:defaultValue="@string/vibration_default"
             android:dependency="vibration_preference"
-            android:dialogTitle="選択してください"
+            android:dialogTitle="@string/vibration_timing_dialog_title"
             android:entries="@array/vibration_options"
             android:entryValues="@array/vibration_values"
             android:key="vibration_timing"
-            android:summary="バイブレーションを発生させるタイミングを選択"
-            android:title="バイブレーションのタイミング" />
+            android:summary="@string/vibration_timing_summary"
+            android:title="@string/vibration_timing_title" />
     </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="NG ワード"
-        app:summary="変換候補を長押しで登録できます。">
+        android:title="@string/category_ng_word_title"
+        app:summary="@string/category_ng_word_summary">
 
         <SwitchPreferenceCompat
             android:defaultValue="true"
@@ -259,93 +259,93 @@
         <Preference
             android:icon="@drawable/outline_border_color_24"
             android:key="ng_word_preference"
-            android:title="非表示にする単語の一覧"
-            app:summary="非表示にする単語の一覧を表示" />
+            android:title="@string/ng_word_list_title"
+            app:summary="@string/ng_word_list_summary" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="学習辞書">
+    <PreferenceCategory android:title="@string/category_learning_dictionary_title">
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="learn_dictionary_preference"
-            android:summaryOff="学習辞書を無効化\n学習した変換候補を表示しません"
-            android:summaryOn="学習辞書を有効化\n学習した変換候補を表示します"
-            android:title="学習辞書" />
+            android:summaryOff="@string/learn_dictionary_summary_off"
+            android:summaryOn="@string/learn_dictionary_summary_on"
+            android:title="@string/learn_dictionary_title" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="ユーザー辞書">
+    <PreferenceCategory android:title="@string/category_user_dictionary_title">
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="user_dictionary_preference"
-            android:summaryOff="ユーザー辞書の予測変換を無効化"
-            android:summaryOn="ユーザー辞書の予測変換を有効化\n登録した単語を予測変換として変換候補を表示します"
-            android:title="ユーザー辞書" />
+            android:summaryOff="@string/user_dictionary_summary_off"
+            android:summaryOn="@string/user_dictionary_summary_on"
+            android:title="@string/user_dictionary_title" />
 
         <SeekBarPreference
             android:defaultValue="2"
             android:dependency="user_dictionary_preference"
             android:key="user_dictionary_prefix_match_number"
             android:max="8"
-            android:title="予測変換"
+            android:title="@string/user_dictionary_prefix_match_title"
             app:min="2"
             app:showSeekBarValue="true" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="定型文">
+    <PreferenceCategory android:title="@string/user_template_title">
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="user_template_preference"
-            android:summaryOff="定型文を無効化"
-            android:summaryOn="定型文を有効化\n登録した単語を変換候補に表示します"
-            android:title="定型文" />
+            android:summaryOff="@string/user_template_summary_off"
+            android:summaryOn="@string/user_template_summary_on"
+            android:title="@string/user_template_title" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="Mozc UT">
+    <PreferenceCategory android:title="@string/category_mozc_ut_title">
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="mozc_ut_person_name_preference"
-            android:summaryOff="無効"
-            android:summaryOn="人名辞書を追加します"
-            android:title="人名" />
+            android:summaryOff="@string/mozc_ut_person_name_summary_off"
+            android:summaryOn="@string/mozc_ut_person_name_summary_on"
+            android:title="@string/mozc_ut_person_name_title" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="mozc_ut_places_preference"
-            android:summaryOff="無効"
-            android:summaryOn="住所辞書を追加します"
-            android:title="住所" />
+            android:summaryOff="@string/mozc_ut_places_summary_off"
+            android:summaryOn="@string/mozc_ut_places_summary_on"
+            android:title="@string/mozc_ut_places_title" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="mozc_ut_web_preference"
-            android:summaryOff="無効"
-            android:summaryOn="最新の WikiPedia と Neologd に収録されている単語のうち、両方に共通して含まれる単語を抽出して作成した辞書を追加します"
-            android:title="Web" />
+            android:summaryOff="@string/mozc_ut_web_summary_off"
+            android:summaryOn="@string/mozc_ut_web_summary_on"
+            android:title="@string/mozc_ut_web_title" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="mozc_ut_wiki_preference"
-            android:summaryOff="無効"
-            android:summaryOn="最新の WikiPedia にのみ収録されている単語を摘出して作成された辞書を追加します"
-            android:title="Wiki" />
+            android:summaryOff="@string/mozc_ut_wiki_summary_off"
+            android:summaryOn="@string/mozc_ut_wiki_summary_on"
+            android:title="@string/mozc_ut_wiki_title" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="mozc_ut_neologd_preference"
-            android:summaryOff="無効"
-            android:summaryOn="Neologd にのみ収録されている単語を摘出して作成された辞書を追加します"
-            android:title="Neologd" />
+            android:summaryOff="@string/mozc_ut_neologd_summary_off"
+            android:summaryOn="@string/mozc_ut_neologd_summary_on"
+            android:title="@string/mozc_ut_neologd_title" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="アプリについて">
+    <PreferenceCategory android:title="@string/category_about_app_title">
         <Preference
             android:key="preference_open_source"
-            android:title="使用した Open Source のライブラリ" />
+            android:title="@string/open_source_libraries_title" />
     </PreferenceCategory>
 
     <Preference
         android:key="app_version_preference"
-        android:title="アプリのバージョン" />
+        android:title="@string/app_version_title" />
 
 </PreferenceScreen>

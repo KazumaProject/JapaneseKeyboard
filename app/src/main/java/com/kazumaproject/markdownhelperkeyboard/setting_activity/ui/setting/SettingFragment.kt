@@ -197,15 +197,15 @@ class SettingFragment : PreferenceFragmentCompat() {
             findPreference<SwitchPreferenceCompat>("ng_word_enable_preference")
         ngWordSwitchPreference?.apply {
             title = if (isChecked) {
-                "NG ワードを有効にする"
+                getString(R.string.ng_word_enable_title_on)
             } else {
-                "NG ワードを無効にする"
+                getString(R.string.ng_word_enable_title_off)
             }
             setOnPreferenceChangeListener { _, newValue ->
                 title = if (newValue == true) {
-                    "NG ワードを有効にする"
+                    getString(R.string.ng_word_enable_title_on)
                 } else {
-                    "NG ワードを無効にする"
+                    getString(R.string.ng_word_enable_title_off)
                 }
                 true
             }
@@ -224,11 +224,14 @@ class SettingFragment : PreferenceFragmentCompat() {
         userDictionaryPrefixSeekBar?.apply {
             appPreference.user_dictionary_prefix_match_number_preference?.let {
                 this.summary =
-                    "ユーザー辞書に登録された単語を、前方 $it 文字一致で変換候補として表示します"
+                    resources.getString(R.string.user_dictionary_prefix_match_summary, it)
             }
             this.setOnPreferenceChangeListener { _, newValue ->
                 this.summary =
-                    "ユーザー辞書に登録された単語を、前方 $newValue 文字一致で変換候補として表示します"
+                    resources.getString(
+                        R.string.user_dictionary_prefix_match_summary,
+                        newValue as Int
+                    )
                 true
             }
         }
@@ -269,16 +272,16 @@ class SettingFragment : PreferenceFragmentCompat() {
         keyboardUndoEnablePreference?.apply {
             appPreference.undo_enable_preference?.let {
                 this.summary = if (it) {
-                    "確定した文字を削除したときに、元に戻せる機能を有効にします"
+                    resources.getString(R.string.undo_enable_summary_on)
                 } else {
-                    "確定した文字を削除したときに、元に戻せる機能を無効にします"
+                    resources.getString(R.string.undo_enable_summary_off)
                 }
             }
             this.setOnPreferenceChangeListener { _, newValue ->
                 this.summary = if (newValue == true) {
-                    "確定した文字を削除したときに、元に戻せる機能を有効にします"
+                    resources.getString(R.string.undo_enable_summary_on)
                 } else {
-                    "確定した文字を削除したときに、元に戻せる機能を無効にします"
+                    resources.getString(R.string.undo_enable_summary_off)
                 }
                 true
             }
@@ -288,26 +291,26 @@ class SettingFragment : PreferenceFragmentCompat() {
         spaceHankakuPreference?.apply {
             appPreference.space_hankaku_preference?.let {
                 this.title = if (it) {
-                    "空白を半角入力"
+                    resources.getString(R.string.space_key_title_hankaku)
                 } else {
-                    "空白を全角入力"
+                    resources.getString(R.string.space_key_title_zenkaku)
                 }
                 this.summary = if (it) {
-                    "現在、半角入力です。\n左フリックで全角の空白"
+                    resources.getString(R.string.space_key_summary_hankaku)
                 } else {
-                    "現在、全角入力です。\n左フリックで半角の空白"
+                    resources.getString(R.string.space_key_summary_zenkaku)
                 }
             }
             this.setOnPreferenceChangeListener { _, newValue ->
                 this.title = if (newValue == true) {
-                    "空白を半角入力"
+                    resources.getString(R.string.space_key_title_hankaku)
                 } else {
-                    "空白を全角入力"
+                    resources.getString(R.string.space_key_title_zenkaku)
                 }
                 this.summary = if (newValue == true) {
-                    "現在、半角入力です。\n左フリックで全角の空白"
+                    resources.getString(R.string.space_key_summary_hankaku)
                 } else {
-                    "現在、全角入力です。\n左フリックで半角の空白"
+                    resources.getString(R.string.space_key_summary_zenkaku)
                 }
                 true
             }
