@@ -178,4 +178,7 @@
     <string name="language_display_title">Language to display in settings</string>
     <string name="app_language_summary_on">Japanese</string>
     <string name="app_language_summary_off">System language</string>
+    <string name="qwerty_number_keys_title">Number Keys</string>
+    <string name="qwerty_number_keys_summary_on">Display number keys</string>
+    <string name="qwerty_number_keys_summary_off">Do not display number keys</string>
 </resources>
