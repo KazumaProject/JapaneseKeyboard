@@ -30,6 +30,8 @@ object AppPreference {
     private val MOZCUT_NEOLOGD = Pair("mozc_ut_neologd_preference", false)
     private val MOZCUT_WEB = Pair("mozc_ut_web_preference", false)
 
+    private val SWITCH_QWERTY_PASSWORD = Pair("switch_qwerty_keyboard_password_preference", false)
+
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
 
@@ -138,6 +140,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_CURSOR_BUTTONS.first, value ?: false)
+        }
+
+    var switch_qwerty_password: Boolean?
+        get() = preferences.getBoolean(
+            SWITCH_QWERTY_PASSWORD.first,
+            SWITCH_QWERTY_PASSWORD.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SWITCH_QWERTY_PASSWORD.first, value ?: false)
         }
 
     var qwerty_show_popup_window: Boolean?
