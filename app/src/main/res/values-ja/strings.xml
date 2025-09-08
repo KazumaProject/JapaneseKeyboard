@@ -179,5 +179,8 @@
     <string name="language_display_title">設定で表示する言語</string>
     <string name="app_language_summary_on">日本語</string>
     <string name="app_language_summary_off">システムで設定されている言語</string>
+    <string name="qwerty_number_keys_title">数字キー</string>
+    <string name="qwerty_number_keys_summary_on">数字キーを表示します</string>
+    <string name="qwerty_number_keys_summary_off">数字キーを表示しません</string>
 
 </resources>

@@ -45,4 +45,15 @@ sealed class QWERTYKey {
     data object QWERTYKeyCursorDown : QWERTYKey()
 
     data object QWERTYKeySwitchRomajiEnglish : QWERTYKey()
+
+    data object QWERTYKey1 : QWERTYKey()
+    data object QWERTYKey2 : QWERTYKey()
+    data object QWERTYKey3 : QWERTYKey()
+    data object QWERTYKey4 : QWERTYKey()
+    data object QWERTYKey5 : QWERTYKey()
+    data object QWERTYKey6 : QWERTYKey()
+    data object QWERTYKey7 : QWERTYKey()
+    data object QWERTYKey8 : QWERTYKey()
+    data object QWERTYKey9 : QWERTYKey()
+    data object QWERTYKey0 : QWERTYKey()
 }
