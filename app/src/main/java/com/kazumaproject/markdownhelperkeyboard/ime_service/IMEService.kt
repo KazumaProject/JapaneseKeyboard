@@ -354,6 +354,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowPopupWindowPreference: Boolean? = false
     private var qwertyShowCursorButtonsPreference: Boolean? = false
+    private var qwertyShowNumberButtonsPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
     private var showCandidateInPasswordComposePreference: Boolean? = false
@@ -642,6 +643,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
+            qwertyShowNumberButtonsPreference = qwerty_show_number_buttons ?: false
             qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
@@ -853,6 +855,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
                     showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
+                qwertyView.updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
@@ -981,6 +984,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
+        qwertyShowNumberButtonsPreference = null
         qwertyShowPopupWindowPreference = null
         switchQWERTYPassword = null
         qwertyShowKutoutenButtonsPreference = null
