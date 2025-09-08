@@ -2,6 +2,15 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <PreferenceCategory android:title="@string/category_language_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="app_setting_language_preference"
+            android:title="@string/language_display_title"
+            android:summaryOff="@string/app_language_summary_off"
+            android:summaryOn="@string/app_language_summary_on"/>
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_title_keyboard">
         <Preference
             android:icon="@drawable/outline_border_color_24"
