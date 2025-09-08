@@ -895,6 +895,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    fun resetQWERTYKeyboard(
+    ) {
+        clearShiftCaps()
+        _qwertyMode.update { QWERTYMode.Default }
+        _romajiModeState.update { false }
+        binding.apply {
+            keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
+        }
+    }
+
 
     fun resetQWERTYKeyboard(
         enterKyeText: String
