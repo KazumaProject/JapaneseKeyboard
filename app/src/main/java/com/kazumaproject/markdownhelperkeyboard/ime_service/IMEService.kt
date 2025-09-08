@@ -738,6 +738,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             if (switchQWERTYPassword == true) {
                 if (currentInputType in englishTypes) {
+                    mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                 }
             }
@@ -6743,6 +6744,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (keyboardType) {
                     KeyboardType.TENKEY -> {
                         if (switchQWERTYPassword == true && currentInputType in englishTypes) {
+                            mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         } else {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
@@ -6751,6 +6753,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyboardType.SUMIRE -> {
                         if (switchQWERTYPassword == true && currentInputType in englishTypes) {
+                            mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         } else {
                             currentEnterKeyIndex = when (currentInputType) {
