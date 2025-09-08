@@ -175,5 +175,9 @@
     <string name="setting_fragment_title">設定</string>
     <string name="custom_layout_fragment_title">カスタムキーボード</string>
     <string name="learn_dictionary_fragment_title">学習辞書</string>
+    <string name="category_language_title">言語</string>
+    <string name="language_display_title">設定で表示する言語</string>
+    <string name="app_language_summary_on">日本語</string>
+    <string name="app_language_summary_off">システムで設定されている言語</string>
 
 </resources>

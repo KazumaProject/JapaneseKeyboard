@@ -174,4 +174,8 @@
     <string name="setting_fragment_title">Settings</string>
     <string name="custom_layout_fragment_title">Custom Keyboard</string>
     <string name="learn_dictionary_fragment_title">Learning Dictionary</string>
+    <string name="category_language_title">Language</string>
+    <string name="language_display_title">Language to display in settings</string>
+    <string name="app_language_summary_on">Japanese</string>
+    <string name="app_language_summary_off">System language</string>
 </resources>
