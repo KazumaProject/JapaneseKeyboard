@@ -7,7 +7,9 @@ import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat.getSystemService
+import androidx.core.os.LocaleListCompat
 import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -97,6 +99,20 @@ class SettingFragment : PreferenceFragmentCompat() {
         val packageInfo = requireContext().packageManager.getPackageInfo(
             requireContext().packageName, 0
         )
+
+        val languageSwitchPreference =
+            findPreference<SwitchPreferenceCompat>("app_setting_language_preference")
+        languageSwitchPreference?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
+                val state = newValue as Boolean
+                if (state) {
+                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("ja"))
+                } else {
+                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
+                }
+                true
+            }
+        }
 
         val sumireStylePreference =
             findPreference<ListPreference>("sumire_keyboard_style_preference")
