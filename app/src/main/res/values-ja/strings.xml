@@ -38,4 +38,142 @@
     <string name="henkan_delete_key_action_title">候補ハイライト時の削除キー動作</string>
     <string name="henkan_delete_key_action_summary_on">削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す</string>
     <string name="henkan_delete_key_action_summary_off">削除キータップ：ハイライト解除</string>
+
+    <string name="category_function_title">機能</string>
+    <string name="category_romaji_conversion_title">ローマ字変換</string>
+    <string name="category_qwerty_keyboard_title">QWERTY キーボード</string>
+    <string name="category_symbol_keyboard_title">記号キーボード</string>
+    <string name="category_custom_keyboard_title">カスタムキーボード</string>
+    <string name="category_sumire_input_keyboard_title">スミレ入力キーボード</string>
+    <string name="category_operation_title">操作</string>
+    <string name="category_vibration_title">バイブレーション</string>
+    <string name="category_ng_word_title">NG ワード</string>
+    <string name="category_ng_word_summary">変換候補を長押しで登録できます。</string>
+    <string name="category_learning_dictionary_title">学習辞書</string>
+    <string name="category_user_dictionary_title">ユーザー辞書</string>
+    <string name="category_template_title">定型文</string>
+
+    <string name="flick_input_only_title">フリック・トグル入力</string>
+    <string name="flick_input_only_summary_on">フリック入力のみを使用し、トグル入力を無効にする</string>
+    <string name="flick_input_only_summary_off">トグル入力を有効にします</string>
+    <string name="undo_enable_title">元に戻す機能</string>
+    <string name="undo_enable_summary">元に戻す機能を無効にする</string>
+    <string name="space_key_title">空白を半角入力</string>
+    <string name="space_key_summary">空白を半角入力</string>
+    <string name="live_conversion_title">ライブ変換 β</string>
+    <string name="live_conversion_summary_on">ライブ変換は有効です</string>
+    <string name="live_conversion_summary_off">ライブ変換は無効です</string>
+    <string name="omission_search_title">修飾キー省略入力</string>
+    <string name="omission_search_summary_on">修飾キー省略入力は有効です\nかつこう → がっこう</string>
+    <string name="omission_search_summary_off">修飾キー省略入力は無効です</string>
+    <string name="flick_sensitivity_title">フリック入力の感度</string>
+
+    <string name="custom_romaji_title">ローマ字変換のカスタマイズ</string>
+    <string name="custom_romaji_summary">ローマ字の変換表を作成、選択します</string>
+
+    <string name="qwerty_show_popup_window_title">ポップアップウィンドウの表示</string>
+    <string name="qwerty_show_popup_window_summary_on">キーを検知した際にウィンドウを表示します。</string>
+    <string name="qwerty_show_popup_window_summary_off">キーを検知した際にウィンドウを表示しません。</string>
+    <string name="qwerty_show_cursor_buttons_title">カーソルボタン</string>
+    <string name="qwerty_show_cursor_buttons_summary_on">QWERTY キーボードにカーソルボタンを表示します。</string>
+    <string name="qwerty_show_cursor_buttons_summary_off">QWERTY キーボードにカーソルボタンを表示しません。</string>
+    <string name="qwerty_show_kutouten_buttons_title">句読点ボタン</string>
+    <string name="qwerty_show_kutouten_buttons_summary_on">QWERTY キーボードに句読点（、。）ボタンを表示します。</string>
+    <string name="qwerty_show_kutouten_buttons_summary_off">QWERTY キーボードに句読点（、。）ボタンを表示しません。</string>
+    <string name="qwerty_show_switch_ime_button_title">IME 切り替えボタン</string>
+    <string name="qwerty_show_switch_ime_button_summary_on">キーボード切り替え（地球儀アイコン）ボタンを表示します。</string>
+    <string name="qwerty_show_switch_ime_button_summary_off">キーボード切り替え（地球儀アイコン）ボタンを表示しません。</string>
+
+    <string name="symbol_mode_title">記号キーボードの初期画面</string>
+    <string name="symbol_mode_summary">記号キーボードの初期画面を選択します</string>
+    <string name="symbol_mode_dialog_title">初期画面を選択</string>
+
+    <string name="custom_keyboard_two_words_title">２文字以上の出力を自動で確定</string>
+    <string name="custom_keyboard_two_words_summary_on">カスタムキーで2文字以上を出力したとき、自動で確定します。</string>
+    <string name="custom_keyboard_two_words_summary_off">カスタムキーで2文字以上を出力しても、自動で確定しません。</string>
+    <string name="custom_keyboard_suggestion_title">未入力時の表示</string>
+    <string name="custom_keyboard_suggestion_summary_on">文字を入力していないときは、カスタムタブの一覧を表示します。</string>
+    <string name="custom_keyboard_suggestion_summary_off">文字を入力していないときは、標準の表示（クリップボードなど）のままにします。</string>
+
+    <string name="clipboard_history_fragment_title">クリップボードの履歴</string>
+    <string name="clipboard_history_fragment_summary">クリップボードの履歴を表示</string>
+
+    <string name="sumire_input_method_title">キーの配置</string>
+    <string name="sumire_input_method_dialog_title">方式を選択</string>
+    <string name="sumire_keyboard_style_title">入力スタイル</string>
+    <string name="sumire_keyboard_style_dialog_title">スタイルを選択</string>
+
+    <string name="time_same_pronounce_typing_title">入力待機時間</string>
+    <string name="time_same_pronounce_typing_summary">トグル入力で次の入力を待つ時間（ミリ秒）</string>
+
+    <string name="vibration_title">バイブレーションの有無</string>
+    <string name="vibration_summary_on">キーをタップすると振動します</string>
+    <string name="vibration_summary_off">キーをタップしても振動しません</string>
+    <string name="vibration_timing_title">バイブレーションのタイミング</string>
+    <string name="vibration_timing_summary">バイブレーションを発生させるタイミングを選択</string>
+    <string name="vibration_timing_dialog_title">選択してください</string>
+
+    <string name="ng_word_list_title">非表示にする単語の一覧</string>
+    <string name="ng_word_list_summary">非表示にする単語の一覧を表示</string>
+
+    <string name="learn_dictionary_title">学習辞書</string>
+    <string name="learn_dictionary_summary_on">学習辞書を有効化\n学習した変換候補を表示します</string>
+    <string name="learn_dictionary_summary_off">学習辞書を無効化\n学習した変換候補を表示しません</string>
+
+    <string name="user_dictionary_summary_on">ユーザー辞書の予測変換を有効化\n登録した単語を予測変換として変換候補を表示します</string>
+    <string name="user_dictionary_summary_off">ユーザー辞書の予測変換を無効化</string>
+    <string name="user_dictionary_prefix_match_title">予測変換</string>
+
+    <string name="user_template_title">定型文</string>
+    <string name="user_template_summary_on">定型文を有効化\n登録した単語を変換候補に表示します</string>
+    <string name="user_template_summary_off">定型文を無効化</string>
+
+    <string name="category_mozc_ut_title">Mozc UT</string>
+    <string name="category_about_app_title">アプリについて</string>
+
+    <string name="mozc_ut_person_name_title">人名</string>
+    <string name="mozc_ut_person_name_summary_on">人名辞書を追加します</string>
+    <string name="mozc_ut_person_name_summary_off">無効</string>
+
+    <string name="mozc_ut_places_title">住所</string>
+    <string name="mozc_ut_places_summary_on">住所辞書を追加します</string>
+    <string name="mozc_ut_places_summary_off">無効</string>
+
+    <string name="mozc_ut_web_title">Web</string>
+    <string name="mozc_ut_web_summary_on">最新の WikiPedia と Neologd に収録されている単語のうち、両方に共通して含まれる単語を抽出して作成した辞書を追加します</string>
+    <string name="mozc_ut_web_summary_off">無効</string>
+
+    <string name="mozc_ut_wiki_title">Wiki</string>
+    <string name="mozc_ut_wiki_summary_on">最新の WikiPedia にのみ収録されている単語を摘出して作成された辞書を追加します</string>
+    <string name="mozc_ut_wiki_summary_off">無効</string>
+
+    <string name="mozc_ut_neologd_title">Neologd</string>
+    <string name="mozc_ut_neologd_summary_on">Neologd にのみ収録されている単語を摘出して作成された辞書を追加します</string>
+    <string name="mozc_ut_neologd_summary_off">無効</string>
+
+    <string name="open_source_libraries_title">使用した Open Source のライブラリ</string>
+    <string name="app_version_title">アプリのバージョン</string>
+
+    <string name="user_dictionary_prefix_match_summary">ユーザー辞書に登録された単語を、前方 %1$d 文字一致で変換候補として表示します</string>
+
+    <string name="undo_enable_summary_on">確定した文字を削除したときに、元に戻せる機能を有効にします</string>
+    <string name="undo_enable_summary_off">確定した文字を削除したときに、元に戻せる機能を無効にします</string>
+
+    <string name="space_key_title_hankaku">空白を半角入力</string>
+    <string name="space_key_title_zenkaku">空白を全角入力</string>
+    <string name="space_key_summary_hankaku">現在、半角入力です。\n左フリックで全角の空白</string>
+    <string name="space_key_summary_zenkaku">現在、全角入力です。\n左フリックで半角の空白</string>
+
+    <string name="ng_word_enable_title_on">NG ワードを有効にする</string>
+    <string name="ng_word_enable_title_off">NG ワードを無効にする</string>
+    <string name="ng_word_fragment_title">NG ワード一覧</string>
+    <string name="romaji_map_fragment_title">マップの編集</string>
+    <string name="romaji_conversion_map_fragment_title">カスタムローマ字変換</string>
+    <string name="clipboard_fragment_title">クリップボード履歴</string>
+    <string name="user_template_fragment_title">定型文</string>
+
+    <string name="setting_fragment_title">設定</string>
+    <string name="custom_layout_fragment_title">カスタムキーボード</string>
+    <string name="learn_dictionary_fragment_title">学習辞書</string>
+
 </resources>
