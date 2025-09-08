@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/navigation_setting"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingFragment"
-        android:label="@string/title_dashboard"
+        android:label="@string/setting_fragment_title"
         tools:layout="@layout/fragment_setting_main">
         <action
             android:id="@+id/action_navigation_dashboard_to_openSourceFragment"
@@ -40,7 +40,7 @@
     <fragment
         android:id="@+id/navigation_learn_dictionary"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.dictionary_learn.DictionaryLearnFragment"
-        android:label="学習辞書" />
+        android:label="@string/learn_dictionary_fragment_title" />
     <fragment
         android:id="@+id/keyboardSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.KeyboardSettingFragment"
@@ -80,7 +80,7 @@
     <fragment
         android:id="@+id/keyboardListFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardListFragment"
-        android:label="@string/title_custom_layouts">
+        android:label="@string/custom_layout_fragment_title">
         <action
             android:id="@+id/action_keyboardListFragment_to_keyboardEditorFragment"
             app:destination="@id/keyboardEditorFragment" />
@@ -88,15 +88,15 @@
     <fragment
         android:id="@+id/userTemplateFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.user_template.ui.UserTemplateFragment"
-        android:label="定型文" />
+        android:label="@string/user_template_fragment_title" />
     <fragment
         android:id="@+id/clipboardHistoryFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.clipboard_history.ui.ClipboardHistoryFragment"
-        android:label="クリップボード履歴" />
+        android:label="@string/clipboard_fragment_title" />
     <fragment
         android:id="@+id/romajiMapFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_romaji.ui.RomajiMapFragment"
-        android:label="カスタムローマ字変換">
+        android:label="@string/romaji_conversion_map_fragment_title">
         <action
             android:id="@+id/action_romajiMapFragment_to_romajiMapDetailFragment"
             app:destination="@id/romajiMapDetailFragment" />
@@ -104,7 +104,7 @@
     <fragment
         android:id="@+id/romajiMapDetailFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_romaji.ui.RomajiMapDetailFragment"
-        android:label="マップの編集"
+        android:label="@string/romaji_map_fragment_title"
         tools:layout="@layout/fragment_romaji_map_detail">
         <argument
             android:name="mapId"
@@ -113,6 +113,6 @@
     <fragment
         android:id="@+id/ngWordFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.ng_word.ui.NgWordFragment"
-        android:label="NG ワード一覧" />
+        android:label="@string/ng_word_fragment_title" />
 
 </navigation>
