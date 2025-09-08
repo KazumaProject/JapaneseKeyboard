@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="edit_text">編集</string>
+    <string name="user_dictionary_title">ユーザー辞書</string>
+    <string name="duplicate_keyboard">キーボードを複製</string>
+    <string name="delete_keyboard">キーボードを削除</string>
+    <string name="edit_keyboard">キーボードを編集</string>
+    <string name="edit_key">キーを編集</string>
+    <string name="open_sorce_title">使用したライブラリ一覧</string>
+    <string name="user_template">定型文</string>
+    <string name="user_dictionary_explanation">この画面では、キーボードの予測変換に表示させたい単語を自由に登録できます。\n登録した単語は、その「読み」を設定した文字数以上入力することで、キーボードの変換候補として表示されるようになります。\n\n例：\n単語:「お疲れ様です。」 読み:「おつかれさまです」\n→「おつ」と入力すると「お疲れ様です。」が候補に表示されます。</string>
+    <string name="user_dictionary_about_title">ユーザー辞書とは</string>
+    <string name="user_template_explanation"><![CDATA[メールアドレスやコードスニペット、Markdownの表などを短い「読み」で登録できます。キーボードで登録した「読み」を正確に入力すると、変換候補に登録した全文が表示されます。\n\n例:\n- 読み: myemail\n 定型文: my.long.email.address@example.com\n- 読み: html5\n 定型文: <!DOCTYPE html><html>…</html>]]></string>
+    <string name="clipboard_history_title">クリップボードの履歴</string>
+    <string name="dialog_image_description">dialog_image_description</string>
+    <string name="keyboard_selection_summary">キーボードの追加、削除ができます</string>
+    <string name="keyboard_selection_preference_title">キーボードの選択</string>
+    <string name="category_title_keyboard">キーボード</string>
+    <string name="keyboard_screen_size_preference_title">位置とサイズの設定</string>
+    <string name="keyboard_screen_preference_summary">キーボードの位置とサイズの設定を変更できます</string>
+    <string name="keyboard_height_fix_specific_device_title">端末別の高さ補正</string>
+    <string name="keyboard_height_fix_specific_device_summary_on">一部端末向けの高さ補正は有効です（例：Galaxy）。</string>
+    <string name="keyboard_height_fix_specific_device_summary_off">一部端末向けの高さ補正は無効です。</string>
+    <string name="conversion_preference_title">変換候補</string>
+    <string name="n_best_preference_summary">表示する変換候補の最大数を設定します。</string>
+    <string name="preference_title_num_columns_conversion">変換候補の列数</string>
+    <string name="preference_summary_num_column_conversion">変換候補を表示するときの列数を設定します</string>
+    <string name="preference_dialog_title_num_columns_conversion">候補の列数を選んでください</string>
+    <string name="candidate_view_height_title">変換候補の高さ</string>
+    <string name="candidate_view_height_summary">変換候補を表示する View の高さの設定</string>
+    <string name="candidate_height_dialog_title">変換候補を表示する View の高さを選んでください</string>
+    <string name="hide_candidate_password_title">パスワード入力時の変換候補</string>
+    <string name="hide_candidate_password_summary_on">パスワード入力中は変換候補を表示しません</string>
+    <string name="hide_candidate_password_summary_off">パスワード入力中に変換候補を表示します</string>
+    <string name="password_compose_title">パスワード入力中の文字列の設定</string>
+    <string name="password_compose_summary_on">パスワード入力中に未確定文字として扱います。</string>
+    <string name="password_compose_summary_off">パスワード入力中に確定文字として扱います。</string>
+    <string name="henkan_delete_key_action_title">候補ハイライト時の削除キー動作</string>
+    <string name="henkan_delete_key_action_summary_on">削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す</string>
+    <string name="henkan_delete_key_action_summary_off">削除キータップ：ハイライト解除</string>
+</resources>

@@ -2,75 +2,75 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="キーボード">
+    <PreferenceCategory android:title="@string/category_title_keyboard">
         <Preference
             android:icon="@drawable/outline_border_color_24"
             android:key="keyboard_selection_preference"
-            android:summary="キーボードの追加、削除ができます"
-            android:title="キーボード" />
+            android:summary="@string/keyboard_selection_summary"
+            android:title="@string/keyboard_selection_preference_title" />
 
         <Preference
             android:icon="@drawable/outline_border_color_24"
             android:key="keyboard_screen_preference"
-            android:summary="キーボードの位置とサイズの設定を変更できます"
-            android:title="位置とサイズの設定" />
+            android:summary="@string/keyboard_screen_preference_summary"
+            android:title="@string/keyboard_screen_size_preference_title" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_height_fix_enable_preference"
-            android:summaryOff="一部端末向けの高さ補正は無効です。"
-            android:summaryOn="一部端末向けの高さ補正は有効です（例：Galaxy）。"
-            android:title="端末別の高さ補正" />
+            android:summaryOff="@string/keyboard_height_fix_specific_device_summary_off"
+            android:summaryOn="@string/keyboard_height_fix_specific_device_summary_on"
+            android:title="@string/keyboard_height_fix_specific_device_title" />
 
-        <PreferenceCategory android:title="変換候補">
+        <PreferenceCategory android:title="@string/conversion_preference_title">
             <SeekBarPreference
                 android:defaultValue="4"
                 android:key="n_best_preference"
                 android:max="16"
-                android:summary="表示する変換候補の最大数を設定します。"
+                android:summary="@string/n_best_preference_summary"
                 android:title="N-Best"
                 app:min="2"
                 app:showSeekBarValue="true" />
 
             <ListPreference
                 android:defaultValue="1"
-                android:dialogTitle="候補の列数を選んでください"
+                android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
                 android:entries="@array/candidate_column_entries"
                 android:entryValues="@array/candidate_column_values"
                 android:key="candidate_column_preference"
-                android:summary="変換候補を表示するときの列数を設定します"
-                android:title="変換候補の列数" />
+                android:summary="@string/preference_summary_num_column_conversion"
+                android:title="@string/preference_title_num_columns_conversion" />
 
             <ListPreference
                 android:defaultValue="2"
-                android:dialogTitle="変換候補を表示する View の高さを選んでください"
+                android:dialogTitle="@string/candidate_height_dialog_title"
                 android:entries="@array/candidate_view_height_entries"
                 android:entryValues="@array/candidate_view_height_values"
                 android:key="candidate_view_height_preference"
-                android:summary="変換候補を表示する View の高さの設定"
-                android:title="変換候補の高さ" />
+                android:summary="@string/candidate_view_height_summary"
+                android:title="@string/candidate_view_height_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="hide_candidate_password_preference"
-                android:summaryOff="パスワード入力中に変換候補を表示します"
-                android:summaryOn="パスワード入力中は変換候補を表示しません"
-                android:title="パスワード入力時の変換候補" />
+                android:summaryOff="@string/hide_candidate_password_summary_off"
+                android:summaryOn="@string/hide_candidate_password_summary_on"
+                android:title="@string/hide_candidate_password_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:dependency="hide_candidate_password_preference"
                 android:key="password_compose_preference"
-                android:summaryOff="パスワード入力中に確定文字として扱います。"
-                android:summaryOn="パスワード入力中に未確定文字として扱います。"
-                android:title="パスワード入力中の文字列の設定" />
+                android:summaryOff="@string/password_compose_summary_off"
+                android:summaryOn="@string/password_compose_summary_on"
+                android:title="@string/password_compose_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="henkan_delete_key_action_preference"
-                android:summaryOff="削除キータップ：ハイライト解除"
-                android:summaryOn="削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す"
-                android:title="候補ハイライト時の削除キー動作" />
+                android:summaryOff="@string/henkan_delete_key_action_summary_off"
+                android:summaryOn="@string/henkan_delete_key_action_summary_on"
+                android:title="@string/henkan_delete_key_action_title" />
 
         </PreferenceCategory>
 
