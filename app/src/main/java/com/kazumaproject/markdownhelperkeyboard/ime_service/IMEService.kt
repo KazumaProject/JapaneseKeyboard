@@ -364,6 +364,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTWiki: Boolean? = false
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
+    private var switchQWERTYPassword: Boolean? = false
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -486,6 +487,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
         private const val PAGE_SIZE: Int = 5
+        private val excludedInputTypes = setOf(
+            InputTypeForIME.Number,
+            InputTypeForIME.NumberDecimal,
+            InputTypeForIME.NumberPassword,
+            InputTypeForIME.NumberSigned,
+            InputTypeForIME.Phone,
+            InputTypeForIME.Date,
+            InputTypeForIME.Datetime,
+            InputTypeForIME.Time
+        )
+        private val englishTypes = setOf(
+            InputTypeForIME.TextEmailAddress,
+            InputTypeForIME.TextEditTextInWebView,
+            InputTypeForIME.TextPostalAddress,
+            InputTypeForIME.TextWebEmailAddress,
+            InputTypeForIME.TextPassword,
+            InputTypeForIME.TextVisiblePassword,
+            InputTypeForIME.TextWebPassword,
+        )
+
     }
 
     private var currentPage: Int = 0
@@ -642,6 +663,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             isKeyboardFloatingMode = is_floating_mode ?: false
             _keyboardFloatingMode.update { is_floating_mode ?: false }
+            switchQWERTYPassword = switch_qwerty_password ?: false
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -699,8 +721,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         InputMode.ModeEnglish -> {
-                            customKeyboardMode = KeyboardInputMode.ENGLISH
-                            updateKeyboardLayout()
+                            if (switchQWERTYPassword == true) {
+                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                            } else {
+                                customKeyboardMode = KeyboardInputMode.ENGLISH
+                                updateKeyboardLayout()
+                            }
                         }
 
                         InputMode.ModeNumber -> {
@@ -708,6 +734,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             updateKeyboardLayout()
                         }
                     }
+                }
+            }
+            if (switchQWERTYPassword == true) {
+                if (currentInputType in englishTypes) {
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                 }
             }
         } else {
@@ -950,6 +981,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
         qwertyShowPopupWindowPreference = null
+        switchQWERTYPassword = null
         qwertyShowKutoutenButtonsPreference = null
         showCandidateInPasswordPreference = null
         showCandidateInPasswordComposePreference = null
@@ -3153,8 +3185,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * 指定されたキーボードを表示するための統一された関数
      */
     private fun showKeyboard(type: KeyboardType) {
-        hideAllKeyboards() // ★最重要：まず他の全てのキーボードを隠す
-
+        hideAllKeyboards()
+        Timber.d("showKeyboard called: $type")
         mainLayoutBinding?.apply {
             when (type) {
                 KeyboardType.TENKEY -> {
@@ -6473,7 +6505,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
-                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                        InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
@@ -6497,6 +6529,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
+                        InputTypeForIME.TextEmailAddress,
                         InputTypeForIME.TextEditTextInWebView,
                         InputTypeForIME.TextPostalAddress,
                         InputTypeForIME.TextWebEmailAddress,
@@ -6706,25 +6739,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            val excludedInputTypes = setOf(
-                InputTypeForIME.Number,
-                InputTypeForIME.NumberDecimal,
-                InputTypeForIME.NumberPassword,
-                InputTypeForIME.NumberSigned,
-                InputTypeForIME.Phone,
-                InputTypeForIME.Date,
-                InputTypeForIME.Datetime,
-                InputTypeForIME.Time
-            )
-
             if (currentInputType !in excludedInputTypes) {
-                if (currentInputType != InputTypeForIME.None) {
-                    when (keyboardType) {
-                        KeyboardType.TENKEY -> {
+                when (keyboardType) {
+                    KeyboardType.TENKEY -> {
+                        if (switchQWERTYPassword == true && currentInputType in englishTypes) {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        } else {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                         }
+                    }
 
-                        KeyboardType.SUMIRE -> {
+                    KeyboardType.SUMIRE -> {
+                        if (switchQWERTYPassword == true && currentInputType in englishTypes) {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        } else {
                             currentEnterKeyIndex = when (currentInputType) {
                                 InputTypeForIME.Text,
                                 InputTypeForIME.TextAutoComplete,
@@ -6803,18 +6831,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainLayoutBinding?.customLayoutDefault?.setKeyboard(hiraganaLayout)
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
                         }
+                    }
 
-                        KeyboardType.QWERTY -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                        }
+                    KeyboardType.QWERTY -> {
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    }
 
-                        KeyboardType.ROMAJI -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
-                        }
+                    KeyboardType.ROMAJI -> {
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
+                    }
 
-                        KeyboardType.CUSTOM -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
-                        }
+                    KeyboardType.CUSTOM -> {
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     }
                 }
             } else {
