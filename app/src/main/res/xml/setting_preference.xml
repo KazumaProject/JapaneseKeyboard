@@ -34,9 +34,9 @@
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="switch_qwerty_keyboard_password_preference"
-            android:summaryOff="パスワード入力の場合、テンキーで固定"
-            android:summaryOn="パスワード入力の場合、QWERTY キーボードに切り替えます。"
-            android:title="キーボード切り替え"
+            android:summaryOff="@string/switch_qwerty_password_summary_off"
+            android:summaryOn="@string/switch_qwerty_password_summary_on"
+            android:title="@string/switch_qwerty_preference_title"
             app:defaultValue="false" />
 
         <PreferenceCategory android:title="@string/conversion_preference_title">
@@ -178,6 +178,13 @@
                 android:summaryOff="@string/qwerty_show_switch_ime_button_summary_off"
                 android:summaryOn="@string/qwerty_show_switch_ime_button_summary_on"
                 android:title="@string/qwerty_show_switch_ime_button_title" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="qwerty_show_keymap_symbols_romaji_preference"
+                android:summaryOff="@string/qwerty_keymap_preference_summary_off"
+                android:summaryOn="@string/qwerty_keymap_preference_summary_on"
+                android:title="@string/qwerty_keymap_symbol_preference" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="@string/category_symbol_keyboard_title">
