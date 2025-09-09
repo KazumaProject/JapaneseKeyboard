@@ -125,6 +125,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var cursorInitialX = 0f
     private var cursorInitialY = 0f
 
+    private var isNumberKeysShow: Boolean = false
+    private var isSymbolKeymapShow: Boolean = false
+
     // ★ ポップアップなしで長押しを有効にするキーのリストを追加
     private val longPressEnabledKeys = setOf(
         QWERTYKey.QWERTYKeyDelete,
@@ -228,6 +231,119 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     keyL.setMarginEnd(
                                         23f
                                     )
+                                    defaultQWERTYButtonsRoman.forEach {
+                                        it.topRightChar = null
+                                    }
+                                } else {
+                                    if (isSymbolKeymapShow) {
+                                        defaultQWERTYButtonsRoman.forEach {
+                                            when (it.id) {
+                                                R.id.key_a -> {
+                                                    it.topRightChar = '@'
+                                                }
+
+                                                R.id.key_b -> {
+                                                    it.topRightChar = '!'
+                                                }
+
+                                                R.id.key_c -> {
+                                                    it.topRightChar = '\"'
+                                                }
+
+                                                R.id.key_d -> {
+                                                    it.topRightChar = '+'
+                                                }
+
+                                                R.id.key_e -> {
+                                                    it.topRightChar = '3'
+                                                }
+
+                                                R.id.key_f -> {
+                                                    it.topRightChar = '-'
+                                                }
+
+                                                R.id.key_g -> {
+                                                    it.topRightChar = '='
+                                                }
+
+                                                R.id.key_h -> {
+                                                    it.topRightChar = '/'
+                                                }
+
+                                                R.id.key_i -> {
+                                                    it.topRightChar = '8'
+                                                }
+
+                                                R.id.key_j -> {
+                                                    it.topRightChar = '#'
+                                                }
+
+                                                R.id.key_k -> {
+                                                    it.topRightChar = '('
+                                                }
+
+                                                R.id.key_at_mark -> {
+                                                    it.topRightChar = ')'
+                                                }
+
+                                                R.id.key_m -> {
+                                                    it.topRightChar = '…'
+                                                }
+
+                                                R.id.key_n -> {
+                                                    it.topRightChar = '~'
+                                                }
+
+                                                R.id.key_o -> {
+                                                    it.topRightChar = '9'
+                                                }
+
+                                                R.id.key_p -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_q -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_r -> {
+                                                    it.topRightChar = '4'
+                                                }
+
+                                                R.id.key_s -> {
+                                                    it.topRightChar = '*'
+                                                }
+
+                                                R.id.key_t -> {
+                                                    it.topRightChar = '5'
+                                                }
+
+                                                R.id.key_u -> {
+                                                    it.topRightChar = '7'
+                                                }
+
+                                                R.id.key_v -> {
+                                                    it.topRightChar = '?'
+                                                }
+
+                                                R.id.key_w -> {
+                                                    it.topRightChar = '2'
+                                                }
+
+                                                R.id.key_x -> {
+                                                    it.topRightChar = ':'
+                                                }
+
+                                                R.id.key_y -> {
+                                                    it.topRightChar = '6'
+                                                }
+
+                                                R.id.key_z -> {
+                                                    it.topRightChar = '\''
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 keyV.isVisible = true
                                 keyB.isVisible = true
@@ -240,6 +356,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     resources.getString(com.kazumaproject.core.R.string.string_123)
                             }
                             attachDefaultKeyLabels()
+                            displayOrHideNumberKeys(true)
                         }
 
                         QWERTYMode.Number -> {
@@ -265,6 +382,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             attachNumberKeyLabels(false)
+                            displayOrHideNumberKeys(false)
+                            defaultQWERTYButtonsRoman.forEach {
+                                it.topRightChar = null
+                            }
                         }
 
                         QWERTYMode.Symbol -> {
@@ -290,6 +411,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 }
                             }
                             attachNumberKeyLabels(true)
+                            displayOrHideNumberKeys(false)
+                            defaultQWERTYButtonsRoman.forEach {
+                                it.topRightChar = null
+                            }
                         }
                     }
                 }
@@ -340,6 +465,115 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             keyKuten.text = "。"
                             keyTouten.text = "、"
                         }
+                        if (isSymbolKeymapShow) {
+                            defaultQWERTYButtonsRoman.forEach {
+                                when (it.id) {
+                                    R.id.key_a -> {
+                                        it.topRightChar = '@'
+                                    }
+
+                                    R.id.key_b -> {
+                                        it.topRightChar = '!'
+                                    }
+
+                                    R.id.key_c -> {
+                                        it.topRightChar = '\"'
+                                    }
+
+                                    R.id.key_d -> {
+                                        it.topRightChar = '+'
+                                    }
+
+                                    R.id.key_e -> {
+                                        it.topRightChar = '3'
+                                    }
+
+                                    R.id.key_f -> {
+                                        it.topRightChar = '-'
+                                    }
+
+                                    R.id.key_g -> {
+                                        it.topRightChar = '='
+                                    }
+
+                                    R.id.key_h -> {
+                                        it.topRightChar = '/'
+                                    }
+
+                                    R.id.key_i -> {
+                                        it.topRightChar = '8'
+                                    }
+
+                                    R.id.key_j -> {
+                                        it.topRightChar = '#'
+                                    }
+
+                                    R.id.key_k -> {
+                                        it.topRightChar = '('
+                                    }
+
+                                    R.id.key_at_mark -> {
+                                        it.topRightChar = ')'
+                                    }
+
+                                    R.id.key_m -> {
+                                        it.topRightChar = '…'
+                                    }
+
+                                    R.id.key_n -> {
+                                        it.topRightChar = '~'
+                                    }
+
+                                    R.id.key_o -> {
+                                        it.topRightChar = '9'
+                                    }
+
+                                    R.id.key_p -> {
+                                        it.topRightChar = '1'
+                                    }
+
+                                    R.id.key_q -> {
+                                        it.topRightChar = '1'
+                                    }
+
+                                    R.id.key_r -> {
+                                        it.topRightChar = '4'
+                                    }
+
+                                    R.id.key_s -> {
+                                        it.topRightChar = '*'
+                                    }
+
+                                    R.id.key_t -> {
+                                        it.topRightChar = '5'
+                                    }
+
+                                    R.id.key_u -> {
+                                        it.topRightChar = '7'
+                                    }
+
+                                    R.id.key_v -> {
+                                        it.topRightChar = '?'
+                                    }
+
+                                    R.id.key_w -> {
+                                        it.topRightChar = '2'
+                                    }
+
+                                    R.id.key_x -> {
+                                        it.topRightChar = ':'
+                                    }
+
+                                    R.id.key_y -> {
+                                        it.topRightChar = '6'
+                                    }
+
+                                    R.id.key_z -> {
+                                        it.topRightChar = '\''
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         binding.apply {
                             keyAtMark.apply {
@@ -359,6 +593,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 resources.getString(com.kazumaproject.core.R.string.string_123)
                             keyKuten.text = "."
                             keyTouten.text = ","
+                        }
+                        defaultQWERTYButtonsRoman.forEach {
+                            it.topRightChar = null
                         }
                     }
                 }
@@ -474,7 +711,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.cursorRight to QWERTYKey.QWERTYKeyCursorRight,
             binding.keyTouten to QWERTYKey.QWERTYKeyTouten,
             binding.keyKuten to QWERTYKey.QWERTYKeyKuten,
-            binding.switchRomajiEnglish to QWERTYKey.QWERTYKeySwitchRomajiEnglish
+            binding.switchRomajiEnglish to QWERTYKey.QWERTYKeySwitchRomajiEnglish,
+
+            binding.key1 to QWERTYKey.QWERTYKey1,
+            binding.key2 to QWERTYKey.QWERTYKey2,
+            binding.key3 to QWERTYKey.QWERTYKey3,
+            binding.key4 to QWERTYKey.QWERTYKey4,
+            binding.key5 to QWERTYKey.QWERTYKey5,
+            binding.key6 to QWERTYKey.QWERTYKey6,
+            binding.key7 to QWERTYKey.QWERTYKey7,
+            binding.key8 to QWERTYKey.QWERTYKey8,
+            binding.key9 to QWERTYKey.QWERTYKey9,
+            binding.key0 to QWERTYKey.QWERTYKey0,
         )
     }
 
@@ -892,6 +1140,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             /** empty body **/
         } else {
             disableShift()
+        }
+    }
+
+    fun resetQWERTYKeyboard(
+    ) {
+        clearShiftCaps()
+        _qwertyMode.update { QWERTYMode.Default }
+        _romajiModeState.update { false }
+        binding.apply {
+            keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
         }
     }
 
@@ -1474,6 +1732,201 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
 
         binding.switchRomajiEnglish.text = spannableString
+    }
+
+    fun updateNumberKeyState(state: Boolean) {
+        this.isNumberKeysShow = state
+        displayOrHideNumberKeys(state)
+    }
+
+    fun updateSymbolKeymapState(state: Boolean) {
+        this.isSymbolKeymapShow = state
+        if (state) {
+            defaultQWERTYButtonsRoman.forEach {
+                when (it.id) {
+                    R.id.key_a -> {
+                        it.topRightChar = '@'
+                    }
+
+                    R.id.key_b -> {
+                        it.topRightChar = '!'
+                    }
+
+                    R.id.key_c -> {
+                        it.topRightChar = '\"'
+                    }
+
+                    R.id.key_d -> {
+                        it.topRightChar = '+'
+                    }
+
+                    R.id.key_e -> {
+                        it.topRightChar = '3'
+                    }
+
+                    R.id.key_f -> {
+                        it.topRightChar = '-'
+                    }
+
+                    R.id.key_g -> {
+                        it.topRightChar = '='
+                    }
+
+                    R.id.key_h -> {
+                        it.topRightChar = '/'
+                    }
+
+                    R.id.key_i -> {
+                        it.topRightChar = '8'
+                    }
+
+                    R.id.key_j -> {
+                        it.topRightChar = '#'
+                    }
+
+                    R.id.key_k -> {
+                        it.topRightChar = '('
+                    }
+
+                    R.id.key_at_mark -> {
+                        it.topRightChar = ')'
+                    }
+
+                    R.id.key_m -> {
+                        it.topRightChar = '…'
+                    }
+
+                    R.id.key_n -> {
+                        it.topRightChar = '~'
+                    }
+
+                    R.id.key_o -> {
+                        it.topRightChar = '9'
+                    }
+
+                    R.id.key_p -> {
+                        it.topRightChar = '1'
+                    }
+
+                    R.id.key_q -> {
+                        it.topRightChar = '1'
+                    }
+
+                    R.id.key_r -> {
+                        it.topRightChar = '4'
+                    }
+
+                    R.id.key_s -> {
+                        it.topRightChar = '*'
+                    }
+
+                    R.id.key_t -> {
+                        it.topRightChar = '5'
+                    }
+
+                    R.id.key_u -> {
+                        it.topRightChar = '7'
+                    }
+
+                    R.id.key_v -> {
+                        it.topRightChar = '?'
+                    }
+
+                    R.id.key_w -> {
+                        it.topRightChar = '2'
+                    }
+
+                    R.id.key_x -> {
+                        it.topRightChar = ':'
+                    }
+
+                    R.id.key_y -> {
+                        it.topRightChar = '6'
+                    }
+
+                    R.id.key_z -> {
+                        it.topRightChar = '\''
+                    }
+                }
+            }
+        } else {
+            defaultQWERTYButtonsRoman.forEach { it.topRightChar = null }
+        }
+    }
+
+    private fun displayOrHideNumberKeys(state: Boolean) {
+        val constraintSet = androidx.constraintlayout.widget.ConstraintSet()
+        constraintSet.clone(this)
+
+        val qRowKeys = listOf(
+            binding.keyQ, binding.keyW, binding.keyE, binding.keyR, binding.keyT,
+            binding.keyY, binding.keyU, binding.keyI, binding.keyO, binding.keyP
+        )
+
+        // Show 5 rows (with numbers)
+        if (state && isNumberKeysShow) {
+            // Set visibility for number keys
+            binding.key1.isVisible = true
+            binding.key2.isVisible = true
+            binding.key3.isVisible = true
+            binding.key4.isVisible = true
+            binding.key5.isVisible = true
+            binding.key6.isVisible = true
+            binding.key7.isVisible = true
+            binding.key8.isVisible = true
+            binding.key9.isVisible = true
+            binding.key0.isVisible = true
+
+            // Set guideline percentages for a 5-row layout
+            constraintSet.setGuidelinePercent(R.id.guideline_number_row, 0.20f)
+            constraintSet.setGuidelinePercent(R.id.guideline_q_row, 0.40f)
+            constraintSet.setGuidelinePercent(R.id.guideline_a_row, 0.60f)
+            constraintSet.setGuidelinePercent(R.id.guideline_z_row, 0.80f)
+
+            // Connect the Q-row's top to the bottom of the number row guideline
+            qRowKeys.forEach { key ->
+                constraintSet.connect(
+                    key.id,
+                    ConstraintLayout.LayoutParams.TOP,
+                    R.id.guideline_number_row,
+                    ConstraintLayout.LayoutParams.BOTTOM
+                )
+            }
+        }
+        // Hide numbers and show 4 rows
+        else {
+            // Set visibility for number keys
+            binding.key1.isVisible = false
+            binding.key2.isVisible = false
+            binding.key3.isVisible = false
+            binding.key4.isVisible = false
+            binding.key5.isVisible = false
+            binding.key6.isVisible = false
+            binding.key7.isVisible = false
+            binding.key8.isVisible = false
+            binding.key9.isVisible = false
+            binding.key0.isVisible = false
+
+            // Set guideline percentages for a 4-row layout
+            // Move the first guideline to the top (0%) to effectively hide it
+            constraintSet.setGuidelinePercent(R.id.guideline_number_row, 0.0f)
+            constraintSet.setGuidelinePercent(R.id.guideline_q_row, 0.25f)
+            constraintSet.setGuidelinePercent(R.id.guideline_a_row, 0.50f)
+            constraintSet.setGuidelinePercent(R.id.guideline_z_row, 0.75f)
+
+            // Connect the Q-row's top directly to the parent's top
+            qRowKeys.forEach { key ->
+                constraintSet.connect(
+                    key.id,
+                    ConstraintLayout.LayoutParams.TOP,
+                    ConstraintLayout.LayoutParams.PARENT_ID,
+                    ConstraintLayout.LayoutParams.TOP
+                )
+            }
+        }
+
+        // Apply the new constraints to the layout
+        constraintSet.applyTo(this)
     }
 
 }
