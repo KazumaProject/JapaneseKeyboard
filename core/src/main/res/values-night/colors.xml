@@ -21,6 +21,8 @@
     <color name="keyboard_prev_char_icon_disabled_color">#A5AFBF</color>
     <color name="keyboard_enter_key_color">#212529</color>
 
+    <color name="qwerty_sub_text_color">#A5AFBF</color>
+
     <color name="keyboard_icon_color_second">#929292</color>
 
     <color name="candidate_background">#FF000000</color>

@@ -356,6 +356,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
+    private var qwertyShowKeymapSymbolsPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
     private var showCandidateInPasswordComposePreference: Boolean? = false
     private var isVibration: Boolean? = true
@@ -647,6 +648,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
+            qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
             showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
@@ -855,6 +857,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
                     showKutouten = qwertyShowKutoutenButtonsPreference ?: false
                 )
+                qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
+                qwertyView.updateSymbolKeymapState(qwertyShowKeymapSymbolsPreference ?: false)
                 qwertyView.updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 if (isKeyboardFloatingMode == true) {
@@ -988,6 +992,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = null
         switchQWERTYPassword = null
         qwertyShowKutoutenButtonsPreference = null
+        qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
         showCandidateInPasswordComposePreference = null
         isVibration = null

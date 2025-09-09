@@ -181,4 +181,10 @@
     <string name="qwerty_number_keys_title">Number Keys</string>
     <string name="qwerty_number_keys_summary_on">Display number keys</string>
     <string name="qwerty_number_keys_summary_off">Do not display number keys</string>
+    <string name="qwerty_keymap_symbol_preference">Show Symbol Keymap</string>
+    <string name="qwerty_keymap_preference_summary_on">Show the symbol keymap on long press in the Romaji keyboard.</string>
+    <string name="qwerty_keymap_preference_summary_off">Do not show the symbol keymap on long press in the Romaji keyboard.</string>
+    <string name="switch_qwerty_preference_title">Input Password</string>
+    <string name="switch_qwerty_password_summary_on">Switch to QWERTY keyboard when entering a password.</string>
+    <string name="switch_qwerty_password_summary_off">Keep using the ten key when entering a password.</string>
 </resources>

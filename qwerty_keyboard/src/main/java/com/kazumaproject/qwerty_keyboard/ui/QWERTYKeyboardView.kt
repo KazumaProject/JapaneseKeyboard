@@ -126,6 +126,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var cursorInitialY = 0f
 
     private var isNumberKeysShow: Boolean = false
+    private var isSymbolKeymapShow: Boolean = false
 
     // ★ ポップアップなしで長押しを有効にするキーのリストを追加
     private val longPressEnabledKeys = setOf(
@@ -230,6 +231,119 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     keyL.setMarginEnd(
                                         23f
                                     )
+                                    defaultQWERTYButtonsRoman.forEach {
+                                        it.topRightChar = null
+                                    }
+                                } else {
+                                    if (isSymbolKeymapShow) {
+                                        defaultQWERTYButtonsRoman.forEach {
+                                            when (it.id) {
+                                                R.id.key_a -> {
+                                                    it.topRightChar = '@'
+                                                }
+
+                                                R.id.key_b -> {
+                                                    it.topRightChar = '!'
+                                                }
+
+                                                R.id.key_c -> {
+                                                    it.topRightChar = '\"'
+                                                }
+
+                                                R.id.key_d -> {
+                                                    it.topRightChar = '+'
+                                                }
+
+                                                R.id.key_e -> {
+                                                    it.topRightChar = '3'
+                                                }
+
+                                                R.id.key_f -> {
+                                                    it.topRightChar = '-'
+                                                }
+
+                                                R.id.key_g -> {
+                                                    it.topRightChar = '='
+                                                }
+
+                                                R.id.key_h -> {
+                                                    it.topRightChar = '/'
+                                                }
+
+                                                R.id.key_i -> {
+                                                    it.topRightChar = '8'
+                                                }
+
+                                                R.id.key_j -> {
+                                                    it.topRightChar = '#'
+                                                }
+
+                                                R.id.key_k -> {
+                                                    it.topRightChar = '('
+                                                }
+
+                                                R.id.key_at_mark -> {
+                                                    it.topRightChar = ')'
+                                                }
+
+                                                R.id.key_m -> {
+                                                    it.topRightChar = '…'
+                                                }
+
+                                                R.id.key_n -> {
+                                                    it.topRightChar = '~'
+                                                }
+
+                                                R.id.key_o -> {
+                                                    it.topRightChar = '9'
+                                                }
+
+                                                R.id.key_p -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_q -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_r -> {
+                                                    it.topRightChar = '4'
+                                                }
+
+                                                R.id.key_s -> {
+                                                    it.topRightChar = '*'
+                                                }
+
+                                                R.id.key_t -> {
+                                                    it.topRightChar = '5'
+                                                }
+
+                                                R.id.key_u -> {
+                                                    it.topRightChar = '7'
+                                                }
+
+                                                R.id.key_v -> {
+                                                    it.topRightChar = '?'
+                                                }
+
+                                                R.id.key_w -> {
+                                                    it.topRightChar = '2'
+                                                }
+
+                                                R.id.key_x -> {
+                                                    it.topRightChar = ':'
+                                                }
+
+                                                R.id.key_y -> {
+                                                    it.topRightChar = '6'
+                                                }
+
+                                                R.id.key_z -> {
+                                                    it.topRightChar = '\''
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 keyV.isVisible = true
                                 keyB.isVisible = true
@@ -269,6 +383,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
                             attachNumberKeyLabels(false)
                             displayOrHideNumberKeys(false)
+                            defaultQWERTYButtonsRoman.forEach {
+                                it.topRightChar = null
+                            }
                         }
 
                         QWERTYMode.Symbol -> {
@@ -295,6 +412,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
                             attachNumberKeyLabels(true)
                             displayOrHideNumberKeys(false)
+                            defaultQWERTYButtonsRoman.forEach {
+                                it.topRightChar = null
+                            }
                         }
                     }
                 }
@@ -345,6 +465,115 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             keyKuten.text = "。"
                             keyTouten.text = "、"
                         }
+                        if (isSymbolKeymapShow) {
+                            defaultQWERTYButtonsRoman.forEach {
+                                when (it.id) {
+                                    R.id.key_a -> {
+                                        it.topRightChar = '@'
+                                    }
+
+                                    R.id.key_b -> {
+                                        it.topRightChar = '!'
+                                    }
+
+                                    R.id.key_c -> {
+                                        it.topRightChar = '\"'
+                                    }
+
+                                    R.id.key_d -> {
+                                        it.topRightChar = '+'
+                                    }
+
+                                    R.id.key_e -> {
+                                        it.topRightChar = '3'
+                                    }
+
+                                    R.id.key_f -> {
+                                        it.topRightChar = '-'
+                                    }
+
+                                    R.id.key_g -> {
+                                        it.topRightChar = '='
+                                    }
+
+                                    R.id.key_h -> {
+                                        it.topRightChar = '/'
+                                    }
+
+                                    R.id.key_i -> {
+                                        it.topRightChar = '8'
+                                    }
+
+                                    R.id.key_j -> {
+                                        it.topRightChar = '#'
+                                    }
+
+                                    R.id.key_k -> {
+                                        it.topRightChar = '('
+                                    }
+
+                                    R.id.key_at_mark -> {
+                                        it.topRightChar = ')'
+                                    }
+
+                                    R.id.key_m -> {
+                                        it.topRightChar = '…'
+                                    }
+
+                                    R.id.key_n -> {
+                                        it.topRightChar = '~'
+                                    }
+
+                                    R.id.key_o -> {
+                                        it.topRightChar = '9'
+                                    }
+
+                                    R.id.key_p -> {
+                                        it.topRightChar = '1'
+                                    }
+
+                                    R.id.key_q -> {
+                                        it.topRightChar = '1'
+                                    }
+
+                                    R.id.key_r -> {
+                                        it.topRightChar = '4'
+                                    }
+
+                                    R.id.key_s -> {
+                                        it.topRightChar = '*'
+                                    }
+
+                                    R.id.key_t -> {
+                                        it.topRightChar = '5'
+                                    }
+
+                                    R.id.key_u -> {
+                                        it.topRightChar = '7'
+                                    }
+
+                                    R.id.key_v -> {
+                                        it.topRightChar = '?'
+                                    }
+
+                                    R.id.key_w -> {
+                                        it.topRightChar = '2'
+                                    }
+
+                                    R.id.key_x -> {
+                                        it.topRightChar = ':'
+                                    }
+
+                                    R.id.key_y -> {
+                                        it.topRightChar = '6'
+                                    }
+
+                                    R.id.key_z -> {
+                                        it.topRightChar = '\''
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         binding.apply {
                             keyAtMark.apply {
@@ -364,6 +593,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 resources.getString(com.kazumaproject.core.R.string.string_123)
                             keyKuten.text = "."
                             keyTouten.text = ","
+                        }
+                        defaultQWERTYButtonsRoman.forEach {
+                            it.topRightChar = null
                         }
                     }
                 }
@@ -1505,6 +1737,121 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun updateNumberKeyState(state: Boolean) {
         this.isNumberKeysShow = state
         displayOrHideNumberKeys(state)
+    }
+
+    fun updateSymbolKeymapState(state: Boolean) {
+        this.isSymbolKeymapShow = state
+        if (state) {
+            defaultQWERTYButtonsRoman.forEach {
+                when (it.id) {
+                    R.id.key_a -> {
+                        it.topRightChar = '@'
+                    }
+
+                    R.id.key_b -> {
+                        it.topRightChar = '!'
+                    }
+
+                    R.id.key_c -> {
+                        it.topRightChar = '\"'
+                    }
+
+                    R.id.key_d -> {
+                        it.topRightChar = '+'
+                    }
+
+                    R.id.key_e -> {
+                        it.topRightChar = '3'
+                    }
+
+                    R.id.key_f -> {
+                        it.topRightChar = '-'
+                    }
+
+                    R.id.key_g -> {
+                        it.topRightChar = '='
+                    }
+
+                    R.id.key_h -> {
+                        it.topRightChar = '/'
+                    }
+
+                    R.id.key_i -> {
+                        it.topRightChar = '8'
+                    }
+
+                    R.id.key_j -> {
+                        it.topRightChar = '#'
+                    }
+
+                    R.id.key_k -> {
+                        it.topRightChar = '('
+                    }
+
+                    R.id.key_at_mark -> {
+                        it.topRightChar = ')'
+                    }
+
+                    R.id.key_m -> {
+                        it.topRightChar = '…'
+                    }
+
+                    R.id.key_n -> {
+                        it.topRightChar = '~'
+                    }
+
+                    R.id.key_o -> {
+                        it.topRightChar = '9'
+                    }
+
+                    R.id.key_p -> {
+                        it.topRightChar = '1'
+                    }
+
+                    R.id.key_q -> {
+                        it.topRightChar = '1'
+                    }
+
+                    R.id.key_r -> {
+                        it.topRightChar = '4'
+                    }
+
+                    R.id.key_s -> {
+                        it.topRightChar = '*'
+                    }
+
+                    R.id.key_t -> {
+                        it.topRightChar = '5'
+                    }
+
+                    R.id.key_u -> {
+                        it.topRightChar = '7'
+                    }
+
+                    R.id.key_v -> {
+                        it.topRightChar = '?'
+                    }
+
+                    R.id.key_w -> {
+                        it.topRightChar = '2'
+                    }
+
+                    R.id.key_x -> {
+                        it.topRightChar = ':'
+                    }
+
+                    R.id.key_y -> {
+                        it.topRightChar = '6'
+                    }
+
+                    R.id.key_z -> {
+                        it.topRightChar = '\''
+                    }
+                }
+            }
+        } else {
+            defaultQWERTYButtonsRoman.forEach { it.topRightChar = null }
+        }
     }
 
     private fun displayOrHideNumberKeys(state: Boolean) {
