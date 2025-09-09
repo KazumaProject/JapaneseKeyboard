@@ -41,6 +41,12 @@ object AppPreference {
     private val QWERTY_SHOW_CURSOR_BUTTONS =
         Pair("qwerty_show_cursor_buttons_preference", false)
 
+    private val QWERTY_SHOW_KEYMAP_SYMBOLS =
+        Pair("qwerty_show_keymap_symbols_romaji_preference", false)
+
+    private val QWERTY_SHOW_NUMBER_BUTTONS =
+        Pair("qwerty_show_number_keys_buttons_preference", false)
+
     private val QWERTY_SHOW_POPUP_WINDOW =
         Pair("qwerty_show_popup_window_preference", true)
 
@@ -140,6 +146,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_CURSOR_BUTTONS.first, value ?: false)
+        }
+
+    var qwerty_show_keymap_symbols: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_KEYMAP_SYMBOLS.first,
+            QWERTY_SHOW_KEYMAP_SYMBOLS.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_KEYMAP_SYMBOLS.first, value ?: false)
+        }
+
+    var qwerty_show_number_buttons: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_NUMBER_BUTTONS.first,
+            QWERTY_SHOW_NUMBER_BUTTONS.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_NUMBER_BUTTONS.first, value ?: false)
         }
 
     var switch_qwerty_password: Boolean?
