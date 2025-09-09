@@ -56,7 +56,18 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
         QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
         QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDot,
-        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyComma
+        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyComma,
+
+        QWERTYKey.QWERTYKey1 to QWERTYKeyInfo.Key1,
+        QWERTYKey.QWERTYKey2 to QWERTYKeyInfo.Key2,
+        QWERTYKey.QWERTYKey3 to QWERTYKeyInfo.Key3,
+        QWERTYKey.QWERTYKey4 to QWERTYKeyInfo.Key4,
+        QWERTYKey.QWERTYKey5 to QWERTYKeyInfo.Key5,
+        QWERTYKey.QWERTYKey6 to QWERTYKeyInfo.Key6,
+        QWERTYKey.QWERTYKey7 to QWERTYKeyInfo.Key7,
+        QWERTYKey.QWERTYKey8 to QWERTYKeyInfo.Key8,
+        QWERTYKey.QWERTYKey9 to QWERTYKeyInfo.Key9,
+        QWERTYKey.QWERTYKey0 to QWERTYKeyInfo.Key0,
     )
 
     private val listNumber: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
@@ -183,7 +194,18 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
 
         QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDotJP,
-        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyCommaJP
+        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyCommaJP,
+
+        QWERTYKey.QWERTYKey1 to QWERTYKeyInfo.Key1JP,
+        QWERTYKey.QWERTYKey2 to QWERTYKeyInfo.Key2JP,
+        QWERTYKey.QWERTYKey3 to QWERTYKeyInfo.Key3JP,
+        QWERTYKey.QWERTYKey4 to QWERTYKeyInfo.Key4JP,
+        QWERTYKey.QWERTYKey5 to QWERTYKeyInfo.Key5JP,
+        QWERTYKey.QWERTYKey6 to QWERTYKeyInfo.Key6JP,
+        QWERTYKey.QWERTYKey7 to QWERTYKeyInfo.Key7JP,
+        QWERTYKey.QWERTYKey8 to QWERTYKeyInfo.Key8JP,
+        QWERTYKey.QWERTYKey9 to QWERTYKeyInfo.Key9JP,
+        QWERTYKey.QWERTYKey0 to QWERTYKeyInfo.Key0JP,
     )
 
     private val listNumberJP: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
