@@ -529,7 +529,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     }
 
                                     R.id.key_p -> {
-                                        it.topRightChar = '1'
+                                        it.topRightChar = '0'
                                     }
 
                                     R.id.key_q -> {
@@ -1805,7 +1805,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     }
 
                     R.id.key_p -> {
-                        it.topRightChar = '1'
+                        it.topRightChar = '0'
                     }
 
                     R.id.key_q -> {
