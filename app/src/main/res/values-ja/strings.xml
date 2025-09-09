@@ -182,5 +182,11 @@
     <string name="qwerty_number_keys_title">数字キー</string>
     <string name="qwerty_number_keys_summary_on">数字キーを表示します</string>
     <string name="qwerty_number_keys_summary_off">数字キーを表示しません</string>
+    <string name="qwerty_keymap_symbol_preference">記号キーマップの表示</string>
+    <string name="qwerty_keymap_preference_summary_on">ローマ字キーボードで長押し時に記号のキーマップを表示します。</string>
+    <string name="qwerty_keymap_preference_summary_off">ローマ字キーボードで長押し時に記号のキーマップを表示しません。</string>
+    <string name="switch_qwerty_preference_title">パスワード入力時</string>
+    <string name="switch_qwerty_password_summary_on">パスワード入力の場合、QWERTY キーボードに切り替えます。</string>
+    <string name="switch_qwerty_password_summary_off">パスワード入力の場合、テンキーで固定</string>
 
 </resources>
