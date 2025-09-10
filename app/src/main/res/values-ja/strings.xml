@@ -188,5 +188,8 @@
     <string name="switch_qwerty_preference_title">パスワード入力時</string>
     <string name="switch_qwerty_password_summary_on">パスワード入力の場合、QWERTY キーボードに切り替えます。</string>
     <string name="switch_qwerty_password_summary_off">パスワード入力の場合、テンキーで固定</string>
+    <string name="kana_layout_category_preference_title">かな入力 レイアウトの設定</string>
+    <string name="kana_input_qwerty_preference_title">英字入力は QWERTY</string>
+    <string name="kana_input_qwerty_preference_summary">英字入力時は QWERTY レイアウトを使用する</string>
 
 </resources>

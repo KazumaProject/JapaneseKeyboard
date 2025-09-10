@@ -32,6 +32,9 @@ object AppPreference {
 
     private val SWITCH_QWERTY_PASSWORD = Pair("switch_qwerty_keyboard_password_preference", false)
 
+    private val TENKEY_SWITCH_QWERTY_PREFERENCE =
+        Pair("tenkey_kana_english_qwerty_preference", false)
+
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
 
@@ -128,6 +131,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.first, value ?: false)
+        }
+
+    var tenkey_qwerty_switch_number_layout: Boolean?
+        get() = preferences.getBoolean(
+            TENKEY_SWITCH_QWERTY_PREFERENCE.first,
+            TENKEY_SWITCH_QWERTY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_SWITCH_QWERTY_PREFERENCE.first, value ?: false)
         }
 
     var qwerty_show_ime_button: Boolean?

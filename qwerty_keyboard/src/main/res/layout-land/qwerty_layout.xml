@@ -785,6 +785,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
+        android:layout_marginStart="2dp"
         android:layout_marginEnd="4dp"
         android:background="@drawable/qwerty_key_side_bg"
         android:elevation="@dimen/qwerty_side_key_elevation_size"
@@ -794,9 +795,30 @@
         android:textColor="@color/keyboard_icon_color"
         android:textSize="@dimen/qwerty_side_key_switch_mode_text_size"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/key_123"
+        app:layout_constraintEnd_toStartOf="@+id/switch_number_layout"
         app:layout_constraintHorizontal_weight="0.75"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/guideline_z_row" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/switch_number_layout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginVertical="@dimen/qwerty_key_vertical_margin"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:background="@drawable/qwerty_key_side_bg"
+        android:elevation="@dimen/qwerty_side_key_elevation_size"
+        android:gravity="center"
+        android:text="あa1"
+        android:textAllCaps="false"
+        android:textColor="@color/keyboard_icon_color"
+        android:textSize="@dimen/qwerty_side_key_switch_mode_text_size"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/key_123"
+        app:layout_constraintHorizontal_weight="0.75"
+        app:layout_constraintStart_toEndOf="@id/switch_romaji_english"
         app:layout_constraintTop_toBottomOf="@id/guideline_z_row" />
 
     <androidx.appcompat.widget.AppCompatButton
@@ -814,7 +836,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/key_switch_default"
         app:layout_constraintHorizontal_weight="0.75"
-        app:layout_constraintStart_toEndOf="@id/switch_romaji_english"
+        app:layout_constraintStart_toEndOf="@id/switch_number_layout"
         app:layout_constraintTop_toBottomOf="@id/guideline_z_row" />
 
     <androidx.appcompat.widget.AppCompatImageButton
