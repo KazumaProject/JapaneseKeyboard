@@ -234,6 +234,115 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     defaultQWERTYButtonsRoman.forEach {
                                         it.topRightChar = null
                                     }
+                                    if (isSymbolKeymapShow) {
+                                        defaultQWERTYButtons.forEach {
+                                            when (it.id) {
+                                                R.id.key_a -> {
+                                                    it.topRightChar = '@'
+                                                }
+
+                                                R.id.key_b -> {
+                                                    it.topRightChar = '!'
+                                                }
+
+                                                R.id.key_c -> {
+                                                    it.topRightChar = '\"'
+                                                }
+
+                                                R.id.key_d -> {
+                                                    it.topRightChar = '+'
+                                                }
+
+                                                R.id.key_e -> {
+                                                    it.topRightChar = '3'
+                                                }
+
+                                                R.id.key_f -> {
+                                                    it.topRightChar = '-'
+                                                }
+
+                                                R.id.key_g -> {
+                                                    it.topRightChar = '='
+                                                }
+
+                                                R.id.key_h -> {
+                                                    it.topRightChar = '/'
+                                                }
+
+                                                R.id.key_i -> {
+                                                    it.topRightChar = '8'
+                                                }
+
+                                                R.id.key_j -> {
+                                                    it.topRightChar = '#'
+                                                }
+
+                                                R.id.key_k -> {
+                                                    it.topRightChar = '('
+                                                }
+
+                                                R.id.key_l -> {
+                                                    it.topRightChar = ')'
+                                                }
+
+                                                R.id.key_m -> {
+                                                    it.topRightChar = '…'
+                                                }
+
+                                                R.id.key_n -> {
+                                                    it.topRightChar = '~'
+                                                }
+
+                                                R.id.key_o -> {
+                                                    it.topRightChar = '9'
+                                                }
+
+                                                R.id.key_p -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_q -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_r -> {
+                                                    it.topRightChar = '4'
+                                                }
+
+                                                R.id.key_s -> {
+                                                    it.topRightChar = '*'
+                                                }
+
+                                                R.id.key_t -> {
+                                                    it.topRightChar = '5'
+                                                }
+
+                                                R.id.key_u -> {
+                                                    it.topRightChar = '7'
+                                                }
+
+                                                R.id.key_v -> {
+                                                    it.topRightChar = '?'
+                                                }
+
+                                                R.id.key_w -> {
+                                                    it.topRightChar = '2'
+                                                }
+
+                                                R.id.key_x -> {
+                                                    it.topRightChar = ':'
+                                                }
+
+                                                R.id.key_y -> {
+                                                    it.topRightChar = '6'
+                                                }
+
+                                                R.id.key_z -> {
+                                                    it.topRightChar = '\''
+                                                }
+                                            }
+                                        }
+                                    }
                                 } else {
                                     if (isSymbolKeymapShow) {
                                         defaultQWERTYButtonsRoman.forEach {
@@ -284,6 +393,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
                                                 R.id.key_at_mark -> {
                                                     it.topRightChar = ')'
+                                                }
+
+                                                R.id.key_l -> {
+                                                    it.topRightChar = null
                                                 }
 
                                                 R.id.key_m -> {
@@ -512,6 +625,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         it.topRightChar = '('
                                     }
 
+                                    R.id.key_l -> {
+                                        it.topRightChar = null
+                                    }
+
                                     R.id.key_at_mark -> {
                                         it.topRightChar = ')'
                                     }
@@ -596,6 +713,115 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         }
                         defaultQWERTYButtonsRoman.forEach {
                             it.topRightChar = null
+                        }
+                        if (isSymbolKeymapShow) {
+                            defaultQWERTYButtons.forEach {
+                                when (it.id) {
+                                    R.id.key_a -> {
+                                        it.topRightChar = '@'
+                                    }
+
+                                    R.id.key_b -> {
+                                        it.topRightChar = '!'
+                                    }
+
+                                    R.id.key_c -> {
+                                        it.topRightChar = '\"'
+                                    }
+
+                                    R.id.key_d -> {
+                                        it.topRightChar = '+'
+                                    }
+
+                                    R.id.key_e -> {
+                                        it.topRightChar = '3'
+                                    }
+
+                                    R.id.key_f -> {
+                                        it.topRightChar = '-'
+                                    }
+
+                                    R.id.key_g -> {
+                                        it.topRightChar = '='
+                                    }
+
+                                    R.id.key_h -> {
+                                        it.topRightChar = '/'
+                                    }
+
+                                    R.id.key_i -> {
+                                        it.topRightChar = '8'
+                                    }
+
+                                    R.id.key_j -> {
+                                        it.topRightChar = '#'
+                                    }
+
+                                    R.id.key_k -> {
+                                        it.topRightChar = '('
+                                    }
+
+                                    R.id.key_l -> {
+                                        it.topRightChar = ')'
+                                    }
+
+                                    R.id.key_m -> {
+                                        it.topRightChar = '…'
+                                    }
+
+                                    R.id.key_n -> {
+                                        it.topRightChar = '~'
+                                    }
+
+                                    R.id.key_o -> {
+                                        it.topRightChar = '9'
+                                    }
+
+                                    R.id.key_p -> {
+                                        it.topRightChar = '0'
+                                    }
+
+                                    R.id.key_q -> {
+                                        it.topRightChar = '1'
+                                    }
+
+                                    R.id.key_r -> {
+                                        it.topRightChar = '4'
+                                    }
+
+                                    R.id.key_s -> {
+                                        it.topRightChar = '*'
+                                    }
+
+                                    R.id.key_t -> {
+                                        it.topRightChar = '5'
+                                    }
+
+                                    R.id.key_u -> {
+                                        it.topRightChar = '7'
+                                    }
+
+                                    R.id.key_v -> {
+                                        it.topRightChar = '?'
+                                    }
+
+                                    R.id.key_w -> {
+                                        it.topRightChar = '2'
+                                    }
+
+                                    R.id.key_x -> {
+                                        it.topRightChar = ':'
+                                    }
+
+                                    R.id.key_y -> {
+                                        it.topRightChar = '6'
+                                    }
+
+                                    R.id.key_z -> {
+                                        it.topRightChar = '\''
+                                    }
+                                }
+                            }
                         }
                     }
                 }
