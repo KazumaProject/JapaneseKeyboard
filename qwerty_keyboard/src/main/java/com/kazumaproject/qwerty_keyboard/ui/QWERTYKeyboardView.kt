@@ -234,6 +234,115 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     defaultQWERTYButtonsRoman.forEach {
                                         it.topRightChar = null
                                     }
+                                    if (isSymbolKeymapShow) {
+                                        defaultQWERTYButtons.forEach {
+                                            when (it.id) {
+                                                R.id.key_a -> {
+                                                    it.topRightChar = '@'
+                                                }
+
+                                                R.id.key_b -> {
+                                                    it.topRightChar = '!'
+                                                }
+
+                                                R.id.key_c -> {
+                                                    it.topRightChar = '\"'
+                                                }
+
+                                                R.id.key_d -> {
+                                                    it.topRightChar = '+'
+                                                }
+
+                                                R.id.key_e -> {
+                                                    it.topRightChar = '3'
+                                                }
+
+                                                R.id.key_f -> {
+                                                    it.topRightChar = '-'
+                                                }
+
+                                                R.id.key_g -> {
+                                                    it.topRightChar = '='
+                                                }
+
+                                                R.id.key_h -> {
+                                                    it.topRightChar = '/'
+                                                }
+
+                                                R.id.key_i -> {
+                                                    it.topRightChar = '8'
+                                                }
+
+                                                R.id.key_j -> {
+                                                    it.topRightChar = '#'
+                                                }
+
+                                                R.id.key_k -> {
+                                                    it.topRightChar = '('
+                                                }
+
+                                                R.id.key_l -> {
+                                                    it.topRightChar = ')'
+                                                }
+
+                                                R.id.key_m -> {
+                                                    it.topRightChar = '…'
+                                                }
+
+                                                R.id.key_n -> {
+                                                    it.topRightChar = '~'
+                                                }
+
+                                                R.id.key_o -> {
+                                                    it.topRightChar = '9'
+                                                }
+
+                                                R.id.key_p -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_q -> {
+                                                    it.topRightChar = '1'
+                                                }
+
+                                                R.id.key_r -> {
+                                                    it.topRightChar = '4'
+                                                }
+
+                                                R.id.key_s -> {
+                                                    it.topRightChar = '*'
+                                                }
+
+                                                R.id.key_t -> {
+                                                    it.topRightChar = '5'
+                                                }
+
+                                                R.id.key_u -> {
+                                                    it.topRightChar = '7'
+                                                }
+
+                                                R.id.key_v -> {
+                                                    it.topRightChar = '?'
+                                                }
+
+                                                R.id.key_w -> {
+                                                    it.topRightChar = '2'
+                                                }
+
+                                                R.id.key_x -> {
+                                                    it.topRightChar = ':'
+                                                }
+
+                                                R.id.key_y -> {
+                                                    it.topRightChar = '6'
+                                                }
+
+                                                R.id.key_z -> {
+                                                    it.topRightChar = '\''
+                                                }
+                                            }
+                                        }
+                                    }
                                 } else {
                                     if (isSymbolKeymapShow) {
                                         defaultQWERTYButtonsRoman.forEach {
@@ -284,6 +393,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
                                                 R.id.key_at_mark -> {
                                                     it.topRightChar = ')'
+                                                }
+
+                                                R.id.key_l -> {
+                                                    it.topRightChar = null
                                                 }
 
                                                 R.id.key_m -> {
@@ -512,6 +625,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         it.topRightChar = '('
                                     }
 
+                                    R.id.key_l -> {
+                                        it.topRightChar = null
+                                    }
+
                                     R.id.key_at_mark -> {
                                         it.topRightChar = ')'
                                     }
@@ -597,6 +714,115 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         defaultQWERTYButtonsRoman.forEach {
                             it.topRightChar = null
                         }
+                        if (isSymbolKeymapShow) {
+                            defaultQWERTYButtons.forEach {
+                                when (it.id) {
+                                    R.id.key_a -> {
+                                        it.topRightChar = '@'
+                                    }
+
+                                    R.id.key_b -> {
+                                        it.topRightChar = '!'
+                                    }
+
+                                    R.id.key_c -> {
+                                        it.topRightChar = '\"'
+                                    }
+
+                                    R.id.key_d -> {
+                                        it.topRightChar = '+'
+                                    }
+
+                                    R.id.key_e -> {
+                                        it.topRightChar = '3'
+                                    }
+
+                                    R.id.key_f -> {
+                                        it.topRightChar = '-'
+                                    }
+
+                                    R.id.key_g -> {
+                                        it.topRightChar = '='
+                                    }
+
+                                    R.id.key_h -> {
+                                        it.topRightChar = '/'
+                                    }
+
+                                    R.id.key_i -> {
+                                        it.topRightChar = '8'
+                                    }
+
+                                    R.id.key_j -> {
+                                        it.topRightChar = '#'
+                                    }
+
+                                    R.id.key_k -> {
+                                        it.topRightChar = '('
+                                    }
+
+                                    R.id.key_l -> {
+                                        it.topRightChar = ')'
+                                    }
+
+                                    R.id.key_m -> {
+                                        it.topRightChar = '…'
+                                    }
+
+                                    R.id.key_n -> {
+                                        it.topRightChar = '~'
+                                    }
+
+                                    R.id.key_o -> {
+                                        it.topRightChar = '9'
+                                    }
+
+                                    R.id.key_p -> {
+                                        it.topRightChar = '0'
+                                    }
+
+                                    R.id.key_q -> {
+                                        it.topRightChar = '1'
+                                    }
+
+                                    R.id.key_r -> {
+                                        it.topRightChar = '4'
+                                    }
+
+                                    R.id.key_s -> {
+                                        it.topRightChar = '*'
+                                    }
+
+                                    R.id.key_t -> {
+                                        it.topRightChar = '5'
+                                    }
+
+                                    R.id.key_u -> {
+                                        it.topRightChar = '7'
+                                    }
+
+                                    R.id.key_v -> {
+                                        it.topRightChar = '?'
+                                    }
+
+                                    R.id.key_w -> {
+                                        it.topRightChar = '2'
+                                    }
+
+                                    R.id.key_x -> {
+                                        it.topRightChar = ':'
+                                    }
+
+                                    R.id.key_y -> {
+                                        it.topRightChar = '6'
+                                    }
+
+                                    R.id.key_z -> {
+                                        it.topRightChar = '\''
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -655,6 +881,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             keySwitchDefault.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
             keyReturn.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
             key123.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+            switchNumberLayout.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
 
             cursorLeft.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
             cursorRight.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
@@ -712,6 +939,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keyTouten to QWERTYKey.QWERTYKeyTouten,
             binding.keyKuten to QWERTYKey.QWERTYKeyKuten,
             binding.switchRomajiEnglish to QWERTYKey.QWERTYKeySwitchRomajiEnglish,
+            binding.switchNumberLayout to QWERTYKey.QWERTYKeySwitchNumberKey,
 
             binding.key1 to QWERTYKey.QWERTYKey1,
             binding.key2 to QWERTYKey.QWERTYKey2,
@@ -1031,7 +1259,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     } else {
                         val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                         when (qwertyKey) {
-                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
+                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
                                 qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
                             }
 
@@ -1091,7 +1319,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     val qwertyKey =
                                         qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                                     when (qwertyKey) {
-                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
+                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
                                             qwertyKeyListener?.onReleasedQWERTYKey(
                                                 qwertyKey,
                                                 null,
@@ -1221,7 +1449,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 it.id != binding.keySwitchDefault.id &&
                 it.id != binding.cursorLeft.id &&
                 it.id != binding.cursorRight.id &&
-                it.id != binding.switchRomajiEnglish.id
+                it.id != binding.switchRomajiEnglish.id &&
+                it.id != binding.switchNumberLayout.id
             ) {
                 showKeyPreview(it)
             }
@@ -1734,6 +1963,51 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         binding.switchRomajiEnglish.text = spannableString
     }
 
+    /**
+     * Sets the style for the text in the number switch key ("あa1").
+     *
+     * This function makes the 'a' character bold and slightly larger,
+     * while keeping the other characters in a normal style.
+     */
+    fun setNumberSwitchKeyTextStyle() {
+        // The text to be displayed on the button.
+        val text = "あa1"
+        val spannableString = SpannableString(text)
+
+        // Apply NORMAL style to the first character "あ" (index 0).
+        spannableString.setSpan(
+            StyleSpan(Typeface.NORMAL),
+            0, // Start index (inclusive)
+            1, // End index (exclusive)
+            Spannable.SPAN_INCLUSIVE_EXCLUSIVE
+        )
+
+        // Apply BOLD style to the second character "a" (index 1).
+        spannableString.setSpan(
+            StyleSpan(Typeface.BOLD),
+            1, // Start index (inclusive)
+            2, // End index (exclusive)
+            Spannable.SPAN_INCLUSIVE_EXCLUSIVE
+        )
+
+        // You could also increase the size of 'a' like in your other function.
+        spannableString.setSpan(
+            RelativeSizeSpan(1.5f), // Makes 'a' 20% larger
+            1, // Start index
+            2, // End index
+            Spannable.SPAN_INCLUSIVE_EXCLUSIVE
+        )
+
+        // Apply NORMAL style to the third character "1" (index 2).
+        spannableString.setSpan(
+            StyleSpan(Typeface.NORMAL),
+            2, // Start index (inclusive)
+            3, // End index (exclusive)
+            Spannable.SPAN_INCLUSIVE_EXCLUSIVE
+        )
+        binding.switchNumberLayout.text = spannableString
+    }
+
     fun updateNumberKeyState(state: Boolean) {
         this.isNumberKeysShow = state
         displayOrHideNumberKeys(state)
@@ -1887,7 +2161,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             qRowKeys.forEach { key ->
                 constraintSet.connect(
                     key.id,
-                    ConstraintLayout.LayoutParams.TOP,
+                    LayoutParams.TOP,
                     R.id.guideline_number_row,
                     ConstraintLayout.LayoutParams.BOTTOM
                 )
@@ -1918,15 +2192,19 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             qRowKeys.forEach { key ->
                 constraintSet.connect(
                     key.id,
-                    ConstraintLayout.LayoutParams.TOP,
-                    ConstraintLayout.LayoutParams.PARENT_ID,
-                    ConstraintLayout.LayoutParams.TOP
+                    LayoutParams.TOP,
+                    LayoutParams.PARENT_ID,
+                    LayoutParams.TOP
                 )
             }
         }
 
         // Apply the new constraints to the layout
         constraintSet.applyTo(this)
+    }
+
+    fun setSwitchNumberLayoutKeyVisibility(state: Boolean) {
+        binding.switchNumberLayout.isVisible = state
     }
 
 }

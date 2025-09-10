@@ -46,6 +46,8 @@ sealed class QWERTYKey {
 
     data object QWERTYKeySwitchRomajiEnglish : QWERTYKey()
 
+    data object QWERTYKeySwitchNumberKey : QWERTYKey()
+
     data object QWERTYKey1 : QWERTYKey()
     data object QWERTYKey2 : QWERTYKey()
     data object QWERTYKey3 : QWERTYKey()
