@@ -3031,10 +3031,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyboardType.ROMAJI -> {
                         mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                        mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                     }
 
                     KeyboardType.QWERTY -> {
                         mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                        mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                     }
 
                     KeyboardType.CUSTOM -> {}
@@ -7298,6 +7300,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 _inputString.update { "" }
                                 finishComposingText()
                                 setComposingText("", 0)
+                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                             }
                         }
 
@@ -8010,6 +8013,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (tenkeyQWERTYSwitchNumber == true) {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
+                            mainView.qwertyView.setRomajiMode(false)
                         } else {
                             setSideKeySpaceDrawable(
                                 cachedSpaceDrawable
