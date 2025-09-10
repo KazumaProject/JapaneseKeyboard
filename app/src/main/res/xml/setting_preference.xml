@@ -143,6 +143,14 @@
                 app:summary="@string/custom_romaji_summary" />
         </PreferenceCategory>
 
+        <PreferenceCategory android:title="@string/kana_layout_category_preference_title">
+            <SwitchPreferenceCompat
+                android:key="tenkey_kana_english_qwerty_preference"
+                android:title="@string/kana_input_qwerty_preference_title"
+                app:defaultValue="false"
+                app:summary="@string/kana_input_qwerty_preference_summary" />
+        </PreferenceCategory>
+
         <PreferenceCategory android:title="@string/category_qwerty_keyboard_title">
             <SwitchPreferenceCompat
                 android:defaultValue="true"

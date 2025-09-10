@@ -420,7 +420,7 @@ fun MaterialTextView.setTextFlickTopEnglish(
             text = ENGLISH_SMALL_CHAR[11].toString()
         }
         R.id.key_6 -> {
-            text = ENGLISH_SMALL_CHAR[15].toString()
+            text = ENGLISH_SMALL_CHAR[14].toString()
         }
         R.id.key_7 -> {
             text = ENGLISH_SMALL_CHAR[17].toString()
