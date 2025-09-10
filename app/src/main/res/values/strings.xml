@@ -187,4 +187,7 @@
     <string name="switch_qwerty_preference_title">Input Password</string>
     <string name="switch_qwerty_password_summary_on">Switch to QWERTY keyboard when entering a password.</string>
     <string name="switch_qwerty_password_summary_off">Keep using the ten key when entering a password.</string>
+    <string name="kana_layout_category_preference_title">Kana input layout setting</string>
+    <string name="kana_input_qwerty_preference_title">QWERTY for alphabet</string>
+    <string name="kana_input_qwerty_preference_summary">Use QWERTY layout for alphabet input mode</string>
 </resources>
