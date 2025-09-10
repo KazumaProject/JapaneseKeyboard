@@ -239,6 +239,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
+    private var tenkeyQWERTYSwitchNumber: Boolean? = false
 
     private var floatingCandidateWindow: PopupWindow? = null
     private lateinit var floatingCandidateView: View
@@ -665,6 +666,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidateViewHeight = candidate_view_height_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
+            tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
             isKeyboardFloatingMode = is_floating_mode ?: false
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
@@ -861,6 +863,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.updateSymbolKeymapState(qwertyShowKeymapSymbolsPreference ?: false)
                 qwertyView.updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
+                qwertyView.setNumberSwitchKeyTextStyle()
+                qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
                     candidatesRowView.adapter = null
@@ -1016,6 +1020,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
+        tenkeyQWERTYSwitchNumber = null
         isKeyboardFloatingMode = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -3026,10 +3031,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyboardType.ROMAJI -> {
                         mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                        mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                     }
 
                     KeyboardType.QWERTY -> {
                         mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                        mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                     }
 
                     KeyboardType.CUSTOM -> {}
@@ -7293,6 +7300,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 _inputString.update { "" }
                                 finishComposingText()
                                 setComposingText("", 0)
+                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                             }
                         }
 
@@ -7379,6 +7387,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
                                 mainView.qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
                             }
+                        }
+
+                        QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                            mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
                         }
 
                         else -> {
@@ -7997,26 +8010,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.keyboardView.apply {
                 when (currentInputMode.value) {
                     is InputMode.ModeJapanese -> {
-                        setSideKeySpaceDrawable(
-                            cachedSpaceDrawable
-                        )
-                        setSideKeyPreviousState(true)
-                        if (insertString.isNotEmpty()) {
-                            if (insertString.isNotEmpty() && insertString.last()
-                                    .isLatinAlphabet()
-                            ) {
-                                setBackgroundSmallLetterKey(
-                                    cachedEnglishDrawable
-                                )
+                        if (tenkeyQWERTYSwitchNumber == true) {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                            mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
+                            mainView.qwertyView.setRomajiMode(false)
+                        } else {
+                            setSideKeySpaceDrawable(
+                                cachedSpaceDrawable
+                            )
+                            setSideKeyPreviousState(true)
+                            if (insertString.isNotEmpty()) {
+                                if (insertString.isNotEmpty() && insertString.last()
+                                        .isLatinAlphabet()
+                                ) {
+                                    setBackgroundSmallLetterKey(
+                                        cachedEnglishDrawable
+                                    )
+                                } else {
+                                    setBackgroundSmallLetterKey(
+                                        cachedLogoDrawable
+                                    )
+                                }
                             } else {
                                 setBackgroundSmallLetterKey(
                                     cachedLogoDrawable
                                 )
                             }
-                        } else {
-                            setBackgroundSmallLetterKey(
-                                cachedLogoDrawable
-                            )
                         }
                     }
 
