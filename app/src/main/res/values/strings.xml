@@ -223,6 +223,7 @@
     <string name="data_not_found_string">Data not found</string>
     <string name="fail_to_import_string">Import failed. The file format is incorrect.</string>
     <string name="import_text_string"> of words were imported</string>
+    <string name="import_item_string"> of items were imported</string>
     <string name="default_map_cannot_edit_text">The default map cannot be edited.</string>
     <string name="fail_to_export_string">Export failed.</string>
     <string name="success_to_export_string">Success to export.</string>
@@ -274,4 +275,13 @@
     <string name="sensitivity_normal">Normal</string>
     <string name="sensitivity_less">Slightly Insensitive</string>
     <string name="sensitivity_low">Very Insensitive</string>
+    <string name="edit_ng_word_dialog_title">Edit NG Word</string>
+    <string name="add">Add</string>
+    <string name="close">Close</string>
+    <string name="saved">Saved.</string>
+    <string name="edit_word_title">Edit text</string>
+    <string name="share">Share</string>
+    <string name="share_image">Share the image</string>
+    <string name="failed_share">Failed to share.</string>
+    <string name="delete_all_clipboard_history">Are you sure to delete all clipboard history?</string>
 </resources>

@@ -225,6 +225,7 @@
     <string name="data_not_found_string">データが見つかりませんでした。</string>
     <string name="fail_to_import_string">インポートに失敗しました。ファイルの形式が正しくありません。</string>
     <string name="import_text_string"> 件の単語をインポートしました。</string>
+    <string name="import_item_string"> 件のアイテムをインポートしました。</string>
     <string name="default_map_cannot_edit_text">デフォルトマップは編集できません</string>
     <string name="fail_to_export_string">エクスポートに失敗しました。</string>
     <string name="success_to_export_string">エクスポートが完了しました。</string>
@@ -275,4 +276,13 @@
     <string name="sensitivity_normal">普通</string>
     <string name="sensitivity_less">やや鈍感</string>
     <string name="sensitivity_low">非常に鈍感</string>
+    <string name="edit_ng_word_dialog_title">NG ワードを編集</string>
+    <string name="add">追加</string>
+    <string name="close">閉じる</string>
+    <string name="saved">保存しました。</string>
+    <string name="share">共有</string>
+    <string name="share_image">画像を共有</string>
+    <string name="failed_share">共有に失敗しました。</string>
+    <string name="edit_word_title">テキストの編集</string>
+    <string name="delete_all_clipboard_history">クリップボード履歴をすべて削除しますか？</string>
 </resources>
