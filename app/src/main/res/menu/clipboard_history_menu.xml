@@ -4,15 +4,15 @@
     <item
         android:id="@+id/action_export_clipboard"
         android:icon="@drawable/upload_file_24px"
-        android:title="エクスポート"
+        android:title="@string/export_title"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/action_import_clipboard"
         android:icon="@drawable/download_24px"
-        android:title="インポート"
+        android:title="@string/import_title"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/action_delete_all_clipboard"
-        android:title="すべて削除"
+        android:title="@string/delete_all"
         app:showAsAction="never" />
 </menu>
