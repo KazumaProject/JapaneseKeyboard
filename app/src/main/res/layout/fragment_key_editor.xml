@@ -20,7 +20,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="キーの種類"
+                android:text="@string/label_key_type"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
             <com.google.android.material.chip.ChipGroup
@@ -34,14 +34,14 @@
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="通常キー" />
+                    android:text="@string/normal_key" />
 
                 <com.google.android.material.chip.Chip
                     android:id="@+id/chip_special"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="特別なキー" />
+                    android:text="@string/special_key" />
             </com.google.android.material.chip.ChipGroup>
 
             <com.google.android.material.textfield.TextInputLayout
@@ -49,7 +49,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="キーの表示ラベル">
+                android:hint="@string/key_label">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/key_label_edittext"
@@ -65,7 +65,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:hint="キーのアクション"
+                android:hint="@string/key_action"
                 android:visibility="gone"
                 tools:visibility="visible">
 
@@ -87,7 +87,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="フリック設定"
+                    android:text="@string/setting_flick"
                     android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                 <androidx.recyclerview.widget.RecyclerView
@@ -106,7 +106,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:text="完了" />
+                android:text="@string/done_text" />
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

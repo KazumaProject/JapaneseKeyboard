@@ -126,20 +126,25 @@ class NgWordFragment : Fragment() {
 
     private fun showDeleteAllDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("すべて削除")
-            .setMessage("すべてのNGワードを削除します。よろしいですか？")
-            .setPositiveButton("削除") { _, _ ->
+            .setTitle(getString(R.string.confirm_delete_title))
+            .setMessage(getString(R.string.confirm_all_words_delete_message))
+            .setPositiveButton(getString(R.string.delete_string)) { _, _ ->
                 viewModel.deleteAll()
-                Toast.makeText(context, "削除しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, getString(R.string.deleted_string), Toast.LENGTH_SHORT)
+                    .show()
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 
     private fun exportToUri(uri: Uri) {
         val list = viewModel.allNgWords.value ?: emptyList()
         if (list.isEmpty()) {
-            Toast.makeText(context, "エクスポートする項目がありません", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                getString(R.string.there_is_no_word_to_export),
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
         val json = Gson().toJson(list)
@@ -148,7 +153,8 @@ class NgWordFragment : Fragment() {
                 fos.write(json.toByteArray(Charsets.UTF_8))
             }
         }
-        Toast.makeText(context, "エクスポート完了", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, getString(R.string.success_to_export_string), Toast.LENGTH_SHORT)
+            .show()
     }
 
     private fun importFromUri(uri: Uri) {
@@ -158,9 +164,14 @@ class NgWordFragment : Fragment() {
             val type = object : TypeToken<List<NgWord>>() {}.type
             val list: List<NgWord> = Gson().fromJson(json, type)
             viewModel.insertAll(list.map { NgWord(yomi = it.yomi, tango = it.tango) })
-            Toast.makeText(context, "インポート完了: ${list.size} 件", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                "${list.size}${getString(R.string.import_text_string)}",
+                Toast.LENGTH_SHORT
+            ).show()
         } catch (e: Exception) {
-            Toast.makeText(context, "インポートに失敗しました", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, getString(R.string.fail_to_import_string), Toast.LENGTH_LONG)
+                .show()
         }
     }
 
@@ -183,7 +194,11 @@ class NgWordFragment : Fragment() {
         val yomi = binding.editTextYomi.text.toString().trim()
         val tango = binding.editTextTango.text.toString().trim()
         if (yomi.isEmpty() || tango.isEmpty()) {
-            Toast.makeText(context, "読みと単語を入力してください", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                getString(R.string.enter_word_and_yomi_string),
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
         viewModel.insert(yomi, tango)
@@ -213,19 +228,19 @@ class NgWordFragment : Fragment() {
         etTango.setText(item.tango)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("編集／削除")
+            .setTitle(getString(R.string.edit_ng_word_dialog_title))
             .setView(v)
-            .setPositiveButton("更新") { _, _ ->
+            .setPositiveButton(getString(R.string.save_string)) { _, _ ->
                 val newY = etYomi.text.toString().trim()
                 val newT = etTango.text.toString().trim()
                 if (newY.isNotEmpty() && newT.isNotEmpty()) {
                     viewModel.update(item.copy(yomi = newY, tango = newT))
                 }
             }
-            .setNeutralButton("削除") { _, _ ->
+            .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
                 viewModel.delete(item)
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 
