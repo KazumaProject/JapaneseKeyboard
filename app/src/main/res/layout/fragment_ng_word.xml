@@ -27,7 +27,7 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="読み (yomi)">
+                    android:hint="@string/yomi_edit_text_title">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/edit_text_yomi"
@@ -39,7 +39,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="単語 (tango)">
+                    android:hint="@string/word_edit_text_title">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/edit_text_tango"
@@ -53,7 +53,7 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
                     android:layout_marginTop="12dp"
-                    android:text="追加" />
+                    android:text="@string/add" />
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
@@ -69,8 +69,8 @@
         android:id="@+id/fab_add_ng_word"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
         android:layout_marginEnd="18dp"
+        android:layout_marginBottom="24dp"
         android:contentDescription="追加"
         app:layout_anchor="@id/recycler_view_ng_words"
         app:layout_anchorGravity="bottom|end"
