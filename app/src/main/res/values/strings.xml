@@ -264,4 +264,14 @@
     <string name="flick_top">Flick Top</string>
     <string name="flick_right">Flick Right</string>
     <string name="flick_bottom">Flick Down</string>
+    <string name="emoji">Emoji</string>
+    <string name="emoticon">Emoticon</string>
+    <string name="symbol">Symbol</string>
+    <string name="clipboard_history">Clipboard History</string>
+    <string name="choose_initial_symbol_keyboard_open">Choose initial screen in symbol keyboard.</string>
+    <string name="sensitivity_very_high">Very Sensitive</string>
+    <string name="sensitivity_high">Sensitive</string>
+    <string name="sensitivity_normal">Normal</string>
+    <string name="sensitivity_less">Slightly Insensitive</string>
+    <string name="sensitivity_low">Very Insensitive</string>
 </resources>
