@@ -133,17 +133,18 @@ class ClipboardHistoryFragment : Fragment() {
         editText.setText(item.textData)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("テキストを編集")
+            .setTitle(getString(R.string.edit_word_title))
             .setView(dialogView)
-            .setPositiveButton("更新") { _, _ ->
+            .setPositiveButton(getString(R.string.save_string)) { _, _ ->
                 val updatedText = editText.text.toString()
                 viewModel.update(item.copy(textData = updatedText))
-                Toast.makeText(context, "更新しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, getString(R.string.saved), Toast.LENGTH_SHORT).show()
             }
-            .setNegativeButton("キャンセル", null)
-            .setNeutralButton("削除") { _, _ ->
+            .setNegativeButton(getString(R.string.cancel_string), null)
+            .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
                 viewModel.delete(item.id)
-                Toast.makeText(context, "削除しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, getString(R.string.deleted_string), Toast.LENGTH_SHORT)
+                    .show()
             }
             .show()
     }
@@ -156,15 +157,17 @@ class ClipboardHistoryFragment : Fragment() {
 
         AlertDialog.Builder(requireContext())
             .setView(dialogView)
-            .setNegativeButton("閉じる", null)
-            .setNeutralButton("削除") { _, _ ->
+            .setNegativeButton(getString(R.string.close), null)
+            .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
                 viewModel.delete(item.id)
-                Toast.makeText(context, "削除しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, getString(R.string.deleted_string), Toast.LENGTH_SHORT)
+                    .show()
             }
-            .setPositiveButton("共有") { _, _ ->
+            .setPositiveButton(getString(R.string.share)) { _, _ ->
                 item.imageData?.let {
                     shareImage(it)
-                } ?: Toast.makeText(context, "画像を共有できません", Toast.LENGTH_SHORT).show()
+                } ?: Toast.makeText(context, getString(R.string.failed_share), Toast.LENGTH_SHORT)
+                    .show()
             }
             .show()
     }
@@ -192,11 +195,11 @@ class ClipboardHistoryFragment : Fragment() {
             }
 
             // 4. Chooserを起動
-            startActivity(Intent.createChooser(shareIntent, "画像を共有"))
+            startActivity(Intent.createChooser(shareIntent, getString(R.string.share_image)))
 
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(context, "共有に失敗しました", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.failed_share), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -225,9 +228,14 @@ class ClipboardHistoryFragment : Fragment() {
                     fos.write(jsonString.toByteArray(Charsets.UTF_8))
                 }
             }
-            Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                getString(R.string.success_to_export_string),
+                Toast.LENGTH_SHORT
+            ).show()
         } catch (e: Exception) {
-            Toast.makeText(context, "エクスポートに失敗しました", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.fail_to_export_string), Toast.LENGTH_SHORT)
+                .show()
         }
     }
 
@@ -240,24 +248,26 @@ class ClipboardHistoryFragment : Fragment() {
                 val count = viewModel.importFromJson(jsonString)
                 Toast.makeText(
                     context,
-                    "${count}件のアイテムをインポートしました",
+                    "${count}${getString(R.string.import_item_string)}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "インポートに失敗しました", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, getString(R.string.fail_to_import_string), Toast.LENGTH_LONG)
+                .show()
         }
     }
 
     private fun showDeleteAllConfirmationDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("すべて削除の確認")
-            .setMessage("クリップボード履歴をすべて削除しますか？")
-            .setPositiveButton("すべて削除") { _, _ ->
+            .setTitle(getString(R.string.confirm_all_delete_title))
+            .setMessage(getString(R.string.delete_all_clipboard_history))
+            .setPositiveButton(getString(R.string.delete_all)) { _, _ ->
                 viewModel.deleteAll()
-                Toast.makeText(context, "すべて削除しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, getString(R.string.deleted_string), Toast.LENGTH_SHORT)
+                    .show()
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 

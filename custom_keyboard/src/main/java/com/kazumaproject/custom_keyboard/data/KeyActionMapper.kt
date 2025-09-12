@@ -1,5 +1,8 @@
 package com.kazumaproject.custom_keyboard.data
 
+import android.content.Context
+import com.kazumaproject.custom_keyboard.R
+
 data class DisplayAction(
     val action: KeyAction,
     val displayName: String,
@@ -7,6 +10,92 @@ data class DisplayAction(
 )
 
 object KeyActionMapper {
+
+    /**
+     * Generates a list of DisplayAction objects using localized strings.
+     * @param context The context needed to access string resources.
+     * @return A list of DisplayAction objects.
+     */
+    fun getDisplayActions(context: Context): List<DisplayAction> {
+        return listOf(
+            DisplayAction(
+                KeyAction.Delete,
+                context.getString(R.string.action_delete),
+                com.kazumaproject.core.R.drawable.backspace_24px
+            ),
+            DisplayAction(
+                KeyAction.Space,
+                context.getString(R.string.action_space),
+                com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            ),
+            DisplayAction(
+                KeyAction.Convert,
+                context.getString(R.string.action_convert),
+                com.kazumaproject.core.R.drawable.henkan
+            ),
+            DisplayAction(
+                KeyAction.Enter,
+                context.getString(R.string.action_enter),
+                com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            ),
+            DisplayAction(KeyAction.NewLine, context.getString(R.string.action_new_line)),
+            DisplayAction(
+                KeyAction.Paste,
+                context.getString(R.string.action_paste),
+                com.kazumaproject.core.R.drawable.content_paste_24px
+            ),
+            DisplayAction(
+                KeyAction.Copy,
+                context.getString(R.string.action_copy),
+                com.kazumaproject.core.R.drawable.content_copy_24dp
+            ),
+            DisplayAction(
+                KeyAction.SwitchToNextIme,
+                context.getString(R.string.action_switch_to_next_ime),
+                com.kazumaproject.core.R.drawable.language_24dp
+            ),
+            DisplayAction(
+                KeyAction.ShowEmojiKeyboard,
+                context.getString(R.string.action_show_emoji_keyboard),
+                com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
+            ),
+            DisplayAction(
+                KeyAction.ToggleDakuten,
+                context.getString(R.string.action_toggle_dakuten),
+                com.kazumaproject.core.R.drawable.kana_small
+            ),
+            DisplayAction(
+                KeyAction.ToggleCase,
+                context.getString(R.string.action_toggle_case),
+                com.kazumaproject.core.R.drawable.english_small
+            ),
+            DisplayAction(
+                KeyAction.ShiftKey,
+                context.getString(R.string.action_shift_key),
+                com.kazumaproject.core.R.drawable.shift_24px
+            ),
+            DisplayAction(
+                KeyAction.MoveCustomKeyboardTab,
+                context.getString(R.string.action_move_custom_keyboard_tab),
+                com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+            ),
+            DisplayAction(
+                KeyAction.MoveCursorLeft,
+                context.getString(R.string.action_move_cursor_left),
+                com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            ),
+            DisplayAction(
+                KeyAction.MoveCursorRight,
+                context.getString(R.string.action_move_cursor_right),
+                com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            ),
+            DisplayAction(
+                KeyAction.SelectAll,
+                context.getString(R.string.action_select_all),
+                com.kazumaproject.core.R.drawable.text_select_start_24dp
+            )
+        )
+    }
 
     val displayActions = listOf(
         DisplayAction(KeyAction.Delete, "削除", com.kazumaproject.core.R.drawable.backspace_24px),
@@ -80,8 +169,6 @@ object KeyActionMapper {
             "カーソル右",
             com.kazumaproject.core.R.drawable.baseline_arrow_right_24
         ),
-//        DisplayAction(KeyAction.SelectLeft, "左を選択"),
-//        DisplayAction(KeyAction.SelectRight, "右を選択"),
         DisplayAction(
             KeyAction.SelectAll,
             "すべて選択",

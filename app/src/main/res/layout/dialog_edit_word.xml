@@ -8,7 +8,7 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="単語">
+        android:hint="@string/word_edit_text_title">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edit_text_word_dialog"
@@ -20,7 +20,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="読み">
+        android:hint="@string/yomi_edit_text_title">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edit_text_reading_dialog"
@@ -32,7 +32,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="品詞" />
+        android:text="@string/part_of_speech_string" />
 
     <Spinner
         android:id="@+id/spinner_pos_dialog"
@@ -44,7 +44,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:hint="品詞スコア">
+        android:hint="@string/score_string">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edit_text_pos_score_dialog"

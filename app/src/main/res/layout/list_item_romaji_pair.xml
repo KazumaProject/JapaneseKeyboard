@@ -57,7 +57,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/edit_pair"
             android:gravity="center"
-            android:text="編集"
+            android:text="@string/edit_text"
             android:textAlignment="center"
             android:textColor="@color/keyboard_icon_color"
             app:layout_constraintBottom_toBottomOf="parent"

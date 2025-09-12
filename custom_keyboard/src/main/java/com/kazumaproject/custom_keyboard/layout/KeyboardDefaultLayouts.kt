@@ -6904,13 +6904,12 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
             KeyData(
-                "CursorMoveLeft",
+                ":",
                 1,
                 0,
                 false,
-                KeyAction.MoveCursorLeft,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                action = KeyAction.InputText(":")
             ),
             KeyData(
                 "SwitchToKana",
@@ -6952,7 +6951,7 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                label = ",",
+                label = "@",
                 row = 3,
                 column = 1,
                 isFlickable = false,
@@ -6973,7 +6972,7 @@ object KeyboardDefaultLayouts {
             KeyData("8", 2, 2, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("9", 2, 3, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("0", 3, 2, false, keyType = KeyType.STANDARD_FLICK),
-            KeyData(".", 3, 3, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData("#", 3, 3, false, keyType = KeyType.STANDARD_FLICK),
             KeyData(
                 "Del",
                 0,
@@ -6985,13 +6984,12 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
             ),
             KeyData(
-                "CursorMoveRight",
+                "-",
                 1,
                 4,
                 false,
-                KeyAction.MoveCursorRight,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_alt_24,
+                action = KeyAction.InputText("-")
             ),
             KeyData(
                 spaceConvertStatesCursor[0].label ?: "",
@@ -7076,25 +7074,34 @@ object KeyboardDefaultLayouts {
                 "7" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("7"))),
                 "8" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("8"))),
                 "9" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("9"))),
-                "0" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("0"))),
-                "," to listOf(
+                "0" to listOf(
                     mapOf(
-                        FlickDirection.TAP to FlickAction.Input(","),
+                        FlickDirection.TAP to FlickAction.Input("0"),
                         FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
-                        FlickDirection.UP to FlickAction.Input("-"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("*"),
+                        FlickDirection.UP to FlickAction.Input("="),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("%"),
+                        FlickDirection.DOWN to FlickAction.Input("*"),
+                    )
+                ),
+                "@" to listOf(
+                    mapOf(
+                        FlickDirection.TAP to FlickAction.Input("@"),
+                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("$"),
+                        FlickDirection.UP to FlickAction.Input("~"),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("…"),
                         FlickDirection.DOWN to FlickAction.Input("/"),
                     )
                 ),
-                "." to listOf(
+                "#" to listOf(
                     mapOf(
-                        FlickDirection.TAP to FlickAction.Input("."),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
-                        FlickDirection.UP to FlickAction.Input("%"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-                        FlickDirection.DOWN to FlickAction.Input("="),
+                        FlickDirection.TAP to FlickAction.Input("#"),
+                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
+                        FlickDirection.UP to FlickAction.Input("^"),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(","),
                     )
-                )
+                ),
+                ":" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input(":"))),
+                "-" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("-"))),
             )
 
         dakutenToggleStates.getOrNull(0)?.label?.let { label ->
