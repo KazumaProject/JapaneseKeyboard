@@ -58,8 +58,8 @@
     <string name="flick_input_only_summary_off">トグル入力を有効にします</string>
     <string name="undo_enable_title">元に戻す機能</string>
     <string name="undo_enable_summary">元に戻す機能を無効にする</string>
-    <string name="space_key_title">空白を半角入力</string>
-    <string name="space_key_summary">空白を半角入力</string>
+    <string name="space_key_title">半角スペースの利用</string>
+    <string name="space_key_summary">入力モードに関わらず、常に半角スペースを使用します。</string>
     <string name="live_conversion_title">ライブ変換 β</string>
     <string name="live_conversion_summary_on">ライブ変換は有効です</string>
     <string name="live_conversion_summary_off">ライブ変換は無効です</string>

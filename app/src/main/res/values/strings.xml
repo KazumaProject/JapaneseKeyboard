@@ -57,8 +57,8 @@
     <string name="flick_input_only_summary_off">Enable toggle input</string>
     <string name="undo_enable_title">Undo Function</string>
     <string name="undo_enable_summary">Disable the undo function</string>
-    <string name="space_key_title">Half-width space input</string>
-    <string name="space_key_summary">Input spaces as half-width</string>
+    <string name="space_key_title">Use half-width space</string>
+    <string name="space_key_summary">Always use half-width space regardless of the input mode</string>
     <string name="live_conversion_title">Live Conversion β</string>
     <string name="live_conversion_summary_on">Live conversion is enabled</string>
     <string name="live_conversion_summary_off">Live conversion is disabled</string>
