@@ -265,4 +265,14 @@
     <string name="flick_top">上フリック</string>
     <string name="flick_right">右フリック</string>
     <string name="flick_bottom">下フリック</string>
+    <string name="emoji">絵文字</string>
+    <string name="emoticon">顔文字</string>
+    <string name="symbol">記号</string>
+    <string name="clipboard_history">クリップボードの履歴</string>
+    <string name="choose_initial_symbol_keyboard_open">記号キーボードの初期画面を選択します。</string>
+    <string name="sensitivity_very_high">非常に繊細</string>
+    <string name="sensitivity_high">やや繊細</string>
+    <string name="sensitivity_normal">普通</string>
+    <string name="sensitivity_less">やや鈍感</string>
+    <string name="sensitivity_low">非常に鈍感</string>
 </resources>
