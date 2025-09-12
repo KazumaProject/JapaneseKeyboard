@@ -303,35 +303,6 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val spaceHankakuPreference = findPreference<SwitchPreferenceCompat>("space_key_preference")
-        spaceHankakuPreference?.apply {
-            appPreference.space_hankaku_preference?.let {
-                this.title = if (it) {
-                    resources.getString(R.string.space_key_title_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_title_zenkaku)
-                }
-                this.summary = if (it) {
-                    resources.getString(R.string.space_key_summary_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_summary_zenkaku)
-                }
-            }
-            this.setOnPreferenceChangeListener { _, newValue ->
-                this.title = if (newValue == true) {
-                    resources.getString(R.string.space_key_title_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_title_zenkaku)
-                }
-                this.summary = if (newValue == true) {
-                    resources.getString(R.string.space_key_summary_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_summary_zenkaku)
-                }
-                true
-            }
-        }
-
         val sumireKeyboardInputModePreference =
             findPreference<ListPreference>("sumire_keyboard_input_type_preference")
 
