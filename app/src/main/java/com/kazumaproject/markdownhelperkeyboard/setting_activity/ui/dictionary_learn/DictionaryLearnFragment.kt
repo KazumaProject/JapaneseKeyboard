@@ -128,13 +128,13 @@ class DictionaryLearnFragment : Fragment() {
 
         learnDictionaryAdapter.setOnItemLongClickListener { input ->
             showConfirmationDialog(
-                message = buildSpannableMessage("よみ：", input),
+                message = buildSpannableMessage(getString(R.string.yomi_edit_text_title), input),
                 positiveAction = { deleteByInput(input) })
         }
 
         learnDictionaryAdapter.setOnItemChildrenLongClickListener { input, output ->
             showConfirmationDialog(
-                message = buildSpannableMessage("単語：", output),
+                message = buildSpannableMessage(getString(R.string.word_edit_text_title), output),
                 positiveAction = { deleteByInputAndOutput(input, output) })
         }
     }
@@ -168,12 +168,12 @@ class DictionaryLearnFragment : Fragment() {
 
     private fun showDeleteAllConfirmationDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("辞書の初期化")
-            .setMessage("学習辞書をすべて削除します。\nこの操作は元に戻せません。よろしいですか？")
-            .setPositiveButton("すべて削除") { _, _ ->
+            .setTitle(getString(R.string.reset_learning_dictionary_dialog_title))
+            .setMessage(getString(R.string.reset_learning_dictionary_dialog_message))
+            .setPositiveButton(getString(R.string.delete_all)) { _, _ ->
                 lifecycleScope.launch { deleteAll() }
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 
@@ -194,10 +194,18 @@ class DictionaryLearnFragment : Fragment() {
                         fos.write(jsonString.toByteArray(Charsets.UTF_8))
                     }
                 }
-                Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.success_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "エクスポートに失敗しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.fail_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             } finally {
                 binding.progressBarLearnDictionaryFragment.isVisible = false
             }
@@ -219,7 +227,7 @@ class DictionaryLearnFragment : Fragment() {
                     learnRepository.insertAll(wordsToInsert)
                     Toast.makeText(
                         context,
-                        "${words.size}件の単語をインポートしました",
+                        "${words.size}${getString(R.string.import_text_string)}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -227,7 +235,7 @@ class DictionaryLearnFragment : Fragment() {
                 e.printStackTrace()
                 Toast.makeText(
                     context,
-                    "インポートに失敗しました。ファイルの形式が正しくありません。",
+                    getString(R.string.fail_to_import_string),
                     Toast.LENGTH_LONG
                 ).show()
             } finally {
@@ -240,7 +248,11 @@ class DictionaryLearnFragment : Fragment() {
         lifecycleScope.launch {
             val entity = learnRepository.findLearnDataByInputAndOutput(input, output)
             if (entity == null) {
-                Toast.makeText(context, "データが見つかりませんでした。", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.data_not_found_string),
+                    Toast.LENGTH_SHORT
+                ).show()
                 return@launch
             }
 
@@ -256,9 +268,9 @@ class DictionaryLearnFragment : Fragment() {
             editTextScore.setText(entity.score.toString())
 
             val dialog = AlertDialog.Builder(context)
-                .setTitle("学習単語の編集")
+                .setTitle(getString(R.string.learn_dictionary_edit_dialog_title))
                 .setView(dialogView)
-                .setPositiveButton("保存") { _, _ ->
+                .setPositiveButton(getString(R.string.save_string)) { _, _ ->
                     val newInput = editTextYomi.text.toString()
                     val newOutput = editTextTango.text.toString()
                     val newScore = editTextScore.text.toString().toShortOrNull() ?: entity.score
@@ -267,10 +279,13 @@ class DictionaryLearnFragment : Fragment() {
                         updateLearnData(entity, newInput, newOutput, newScore)
                     }
                 }
-                .setNegativeButton("キャンセル", null)
-                .setNeutralButton("削除") { _, _ ->
+                .setNegativeButton(getString(R.string.cancel_string), null)
+                .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
                     showConfirmationDialog(
-                        message = buildSpannableMessage("単語：", output),
+                        message = buildSpannableMessage(
+                            getString(R.string.word_edit_text_title),
+                            output
+                        ),
                         positiveAction = { deleteByInputAndOutput(input, output) }
                     )
                 }
@@ -319,14 +334,15 @@ class DictionaryLearnFragment : Fragment() {
         message: CharSequence, positiveAction: suspend () -> Unit
     ) {
         val dialog =
-            AlertDialog.Builder(requireContext()).setTitle("削除の確認").setMessage(message)
-                .setPositiveButton("はい") { _, _ ->
+            AlertDialog.Builder(requireContext()).setTitle(getString(R.string.confirm_delete_title))
+                .setMessage(message)
+                .setPositiveButton(getString(R.string.yes_string)) { _, _ ->
                     viewLifecycleOwner.lifecycleScope.launch {
                         binding.progressBarLearnDictionaryFragment.isVisible = true
                         positiveAction()
                         binding.progressBarLearnDictionaryFragment.isVisible = false
                     }
-                }.setNegativeButton("いいえ", null).show()
+                }.setNegativeButton(getString(R.string.no_string), null).show()
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)
             .setTextColor(
@@ -352,7 +368,7 @@ class DictionaryLearnFragment : Fragment() {
                     com.kazumaproject.core.R.color.enter_key_bg
                 )
             ), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-        ).append("を削除します。\n本当に辞書から削除しますか？")
+        ).append(getString(R.string.confirm_delete_message))
     }
 
     private suspend fun deleteByInput(input: String) {
