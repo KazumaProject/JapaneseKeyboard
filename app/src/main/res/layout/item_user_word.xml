@@ -15,14 +15,14 @@
         android:id="@+id/text_view_word"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="単語"
+        android:text="@string/word_edit_text_title"
         android:textAppearance="?attr/textAppearanceListItem" />
 
     <TextView
         android:id="@+id/text_view_reading"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="よみ"
+        android:text="@string/yomi_edit_text_title"
         android:textAppearance="?attr/textAppearanceListItemSecondary"
         android:textColor="?android:attr/textColorSecondary" />
 

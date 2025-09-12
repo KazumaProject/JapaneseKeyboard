@@ -35,7 +35,7 @@
     <fragment
         android:id="@+id/openSourceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource.OpenSourceFragment"
-        android:label="オープンソースライブラリ"
+        android:label="@string/open_source_fragment_label"
         tools:layout="@layout/fragment_open_source" />
     <fragment
         android:id="@+id/navigation_learn_dictionary"
@@ -44,12 +44,12 @@
     <fragment
         android:id="@+id/keyboardSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.KeyboardSettingFragment"
-        android:label="キーボードの設定"
+        android:label="@string/keyboard_size_setting_fragment_title"
         tools:layout="@layout/fragment_keyboard_setting" />
     <fragment
         android:id="@+id/keyboardSelectionFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_selection.KeyboardSelectionFragment"
-        android:label="キーボード"
+        android:label="@string/keyboard_selection_fragment_title"
         tools:layout="@layout/fragment_keyboard_selection">
         <action
             android:id="@+id/action_keyboardSelectionFragment_to_keyboardListFragment"
@@ -76,7 +76,7 @@
     <fragment
         android:id="@+id/keyEditorFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyEditorFragment"
-        android:label="キーの編集" />
+        android:label="@string/key_editor_fragment_label" />
     <fragment
         android:id="@+id/keyboardListFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.KeyboardListFragment"

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tap">タップ</string>
+    <string name="flick_left">左フリック</string>
+    <string name="flick_top">上フリック</string>
+    <string name="flick_right">右フリック</string>
+    <string name="flick_bottom">下フリック</string>
+    <string name="action_delete">削除</string>
+    <string name="action_space">空白</string>
+    <string name="action_convert">変換</string>
+    <string name="action_enter">エンター</string>
+    <string name="action_new_line">改行</string>
+    <string name="action_paste">貼り付け</string>
+    <string name="action_copy">コピー</string>
+    <string name="action_switch_to_next_ime">IME切替</string>
+    <string name="action_show_emoji_keyboard">絵文字キーボード</string>
+    <string name="action_toggle_dakuten">濁点、小文字</string>
+    <string name="action_toggle_case">英語、小文字</string>
+    <string name="action_shift_key">ローマ字、英語切り替え</string>
+    <string name="action_move_custom_keyboard_tab">タブの変更</string>
+    <string name="action_move_cursor_left">カーソル左</string>
+    <string name="action_move_cursor_right">カーソル右</string>
+    <string name="action_select_all">すべて選択</string>
+</resources>

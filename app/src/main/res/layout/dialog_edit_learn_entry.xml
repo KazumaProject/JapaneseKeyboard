@@ -8,7 +8,7 @@
     <com.google.android.material.textfield.TextInputLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="よみ">
+        android:hint="@string/yomi_edit_text_title">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edit_text_input"
@@ -21,7 +21,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="単語">
+        android:hint="@string/word_edit_text_title">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edit_text_output"
@@ -34,7 +34,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:hint="スコア (低いほど優先度が高い)">
+        android:hint="@string/score_edittext_title">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/edit_text_score"

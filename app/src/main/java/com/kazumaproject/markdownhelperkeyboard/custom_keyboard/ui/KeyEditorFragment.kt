@@ -47,7 +47,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var _binding: FragmentKeyEditorBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var flickAdapter: FlickMappingAdapter
+    private var flickAdapter: FlickMappingAdapter? = null
     private var currentKeyData: KeyData? = null
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
     private lateinit var keyActionAdapter: ArrayAdapter<String>
@@ -74,11 +74,12 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             if (index != -1) {
                 currentFlickItems[index] = updatedItem
             }
-        })
+        }, context = requireContext())
         binding.flickMappingsRecyclerView.adapter = flickAdapter
         binding.flickMappingsRecyclerView.layoutManager = LinearLayoutManager(context)
 
-        val actionDisplayNames = KeyActionMapper.displayActions.map { it.displayName }
+        val actionDisplayNames =
+            KeyActionMapper.getDisplayActions(requireContext()).map { it.displayName }
         keyActionAdapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
@@ -108,7 +109,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     }.toMutableList()
                 }
                 // Submit the list to the adapter to display the flick settings.
-                flickAdapter.submitList(currentFlickItems)
+                flickAdapter?.submitList(currentFlickItems)
             }
 
             updateDoneButtonState()
@@ -182,7 +183,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.keyTypeChipGroup.check(R.id.chip_special)
                 key.action?.let { currentAction ->
                     val displayAction =
-                        KeyActionMapper.displayActions.find { it.action == currentAction }
+                        KeyActionMapper.getDisplayActions(requireContext())
+                            .find { it.action == currentAction }
                     if (displayAction != null) {
                         binding.keyActionSpinner.setText(displayAction.displayName, false)
                     }
@@ -196,7 +198,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     val output = if (savedAction is FlickAction.Input) savedAction.char else ""
                     FlickMappingItem(direction = direction, output = output)
                 }.toMutableList()
-                flickAdapter.submitList(currentFlickItems)
+                flickAdapter?.submitList(currentFlickItems)
             }
 
             updateDoneButtonState()
@@ -220,7 +222,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
                 val selectedText = binding.keyActionSpinner.text.toString()
                 val selectedDisplayAction =
-                    KeyActionMapper.displayActions.firstOrNull { it.displayName == selectedText }
+                    KeyActionMapper.getDisplayActions(requireContext())
+                        .firstOrNull { it.displayName == selectedText }
 
                 Timber.d("KeyEditor: Spinner text is '$selectedText', Found action object is '$selectedDisplayAction'")
 
@@ -263,6 +266,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             setDisplayHomeAsUpEnabled(false)
         }
         viewModel.doneNavigatingToKeyEditor()
+        flickAdapter = null
         _binding = null
     }
 }

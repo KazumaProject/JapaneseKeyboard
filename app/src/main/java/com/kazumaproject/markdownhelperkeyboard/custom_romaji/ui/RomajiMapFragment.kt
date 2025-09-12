@@ -47,17 +47,19 @@ class RomajiMapFragment : Fragment() {
     private lateinit var romajiMapAdapter: RomajiMapAdapter
     private val gson = Gson()
 
-    private val exportLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri -> exportRomajiMaps(uri) }
+    private val exportLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri -> exportRomajiMaps(uri) }
+            }
         }
-    }
 
-    private val importLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            result.data?.data?.let { uri -> importRomajiMaps(uri) }
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri -> importRomajiMaps(uri) }
+            }
         }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -87,10 +89,17 @@ class RomajiMapFragment : Fragment() {
             onCardClicked = { map ->
                 // Navigate to detail screen if the map is deletable (i.e., not the default)
                 if (map.isDeletable) {
-                    val action = RomajiMapFragmentDirections.actionRomajiMapFragmentToRomajiMapDetailFragment(map.id)
+                    val action =
+                        RomajiMapFragmentDirections.actionRomajiMapFragmentToRomajiMapDetailFragment(
+                            map.id
+                        )
                     findNavController().navigate(action)
                 } else {
-                    Toast.makeText(context, "デフォルトマップは編集できません", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        getString(R.string.default_map_cannot_edit_text),
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             },
             onActivateClicked = { map ->
@@ -123,14 +132,17 @@ class RomajiMapFragment : Fragment() {
                         launchExportFilePicker()
                         true
                     }
+
                     R.id.action_import_romaji_map -> {
                         launchImportFilePicker()
                         true
                     }
-                    android.R.id.home ->{
+
+                    android.R.id.home -> {
                         findNavController().popBackStack()
                         true
                     }
+
                     else -> false
                 }
             }
@@ -146,21 +158,27 @@ class RomajiMapFragment : Fragment() {
     }
 
     private fun showEditDialog(map: RomajiMapEntity?) {
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_romaji_map, null)
+        val dialogView =
+            LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_romaji_map, null)
         val editText = dialogView.findViewById<EditText>(R.id.map_name_edit_text)
         map?.let { editText.setText(it.name) }
 
         AlertDialog.Builder(requireContext())
-            .setTitle(if (map == null) "新しいマップを作成" else "名前を編集")
+            .setTitle(
+                if (map == null) getString(R.string.create_new_keymap_dialog_title) else getString(
+                    R.string.edit_keymap_dialog_title
+                )
+            )
             .setView(dialogView)
-            .setPositiveButton("保存") { _, _ ->
+            .setPositiveButton(getString(R.string.save_string)) { _, _ ->
                 val name = editText.text.toString()
                 if (name.isNotBlank()) {
                     lifecycleScope.launch {
                         if (map == null) {
                             val newMap = RomajiMapEntity(
                                 name = name,
-                                mapData = repository.getActiveMap().first()?.mapData ?: emptyMap(), // Copy from current active map
+                                mapData = repository.getActiveMap().first()?.mapData
+                                    ?: emptyMap(), // Copy from current active map
                                 isActive = false,
                                 isDeletable = true
                             )
@@ -171,18 +189,18 @@ class RomajiMapFragment : Fragment() {
                     }
                 }
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 
     private fun showDeleteConfirmationDialog(map: RomajiMapEntity) {
         AlertDialog.Builder(requireContext())
-            .setTitle("マップの削除")
-            .setMessage("「${map.name}」を削除しますか？この操作は元に戻せません。")
-            .setPositiveButton("削除") { _, _ ->
+            .setTitle(getString(R.string.delete_keymap_dialog_title))
+            .setMessage("「${map.name}」${getString(R.string.confirm_to_delete_text)}")
+            .setPositiveButton(getString(R.string.delete_string)) { _, _ ->
                 lifecycleScope.launch { repository.delete(map) }
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 
@@ -208,7 +226,11 @@ class RomajiMapFragment : Fragment() {
             binding.progressBar.isVisible = true
             val mapsToExport = repository.getAllMaps().first().filter { it.isDeletable }
             if (mapsToExport.isEmpty()) {
-                Toast.makeText(context, "エクスポートするカスタムマップがありません", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.no_export_keymap_string),
+                    Toast.LENGTH_SHORT
+                ).show()
                 binding.progressBar.isVisible = false
                 return@launch
             }
@@ -219,9 +241,17 @@ class RomajiMapFragment : Fragment() {
                         fos.write(jsonString.toByteArray(Charsets.UTF_8))
                     }
                 }
-                Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.success_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
-                Toast.makeText(context, "エクスポートに失敗しました: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    "${getString(R.string.fail_to_export_string)} ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             } finally {
                 binding.progressBar.isVisible = false
             }
@@ -241,10 +271,18 @@ class RomajiMapFragment : Fragment() {
                     val maps: List<RomajiMapEntity> = gson.fromJson(jsonString, type)
                     val mapsToInsert = maps.map { it.copy(id = 0, isActive = false) }
                     repository.insertAll(mapsToInsert)
-                    Toast.makeText(context, "${maps.size}件のマップをインポートしました", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "${maps.size}${getString(R.string.import_text_string)}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(context, "インポートに失敗しました。ファイル形式が正しくありません。", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.fail_to_import_string),
+                    Toast.LENGTH_LONG
+                ).show()
             } finally {
                 binding.progressBar.isVisible = false
             }

@@ -4,12 +4,12 @@
     <item
         android:id="@+id/navigation_setting"
         android:icon="@drawable/baseline_settings_24"
-        android:title="@string/title_dashboard" />
+        android:title="@string/setting_fragment_title" />
 
     <item
         android:id="@+id/navigation_learn_dictionary"
         android:icon="@drawable/table_lamp_24px"
-        android:title="@string/title_learn_dictionary" />
+        android:title="@string/learn_dictionary_fragment_title" />
 
     <item
         android:id="@+id/navigation_user_dictionary"
@@ -24,6 +24,6 @@
     <item
         android:id="@+id/keyboardListFragment"
         android:icon="@drawable/keyboard_24px"
-        android:title="@string/title_custom_layouts" />
+        android:title="@string/custom_keyboard_fragment_label" />
 
 </menu>

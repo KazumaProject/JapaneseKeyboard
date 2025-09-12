@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tap">Tap</string>
+    <string name="flick_left">Flick Left</string>
+    <string name="flick_top">Flick Top</string>
+    <string name="flick_right">Flick Right</string>
+    <string name="flick_bottom">Flick Down</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_space">Space</string>
+    <string name="action_convert">Convert</string>
+    <string name="action_enter">Enter</string>
+    <string name="action_new_line">New Line</string>
+    <string name="action_paste">Paste</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_switch_to_next_ime">Switch IME</string>
+    <string name="action_show_emoji_keyboard">Emoji Keyboard</string>
+    <string name="action_toggle_dakuten">Dakuten / Small Characters</string>
+    <string name="action_toggle_case">English / Lowercase</string>
+    <string name="action_shift_key">Romaji / English Switch</string>
+    <string name="action_move_custom_keyboard_tab">Change Tab</string>
+    <string name="action_move_cursor_left">Move Cursor Left</string>
+    <string name="action_move_cursor_right">Move Cursor Right</string>
+    <string name="action_select_all">Select All</string>
+</resources>
