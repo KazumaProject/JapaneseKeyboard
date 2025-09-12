@@ -4187,6 +4187,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                             }
 
+                            ":", "-" -> {
+                                val insertString = inputString.value
+                                val sb = StringBuilder()
+                                sb.append(insertString).append(action.text)
+                                _inputString.update {
+                                    sb.toString()
+                                }
+                            }
+
                             "ひらがな小文字" -> {
                                 val insertString = inputString.value
                                 if (insertString.isEmpty()) return
