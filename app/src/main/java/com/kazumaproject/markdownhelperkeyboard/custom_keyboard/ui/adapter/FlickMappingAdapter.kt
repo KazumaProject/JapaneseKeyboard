@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter
 
+import android.content.Context
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -21,6 +22,7 @@ data class FlickMappingItem(
 
 class FlickMappingAdapter(
     private val onItemUpdated: (FlickMappingItem) -> Unit,
+    private val context: Context
     // onItemDeleted は不要になったので削除
 ) : ListAdapter<FlickMappingItem, FlickMappingAdapter.ViewHolder>(DiffCallback) {
 
@@ -45,7 +47,8 @@ class FlickMappingAdapter(
 
             // --- 2. データをUIに反映 ---
             // TextViewに日本語の方向名を設定
-            binding.flickDirectionLabel.text = FlickDirectionMapper.toDisplayName(item.direction)
+            binding.flickDirectionLabel.text =
+                FlickDirectionMapper.toDisplayName(item.direction, context = context)
 
             // 出力文字EditTextの設定
             if (binding.flickActionValueEdittext.text.toString() != item.output) {

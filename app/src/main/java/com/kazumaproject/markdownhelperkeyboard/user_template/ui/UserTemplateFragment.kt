@@ -136,20 +136,28 @@ class UserTemplateFragment : Fragment() {
 
     private fun showDeleteAllConfirmationDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("全件削除の確認")
-            .setMessage("登録されているすべての定型文を削除します。この操作は元に戻せません。よろしいですか？")
-            .setPositiveButton("すべて削除") { _, _ ->
+            .setTitle(getString(R.string.confirm_all_delete_title))
+            .setMessage(getString(R.string.confirm_all_delete_message))
+            .setPositiveButton(getString(R.string.delete_all)) { _, _ ->
                 viewModel.deleteAll()
-                Toast.makeText(context, "すべての定型文を削除しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.deleted_all_templates),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 
     private fun exportTemplates(uri: Uri) {
         viewModel.allTemplates.value?.let { templates ->
             if (templates.isEmpty()) {
-                Toast.makeText(context, "エクスポートする定型文がありません", Toast.LENGTH_SHORT)
+                Toast.makeText(
+                    context,
+                    getString(R.string.there_is_no_template_to_export),
+                    Toast.LENGTH_SHORT
+                )
                     .show()
                 return
             }
@@ -160,10 +168,18 @@ class UserTemplateFragment : Fragment() {
                         fos.write(jsonString.toByteArray(Charsets.UTF_8))
                     }
                 }
-                Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.success_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "エクスポートに失敗しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.fail_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -188,7 +204,7 @@ class UserTemplateFragment : Fragment() {
                 })
                 Toast.makeText(
                     context,
-                    "${templates.size}件の定型文をインポートしました",
+                    "${templates.size}${getString(R.string.import_text_string)}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -196,7 +212,7 @@ class UserTemplateFragment : Fragment() {
             e.printStackTrace()
             Toast.makeText(
                 context,
-                "インポートに失敗しました。ファイル形式が正しくありません。",
+                getString(R.string.fail_to_import_string),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -254,7 +270,8 @@ class UserTemplateFragment : Fragment() {
         val reading = binding.editTextReading.text.toString().trim()
 
         if (word.isEmpty() || reading.isEmpty()) {
-            Toast.makeText(context, "定型文と読みを入力してください", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.add_template_toast_text), Toast.LENGTH_SHORT)
+                .show()
             return
         }
 
@@ -268,7 +285,11 @@ class UserTemplateFragment : Fragment() {
             )
         viewModel.insert(newUserTemplate)
 
-        Toast.makeText(context, "「$reading」を登録しました", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            "「$reading」${getString(R.string.is_registered_string)}",
+            Toast.LENGTH_SHORT
+        ).show()
 
         resetInputFields()
         binding.cardViewAddWord.isGone = true
@@ -300,9 +321,9 @@ class UserTemplateFragment : Fragment() {
         // [CHANGE] Make the views visible (remove the .visibility = GONE lines)
 
         AlertDialog.Builder(requireContext())
-            .setTitle("定型文の編集")
+            .setTitle(getString(R.string.edit_template_title))
             .setView(dialogView)
-            .setPositiveButton("更新") { _, _ ->
+            .setPositiveButton(getString(R.string.save_string)) { _, _ ->
                 val updatedWord = editWord.text.toString().trim()
                 val updatedReading = editReading.text.toString().trim()
 
@@ -321,19 +342,24 @@ class UserTemplateFragment : Fragment() {
                             posScore = updatedPosScore
                         )
                     viewModel.update(updatedTemplate)
-                    Toast.makeText(context, "更新しました", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, getString(R.string.updated_string), Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
-            .setNegativeButton("キャンセル", null)
-            .setNeutralButton("削除") { _, _ ->
+            .setNegativeButton(getString(R.string.cancel_string), null)
+            .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
                 AlertDialog.Builder(requireContext())
-                    .setTitle("削除の確認")
-                    .setMessage("「${userTemplate.reading}」を削除しますか？")
-                    .setPositiveButton("削除") { _, _ ->
+                    .setTitle(getString(R.string.confirm_delete_title))
+                    .setMessage("「${userTemplate.reading}」${getString(R.string.confirm_to_delete_text)}")
+                    .setPositiveButton(getString(R.string.delete_string)) { _, _ ->
                         viewModel.delete(userTemplate.id)
-                        Toast.makeText(context, "削除しました", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            getString(R.string.deleted_string),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
-                    .setNegativeButton("キャンセル", null)
+                    .setNegativeButton(getString(R.string.cancel_string), null)
                     .show()
             }
             .show()

@@ -6,16 +6,18 @@
         <item>128 ms</item>
         <item>256 ms</item>
     </string-array>
+
     <string-array name="suggestion_speed_entry_values">
         <item>0</item>
         <item>1</item>
         <item>2</item>
         <item>3</item>
     </string-array>
+
     <string-array name="vibration_options">
-        <item>キー押下時</item>
-        <item>キーリリース時</item>
-        <item>両方</item>
+        <item>On key press</item>
+        <item>On key release</item>
+        <item>Both</item>
     </string-array>
 
     <string-array name="vibration_values">
@@ -25,10 +27,10 @@
     </string-array>
 
     <string-array name="sumire_keyboard_style_options">
-        <item>通常入力</item>
-        <item>サークル入力</item>
-        <item>２段フリック入力</item>
-        <item>スミレ入力</item>
+        <item>Normal input</item>
+        <item>Circle input</item>
+        <item>Two-step flick input</item>
+        <item>Sumire input</item>
     </string-array>
 
     <string-array name="sumire_keyboard_style_values">
@@ -39,9 +41,9 @@
     </string-array>
 
     <string-array name="sumire_input_method_options">
-        <item>トグル入力</item>
-        <item>フリック入力</item>
-        <item>カーソル入力</item>
+        <item>Toggle input</item>
+        <item>Flick input</item>
+        <item>Cursor input</item>
     </string-array>
 
     <string-array name="sumire_input_method_values">
@@ -51,33 +53,33 @@
     </string-array>
 
     <string-array name="parts_of_speech">
-        <item>名詞</item>
-        <item>動詞</item>
-        <item>形容詞</item>
-        <item>副詞</item>
-        <item>助動詞</item>
-        <item>助詞</item>
-        <item>感動詞</item>
-        <item>接続詞</item>
-        <item>接頭詞</item>
-        <item>記号</item>
-        <item>連体詞</item>
-        <item>その他</item>
+        <item>Noun</item>
+        <item>Verb</item>
+        <item>Adjective</item>
+        <item>Adverb</item>
+        <item>Auxiliary verb</item>
+        <item>Particle</item>
+        <item>Interjection</item>
+        <item>Conjunction</item>
+        <item>Prefix</item>
+        <item>Symbol</item>
+        <item>Adnominal</item>
+        <item>Other</item>
     </string-array>
 
     <string-array name="flick_directions">
-        <item>タップ</item>
-        <item>左フリック</item>
-        <item>上フリック</item>
-        <item>右フリック</item>
-        <item>下フリック</item>
+        <item>Tap</item>
+        <item>Flick left</item>
+        <item>Flick up</item>
+        <item>Flick right</item>
+        <item>Flick down</item>
     </string-array>
 
     <string-array name="symbol_mode_entries">
-        <item>絵文字</item>
-        <item>顔文字</item>
-        <item>記号</item>
-        <item>クリップボード履歴</item>
+        <item>Emoji</item>
+        <item>Emoticon</item>
+        <item>Symbol</item>
+        <item>Clipboard history</item>
     </string-array>
 
     <string-array name="symbol_mode_values">
@@ -100,9 +102,9 @@
     </string-array>
 
     <string-array name="candidate_view_height_entries">
-        <item>小</item>
-        <item>中(デフォルト)</item>
-        <item>大</item>
+        <item>Small</item>
+        <item>Medium (default)</item>
+        <item>Large</item>
     </string-array>
 
     <string-array name="candidate_view_height_values">

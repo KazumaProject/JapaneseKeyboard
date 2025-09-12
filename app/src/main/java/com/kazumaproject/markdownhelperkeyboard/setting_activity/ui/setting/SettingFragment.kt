@@ -191,19 +191,19 @@ class SettingFragment : PreferenceFragmentCompat() {
         val symbolKeyboardOrderPreference = findPreference<ListPreference>("symbol_mode_preference")
         symbolKeyboardOrderPreference?.apply {
             summary = when (value) {
-                "EMOJI" -> "絵文字"
-                "EMOTICON" -> "顔文字"
-                "SYMBOL" -> "記号"
-                "CLIPBOARD" -> "クリップボードの履歴"
-                else -> "記号キーボードの初期画面を選択します"
+                "EMOJI" -> getString(R.string.emoji)
+                "EMOTICON" -> getString(R.string.emoticon)
+                "SYMBOL" -> getString(R.string.symbol)
+                "CLIPBOARD" -> getString(R.string.clipboard_history)
+                else -> getString(R.string.choose_initial_symbol_keyboard_open)
             }
             setOnPreferenceChangeListener { _, newValue ->
                 summary = when (newValue) {
-                    "EMOJI" -> "絵文字"
-                    "EMOTICON" -> "顔文字"
-                    "SYMBOL" -> "記号"
-                    "CLIPBOARD" -> "クリップボードの履歴"
-                    else -> "記号キーボードの初期画面を選択します"
+                    "EMOJI" -> getString(R.string.emoji)
+                    "EMOTICON" -> getString(R.string.emoticon)
+                    "SYMBOL" -> getString(R.string.symbol)
+                    "CLIPBOARD" -> getString(R.string.clipboard_history)
+                    else -> getString(R.string.choose_initial_symbol_keyboard_open)
                 }
                 true
             }
@@ -254,11 +254,11 @@ class SettingFragment : PreferenceFragmentCompat() {
 
         findPreference<SeekBarPreference>("flick_sensitivity_preference")?.apply {
             summary = when (this.value) {
-                in 0..50 -> "非常に繊細"
-                in 51..90 -> "やや繊細"
-                in 91..110 -> "普通"
-                in 111..150 -> "やや鈍感"
-                in 151..200 -> "非常に鈍感"
+                in 0..50 -> getString(R.string.sensitivity_very_high)
+                in 51..90 -> getString(R.string.sensitivity_high)
+                in 91..110 -> getString(R.string.sensitivity_normal)
+                in 111..150 -> getString(R.string.sensitivity_less)
+                in 151..200 -> getString(R.string.sensitivity_low)
                 else -> ""
             }
             setOnPreferenceChangeListener { pref, newValue ->
@@ -267,11 +267,11 @@ class SettingFragment : PreferenceFragmentCompat() {
                 val inc = sbp.seekBarIncrement
                 val rounded = (raw + inc / 2) / inc * inc
                 summary = when (rounded) {
-                    in 0..50 -> "非常に繊細"
-                    in 51..90 -> "やや繊細"
-                    in 91..110 -> "普通"
-                    in 111..150 -> "やや鈍感"
-                    in 151..200 -> "非常に鈍感"
+                    in 0..50 -> getString(R.string.sensitivity_very_high)
+                    in 51..90 -> getString(R.string.sensitivity_high)
+                    in 91..110 -> getString(R.string.sensitivity_normal)
+                    in 111..150 -> getString(R.string.sensitivity_less)
+                    in 151..200 -> getString(R.string.sensitivity_low)
                     else -> ""
                 }
                 return@setOnPreferenceChangeListener if (rounded != raw) {
@@ -298,104 +298,6 @@ class SettingFragment : PreferenceFragmentCompat() {
                     resources.getString(R.string.undo_enable_summary_on)
                 } else {
                     resources.getString(R.string.undo_enable_summary_off)
-                }
-                true
-            }
-        }
-
-        val spaceHankakuPreference = findPreference<SwitchPreferenceCompat>("space_key_preference")
-        spaceHankakuPreference?.apply {
-            appPreference.space_hankaku_preference?.let {
-                this.title = if (it) {
-                    resources.getString(R.string.space_key_title_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_title_zenkaku)
-                }
-                this.summary = if (it) {
-                    resources.getString(R.string.space_key_summary_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_summary_zenkaku)
-                }
-            }
-            this.setOnPreferenceChangeListener { _, newValue ->
-                this.title = if (newValue == true) {
-                    resources.getString(R.string.space_key_title_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_title_zenkaku)
-                }
-                this.summary = if (newValue == true) {
-                    resources.getString(R.string.space_key_summary_hankaku)
-                } else {
-                    resources.getString(R.string.space_key_summary_zenkaku)
-                }
-                true
-            }
-        }
-
-        val sumireKeyboardInputModePreference =
-            findPreference<ListPreference>("sumire_keyboard_input_type_preference")
-
-        sumireKeyboardInputModePreference?.apply {
-            when (value) {
-                "toggle-default" -> {
-                    summary = "トグル入力 - Toggle"
-                }
-
-                "flick-default" -> {
-                    summary = "フリック入力 - Flick"
-                }
-
-                "flick-circle" -> {
-                    summary = "サークル入力 - Toggle"
-                }
-
-                "flick-circle-flick" -> {
-                    summary = "サークル入力 - Flick"
-                }
-
-                "flick-sumire" -> {
-                    summary = "スミレ入力"
-                }
-
-                "second-flick" -> {
-                    summary = "２段フリック入力 - Toggle"
-                }
-
-                "second-flick-flick" -> {
-                    summary = "２段フリック入力 - Flick"
-                }
-            }
-            setOnPreferenceChangeListener { preference, newValue ->
-                if (newValue is String) {
-                    when (newValue) {
-                        "toggle-default" -> {
-                            preference.summary = "トグル入力 - Toggle"
-                        }
-
-                        "flick-default" -> {
-                            preference.summary = "フリック入力 - Flick"
-                        }
-
-                        "flick-circle" -> {
-                            preference.summary = "サークル入力 - Toggle"
-                        }
-
-                        "flick-circle-flick" -> {
-                            preference.summary = "サークル入力 - Flick"
-                        }
-
-                        "flick-sumire" -> {
-                            preference.summary = "スミレ入力"
-                        }
-
-                        "second-flick" -> {
-                            preference.summary = "２段フリック入力 - Toggle"
-                        }
-
-                        "second-flick-flick" -> {
-                            preference.summary = "２段フリック入力 - Flick"
-                        }
-                    }
                 }
                 true
             }
