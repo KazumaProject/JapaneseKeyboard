@@ -3,10 +3,10 @@
 
     <item
         android:id="@+id/action_export_layouts"
-        android:title="エクスポート" />
+        android:title="@string/export_title" />
 
     <item
         android:id="@+id/action_import_layouts"
-        android:title="インポート" />
+        android:title="@string/import_title" />
 
 </menu>

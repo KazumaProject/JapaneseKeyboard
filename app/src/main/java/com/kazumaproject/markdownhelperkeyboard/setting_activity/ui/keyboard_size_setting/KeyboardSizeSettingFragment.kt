@@ -17,6 +17,7 @@ import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.window.layout.WindowMetricsCalculator
+import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
@@ -334,7 +335,8 @@ class KeyboardSettingFragment : Fragment() {
                     com.kazumaproject.core.R.color.blue
                 )
             )
-            binding.keyboardPositionButton.text = "右寄せ"
+            binding.keyboardPositionButton.text =
+                getString(R.string.key_size_position_button_text_right)
         } else {
             // Align container to the left
             constraintSet.connect(
@@ -350,7 +352,8 @@ class KeyboardSettingFragment : Fragment() {
                     com.kazumaproject.core.R.color.qwety_key_bg_color
                 )
             )
-            binding.keyboardPositionButton.text = "左寄せ"
+            binding.keyboardPositionButton.text =
+                getString(R.string.key_size_position_button_text_left)
         }
         constraintSet.applyTo(constraintLayout)
     }
@@ -360,7 +363,8 @@ class KeyboardSettingFragment : Fragment() {
      */
     private fun updateFloatingModeUI() {
         if (isFloatingMode) {
-            binding.floatingKeyboardSettingBtn.text = "フローティング ON"
+            binding.floatingKeyboardSettingBtn.text =
+                getString(R.string.key_size_floating_button_text_on)
             binding.floatingKeyboardSettingBtn.setBackgroundColor(
                 ContextCompat.getColor(
                     requireContext(),
@@ -368,7 +372,8 @@ class KeyboardSettingFragment : Fragment() {
                 )
             )
         } else {
-            binding.floatingKeyboardSettingBtn.text = "フローティング OFF"
+            binding.floatingKeyboardSettingBtn.text =
+                getString(R.string.key_size_floating_button_text_off)
             binding.floatingKeyboardSettingBtn.setBackgroundColor(
                 ContextCompat.getColor(
                     requireContext(),

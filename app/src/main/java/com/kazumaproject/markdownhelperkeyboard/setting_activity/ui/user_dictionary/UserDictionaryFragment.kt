@@ -131,20 +131,28 @@ class UserDictionaryFragment : Fragment() {
 
     private fun showDeleteAllConfirmationDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("削除の確認")
-            .setMessage("登録されているすべての単語を削除します。この操作は元に戻せません。よろしいですか？")
-            .setPositiveButton("すべて削除") { _, _ ->
+            .setTitle(getString(R.string.confirm_delete_title))
+            .setMessage(getString(R.string.confirm_all_words_delete_message))
+            .setPositiveButton(getString(R.string.delete_all)) { _, _ ->
                 viewModel.deleteAll()
-                Toast.makeText(context, "すべての単語を削除しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.deleted_all_words_text),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(getString(R.string.cancel_string), null)
             .show()
     }
 
     private fun exportWords(uri: Uri) {
         viewModel.allWords.value?.let { words ->
             if (words.isEmpty()) {
-                Toast.makeText(context, "エクスポートする単語がありません", Toast.LENGTH_SHORT)
+                Toast.makeText(
+                    context,
+                    getString(R.string.there_is_no_word_to_export),
+                    Toast.LENGTH_SHORT
+                )
                     .show()
                 return
             }
@@ -158,10 +166,18 @@ class UserDictionaryFragment : Fragment() {
                         fos.write(jsonString.toByteArray(Charsets.UTF_8))
                     }
                 }
-                Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.success_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(context, "エクスポートに失敗しました", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    getString(R.string.fail_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -190,7 +206,7 @@ class UserDictionaryFragment : Fragment() {
                 })
                 Toast.makeText(
                     context,
-                    "${words.size}件の単語をインポートしました",
+                    "${words.size} ${getString(R.string.import_text_string)}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
@@ -198,7 +214,7 @@ class UserDictionaryFragment : Fragment() {
             e.printStackTrace()
             Toast.makeText(
                 context,
-                "インポートに失敗しました。ファイルが破損しているか、形式が正しくありません。",
+                getString(R.string.fail_to_import_string),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -272,7 +288,11 @@ class UserDictionaryFragment : Fragment() {
         val reading = binding.editTextReading.text.toString().trim()
 
         if (word.isEmpty() || reading.isEmpty()) {
-            Toast.makeText(context, "単語と読みを入力してください", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                context,
+                getString(R.string.enter_word_and_yomi_string),
+                Toast.LENGTH_SHORT
+            ).show()
             return
         }
 
@@ -285,7 +305,11 @@ class UserDictionaryFragment : Fragment() {
             )
         viewModel.insert(newUserWord)
 
-        Toast.makeText(context, "「$word」を登録しました", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            "「$word${getString(R.string.is_registered_string)}",
+            Toast.LENGTH_SHORT
+        ).show()
 
         resetInputFields()
 
@@ -312,9 +336,9 @@ class UserDictionaryFragment : Fragment() {
         editPosScore.setText(userWord.posScore.toString())
 
         AlertDialog.Builder(requireContext())
-            .setTitle("単語の編集")
+            .setTitle(getString(R.string.edit_word))
             .setView(dialogView)
-            .setPositiveButton("更新") { _, _ ->
+            .setPositiveButton(getString(R.string.save_string)) { _, _ ->
                 val updatedWord = editWord.text.toString().trim()
                 val updatedReading = editReading.text.toString().trim()
                 val updatedPosIndex = spinnerPosDialog.selectedItemPosition
@@ -329,19 +353,24 @@ class UserDictionaryFragment : Fragment() {
                         posScore = updatedPosScore
                     )
                     viewModel.update(updatedUserWord)
-                    Toast.makeText(context, "更新しました", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, getString(R.string.updated_string), Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
-            .setNegativeButton("キャンセル", null)
-            .setNeutralButton("削除") { _, _ ->
+            .setNegativeButton(getString(R.string.cancel_string), null)
+            .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
                 AlertDialog.Builder(requireContext())
-                    .setTitle("削除の確認")
-                    .setMessage("「${userWord.word}」を削除しますか？")
-                    .setPositiveButton("削除") { _, _ ->
+                    .setTitle(getString(R.string.confirm_delete_title))
+                    .setMessage("「${userWord.word}」${getString(R.string.confirm_to_delete_text)}")
+                    .setPositiveButton(getString(R.string.delete_string)) { _, _ ->
                         viewModel.delete(userWord.id)
-                        Toast.makeText(context, "削除しました", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            getString(R.string.deleted_string),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
-                    .setNegativeButton("キャンセル", null)
+                    .setNegativeButton(getString(R.string.cancel_string), null)
                     .show()
             }
             .show()
