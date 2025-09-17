@@ -120,8 +120,10 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctRe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
@@ -8361,19 +8363,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = kanaKanjiEngine.getCandidates(
-            input = insertString,
-            n = nBest ?: 4,
-            mozcUtPersonName = mozcUTPersonName,
-            mozcUTPlaces = mozcUTPlaces,
-            mozcUTWiki = mozcUTWiki,
-            mozcUTNeologd = mozcUTNeologd,
-            mozcUTWeb = mozcUTWeb,
-            userDictionaryRepository = userDictionaryRepository,
-            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            ngWords = ngWords,
-            isOmissionSearchEnable = isOmissionSearchEnable ?: false
-        )
+        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
+            val fullWidthInput = insertString.toFullWidth()
+            englishEngine.getCandidates(insertString) + listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            kanaKanjiEngine.getCandidates(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false
+            )
+        }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
