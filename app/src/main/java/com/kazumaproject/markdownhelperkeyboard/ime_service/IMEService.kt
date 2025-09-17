@@ -120,8 +120,10 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctRe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
@@ -8361,9 +8363,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = if (insertString.isAllEnglishLetters()){
-            englishEngine.getCandidates(insertString)
-        } else{
+        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
+            val fullWidthInput = insertString.toFullWidth()
+            englishEngine.getCandidates(insertString) + listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
             kanaKanjiEngine.getCandidates(
                 input = insertString,
                 n = nBest ?: 4,
