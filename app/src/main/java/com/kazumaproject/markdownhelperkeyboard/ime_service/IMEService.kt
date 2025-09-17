@@ -8361,19 +8361,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = kanaKanjiEngine.getCandidates(
-            input = insertString,
-            n = nBest ?: 4,
-            mozcUtPersonName = mozcUTPersonName,
-            mozcUTPlaces = mozcUTPlaces,
-            mozcUTWiki = mozcUTWiki,
-            mozcUTNeologd = mozcUTNeologd,
-            mozcUTWeb = mozcUTWeb,
-            userDictionaryRepository = userDictionaryRepository,
-            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            ngWords = ngWords,
-            isOmissionSearchEnable = isOmissionSearchEnable ?: false
-        )
+        val engineCandidates = if (insertString.isAllEnglishLetters()){
+            englishEngine.getCandidates(insertString)
+        } else{
+            kanaKanjiEngine.getCandidates(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false
+            )
+        }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
