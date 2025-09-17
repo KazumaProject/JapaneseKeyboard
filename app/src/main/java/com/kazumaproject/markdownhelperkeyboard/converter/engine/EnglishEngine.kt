@@ -54,6 +54,14 @@ class EnglishEngine {
         val predictions = mutableListOf<Candidate>()
         predictions.add(
             Candidate(
+                string = input,
+                score = 500,
+                type = defaultType,
+                length = input.length.toUByte()
+            )
+        )
+        predictions.add(
+            Candidate(
                 string = input.replaceFirstChar { it.uppercaseChar() },
                 score = if (input.length <= 3) 9000 else if (input.length <= 4) 12000 else 57000,
                 type = defaultType,
