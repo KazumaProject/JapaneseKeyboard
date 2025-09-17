@@ -43,7 +43,7 @@ class EnglishEngine {
         // common constants
         val defaultType = 29.toByte()
         val lowerInput = input.lowercase()
-        val limit = if (input.length <= 2) 8 else 16
+        val limit = if (input.length <= 2) 6 else 12
 
         val predictiveSearchReading = readingLOUDS.predictiveSearch(
             prefix = lowerInput,
