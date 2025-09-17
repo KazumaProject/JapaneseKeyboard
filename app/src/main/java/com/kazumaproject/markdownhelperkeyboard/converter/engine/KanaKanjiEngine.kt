@@ -21,9 +21,6 @@ import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
@@ -152,8 +149,6 @@ class KanaKanjiEngine {
     private var webSuccinctBitVectorTokenArray: SuccinctBitVector? = null
     private var webSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
-    private lateinit var englishEngine: EnglishEngine
-
     companion object {
         const val SCORE_OFFSET = 8000
         const val SCORE_OFFSET_SMALL = 6000
@@ -219,8 +214,6 @@ class KanaKanjiEngine {
         kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
-
-        englishEngine: EnglishEngine
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -301,8 +294,6 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.kotowazaSuccinctBitVectorTokenArray =
             kotowazaSuccinctBitVectorTokenArray
         this@KanaKanjiEngine.kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS
-
-        this@KanaKanjiEngine.englishEngine = englishEngine
     }
 
     fun buildPersonNamesDictionary(context: Context) {
@@ -795,33 +786,7 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input)
-        } else {
-            emptyList()
-        }
-
-        val englishZenkaku = if (input.isAllHalfWidthAscii()) {
-            val fullWidthInput = input.toFullWidth()
-            listOf(
-                Candidate(
-                    string = fullWidthInput.lowercase(),
-                    type = (30).toByte(),
-                    length = input.length.toUByte(),
-                    score = 30000
-                ),
-                Candidate(
-                    string = fullWidthInput.uppercase(),
-                    type = (30).toByte(),
-                    length = input.length.toUByte(),
-                    score = 30000
-                )
-            )
-        } else {
-            emptyList()
-        }
-
-        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + singleKanjiListDeferred + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred
+        if (input.length == 1) return resultNBestFinalDeferred + hirakanaAndKana + singleKanjiListDeferred + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred
 
         val yomiPartOfDeferred = if (input.length > 16) {
             emptyList()
@@ -1014,7 +979,7 @@ class KanaKanjiEngine {
             resultList
                 .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred
+        return resultListFinal + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred
 
     }
 

@@ -43,7 +43,7 @@ class EnglishEngine {
         // common constants
         val defaultType = 29.toByte()
         val lowerInput = input.lowercase()
-        val limit = if (input.length <= 2) 8 else 16
+        val limit = if (input.length <= 2) 6 else 12
 
         val predictiveSearchReading = readingLOUDS.predictiveSearch(
             prefix = lowerInput,
@@ -52,6 +52,14 @@ class EnglishEngine {
         )
 
         val predictions = mutableListOf<Candidate>()
+        predictions.add(
+            Candidate(
+                string = input,
+                score = 500,
+                type = defaultType,
+                length = input.length.toUByte()
+            )
+        )
         predictions.add(
             Candidate(
                 string = input.replaceFirstChar { it.uppercaseChar() },
@@ -139,7 +147,9 @@ class EnglishEngine {
                         length = base.length.toUByte(),
                         score = if (input.first()
                                 .isUpperCase()
-                        ) entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY else entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY
+                        ) (entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY - 8000).coerceAtLeast(
+                            0
+                        ) else entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY
                     ),
 
                     Candidate(
