@@ -139,7 +139,9 @@ class EnglishEngine {
                         length = base.length.toUByte(),
                         score = if (input.first()
                                 .isUpperCase()
-                        ) entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY else entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY
+                        ) (entry.wordCost.toInt() + base.length * LENGTH_MULTIPLY - 8000).coerceAtLeast(
+                            0
+                        ) else entry.wordCost.toInt() + 500 + base.length * LENGTH_MULTIPLY
                     ),
 
                     Candidate(
