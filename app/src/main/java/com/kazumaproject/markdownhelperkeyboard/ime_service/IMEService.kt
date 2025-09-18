@@ -5960,7 +5960,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // --- Apply the calculated height ---
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             // Set the final calculated height and bottom margin
-            params.height = totalHeight+ mainView.candidateTabLayout.height
+            params.height = totalHeight + mainView.candidateTabLayout.height
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -6894,7 +6894,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setTabsToTabLayout(
         mainView: MainLayoutBinding
-    ){
+    ) {
         mainView.candidateTabLayout.apply {
             val tab1 = newTab().setText("予測")
             val tab2 = newTab().setText("変換")
@@ -6938,7 +6938,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         2 -> {
-
+                            val input = inputString.value
+                            if (input.isNotEmpty()) {
+                                ioScope.launch {
+                                    setCandidatesEnglishKana(input)
+                                    withContext(Dispatchers.Main) {
+                                        hideFirstRowCandidatesInFullScreen(mainView)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -8363,12 +8371,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition")
         when (tabPosition) {
-            0, 2 -> {
+            0 -> {
                 setCandidates(inputString)
             }
 
             1 -> {
                 setCandidatesWithoutPrediction(inputString)
+            }
+
+            2 -> {
+                setCandidatesEnglishKana(inputString)
             }
 
             else -> {
@@ -8416,6 +8428,40 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
     ) {
         val candidates = getSuggestionListWithoutPrediction(insertString)
+        val filtered = if (stringInTail.get().isNotEmpty()) {
+            candidates.filter { it.length.toInt() == insertString.length }
+        } else {
+            candidates
+        }
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            if (!suppressSuggestions) {
+                updateSuggestionsForFloatingCandidate(filtered.map {
+                    CandidateItem(
+                        word = it.string, length = it.length
+                    )
+                })
+            }
+        } else {
+            if (!suppressSuggestions) {
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
+            }
+
+        }
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        }
+    }
+
+    private suspend fun setCandidatesEnglishKana(
+        insertString: String,
+    ) {
+        val candidates = getSuggestionListEnglishKana(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -8609,6 +8655,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }.distinctBy { it.string }
+    }
+
+    private suspend fun getSuggestionListEnglishKana(
+        insertString: String,
+    ): List<Candidate> {
+        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
+            val fullWidthInput = insertString.toFullWidth()
+            englishEngine.getCandidates(insertString) + listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            kanaKanjiEngine.getCandidatesEnglishKana(
+                input = insertString,
+            )
+        }
+        return engineCandidates.distinctBy { it.string }
     }
 
     private fun deleteLongPress() {
