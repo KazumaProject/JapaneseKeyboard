@@ -40,6 +40,11 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/candidate_tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="36dp" />
+
     <com.kazumaproject.tenkey.TenKey
         android:id="@+id/keyboard_view"
         android:layout_width="match_parent"
