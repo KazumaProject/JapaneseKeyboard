@@ -22,6 +22,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.groupAndReplaceJapaneseForNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.replaceJapaneseCharactersForEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
@@ -1294,6 +1296,8 @@ class KanaKanjiEngine {
     }
 
     fun getCandidatesEnglishKana(input: String): List<Candidate> {
+        val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
+        val inputToNumbers = input.groupAndReplaceJapaneseForNumber()
         val listJapaneseCandidates = listOf(
             Candidate(
                 string = input,
@@ -1309,13 +1313,115 @@ class KanaKanjiEngine {
             ),
             Candidate(
                 string = input.toHankakuKatakana(),
+                type = (31).toByte(),
+                length = input.length.toUByte(),
+                score = 3000
+            ),
+            Candidate(
+                string = inputToEnglish,
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
             ),
+            Candidate(
+                string = inputToEnglish.replaceFirstChar { it.uppercaseChar() },
+                type = (1).toByte(),
+                length = input.length.toUByte(),
+                score = 3000
+            ),
+            Candidate(
+                string = inputToEnglish.uppercase(),
+                type = (1).toByte(),
+                length = input.length.toUByte(),
+                score = 3000
+            ),
+            Candidate(
+                string = inputToNumbers,
+                type = (1).toByte(),
+                length = input.length.toUByte(),
+                score = 3000
+            )
         )
 
-        return listJapaneseCandidates
+        val fullWidth = Candidate(
+            string = inputToNumbers.toFullWidthDigitsEfficient(),
+            type = 22,
+            length = input.length.toUByte(),
+            score = 8000,
+            leftId = 2040,
+            rightId = 2040
+        )
+        val halfWidth = Candidate(
+            string = inputToNumbers.convertFullWidthToHalfWidth(),
+            type = 31,
+            length = input.length.toUByte(),
+            score = 8000,
+            leftId = 2040,
+            rightId = 2040
+        )
+        val timeConversion = createCandidatesForTime(inputToNumbers)
+        val dateConversion =
+            createCandidatesForDateInDigit(inputToNumbers)
+
+        // 2. Correctly generate number-to-Kanji/comma candidates.
+        val numberValue =
+            inputToNumbers.toLongOrNull() // Safely convert the digit string to a number.
+        val numberCandidates = if (numberValue != null) {
+            buildList {
+                // Full Kanji style (e.g., 百二十三)
+                add(
+                    Candidate(
+                        string = numberValue.toKanji(),
+                        type = 17, // Using 17 for Kanji
+                        score = 2000,
+                        length = input.length.toUByte(),
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+                // Comma-separated style (e.g., 1,234)
+                add(
+                    Candidate(
+                        string = inputToNumbers.addCommasToNumber(),
+                        type = 19,
+                        score = 8001,
+                        length = input.length.toUByte(),
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+                // Original number string itself (e.g., 123)
+                add(
+                    Candidate(
+                        string = inputToNumbers,
+                        type = 18,
+                        score = 8002,
+                        length = input.length.toUByte(),
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+                // Mixed Kanji style (e.g., 12万3456)
+                add(
+                    Candidate(
+                        string = numberValue.convertToKanjiNotation(),
+                        type = 23, // Using a different type for this style
+                        score = 7900, // Lower score for the mixed style
+                        length = input.length.toUByte(),
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+            }
+        } else {
+            emptyList()
+        }
+
+        val numbersConverted = listOf(
+            fullWidth, halfWidth
+        ) + timeConversion + dateConversion + numberCandidates
+
+        return listJapaneseCandidates + numbersConverted
     }
 
 
