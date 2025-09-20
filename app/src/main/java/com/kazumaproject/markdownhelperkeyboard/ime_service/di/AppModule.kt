@@ -630,6 +630,7 @@ object AppModule {
         @KotowazaSuccinctBitVectorIsLeafYomi kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         @KotowazaSuccinctBitVectorTokenArray kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         @KotowazaSuccinctBitVectorTangoLBS kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
+        englishEngine: EnglishEngine
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
@@ -695,6 +696,7 @@ object AppModule {
             kotowazaSuccinctBitVectorIsLeafYomi = kotowazaSuccinctBitVectorIsLeafYomi,
             kotowazaSuccinctBitVectorTokenArray = kotowazaSuccinctBitVectorTokenArray,
             kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS,
+            engineEngine = englishEngine
         )
 
         return kanaKanjiEngine
