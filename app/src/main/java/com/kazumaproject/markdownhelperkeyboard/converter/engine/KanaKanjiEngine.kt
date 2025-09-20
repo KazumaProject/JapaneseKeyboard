@@ -23,7 +23,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPat
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.groupAndReplaceJapaneseForNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.replaceJapaneseCharactersForEnglish
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
@@ -152,6 +155,8 @@ class KanaKanjiEngine {
     private var webSuccinctBitVectorTokenArray: SuccinctBitVector? = null
     private var webSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
+    private lateinit var englishEngine: EnglishEngine
+
     companion object {
         const val SCORE_OFFSET = 8000
         const val SCORE_OFFSET_SMALL = 6000
@@ -217,6 +222,7 @@ class KanaKanjiEngine {
         kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
+        engineEngine: EnglishEngine
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
@@ -297,6 +303,8 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.kotowazaSuccinctBitVectorTokenArray =
             kotowazaSuccinctBitVectorTokenArray
         this@KanaKanjiEngine.kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS
+
+        this.englishEngine = engineEngine
     }
 
     fun buildPersonNamesDictionary(context: Context) {
@@ -542,6 +550,474 @@ class KanaKanjiEngine {
 
     fun isMozcUTWebDictionariesInitialized(): Boolean {
         return !(this.webYomiTrie == null || this.webTangoTrie == null || this.webTokenArray == null)
+    }
+
+    suspend fun getCandidatesOriginal(
+        input: String,
+        n: Int,
+        mozcUtPersonName: Boolean?,
+        mozcUTPlaces: Boolean?,
+        mozcUTWiki: Boolean?,
+        mozcUTNeologd: Boolean?,
+        mozcUTWeb: Boolean?,
+        userDictionaryRepository: UserDictionaryRepository,
+        learnRepository: LearnRepository?,
+        ngWords: List<String>,
+        isOmissionSearchEnable: Boolean
+    ): List<Candidate> {
+
+        val graph = graphBuilder.constructGraph(
+            input,
+            systemYomiTrie,
+            systemTangoTrie,
+            systemTokenArray,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            ngWords = ngWords,
+            wikiYomiTrie = wikiYomiTrie,
+            wikiTangoTrie = wikiTangoTrie,
+            wikiTokenArray = wikiTokenArray,
+            succinctBitVectorLBSWikiYomi = wikiSuccinctBitVectorLBSYomi,
+            succinctBitVectorWikiTangoLBS = wikiSuccinctBitVectorLBSTango,
+            succinctBitVectorWikiTokenArray = wikiSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafWikiYomi = wikiSuccinctBitVectorIsLeaf,
+            webYomiTrie = webYomiTrie,
+            webTangoTrie = webTangoTrie,
+            webTokenArray = webTokenArray,
+            succinctBitVectorLBSwebYomi = webSuccinctBitVectorLBSYomi,
+            succinctBitVectorwebTangoLBS = webSuccinctBitVectorLBSTango,
+            succinctBitVectorwebTokenArray = webSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafwebYomi = webSuccinctBitVectorIsLeaf,
+            personYomiTrie = personYomiTrie,
+            personTangoTrie = personTangoTrie,
+            personTokenArray = personTokenArray,
+            succinctBitVectorLBSpersonYomi = personSuccinctBitVectorLBSYomi,
+            succinctBitVectorpersonTangoLBS = personSuccinctBitVectorLBSTango,
+            succinctBitVectorpersonTokenArray = personSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafpersonYomi = personSuccinctBitVectorIsLeaf,
+            neologdYomiTrie = neologdYomiTrie,
+            neologdTangoTrie = neologdTangoTrie,
+            neologdTokenArray = neologdTokenArray,
+            succinctBitVectorLBSneologdYomi = neologdSuccinctBitVectorLBSYomi,
+            succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
+            succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
+            isOmissionSearchEnable = isOmissionSearchEnable
+        )
+
+        val resultNBestFinalDeferred: List<Candidate> =
+            findPath.backwardAStar(graph, input.length, connectionIds, n)
+
+        if (input.isDigitsOnly()) {
+            // 1. Generate full-width, time, and date candidates as before.
+            val fullWidth = Candidate(
+                string = input.toFullWidthDigitsEfficient(),
+                type = 22,
+                length = input.length.toUByte(),
+                score = 8000,
+                leftId = 2040,
+                rightId = 2040
+            )
+            val halfWidth = Candidate(
+                string = input.convertFullWidthToHalfWidth(),
+                type = 31,
+                length = input.length.toUByte(),
+                score = 8000,
+                leftId = 2040,
+                rightId = 2040
+            )
+            val timeConversion = createCandidatesForTime(input)
+            val dateConversion = createCandidatesForDateInDigit(input)
+
+            // 2. Correctly generate number-to-Kanji/comma candidates.
+            val numberValue = input.toLongOrNull() // Safely convert the digit string to a number.
+            val numberCandidates = if (numberValue != null) {
+                buildList {
+                    // Full Kanji style (e.g., 百二十三)
+                    add(
+                        Candidate(
+                            string = numberValue.toKanji(),
+                            type = 17, // Using 17 for Kanji
+                            score = 2000,
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                    // Comma-separated style (e.g., 1,234)
+                    add(
+                        Candidate(
+                            string = input.addCommasToNumber(),
+                            type = 19,
+                            score = 8001,
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                    // Original number string itself (e.g., 123)
+                    add(
+                        Candidate(
+                            string = input,
+                            type = 18,
+                            score = 8002,
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                    // Mixed Kanji style (e.g., 12万3456)
+                    add(
+                        Candidate(
+                            string = numberValue.convertToKanjiNotation(),
+                            type = 23, // Using a different type for this style
+                            score = 7900, // Lower score for the mixed style
+                            length = input.length.toUByte(),
+                            leftId = 2040,
+                            rightId = 2040
+                        )
+                    )
+                }
+            } else {
+                emptyList()
+            }
+
+            // 3. Combine and return all generated candidates.
+            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+        }
+
+        val hirakanaAndKana = listOf(
+            Candidate(input, 3, input.length.toUByte(), 6000),
+            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
+        )
+
+        val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = emojiYomiTrie,
+            succinctBitVector = emojiSuccinctBitVectorLBSYomi
+        )
+
+        val emoticonCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = emoticonYomiTrie,
+            succinctBitVector = emoticonSuccinctBitVectorLBSYomi,
+        )
+
+        val symbolCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = symbolYomiTrie,
+            succinctBitVector = symbolSuccinctBitVectorLBSYomi,
+        )
+
+        val emojiListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = emojiCommonPrefixDeferred,
+            yomiTrie = emojiYomiTrie,
+            tokenArray = emojiTokenArray,
+            tangoTrie = emojiTangoTrie,
+            succinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
+            type = 11
+        )
+
+        val emoticonListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = emoticonCommonPrefixDeferred,
+            yomiTrie = emoticonYomiTrie,
+            tokenArray = emoticonTokenArray,
+            tangoTrie = emoticonTangoTrie,
+            succinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emoticonSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emoticonSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emoticonSuccinctBitVectorTangoLBS,
+            type = 12
+        )
+
+        val symbolListDeferred =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                deferredFromDictionarySymbols(
+                    input = input,
+                    commonPrefixListString = symbolCommonPrefixDeferred,
+                    yomiTrie = symbolYomiTrie,
+                    tokenArray = symbolTokenArray,
+                    tangoTrie = symbolTangoTrie,
+                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                    type = 13
+                ).filterNot { it.string.containsHentaigana() }
+            } else {
+                deferredFromDictionarySymbols(
+                    input = input,
+                    commonPrefixListString = symbolCommonPrefixDeferred,
+                    yomiTrie = symbolYomiTrie,
+                    tokenArray = symbolTokenArray,
+                    tangoTrie = symbolTangoTrie,
+                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                    type = 13
+                )
+            }
+
+        val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
+            input = input,
+            yomiTrie = singleKanjiYomiTrie,
+            tokenArray = singleKanjiTokenArray,
+            tangoTrie = singleKanjiTangoTrie,
+            succinctBitVectorLBSYomi = singleKanjiSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = singleKanjiSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = singleKanjiSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = singleKanjiSuccinctBitVectorTangoLBS,
+            type = 7
+        )
+
+        val symbolCommonPrefixDeferredHalfWidth =
+            if (input.all { !it.isLetterOrDigit() && !it.isWhitespace() }) listOf(input.convertFullWidthToHalfWidth())
+            else emptyList()
+
+        val symbolHalfWidthListDeferred =
+            if (symbolCommonPrefixDeferredHalfWidth.isEmpty()) emptyList() else deferredFromDictionary(
+                commonPrefixListString = symbolCommonPrefixDeferredHalfWidth,
+                yomiTrie = symbolYomiTrie,
+                tokenArray = symbolTokenArray,
+                tangoTrie = symbolTangoTrie,
+                succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                type = 21
+            )
+
+        val englishDeferred = if (input.isAllEnglishLetters()) {
+            englishEngine.getCandidates(input)
+        } else {
+            emptyList()
+        }
+
+        val englishZenkaku = if (input.isAllHalfWidthAscii()) {
+            val fullWidthInput = input.toFullWidth()
+            listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            emptyList()
+        }
+
+        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred + emojiListDeferred + emoticonListDeferred
+
+        val yomiPartOfDeferred = if (input.length > 16) {
+            emptyList()
+        } else {
+            systemYomiTrie.commonPrefixSearch(
+                str = input, succinctBitVector = systemSuccinctBitVectorLBSYomi
+            ).asReversed()
+        }
+
+        val predictiveSearchDeferred = deferredPrediction(
+            input = input,
+            yomiTrie = systemYomiTrie,
+            succinctBitVector = systemSuccinctBitVectorLBSYomi
+        )
+
+        val readingCorrectionCommonPrefixDeferred = deferredPrediction(
+            input = input,
+            yomiTrie = readingCorrectionYomiTrie,
+            succinctBitVector = readingCorrectionSuccinctBitVectorLBSYomi
+        )
+
+        val kotowazaCommonPrefixDeferred = deferredPrediction(
+            input = input,
+            yomiTrie = kotowazaYomiTrie,
+            succinctBitVector = kotowazaSuccinctBitVectorLBSYomi
+        )
+
+        val predictiveSearchResult: List<Candidate> =
+            predictiveSearchDeferred.filter { it.length != input.length }.flatMap { yomi ->
+                val nodeIndex = systemYomiTrie.getNodeIndex(
+                    yomi, succinctBitVector = systemSuccinctBitVectorLBSYomi
+                )
+                val termId = systemYomiTrie.getTermId(
+                    nodeIndex, systemSuccinctBitVectorIsLeafYomi
+                )
+
+                // 2) build Candidates
+                systemTokenArray.getListDictionaryByYomiTermId(
+                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
+                ).map { token ->
+                    val baseCost = token.wordCost.toInt()
+                    val score = when {
+                        yomi.length == input.length -> baseCost
+                        input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
+                        else -> baseCost + SCORE_OFFSET_SMALL
+                    }
+                    Candidate(
+                        string = when (token.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> systemTangoTrie.getLetter(
+                                token.nodeId, systemSuccinctBitVectorTangoLBS
+                            )
+                        },
+                        type = 9,
+                        length = yomi.length.toUByte(),
+                        score = score,
+                        leftId = systemTokenArray.leftIds[token.posTableIndex.toInt()],
+                        rightId = systemTokenArray.rightIds[token.posTableIndex.toInt()]
+                    )
+                }
+            }.sortedBy { it.score }.take(n)
+
+        val yomiPartListDeferred: List<Candidate> = yomiPartOfDeferred.flatMap { yomi ->
+            val termId = systemYomiTrie.getTermId(
+                systemYomiTrie.getNodeIndex(
+                    yomi,
+                    systemSuccinctBitVectorLBSYomi,
+                ), systemSuccinctBitVectorIsLeafYomi
+            )
+            systemTokenArray.getListDictionaryByYomiTermId(
+                termId, succinctBitVector = systemSuccinctBitVectorTokenArray
+            ).map {
+                Candidate(
+                    string = when (it.nodeId) {
+                        -2 -> yomi
+                        -1 -> yomi.hiraToKata()
+                        else -> systemTangoTrie.getLetter(
+                            it.nodeId, systemSuccinctBitVectorTangoLBS
+                        )
+                    },
+                    type = if (yomi.length == input.length) 2 else 5,
+                    length = yomi.length.toUByte(),
+                    score = it.wordCost.toInt(),
+                    leftId = systemTokenArray.leftIds[it.posTableIndex.toInt()],
+                    rightId = systemTokenArray.rightIds[it.posTableIndex.toInt()]
+                )
+            }
+        }
+
+        val readingCorrectionListDeferred: List<Candidate> =
+            readingCorrectionCommonPrefixDeferred.flatMap { yomi ->
+                val termId = readingCorrectionYomiTrie.getTermIdShortArray(
+                    readingCorrectionYomiTrie.getNodeIndex(
+                        yomi, readingCorrectionSuccinctBitVectorLBSYomi
+                    ), readingCorrectionSuccinctBitVectorIsLeafYomi
+                )
+                readingCorrectionTokenArray.getListDictionaryByYomiTermIdShortArray(
+                    termId, readingCorrectionSuccinctBitVectorTokenArray
+                ).map {
+                    Candidate(
+                        string = when (it.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> readingCorrectionTangoTrie.getLetterShortArray(
+                                it.nodeId, readingCorrectionSuccinctBitVectorTangoLBS
+                            )
+                        },
+                        type = 15,
+                        length = yomi.length.toUByte(),
+                        score = if (yomi.length == input.length) it.wordCost.toInt() + 4000 else it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length),
+                        leftId = readingCorrectionTokenArray.leftIds[it.posTableIndex.toInt()],
+                        rightId = readingCorrectionTokenArray.rightIds[it.posTableIndex.toInt()]
+                    )
+                }
+            }
+
+        val kotowazaListDeferred: List<Candidate> = kotowazaCommonPrefixDeferred.flatMap { yomi ->
+            val termId = kotowazaYomiTrie.getTermIdShortArray(
+                kotowazaYomiTrie.getNodeIndex(
+                    yomi, kotowazaSuccinctBitVectorLBSYomi
+                ), kotowazaSuccinctBitVectorIsLeafYomi
+            )
+            kotowazaTokenArray.getListDictionaryByYomiTermIdShortArray(
+                termId, kotowazaSuccinctBitVectorTokenArray
+            ).map {
+                Candidate(
+                    string = when (it.nodeId) {
+                        -2 -> yomi
+                        -1 -> yomi.hiraToKata()
+                        else -> kotowazaTangoTrie.getLetterShortArray(
+                            it.nodeId, kotowazaSuccinctBitVectorTangoLBS
+                        )
+                    },
+                    type = 16,
+                    length = yomi.length.toUByte(),
+                    score = if (yomi.length == input.length) it.wordCost.toInt() else it.wordCost.toInt() + SCORE_OFFSET * (yomi.length - input.length),
+                    leftId = kotowazaTokenArray.leftIds[it.posTableIndex.toInt()],
+                    rightId = kotowazaTokenArray.rightIds[it.posTableIndex.toInt()]
+                )
+            }
+        }
+
+        val listOfDictionaryToday: List<Candidate> = when (input) {
+            "きょう" -> {
+                val today = Calendar.getInstance()
+                createCandidatesForDate(today, input)
+            }
+
+            "きのう" -> {
+                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+                createCandidatesForDate(yesterday, input)
+            }
+
+            "あした" -> {
+                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+                createCandidatesForDate(tomorrow, input)
+            }
+
+            "いま" -> {
+                val now = Calendar.getInstance()
+                createCandidatesForTime(now, input)
+            }
+
+            else -> emptyList()
+        }
+
+        val convertYearToEra: List<Candidate> = when {
+            input.matches(Regex("""\d{1,4}ねん""")) -> {
+                val year = input.removeSuffix("ねん").toIntOrNull()
+                if (year != null) createCandidatesForEra(year, input) else emptyList()
+            }
+
+            else -> emptyList()
+        }
+
+        val numbersDeferred = generateNumberCandidates(input)
+
+        val mozcUTPersonNames =
+            if (mozcUtPersonName == true) getMozcUTPersonNames(input) else emptyList()
+        val mozcUTPlacesList = if (mozcUTPlaces == true) getMozcUTPlace(input) else emptyList()
+        val mozcUTWikiList = if (mozcUTWiki == true) getMozcUTWiki(input) else emptyList()
+        val mozcUTNeologdList = if (mozcUTNeologd == true) getMozcUTNeologd(input) else emptyList()
+        val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
+
+        val resultList =
+            resultNBestFinalDeferred + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+
+        val resultListFinal =
+            resultList
+                .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+
+        return resultListFinal + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred
+
     }
 
     suspend fun getCandidates(
@@ -1665,7 +2141,7 @@ class KanaKanjiEngine {
             eraName + if (eraYear == 1) "元年" else "${eraYear}年"
 
         return eras
-            .filter { (name, start, end) ->
+            .filter { (_, start, end) ->
                 year >= start && (end == null || year <= end)
             }
             .map { (name, start, _) ->
