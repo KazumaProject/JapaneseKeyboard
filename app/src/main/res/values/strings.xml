@@ -284,4 +284,6 @@
     <string name="share_image">Share the image</string>
     <string name="failed_share">Failed to share.</string>
     <string name="delete_all_clipboard_history">Are you sure to delete all clipboard history?</string>
+    <string name="candidate_tab">Candidate Tabs</string>
+    <string name="candidate_tab_summary">Display tabs at the top of the candidate view to switch between "Prediction", "Conversion", and "Alphanumeric/Kana".</string>
 </resources>
