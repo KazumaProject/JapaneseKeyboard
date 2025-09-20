@@ -65,6 +65,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
 import com.kazumaproject.android.flexbox.JustifyContent
@@ -379,6 +380,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputStyle: String? = "default"
     private var candidateColumns: String? = "1"
     private var candidateViewHeight: String? = "2"
+    private var candidateTabVisibility: Boolean? = false
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
@@ -666,6 +668,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireInputStyle = sumire_keyboard_style
             candidateColumns = candidate_column_preference
             candidateViewHeight = candidate_view_height_preference
+            candidateTabVisibility = candidate_tab_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
@@ -761,7 +764,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             checkForPhysicalKeyboard(true)
         }
 
-        Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}")
+        Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}\n${candidateTabVisibility}")
         suppressSuggestions = if (showCandidateInPasswordPreference == true) {
             currentInputType.isPassword()
         } else {
@@ -1014,6 +1017,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputStyle = null
         candidateColumns = null
         candidateViewHeight = null
+        candidateTabVisibility = null
         isTablet = null
         isNgWordEnable = null
         deleteKeyHighLight = null
@@ -1264,6 +1268,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                             suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                             suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                            candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                         }
                         floatingKeyboardBinding?.apply {
                             root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
@@ -1277,6 +1282,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         windowInsets
                     }
                     setupCustomKeyboardListeners(mainView)
+                    setTabsToTabLayout(mainView)
+                    setCandidateTabLayout(mainView)
                     setSuggestionRecyclerView(
                         mainView, FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
@@ -5067,6 +5074,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             else -> {}
                         }
                     }
+                    if (candidateTabVisibility == true) {
+                        mainView.candidateTabLayout.isVisible = true
+                    }
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
@@ -5259,15 +5269,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
                         }
-                        if ((candidateColumns ?: "1") != "1") {
-                            setKeyboardHeightDefault(mainView)
-                        }
+                        setKeyboardHeightDefault(mainView)
                         setSumireKeyboardSwitchNumberAndKatakanaKey(0)
                         countToggleKatakana = 0
+                        mainView.candidateTabLayout.isVisible = false
+                        val tab = mainView.candidateTabLayout.getTabAt(0)
+                        mainView.candidateTabLayout.selectTab(tab)
                     }
 
                     CandidateShowFlag.Updating -> {
-                        setSuggestionOnView(insertString)
+                        setSuggestionOnView(insertString, mainView)
                     }
                 }
                 prevFlag = currentFlag
@@ -5829,12 +5840,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val columnNum = candidateColumns ?: "1"
 
         // If only one column, use simpler layout logic and exit
-        if (columnNum == "1") {
-            val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
-            params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            mainView.suggestionVisibility.layoutParams = params
-            return
-        }
+//        if (columnNum == "1") {
+//            val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
+//            params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+//            mainView.suggestionVisibility.layoutParams = params
+//            return
+//        }
 
         // --- Start of height calculation ---
         val heightPref = appPreference.keyboard_height ?: 280
@@ -5949,10 +5960,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // Calculate the total height by adding the pixel values
         val totalHeight = keyboardHeight + additionalKeyboardHeight
 
+        val finalKeyboardHeight = if (candidateTabVisibility == true) {
+            totalHeight + mainView.candidateTabLayout.height
+        } else {
+            totalHeight
+        }
+
         // --- Apply the calculated height ---
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             // Set the final calculated height and bottom margin
-            params.height = totalHeight
+            params.height = finalKeyboardHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -5966,8 +5983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
-        val columnNum = candidateColumns ?: "1"
-        if (columnNum == "1" || isKeyboardFloatingMode == true) {
+        if (isKeyboardFloatingMode == true) {
             return
         }
         Timber.d("Keyboard Height: setKeyboardHeightDefault called")
@@ -6049,6 +6065,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = keyboardHeight
             params.bottomMargin = keyboardBottomMargin
@@ -6883,6 +6900,77 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun setTabsToTabLayout(
+        mainView: MainLayoutBinding
+    ) {
+        mainView.candidateTabLayout.apply {
+            val tab1 = newTab().setText("予測")
+            val tab2 = newTab().setText("変換")
+            val tab3 = newTab().setText("英数カナ")
+
+            addTab(tab1)
+            addTab(tab2)
+            addTab(tab3)
+        }
+    }
+
+    private fun setCandidateTabLayout(
+        mainView: MainLayoutBinding
+    ) {
+        mainView.candidateTabLayout.apply {
+            addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                override fun onTabSelected(tab: TabLayout.Tab?) {
+                    when (tab?.position) {
+                        0 -> {
+                            val input = inputString.value
+                            if (input.isNotEmpty()) {
+                                ioScope.launch {
+                                    setCandidates(input)
+                                    withContext(Dispatchers.Main) {
+                                        hideFirstRowCandidatesInFullScreen(mainView)
+                                    }
+                                }
+                            }
+                        }
+
+                        1 -> {
+                            val input = inputString.value
+                            if (input.isNotEmpty()) {
+                                ioScope.launch {
+                                    setCandidatesWithoutPrediction(input)
+                                    withContext(Dispatchers.Main) {
+                                        hideFirstRowCandidatesInFullScreen(mainView)
+                                    }
+                                }
+                            }
+                        }
+
+                        2 -> {
+                            val input = inputString.value
+                            if (input.isNotEmpty()) {
+                                ioScope.launch {
+                                    setCandidatesEnglishKana(input)
+                                    withContext(Dispatchers.Main) {
+                                        hideFirstRowCandidatesInFullScreen(mainView)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                override fun onTabUnselected(tab: TabLayout.Tab?) {
+
+                }
+
+                override fun onTabReselected(tab: TabLayout.Tab?) {
+
+                }
+
+            })
+        }
+    }
+
     private fun setSuggestionRecyclerView(
         mainView: MainLayoutBinding, flexboxLayoutManagerRow: FlexboxLayoutManager
     ) {
@@ -7560,6 +7648,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCandidateClick(
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
+        Timber.d("setCandidateClick: $candidate")
         if (insertString.isNotEmpty()) {
             processCandidate(
                 candidate = candidate,
@@ -8283,10 +8372,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSuggestionOnView(
-        inputString: String
+        inputString: String,
+        mainView: MainLayoutBinding
     ) {
         if (inputString.isEmpty() || suggestionClickNum != 0) return
-        setCandidates(inputString)
+        val tabPosition = mainView.candidateTabLayout.selectedTabPosition
+        Timber.d("setSuggestionOnView: tabPosition: $tabPosition")
+        if (candidateTabVisibility == true) {
+            when (tabPosition) {
+                0 -> {
+                    setCandidates(inputString)
+                }
+
+                1 -> {
+                    setCandidatesWithoutPrediction(inputString)
+                }
+
+                2 -> {
+                    setCandidatesEnglishKana(inputString)
+                }
+
+                else -> {
+                    setCandidates(inputString)
+                }
+
+            }
+        } else {
+            setCandidatesOriginal(inputString)
+        }
     }
 
     private suspend fun setCandidates(
@@ -8321,6 +8434,173 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
+    }
+
+    private suspend fun setCandidatesOriginal(
+        insertString: String,
+    ) {
+        val candidates = getSuggestionListOriginal(insertString)
+        val filtered = if (stringInTail.get().isNotEmpty()) {
+            candidates.filter { it.length.toInt() == insertString.length }
+        } else {
+            candidates
+        }
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            if (!suppressSuggestions) {
+                updateSuggestionsForFloatingCandidate(filtered.map {
+                    CandidateItem(
+                        word = it.string, length = it.length
+                    )
+                })
+            }
+        } else {
+            if (!suppressSuggestions) {
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
+            }
+
+        }
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        }
+    }
+
+    private suspend fun setCandidatesWithoutPrediction(
+        insertString: String,
+    ) {
+        val candidates = getSuggestionListWithoutPrediction(insertString)
+        val filtered = if (stringInTail.get().isNotEmpty()) {
+            candidates.filter { it.length.toInt() == insertString.length }
+        } else {
+            candidates
+        }
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            if (!suppressSuggestions) {
+                updateSuggestionsForFloatingCandidate(filtered.map {
+                    CandidateItem(
+                        word = it.string, length = it.length
+                    )
+                })
+            }
+        } else {
+            if (!suppressSuggestions) {
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
+            }
+
+        }
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        }
+    }
+
+    private suspend fun setCandidatesEnglishKana(
+        insertString: String,
+    ) {
+        val candidates = getSuggestionListEnglishKana(insertString)
+        val filtered = if (stringInTail.get().isNotEmpty()) {
+            candidates.filter { it.length.toInt() == insertString.length }
+        } else {
+            candidates
+        }
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            if (!suppressSuggestions) {
+                updateSuggestionsForFloatingCandidate(filtered.map {
+                    CandidateItem(
+                        word = it.string, length = it.length
+                    )
+                })
+            }
+        } else {
+            if (!suppressSuggestions) {
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
+            }
+
+        }
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        }
+    }
+
+    private suspend fun getSuggestionListOriginal(
+        insertString: String,
+    ): List<Candidate> {
+        val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
+            withContext(Dispatchers.IO) {
+                val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
+                if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                userDictionaryRepository.searchByReadingPrefixSuspend(
+                    prefix = insertString, limit = 4
+                ).map {
+                    Candidate(
+                        string = it.word,
+                        type = (28).toByte(),
+                        length = (it.reading.length).toUByte(),
+                        score = it.posScore
+                    )
+                }.sortedBy { it.score }
+            }
+        } else {
+            emptyList()
+        }
+
+        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
+            withContext(Dispatchers.IO) {
+                userTemplateRepository.searchByReading(
+                    reading = insertString, limit = 8
+                ).map {
+                    Candidate(
+                        string = it.word,
+                        type = (30).toByte(),
+                        length = (it.reading.length).toUByte(),
+                        score = it.posScore
+                    )
+                }.sortedBy { it.score }
+            }
+        } else {
+            emptyList()
+        }
+        val ngWords =
+            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val engineCandidates = kanaKanjiEngine.getCandidatesOriginal(
+            input = insertString,
+            n = nBest ?: 4,
+            mozcUtPersonName = mozcUTPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+            ngWords = ngWords,
+            isOmissionSearchEnable = isOmissionSearchEnable ?: false
+        )
+        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        return result.filter { candidate ->
+            if (ngWords.isEmpty()) {
+                true
+            } else {
+                ngPattern.value.let {
+                    !it.containsMatchIn(candidate.string)
+                }
+            }
+        }.distinctBy { it.string }
     }
 
     private suspend fun getSuggestionList(
@@ -8404,6 +8684,115 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }.distinctBy { it.string }
+    }
+
+    private suspend fun getSuggestionListWithoutPrediction(
+        insertString: String,
+    ): List<Candidate> {
+        val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
+            withContext(Dispatchers.IO) {
+                val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
+                if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                userDictionaryRepository.searchByReadingPrefixSuspend(
+                    prefix = insertString, limit = 4
+                ).map {
+                    Candidate(
+                        string = it.word,
+                        type = (28).toByte(),
+                        length = (it.reading.length).toUByte(),
+                        score = it.posScore
+                    )
+                }.sortedBy { it.score }
+            }
+        } else {
+            emptyList()
+        }
+
+        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
+            withContext(Dispatchers.IO) {
+                userTemplateRepository.searchByReading(
+                    reading = insertString, limit = 8
+                ).map {
+                    Candidate(
+                        string = it.word,
+                        type = (30).toByte(),
+                        length = (it.reading.length).toUByte(),
+                        score = it.posScore
+                    )
+                }.sortedBy { it.score }
+            }
+        } else {
+            emptyList()
+        }
+        val ngWords =
+            if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
+            val fullWidthInput = insertString.toFullWidth()
+            englishEngine.getCandidates(insertString) + listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            kanaKanjiEngine.getCandidatesWithoutPrediction(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords
+            )
+        }
+        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        return result.filter { candidate ->
+            if (ngWords.isEmpty()) {
+                true
+            } else {
+                ngPattern.value.let {
+                    !it.containsMatchIn(candidate.string)
+                }
+            }
+        }.distinctBy { it.string }
+    }
+
+    private fun getSuggestionListEnglishKana(
+        insertString: String,
+    ): List<Candidate> {
+        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
+            val fullWidthInput = insertString.toFullWidth()
+            englishEngine.getCandidates(insertString) + listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            kanaKanjiEngine.getCandidatesEnglishKana(
+                input = insertString,
+            )
+        }
+        return engineCandidates.distinctBy { it.string }
     }
 
     private fun deleteLongPress() {

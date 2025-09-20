@@ -285,4 +285,6 @@
     <string name="failed_share">共有に失敗しました。</string>
     <string name="edit_word_title">テキストの編集</string>
     <string name="delete_all_clipboard_history">クリップボード履歴をすべて削除しますか？</string>
+    <string name="candidate_tab">変換候補タブ</string>
+    <string name="candidate_tab_summary">変換候補ビューの上部に「予測」「変換」「英数・カナ」の切り替えタブを表示します。</string>
 </resources>
