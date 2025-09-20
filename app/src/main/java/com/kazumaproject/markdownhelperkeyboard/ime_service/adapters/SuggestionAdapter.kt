@@ -386,7 +386,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             /** 予測 **/
             (9).toByte() -> ""
             (5).toByte() -> "[部]"
-            (7).toByte() -> "[単]"
+            (7).toByte() -> ""
             /** 最長 **/
             (10).toByte() -> ""
             /** 絵文字 **/
