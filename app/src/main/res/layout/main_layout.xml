@@ -45,8 +45,7 @@
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/candidate_tab_layout"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
-        android:background="@color/blue"/>
+        android:layout_height="36dp" />
 
     <!-- Custom Keyboard View -->
     <com.kazumaproject.tenkey.TenKey
