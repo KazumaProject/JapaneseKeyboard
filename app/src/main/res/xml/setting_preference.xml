@@ -48,6 +48,12 @@
                 app:min="2"
                 app:showSeekBarValue="true" />
 
+            <SwitchPreferenceCompat
+                android:key="candidate_tab_visibility_preference"
+                android:title="@string/candidate_tab"
+                app:defaultValue="false"
+                app:summary="@string/candidate_tab_summary" />
+
             <ListPreference
                 android:defaultValue="1"
                 android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"

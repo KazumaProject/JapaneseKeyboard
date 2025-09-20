@@ -380,6 +380,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputStyle: String? = "default"
     private var candidateColumns: String? = "1"
     private var candidateViewHeight: String? = "2"
+    private var candidateTabVisibility: Boolean? = false
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
@@ -667,6 +668,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireInputStyle = sumire_keyboard_style
             candidateColumns = candidate_column_preference
             candidateViewHeight = candidate_view_height_preference
+            candidateTabVisibility = candidate_tab_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
@@ -762,7 +764,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             checkForPhysicalKeyboard(true)
         }
 
-        Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}")
+        Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}\n${candidateTabVisibility}")
         suppressSuggestions = if (showCandidateInPasswordPreference == true) {
             currentInputType.isPassword()
         } else {
@@ -1015,6 +1017,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputStyle = null
         candidateColumns = null
         candidateViewHeight = null
+        candidateTabVisibility = null
         isTablet = null
         isNgWordEnable = null
         deleteKeyHighLight = null
@@ -5071,7 +5074,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             else -> {}
                         }
                     }
-                    mainView.candidateTabLayout.isVisible = true
+                    if (candidateTabVisibility == true) {
+                        mainView.candidateTabLayout.isVisible = true
+                    }
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
@@ -5264,9 +5269,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
                         }
-                        if ((candidateColumns ?: "1") != "1") {
-                            setKeyboardHeightDefault(mainView)
-                        }
+                        setKeyboardHeightDefault(mainView)
                         setSumireKeyboardSwitchNumberAndKatakanaKey(0)
                         countToggleKatakana = 0
                         mainView.candidateTabLayout.isVisible = false
@@ -5817,7 +5820,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
-            ) + mainView.candidateTabLayout.height
+            )
         } else {
             if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
@@ -5837,12 +5840,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val columnNum = candidateColumns ?: "1"
 
         // If only one column, use simpler layout logic and exit
-        if (columnNum == "1") {
-            val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
-            params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-            mainView.suggestionVisibility.layoutParams = params
-            return
-        }
+//        if (columnNum == "1") {
+//            val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
+//            params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+//            mainView.suggestionVisibility.layoutParams = params
+//            return
+//        }
 
         // --- Start of height calculation ---
         val heightPref = appPreference.keyboard_height ?: 280
@@ -5957,10 +5960,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // Calculate the total height by adding the pixel values
         val totalHeight = keyboardHeight + additionalKeyboardHeight
 
+        val finalKeyboardHeight = if (candidateTabVisibility == true) {
+            totalHeight + mainView.candidateTabLayout.height
+        } else {
+            totalHeight
+        }
+
         // --- Apply the calculated height ---
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             // Set the final calculated height and bottom margin
-            params.height = totalHeight + mainView.candidateTabLayout.height
+            params.height = finalKeyboardHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -5974,8 +5983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
-        val columnNum = candidateColumns ?: "1"
-        if (columnNum == "1" || isKeyboardFloatingMode == true) {
+        if ( isKeyboardFloatingMode == true) {
             return
         }
         Timber.d("Keyboard Height: setKeyboardHeightDefault called")
@@ -6059,7 +6067,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight + mainView.candidateTabLayout.height
+            params.height = keyboardHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }

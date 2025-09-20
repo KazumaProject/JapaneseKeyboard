@@ -41,8 +41,7 @@ object AppPreference {
     private val QWERTY_SHOW_IME_SWITCH_BUTTON =
         Pair("qwerty_show_switch_ime_button_preference", true)
 
-    private val QWERTY_SHOW_CURSOR_BUTTONS =
-        Pair("qwerty_show_cursor_buttons_preference", false)
+    private val QWERTY_SHOW_CURSOR_BUTTONS = Pair("qwerty_show_cursor_buttons_preference", false)
 
     private val QWERTY_SHOW_KEYMAP_SYMBOLS =
         Pair("qwerty_show_keymap_symbols_romaji_preference", false)
@@ -50,14 +49,11 @@ object AppPreference {
     private val QWERTY_SHOW_NUMBER_BUTTONS =
         Pair("qwerty_show_number_keys_buttons_preference", false)
 
-    private val QWERTY_SHOW_POPUP_WINDOW =
-        Pair("qwerty_show_popup_window_preference", true)
+    private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
 
-    private val CANDIDATE_IN_PASSWORD =
-        Pair("hide_candidate_password_preference", true)
+    private val CANDIDATE_IN_PASSWORD = Pair("hide_candidate_password_preference", true)
 
-    private val CANDIDATE_IN_PASSWORD_COMPOSE =
-        Pair("password_compose_preference", false)
+    private val CANDIDATE_IN_PASSWORD_COMPOSE = Pair("password_compose_preference", false)
 
     private val QWERTY_SHOW_KUTOUTEN_BUTTONS =
         Pair("qwerty_show_kutouten_buttons_preference", false)
@@ -105,6 +101,8 @@ object AppPreference {
 
     private val CANDIDATE_VIEW_HEIGHT_PREFERENCE = Pair("candidate_view_height_preference", "2")
 
+    private val CANDIDATE_TAB_PREFERENCE = Pair("candidate_tab_visibility_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -117,8 +115,7 @@ object AppPreference {
 
     var clipboard_history_enable: Boolean?
         get() = preferences.getBoolean(
-            CLIPBOARD_HISTORY_ENABLE.first,
-            CLIPBOARD_HISTORY_ENABLE.second
+            CLIPBOARD_HISTORY_ENABLE.first, CLIPBOARD_HISTORY_ENABLE.second
         )
         set(value) = preferences.edit {
             it.putBoolean(CLIPBOARD_HISTORY_ENABLE.first, value ?: false)
@@ -126,8 +123,7 @@ object AppPreference {
 
     var custom_keyboard_two_words_output: Boolean?
         get() = preferences.getBoolean(
-            CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.first,
-            CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.second
+            CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.first, CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.second
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS.first, value ?: false)
@@ -135,8 +131,7 @@ object AppPreference {
 
     var tenkey_qwerty_switch_number_layout: Boolean?
         get() = preferences.getBoolean(
-            TENKEY_SWITCH_QWERTY_PREFERENCE.first,
-            TENKEY_SWITCH_QWERTY_PREFERENCE.second
+            TENKEY_SWITCH_QWERTY_PREFERENCE.first, TENKEY_SWITCH_QWERTY_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_SWITCH_QWERTY_PREFERENCE.first, value ?: false)
@@ -144,8 +139,7 @@ object AppPreference {
 
     var qwerty_show_ime_button: Boolean?
         get() = preferences.getBoolean(
-            QWERTY_SHOW_IME_SWITCH_BUTTON.first,
-            QWERTY_SHOW_IME_SWITCH_BUTTON.second
+            QWERTY_SHOW_IME_SWITCH_BUTTON.first, QWERTY_SHOW_IME_SWITCH_BUTTON.second
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_IME_SWITCH_BUTTON.first, value ?: true)
@@ -153,8 +147,7 @@ object AppPreference {
 
     var qwerty_show_cursor_buttons: Boolean?
         get() = preferences.getBoolean(
-            QWERTY_SHOW_CURSOR_BUTTONS.first,
-            QWERTY_SHOW_CURSOR_BUTTONS.second
+            QWERTY_SHOW_CURSOR_BUTTONS.first, QWERTY_SHOW_CURSOR_BUTTONS.second
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_CURSOR_BUTTONS.first, value ?: false)
@@ -162,8 +155,7 @@ object AppPreference {
 
     var qwerty_show_keymap_symbols: Boolean?
         get() = preferences.getBoolean(
-            QWERTY_SHOW_KEYMAP_SYMBOLS.first,
-            QWERTY_SHOW_KEYMAP_SYMBOLS.second
+            QWERTY_SHOW_KEYMAP_SYMBOLS.first, QWERTY_SHOW_KEYMAP_SYMBOLS.second
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_KEYMAP_SYMBOLS.first, value ?: false)
@@ -171,8 +163,7 @@ object AppPreference {
 
     var qwerty_show_number_buttons: Boolean?
         get() = preferences.getBoolean(
-            QWERTY_SHOW_NUMBER_BUTTONS.first,
-            QWERTY_SHOW_NUMBER_BUTTONS.second
+            QWERTY_SHOW_NUMBER_BUTTONS.first, QWERTY_SHOW_NUMBER_BUTTONS.second
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_NUMBER_BUTTONS.first, value ?: false)
@@ -180,8 +171,7 @@ object AppPreference {
 
     var switch_qwerty_password: Boolean?
         get() = preferences.getBoolean(
-            SWITCH_QWERTY_PASSWORD.first,
-            SWITCH_QWERTY_PASSWORD.second
+            SWITCH_QWERTY_PASSWORD.first, SWITCH_QWERTY_PASSWORD.second
         )
         set(value) = preferences.edit {
             it.putBoolean(SWITCH_QWERTY_PASSWORD.first, value ?: false)
@@ -189,8 +179,7 @@ object AppPreference {
 
     var qwerty_show_popup_window: Boolean?
         get() = preferences.getBoolean(
-            QWERTY_SHOW_POPUP_WINDOW.first,
-            QWERTY_SHOW_POPUP_WINDOW.second
+            QWERTY_SHOW_POPUP_WINDOW.first, QWERTY_SHOW_POPUP_WINDOW.second
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_POPUP_WINDOW.first, value ?: true)
@@ -198,8 +187,7 @@ object AppPreference {
 
     var show_candidates_password: Boolean?
         get() = preferences.getBoolean(
-            CANDIDATE_IN_PASSWORD.first,
-            CANDIDATE_IN_PASSWORD.second
+            CANDIDATE_IN_PASSWORD.first, CANDIDATE_IN_PASSWORD.second
         )
         set(value) = preferences.edit {
             it.putBoolean(CANDIDATE_IN_PASSWORD.first, value ?: true)
@@ -207,8 +195,7 @@ object AppPreference {
 
     var show_candidates_password_compose: Boolean?
         get() = preferences.getBoolean(
-            CANDIDATE_IN_PASSWORD_COMPOSE.first,
-            CANDIDATE_IN_PASSWORD_COMPOSE.second
+            CANDIDATE_IN_PASSWORD_COMPOSE.first, CANDIDATE_IN_PASSWORD_COMPOSE.second
         )
         set(value) = preferences.edit {
             it.putBoolean(CANDIDATE_IN_PASSWORD_COMPOSE.first, value ?: false)
@@ -216,8 +203,7 @@ object AppPreference {
 
     var qwerty_show_kutouten_buttons: Boolean?
         get() = preferences.getBoolean(
-            QWERTY_SHOW_KUTOUTEN_BUTTONS.first,
-            QWERTY_SHOW_KUTOUTEN_BUTTONS.second
+            QWERTY_SHOW_KUTOUTEN_BUTTONS.first, QWERTY_SHOW_KUTOUTEN_BUTTONS.second
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_KUTOUTEN_BUTTONS.first, value ?: false)
@@ -237,8 +223,7 @@ object AppPreference {
     var symbol_mode_preference: SymbolMode
         get() {
             val modeString = preferences.getString(
-                SYMBOL_MODE_PREFERENCE.first,
-                SYMBOL_MODE_PREFERENCE.second
+                SYMBOL_MODE_PREFERENCE.first, SYMBOL_MODE_PREFERENCE.second
             )
             return try {
                 // 保存されている文字列からEnumを復元
@@ -261,8 +246,7 @@ object AppPreference {
 
     var ng_word_preference: Boolean?
         get() = preferences.getBoolean(
-            NG_WORD_ENABLE_PREFERENCE.first,
-            NG_WORD_ENABLE_PREFERENCE.second
+            NG_WORD_ENABLE_PREFERENCE.first, NG_WORD_ENABLE_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putBoolean(NG_WORD_ENABLE_PREFERENCE.first, value ?: true)
@@ -270,8 +254,7 @@ object AppPreference {
 
     var vibration_timing_preference: String?
         get() = preferences.getString(
-            VIBRATION_TIMING_PREFERENCE.first,
-            VIBRATION_TIMING_PREFERENCE.second
+            VIBRATION_TIMING_PREFERENCE.first, VIBRATION_TIMING_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putString(VIBRATION_TIMING_PREFERENCE.first, value ?: "both")
@@ -449,8 +432,7 @@ object AppPreference {
 
     var sumire_input_selection_preference: String?
         get() = preferences.getString(
-            SUMIRE_INPUT_SELECTION_PREFERENCE.first,
-            SUMIRE_INPUT_SELECTION_PREFERENCE.second
+            SUMIRE_INPUT_SELECTION_PREFERENCE.first, SUMIRE_INPUT_SELECTION_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putString(SUMIRE_INPUT_SELECTION_PREFERENCE.first, value ?: "toggle-default")
@@ -494,8 +476,7 @@ object AppPreference {
 
     var candidate_column_preference: String
         get() = preferences.getString(
-            CANDIDATE_COLUMN_PREFERENCE.first,
-            CANDIDATE_COLUMN_PREFERENCE.second
+            CANDIDATE_COLUMN_PREFERENCE.first, CANDIDATE_COLUMN_PREFERENCE.second
         ) ?: "1"
         set(value) = preferences.edit {
             it.putString(CANDIDATE_COLUMN_PREFERENCE.first, value)
@@ -503,11 +484,18 @@ object AppPreference {
 
     var candidate_view_height_preference: String
         get() = preferences.getString(
-            CANDIDATE_VIEW_HEIGHT_PREFERENCE.first,
-            CANDIDATE_VIEW_HEIGHT_PREFERENCE.second
+            CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, CANDIDATE_VIEW_HEIGHT_PREFERENCE.second
         ) ?: "2"
         set(value) = preferences.edit {
             it.putString(CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, value)
+        }
+
+    var candidate_tab_preference: Boolean
+        get() = preferences.getBoolean(
+            CANDIDATE_TAB_PREFERENCE.first, CANDIDATE_TAB_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_TAB_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
