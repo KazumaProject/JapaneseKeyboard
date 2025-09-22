@@ -922,14 +922,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    override fun onFinishInput() {
-        super.onFinishInput()
-        Timber.d("onUpdate onFinishInput Called")
-        resetAllFlags()
-    }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
+        resetAllFlags()
         Timber.d("onUpdate onFinishInputView")
         if (isTablet == true) {
             mainLayoutBinding?.tabletView?.isVisible = true
