@@ -2013,6 +2013,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         displayOrHideNumberKeys(state)
     }
 
+    fun updateSwitchRomajiEnglishState(state: Boolean) {
+        binding.switchRomajiEnglish.isVisible = state
+    }
+
     fun updateSymbolKeymapState(state: Boolean) {
         this.isSymbolKeymapShow = state
         if (state) {

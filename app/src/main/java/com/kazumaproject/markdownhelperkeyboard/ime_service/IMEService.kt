@@ -367,6 +367,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowPopupWindowPreference: Boolean? = false
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
+    private var qwertyShowSwitchRomajiEnglishPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var qwertyShowKeymapSymbolsPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
@@ -379,6 +380,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
     private var switchQWERTYPassword: Boolean? = false
+    private var shortcutTollbarVisibility: Boolean? = false
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -658,6 +660,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
             qwertyShowNumberButtonsPreference = qwerty_show_number_buttons ?: false
+            qwertyShowSwitchRomajiEnglishPreference =
+                qwerty_show_switch_romaji_english_button ?: true
             qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
@@ -683,6 +687,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isKeyboardFloatingMode = is_floating_mode ?: false
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
+            shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -885,6 +890,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     suggestionRecyclerView.adapter = suggestionAdapter
                     candidatesRowView.adapter = suggestionAdapterFull
                 }
+                if (shortcutTollbarVisibility == true) {
+                    shortcutToolbarRecyclerview.isVisible = true
+                } else {
+                    shortcutToolbarRecyclerview.isVisible = false
+                }
             }
             setMainSuggestionColumn(mainView)
         }
@@ -1002,8 +1012,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
+        qwertyShowSwitchRomajiEnglishPreference = null
         qwertyShowPopupWindowPreference = null
         switchQWERTYPassword = null
+        shortcutTollbarVisibility = null
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
@@ -5416,7 +5428,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.candidateTabLayout.isVisible = false
                         val tab = mainView.candidateTabLayout.getTabAt(0)
                         mainView.candidateTabLayout.selectTab(tab)
-                        mainView.shortcutToolbarRecyclerview.isVisible = true
+                        if (shortcutTollbarVisibility == true) {
+                            mainView.shortcutToolbarRecyclerview.isVisible = true
+                        } else {
+                            mainView.shortcutToolbarRecyclerview.isVisible = false
+                        }
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -5574,7 +5590,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             qwertyView.isVisible = true
                             customLayoutDefault.isVisible = false
-                            qwertyView.setRomajiEnglishSwitchKeyVisibility(true)
+                            if (qwertyShowSwitchRomajiEnglishPreference == true) {
+                                qwertyView.setRomajiEnglishSwitchKeyVisibility(true)
+                            } else {
+                                qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
+                            }
                         }
                     }
 
@@ -5799,8 +5819,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 defaultHeightSizeByDevice
             )
         }
+        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+        } else {
+            keyboardHeight
+        }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight
+            params.height = finalKeyboardHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -5882,8 +5907,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 defaultHeightSizeByDevice
             )
         }
+
+        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+        } else {
+            keyboardHeight
+        }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight
+            params.height = finalKeyboardHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -5965,8 +5997,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 additionalHeightInDp
             )
         }
+        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+        } else {
+            keyboardHeight
+        }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            params.height = finalKeyboardHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -5977,14 +6014,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
         if (currentInputType.isPassword()) return
         val columnNum = candidateColumns ?: "1"
-
-        // If only one column, use simpler layout logic and exit
-//        if (columnNum == "1") {
-//            val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
-//            params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-//            mainView.suggestionVisibility.layoutParams = params
-//            return
-//        }
 
         // --- Start of height calculation ---
         val heightPref = appPreference.keyboard_height ?: 280
@@ -6203,8 +6232,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+        } else {
+            keyboardHeight
+        }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            params.height = finalKeyboardHeight
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -7359,7 +7394,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     selectAllText()
                 }
 
-                com.kazumaproject.core.R.drawable.content_copy_24dp ->{
+                com.kazumaproject.core.R.drawable.content_copy_24dp -> {
                     copyAction()
                 }
             }
