@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 import androidx.lifecycle.LiveData
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -12,6 +14,11 @@ class UserTemplateRepository @Inject constructor(
 ) {
 
     val allTemplates: LiveData<List<UserTemplate>> = userTemplateDao.getAll()
+
+    suspend fun allTemplatesSuspend(): List<UserTemplate> = withContext(Dispatchers.IO) {
+        userTemplateDao.getAllSuspend()
+    }
+
 
     suspend fun insert(userTemplate: UserTemplate) {
         userTemplateDao.insert(userTemplate)
