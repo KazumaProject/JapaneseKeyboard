@@ -286,4 +286,8 @@
     <string name="delete_all_clipboard_history">Are you sure to delete all clipboard history?</string>
     <string name="candidate_tab">Candidate Tabs</string>
     <string name="candidate_tab_summary">Display tabs at the top of the candidate view to switch between "Prediction", "Conversion", and "Alphanumeric/Kana".</string>
+    <string name="shortcut_toolbar_title">Shortcut Toolbar</string>
+    <string name="shortcut_toolbar_summary">Show a toolbar with useful shortcuts like switching Emoji keyboard</string>
+    <string name="qwerty_romaji_english_visibility_title">Romaji/English Switch Key</string>
+    <string name="qwerty_romaji_english_visibility_summary">Show a key (あa) to switch between Romaji input and English input</string>
 </resources>

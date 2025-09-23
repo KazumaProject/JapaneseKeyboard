@@ -115,6 +115,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayo
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -144,6 +145,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
 import com.kazumaproject.tenkey.extensions.getDakutenFlickTop
@@ -184,6 +186,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.text.BreakIterator
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
@@ -234,6 +239,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
+
+    @Inject
+    lateinit var shortcutAdapter: ShortcutAdapter
 
     private var romajiConverter: RomajiKanaConverter? = null
 
@@ -1285,6 +1293,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             flexDirection = FlexDirection.ROW
                             justifyContent = JustifyContent.FLEX_START
                         })
+                    setShortCutAdapter(mainView)
                     setSymbolKeyboard(mainView)
                     setQWERTYKeyboard(mainView)
                     if (isTablet == true) {
@@ -3058,6 +3067,127 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+
+    private fun showUserTemplateListPopup() {
+        onKeyboardSwitchLongPressUp = true
+        if (inputString.value.isNotEmpty()) return
+
+        mainLayoutBinding?.let { mainView ->
+            ioScope.launch {
+                val templates = userTemplateRepository.allTemplatesSuspend()
+                val templateNames = templates.map { it.word }
+
+                withContext(Dispatchers.Main) {
+                    val inflater =
+                        getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+                    val popupView =
+                        inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
+                    val listView = popupView.findViewById<ListView>(R.id.popup_listview)
+
+                    listView.choiceMode = ListView.CHOICE_MODE_SINGLE
+
+                    val adapter = ArrayAdapter(
+                        this@IMEService, R.layout.list_item_layout, templateNames
+                    )
+                    listView.adapter = adapter
+
+                    keyboardSelectionPopupWindow = PopupWindow(
+                        popupView,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        true // Focusable
+                    )
+
+                    listView.setOnItemClickListener { _, _, position, _ ->
+                        val selectedTemplate = templates[position]
+                        val textToCommit = selectedTemplate.word
+                        commitText(textToCommit, 1)
+
+                        keyboardSelectionPopupWindow?.dismiss()
+                    }
+
+                    keyboardSelectionPopupWindow?.setOnDismissListener {
+                        onKeyboardSwitchLongPressUp = false
+                    }
+
+                    keyboardSelectionPopupWindow?.showAsDropDown(mainView.shortcutToolbarRecyclerview)
+                }
+            }
+        }
+    }
+
+    private fun showCurrentDateListPopup() {
+        onKeyboardSwitchLongPressUp = true
+        if (inputString.value.isNotEmpty()) return
+        val calendar = Calendar.getInstance()
+        mainLayoutBinding?.let { mainView ->
+            ioScope.launch {
+                val currentDates = createDateStrings(calendar)
+
+                withContext(Dispatchers.Main) {
+                    val inflater =
+                        getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+                    val popupView =
+                        inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
+                    val listView = popupView.findViewById<ListView>(R.id.popup_listview)
+
+                    listView.choiceMode = ListView.CHOICE_MODE_SINGLE
+
+                    val adapter = ArrayAdapter(
+                        this@IMEService, R.layout.list_item_layout, currentDates
+                    )
+                    listView.adapter = adapter
+
+                    keyboardSelectionPopupWindow = PopupWindow(
+                        popupView,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        true // Focusable
+                    )
+
+                    listView.setOnItemClickListener { _, _, position, _ ->
+                        val selectedDates = currentDates[position]
+                        commitText(selectedDates, 1)
+
+                        keyboardSelectionPopupWindow?.dismiss()
+                    }
+
+                    keyboardSelectionPopupWindow?.setOnDismissListener {
+                        onKeyboardSwitchLongPressUp = false
+                    }
+
+                    keyboardSelectionPopupWindow?.showAsDropDown(mainView.shortcutToolbarRecyclerview)
+                }
+            }
+        }
+    }
+
+    private fun createDateStrings(calendar: Calendar): List<String> {
+        val formatter1 = SimpleDateFormat("M/d", Locale.getDefault())
+        val formatter2 = SimpleDateFormat("yyyy/MM/dd", Locale.getDefault())
+        val formatter3 = SimpleDateFormat("M月d日(EEE)", Locale.getDefault())
+        val formatterReiwa =
+            "令和${calendar.get(Calendar.YEAR) - 2018}年${calendar.get(Calendar.MONTH) + 1}月${
+                calendar.get(Calendar.DAY_OF_MONTH)
+            }日"
+        val formatterR06 = "R${calendar.get(Calendar.YEAR) - 2018}/${
+            String.format(
+                Locale.getDefault(), "%02d", calendar.get(Calendar.MONTH) + 1
+            )
+        }/${String.format(Locale.getDefault(), "%02d", calendar.get(Calendar.DAY_OF_MONTH))}"
+        val dayOfWeek = SimpleDateFormat("EEEE", Locale.getDefault()).format(calendar.time)
+
+        // Candidateオブジェクトを作成せず、文字列を直接リストにして返す
+        return listOf(
+            formatter1.format(calendar.time),  // M/d
+            formatter2.format(calendar.time),  // yyyy/MM/dd
+            formatter3.format(calendar.time),  // M月d日(EEE)
+            formatterReiwa,                    // 令和n年M月d日
+            formatterR06,                      // Rxx/MM/dd
+            dayOfWeek                          // EEEE (曜日)
+        )
+    }
+
     private fun handleDeleteLongPress() {
         if (isHenkan.get()) {
             cancelHenkanByLongPressDeleteKey()
@@ -3714,6 +3844,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val inputMethodManager =
             getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         inputMethodManager.showInputMethodPicker()
+    }
+
+    private fun launchSettingsActivity(navigationRequest: String) {
+        // Create the Intent to launch your MainActivity
+        val intent = Intent(this, MainActivity::class.java)
+
+        // Add the flag required to start an Activity from a Service
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+        // Add the specific request as an extra
+        intent.putExtra("openSettingActivity", navigationRequest)
+
+        // Start the activity
+        startActivity(intent)
     }
 
     // ▼▼▼ ADD THIS VARIABLE ▼▼▼
@@ -5073,6 +5217,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (candidateTabVisibility == true) {
                         mainView.candidateTabLayout.isVisible = true
                     }
+                    mainView.shortcutToolbarRecyclerview.isVisible = false
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
@@ -5271,6 +5416,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.candidateTabLayout.isVisible = false
                         val tab = mainView.candidateTabLayout.getTabAt(0)
                         mainView.candidateTabLayout.selectTab(tab)
+                        mainView.shortcutToolbarRecyclerview.isVisible = true
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -5598,53 +5744,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val defaultHeightSizeByDevice =
-            when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 48
-                        "2" -> 54
-                        "3" -> 60
-                        else -> 48
-                    }
-                }
-
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
-                !isPortrait && isTablet == false -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                else -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
+        val defaultHeightSizeByDevice = when {
+            isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 48
+                    "2" -> 54
+                    "3" -> 60
+                    else -> 48
                 }
             }
+
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            isTablet == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+
+            !isPortrait && isTablet == false -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            else -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+        }
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 defaultHeightSizeByDevice
@@ -5682,53 +5827,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val defaultHeightSizeByDevice =
-            when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 48
-                        "2" -> 54
-                        "3" -> 60
-                        else -> 48
-                    }
-                }
-
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
-                !isPortrait && isTablet == false -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                else -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
+        val defaultHeightSizeByDevice = when {
+            isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 48
+                    "2" -> 54
+                    "3" -> 60
+                    else -> 48
                 }
             }
+
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            isTablet == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+
+            !isPortrait && isTablet == false -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            else -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+        }
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 defaultHeightSizeByDevice
@@ -5766,53 +5910,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val additionalHeightInDp =
-            when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 48
-                        "2" -> 54
-                        "3" -> 60
-                        else -> 48
-                    }
-                }
-
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
-                !isPortrait && isTablet == false -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                else -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
+        val additionalHeightInDp = when {
+            isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 48
+                    "2" -> 54
+                    "3" -> 60
+                    else -> 48
                 }
             }
+
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            isTablet == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+
+            !isPortrait && isTablet == false -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            else -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+        }
         val keyboardHeight = if (isPortrait) {
             if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
@@ -5823,7 +5966,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight
+            params.height = keyboardHeight + mainView.shortcutToolbarRecyclerview.height
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -5863,53 +6006,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         // Determine additional height for suggestion bar in dp
-        val suggestionHeightInDp =
-            when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 48
-                        "2" -> 54
-                        "3" -> 60
-                        else -> 48
-                    }
-                }
-
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
-                !isPortrait && isTablet == false -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                else -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
+        val suggestionHeightInDp = when {
+            isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 48
+                    "2" -> 54
+                    "3" -> 60
+                    else -> 48
                 }
             }
+
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            isTablet == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+
+            !isPortrait && isTablet == false -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            else -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+        }
 
         // Calculate the main keyboard height including suggestions, all in pixels
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -5999,53 +6141,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (clampedHeight * density).toInt()
             }
         }
-        val additionalHeightInDp =
-            when {
-                isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 48
-                        "2" -> 54
-                        "3" -> 60
-                        else -> 48
-                    }
-                }
-
-                isTablet == true -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
-                }
-
-                Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                isTablet == false && !isPortrait -> {
-                    when (candidateViewHeight) {
-                        "1" -> 52
-                        "2" -> 58
-                        "3" -> 64
-                        else -> 52
-                    }
-                }
-
-                else -> {
-                    when (candidateViewHeight) {
-                        "1" -> 100
-                        "2" -> 110
-                        "3" -> 120
-                        else -> 100
-                    }
+        val additionalHeightInDp = when {
+            isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 48
+                    "2" -> 54
+                    "3" -> 60
+                    else -> 48
                 }
             }
+
+            isTablet == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            isTablet == false && !isPortrait -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            else -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+        }
         val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
                 additionalHeightInDp
@@ -6063,7 +6204,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = keyboardHeight
+            params.height = keyboardHeight + mainView.shortcutToolbarRecyclerview.height
             params.bottomMargin = keyboardBottomMargin
             mainView.root.layoutParams = params
         }
@@ -7165,6 +7306,64 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         mainView.suggestionRecyclerView.adapter = adapter
+    }
+
+    private fun setShortCutAdapter(mainView: MainLayoutBinding) {
+        mainView.shortcutToolbarRecyclerview.apply {
+            layoutManager =
+                LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
+            adapter = shortcutAdapter
+        }
+        shortcutAdapter.submitList(
+            listOf(
+                com.kazumaproject.core.R.drawable.baseline_settings_24,
+                com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24,
+                com.kazumaproject.core.R.drawable.book_3_24px,
+                com.kazumaproject.core.R.drawable.text_select_start_24dp,
+                com.kazumaproject.core.R.drawable.content_copy_24dp,
+                com.kazumaproject.core.R.drawable.language_24dp,
+            )
+        )
+        shortcutAdapter.onItemClicked = { resourceId ->
+            when (resourceId) {
+                com.kazumaproject.core.R.drawable.baseline_settings_24 -> {
+                    launchSettingsActivity("setting_fragment_request")
+                }
+
+                com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24 -> {
+                    vibrate()
+                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                    stringInTail.set("")
+                    finishComposingText()
+                    setComposingText("", 0)
+                }
+
+                com.kazumaproject.core.R.drawable.book_3_24px -> {
+                    showUserTemplateListPopup()
+                }
+
+                com.kazumaproject.core.R.drawable.language_24dp -> {
+                    showKeyboardPicker()
+                }
+
+                com.kazumaproject.core.R.drawable.input_mode_number_select_custom -> {
+                    mainView.customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                }
+
+                com.kazumaproject.core.R.drawable.calendar_today_24px -> {
+                    showCurrentDateListPopup()
+                }
+
+                com.kazumaproject.core.R.drawable.text_select_start_24dp -> {
+                    selectAllText()
+                }
+
+                com.kazumaproject.core.R.drawable.content_copy_24dp ->{
+                    copyAction()
+                }
+            }
+        }
     }
 
     private fun setSymbolKeyboard(
@@ -8368,8 +8567,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setSuggestionOnView(
-        inputString: String,
-        mainView: MainLayoutBinding
+        inputString: String, mainView: MainLayoutBinding
     ) {
         if (inputString.isEmpty() || suggestionClickNum != 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
@@ -8647,8 +8845,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     type = (30).toByte(),
                     length = insertString.length.toUByte(),
                     score = 30000
-                ),
-                Candidate(
+                ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
                     length = insertString.length.toUByte(),
@@ -8730,8 +8927,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     type = (30).toByte(),
                     length = insertString.length.toUByte(),
                     score = 30000
-                ),
-                Candidate(
+                ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
                     length = insertString.length.toUByte(),
@@ -8775,8 +8971,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     type = (30).toByte(),
                     length = insertString.length.toUByte(),
                     score = 30000
-                ),
-                Candidate(
+                ), Candidate(
                     string = fullWidthInput.uppercase(),
                     type = (30).toByte(),
                     length = insertString.length.toUByte(),

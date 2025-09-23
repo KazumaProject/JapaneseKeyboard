@@ -12,6 +12,9 @@ interface UserTemplateDao {
     @Query("SELECT * FROM user_template ORDER BY reading ASC")
     fun getAll(): LiveData<List<UserTemplate>>
 
+    @Query("SELECT * FROM user_template ORDER BY reading ASC")
+    suspend fun getAllSuspend(): List<UserTemplate>
+
     /**
      * readingの完全一致で定型文を検索する (UI表示用)
      */
