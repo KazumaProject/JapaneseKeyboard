@@ -49,6 +49,9 @@ object AppPreference {
     private val QWERTY_SHOW_NUMBER_BUTTONS =
         Pair("qwerty_show_number_keys_buttons_preference", false)
 
+    private val QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH =
+        Pair("qwerty_show_switch_romaji_english_preference", true)
+
     private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
 
     private val CANDIDATE_IN_PASSWORD = Pair("hide_candidate_password_preference", true)
@@ -102,6 +105,9 @@ object AppPreference {
     private val CANDIDATE_VIEW_HEIGHT_PREFERENCE = Pair("candidate_view_height_preference", "2")
 
     private val CANDIDATE_TAB_PREFERENCE = Pair("candidate_tab_visibility_preference", false)
+
+    private val SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE =
+        Pair("shortcut_toolbar_visibility_preference", false)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -167,6 +173,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_NUMBER_BUTTONS.first, value ?: false)
+        }
+
+    var qwerty_show_switch_romaji_english_button: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH.first, QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH.first, value ?: true)
         }
 
     var switch_qwerty_password: Boolean?
@@ -496,6 +510,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CANDIDATE_TAB_PREFERENCE.first, value)
+        }
+
+    var shortcut_toolbar_visibility_preference: Boolean
+        get() = preferences.getBoolean(
+            SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE.first,
+            SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
