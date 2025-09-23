@@ -940,10 +940,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    override fun onFinishInput() {
+        super.onFinishInput()
+        Timber.d("onUpdate onFinishInput")
+        resetAllFlagsWithoutResetLayout()
+    }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        resetAllFlags()
         Timber.d("onUpdate onFinishInputView")
         if (isTablet == true) {
             mainLayoutBinding?.tabletView?.isVisible = true
@@ -8129,6 +8133,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { "" }
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+        suggestionAdapter?.suggestions = emptyList()
+        stringInTail.set("")
+        suggestionClickNum = 0
+        currentCustomKeyboardPosition = 0
+        isHenkan.set(false)
+        isContinuousTapInputEnabled.set(false)
+        leftCursorKeyLongKeyPressed.set(false)
+        rightCursorKeyLongKeyPressed.set(false)
+        _dakutenPressed.value = false
+        englishSpaceKeyPressed.set(false)
+        lastFlickConvertedNextHiragana.set(false)
+        onDeleteLongPressUp.set(false)
+        isSpaceKeyLongPressed = false
+        onKeyboardSwitchLongPressUp = false
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        isFirstClickHasStringTail = false
+        resetKeyboard()
+        _keyboardSymbolViewState.update { false }
+        learnMultiple.stop()
+        stopDeleteLongPress()
+        clearDeletedBuffer()
+        suggestionAdapter?.setUndoEnabled(false)
+        updateClipboardPreview()
+        _selectMode.update { false }
+        hasConvertedKatakana = false
+        romajiConverter?.clear()
+        hardKeyboardShiftPressd = false
+        resetSumireKeyboardDakutenMode()
+        initialCursorDetectInFloatingCandidateView = false
+        initialCursorXPosition = 0
+        countToggleKatakana = 0
+        currentEnterKeyIndex = 0
+        currentSpaceKeyIndex = 0
+        currentKatakanaKeyIndex = 0
+        currentDakutenKeyIndex = 0
+    }
+
+    private fun resetAllFlagsWithoutResetLayout() {
+        Timber.d("onUpdate resetAllFlags called")
+        _inputString.update { "" }
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
