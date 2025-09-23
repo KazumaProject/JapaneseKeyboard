@@ -49,6 +49,12 @@
                 app:showSeekBarValue="true" />
 
             <SwitchPreferenceCompat
+                android:key="shortcut_toolbar_visibility_preference"
+                android:title="@string/shortcut_toolbar_title"
+                app:defaultValue="false"
+                app:summary="@string/shortcut_toolbar_summary" />
+
+            <SwitchPreferenceCompat
                 android:key="candidate_tab_visibility_preference"
                 android:title="@string/candidate_tab"
                 app:defaultValue="false"
@@ -198,6 +204,12 @@
                 android:summaryOff="@string/qwerty_keymap_preference_summary_off"
                 android:summaryOn="@string/qwerty_keymap_preference_summary_on"
                 android:title="@string/qwerty_keymap_symbol_preference" />
+
+            <SwitchPreferenceCompat
+                android:key="qwerty_show_switch_romaji_english_preference"
+                android:title="@string/qwerty_romaji_english_visibility_title"
+                app:defaultValue="true"
+                app:summary="@string/qwerty_romaji_english_visibility_summary" />
         </PreferenceCategory>
 
         <PreferenceCategory android:title="@string/category_symbol_keyboard_title">
