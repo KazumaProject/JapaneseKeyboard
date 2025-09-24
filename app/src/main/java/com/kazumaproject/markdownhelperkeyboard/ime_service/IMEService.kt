@@ -733,6 +733,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
+        suggestionAdapter?.suggestions = emptyList()
+        suggestionClickNum = -1
         if (!restarting) {
             setCurrentInputType(editorInfo)
             resetKeyboard()
@@ -870,6 +872,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
                 suggestionRecyclerView.isVisible = true
+                suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -891,11 +894,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     suggestionRecyclerView.adapter = suggestionAdapter
                     candidatesRowView.adapter = suggestionAdapterFull
                 }
-                if (shortcutTollbarVisibility == true) {
-                    shortcutToolbarRecyclerview.isVisible = true
-                } else {
-                    shortcutToolbarRecyclerview.isVisible = false
-                }
+                candidateTabLayout.visibility = View.INVISIBLE
+                shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
             }
             setMainSuggestionColumn(mainView)
         }
@@ -939,12 +939,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             floatingModeSwitchWindow?.isTouchable = false
         }
-    }
-
-    override fun onFinishInput() {
-        super.onFinishInput()
-        Timber.d("onUpdate onFinishInput")
-        resetAllFlags()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
