@@ -869,6 +869,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         keyboardSelectionPopupWindow?.dismiss()
+        _keyboardSymbolViewState.update { false }
+        _selectMode.update { false }
+        _cursorMoveMode.update { false }
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
                 suggestionRecyclerView.isVisible = true
@@ -1091,15 +1094,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-    }
-
-    override fun onWindowHidden() {
-        super.onWindowHidden()
-        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-        _keyboardSymbolViewState.update { false }
-        _selectMode.update { false }
-        _cursorMoveMode.update { false }
-        keyboardSelectionPopupWindow?.dismiss()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
