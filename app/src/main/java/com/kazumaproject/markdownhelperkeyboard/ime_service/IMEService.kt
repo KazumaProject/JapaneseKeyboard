@@ -108,7 +108,6 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.toHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
-import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
@@ -122,10 +121,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctRe
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
@@ -209,9 +206,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
-
-    @Inject
-    lateinit var englishEngine: EnglishEngine
 
     @Inject
     lateinit var learnRepository: LearnRepository
@@ -734,7 +728,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
         suggestionAdapter?.suggestions = emptyList()
-        suggestionClickNum = -1
+        suggestionClickNum = 0
         if (!restarting) {
             setCurrentInputType(editorInfo)
             resetKeyboard()
@@ -8579,7 +8573,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setSuggestionOnView(
         inputString: String, mainView: MainLayoutBinding
     ) {
-        if (inputString.isEmpty() || suggestionClickNum != 0) return
+        Timber.d("setSuggestionOnView: tabPosition first: $inputString $suggestionClickNum")
+        if (inputString.isEmpty() || suggestionClickNum > 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition")
         if (candidateTabVisibility == true) {
@@ -8847,36 +8842,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
-            val fullWidthInput = insertString.toFullWidth()
-            englishEngine.getCandidates(insertString) + listOf(
-                Candidate(
-                    string = fullWidthInput.lowercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 30000
-                ), Candidate(
-                    string = fullWidthInput.uppercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 30000
-                )
-            )
-        } else {
-            kanaKanjiEngine.getCandidates(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
-                isOmissionSearchEnable = isOmissionSearchEnable ?: false
-            )
-        }
+        val engineCandidates = kanaKanjiEngine.getCandidates(
+            input = insertString,
+            n = nBest ?: 4,
+            mozcUtPersonName = mozcUTPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+            ngWords = ngWords,
+            isOmissionSearchEnable = isOmissionSearchEnable ?: false
+        )
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
@@ -8929,35 +8907,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
-            val fullWidthInput = insertString.toFullWidth()
-            englishEngine.getCandidates(insertString) + listOf(
-                Candidate(
-                    string = fullWidthInput.lowercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 30000
-                ), Candidate(
-                    string = fullWidthInput.uppercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 30000
-                )
-            )
-        } else {
-            kanaKanjiEngine.getCandidatesWithoutPrediction(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords
-            )
-        }
+        val engineCandidates = kanaKanjiEngine.getCandidatesWithoutPrediction(
+            input = insertString,
+            n = nBest ?: 4,
+            mozcUtPersonName = mozcUTPersonName,
+            mozcUTPlaces = mozcUTPlaces,
+            mozcUTWiki = mozcUTWiki,
+            mozcUTNeologd = mozcUTNeologd,
+            mozcUTWeb = mozcUTWeb,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+            ngWords = ngWords
+        )
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
@@ -8973,26 +8934,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun getSuggestionListEnglishKana(
         insertString: String,
     ): List<Candidate> {
-        val engineCandidates = if (insertString.isAllHalfWidthAscii()) {
-            val fullWidthInput = insertString.toFullWidth()
-            englishEngine.getCandidates(insertString) + listOf(
-                Candidate(
-                    string = fullWidthInput.lowercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 30000
-                ), Candidate(
-                    string = fullWidthInput.uppercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 30000
-                )
-            )
-        } else {
-            kanaKanjiEngine.getCandidatesEnglishKana(
-                input = insertString,
-            )
-        }
+        val engineCandidates = kanaKanjiEngine.getCandidatesEnglishKana(
+            input = insertString,
+        )
         return engineCandidates.distinctBy { it.string }
     }
 
