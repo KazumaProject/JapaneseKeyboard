@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberE
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
+import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
@@ -768,6 +769,8 @@ class KanaKanjiEngine {
                 )
             }
 
+        Timber.d("Candidate Symbols: ${symbolListDeferred.map { it.string }}")
+
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
             input = input,
             yomiTrie = singleKanjiYomiTrie,
@@ -823,7 +826,7 @@ class KanaKanjiEngine {
             emptyList()
         }
 
-        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred + emojiListDeferred + emoticonListDeferred
+        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = if (input.length > 16) {
             emptyList()
@@ -1016,7 +1019,7 @@ class KanaKanjiEngine {
             resultList
                 .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred
+        return resultListFinal + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
     }
 
@@ -1175,7 +1178,68 @@ class KanaKanjiEngine {
             type = 7
         )
 
-        if (input.length == 1) return resultNBestFinalDeferred + hirakanaAndKana + singleKanjiListDeferred
+        val englishDeferred = if (input.isAllEnglishLetters()) {
+            englishEngine.getCandidates(input)
+        } else {
+            emptyList()
+        }
+
+        val englishZenkaku = if (input.isAllHalfWidthAscii()) {
+            val fullWidthInput = input.toFullWidth()
+            listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            emptyList()
+        }
+
+        val symbolCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = symbolYomiTrie,
+            succinctBitVector = symbolSuccinctBitVectorLBSYomi,
+        )
+
+        val symbolListDeferred =
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                deferredFromDictionarySymbols(
+                    input = input,
+                    commonPrefixListString = symbolCommonPrefixDeferred,
+                    yomiTrie = symbolYomiTrie,
+                    tokenArray = symbolTokenArray,
+                    tangoTrie = symbolTangoTrie,
+                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                    type = 13
+                ).filterNot { it.string.containsHentaigana() }
+            } else {
+                deferredFromDictionarySymbols(
+                    input = input,
+                    commonPrefixListString = symbolCommonPrefixDeferred,
+                    yomiTrie = symbolYomiTrie,
+                    tokenArray = symbolTokenArray,
+                    tangoTrie = symbolTangoTrie,
+                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+                    type = 13
+                )
+            }
+
+        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = if (input.length > 16) {
             emptyList()
@@ -1368,7 +1432,7 @@ class KanaKanjiEngine {
             resultList
                 .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
     }
 
@@ -1616,7 +1680,33 @@ class KanaKanjiEngine {
                 type = 21
             )
 
-        if (input.length == 1) return resultNBestFinalDeferred + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
+        val englishDeferred = if (input.isAllEnglishLetters()) {
+            englishEngine.getCandidates(input)
+        } else {
+            emptyList()
+        }
+
+        val englishZenkaku = if (input.isAllHalfWidthAscii()) {
+            val fullWidthInput = input.toFullWidth()
+            listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            emptyList()
+        }
+
+        if (input.length == 1) return resultNBestFinalDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = if (input.length > 16) {
             emptyList()
@@ -1767,7 +1857,7 @@ class KanaKanjiEngine {
             resultList
                 .sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+        return resultListFinal + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
     }
 
@@ -1893,9 +1983,35 @@ class KanaKanjiEngine {
             emptyList()
         }
 
+        val englishDeferred = if (input.isAllEnglishLetters()) {
+            englishEngine.getCandidates(input)
+        } else {
+            emptyList()
+        }
+
+        val englishZenkaku = if (input.isAllHalfWidthAscii()) {
+            val fullWidthInput = input.toFullWidth()
+            listOf(
+                Candidate(
+                    string = fullWidthInput.lowercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                ),
+                Candidate(
+                    string = fullWidthInput.uppercase(),
+                    type = (30).toByte(),
+                    length = input.length.toUByte(),
+                    score = 30000
+                )
+            )
+        } else {
+            emptyList()
+        }
+
         val numbersConverted = listOf(
             fullWidth, halfWidth
-        ) + timeConversion + dateConversion + numberCandidates
+        ) + (englishDeferred + englishZenkaku).sortedBy { it.score } + timeConversion + dateConversion + numberCandidates
 
         return listJapaneseCandidates + numbersConverted
     }
