@@ -734,7 +734,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
         suggestionAdapter?.suggestions = emptyList()
-        suggestionClickNum = -1
+        suggestionClickNum = 0
         if (!restarting) {
             setCurrentInputType(editorInfo)
             resetKeyboard()
@@ -8579,7 +8579,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setSuggestionOnView(
         inputString: String, mainView: MainLayoutBinding
     ) {
-        if (inputString.isEmpty() || suggestionClickNum != 0) return
+        Timber.d("setSuggestionOnView: tabPosition first: $inputString $suggestionClickNum")
+        if (inputString.isEmpty() || suggestionClickNum > 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition")
         if (candidateTabVisibility == true) {
