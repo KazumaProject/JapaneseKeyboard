@@ -15,5 +15,16 @@
         <item name="android:splitMotionEvents">false</item>
     </style>
 
+    <style name="Theme.MarkdownKeyboard.ManualSeed" parent="Theme.AppCompat.DayNight">
+        <item name="colorPrimary">@color/enter_key_bg</item>
+        <item name="colorPrimaryVariant">@color/blue_primary_color</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/main_text_color</item>
+        <item name="colorSecondaryVariant">@color/main_text_color</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="android:splitMotionEvents">false</item>
+    </style>
+
     <style name="Theme.App.ImeDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert" />
 </resources>

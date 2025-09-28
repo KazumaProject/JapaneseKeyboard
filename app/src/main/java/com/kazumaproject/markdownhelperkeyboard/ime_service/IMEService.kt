@@ -65,6 +65,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.color.DynamicColorsOptions
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
@@ -1164,13 +1165,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
-        // Determine the correct, themed context
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
         val ctx = if (isDynamicColorsEnable) {
-            DynamicColors.wrapContextIfAvailable(
-                this, // Use 'this' (the service context), not applicationContext
-                R.style.Theme_MarkdownKeyboard
-            )
+            val seedColor = appPreference.seedColor
+
+            if (seedColor == 0x00000000) {
+                DynamicColors.wrapContextIfAvailable(this, R.style.Theme_MarkdownKeyboard)
+            } else {
+                val baseThemedContext = ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+                val options = DynamicColorsOptions.Builder()
+                    .setContentBasedSource(seedColor)
+                    .build()
+                DynamicColors.wrapContextIfAvailable(baseThemedContext, options)
+            }
         } else {
             ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
         }
@@ -7312,7 +7319,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suggestionRecyclerView.adapter = adapter
     }
 
-    private fun setShortCutAdapter(mainView: MainLayoutBinding) {
+    private fun setShortCutAdapter(
+        mainView: MainLayoutBinding
+    ) {
         mainView.shortcutToolbarRecyclerview.apply {
             layoutManager =
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
