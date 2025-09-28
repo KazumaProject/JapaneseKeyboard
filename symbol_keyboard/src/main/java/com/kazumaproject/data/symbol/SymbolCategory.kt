@@ -7,6 +7,8 @@ enum class SymbolCategory {
 
     /** Punctuation and Diacritics: Punctuation, separators, and standalone diacritical marks. */
     PUNCTUATION_AND_DIACRITICS,
+    
+    Hankaku,
 
     /** General Symbols: Miscellaneous symbols and iteration marks that don't fit other categories. */
     GENERAL,
