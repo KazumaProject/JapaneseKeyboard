@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.os.LocaleListCompat
 import androidx.navigation.fragment.findNavController
@@ -16,6 +18,9 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
+import com.afollestad.materialdialogs.MaterialDialog
+import com.afollestad.materialdialogs.color.colorChooser
+import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -390,6 +395,16 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val seedColorPickerPreference =
+            findPreference<Preference>("keyboard_theme_fragment_preference")
+        seedColorPickerPreference?.apply {
+            isVisible = DynamicColors.isDynamicColorAvailable()
+            setOnPreferenceClickListener {
+                showColorPickerDialog()
+                true
+            }
+        }
+
     }
 
     private fun isKeyboardBoardEnabled(): Boolean? {
@@ -401,6 +416,84 @@ class SettingFragment : PreferenceFragmentCompat() {
         val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         requireActivity().startActivity(intent)
+    }
+
+    @SuppressLint("CheckResult")
+    private fun showColorPickerDialog() {
+        // Get the currently saved color to show as the initial selection
+        val initialColor = appPreference.seedColor
+
+        MaterialDialog(requireContext()).show {
+            title(text = "Select Theme Color")
+            // Show a grid of predefined colors
+            colorChooser(
+                colors = intArrayOf(
+                    0x00000000,
+                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.white),
+                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.black),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.red_dark
+                    ),
+                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.violet),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.violet_light
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.violet_dark
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.mint
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.mint_light
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.mint_dark
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.sky
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.sky_light
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.sky_dark
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.orange2
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.orange_light
+                    ),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.orange_dark
+                    ),
+                ),
+                initialSelection = initialColor,
+                allowCustomArgb = true // Allow user to pick any color
+            ) { _, color ->
+                // When a color is selected:
+                // 1. Save the new color to your AppPreference
+                appPreference.seedColor = color
+
+                // 2. Recreate the Activity to apply the new theme immediately
+                requireActivity().recreate()
+            }
+            positiveButton(text = "Select")
+            negativeButton(android.R.string.cancel)
+        }
     }
 
 }
