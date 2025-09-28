@@ -109,6 +109,8 @@ object AppPreference {
     private val SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE =
         Pair("shortcut_toolbar_visibility_preference", false)
 
+    private val APP_THEME_SEED_COLOR = Pair("app_theme_seed_color_preference", 0x00000000)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -519,6 +521,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE.first, value)
+        }
+
+    var seedColor: Int
+        get() = preferences.getInt(
+            APP_THEME_SEED_COLOR.first, APP_THEME_SEED_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(APP_THEME_SEED_COLOR.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
