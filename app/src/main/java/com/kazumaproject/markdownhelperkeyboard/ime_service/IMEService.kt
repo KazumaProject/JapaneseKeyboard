@@ -2418,6 +2418,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!deleteKeyLongKeyPressed.get()) {
                         handleDeleteKeyTap(insertString, suggestions)
                     }
+                } else {
+                    if (gestureType == GestureType.FlickLeft) {
+                        deleteWordOrSymbolsBeforeCursor(insertString)
+                    }
                 }
                 stopDeleteLongPress()
             }
@@ -5795,7 +5799,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -5818,7 +5826,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val heightPx = when {
             isSymbol -> {
-                val height = if (isPortrait) 320 else 220
+                val height = if (isPortrait) {
+                    320
+                } else {
+                    220
+                }
                 (height * density).toInt()
             }
 
@@ -5883,8 +5895,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
 
-        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+        val finalKeyboardHeight = if (shortcutTollbarVisibility == true && !isSymbol) {
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -5973,7 +5989,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -6208,7 +6228,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -8946,6 +8970,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             input = insertString,
         )
         return engineCandidates.distinctBy { it.string }
+    }
+
+    /**
+     * カーソル前の文字に応じて、単語または記号1つを削除します。
+     * - カーソル直前の文字が指定記号の場合：その記号を1つだけ削除します。
+     * - カーソル直前の文字がそれ以外の場合：その単語を末尾まで削除します。
+     */
+    private fun deleteWordOrSymbolsBeforeCursor(insertString: String) {
+        val inputConnection = currentInputConnection ?: return
+
+        if (insertString.isNotEmpty()) {
+            _inputString.update { "" }
+            setComposingText("", 0)
+            finishComposingText()
+        } else {
+            val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
+            if (textBeforeCursor.isEmpty()) return
+
+            val charsToDelete = setOf('。', '、', '！', '？', '「', '」', '『', '』', 'ー', ',', '.')
+
+            var deleteCount = 0
+
+            // カーソル直前の1文字が指定記号かどうかをチェック
+            if (textBeforeCursor.last() in charsToDelete) {
+                // 記号の場合、1文字だけ削除する
+                deleteCount = 1
+            } else {
+                // 記号でない場合、空白まで遡って単語の長さを数える
+                for (char in textBeforeCursor.reversed()) {
+                    if (char.isWhitespace() || char in charsToDelete) {
+                        // 単語の区切り（空白または記号）が見つかったら停止
+                        break
+                    }
+                    deleteCount++
+                }
+            }
+
+            if (deleteCount > 0) {
+                inputConnection.deleteSurroundingText(deleteCount, 0)
+            }
+        }
     }
 
     private fun deleteLongPress() {
