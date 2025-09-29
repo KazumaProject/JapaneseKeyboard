@@ -725,6 +725,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        keyboardSelectionPopupWindow?.dismiss()
+        _keyboardSymbolViewState.update { false }
+        _selectMode.update { false }
+        _cursorMoveMode.update { false }
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
@@ -863,10 +867,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainLayoutBinding?.candidatesRowView?.adapter = null
             }
         }
-        keyboardSelectionPopupWindow?.dismiss()
-        _keyboardSymbolViewState.update { false }
-        _selectMode.update { false }
-        _cursorMoveMode.update { false }
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
                 suggestionRecyclerView.isVisible = true
@@ -3347,7 +3347,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         keyboardView.setCurrentMode(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -3430,7 +3429,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         keyboardView.setCurrentMode(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -3515,7 +3513,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         keyboardView.setCurrentMode(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -3604,7 +3601,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
                     } else {
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                     }
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
@@ -3632,7 +3628,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     } else {
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                        //_tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                     }
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
@@ -6707,6 +6703,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedArrowRightDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextMultiLine,
@@ -6719,6 +6716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedReturnDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
@@ -6727,6 +6725,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedTabDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextDone -> {
@@ -6735,6 +6734,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedCheckDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
@@ -6743,6 +6743,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedSearchDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextEmailAddress,
@@ -6758,6 +6759,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedArrowRightDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
@@ -6766,6 +6768,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedArrowRightDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.Number,
@@ -6886,6 +6889,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun setFirstKeyboardType() {
+        if (keyboardOrder.isNotEmpty()) {
+            val firstItem = keyboardOrder.first()
+            when (firstItem) {
+                KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                KeyboardType.QWERTY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                KeyboardType.ROMAJI -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
+                KeyboardType.CUSTOM -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+            }
+        }
+    }
+
     private fun setCurrentInputTypeRestart(attribute: EditorInfo?) {
         val keyboardType =
             if (keyboardOrder.isEmpty()) KeyboardType.TENKEY else keyboardOrder[currentKeyboardOrder]
@@ -6904,7 +6920,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
                             -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                            currentInputMode.set(InputMode.ModeNumber)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(false)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
                         }
 
                         else -> {
@@ -6928,7 +6949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         else -> {
-                            /** Empty Boay**/
+                            setFirstKeyboardType()
                         }
                     }
                 }
@@ -6945,7 +6966,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
                             -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                            setCurrentMode(InputMode.ModeNumber)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
                         }
 
                         else -> {
