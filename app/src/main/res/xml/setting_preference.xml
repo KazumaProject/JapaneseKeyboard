@@ -24,6 +24,11 @@
             android:summary="@string/keyboard_screen_preference_summary"
             android:title="@string/keyboard_screen_size_preference_title" />
 
+        <Preference
+            android:key="keyboard_theme_fragment_preference"
+            android:title="@string/keyboard_theme_title"
+            app:summary="@string/keyboard_theme_summary" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_height_fix_enable_preference"

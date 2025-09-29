@@ -66,4 +66,24 @@
     <color name="tab_unselected">#ff1C1C1C</color>
     <color name="button_color">#A5AFBF</color>
     <color name="symbol_text_color">#ff1C1C1C</color>
+
+    <!-- 紫系 -->
+    <color name="violet">#FF6750A4</color>
+    <color name="violet_light">#FFEADDFF</color>
+    <color name="violet_dark">#FF21005D</color>
+
+    <!-- 緑系 -->
+    <color name="mint">#FF006D3C</color>
+    <color name="mint_light">#FFBFE9CC</color>
+    <color name="mint_dark">#FF00391A</color>
+
+    <!-- 青系 -->
+    <color name="sky">#FF0061A4</color>
+    <color name="sky_light">#FFCCE5FF</color>
+    <color name="sky_dark">#FF003259</color>
+
+    <!-- オレンジ系 -->
+    <color name="orange2">#FF984061</color>
+    <color name="orange_light">#FFFFD9E3</color>
+    <color name="orange_dark">#FF5D1131</color>
 </resources>
