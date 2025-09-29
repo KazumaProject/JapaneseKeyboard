@@ -2,12 +2,13 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.domain.extensions.getThemeColor
+import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 
 class TfbiFlickPopupView(context: Context) : View(context) {
 
@@ -19,10 +20,15 @@ class TfbiFlickPopupView(context: Context) : View(context) {
 
     // 各パーツの描画設定
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, com.kazumaproject.core.R.color.popup_bg)
+        color = if (context.isDarkThemeOn()) {
+            context.getThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+        } else {
+            context.getThemeColor(com.google.android.material.R.attr.colorSurface)
+        }
     }
     private val highlightBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ContextCompat.getColor(context, com.kazumaproject.core.R.color.popup_bg_active)
+        color =
+            context.getThemeColor(com.google.android.material.R.attr.colorSecondaryContainer)
     }
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -30,7 +36,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         color = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
         textAlign = Paint.Align.CENTER
         textSize = spToPx(20f)
     }

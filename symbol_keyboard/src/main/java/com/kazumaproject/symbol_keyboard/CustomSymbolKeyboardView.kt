@@ -437,6 +437,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                         val tabText = when (category) {
                             SymbolCategory.BRACKETS_AND_QUOTES -> "括弧と引用符"
                             SymbolCategory.PUNCTUATION_AND_DIACRITICS -> "区切り文字と発音区別符号"
+                            SymbolCategory.Hankaku -> "半角"
                             SymbolCategory.GENERAL -> "全般"
                             SymbolCategory.ARROWS -> "矢印"
                             SymbolCategory.MATH_AND_UNITS -> "数学と単位"
