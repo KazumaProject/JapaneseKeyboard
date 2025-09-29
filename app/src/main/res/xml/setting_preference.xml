@@ -26,8 +26,8 @@
 
         <Preference
             android:key="keyboard_theme_fragment_preference"
-            android:title="キーボードのテーマ"
-            app:summary="キーボードのテーマの色を指定"/>
+            android:title="@string/keyboard_theme_title"
+            app:summary="@string/keyboard_theme_summary" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
