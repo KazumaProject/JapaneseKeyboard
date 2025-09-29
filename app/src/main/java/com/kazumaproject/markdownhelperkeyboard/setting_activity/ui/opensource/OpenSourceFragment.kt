@@ -56,7 +56,9 @@ class OpenSourceFragment : Fragment() {
             "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
             "mecab-ipadic-neologd",
             "merge-ut-dictionaries",
-            "Salesforce/wikitext"
+            "Salesforce/wikitext",
+            "com.afollestad.material-dialogs:core:3.3.0",
+            "com.afollestad.material-dialogs:color:3.3.0"
         )
     }
 
@@ -242,6 +244,42 @@ class OpenSourceFragment : Fragment() {
                             .show()
                     }
 
+                    27 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright = "Copyright 2018 Aidan Follestad"
+                        val license = LicenseDialogLicense()
+                        val notice =
+                            Notice(
+                                name,
+                                "https://github.com/afollestad/material-dialogs",
+                                copyright,
+                                license
+                            )
+                        LicensesDialog.Builder(requireContext())
+                            .setTitle("com.afollestad.material-dialogs:core:3.3.0")
+                            .setNotices(notice)
+                            .build()
+                            .show()
+                    }
+
+                    28 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright = "Copyright 2018 Aidan Follestad"
+                        val license = LicenseDialogLicense()
+                        val notice =
+                            Notice(
+                                name,
+                                "https://github.com/afollestad/material-dialogs",
+                                copyright,
+                                license
+                            )
+                        LicensesDialog.Builder(requireContext())
+                            .setTitle("com.afollestad.material-dialogs:color:3.3.0")
+                            .setNotices(notice)
+                            .build()
+                            .show()
+                    }
+
                 }
             }
         }
@@ -267,6 +305,7 @@ class OpenSourceFragment : Fragment() {
                         findNavController().popBackStack()
                         true
                     }
+
                     else -> false
                 }
             }
