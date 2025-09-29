@@ -291,4 +291,7 @@
     <string name="shortcut_toolbar_summary">絵文字キーボードへの切り替えなどの便利なショートカットアイコンを含むツールバーを表示します</string>
     <string name="qwerty_romaji_english_visibility_title">ローマ字/英語切り替えキー</string>
     <string name="qwerty_romaji_english_visibility_summary">キーボード上にローマ字入力と英語入力を切り替えるキー（あa）を表示します</string>
+    <string name="keyboard_theme_title">キーボードテーマ</string>
+    <string name="keyboard_theme_summary">キーボードのテーマカラーを選択できます。\n反映には一度キーボードを再起動する必要があります。</string>
+    <string name="keyboard_theme_dialog_title">ベースカラーの選択</string>
 </resources>

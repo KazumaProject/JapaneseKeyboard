@@ -3700,7 +3700,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
                 Timber.d("setKeyboardTab: customLayouts.isEmpty()")
-                customLayouts = keyboardRepository.getLayoutsNotFlow()
                 if (customLayouts.isNotEmpty()) {
                     val id = customLayouts[pos].layoutId
                     val dbLayout = keyboardRepository.getFullLayout(id).first()
@@ -4551,10 +4550,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCustomKeyboardTab -> {
                         scope.launch {
-                            val customKeyboardLayouts = keyboardRepository.getLayoutsNotFlow()
-                            if (customKeyboardLayouts.isNotEmpty()) {
+                            if (customLayouts.isNotEmpty()) {
                                 val position =
-                                    (currentCustomKeyboardPosition + 1) % customKeyboardLayouts.size
+                                    (currentCustomKeyboardPosition + 1) % customLayouts.size
                                 setKeyboardTab(position)
                             }
                         }

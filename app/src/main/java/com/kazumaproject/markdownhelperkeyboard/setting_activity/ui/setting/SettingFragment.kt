@@ -424,17 +424,11 @@ class SettingFragment : PreferenceFragmentCompat() {
         val initialColor = appPreference.seedColor
 
         MaterialDialog(requireContext()).show {
-            title(text = "Select Theme Color")
+            title(text = getString(R.string.keyboard_theme_dialog_title))
             // Show a grid of predefined colors
             colorChooser(
                 colors = intArrayOf(
                     0x00000000,
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.white),
-                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.black),
-                    ContextCompat.getColor(
-                        requireContext(),
-                        com.kazumaproject.core.R.color.red_dark
-                    ),
                     ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.violet),
                     ContextCompat.getColor(
                         requireContext(),
@@ -491,7 +485,7 @@ class SettingFragment : PreferenceFragmentCompat() {
                 // 2. Recreate the Activity to apply the new theme immediately
                 requireActivity().recreate()
             }
-            positiveButton(text = "Select")
+            positiveButton(android.R.string.ok)
             negativeButton(android.R.string.cancel)
         }
     }
