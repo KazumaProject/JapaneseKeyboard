@@ -235,8 +235,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
-    @Inject
-    lateinit var shortcutAdapter: ShortcutAdapter
+    private var shortcutAdapter: ShortcutAdapter? = null
 
     private var romajiConverter: RomajiKanaConverter? = null
 
@@ -566,6 +565,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         suggestionAdapterFull = SuggestionAdapter()
+        shortcutAdapter = ShortcutAdapter()
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         clipboardManager =
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -961,6 +961,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapter?.release()
         suggestionAdapter = null
+        shortcutAdapter = null
         suggestionAdapterFull = null
         dismissJob = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
@@ -7325,7 +7326,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
-        shortcutAdapter.submitList(
+        shortcutAdapter?.submitList(
             listOf(
                 com.kazumaproject.core.R.drawable.baseline_settings_24,
                 com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24,
@@ -7335,7 +7336,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 com.kazumaproject.core.R.drawable.language_24dp,
             )
         )
-        shortcutAdapter.onItemClicked = { resourceId ->
+        shortcutAdapter?.onItemClicked = { resourceId ->
             when (resourceId) {
                 com.kazumaproject.core.R.drawable.baseline_settings_24 -> {
                     launchSettingsActivity("setting_fragment_request")
