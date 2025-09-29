@@ -290,4 +290,7 @@
     <string name="shortcut_toolbar_summary">Show a toolbar with useful shortcuts like switching Emoji keyboard</string>
     <string name="qwerty_romaji_english_visibility_title">Romaji/English Switch Key</string>
     <string name="qwerty_romaji_english_visibility_summary">Show a key (あa) to switch between Romaji input and English input</string>
+    <string name="keyboard_theme_title">Keyboard Theme</string>
+    <string name="keyboard_theme_summary">Choose the keyboard theme color.\nTo apply changes, please switch the keyboard once.</string>
+    <string name="keyboard_theme_dialog_title">Select Base Color</string>
 </resources>

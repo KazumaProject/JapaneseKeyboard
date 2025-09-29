@@ -65,6 +65,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.color.DynamicColorsOptions
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
@@ -234,8 +235,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
-    @Inject
-    lateinit var shortcutAdapter: ShortcutAdapter
+    private var shortcutAdapter: ShortcutAdapter? = null
 
     private var romajiConverter: RomajiKanaConverter? = null
 
@@ -565,6 +565,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         suggestionAdapterFull = SuggestionAdapter()
+        shortcutAdapter = ShortcutAdapter()
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         clipboardManager =
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -960,6 +961,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapter?.release()
         suggestionAdapter = null
+        shortcutAdapter = null
         suggestionAdapterFull = null
         dismissJob = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
@@ -1164,13 +1166,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
-        // Determine the correct, themed context
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
         val ctx = if (isDynamicColorsEnable) {
-            DynamicColors.wrapContextIfAvailable(
-                this, // Use 'this' (the service context), not applicationContext
-                R.style.Theme_MarkdownKeyboard
-            )
+            val seedColor = appPreference.seedColor
+
+            if (seedColor == 0x00000000) {
+                DynamicColors.wrapContextIfAvailable(this, R.style.Theme_MarkdownKeyboard)
+            } else {
+                val baseThemedContext = ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+                val options = DynamicColorsOptions.Builder()
+                    .setContentBasedSource(seedColor)
+                    .build()
+                DynamicColors.wrapContextIfAvailable(baseThemedContext, options)
+            }
         } else {
             ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
         }
@@ -3693,7 +3701,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         scope.launch(Dispatchers.IO) {
             if (customLayouts.isEmpty()) {
                 Timber.d("setKeyboardTab: customLayouts.isEmpty()")
-                customLayouts = keyboardRepository.getLayoutsNotFlow()
                 if (customLayouts.isNotEmpty()) {
                     val id = customLayouts[pos].layoutId
                     val dbLayout = keyboardRepository.getFullLayout(id).first()
@@ -4544,10 +4551,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCustomKeyboardTab -> {
                         scope.launch {
-                            val customKeyboardLayouts = keyboardRepository.getLayoutsNotFlow()
-                            if (customKeyboardLayouts.isNotEmpty()) {
+                            if (customLayouts.isNotEmpty()) {
                                 val position =
-                                    (currentCustomKeyboardPosition + 1) % customKeyboardLayouts.size
+                                    (currentCustomKeyboardPosition + 1) % customLayouts.size
                                 setKeyboardTab(position)
                             }
                         }
@@ -7312,13 +7318,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suggestionRecyclerView.adapter = adapter
     }
 
-    private fun setShortCutAdapter(mainView: MainLayoutBinding) {
+    private fun setShortCutAdapter(
+        mainView: MainLayoutBinding
+    ) {
         mainView.shortcutToolbarRecyclerview.apply {
             layoutManager =
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
-        shortcutAdapter.submitList(
+        shortcutAdapter?.submitList(
             listOf(
                 com.kazumaproject.core.R.drawable.baseline_settings_24,
                 com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24,
@@ -7328,7 +7336,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 com.kazumaproject.core.R.drawable.language_24dp,
             )
         )
-        shortcutAdapter.onItemClicked = { resourceId ->
+        shortcutAdapter?.onItemClicked = { resourceId ->
             when (resourceId) {
                 com.kazumaproject.core.R.drawable.baseline_settings_24 -> {
                     launchSettingsActivity("setting_fragment_request")

@@ -6951,7 +6951,7 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                label = "@",
+                label = "@\n/~;",
                 row = 3,
                 column = 1,
                 isFlickable = false,
@@ -6963,7 +6963,7 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "3\n%°#" , 0, 3,
+                "3\n%°&", 0, 3,
                 false,
                 keyType = KeyType.STANDARD_FLICK
             ),
@@ -6972,7 +6972,7 @@ object KeyboardDefaultLayouts {
             KeyData("8\n〒々〆", 2, 2, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("9\n^|\\", 2, 3, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("0\n〜…", 3, 2, false, keyType = KeyType.STANDARD_FLICK),
-            KeyData("#", 3, 3, false, keyType = KeyType.STANDARD_FLICK),
+            KeyData("#\n.^,", 3, 3, false, keyType = KeyType.STANDARD_FLICK),
             KeyData(
                 "Del",
                 0,
@@ -7081,12 +7081,12 @@ object KeyboardDefaultLayouts {
                         FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
                     )
                 ),
-                "3\n%°#" to listOf(
+                "3\n%°&" to listOf(
                     mapOf(
                         FlickDirection.TAP to FlickAction.Input("3"),
                         FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
                         FlickDirection.UP to FlickAction.Input("°"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("#"),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("&"),
                     )
                 ),
                 "4\n○*・" to listOf(
@@ -7154,16 +7154,15 @@ object KeyboardDefaultLayouts {
                         FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
                     )
                 ),
-                "@" to listOf(
+                "@\n/~;" to listOf(
                     mapOf(
                         FlickDirection.TAP to FlickAction.Input("@"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("$"),
+                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("/"),
                         FlickDirection.UP to FlickAction.Input("~"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("…"),
-                        FlickDirection.DOWN to FlickAction.Input("/"),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(";"),
                     )
                 ),
-                "#" to listOf(
+                "#\n.^," to listOf(
                     mapOf(
                         FlickDirection.TAP to FlickAction.Input("#"),
                         FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
