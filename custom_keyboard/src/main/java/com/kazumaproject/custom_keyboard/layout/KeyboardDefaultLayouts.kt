@@ -21,7 +21,8 @@ object KeyboardDefaultLayouts {
         mode: KeyboardInputMode,
         dynamicKeyStates: Map<String, Int>,
         inputLayoutType: String,
-        inputStyle: String
+        inputStyle: String,
+        isDeleteFlickEnabled: Boolean
     ): KeyboardLayout {
         Log.d("createFinalLayout:", "$inputLayoutType $inputStyle $mode")
         val baseLayout = when (inputLayoutType) {
@@ -66,18 +67,22 @@ object KeyboardDefaultLayouts {
             "switch-mode-effective" -> {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
-                        createHiraganaEffectiveLayout(inputStyle)
+                        createHiraganaEffectiveLayout(
+                            inputStyle,
+                            isFlickDeleteEnabled = isDeleteFlickEnabled
+                        )
                     }
 
                     KeyboardInputMode.ENGLISH -> {
                         createEnglishEffectiveLayout(
                             isUpperCase = false,
-                            inputStyle = inputStyle
+                            inputStyle = inputStyle,
+                            isFlickDeleteEnabled = isDeleteFlickEnabled
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        createNumberEffectiveLayout()
+                        createNumberEffectiveLayout(isFlickDeleteEnabled = isDeleteFlickEnabled)
                     }
                 }
             }
@@ -137,6 +142,17 @@ object KeyboardDefaultLayouts {
             KeyAction.ToggleDakuten,
             label = " 小゛゜",
         )
+    )
+
+    private val deleteFlickStates = listOf(
+        FlickAction.Action(
+            KeyAction.Delete,
+            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+        ),
+        FlickAction.Action(
+            KeyAction.DeleteUntilSymbol,
+            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+        ),
     )
 
     private val katakanaToggleStates = listOf(
@@ -5754,7 +5770,8 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createHiraganaEffectiveLayout(
-        inputStyle: String
+        inputStyle: String,
+        isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -5946,17 +5963,32 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), // Label fixed to match map key
-            KeyData(
-                "Del",
-                0,
-                4,
-                false,
-                KeyAction.Delete,
-                isSpecialKey = true,
-                rowSpan = 1,
-                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
             ),
+            if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            },
             KeyData(
                 "CursorMoveRight",
                 1,
@@ -6065,10 +6097,29 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    mutableMapOf(
-                        "PasteActionKey" to listOf(pasteActionMap),
-                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    )
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ),
+                            FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                        )
+                    }
 
                 dakutenToggleStates.getOrNull(0)?.label?.let { label ->
                     flickMaps.put(label, listOf(emojiStateFlickMap))
@@ -6574,7 +6625,8 @@ object KeyboardDefaultLayouts {
 
     private fun createEnglishEffectiveLayout(
         isUpperCase: Boolean,
-        inputStyle: String
+        inputStyle: String,
+        isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -6742,16 +6794,31 @@ object KeyboardDefaultLayouts {
                     else -> KeyType.PETAL_FLICK
                 }
             ),
-            KeyData(
-                "Del",
-                0,
-                4,
-                false,
-                KeyAction.Delete,
-                isSpecialKey = true,
-                rowSpan = 1,
-                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-            ),
+            if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            },
             KeyData(
                 "CursorMoveRight",
                 1,
@@ -6871,19 +6938,47 @@ object KeyboardDefaultLayouts {
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            mutableMapOf(
-                "@#/_" to listOf(symbols1),
-                "ABC" to listOf(abc),
-                "DEF" to listOf(def),
-                "GHI" to listOf(ghi),
-                "JKL" to listOf(jkl),
-                "MNO" to listOf(mno),
-                "PQRS" to listOf(pqrs),
-                "TUV" to listOf(tuv),
-                "WXYZ" to listOf(wxyz),
-                "' \" ( )" to listOf(symbols2),
-                ". , ? !" to listOf(symbols3)
-            )
+            if (isFlickDeleteEnabled) {
+                val deleteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Delete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                    ),
+                    FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.DeleteUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    )
+                )
+                mutableMapOf(
+                    "@#/_" to listOf(symbols1),
+                    "ABC" to listOf(abc),
+                    "DEF" to listOf(def),
+                    "GHI" to listOf(ghi),
+                    "JKL" to listOf(jkl),
+                    "MNO" to listOf(mno),
+                    "PQRS" to listOf(pqrs),
+                    "TUV" to listOf(tuv),
+                    "WXYZ" to listOf(wxyz),
+                    "' \" ( )" to listOf(symbols2),
+                    ". , ? !" to listOf(symbols3),
+                    "Del" to listOf(deleteActionMap)
+                )
+            } else {
+                mutableMapOf(
+                    "@#/_" to listOf(symbols1),
+                    "ABC" to listOf(abc),
+                    "DEF" to listOf(def),
+                    "GHI" to listOf(ghi),
+                    "JKL" to listOf(jkl),
+                    "MNO" to listOf(mno),
+                    "PQRS" to listOf(pqrs),
+                    "TUV" to listOf(tuv),
+                    "WXYZ" to listOf(wxyz),
+                    "' \" ( )" to listOf(symbols2),
+                    ". , ? !" to listOf(symbols3),
+                )
+            }
 
         spaceConvertStates.getOrNull(0)?.label?.let { label ->
             flickMaps.put(label, listOf(spaceActionMap))
@@ -6892,7 +6987,9 @@ object KeyboardDefaultLayouts {
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
 
-    private fun createNumberEffectiveLayout(): KeyboardLayout {
+    private fun createNumberEffectiveLayout(
+        isFlickDeleteEnabled: Boolean
+    ): KeyboardLayout {
         val keys = listOf(
             KeyData(
                 "",
@@ -6973,16 +7070,31 @@ object KeyboardDefaultLayouts {
             KeyData("9\n^|\\", 2, 3, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("0\n〜…", 3, 2, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("#\n.^,", 3, 3, false, keyType = KeyType.STANDARD_FLICK),
-            KeyData(
-                "Del",
-                0,
-                4,
-                false,
-                KeyAction.Delete,
-                isSpecialKey = true,
-                rowSpan = 1,
-                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-            ),
+            if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            },
             KeyData(
                 "-",
                 1,
@@ -7064,115 +7176,239 @@ object KeyboardDefaultLayouts {
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            mutableMapOf(
-                "1\n☆♪→" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("1"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
-                        FlickDirection.UP to FlickAction.Input("♪"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
-                    )
-                ),
-                "2\n￥$€" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("2"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
-                        FlickDirection.UP to FlickAction.Input("$"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
-                    )
-                ),
-                "3\n%°&" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("3"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
-                        FlickDirection.UP to FlickAction.Input("°"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("&"),
-                    )
-                ),
-                "4\n○*・" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("4"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
-                        FlickDirection.UP to FlickAction.Input("*"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
-
-                        )
-                ),
-                "5\n+x÷" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("5"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
-                        FlickDirection.UP to FlickAction.Input("x"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+            if (isFlickDeleteEnabled) {
+                val deleteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Delete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
                     ),
-                ),
-                "6\n< = >" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("6"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
-                        FlickDirection.UP to FlickAction.Input("="),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                    FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.DeleteUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
                     )
-                ),
-                "7\n「」:" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("7"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
-                        FlickDirection.UP to FlickAction.Input("」"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
-                    )
-                ),
-                "8\n〒々〆" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("8"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
-                        FlickDirection.UP to FlickAction.Input("々"),   // Single quote
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
-                    )
-                ),
-                "9\n^|\\" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("9"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
-                        FlickDirection.UP to FlickAction.Input("|"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
-                    )
-                ),
-                "0\n〜…" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("0"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
-                        FlickDirection.UP to FlickAction.Input("…"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
-                    )
-                ),
-                "( ) [ ]" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("("),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
-                        FlickDirection.UP to FlickAction.Input("["),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
-                    )
-                ),
-                "@\n/~;" to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("@"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("/"),
-                        FlickDirection.UP to FlickAction.Input("~"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(";"),
-                    )
-                ),
-                "#\n.^," to listOf(
-                    mapOf(
-                        FlickDirection.TAP to FlickAction.Input("#"),
-                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
-                        FlickDirection.UP to FlickAction.Input("^"),
-                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(","),
-                    )
-                ),
-                ":" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input(":"))),
-                "-" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("-"))),
-            )
+                )
+                mutableMapOf(
+                    "1\n☆♪→" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("1"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
+                            FlickDirection.UP to FlickAction.Input("♪"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
+                        )
+                    ),
+                    "2\n￥$€" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("2"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
+                            FlickDirection.UP to FlickAction.Input("$"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
+                        )
+                    ),
+                    "3\n%°&" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("3"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
+                            FlickDirection.UP to FlickAction.Input("°"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("&"),
+                        )
+                    ),
+                    "4\n○*・" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("4"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
+                            FlickDirection.UP to FlickAction.Input("*"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
+
+                            )
+                    ),
+                    "5\n+x÷" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("5"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                            FlickDirection.UP to FlickAction.Input("x"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+                        ),
+                    ),
+                    "6\n< = >" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("6"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
+                            FlickDirection.UP to FlickAction.Input("="),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                        )
+                    ),
+                    "7\n「」:" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("7"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
+                            FlickDirection.UP to FlickAction.Input("」"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
+                        )
+                    ),
+                    "8\n〒々〆" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("8"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
+                            FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
+                        )
+                    ),
+                    "9\n^|\\" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("9"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
+                            FlickDirection.UP to FlickAction.Input("|"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
+                        )
+                    ),
+                    "0\n〜…" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("0"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                            FlickDirection.UP to FlickAction.Input("…"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
+                        )
+                    ),
+                    "( ) [ ]" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("("),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
+                            FlickDirection.UP to FlickAction.Input("["),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
+                        )
+                    ),
+                    "@\n/~;" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("@"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("/"),
+                            FlickDirection.UP to FlickAction.Input("~"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(";"),
+                        )
+                    ),
+                    "#\n.^," to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("#"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
+                            FlickDirection.UP to FlickAction.Input("^"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(","),
+                        )
+                    ),
+                    ":" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input(":"))),
+                    "-" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("-"))),
+                    "Del" to listOf(deleteActionMap)
+                )
+            } else {
+                mutableMapOf(
+                    "1\n☆♪→" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("1"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
+                            FlickDirection.UP to FlickAction.Input("♪"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
+                        )
+                    ),
+                    "2\n￥$€" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("2"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
+                            FlickDirection.UP to FlickAction.Input("$"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
+                        )
+                    ),
+                    "3\n%°&" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("3"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
+                            FlickDirection.UP to FlickAction.Input("°"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("&"),
+                        )
+                    ),
+                    "4\n○*・" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("4"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
+                            FlickDirection.UP to FlickAction.Input("*"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
+
+                            )
+                    ),
+                    "5\n+x÷" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("5"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                            FlickDirection.UP to FlickAction.Input("x"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+                        ),
+                    ),
+                    "6\n< = >" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("6"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
+                            FlickDirection.UP to FlickAction.Input("="),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                        )
+                    ),
+                    "7\n「」:" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("7"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
+                            FlickDirection.UP to FlickAction.Input("」"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
+                        )
+                    ),
+                    "8\n〒々〆" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("8"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
+                            FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
+                        )
+                    ),
+                    "9\n^|\\" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("9"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
+                            FlickDirection.UP to FlickAction.Input("|"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
+                        )
+                    ),
+                    "0\n〜…" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("0"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                            FlickDirection.UP to FlickAction.Input("…"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
+                        )
+                    ),
+                    "( ) [ ]" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("("),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
+                            FlickDirection.UP to FlickAction.Input("["),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
+                        )
+                    ),
+                    "@\n/~;" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("@"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("/"),
+                            FlickDirection.UP to FlickAction.Input("~"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(";"),
+                        )
+                    ),
+                    "#\n.^," to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("#"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
+                            FlickDirection.UP to FlickAction.Input("^"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(","),
+                        )
+                    ),
+                    ":" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input(":"))),
+                    "-" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("-"))),
+                )
+            }
 
         dakutenToggleStates.getOrNull(0)?.label?.let { label ->
             flickMaps.put(label, listOf(emojiStateFlickMap))
