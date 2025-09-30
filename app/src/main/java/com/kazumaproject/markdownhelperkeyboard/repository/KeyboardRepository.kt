@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
@@ -228,19 +229,59 @@ class KeyboardRepository @Inject constructor(
             } else {
                 null
             }
-            KeyData(
-                label = dbKey.label,
-                row = dbKey.row,
-                column = dbKey.column,
-                isFlickable = dbKey.keyType != KeyType.NORMAL,
-                keyType = dbKey.keyType,
-                rowSpan = dbKey.rowSpan,
-                colSpan = dbKey.colSpan,
-                isSpecialKey = dbKey.isSpecialKey,
-                drawableResId = dbKey.drawableResId,
-                keyId = dbKey.keyIdentifier,
-                action = actionObject
-            )
+            if (actionObject == null) {
+                KeyData(
+                    label = dbKey.label,
+                    row = dbKey.row,
+                    column = dbKey.column,
+                    isFlickable = dbKey.keyType != KeyType.NORMAL,
+                    keyType = dbKey.keyType,
+                    rowSpan = dbKey.rowSpan,
+                    colSpan = dbKey.colSpan,
+                    isSpecialKey = dbKey.isSpecialKey,
+                    drawableResId = null,
+                    keyId = dbKey.keyIdentifier,
+                    action = null
+                )
+            } else {
+                KeyData(
+                    label = dbKey.label,
+                    row = dbKey.row,
+                    column = dbKey.column,
+                    isFlickable = dbKey.keyType != KeyType.NORMAL,
+                    keyType = dbKey.keyType,
+                    rowSpan = dbKey.rowSpan,
+                    colSpan = dbKey.colSpan,
+                    isSpecialKey = true,
+                    drawableResId = when (actionObject) {
+                        KeyAction.Backspace -> com.kazumaproject.core.R.drawable.backspace_24px
+                        KeyAction.ChangeInputMode -> com.kazumaproject.core.R.drawable.backspace_24px
+                        KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
+                        KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
+                        KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
+                        KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+                        KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                        KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                        KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+                        KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
+                        KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
+                        KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                        KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                        KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
+                        KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
+                        KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+                        KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
+                        KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
+                        KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
+                        KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+                        KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
+                        KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.kana_small_custom
+                        else -> null
+                    },
+                    keyId = dbKey.keyIdentifier,
+                    action = actionObject
+                )
+            }
         }
         return KeyboardLayout(
             keys = keys,
@@ -272,7 +313,7 @@ class KeyboardRepository @Inject constructor(
                     colSpan = keyData.colSpan,
                     keyType = keyData.keyType,
                     isSpecialKey = keyData.isSpecialKey,
-                    drawableResId = keyData.drawableResId,
+                    drawableResId = null,
                     keyIdentifier = keyIdentifier,
                     action = actionString
                 )

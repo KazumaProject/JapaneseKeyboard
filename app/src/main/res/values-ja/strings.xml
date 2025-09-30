@@ -294,4 +294,6 @@
     <string name="keyboard_theme_title">キーボードテーマ</string>
     <string name="keyboard_theme_summary">キーボードのテーマカラーを選択できます。\n反映には一度キーボードを再起動する必要があります。</string>
     <string name="keyboard_theme_dialog_title">ベースカラーの選択</string>
+    <string name="delete_key_left_flick_title">削除キーの左フリック</string>
+    <string name="delete_key_left_summary">削除キーを左にフリックすると、カーソルの前にある特定の記号までの文字列もしくは全ての文字列をまとめて削除します。\n（対象: 句読点「。、！？」、括弧「「」『』」、記号「ー」、コンマ「,」、ピリオド「.」）</string>
 </resources>
