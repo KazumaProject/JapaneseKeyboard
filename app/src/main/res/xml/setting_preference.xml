@@ -128,6 +128,12 @@
                 android:title="@string/space_key_title" />
 
             <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="delete_key_flick_left_preference"
+                android:summary="@string/delete_key_left_summary"
+                android:title="@string/delete_key_left_flick_title" />
+
+            <SwitchPreferenceCompat
                 android:defaultValue="false"
                 android:key="live_conversion_preference"
                 android:summaryOff="@string/live_conversion_summary_off"

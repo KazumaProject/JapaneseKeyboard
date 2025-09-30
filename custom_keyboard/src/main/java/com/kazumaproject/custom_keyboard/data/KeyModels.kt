@@ -26,6 +26,7 @@ sealed class KeyAction {
     data object Enter : KeyAction()   // 確定（文脈によってNewLineと使い分ける）
     data object Convert : KeyAction() // 変換
     data object Confirm : KeyAction() // 確定
+    data object DeleteUntilSymbol : KeyAction()
 
     // カーソル操作系
     data object MoveCursorLeft : KeyAction()
