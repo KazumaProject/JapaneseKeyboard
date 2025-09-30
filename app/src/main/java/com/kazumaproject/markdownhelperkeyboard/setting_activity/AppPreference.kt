@@ -111,6 +111,8 @@ object AppPreference {
 
     private val APP_THEME_SEED_COLOR = Pair("app_theme_seed_color_preference", 0x00000000)
 
+    private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -529,6 +531,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(APP_THEME_SEED_COLOR.first, value)
+        }
+
+    var delete_key_left_flick_preference: Boolean
+        get() = preferences.getBoolean(
+            DELETE_KEY_LEFT_FLICK_PREFERENCE.first,
+            DELETE_KEY_LEFT_FLICK_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(DELETE_KEY_LEFT_FLICK_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {

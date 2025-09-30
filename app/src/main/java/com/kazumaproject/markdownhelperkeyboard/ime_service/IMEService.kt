@@ -375,6 +375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTWeb: Boolean? = false
     private var switchQWERTYPassword: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
+    private var isDeleteLeftFlickPreference: Boolean? = true
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -683,6 +684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
+            isDeleteLeftFlickPreference = delete_key_left_flick_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -995,6 +997,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = null
         switchQWERTYPassword = null
         shortcutTollbarVisibility = null
+        isDeleteLeftFlickPreference = null
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
@@ -2419,7 +2422,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleDeleteKeyTap(insertString, suggestions)
                     }
                 } else {
-                    if (gestureType == GestureType.FlickLeft) {
+                    if (gestureType == GestureType.FlickLeft && isDeleteLeftFlickPreference == true) {
                         deleteWordOrSymbolsBeforeCursor(insertString)
                     }
                 }
@@ -2611,6 +2614,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (!isFlick) {
                     if (!deleteKeyLongKeyPressed.get()) {
                         handleDeleteKeyTap(insertString, suggestions)
+                    }
+                } else {
+                    if (gestureType == GestureType.FlickLeft && isDeleteLeftFlickPreference == true) {
+                        deleteWordOrSymbolsBeforeCursor(insertString)
                     }
                 }
                 stopDeleteLongPress()
@@ -3596,6 +3603,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             ),
                             inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                             inputStyle = sumireInputStyle ?: "default",
+                            isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
                         )
                         customLayoutDefault.setKeyboard(hiraganaLayout)
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -3665,6 +3673,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dynamicKeyStates = dynamicStates,
                     inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                     inputStyle = sumireInputStyle ?: "default",
+                    isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
                 )
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -4050,6 +4059,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {}
                 }
             }
 
@@ -4094,6 +4104,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {}
                 }
             }
 
@@ -4123,7 +4134,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    KeyAction.Delete -> {}
+                    KeyAction.Delete -> {
+                        handleDeleteLongPress()
+                    }
+
                     KeyAction.Enter -> {}
                     is KeyAction.InputText -> {}
                     KeyAction.MoveCursorLeft -> {
@@ -4186,6 +4200,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {}
                 }
             }
 
@@ -4197,7 +4212,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Copy -> {}
-                    KeyAction.Delete -> {}
+                    KeyAction.Delete -> {
+                        stopDeleteLongPress()
+                    }
+
                     KeyAction.Enter -> {}
                     is KeyAction.InputText -> {
                         when (action.text) {
@@ -4291,6 +4309,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {
+                        if (isDeleteLeftFlickPreference == true) {
+                            val insertString = inputString.value
+                            deleteWordOrSymbolsBeforeCursor(insertString)
+                        }
+                    }
                 }
             }
 
@@ -4581,6 +4605,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                                 countToggleKatakana = 0
                             }
+                        }
+                    }
+
+                    KeyAction.DeleteUntilSymbol -> {
+                        if (isDeleteLeftFlickPreference == true) {
+                            val insertString = inputString.value
+                            deleteWordOrSymbolsBeforeCursor(insertString)
                         }
                     }
                 }
@@ -7070,6 +7101,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 ),
                                 inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                                 inputStyle = sumireInputStyle ?: "default",
+                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
                             )
                             mainLayoutBinding?.customLayoutDefault?.setKeyboard(hiraganaLayout)
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -9013,7 +9045,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
             if (textBeforeCursor.isEmpty()) return
 
-            val charsToDelete = setOf('。', '、', '！', '？', '「', '」', '『', '』', 'ー', ',', '.')
+            val charsToDelete =
+                setOf(
+                    '。',
+                    '、',
+                    '！',
+                    '？',
+                    '「',
+                    '」',
+                    '『',
+                    '』',
+                    'ー',
+                    ',',
+                    '.',
+                    '!',
+                    "?",
+                )
 
             var deleteCount = 0
 

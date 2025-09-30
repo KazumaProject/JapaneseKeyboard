@@ -239,7 +239,7 @@ class KeyboardRepository @Inject constructor(
                     rowSpan = dbKey.rowSpan,
                     colSpan = dbKey.colSpan,
                     isSpecialKey = dbKey.isSpecialKey,
-                    drawableResId = dbKey.drawableResId,
+                    drawableResId = null,
                     keyId = dbKey.keyIdentifier,
                     action = null
                 )

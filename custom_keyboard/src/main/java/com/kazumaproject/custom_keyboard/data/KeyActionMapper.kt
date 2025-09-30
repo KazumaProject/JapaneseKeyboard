@@ -202,6 +202,7 @@ object KeyActionMapper {
             is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
             is KeyAction.ShiftKey -> "ShiftKeyPressed"
             is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
+            is KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol"
             else -> null
         }
     }
@@ -232,6 +233,7 @@ object KeyActionMapper {
             "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
             "ShiftKeyPressed" -> KeyAction.ShiftKey
             "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
+            "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
             else -> null
         }
     }
