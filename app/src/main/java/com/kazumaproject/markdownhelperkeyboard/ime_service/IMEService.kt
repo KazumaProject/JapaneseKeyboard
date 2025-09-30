@@ -375,6 +375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTWeb: Boolean? = false
     private var switchQWERTYPassword: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
+    private var isDeleteLeftFlickPreference: Boolean? = true
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -683,6 +684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
+            isDeleteLeftFlickPreference = delete_key_left_flick_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -725,6 +727,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        keyboardSelectionPopupWindow?.dismiss()
+        _keyboardSymbolViewState.update { false }
+        _selectMode.update { false }
+        _cursorMoveMode.update { false }
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
@@ -863,10 +869,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainLayoutBinding?.candidatesRowView?.adapter = null
             }
         }
-        keyboardSelectionPopupWindow?.dismiss()
-        _keyboardSymbolViewState.update { false }
-        _selectMode.update { false }
-        _cursorMoveMode.update { false }
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
                 suggestionRecyclerView.isVisible = true
@@ -995,6 +997,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = null
         switchQWERTYPassword = null
         shortcutTollbarVisibility = null
+        isDeleteLeftFlickPreference = null
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
@@ -2418,6 +2421,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!deleteKeyLongKeyPressed.get()) {
                         handleDeleteKeyTap(insertString, suggestions)
                     }
+                } else {
+                    if (gestureType == GestureType.FlickLeft && isDeleteLeftFlickPreference == true) {
+                        deleteWordOrSymbolsBeforeCursor(insertString)
+                    }
                 }
                 stopDeleteLongPress()
             }
@@ -2607,6 +2614,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (!isFlick) {
                     if (!deleteKeyLongKeyPressed.get()) {
                         handleDeleteKeyTap(insertString, suggestions)
+                    }
+                } else {
+                    if (gestureType == GestureType.FlickLeft && isDeleteLeftFlickPreference == true) {
+                        deleteWordOrSymbolsBeforeCursor(insertString)
                     }
                 }
                 stopDeleteLongPress()
@@ -3343,7 +3354,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         keyboardView.setCurrentMode(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -3426,7 +3436,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         keyboardView.setCurrentMode(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -3511,7 +3520,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         keyboardView.setCurrentMode(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -3595,12 +3603,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             ),
                             inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                             inputStyle = sumireInputStyle ?: "default",
+                            isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
                         )
                         customLayoutDefault.setKeyboard(hiraganaLayout)
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
                     } else {
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                     }
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
@@ -3628,7 +3636,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     } else {
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                        //_tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                     }
                     customLayoutDefault.isVisible = true
                     keyboardView.setCurrentMode(InputMode.ModeJapanese)
@@ -3665,6 +3673,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dynamicKeyStates = dynamicStates,
                     inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                     inputStyle = sumireInputStyle ?: "default",
+                    isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
                 )
                 mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
             }
@@ -4050,6 +4059,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {}
                 }
             }
 
@@ -4094,6 +4104,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {}
                 }
             }
 
@@ -4123,7 +4134,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    KeyAction.Delete -> {}
+                    KeyAction.Delete -> {
+                        handleDeleteLongPress()
+                    }
+
                     KeyAction.Enter -> {}
                     is KeyAction.InputText -> {}
                     KeyAction.MoveCursorLeft -> {
@@ -4186,6 +4200,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {}
                 }
             }
 
@@ -4197,7 +4212,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Copy -> {}
-                    KeyAction.Delete -> {}
+                    KeyAction.Delete -> {
+                        stopDeleteLongPress()
+                    }
+
                     KeyAction.Enter -> {}
                     is KeyAction.InputText -> {
                         when (action.text) {
@@ -4291,6 +4309,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
+                    KeyAction.DeleteUntilSymbol -> {
+                        if (isDeleteLeftFlickPreference == true) {
+                            val insertString = inputString.value
+                            deleteWordOrSymbolsBeforeCursor(insertString)
+                        }
+                    }
                 }
             }
 
@@ -4581,6 +4605,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                                 countToggleKatakana = 0
                             }
+                        }
+                    }
+
+                    KeyAction.DeleteUntilSymbol -> {
+                        if (isDeleteLeftFlickPreference == true) {
+                            val insertString = inputString.value
+                            deleteWordOrSymbolsBeforeCursor(insertString)
                         }
                     }
                 }
@@ -5795,7 +5826,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -5818,7 +5853,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val heightPx = when {
             isSymbol -> {
-                val height = if (isPortrait) 320 else 220
+                val height = if (isPortrait) {
+                    320
+                } else {
+                    220
+                }
                 (height * density).toInt()
             }
 
@@ -5883,8 +5922,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
 
-        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+        val finalKeyboardHeight = if (shortcutTollbarVisibility == true && !isSymbol) {
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -5973,7 +6016,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -6208,7 +6255,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
+                36
+            } else {
+                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            }
         } else {
             keyboardHeight
         }
@@ -6683,6 +6734,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedArrowRightDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextMultiLine,
@@ -6695,6 +6747,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedReturnDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
@@ -6703,6 +6756,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedTabDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextDone -> {
@@ -6711,6 +6765,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedCheckDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
@@ -6719,6 +6774,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedSearchDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.TextEmailAddress,
@@ -6734,6 +6790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedArrowRightDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
@@ -6742,6 +6799,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             this.setSideKeyEnterDrawable(
                                 cachedArrowRightDrawable
                             )
+                            setFirstKeyboardType()
                         }
 
                         InputTypeForIME.Number,
@@ -6862,6 +6920,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun setFirstKeyboardType() {
+        if (keyboardOrder.isNotEmpty()) {
+            val firstItem = keyboardOrder.first()
+            when (firstItem) {
+                KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                KeyboardType.QWERTY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                KeyboardType.ROMAJI -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
+                KeyboardType.CUSTOM -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+            }
+        }
+    }
+
     private fun setCurrentInputTypeRestart(attribute: EditorInfo?) {
         val keyboardType =
             if (keyboardOrder.isEmpty()) KeyboardType.TENKEY else keyboardOrder[currentKeyboardOrder]
@@ -6880,7 +6951,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
                             -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                            currentInputMode.set(InputMode.ModeNumber)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(false)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
                         }
 
                         else -> {
@@ -6904,7 +6980,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         else -> {
-                            /** Empty Boay**/
+                            setFirstKeyboardType()
                         }
                     }
                 }
@@ -6921,7 +6997,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.Datetime,
                         InputTypeForIME.Time,
                             -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+                            setCurrentMode(InputMode.ModeNumber)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedArrowRightDrawable
+                            )
                         }
 
                         else -> {
@@ -7021,6 +7101,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 ),
                                 inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                                 inputStyle = sumireInputStyle ?: "default",
+                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
                             )
                             mainLayoutBinding?.customLayoutDefault?.setKeyboard(hiraganaLayout)
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -8946,6 +9027,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             input = insertString,
         )
         return engineCandidates.distinctBy { it.string }
+    }
+
+    /**
+     * カーソル前の文字に応じて、単語または記号1つを削除します。
+     * - カーソル直前の文字が指定記号の場合：その記号を1つだけ削除します。
+     * - カーソル直前の文字がそれ以外の場合：その単語を末尾まで削除します。
+     */
+    private fun deleteWordOrSymbolsBeforeCursor(insertString: String) {
+        val inputConnection = currentInputConnection ?: return
+
+        if (insertString.isNotEmpty()) {
+            _inputString.update { "" }
+            setComposingText("", 0)
+            finishComposingText()
+        } else {
+            val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
+            if (textBeforeCursor.isEmpty()) return
+
+            val charsToDelete =
+                setOf(
+                    '。',
+                    '、',
+                    '！',
+                    '？',
+                    '「',
+                    '」',
+                    '『',
+                    '』',
+                    'ー',
+                    ',',
+                    '.',
+                    '!',
+                    "?",
+                )
+
+            var deleteCount = 0
+
+            // カーソル直前の1文字が指定記号かどうかをチェック
+            if (textBeforeCursor.last() in charsToDelete) {
+                // 記号の場合、1文字だけ削除する
+                deleteCount = 1
+            } else {
+                // 記号でない場合、空白まで遡って単語の長さを数える
+                for (char in textBeforeCursor.reversed()) {
+                    if (char.isWhitespace() || char in charsToDelete) {
+                        // 単語の区切り（空白または記号）が見つかったら停止
+                        break
+                    }
+                    deleteCount++
+                }
+            }
+
+            if (deleteCount > 0) {
+                inputConnection.deleteSurroundingText(deleteCount, 0)
+            }
+        }
     }
 
     private fun deleteLongPress() {
