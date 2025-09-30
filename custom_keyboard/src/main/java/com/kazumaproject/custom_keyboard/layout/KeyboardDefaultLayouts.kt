@@ -29,18 +29,23 @@ object KeyboardDefaultLayouts {
             "toggle" -> {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
-                        createHiraganaToggleLayout(inputStyle)
+                        createHiraganaToggleLayout(
+                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                        )
                     }
 
                     KeyboardInputMode.ENGLISH -> {
                         createEnglishToggleLayout(
                             isUpperCase = false,
-                            inputStyle = inputStyle
+                            inputStyle = inputStyle,
+                            isFlickDeleteEnabled = isDeleteFlickEnabled
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        createSymbolToggleLayout(inputStyle = inputStyle)
+                        createSymbolToggleLayout(
+                            inputStyle = inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                        )
                     }
                 }
             }
@@ -48,18 +53,23 @@ object KeyboardDefaultLayouts {
             "flick" -> {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
-                        createHiraganaFlickLayout(inputStyle)
+                        createHiraganaFlickLayout(
+                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                        )
                     }
 
                     KeyboardInputMode.ENGLISH -> {
                         createEnglishFlickLayout(
                             isUpperCase = false,
-                            inputStyle = inputStyle
+                            inputStyle = inputStyle,
+                            isFlickDeleteEnabled = isDeleteFlickEnabled
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        createSymbolFlickLayout(inputStyle = inputStyle)
+                        createSymbolFlickLayout(
+                            inputStyle = inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                        )
                     }
                 }
             }
@@ -68,8 +78,7 @@ object KeyboardDefaultLayouts {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
                         createHiraganaEffectiveLayout(
-                            inputStyle,
-                            isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
                         )
                     }
 
@@ -90,18 +99,23 @@ object KeyboardDefaultLayouts {
             else -> {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
-                        createHiraganaToggleLayout(inputStyle)
+                        createHiraganaToggleLayout(
+                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                        )
                     }
 
                     KeyboardInputMode.ENGLISH -> {
                         createEnglishToggleLayout(
                             isUpperCase = false,
-                            inputStyle = inputStyle
+                            inputStyle = inputStyle,
+                            isFlickDeleteEnabled = isDeleteFlickEnabled
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        createSymbolToggleLayout(inputStyle = inputStyle)
+                        createSymbolToggleLayout(
+                            inputStyle = inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                        )
                     }
                 }
             }
@@ -137,8 +151,7 @@ object KeyboardDefaultLayouts {
             KeyAction.InputText("^_^"),
             label = "^_^",
             drawableResId = com.kazumaproject.core.R.drawable.ic_custom_icon
-        ),
-        FlickAction.Action(
+        ), FlickAction.Action(
             KeyAction.ToggleDakuten,
             label = " 小゛゜",
         )
@@ -146,8 +159,7 @@ object KeyboardDefaultLayouts {
 
     private val deleteFlickStates = listOf(
         FlickAction.Action(
-            KeyAction.Delete,
-            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+            KeyAction.Delete, drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
         ),
         FlickAction.Action(
             KeyAction.DeleteUntilSymbol,
@@ -159,16 +171,14 @@ object KeyboardDefaultLayouts {
         FlickAction.Action(
             KeyAction.SwitchToNumberLayout,
             drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom
-        ),
-        FlickAction.Action(
+        ), FlickAction.Action(
             KeyAction.ToggleKatakana,
             label = " カナ",
         )
     )
 
     private val spaceConvertStates = listOf(
-        FlickAction.Action(KeyAction.Space, "空白"),
-        FlickAction.Action(KeyAction.Convert, "変換")
+        FlickAction.Action(KeyAction.Space, "空白"), FlickAction.Action(KeyAction.Convert, "変換")
     )
 
     private val spaceConvertStatesCursor = listOf(
@@ -176,24 +186,19 @@ object KeyboardDefaultLayouts {
             KeyAction.Space,
             label = "空白",
             drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
-        ),
-        FlickAction.Action(KeyAction.Convert, "変換")
+        ), FlickAction.Action(KeyAction.Convert, "変換")
     )
 
     private val enterKeyStatesCursor = listOf(
-        FlickAction.Action(KeyAction.NewLine, "改行"),
-        FlickAction.Action(
+        FlickAction.Action(KeyAction.NewLine, "改行"), FlickAction.Action(
             KeyAction.Confirm,
             drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
-        ),
-        FlickAction.Action(
+        ), FlickAction.Action(
             KeyAction.Enter,
             drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
-        ),
-        FlickAction.Action(
+        ), FlickAction.Action(
             KeyAction.Enter, "Go",
-        ),
-        FlickAction.Action(KeyAction.Enter, "Next")
+        ), FlickAction.Action(KeyAction.Enter, "Next")
     )
 
     /**
@@ -223,7 +228,7 @@ object KeyboardDefaultLayouts {
         return baseLayout.copy(keys = newKeys)
     }
 
-    private fun createHiraganaLayout(): KeyboardLayout {
+    private fun createHiraganaLayout(isFlickDeleteEnabled: Boolean): KeyboardLayout {
         val keys = listOf(
             KeyData(
                 label = "PasteActionKey",
@@ -289,17 +294,31 @@ object KeyboardDefaultLayouts {
                 3,
                 true,
             ),
-            KeyData(
-                label = "Del",
-                row = 0,
-                column = 4,
-                isFlickable = false,
-                action = KeyAction.Delete,
-                rowSpan = 1,
-                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
-                isSpecialKey = true
-            ),
-            // ▼▼▼ MODIFIED: Space key is now dynamic ▼▼▼
+            if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            },
             KeyData(
                 label = spaceConvertStates[0].label ?: "",
                 row = 1,
@@ -526,26 +545,59 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
         )
 
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
-            "PasteActionKey" to listOf(pasteActionMap),
-            "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "あ" to listOf(a, small_a, dakuten_a),
-            "か" to listOf(ka, ga),
-            "さ" to listOf(sa, za),
-            "た" to listOf(ta, da),
-            "な" to listOf(na),
-            "は" to listOf(ha, ba, pa),
-            "ま" to listOf(ma),
-            "や" to listOf(ya, ya_small),
-            "ら" to listOf(ra),
-            "わ" to listOf(wa, wa_small),
-            "、。?!" to listOf(kuten, kuten_small)
-        )
+        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+            if (isFlickDeleteEnabled) {
+                val deleteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Delete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.DeleteUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    )
+                )
+                mapOf(
+                    "PasteActionKey" to listOf(pasteActionMap),
+                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
+                    "な" to listOf(na),
+                    "は" to listOf(ha, ba, pa),
+                    "ま" to listOf(ma),
+                    "や" to listOf(ya, ya_small),
+                    "ら" to listOf(ra),
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small),
+                    "Del" to listOf(deleteActionMap)
+                )
+            } else {
+                mapOf(
+                    "PasteActionKey" to listOf(pasteActionMap),
+                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
+                    "な" to listOf(na),
+                    "は" to listOf(ha, ba, pa),
+                    "ま" to listOf(ma),
+                    "や" to listOf(ya, ya_small),
+                    "ら" to listOf(ra),
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small)
+                )
+            }
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
 
-    private fun createEnglishLayout(isUpperCase: Boolean): KeyboardLayout {
+    private fun createEnglishLayout(
+        isUpperCase: Boolean,
+        isFlickDeleteEnabled: Boolean
+    ): KeyboardLayout {
         // KeyDataのリストは変更ありません
         val keys = listOf(
             KeyData(
@@ -598,16 +650,31 @@ object KeyboardDefaultLayouts {
             KeyData("a/A", 3, 1, false, action = KeyAction.ToggleCase),
             KeyData("' \" ( )", 3, 2, true),
             KeyData(". , ? !", 3, 3, true),
-            KeyData(
-                label = "Del",
-                row = 0,
-                column = 4,
-                isFlickable = false,
-                action = KeyAction.Delete,
-                rowSpan = 1,
-                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
-                isSpecialKey = true
-            ),
+            if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            },
             KeyData(
                 label = spaceConvertStates[0].label ?: "",
                 row = 1,
@@ -844,31 +911,102 @@ object KeyboardDefaultLayouts {
         )
 
         // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
-            "PasteActionKey" to listOf(pasteActionMap),
-            "CursorMoveLeft" to listOf(cursorMoveActionMap),
-            "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
-            "' \" ( )" to listOf(symbols2, programmingSymbols),
-            ". , ? !" to listOf(symbols3),
+        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+            if (isFlickDeleteEnabled) {
+                val deleteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Delete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.DeleteUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
-            "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(abcLower, abcUpper),
-            "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(defLower, defUpper),
-            "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(ghiLower, ghiUpper),
-            "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(jklLower, jklUpper),
-            "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(mnoLower, mnoUpper),
-            "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
-                pqrsLower, pqrsUpper
-            ),
-            "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(tuvLower, tuvUpper),
-            "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
-                wxyzLower, wxyzUpper
-            )
-        )
+                    )
+                )
+                mapOf(
+                    "PasteActionKey" to listOf(pasteActionMap),
+                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
+                    ". , ? !" to listOf(symbols3),
+
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower,
+                        abcUpper
+                    ),
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower,
+                        defUpper
+                    ),
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower,
+                        ghiUpper
+                    ),
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower,
+                        jklUpper
+                    ),
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower,
+                        mnoUpper
+                    ),
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
+                    ),
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower,
+                        tuvUpper
+                    ),
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
+                    ),
+                    "Del" to listOf(deleteActionMap)
+                )
+            } else {
+                mapOf(
+                    "PasteActionKey" to listOf(pasteActionMap),
+                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
+                    ". , ? !" to listOf(symbols3),
+
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower,
+                        abcUpper
+                    ),
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower,
+                        defUpper
+                    ),
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower,
+                        ghiUpper
+                    ),
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower,
+                        jklUpper
+                    ),
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower,
+                        mnoUpper
+                    ),
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
+                    ),
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower,
+                        tuvUpper
+                    ),
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
+                    )
+                )
+            }
 
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
 
-    private fun createSymbolLayout(): KeyboardLayout {
+    private fun createSymbolLayout(isFlickDeleteEnabled: Boolean): KeyboardLayout {
         // --- KEY DEFINITIONS (Cleaned up) ---
         val keys = listOf(
             KeyData(
@@ -922,16 +1060,31 @@ object KeyboardDefaultLayouts {
             KeyData("( ) [ ]", 3, 1, true),
             KeyData("0\n〜…", 3, 2, true),
             KeyData(". , - /", 3, 3, true),
-            KeyData(
-                label = "Del",
-                row = 0,
-                column = 4,
-                isFlickable = false,
-                action = KeyAction.Delete,
-                rowSpan = 1,
-                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
-                isSpecialKey = true
-            ),
+            if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            },
             KeyData(
                 label = spaceConvertStates[0].label ?: "",
                 row = 1,
@@ -979,193 +1132,388 @@ object KeyboardDefaultLayouts {
         )
 
         // Final map combining all flick definitions
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
-            // Added for consistency
-            "PasteActionKey" to listOf(pasteActionMap),
-            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+            if (isFlickDeleteEnabled) {
+                val deleteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Delete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.DeleteUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
-            "1\n☆♪→" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("1"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("1"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("☆"),
-                    FlickDirection.UP to FlickAction.Input("♪"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("→"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("I"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ), mapOf(
-                    FlickDirection.TAP to FlickAction.Input("一"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("一"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("壱"),
-                    FlickDirection.UP to FlickAction.Input("ⅰ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
+                    )
                 )
-            ),
-            "2\n￥$€" to listOf(
                 mapOf(
-                    FlickDirection.TAP to FlickAction.Input("2"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("2"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("￥"),
-                    FlickDirection.UP to FlickAction.Input("＄"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("€"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅱ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ), mapOf(
-                    FlickDirection.TAP to FlickAction.Input("二"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("二"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅱ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
+                    "Del" to listOf(deleteActionMap),
+                    "PasteActionKey" to listOf(pasteActionMap),
+                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
+
+                    "1\n☆♪→" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("1"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("1"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("☆"),
+                            FlickDirection.UP to FlickAction.Input("♪"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("→"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("I"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("一"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("一"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("壱"),
+                            FlickDirection.UP to FlickAction.Input("ⅰ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "2\n￥$€" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("2"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("2"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("￥"),
+                            FlickDirection.UP to FlickAction.Input("＄"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("€"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅱ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("二"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("二"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅱ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "3\n%°#" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("3"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("3"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("%"),
+                            FlickDirection.UP to FlickAction.Input("°"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("#"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅲ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("三"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("三"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅲ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "4\n○*・" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("4"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("4"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("○"),
+                            FlickDirection.UP to FlickAction.Input("*"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("・"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅳ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("四"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("四"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅳ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                    ),
+                    "5\n+x÷" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("5"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("5"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("+"),
+                            FlickDirection.UP to FlickAction.Input("x"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("÷"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅴ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("五"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("五"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅴ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "6\n< = >" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("6"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("6"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("<"),
+                            FlickDirection.UP to FlickAction.Input("="),
+                            FlickDirection.UP_RIGHT to FlickAction.Input(">"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅵ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("六"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("六"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅵ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "7\n「」:" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("7"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("7"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("「"),
+                            FlickDirection.UP to FlickAction.Input("」"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input(":"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅶ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("七"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("七"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅶ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                    ),
+                    "8\n〒々〆" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("8"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("8"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("〒"), // Double quote
+                            FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                            FlickDirection.UP_RIGHT to FlickAction.Input("〆"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅷ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("八"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("八"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅷ"), // Double quote
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "9\n^|\\" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("9"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("9"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("^"),   // Square brackets
+                            FlickDirection.UP to FlickAction.Input("|"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("\\"),   // Curly braces
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅸ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("九"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("九"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅸ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "0\n〜…" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("0"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("…"),
+                            FlickDirection.UP to FlickAction.Input("零"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("０"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("∞"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "( ) [ ]" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("("),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
+                            FlickDirection.UP_LEFT to FlickAction.Input(")"),
+                            FlickDirection.UP to FlickAction.Input("["),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("]"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    ". , - /" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("."),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
+                            FlickDirection.UP_LEFT to FlickAction.Input(","),
+                            FlickDirection.UP to FlickAction.Input("-"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("/"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    )
                 )
-            ),
-            "3\n%°#" to listOf(
+            } else {
                 mapOf(
-                    FlickDirection.TAP to FlickAction.Input("3"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("3"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("%"),
-                    FlickDirection.UP to FlickAction.Input("°"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("#"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅲ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ), mapOf(
-                    FlickDirection.TAP to FlickAction.Input("三"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("三"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅲ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
+                    // Added for consistency
+                    "PasteActionKey" to listOf(pasteActionMap),
+                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
+
+                    "1\n☆♪→" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("1"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("1"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("☆"),
+                            FlickDirection.UP to FlickAction.Input("♪"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("→"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("I"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("一"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("一"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("壱"),
+                            FlickDirection.UP to FlickAction.Input("ⅰ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "2\n￥$€" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("2"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("2"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("￥"),
+                            FlickDirection.UP to FlickAction.Input("＄"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("€"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅱ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("二"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("二"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅱ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "3\n%°#" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("3"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("3"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("%"),
+                            FlickDirection.UP to FlickAction.Input("°"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("#"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅲ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("三"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("三"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅲ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "4\n○*・" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("4"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("4"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("○"),
+                            FlickDirection.UP to FlickAction.Input("*"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("・"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅳ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("四"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("四"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅳ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                    ),
+                    "5\n+x÷" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("5"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("5"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("+"),
+                            FlickDirection.UP to FlickAction.Input("x"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("÷"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅴ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("五"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("五"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅴ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "6\n< = >" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("6"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("6"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("<"),
+                            FlickDirection.UP to FlickAction.Input("="),
+                            FlickDirection.UP_RIGHT to FlickAction.Input(">"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅵ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("六"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("六"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅵ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "7\n「」:" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("7"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("7"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("「"),
+                            FlickDirection.UP to FlickAction.Input("」"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input(":"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅶ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("七"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("七"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅶ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ),
+                    ),
+                    "8\n〒々〆" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("8"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("8"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("〒"), // Double quote
+                            FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                            FlickDirection.UP_RIGHT to FlickAction.Input("〆"),
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅷ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("八"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("八"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅷ"), // Double quote
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "9\n^|\\" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("9"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("9"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("^"),   // Square brackets
+                            FlickDirection.UP to FlickAction.Input("|"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("\\"),   // Curly braces
+                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅸ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        ), mapOf(
+                            FlickDirection.TAP to FlickAction.Input("九"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("九"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("ⅸ"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "0\n〜…" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("0"),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                            FlickDirection.UP_LEFT to FlickAction.Input("…"),
+                            FlickDirection.UP to FlickAction.Input("零"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("０"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("∞"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    "( ) [ ]" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("("),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
+                            FlickDirection.UP_LEFT to FlickAction.Input(")"),
+                            FlickDirection.UP to FlickAction.Input("["),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("]"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    ),
+                    ". , - /" to listOf(
+                        mapOf(
+                            FlickDirection.TAP to FlickAction.Input("."),
+                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
+                            FlickDirection.UP_LEFT to FlickAction.Input(","),
+                            FlickDirection.UP to FlickAction.Input("-"),
+                            FlickDirection.UP_RIGHT to FlickAction.Input("/"),
+                            FlickDirection.DOWN to FlickAction.Input(""),
+                        )
+                    )
                 )
-            ),
-            "4\n○*・" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("4"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("4"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("○"),
-                    FlickDirection.UP to FlickAction.Input("*"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("・"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅳ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ),
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("四"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("四"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅳ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ),
-            ),
-            "5\n+x÷" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("5"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("5"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("+"),
-                    FlickDirection.UP to FlickAction.Input("x"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("÷"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅴ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ), mapOf(
-                    FlickDirection.TAP to FlickAction.Input("五"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("五"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅴ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                )
-            ),
-            "6\n< = >" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("6"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("6"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("<"),
-                    FlickDirection.UP to FlickAction.Input("="),
-                    FlickDirection.UP_RIGHT to FlickAction.Input(">"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅵ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ),
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("六"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("六"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅵ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                )
-            ),
-            "7\n「」:" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("7"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("7"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("「"),
-                    FlickDirection.UP to FlickAction.Input("」"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input(":"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅶ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ),
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("七"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("七"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅶ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ),
-            ),
-            "8\n〒々〆" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("8"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("8"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("〒"), // Double quote
-                    FlickDirection.UP to FlickAction.Input("々"),   // Single quote
-                    FlickDirection.UP_RIGHT to FlickAction.Input("〆"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅷ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ),
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("八"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("八"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅷ"), // Double quote
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                )
-            ),
-            "9\n^|\\" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("9"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("9"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("^"),   // Square brackets
-                    FlickDirection.UP to FlickAction.Input("|"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("\\"),   // Curly braces
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("Ⅸ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                ),
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("九"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("九"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("ⅸ"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                )
-            ),
-            "0\n〜…" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("0"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
-                    FlickDirection.UP_LEFT to FlickAction.Input("…"),
-                    FlickDirection.UP to FlickAction.Input("零"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("０"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("∞"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                )
-            ),
-            "( ) [ ]" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("("),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
-                    FlickDirection.UP_LEFT to FlickAction.Input(")"),
-                    FlickDirection.UP to FlickAction.Input("["),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("]"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                )
-            ),
-            ". , - /" to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("."),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("."),
-                    FlickDirection.UP_LEFT to FlickAction.Input(","),
-                    FlickDirection.UP to FlickAction.Input("-"),
-                    FlickDirection.UP_RIGHT to FlickAction.Input("/"),
-                    FlickDirection.DOWN to FlickAction.Input(""),
-                )
-            )
-        )
+            }
 
         // The layout uses 5 columns and 4 rows
         return KeyboardLayout(keys, flickMaps, 5, 4)
@@ -1176,122 +1524,82 @@ object KeyboardDefaultLayouts {
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
-                "",
-                0,
-                0,
-                false,
-                isSpecialKey = true,
-                keyType = KeyType.PETAL_FLICK
-            ),
-            KeyData(
-                "",
-                1,
-                0,
-                false,
-                isSpecialKey = true,
-                keyType = KeyType.PETAL_FLICK
-            ),
-            KeyData(
-                "",
-                2,
-                0,
-                false,
-                isSpecialKey = true,
-                keyType = KeyType.PETAL_FLICK
-            ),
-            KeyData(
-                "",
-                3,
-                0,
-                false,
-                isSpecialKey = true,
-                keyType = KeyType.PETAL_FLICK
-            ),
-            KeyData(
+                "", 0, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+            ), KeyData(
+                "", 1, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+            ), KeyData(
+                "", 2, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+            ), KeyData(
+                "", 3, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+            ), KeyData(
                 "あ",
                 0,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "か",
                 0,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "さ",
                 0,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "た",
                 1,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "な",
                 1,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "は",
                 1,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "ま",
                 2,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "や",
                 2,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "ら",
                 2,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
-                "",
-                3,
-                1,
-                false,
-                keyType = KeyType.PETAL_FLICK
-            ),
-            KeyData(
+            ), KeyData(
+                "", 3, 1, false, keyType = KeyType.PETAL_FLICK
+            ), KeyData(
                 "わ",
                 3,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "、。?!",
                 3,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 0,
                 4,
@@ -1300,8 +1608,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 rowSpan = 1,
                 keyType = KeyType.PETAL_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 1,
                 4,
@@ -1310,8 +1617,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 rowSpan = 1,
                 keyType = KeyType.PETAL_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 2,
                 4,
@@ -1332,22 +1638,18 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Paste,
                 drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
-            ),
-            FlickDirection.UP to FlickAction.Action(
+            ), FlickDirection.UP to FlickAction.Action(
                 KeyAction.SelectAll,
                 drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
-            ),
-            FlickDirection.UP_RIGHT to FlickAction.Action(
-                KeyAction.Copy,
-                drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.Copy, drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
             )
         )
         val cursorMoveActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.MoveCursorLeft,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-            ),
-            FlickDirection.UP_RIGHT to FlickAction.Action(
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
             )
@@ -1356,8 +1658,7 @@ object KeyboardDefaultLayouts {
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Space,
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
                 KeyAction.Space,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -1373,8 +1674,7 @@ object KeyboardDefaultLayouts {
         // 状態0 (^_^): タップ操作のみを持つマップ
         val emojiStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.InputText("^_^"),
-                label = "^_^"
+                KeyAction.InputText("^_^"), label = "^_^"
             )
             // この状態ではフリックアクションを定義しない
         )
@@ -1382,20 +1682,13 @@ object KeyboardDefaultLayouts {
         // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
         val dakutenStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.ToggleDakuten,
-                label = " 小゛゜"
-            ),
-            FlickDirection.UP to FlickAction.Action(
-                KeyAction.InputText("ひらがな小文字"),
-                label = "小"
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
-                KeyAction.InputText("濁点"),
-                label = "゛"
-            ),
-            FlickDirection.UP_RIGHT to FlickAction.Action(
-                KeyAction.InputText("半濁点"),
-                label = "゜"
+                KeyAction.ToggleDakuten, label = " 小゛゜"
+            ), FlickDirection.UP to FlickAction.Action(
+                KeyAction.InputText("ひらがな小文字"), label = "小"
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.InputText("濁点"), label = "゛"
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.InputText("半濁点"), label = "゜"
             )
         )
 
@@ -1539,14 +1832,10 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "2", 0, 1,
-                false,
-                keyType = KeyType.STANDARD_FLICK
+                "2", 0, 1, false, keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "3", 0, 2,
-                false,
-                keyType = KeyType.STANDARD_FLICK
+                "3", 0, 2, false, keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
                 label = "",
@@ -1646,8 +1935,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.SelectAll,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp,
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 1,
                 0,
@@ -1655,8 +1943,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.MoveCursorLeft,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 2,
                 0,
@@ -1664,8 +1951,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 action = KeyAction.Space,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 3,
                 0,
@@ -1673,71 +1959,61 @@ object KeyboardDefaultLayouts {
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-            ),
-            KeyData(
+            ), KeyData(
                 "あ",
                 0,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "か",
                 0,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "さ",
                 0,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "た",
                 1,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "な",
                 1,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "は",
                 1,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "ま",
                 2,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "や",
                 2,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "ら",
                 2,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 dakutenToggleStates[1].label ?: "",
                 3,
                 1,
@@ -1746,15 +2022,13 @@ object KeyboardDefaultLayouts {
                 dynamicStates = dakutenToggleStates,
                 keyId = "dakuten_toggle_key",
                 keyType = KeyType.CROSS_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "わ",
                 3,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "、。?!",
                 3,
                 3,
@@ -1770,8 +2044,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 rowSpan = 1,
                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 1,
                 4,
@@ -1780,8 +2053,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 rowSpan = 1,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 2,
                 4,
@@ -1789,8 +2061,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.Space,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 3,
                 4,
@@ -1806,8 +2077,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
                 KeyAction.MoveCursorLeft,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
             )
@@ -1816,8 +2086,7 @@ object KeyboardDefaultLayouts {
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Space,
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
                 KeyAction.Space,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -1833,8 +2102,7 @@ object KeyboardDefaultLayouts {
         // 状態0 (^_^): タップ操作のみを持つマップ
         val emojiStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.InputText("^_^"),
-                label = "^_^"
+                KeyAction.InputText("^_^"), label = "^_^"
             )
             // この状態ではフリックアクションを定義しない
         )
@@ -1842,8 +2110,7 @@ object KeyboardDefaultLayouts {
         // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
         val dakutenStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.ToggleDakuten,
-                label = " 小゛゜"
+                KeyAction.ToggleDakuten, label = " 小゛゜"
             ),
         )
 
@@ -1958,8 +2225,7 @@ object KeyboardDefaultLayouts {
     }
 
     fun createFlickEnglishTemplateLayout(
-        isDefaultKey: Boolean,
-        isUpperCase: Boolean
+        isDefaultKey: Boolean, isUpperCase: Boolean
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -1970,8 +2236,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.SelectAll,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp,
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 1,
                 0,
@@ -1979,8 +2244,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.MoveCursorLeft,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 2,
                 0,
@@ -1988,8 +2252,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 action = KeyAction.Space,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 3,
                 0,
@@ -1997,93 +2260,75 @@ object KeyboardDefaultLayouts {
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-            ),
-            KeyData(
+            ), KeyData(
                 "@#/_",
                 0,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "ABC",
                 0,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "DEF",
                 0,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "GHI",
                 1,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "JKL",
                 1,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "MNO",
                 1,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "PQRS",
                 2,
                 1,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "TUV",
                 2,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "WXYZ",
                 2,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
-                "a/A",
-                3,
-                1,
-                false,
-                action = KeyAction.ToggleCase,
-                isSpecialKey = false
-            ),
-            KeyData(
+            ), KeyData(
+                "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
+            ), KeyData(
                 "' \" ( )",
                 3,
                 2,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 ". , ? !",
                 3,
                 3,
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "Del",
                 0,
                 4,
@@ -2092,8 +2337,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 rowSpan = 1,
                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 1,
                 4,
@@ -2102,8 +2346,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 rowSpan = 1,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 2,
                 4,
@@ -2111,8 +2354,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.Space,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 3,
                 4,
@@ -2128,8 +2370,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
                 KeyAction.MoveCursorLeft,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
             )
@@ -2138,8 +2379,7 @@ object KeyboardDefaultLayouts {
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Space,
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
                 KeyAction.Space,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -2272,14 +2512,10 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "2", 0, 1,
-                false,
-                keyType = KeyType.STANDARD_FLICK
+                "2", 0, 1, false, keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "3", 0, 2,
-                false,
-                keyType = KeyType.STANDARD_FLICK
+                "3", 0, 2, false, keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
                 label = "",
@@ -2366,7 +2602,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createHiraganaToggleLayout(
-        inputStyle: String
+        inputStyle: String, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
         return when (inputStyle) {
             "second-flick" -> {
@@ -2380,8 +2616,7 @@ object KeyboardDefaultLayouts {
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
                         keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
+                    ), KeyData(
                         "CursorMoveLeft",
                         1,
                         0,
@@ -2390,8 +2625,7 @@ object KeyboardDefaultLayouts {
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
                         keyType = KeyType.CROSS_FLICK,
-                    ),
-                    KeyData(
+                    ), KeyData(
                         "モード",
                         2,
                         0,
@@ -2399,8 +2633,7 @@ object KeyboardDefaultLayouts {
                         KeyAction.ChangeInputMode,
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ),
-                    KeyData(
+                    ), KeyData(
                         "",
                         3,
                         0,
@@ -2408,71 +2641,25 @@ object KeyboardDefaultLayouts {
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-                    ),
-                    KeyData(
-                        "あ",
-                        0,
-                        1,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "か",
-                        0,
-                        2,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "さ",
-                        0,
-                        3,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "た",
-                        1,
-                        1,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "な",
-                        1,
-                        2,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "は",
-                        1,
-                        3,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "ま",
-                        2,
-                        1,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "や",
-                        2,
-                        2,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "ら",
-                        2,
-                        3,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
+                    ), KeyData(
+                        "あ", 0, 1, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "か", 0, 2, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "さ", 0, 3, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "た", 1, 1, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "な", 1, 2, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "は", 1, 3, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "ま", 2, 1, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "や", 2, 2, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "ら", 2, 3, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
                         dakutenToggleStates[0].label ?: "",
                         3,
                         1,
@@ -2481,32 +2668,35 @@ object KeyboardDefaultLayouts {
                         dynamicStates = dakutenToggleStates,
                         keyId = "dakuten_toggle_key",
                         keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "わ",
-                        3,
-                        2,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "、。?!",
-                        3,
-                        3,
-                        true,
-                        keyType = KeyType.TWO_STEP_FLICK
-                    ),
-                    KeyData(
-                        "Del",
-                        0,
-                        4,
-                        false,
-                        KeyAction.Delete,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    KeyData(
+                    ), KeyData(
+                        "わ", 3, 2, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), KeyData(
+                        "、。?!", 3, 3, true, keyType = KeyType.TWO_STEP_FLICK
+                    ), if (isFlickDeleteEnabled) {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            deleteFlickStates[0].action,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = deleteFlickStates[0].drawableResId,
+                            keyId = "delete_key",
+                            keyType = KeyType.CROSS_FLICK
+                        )
+                    } else {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            KeyAction.Delete,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                        )
+                    }, KeyData(
                         spaceConvertStates[0].label ?: "",
                         1,
                         4,
@@ -2517,8 +2707,7 @@ object KeyboardDefaultLayouts {
                         rowSpan = 1,
                         keyId = "space_convert_key",
                         keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
+                    ), KeyData(
                         enterKeyStates[0].label ?: "",
                         2,
                         4,
@@ -2535,12 +2724,10 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Paste,
                         drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
+                    ), FlickDirection.UP to FlickAction.Action(
                         KeyAction.SelectAll,
                         drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.Copy,
                         drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
                     )
@@ -2549,8 +2736,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                     )
@@ -2558,8 +2744,7 @@ object KeyboardDefaultLayouts {
                 val spaceActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.Space,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -2573,8 +2758,7 @@ object KeyboardDefaultLayouts {
                 // 状態0 (^_^): タップ操作のみを持つマップ
                 val emojiStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.InputText("^_^"),
-                        label = "^_^"
+                        KeyAction.InputText("^_^"), label = "^_^"
                     )
                     // この状態ではフリックアクションを定義しない
                 )
@@ -2582,20 +2766,13 @@ object KeyboardDefaultLayouts {
                 // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
                 val dakutenStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.ToggleDakuten,
-                        label = " 小゛゜"
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
-                        KeyAction.InputText("ひらがな小文字"),
-                        label = "小"
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.InputText("濁点"),
-                        label = "゛"
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.InputText("半濁点"),
-                        label = "゜"
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
                     )
                 )
                 val symbols = mapOf(
@@ -2606,11 +2783,31 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input("…")
                 )
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    mutableMapOf(
-                        "PasteActionKey" to listOf(pasteActionMap),
-                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                        "、。?!" to listOf(symbols),
-                    )
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "、。?!" to listOf(symbols),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "、。?!" to listOf(symbols),
+                        )
+                    }
+
 
                 dakutenToggleStates.getOrNull(0)?.label?.let { label ->
                     flickMaps.put(label, listOf(emojiStateFlickMap))
@@ -2631,27 +2828,22 @@ object KeyboardDefaultLayouts {
                     "あ" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP_RIGHT to "ぁ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.LEFT to "い",
                             TfbiFlickDirection.DOWN_LEFT to "ぃ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
                             TfbiFlickDirection.UP_LEFT to "ぅ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
                             TfbiFlickDirection.DOWN_RIGHT to "ぇ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.DOWN to "お",
                             TfbiFlickDirection.DOWN_RIGHT to "ぉ",
@@ -2661,27 +2853,22 @@ object KeyboardDefaultLayouts {
                     "か" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "か",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.UP_RIGHT to "が",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.LEFT to "き",
                             TfbiFlickDirection.DOWN_LEFT to "ぎ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.UP to "く",
                             TfbiFlickDirection.UP_LEFT to "ぐ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.RIGHT to "け",
                             TfbiFlickDirection.DOWN_RIGHT to "げ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.DOWN to "こ",
                             TfbiFlickDirection.DOWN_RIGHT to "ご",
@@ -2691,27 +2878,22 @@ object KeyboardDefaultLayouts {
                     "さ" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "さ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.UP_RIGHT to "ざ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.LEFT to "し",
                             TfbiFlickDirection.DOWN_LEFT to "じ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.UP to "す",
                             TfbiFlickDirection.UP_LEFT to "ず"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.RIGHT to "せ",
                             TfbiFlickDirection.DOWN_RIGHT to "ぜ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.DOWN to "そ",
                             TfbiFlickDirection.DOWN_RIGHT to "ぞ",
@@ -2721,28 +2903,23 @@ object KeyboardDefaultLayouts {
                     "た" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "た",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.UP_RIGHT to "だ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.LEFT to "ち",
                             TfbiFlickDirection.DOWN_LEFT to "ぢ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.UP to "つ",
                             TfbiFlickDirection.UP_LEFT to "づ",
                             TfbiFlickDirection.UP_RIGHT to "っ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.RIGHT to "て",
                             TfbiFlickDirection.DOWN_RIGHT to "で"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.DOWN to "と",
                             TfbiFlickDirection.DOWN_RIGHT to "ど",
@@ -2752,20 +2929,16 @@ object KeyboardDefaultLayouts {
                     "な" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "な",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.LEFT to "に",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.UP to "ぬ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.RIGHT to "ね",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.DOWN to "の",
                         )
@@ -2774,34 +2947,28 @@ object KeyboardDefaultLayouts {
                     "は" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "は",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.UP_RIGHT to "ば",
-                        ),
-                        TfbiFlickDirection.UP_LEFT to mapOf(
+                        ), TfbiFlickDirection.UP_LEFT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.UP_LEFT to "ぱ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.LEFT to "ひ",
                             TfbiFlickDirection.DOWN_LEFT to "び",
                             TfbiFlickDirection.UP_LEFT to "ぴ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.UP to "ふ",
                             TfbiFlickDirection.UP_RIGHT to "ぷ",
                             TfbiFlickDirection.UP_LEFT to "ぶ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.RIGHT to "へ",
                             TfbiFlickDirection.DOWN_RIGHT to "べ",
                             TfbiFlickDirection.UP_RIGHT to "ぺ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.DOWN to "ほ",
                             TfbiFlickDirection.DOWN_RIGHT to "ぼ",
@@ -2812,20 +2979,16 @@ object KeyboardDefaultLayouts {
                     "ま" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "ま",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.LEFT to "み",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.UP to "む",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.RIGHT to "め",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.DOWN to "も",
                         )
@@ -2834,27 +2997,22 @@ object KeyboardDefaultLayouts {
                     "や" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "や",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.UP_RIGHT to "ゃ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.LEFT to "(",
                             TfbiFlickDirection.DOWN_LEFT to "「",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.UP to "ゆ",
                             TfbiFlickDirection.UP_LEFT to "ゅ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.RIGHT to ")",
                             TfbiFlickDirection.DOWN_RIGHT to "」",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.DOWN to "よ",
                             TfbiFlickDirection.DOWN_RIGHT to "ょ",
@@ -2864,20 +3022,16 @@ object KeyboardDefaultLayouts {
                     "ら" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "ら",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.LEFT to "り",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.UP to "る",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.RIGHT to "れ",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.DOWN to "ろ",
                         )
@@ -2886,24 +3040,19 @@ object KeyboardDefaultLayouts {
                     "わ" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "わ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.UP_RIGHT to "ゎ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.LEFT to "を",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.UP to "ん",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.RIGHT to "ー",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.DOWN to "〜",
                         )
@@ -2912,22 +3061,18 @@ object KeyboardDefaultLayouts {
                     "、。?!" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "、",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.LEFT to "。",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.UP to "？",
                             TfbiFlickDirection.UP_LEFT to "：",
                             TfbiFlickDirection.UP_RIGHT to "・",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.RIGHT to "！",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.DOWN to "…",
                         )
@@ -2937,7 +3082,7 @@ object KeyboardDefaultLayouts {
             }
 
             "sumire" -> {
-                return createHiraganaLayout()
+                return createHiraganaLayout(isFlickDeleteEnabled)
             }
 
             else -> {
@@ -2951,8 +3096,7 @@ object KeyboardDefaultLayouts {
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
                         keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
+                    ), KeyData(
                         "CursorMoveLeft",
                         1,
                         0,
@@ -2961,8 +3105,7 @@ object KeyboardDefaultLayouts {
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
                         keyType = KeyType.CROSS_FLICK,
-                    ),
-                    KeyData(
+                    ), KeyData(
                         "モード",
                         2,
                         0,
@@ -2970,8 +3113,7 @@ object KeyboardDefaultLayouts {
                         KeyAction.ChangeInputMode,
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ),
-                    KeyData(
+                    ), KeyData(
                         "",
                         3,
                         0,
@@ -2979,107 +3121,61 @@ object KeyboardDefaultLayouts {
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
                         drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-                    ),
-                    KeyData(
-                        "あ",
-                        0,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "あ", 0, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "か",
-                        0,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "か", 0, 2, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "さ",
-                        0,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "さ", 0, 3, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "た",
-                        1,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "た", 1, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "な",
-                        1,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "な", 1, 2, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "は",
-                        1,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "は", 1, 3, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "ま",
-                        2,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "ま", 2, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "や",
-                        2,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "や", 2, 2, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "ら",
-                        2,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "ら", 2, 3, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
+                    ), KeyData(
                         dakutenToggleStates[0].label ?: "",
                         3,
                         1,
@@ -3088,40 +3184,43 @@ object KeyboardDefaultLayouts {
                         dynamicStates = dakutenToggleStates,
                         keyId = "dakuten_toggle_key",
                         keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "わ",
-                        3,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "わ", 3, 2, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "、。?!",
-                        3,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
+                    ), KeyData(
+                        "、。?!", 3, 3, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
                             "circle" -> KeyType.STANDARD_FLICK
                             else -> KeyType.PETAL_FLICK
                         }
-                    ),
-                    KeyData(
-                        "Del",
-                        0,
-                        4,
-                        false,
-                        KeyAction.Delete,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    KeyData(
+                    ), if (isFlickDeleteEnabled) {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            deleteFlickStates[0].action,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = deleteFlickStates[0].drawableResId,
+                            keyId = "delete_key",
+                            keyType = KeyType.CROSS_FLICK
+                        )
+                    } else {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            KeyAction.Delete,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                        )
+                    }, KeyData(
                         spaceConvertStates[0].label ?: "",
                         1,
                         4,
@@ -3132,8 +3231,7 @@ object KeyboardDefaultLayouts {
                         rowSpan = 1,
                         keyId = "space_convert_key",
                         keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
+                    ), KeyData(
                         enterKeyStates[0].label ?: "",
                         2,
                         4,
@@ -3150,12 +3248,10 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Paste,
                         drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
+                    ), FlickDirection.UP to FlickAction.Action(
                         KeyAction.SelectAll,
                         drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.Copy,
                         drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
                     )
@@ -3164,8 +3260,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                     )
@@ -3173,8 +3268,7 @@ object KeyboardDefaultLayouts {
                 val spaceActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.Space,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -3188,8 +3282,7 @@ object KeyboardDefaultLayouts {
                 // 状態0 (^_^): タップ操作のみを持つマップ
                 val emojiStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.InputText("^_^"),
-                        label = "^_^"
+                        KeyAction.InputText("^_^"), label = "^_^"
                     )
                     // この状態ではフリックアクションを定義しない
                 )
@@ -3197,20 +3290,13 @@ object KeyboardDefaultLayouts {
                 // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
                 val dakutenStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.ToggleDakuten,
-                        label = " 小゛゜"
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
-                        KeyAction.InputText("ひらがな小文字"),
-                        label = "小"
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.InputText("濁点"),
-                        label = "゛"
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.InputText("半濁点"),
-                        label = "゜"
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
                     )
                 )
 
@@ -3292,21 +3378,50 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    mutableMapOf(
-                        "PasteActionKey" to listOf(pasteActionMap),
-                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                        "あ" to listOf(a),
-                        "か" to listOf(ka),
-                        "さ" to listOf(sa),
-                        "た" to listOf(ta),
-                        "な" to listOf(na),
-                        "は" to listOf(ha),
-                        "ま" to listOf(ma),
-                        "や" to listOf(ya),
-                        "ら" to listOf(ra),
-                        "わ" to listOf(wa),
-                        "、。?!" to listOf(symbols),
-                    )
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "あ" to listOf(a),
+                            "か" to listOf(ka),
+                            "さ" to listOf(sa),
+                            "た" to listOf(ta),
+                            "な" to listOf(na),
+                            "は" to listOf(ha),
+                            "ま" to listOf(ma),
+                            "や" to listOf(ya),
+                            "ら" to listOf(ra),
+                            "わ" to listOf(wa),
+                            "、。?!" to listOf(symbols),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "あ" to listOf(a),
+                            "か" to listOf(ka),
+                            "さ" to listOf(sa),
+                            "た" to listOf(ta),
+                            "な" to listOf(na),
+                            "は" to listOf(ha),
+                            "ま" to listOf(ma),
+                            "や" to listOf(ya),
+                            "ら" to listOf(ra),
+                            "わ" to listOf(wa),
+                            "、。?!" to listOf(symbols),
+                        )
+                    }
 
                 dakutenToggleStates.getOrNull(0)?.label?.let { label ->
                     flickMaps.put(label, listOf(emojiStateFlickMap))
@@ -3328,11 +3443,10 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishToggleLayout(
-        isUpperCase: Boolean,
-        inputStyle: String
+        isUpperCase: Boolean, inputStyle: String, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
         if (inputStyle == "sumire") {
-            return createEnglishLayout(isUpperCase)
+            return createEnglishLayout(isUpperCase, isFlickDeleteEnabled)
         } else {
             val keys = listOf(
                 KeyData(
@@ -3344,8 +3458,7 @@ object KeyboardDefaultLayouts {
                     isSpecialKey = true,
                     drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
                     keyType = KeyType.CROSS_FLICK
-                ),
-                KeyData(
+                ), KeyData(
                     "CursorMoveLeft",
                     1,
                     0,
@@ -3354,8 +3467,7 @@ object KeyboardDefaultLayouts {
                     isSpecialKey = true,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
                     keyType = KeyType.CROSS_FLICK
-                ),
-                KeyData(
+                ), KeyData(
                     "モード",
                     2,
                     0,
@@ -3363,8 +3475,7 @@ object KeyboardDefaultLayouts {
                     KeyAction.ChangeInputMode,
                     isSpecialKey = true,
                     drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom
-                ),
-                KeyData(
+                ), KeyData(
                     "",
                     3,
                     0,
@@ -3372,147 +3483,99 @@ object KeyboardDefaultLayouts {
                     KeyAction.SwitchToNextIme,
                     isSpecialKey = true,
                     drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-                ),
-                KeyData(
-                    "@#/_",
-                    0,
-                    1,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "@#/_", 0, 1, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "ABC",
-                    0,
-                    2,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "ABC", 0, 2, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "DEF",
-                    0,
-                    3,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "DEF", 0, 3, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "GHI",
-                    1,
-                    1,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "GHI", 1, 1, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "JKL",
-                    1,
-                    2,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "JKL", 1, 2, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "MNO",
-                    1,
-                    3,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "MNO", 1, 3, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "PQRS",
-                    2,
-                    1,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "PQRS", 2, 1, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "TUV",
-                    2,
-                    2,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "TUV", 2, 2, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "WXYZ",
-                    2,
-                    3,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "WXYZ", 2, 3, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "a/A",
-                    3,
-                    1,
-                    false,
-                    action = KeyAction.ToggleCase,
-                    isSpecialKey = false
-                ),
-                KeyData(
-                    "' \" ( )",
-                    3,
-                    2,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
+                ), KeyData(
+                    "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    ". , ? !",
-                    3,
-                    3,
-                    true,
-                    keyType = when (inputStyle) {
+                ), KeyData(
+                    ". , ? !", 3, 3, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
                         "circle" -> KeyType.STANDARD_FLICK
                         else -> KeyType.PETAL_FLICK
                     }
-                ),
-                KeyData(
-                    "Del",
-                    0,
-                    4,
-                    false,
-                    KeyAction.Delete,
-                    isSpecialKey = true,
-                    rowSpan = 1,
-                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                ),
-                KeyData(
+                ), if (isFlickDeleteEnabled) {
+                    KeyData(
+                        "Del",
+                        0,
+                        4,
+                        false,
+                        deleteFlickStates[0].action,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        drawableResId = deleteFlickStates[0].drawableResId,
+                        keyId = "delete_key",
+                        keyType = KeyType.CROSS_FLICK
+                    )
+                } else {
+                    KeyData(
+                        "Del",
+                        0,
+                        4,
+                        false,
+                        KeyAction.Delete,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                    )
+                }, KeyData(
                     spaceConvertStates[0].label ?: "",
                     1,
                     4,
@@ -3523,8 +3586,7 @@ object KeyboardDefaultLayouts {
                     rowSpan = 1,
                     keyId = "space_convert_key",
                     keyType = KeyType.CROSS_FLICK
-                ),
-                KeyData(
+                ), KeyData(
                     enterKeyStates[0].label ?: "",
                     2,
                     4,
@@ -3541,12 +3603,10 @@ object KeyboardDefaultLayouts {
                 FlickDirection.TAP to FlickAction.Action(
                     KeyAction.Paste,
                     drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
-                ),
-                FlickDirection.UP to FlickAction.Action(
+                ), FlickDirection.UP to FlickAction.Action(
                     KeyAction.SelectAll,
                     drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
-                ),
-                FlickDirection.UP_RIGHT to FlickAction.Action(
+                ), FlickDirection.UP_RIGHT to FlickAction.Action(
                     KeyAction.Copy,
                     drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
                 )
@@ -3555,8 +3615,7 @@ object KeyboardDefaultLayouts {
                 FlickDirection.TAP to FlickAction.Action(
                     KeyAction.MoveCursorLeft,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                ),
-                FlickDirection.UP_RIGHT to FlickAction.Action(
+                ), FlickDirection.UP_RIGHT to FlickAction.Action(
                     KeyAction.MoveCursorRight,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                 )
@@ -3565,8 +3624,7 @@ object KeyboardDefaultLayouts {
             val spaceActionMap = mapOf(
                 FlickDirection.TAP to FlickAction.Action(
                     KeyAction.Space,
-                ),
-                FlickDirection.UP_LEFT to FlickAction.Action(
+                ), FlickDirection.UP_LEFT to FlickAction.Action(
                     KeyAction.Space,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -3647,21 +3705,50 @@ object KeyboardDefaultLayouts {
             )
 
             val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                mutableMapOf(
-                    "PasteActionKey" to listOf(pasteActionMap),
-                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "@#/_" to listOf(symbols1),
-                    "ABC" to listOf(abc),
-                    "DEF" to listOf(def),
-                    "GHI" to listOf(ghi),
-                    "JKL" to listOf(jkl),
-                    "MNO" to listOf(mno),
-                    "PQRS" to listOf(pqrs),
-                    "TUV" to listOf(tuv),
-                    "WXYZ" to listOf(wxyz),
-                    "' \" ( )" to listOf(symbols2),
-                    ". , ? !" to listOf(symbols3)
-                )
+                if (isFlickDeleteEnabled) {
+                    val deleteActionMap = mapOf(
+                        FlickDirection.TAP to FlickAction.Action(
+                            KeyAction.Delete,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                        ), FlickDirection.UP_LEFT to FlickAction.Action(
+                            KeyAction.DeleteUntilSymbol,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                        )
+                    )
+                    mutableMapOf(
+                        "PasteActionKey" to listOf(pasteActionMap),
+                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                        "@#/_" to listOf(symbols1),
+                        "ABC" to listOf(abc),
+                        "DEF" to listOf(def),
+                        "GHI" to listOf(ghi),
+                        "JKL" to listOf(jkl),
+                        "MNO" to listOf(mno),
+                        "PQRS" to listOf(pqrs),
+                        "TUV" to listOf(tuv),
+                        "WXYZ" to listOf(wxyz),
+                        "' \" ( )" to listOf(symbols2),
+                        ". , ? !" to listOf(symbols3),
+                        "Del" to listOf(deleteActionMap)
+                    )
+                } else {
+                    mutableMapOf(
+                        "PasteActionKey" to listOf(pasteActionMap),
+                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                        "@#/_" to listOf(symbols1),
+                        "ABC" to listOf(abc),
+                        "DEF" to listOf(def),
+                        "GHI" to listOf(ghi),
+                        "JKL" to listOf(jkl),
+                        "MNO" to listOf(mno),
+                        "PQRS" to listOf(pqrs),
+                        "TUV" to listOf(tuv),
+                        "WXYZ" to listOf(wxyz),
+                        "' \" ( )" to listOf(symbols2),
+                        ". , ? !" to listOf(symbols3)
+                    )
+                }
 
             spaceConvertStates.getOrNull(0)?.label?.let { label ->
                 flickMaps.put(label, listOf(spaceActionMap))
@@ -3672,7 +3759,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createSymbolToggleLayout(
-        inputStyle: String
+        inputStyle: String, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -3684,8 +3771,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
                 keyType = KeyType.CROSS_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "CursorMoveLeft",
                 1,
                 0,
@@ -3694,8 +3780,7 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
                 keyType = KeyType.CROSS_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 "モード",
                 2,
                 0,
@@ -3703,8 +3788,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.ChangeInputMode,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
-            ),
-            KeyData(
+            ), KeyData(
                 "",
                 3,
                 0,
@@ -3712,118 +3796,67 @@ object KeyboardDefaultLayouts {
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-            ),
-            KeyData(
-                "1\n☆♪→",
-                0,
-                1,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "2\n￥$€",
-                0,
-                2,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "2\n￥$€", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "3\n%°#",
-                0,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "3\n%°#", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "4\n○*・",
-                1,
-                1,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "4\n○*・", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "5\n+x÷",
-                1,
-                2,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "5\n+x÷", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "6\n< = >",
-                1,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "6\n< = >", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "7\n「」:",
-                2,
-                1,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "7\n「」:", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "8\n〒々〆",
-                2,
-                2,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "8\n〒々〆", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "9\n^|\\",
-                2,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "9\n^|\\", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "0\n〜…",
-                3,
-                2,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "0\n〜…", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
+            ), KeyData(
                 "( ) [ ]",
                 3,
                 1,
@@ -3835,29 +3868,37 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                ".,-/",
-                3,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                ".,-/", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "Del",
-                0,
-                4,
-                false,
-                KeyAction.Delete,
-                isSpecialKey = true,
-                rowSpan = 1,
-                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-            ),
-            KeyData(
+            ), if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            }, KeyData(
                 spaceConvertStates[0].label ?: "",
                 1,
                 4,
@@ -3868,8 +3909,7 @@ object KeyboardDefaultLayouts {
                 rowSpan = 1,
                 keyId = "space_convert_key",
                 keyType = KeyType.CROSS_FLICK
-            ),
-            KeyData(
+            ), KeyData(
                 enterKeyStates[0].label ?: "",
                 2,
                 4,
@@ -3884,18 +3924,16 @@ object KeyboardDefaultLayouts {
         )
 
         if (inputStyle == "sumire") {
-            return createSymbolLayout()
+            return createSymbolLayout(isFlickDeleteEnabled)
         } else {
             val pasteActionMap = mapOf(
                 FlickDirection.TAP to FlickAction.Action(
                     KeyAction.Paste,
                     drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
-                ),
-                FlickDirection.UP to FlickAction.Action(
+                ), FlickDirection.UP to FlickAction.Action(
                     KeyAction.SelectAll,
                     drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
-                ),
-                FlickDirection.UP_RIGHT to FlickAction.Action(
+                ), FlickDirection.UP_RIGHT to FlickAction.Action(
                     KeyAction.Copy,
                     drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
                 )
@@ -3904,8 +3942,7 @@ object KeyboardDefaultLayouts {
                 FlickDirection.TAP to FlickAction.Action(
                     KeyAction.MoveCursorLeft,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                ),
-                FlickDirection.UP_RIGHT to FlickAction.Action(
+                ), FlickDirection.UP_RIGHT to FlickAction.Action(
                     KeyAction.MoveCursorRight,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                 )
@@ -3920,8 +3957,7 @@ object KeyboardDefaultLayouts {
             val spaceActionMap = mapOf(
                 FlickDirection.TAP to FlickAction.Action(
                     KeyAction.Space,
-                ),
-                FlickDirection.UP_LEFT to FlickAction.Action(
+                ), FlickDirection.UP_LEFT to FlickAction.Action(
                     KeyAction.Space,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -3929,1744 +3965,21 @@ object KeyboardDefaultLayouts {
             )
 
             val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                mutableMapOf(
-                    "PasteActionKey" to listOf(pasteActionMap),
-                    "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "1\n☆♪→" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("1"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
-                            FlickDirection.UP to FlickAction.Input("♪"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
-                        )
-                    ),
-                    "2\n￥$€" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("2"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
-                            FlickDirection.UP to FlickAction.Input("$"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
-                        )
-                    ),
-                    "3\n%°#" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("3"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
-                            FlickDirection.UP to FlickAction.Input("°"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("#"),
-                        )
-                    ),
-                    "4\n○*・" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("4"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
-                            FlickDirection.UP to FlickAction.Input("*"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
-
-                            )
-                    ),
-                    "5\n+x÷" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("5"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
-                            FlickDirection.UP to FlickAction.Input("x"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+                if (isFlickDeleteEnabled) {
+                    val deleteActionMap = mapOf(
+                        FlickDirection.TAP to FlickAction.Action(
+                            KeyAction.Delete,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
                         ),
-                    ),
-                    "6\n< = >" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("6"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
-                            FlickDirection.UP to FlickAction.Input("="),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                        FlickDirection.UP_LEFT to FlickAction.Action(
+                            KeyAction.DeleteUntilSymbol,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
                         )
-                    ),
-                    "7\n「」:" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("7"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
-                            FlickDirection.UP to FlickAction.Input("」"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
-                        )
-                    ),
-                    "8\n〒々〆" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("8"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
-                            FlickDirection.UP to FlickAction.Input("々"),   // Single quote
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
-                        )
-                    ),
-                    "9\n^|\\" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("9"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
-                            FlickDirection.UP to FlickAction.Input("|"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
-                        )
-                    ),
-                    "0\n〜…" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("0"),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
-                            FlickDirection.UP to FlickAction.Input("…"),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
-                        )
-                    ),
-                    "( ) [ ]" to listOf(
-                        mapOf(
-                            FlickDirection.TAP to FlickAction.Input("("),
-                            FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
-                            FlickDirection.UP to FlickAction.Input("["),
-                            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
-                        )
-                    ),
-                    ".,-/" to listOf(symbols3),
-                )
-
-            spaceConvertStates.getOrNull(0)?.label?.let { label ->
-                flickMaps.put(label, listOf(spaceActionMap))
-            }
-
-            return KeyboardLayout(keys, flickMaps, 5, 4)
-        }
-    }
-
-    private fun createHiraganaFlickLayout(
-        inputStyle: String
-    ): KeyboardLayout {
-        when (inputStyle) {
-            "second-flick" -> {
-                val keys = listOf(
-                    KeyData(
-                        "SwitchToNumber",
-                        0,
-                        0,
-                        false,
-                        KeyAction.SwitchToNumberLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
-                    ),
-                    KeyData(
-                        "SwitchToEnglish",
-                        1,
-                        0,
-                        false,
-                        KeyAction.SwitchToEnglishLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ),
-                    KeyData(
-                        "SwitchToKana",
-                        2,
-                        0,
-                        false,
-                        KeyAction.SwitchToKanaLayout,
-                        isSpecialKey = true,
-                        isHiLighted = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
-                    ),
-                    KeyData(
-                        "",
-                        3,
-                        0,
-                        false,
-                        KeyAction.SwitchToNextIme,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-                    ),
-                    KeyData(
-                        "あ",
-                        0,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "か",
-                        0,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "さ",
-                        0,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "た",
-                        1,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "な",
-                        1,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "は",
-                        1,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "ま",
-                        2,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "や",
-                        2,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "ら",
-                        2,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        dakutenToggleStates[0].label ?: "",
-                        3,
-                        1,
-                        false,
-                        dakutenToggleStates[0].action,
-                        dynamicStates = dakutenToggleStates,
-                        keyId = "dakuten_toggle_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "わ",
-                        3,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "、。?!",
-                        3,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), // Label fixed to match map key
-                    KeyData(
-                        "Del",
-                        0,
-                        4,
-                        false,
-                        KeyAction.Delete,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    KeyData(
-                        spaceConvertStates[0].label ?: "",
-                        1,
-                        4,
-                        true,
-                        spaceConvertStates[0].action,
-                        dynamicStates = spaceConvertStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        keyId = "space_convert_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "CursorMoveLeft",
-                        2,
-                        4,
-                        false,
-                        KeyAction.MoveCursorRight,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
-                        keyType = KeyType.CROSS_FLICK,
-                    ),
-                    KeyData(
-                        enterKeyStates[0].label ?: "",
-                        3,
-                        4,
-                        false,
-                        enterKeyStates[0].action,
-                        dynamicStates = enterKeyStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = enterKeyStates[0].drawableResId,
-                        keyId = "enter_key"
                     )
-                )
-                val pasteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Paste,
-                        drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
-                        KeyAction.SelectAll,
-                        drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.Copy,
-                        drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
-                    )
-                )
-                val cursorMoveActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-                    )
-                )
-
-                val spaceActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.Space,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
-
-                    )
-                )
-
-                val conversionActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Convert,
-                    ),
-                )
-
-                // 状態0 (^_^): タップ操作のみを持つマップ
-                val emojiStateFlickMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.InputText("^_^"),
-                        label = "^_^"
-                    )
-                    // この状態ではフリックアクションを定義しない
-                )
-                // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
-                val dakutenStateFlickMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.ToggleDakuten,
-                        label = " 小゛゜"
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
-                        KeyAction.InputText("ひらがな小文字"),
-                        label = "小"
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.InputText("濁点"),
-                        label = "゛"
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.InputText("半濁点"),
-                        label = "゜"
-                    )
-                )
-
-                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
                     mutableMapOf(
+                        "Del" to listOf(deleteActionMap),
                         "PasteActionKey" to listOf(pasteActionMap),
-                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    )
-
-                dakutenToggleStates.getOrNull(0)?.label?.let { label ->
-                    flickMaps.put(label, listOf(emojiStateFlickMap))
-                }
-                dakutenToggleStates.getOrNull(1)?.label?.let { label ->
-                    flickMaps.put(label, listOf(dakutenStateFlickMap))
-                }
-
-                spaceConvertStates.getOrNull(0)?.label?.let { label ->
-                    flickMaps.put(label, listOf(spaceActionMap))
-                }
-
-                spaceConvertStates.getOrNull(1)?.label?.let { label ->
-                    flickMaps.put(label, listOf(conversionActionMap))
-                }
-
-                // 2段階フリック用の文字マップ (isDefaultKey = true の場合に利用)
-                val twoStepFlickMaps = mapOf(
-                    // あ行
-                    "あ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP_RIGHT to "ぁ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.LEFT to "い",
-                            TfbiFlickDirection.DOWN_LEFT to "ぃ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.RIGHT to "え",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぇ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "あ",
-                            TfbiFlickDirection.DOWN to "お",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぉ",
-                        )
-                    ),
-                    // か行
-                    "か" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP_RIGHT to "が",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.LEFT to "き",
-                            TfbiFlickDirection.DOWN_LEFT to "ぎ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.UP to "く",
-                            TfbiFlickDirection.UP_LEFT to "ぐ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.RIGHT to "け",
-                            TfbiFlickDirection.DOWN_RIGHT to "げ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "か",
-                            TfbiFlickDirection.DOWN to "こ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ご",
-                        )
-                    ),
-                    // さ行
-                    "さ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP_RIGHT to "ざ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.LEFT to "し",
-                            TfbiFlickDirection.DOWN_LEFT to "じ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.UP to "す",
-                            TfbiFlickDirection.UP_LEFT to "ず"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.RIGHT to "せ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぜ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "さ",
-                            TfbiFlickDirection.DOWN to "そ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぞ",
-                        )
-                    ),
-                    // た行
-                    "た" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP_RIGHT to "だ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.LEFT to "ち",
-                            TfbiFlickDirection.DOWN_LEFT to "ぢ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.UP to "つ",
-                            TfbiFlickDirection.UP_LEFT to "づ",
-                            TfbiFlickDirection.UP_RIGHT to "っ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.RIGHT to "て",
-                            TfbiFlickDirection.DOWN_RIGHT to "で"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "た",
-                            TfbiFlickDirection.DOWN to "と",
-                            TfbiFlickDirection.DOWN_RIGHT to "ど",
-                        )
-                    ),
-                    // な行
-                    "な" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.LEFT to "に",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.UP to "ぬ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.RIGHT to "ね",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "な",
-                            TfbiFlickDirection.DOWN to "の",
-                        )
-                    ),
-                    // は行
-                    "は" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_RIGHT to "ば",
-                        ),
-                        TfbiFlickDirection.UP_LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP_LEFT to "ぱ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.LEFT to "ひ",
-                            TfbiFlickDirection.DOWN_LEFT to "び",
-                            TfbiFlickDirection.UP_LEFT to "ぴ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.UP to "ふ",
-                            TfbiFlickDirection.UP_RIGHT to "ぷ",
-                            TfbiFlickDirection.UP_LEFT to "ぶ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.RIGHT to "へ",
-                            TfbiFlickDirection.DOWN_RIGHT to "べ",
-                            TfbiFlickDirection.UP_RIGHT to "ぺ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "は",
-                            TfbiFlickDirection.DOWN to "ほ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ぼ",
-                            TfbiFlickDirection.DOWN_LEFT to "ぽ",
-                        )
-                    ),
-                    // ま行
-                    "ま" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.LEFT to "み",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.UP to "む",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.RIGHT to "め",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ま",
-                            TfbiFlickDirection.DOWN to "も",
-                        )
-                    ),
-                    // や行
-                    "や" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP_RIGHT to "ゃ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.LEFT to "(",
-                            TfbiFlickDirection.DOWN_LEFT to "「",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.UP to "ゆ",
-                            TfbiFlickDirection.UP_LEFT to "ゅ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.RIGHT to ")",
-                            TfbiFlickDirection.DOWN_RIGHT to "」",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "や",
-                            TfbiFlickDirection.DOWN to "よ",
-                            TfbiFlickDirection.DOWN_RIGHT to "ょ",
-                        )
-                    ),
-                    // ら行
-                    "ら" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.LEFT to "り",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.UP to "る",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.RIGHT to "れ",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "ら",
-                            TfbiFlickDirection.DOWN to "ろ",
-                        )
-                    ),
-                    // わ行
-                    "わ" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP_RIGHT to "ゎ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.LEFT to "を",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.UP to "ん",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.RIGHT to "ー",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "わ",
-                            TfbiFlickDirection.DOWN to "〜",
-                        )
-                    ),
-                    // 記号
-                    "、。?!" to mapOf(
-                        TfbiFlickDirection.TAP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.LEFT to "。",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.UP to "？",
-                            TfbiFlickDirection.UP_LEFT to "：",
-                            TfbiFlickDirection.UP_RIGHT to "・",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.RIGHT to "！",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
-                            TfbiFlickDirection.TAP to "、",
-                            TfbiFlickDirection.DOWN to "…",
-                        )
-                    )
-                )
-
-                return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
-            }
-
-            "sumire" -> {
-                return createHiraganaLayout()
-            }
-
-            else -> {
-                val keys = listOf(
-                    KeyData(
-                        "SwitchToNumber",
-                        0,
-                        0,
-                        false,
-                        KeyAction.SwitchToNumberLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
-                    ),
-                    KeyData(
-                        "SwitchToEnglish",
-                        1,
-                        0,
-                        false,
-                        KeyAction.SwitchToEnglishLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ),
-                    KeyData(
-                        "SwitchToKana",
-                        2,
-                        0,
-                        false,
-                        KeyAction.SwitchToKanaLayout,
-                        isSpecialKey = true,
-                        isHiLighted = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
-                    ),
-                    KeyData(
-                        "",
-                        3,
-                        0,
-                        false,
-                        KeyAction.SwitchToNextIme,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-                    ),
-                    KeyData(
-                        "あ",
-                        0,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "か",
-                        0,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "さ",
-                        0,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "た",
-                        1,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "な",
-                        1,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "は",
-                        1,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "ま",
-                        2,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "や",
-                        2,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "ら",
-                        2,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        dakutenToggleStates[0].label ?: "",
-                        3,
-                        1,
-                        false,
-                        dakutenToggleStates[0].action,
-                        dynamicStates = dakutenToggleStates,
-                        keyId = "dakuten_toggle_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "わ",
-                        3,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "、。?!",
-                        3,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "Del",
-                        0,
-                        4,
-                        false,
-                        KeyAction.Delete,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    KeyData(
-                        spaceConvertStates[0].label ?: "",
-                        1,
-                        4,
-                        true,
-                        spaceConvertStates[0].action,
-                        dynamicStates = spaceConvertStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        keyId = "space_convert_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "CursorMoveLeft",
-                        2,
-                        4,
-                        false,
-                        KeyAction.MoveCursorRight,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
-                        keyType = KeyType.CROSS_FLICK,
-                    ),
-                    KeyData(
-                        enterKeyStates[0].label ?: "",
-                        3,
-                        4,
-                        false,
-                        enterKeyStates[0].action,
-                        dynamicStates = enterKeyStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = enterKeyStates[0].drawableResId,
-                        keyId = "enter_key"
-                    )
-                )
-                val cursorMoveActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                    )
-                )
-
-                val spaceActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.Space,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
-
-                    )
-                )
-
-                val conversionActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Convert,
-                    ),
-                )
-
-                // 状態0 (^_^): タップ操作のみを持つマップ
-                val emojiStateFlickMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.InputText("^_^"),
-                        label = "^_^"
-                    )
-                    // この状態ではフリックアクションを定義しない
-                )
-
-                // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
-                val dakutenStateFlickMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.ToggleDakuten,
-                        label = " 小゛゜"
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
-                        KeyAction.InputText("ひらがな小文字"),
-                        label = "小"
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.InputText("濁点"),
-                        label = "゛"
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.InputText("半濁点"),
-                        label = "゜"
-                    )
-                )
-
-                val a = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("あ"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("い"),
-                    FlickDirection.UP to FlickAction.Input("う"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("え"),
-                    FlickDirection.DOWN to FlickAction.Input("お")
-                )
-                val ka = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("か"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("き"),
-                    FlickDirection.UP to FlickAction.Input("く"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("け"),
-                    FlickDirection.DOWN to FlickAction.Input("こ")
-                )
-                val sa = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("さ"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("し"),
-                    FlickDirection.UP to FlickAction.Input("す"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("せ"),
-                    FlickDirection.DOWN to FlickAction.Input("そ")
-                )
-                val ta = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("た"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("ち"),
-                    FlickDirection.UP to FlickAction.Input("つ"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("て"),
-                    FlickDirection.DOWN to FlickAction.Input("と")
-                )
-                val na = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("な"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("に"),
-                    FlickDirection.UP to FlickAction.Input("ぬ"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ね"),
-                    FlickDirection.DOWN to FlickAction.Input("の")
-                )
-                val ha = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("は"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("ひ"),
-                    FlickDirection.UP to FlickAction.Input("ふ"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("へ"),
-                    FlickDirection.DOWN to FlickAction.Input("ほ")
-                )
-                val ma = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("ま"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("み"),
-                    FlickDirection.UP to FlickAction.Input("む"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("め"),
-                    FlickDirection.DOWN to FlickAction.Input("も")
-                )
-                val ya = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("や"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
-                    FlickDirection.UP to FlickAction.Input("ゆ"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-                    FlickDirection.DOWN to FlickAction.Input("よ")
-                )
-                val ra = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("ら"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("り"),
-                    FlickDirection.UP to FlickAction.Input("る"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("れ"),
-                    FlickDirection.DOWN to FlickAction.Input("ろ")
-                )
-                val wa = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("わ"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
-                    FlickDirection.UP to FlickAction.Input("ん"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
-                )
-                val symbols = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("、"),
-                    FlickDirection.UP to FlickAction.Input("？"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("。"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
-                    FlickDirection.DOWN to FlickAction.Input("…")
-                )
-
-                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    mutableMapOf(
-                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                        "あ" to listOf(a),
-                        "か" to listOf(ka),
-                        "さ" to listOf(sa),
-                        "た" to listOf(ta),
-                        "な" to listOf(na),
-                        "は" to listOf(ha),
-                        "ま" to listOf(ma),
-                        "や" to listOf(ya),
-                        "ら" to listOf(ra),
-                        "わ" to listOf(wa),
-                        "、。?!" to listOf(symbols),
-                    )
-
-                dakutenToggleStates.getOrNull(0)?.label?.let { label ->
-                    flickMaps.put(label, listOf(emojiStateFlickMap))
-                }
-                dakutenToggleStates.getOrNull(1)?.label?.let { label ->
-                    flickMaps.put(label, listOf(dakutenStateFlickMap))
-                }
-
-                spaceConvertStates.getOrNull(0)?.label?.let { label ->
-                    flickMaps.put(label, listOf(spaceActionMap))
-                }
-
-                spaceConvertStates.getOrNull(1)?.label?.let { label ->
-                    flickMaps.put(label, listOf(conversionActionMap))
-                }
-
-                return KeyboardLayout(keys, flickMaps, 5, 4)
-            }
-        }
-    }
-
-    private fun createEnglishFlickLayout(
-        inputStyle: String,
-        isUpperCase: Boolean,
-    ): KeyboardLayout {
-        when (inputStyle) {
-            "sumire" -> {
-                return createEnglishLayout(isUpperCase)
-            }
-
-            else -> {
-                val keys = listOf(
-                    KeyData(
-                        "SwitchToNumber",
-                        0,
-                        0,
-                        false,
-                        KeyAction.SwitchToNumberLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
-                    ),
-                    KeyData(
-                        "SwitchToEnglish",
-                        1,
-                        0,
-                        false,
-                        KeyAction.SwitchToEnglishLayout,
-                        isSpecialKey = true,
-                        isHiLighted = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ),
-                    KeyData(
-                        "SwitchToKana",
-                        2,
-                        0,
-                        false,
-                        KeyAction.SwitchToKanaLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
-                    ),
-                    KeyData(
-                        "",
-                        3,
-                        0,
-                        false,
-                        KeyAction.SwitchToNextIme,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-                    ),
-                    KeyData(
-                        "@#/_",
-                        0,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "ABC",
-                        0,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "DEF",
-                        0,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "GHI",
-                        1,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "JKL",
-                        1,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "MNO",
-                        1,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "PQRS",
-                        2,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "TUV",
-                        2,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "WXYZ",
-                        2,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "a/A",
-                        3,
-                        1,
-                        false,
-                        action = KeyAction.ToggleCase,
-                        isSpecialKey = false
-                    ),
-                    KeyData(
-                        "' \" ( )",
-                        3,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        ". , ? !",
-                        3,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "Del",
-                        0,
-                        4,
-                        false,
-                        KeyAction.Delete,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    KeyData(
-                        spaceConvertStates[0].label ?: "",
-                        1,
-                        4,
-                        true,
-                        spaceConvertStates[0].action,
-                        dynamicStates = spaceConvertStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        keyId = "space_convert_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "CursorMoveLeft",
-                        2,
-                        4,
-                        false,
-                        KeyAction.MoveCursorRight,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
-                        keyType = KeyType.CROSS_FLICK,
-                    ),
-                    KeyData(
-                        enterKeyStates[0].label ?: "",
-                        3,
-                        4,
-                        false,
-                        enterKeyStates[0].action,
-                        dynamicStates = enterKeyStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = enterKeyStates[0].drawableResId,
-                        keyId = "enter_key"
-                    )
-                )
-
-                val cursorMoveActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                    )
-                )
-
-                val spaceActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.Space,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
-
-                    )
-                )
-
-                fun getCase(c: Char) = if (isUpperCase) c.uppercaseChar() else c
-                val symbols1 = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("@"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("#"),
-                    FlickDirection.UP to FlickAction.Input("/"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("_"),
-                    FlickDirection.DOWN to FlickAction.Input("1")
-                )
-                val abc = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('a').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('b').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('c').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("2")
-                )
-                val def = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('d').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('e').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('f').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("3")
-                )
-                val ghi = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('g').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('h').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('i').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("4")
-                )
-                val jkl = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('j').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('k').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('l').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("5")
-                )
-                val mno = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('m').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('n').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('o').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("6")
-                )
-                val pqrs = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('p').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('q').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('r').toString()),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(getCase('s').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("7")
-                )
-                val tuv = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('t').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('u').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('v').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("8")
-                )
-                val wxyz = mapOf(
-                    FlickDirection.TAP to FlickAction.Input(getCase('w').toString()),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('x').toString()),
-                    FlickDirection.UP to FlickAction.Input(getCase('y').toString()),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(getCase('z').toString()),
-                    FlickDirection.DOWN to FlickAction.Input("9")
-                )
-                val symbols2 = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("'"),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("\""),
-                    FlickDirection.UP to FlickAction.Input("("),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-                    FlickDirection.DOWN to FlickAction.Input("0")
-                )
-                val symbols3 = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("."),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
-                    FlickDirection.UP to FlickAction.Input("?"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("!"),
-                    FlickDirection.DOWN to FlickAction.Input("-")
-                )
-
-                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    mutableMapOf(
-                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                        "@#/_" to listOf(symbols1),
-                        "ABC" to listOf(abc),
-                        "DEF" to listOf(def),
-                        "GHI" to listOf(ghi),
-                        "JKL" to listOf(jkl),
-                        "MNO" to listOf(mno),
-                        "PQRS" to listOf(pqrs),
-                        "TUV" to listOf(tuv),
-                        "WXYZ" to listOf(wxyz),
-                        "' \" ( )" to listOf(symbols2),
-                        ". , ? !" to listOf(symbols3)
-                    )
-
-                spaceConvertStates.getOrNull(0)?.label?.let { label ->
-                    flickMaps.put(label, listOf(spaceActionMap))
-                }
-
-                return KeyboardLayout(keys, flickMaps, 5, 4)
-            }
-        }
-    }
-
-    private fun createSymbolFlickLayout(
-        inputStyle: String,
-    ): KeyboardLayout {
-
-        when (inputStyle) {
-            "sumire" -> {
-                return createSymbolLayout()
-            }
-
-            else -> {
-                val keys = listOf(
-                    KeyData(
-                        "SwitchToNumber",
-                        0,
-                        0,
-                        false,
-                        KeyAction.SwitchToNumberLayout,
-                        isSpecialKey = true,
-                        isHiLighted = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
-                    ),
-                    KeyData(
-                        "SwitchToEnglish",
-                        1,
-                        0,
-                        false,
-                        KeyAction.SwitchToEnglishLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ),
-                    KeyData(
-                        "SwitchToKana",
-                        2,
-                        0,
-                        false,
-                        KeyAction.SwitchToKanaLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
-                    ),
-                    KeyData(
-                        "",
-                        3,
-                        0,
-                        false,
-                        KeyAction.SwitchToNextIme,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-                    ),
-                    KeyData(
-                        "1\n☆♪→",
-                        0,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "2\n￥$€",
-                        0,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "3\n%°#",
-                        0,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "4\n○*・",
-                        1,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "5\n+x÷",
-                        1,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "6\n< = >",
-                        1,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "7\n「」:",
-                        2,
-                        1,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "8\n〒々〆",
-                        2,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "9\n^|\\",
-                        2,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "0\n〜…",
-                        3,
-                        2,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "( ) [ ]",
-                        3,
-                        1,
-                        true,
-                        isSpecialKey = false,
-                        colSpan = 1,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        ".,-/",
-                        3,
-                        3,
-                        true,
-                        keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ),
-                    KeyData(
-                        "Del",
-                        0,
-                        4,
-                        false,
-                        KeyAction.Delete,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    KeyData(
-                        spaceConvertStates[0].label ?: "",
-                        1,
-                        4,
-                        true,
-                        spaceConvertStates[0].action,
-                        dynamicStates = spaceConvertStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        keyId = "space_convert_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ),
-                    KeyData(
-                        "CursorMoveLeft",
-                        2,
-                        4,
-                        false,
-                        KeyAction.MoveCursorRight,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
-                        keyType = KeyType.CROSS_FLICK,
-                    ),
-                    KeyData(
-                        enterKeyStates[0].label ?: "",
-                        3,
-                        4,
-                        false,
-                        enterKeyStates[0].action,
-                        dynamicStates = enterKeyStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = enterKeyStates[0].drawableResId,
-                        keyId = "enter_key"
-                    )
-                )
-
-                val cursorMoveActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                    )
-                )
-
-                val symbols3 = mapOf(
-                    FlickDirection.TAP to FlickAction.Input("."),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
-                    FlickDirection.UP to FlickAction.Input("-"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/")
-                )
-
-                val spaceActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.Space,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
-
-                    )
-                )
-
-                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    mutableMapOf(
                         "CursorMoveLeft" to listOf(cursorMoveActionMap),
                         "1\n☆♪→" to listOf(
                             mapOf(
@@ -5759,283 +4072,312 @@ object KeyboardDefaultLayouts {
                         ),
                         ".,-/" to listOf(symbols3),
                     )
+                } else {
+                    mutableMapOf(
+                        "PasteActionKey" to listOf(pasteActionMap),
+                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                        "1\n☆♪→" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("1"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
+                                FlickDirection.UP to FlickAction.Input("♪"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
+                            )
+                        ),
+                        "2\n￥$€" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("2"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
+                                FlickDirection.UP to FlickAction.Input("$"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
+                            )
+                        ),
+                        "3\n%°#" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("3"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
+                                FlickDirection.UP to FlickAction.Input("°"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("#"),
+                            )
+                        ),
+                        "4\n○*・" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("4"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
+                                FlickDirection.UP to FlickAction.Input("*"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
 
-                spaceConvertStates.getOrNull(0)?.label?.let { label ->
-                    flickMaps.put(label, listOf(spaceActionMap))
+                                )
+                        ),
+                        "5\n+x÷" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("5"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                                FlickDirection.UP to FlickAction.Input("x"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+                            ),
+                        ),
+                        "6\n< = >" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("6"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
+                                FlickDirection.UP to FlickAction.Input("="),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                            )
+                        ),
+                        "7\n「」:" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("7"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
+                                FlickDirection.UP to FlickAction.Input("」"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
+                            )
+                        ),
+                        "8\n〒々〆" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("8"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
+                                FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
+                            )
+                        ),
+                        "9\n^|\\" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("9"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
+                                FlickDirection.UP to FlickAction.Input("|"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
+                            )
+                        ),
+                        "0\n〜…" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("0"),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                                FlickDirection.UP to FlickAction.Input("…"),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
+                            )
+                        ),
+                        "( ) [ ]" to listOf(
+                            mapOf(
+                                FlickDirection.TAP to FlickAction.Input("("),
+                                FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
+                                FlickDirection.UP to FlickAction.Input("["),
+                                FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
+                            )
+                        ),
+                        ".,-/" to listOf(symbols3),
+                    )
                 }
 
-                return KeyboardLayout(keys, flickMaps, 5, 4)
+            spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                flickMaps.put(label, listOf(spaceActionMap))
             }
+
+            return KeyboardLayout(keys, flickMaps, 5, 4)
         }
     }
 
-    private fun createHiraganaEffectiveLayout(
-        inputStyle: String,
-        isFlickDeleteEnabled: Boolean
+    private fun createHiraganaFlickLayout(
+        inputStyle: String, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
-        val keys = listOf(
-            KeyData(
-                "",
-                0,
-                0,
-                false,
-                KeyAction.SwitchToNextIme,
-                isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-            ),
-            KeyData(
-                "CursorMoveLeft",
-                1,
-                0,
-                false,
-                KeyAction.MoveCursorLeft,
-                isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
-            ),
-            KeyData(
-                katakanaToggleStates[0].label ?: "",
-                2,
-                0,
-                false,
-                katakanaToggleStates[0].action,
-                isSpecialKey = true,
-                dynamicStates = katakanaToggleStates,
-                keyId = "katakana_toggle_key",
-            ),
-            KeyData(
-                "SwitchToEnglish",
-                3,
-                0,
-                false,
-                KeyAction.SwitchToEnglishLayout,
-                isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-            ),
-            KeyData(
-                "あ",
-                0,
-                1,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "か",
-                0,
-                2,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "さ",
-                0,
-                3,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "た",
-                1,
-                1,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "な",
-                1,
-                2,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "は",
-                1,
-                3,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "ま",
-                2,
-                1,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "や",
-                2,
-                2,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "ら",
-                2,
-                3,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                dakutenToggleStates[0].label ?: "",
-                3,
-                1,
-                false,
-                dakutenToggleStates[0].action,
-                dynamicStates = dakutenToggleStates,
-                keyId = "dakuten_toggle_key",
-                keyType = KeyType.CROSS_FLICK
-            ),
-            KeyData(
-                "わ",
-                3,
-                2,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            KeyData(
-                "、。?!",
-                3,
-                3,
-                true,
-                keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
-                    "circle" -> KeyType.STANDARD_FLICK
-                    "second-flick" -> KeyType.TWO_STEP_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
-                }
-            ),
-            if (isFlickDeleteEnabled) {
-                KeyData(
-                    "Del",
-                    0,
-                    4,
-                    false,
-                    deleteFlickStates[0].action,
-                    isSpecialKey = true,
-                    rowSpan = 1,
-                    drawableResId = deleteFlickStates[0].drawableResId,
-                    keyId = "delete_key",
-                    keyType = KeyType.CROSS_FLICK
-                )
-            } else {
-                KeyData(
-                    "Del",
-                    0,
-                    4,
-                    false,
-                    KeyAction.Delete,
-                    isSpecialKey = true,
-                    rowSpan = 1,
-                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                )
-            },
-            KeyData(
-                "CursorMoveRight",
-                1,
-                4,
-                false,
-                KeyAction.MoveCursorRight,
-                isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24,
-            ),
-            KeyData(
-                spaceConvertStatesCursor[0].label ?: "",
-                2,
-                4,
-                true,
-                spaceConvertStatesCursor[0].action,
-                dynamicStates = spaceConvertStatesCursor,
-                isSpecialKey = true,
-                rowSpan = 1,
-                keyId = "space_convert_key",
-                keyType = KeyType.CROSS_FLICK
-            ),
-            KeyData(
-                enterKeyStatesCursor[0].label ?: "",
-                3,
-                4,
-                false,
-                enterKeyStatesCursor[0].action,
-                dynamicStates = enterKeyStatesCursor,
-                isSpecialKey = true,
-                rowSpan = 1,
-                drawableResId = enterKeyStatesCursor[0].drawableResId,
-                keyId = "enter_key"
-            )
-        )
-
         when (inputStyle) {
             "second-flick" -> {
+                val keys = listOf(
+                    KeyData(
+                        "SwitchToNumber",
+                        0,
+                        0,
+                        false,
+                        KeyAction.SwitchToNumberLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
+                    ), KeyData(
+                        "SwitchToEnglish",
+                        1,
+                        0,
+                        false,
+                        KeyAction.SwitchToEnglishLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+                    ), KeyData(
+                        "SwitchToKana",
+                        2,
+                        0,
+                        false,
+                        KeyAction.SwitchToKanaLayout,
+                        isSpecialKey = true,
+                        isHiLighted = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
+                    ), KeyData(
+                        "",
+                        3,
+                        0,
+                        false,
+                        KeyAction.SwitchToNextIme,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                    ), KeyData(
+                        "あ", 0, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "か", 0, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "さ", 0, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "た", 1, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "な", 1, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "は", 1, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "ま", 2, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "や", 2, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "ら", 2, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        dakutenToggleStates[0].label ?: "",
+                        3,
+                        1,
+                        false,
+                        dakutenToggleStates[0].action,
+                        dynamicStates = dakutenToggleStates,
+                        keyId = "dakuten_toggle_key",
+                        keyType = KeyType.CROSS_FLICK
+                    ), KeyData(
+                        "わ", 3, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "、。?!", 3, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            "second-flick" -> KeyType.TWO_STEP_FLICK
+                            "sumire" -> KeyType.CIRCULAR_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), if (isFlickDeleteEnabled) {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            deleteFlickStates[0].action,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = deleteFlickStates[0].drawableResId,
+                            keyId = "delete_key",
+                            keyType = KeyType.CROSS_FLICK
+                        )
+                    } else {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            KeyAction.Delete,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                        )
+                    }, KeyData(
+                        spaceConvertStates[0].label ?: "",
+                        1,
+                        4,
+                        true,
+                        spaceConvertStates[0].action,
+                        dynamicStates = spaceConvertStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        keyId = "space_convert_key",
+                        keyType = KeyType.CROSS_FLICK
+                    ), KeyData(
+                        "CursorMoveLeft",
+                        2,
+                        4,
+                        false,
+                        KeyAction.MoveCursorRight,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
+                        keyType = KeyType.CROSS_FLICK,
+                    ), KeyData(
+                        enterKeyStates[0].label ?: "",
+                        3,
+                        4,
+                        false,
+                        enterKeyStates[0].action,
+                        dynamicStates = enterKeyStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        drawableResId = enterKeyStates[0].drawableResId,
+                        keyId = "enter_key"
+                    )
+                )
                 val pasteActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Paste,
                         drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
+                    ), FlickDirection.UP to FlickAction.Action(
                         KeyAction.SelectAll,
                         drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.Copy,
                         drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
                     )
@@ -6044,8 +4386,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                     )
@@ -6054,8 +4395,7 @@ object KeyboardDefaultLayouts {
                 val spaceActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.Space,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -6071,28 +4411,20 @@ object KeyboardDefaultLayouts {
                 // 状態0 (^_^): タップ操作のみを持つマップ
                 val emojiStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.InputText("^_^"),
-                        label = "^_^"
+                        KeyAction.InputText("^_^"), label = "^_^"
                     )
                     // この状態ではフリックアクションを定義しない
                 )
                 // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
                 val dakutenStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.ToggleDakuten,
-                        label = " 小゛゜"
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
-                        KeyAction.InputText("ひらがな小文字"),
-                        label = "小"
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.InputText("濁点"),
-                        label = "゛"
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.InputText("半濁点"),
-                        label = "゜"
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
                     )
                 )
 
@@ -6102,8 +4434,7 @@ object KeyboardDefaultLayouts {
                             FlickDirection.TAP to FlickAction.Action(
                                 KeyAction.Delete,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ),
-                            FlickDirection.UP_LEFT to FlickAction.Action(
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
@@ -6142,27 +4473,22 @@ object KeyboardDefaultLayouts {
                     "あ" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP_RIGHT to "ぁ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.LEFT to "い",
                             TfbiFlickDirection.DOWN_LEFT to "ぃ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
                             TfbiFlickDirection.UP_LEFT to "ぅ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
                             TfbiFlickDirection.DOWN_RIGHT to "ぇ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.DOWN to "お",
                             TfbiFlickDirection.DOWN_RIGHT to "ぉ",
@@ -6172,27 +4498,22 @@ object KeyboardDefaultLayouts {
                     "か" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "か",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.UP_RIGHT to "が",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.LEFT to "き",
                             TfbiFlickDirection.DOWN_LEFT to "ぎ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.UP to "く",
                             TfbiFlickDirection.UP_LEFT to "ぐ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.RIGHT to "け",
                             TfbiFlickDirection.DOWN_RIGHT to "げ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "か",
                             TfbiFlickDirection.DOWN to "こ",
                             TfbiFlickDirection.DOWN_RIGHT to "ご",
@@ -6202,27 +4523,22 @@ object KeyboardDefaultLayouts {
                     "さ" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "さ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.UP_RIGHT to "ざ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.LEFT to "し",
                             TfbiFlickDirection.DOWN_LEFT to "じ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.UP to "す",
                             TfbiFlickDirection.UP_LEFT to "ず"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.RIGHT to "せ",
                             TfbiFlickDirection.DOWN_RIGHT to "ぜ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "さ",
                             TfbiFlickDirection.DOWN to "そ",
                             TfbiFlickDirection.DOWN_RIGHT to "ぞ",
@@ -6232,28 +4548,23 @@ object KeyboardDefaultLayouts {
                     "た" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "た",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.UP_RIGHT to "だ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.LEFT to "ち",
                             TfbiFlickDirection.DOWN_LEFT to "ぢ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.UP to "つ",
                             TfbiFlickDirection.UP_LEFT to "づ",
                             TfbiFlickDirection.UP_RIGHT to "っ"
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.RIGHT to "て",
                             TfbiFlickDirection.DOWN_RIGHT to "で"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "た",
                             TfbiFlickDirection.DOWN to "と",
                             TfbiFlickDirection.DOWN_RIGHT to "ど",
@@ -6263,20 +4574,16 @@ object KeyboardDefaultLayouts {
                     "な" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "な",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.LEFT to "に",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.UP to "ぬ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.RIGHT to "ね",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "な",
                             TfbiFlickDirection.DOWN to "の",
                         )
@@ -6285,34 +4592,28 @@ object KeyboardDefaultLayouts {
                     "は" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "は",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.UP_RIGHT to "ば",
-                        ),
-                        TfbiFlickDirection.UP_LEFT to mapOf(
+                        ), TfbiFlickDirection.UP_LEFT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.UP_LEFT to "ぱ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.LEFT to "ひ",
                             TfbiFlickDirection.DOWN_LEFT to "び",
                             TfbiFlickDirection.UP_LEFT to "ぴ",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.UP to "ふ",
                             TfbiFlickDirection.UP_RIGHT to "ぷ",
                             TfbiFlickDirection.UP_LEFT to "ぶ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.RIGHT to "へ",
                             TfbiFlickDirection.DOWN_RIGHT to "べ",
                             TfbiFlickDirection.UP_RIGHT to "ぺ"
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "は",
                             TfbiFlickDirection.DOWN to "ほ",
                             TfbiFlickDirection.DOWN_RIGHT to "ぼ",
@@ -6323,20 +4624,16 @@ object KeyboardDefaultLayouts {
                     "ま" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "ま",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.LEFT to "み",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.UP to "む",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.RIGHT to "め",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "ま",
                             TfbiFlickDirection.DOWN to "も",
                         )
@@ -6345,27 +4642,22 @@ object KeyboardDefaultLayouts {
                     "や" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "や",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.UP_RIGHT to "ゃ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.LEFT to "(",
                             TfbiFlickDirection.DOWN_LEFT to "「",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.UP to "ゆ",
                             TfbiFlickDirection.UP_LEFT to "ゅ",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.RIGHT to ")",
                             TfbiFlickDirection.DOWN_RIGHT to "」",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "や",
                             TfbiFlickDirection.DOWN to "よ",
                             TfbiFlickDirection.DOWN_RIGHT to "ょ",
@@ -6375,20 +4667,16 @@ object KeyboardDefaultLayouts {
                     "ら" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "ら",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.LEFT to "り",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.UP to "る",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.RIGHT to "れ",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "ら",
                             TfbiFlickDirection.DOWN to "ろ",
                         )
@@ -6397,24 +4685,19 @@ object KeyboardDefaultLayouts {
                     "わ" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "わ",
-                        ),
-                        TfbiFlickDirection.UP_RIGHT to mapOf(
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.UP_RIGHT to "ゎ",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.LEFT to "を",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.UP to "ん",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.RIGHT to "ー",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "わ",
                             TfbiFlickDirection.DOWN to "〜",
                         )
@@ -6423,22 +4706,18 @@ object KeyboardDefaultLayouts {
                     "、。?!" to mapOf(
                         TfbiFlickDirection.TAP to mapOf(
                             TfbiFlickDirection.TAP to "、",
-                        ),
-                        TfbiFlickDirection.LEFT to mapOf(
+                        ), TfbiFlickDirection.LEFT to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.LEFT to "。",
-                        ),
-                        TfbiFlickDirection.UP to mapOf(
+                        ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.UP to "？",
                             TfbiFlickDirection.UP_LEFT to "：",
                             TfbiFlickDirection.UP_RIGHT to "・",
-                        ),
-                        TfbiFlickDirection.RIGHT to mapOf(
+                        ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.RIGHT to "！",
-                        ),
-                        TfbiFlickDirection.DOWN to mapOf(
+                        ), TfbiFlickDirection.DOWN to mapOf(
                             TfbiFlickDirection.TAP to "、",
                             TfbiFlickDirection.DOWN to "…",
                         )
@@ -6449,16 +4728,181 @@ object KeyboardDefaultLayouts {
             }
 
             "sumire" -> {
-                return createHiraganaLayout()
+                return createHiraganaLayout(isFlickDeleteEnabled)
             }
 
             else -> {
+                val keys = listOf(
+                    KeyData(
+                        "SwitchToNumber",
+                        0,
+                        0,
+                        false,
+                        KeyAction.SwitchToNumberLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
+                    ), KeyData(
+                        "SwitchToEnglish",
+                        1,
+                        0,
+                        false,
+                        KeyAction.SwitchToEnglishLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+                    ), KeyData(
+                        "SwitchToKana",
+                        2,
+                        0,
+                        false,
+                        KeyAction.SwitchToKanaLayout,
+                        isSpecialKey = true,
+                        isHiLighted = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
+                    ), KeyData(
+                        "",
+                        3,
+                        0,
+                        false,
+                        KeyAction.SwitchToNextIme,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                    ), KeyData(
+                        "あ", 0, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "か", 0, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "さ", 0, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "た", 1, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "な", 1, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "は", 1, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "ま", 2, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "や", 2, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "ら", 2, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        dakutenToggleStates[0].label ?: "",
+                        3,
+                        1,
+                        false,
+                        dakutenToggleStates[0].action,
+                        dynamicStates = dakutenToggleStates,
+                        keyId = "dakuten_toggle_key",
+                        keyType = KeyType.CROSS_FLICK
+                    ), KeyData(
+                        "わ", 3, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "、。?!", 3, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), if (isFlickDeleteEnabled) {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            deleteFlickStates[0].action,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = deleteFlickStates[0].drawableResId,
+                            keyId = "delete_key",
+                            keyType = KeyType.CROSS_FLICK
+                        )
+                    } else {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            KeyAction.Delete,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                        )
+                    }, KeyData(
+                        spaceConvertStates[0].label ?: "",
+                        1,
+                        4,
+                        true,
+                        spaceConvertStates[0].action,
+                        dynamicStates = spaceConvertStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        keyId = "space_convert_key",
+                        keyType = KeyType.CROSS_FLICK
+                    ), KeyData(
+                        "CursorMoveLeft",
+                        2,
+                        4,
+                        false,
+                        KeyAction.MoveCursorRight,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
+                        keyType = KeyType.CROSS_FLICK,
+                    ), KeyData(
+                        enterKeyStates[0].label ?: "",
+                        3,
+                        4,
+                        false,
+                        enterKeyStates[0].action,
+                        dynamicStates = enterKeyStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        drawableResId = enterKeyStates[0].drawableResId,
+                        keyId = "enter_key"
+                    )
+                )
                 val cursorMoveActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.MoveCursorRight,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                     )
@@ -6467,8 +4911,7 @@ object KeyboardDefaultLayouts {
                 val spaceActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Space,
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.Space,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -6484,8 +4927,7 @@ object KeyboardDefaultLayouts {
                 // 状態0 (^_^): タップ操作のみを持つマップ
                 val emojiStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.InputText("^_^"),
-                        label = "^_^"
+                        KeyAction.InputText("^_^"), label = "^_^"
                     )
                     // この状態ではフリックアクションを定義しない
                 )
@@ -6493,20 +4935,13 @@ object KeyboardDefaultLayouts {
                 // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
                 val dakutenStateFlickMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.ToggleDakuten,
-                        label = " 小゛゜"
-                    ),
-                    FlickDirection.UP to FlickAction.Action(
-                        KeyAction.InputText("ひらがな小文字"),
-                        label = "小"
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.InputText("濁点"),
-                        label = "゛"
-                    ),
-                    FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.InputText("半濁点"),
-                        label = "゜"
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
                     )
                 )
 
@@ -6588,20 +5023,48 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    mutableMapOf(
-                        "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                        "あ" to listOf(a),
-                        "か" to listOf(ka),
-                        "さ" to listOf(sa),
-                        "た" to listOf(ta),
-                        "な" to listOf(na),
-                        "は" to listOf(ha),
-                        "ま" to listOf(ma),
-                        "や" to listOf(ya),
-                        "ら" to listOf(ra),
-                        "わ" to listOf(wa),
-                        "、。?!" to listOf(symbols),
-                    )
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "あ" to listOf(a),
+                            "か" to listOf(ka),
+                            "さ" to listOf(sa),
+                            "た" to listOf(ta),
+                            "な" to listOf(na),
+                            "は" to listOf(ha),
+                            "ま" to listOf(ma),
+                            "や" to listOf(ya),
+                            "ら" to listOf(ra),
+                            "わ" to listOf(wa),
+                            "、。?!" to listOf(symbols),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "あ" to listOf(a),
+                            "か" to listOf(ka),
+                            "さ" to listOf(sa),
+                            "た" to listOf(ta),
+                            "な" to listOf(na),
+                            "は" to listOf(ha),
+                            "ま" to listOf(ma),
+                            "や" to listOf(ya),
+                            "ら" to listOf(ra),
+                            "わ" to listOf(wa),
+                            "、。?!" to listOf(symbols),
+                        )
+                    }
 
                 dakutenToggleStates.getOrNull(0)?.label?.let { label ->
                     flickMaps.put(label, listOf(emojiStateFlickMap))
@@ -6623,10 +5086,741 @@ object KeyboardDefaultLayouts {
         }
     }
 
-    private fun createEnglishEffectiveLayout(
-        isUpperCase: Boolean,
-        inputStyle: String,
-        isFlickDeleteEnabled: Boolean
+    private fun createEnglishFlickLayout(
+        inputStyle: String, isUpperCase: Boolean, isFlickDeleteEnabled: Boolean
+    ): KeyboardLayout {
+        when (inputStyle) {
+            "sumire" -> {
+                return createEnglishLayout(isUpperCase, isFlickDeleteEnabled)
+            }
+
+            else -> {
+                val keys = listOf(
+                    KeyData(
+                        "SwitchToNumber",
+                        0,
+                        0,
+                        false,
+                        KeyAction.SwitchToNumberLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
+                    ), KeyData(
+                        "SwitchToEnglish",
+                        1,
+                        0,
+                        false,
+                        KeyAction.SwitchToEnglishLayout,
+                        isSpecialKey = true,
+                        isHiLighted = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+                    ), KeyData(
+                        "SwitchToKana",
+                        2,
+                        0,
+                        false,
+                        KeyAction.SwitchToKanaLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
+                    ), KeyData(
+                        "",
+                        3,
+                        0,
+                        false,
+                        KeyAction.SwitchToNextIme,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                    ), KeyData(
+                        "@#/_", 0, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "ABC", 0, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "DEF", 0, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "GHI", 1, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "JKL", 1, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "MNO", 1, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "PQRS", 2, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "TUV", 2, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "WXYZ", 2, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
+                    ), KeyData(
+                        "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        ". , ? !", 3, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), if (isFlickDeleteEnabled) {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            deleteFlickStates[0].action,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = deleteFlickStates[0].drawableResId,
+                            keyId = "delete_key",
+                            keyType = KeyType.CROSS_FLICK
+                        )
+                    } else {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            KeyAction.Delete,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                        )
+                    }, KeyData(
+                        spaceConvertStates[0].label ?: "",
+                        1,
+                        4,
+                        true,
+                        spaceConvertStates[0].action,
+                        dynamicStates = spaceConvertStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        keyId = "space_convert_key",
+                        keyType = KeyType.CROSS_FLICK
+                    ), KeyData(
+                        "CursorMoveLeft",
+                        2,
+                        4,
+                        false,
+                        KeyAction.MoveCursorRight,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
+                        keyType = KeyType.CROSS_FLICK,
+                    ), KeyData(
+                        enterKeyStates[0].label ?: "",
+                        3,
+                        4,
+                        false,
+                        enterKeyStates[0].action,
+                        dynamicStates = enterKeyStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        drawableResId = enterKeyStates[0].drawableResId,
+                        keyId = "enter_key"
+                    )
+                )
+
+                val cursorMoveActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                    )
+                )
+
+                val spaceActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Space,
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.Space,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+                    )
+                )
+
+                fun getCase(c: Char) = if (isUpperCase) c.uppercaseChar() else c
+                val symbols1 = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("@"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("#"),
+                    FlickDirection.UP to FlickAction.Input("/"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("_"),
+                    FlickDirection.DOWN to FlickAction.Input("1")
+                )
+                val abc = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('a').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('b').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('c').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("2")
+                )
+                val def = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('d').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('e').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('f').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("3")
+                )
+                val ghi = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('g').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('h').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('i').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("4")
+                )
+                val jkl = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('j').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('k').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('l').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("5")
+                )
+                val mno = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('m').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('n').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('o').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("6")
+                )
+                val pqrs = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('p').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('q').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('r').toString()),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(getCase('s').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("7")
+                )
+                val tuv = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('t').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('u').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('v').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("8")
+                )
+                val wxyz = mapOf(
+                    FlickDirection.TAP to FlickAction.Input(getCase('w').toString()),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(getCase('x').toString()),
+                    FlickDirection.UP to FlickAction.Input(getCase('y').toString()),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(getCase('z').toString()),
+                    FlickDirection.DOWN to FlickAction.Input("9")
+                )
+                val symbols2 = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("'"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("\""),
+                    FlickDirection.UP to FlickAction.Input("("),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
+                    FlickDirection.DOWN to FlickAction.Input("0")
+                )
+                val symbols3 = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("."),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
+                    FlickDirection.UP to FlickAction.Input("?"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("!"),
+                    FlickDirection.DOWN to FlickAction.Input("-")
+                )
+
+                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "@#/_" to listOf(symbols1),
+                            "ABC" to listOf(abc),
+                            "DEF" to listOf(def),
+                            "GHI" to listOf(ghi),
+                            "JKL" to listOf(jkl),
+                            "MNO" to listOf(mno),
+                            "PQRS" to listOf(pqrs),
+                            "TUV" to listOf(tuv),
+                            "WXYZ" to listOf(wxyz),
+                            "' \" ( )" to listOf(symbols2),
+                            ". , ? !" to listOf(symbols3),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "@#/_" to listOf(symbols1),
+                            "ABC" to listOf(abc),
+                            "DEF" to listOf(def),
+                            "GHI" to listOf(ghi),
+                            "JKL" to listOf(jkl),
+                            "MNO" to listOf(mno),
+                            "PQRS" to listOf(pqrs),
+                            "TUV" to listOf(tuv),
+                            "WXYZ" to listOf(wxyz),
+                            "' \" ( )" to listOf(symbols2),
+                            ". , ? !" to listOf(symbols3)
+                        )
+                    }
+
+                spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(spaceActionMap))
+                }
+
+                return KeyboardLayout(keys, flickMaps, 5, 4)
+            }
+        }
+    }
+
+    private fun createSymbolFlickLayout(
+        inputStyle: String, isFlickDeleteEnabled: Boolean
+    ): KeyboardLayout {
+
+        when (inputStyle) {
+            "sumire" -> {
+                return createSymbolLayout(isFlickDeleteEnabled)
+            }
+
+            else -> {
+                val keys = listOf(
+                    KeyData(
+                        "SwitchToNumber",
+                        0,
+                        0,
+                        false,
+                        KeyAction.SwitchToNumberLayout,
+                        isSpecialKey = true,
+                        isHiLighted = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
+                    ), KeyData(
+                        "SwitchToEnglish",
+                        1,
+                        0,
+                        false,
+                        KeyAction.SwitchToEnglishLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+                    ), KeyData(
+                        "SwitchToKana",
+                        2,
+                        0,
+                        false,
+                        KeyAction.SwitchToKanaLayout,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
+                    ), KeyData(
+                        "",
+                        3,
+                        0,
+                        false,
+                        KeyAction.SwitchToNextIme,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                    ), KeyData(
+                        "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "2\n￥$€", 0, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "3\n%°#", 0, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "4\n○*・", 1, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "5\n+x÷", 1, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "6\n< = >", 1, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "7\n「」:", 2, 1, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "8\n〒々〆", 2, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "9\n^|\\", 2, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "0\n〜…", 3, 2, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        "( ) [ ]",
+                        3,
+                        1,
+                        true,
+                        isSpecialKey = false,
+                        colSpan = 1,
+                        keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), KeyData(
+                        ".,-/", 3, 3, true, keyType = when (inputStyle) {
+                            "default" -> KeyType.PETAL_FLICK
+                            "circle" -> KeyType.STANDARD_FLICK
+                            else -> KeyType.PETAL_FLICK
+                        }
+                    ), if (isFlickDeleteEnabled) {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            deleteFlickStates[0].action,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = deleteFlickStates[0].drawableResId,
+                            keyId = "delete_key",
+                            keyType = KeyType.CROSS_FLICK
+                        )
+                    } else {
+                        KeyData(
+                            "Del",
+                            0,
+                            4,
+                            false,
+                            KeyAction.Delete,
+                            isSpecialKey = true,
+                            rowSpan = 1,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                        )
+                    }, KeyData(
+                        spaceConvertStates[0].label ?: "",
+                        1,
+                        4,
+                        true,
+                        spaceConvertStates[0].action,
+                        dynamicStates = spaceConvertStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        keyId = "space_convert_key",
+                        keyType = KeyType.CROSS_FLICK
+                    ), KeyData(
+                        "CursorMoveLeft",
+                        2,
+                        4,
+                        false,
+                        KeyAction.MoveCursorRight,
+                        isSpecialKey = true,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
+                        keyType = KeyType.CROSS_FLICK,
+                    ), KeyData(
+                        enterKeyStates[0].label ?: "",
+                        3,
+                        4,
+                        false,
+                        enterKeyStates[0].action,
+                        dynamicStates = enterKeyStates,
+                        isSpecialKey = true,
+                        rowSpan = 1,
+                        drawableResId = enterKeyStates[0].drawableResId,
+                        keyId = "enter_key"
+                    )
+                )
+
+                val cursorMoveActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                    )
+                )
+
+                val symbols3 = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("."),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
+                    FlickDirection.UP to FlickAction.Input("-"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/")
+                )
+
+                val spaceActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Space,
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.Space,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+                    )
+                )
+
+                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "Del" to listOf(deleteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "1\n☆♪→" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("1"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
+                                    FlickDirection.UP to FlickAction.Input("♪"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
+                                )
+                            ),
+                            "2\n￥$€" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("2"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
+                                    FlickDirection.UP to FlickAction.Input("$"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
+                                )
+                            ),
+                            "3\n%°#" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("3"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
+                                    FlickDirection.UP to FlickAction.Input("°"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("#"),
+                                )
+                            ),
+                            "4\n○*・" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("4"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
+                                    FlickDirection.UP to FlickAction.Input("*"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
+
+                                    )
+                            ),
+                            "5\n+x÷" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("5"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                                    FlickDirection.UP to FlickAction.Input("x"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+                                ),
+                            ),
+                            "6\n< = >" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("6"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
+                                    FlickDirection.UP to FlickAction.Input("="),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                                )
+                            ),
+                            "7\n「」:" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("7"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
+                                    FlickDirection.UP to FlickAction.Input("」"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
+                                )
+                            ),
+                            "8\n〒々〆" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("8"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
+                                    FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
+                                )
+                            ),
+                            "9\n^|\\" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("9"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
+                                    FlickDirection.UP to FlickAction.Input("|"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
+                                )
+                            ),
+                            "0\n〜…" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("0"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                                    FlickDirection.UP to FlickAction.Input("…"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
+                                )
+                            ),
+                            "( ) [ ]" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("("),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
+                                    FlickDirection.UP to FlickAction.Input("["),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
+                                )
+                            ),
+                            ".,-/" to listOf(symbols3),
+                        )
+                    } else {
+                        mutableMapOf(
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "1\n☆♪→" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("1"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("☆"),
+                                    FlickDirection.UP to FlickAction.Input("♪"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("→"),
+                                )
+                            ),
+                            "2\n￥$€" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("2"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("￥"),
+                                    FlickDirection.UP to FlickAction.Input("$"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("€"),
+                                )
+                            ),
+                            "3\n%°#" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("3"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("%"),
+                                    FlickDirection.UP to FlickAction.Input("°"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("#"),
+                                )
+                            ),
+                            "4\n○*・" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("4"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("○"),
+                                    FlickDirection.UP to FlickAction.Input("*"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("・"),
+
+                                    )
+                            ),
+                            "5\n+x÷" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("5"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                                    FlickDirection.UP to FlickAction.Input("x"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("÷"),
+                                ),
+                            ),
+                            "6\n< = >" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("6"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("<"),
+                                    FlickDirection.UP to FlickAction.Input("="),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(">"),
+                                )
+                            ),
+                            "7\n「」:" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("7"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("「"),
+                                    FlickDirection.UP to FlickAction.Input("」"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(":"),
+                                )
+                            ),
+                            "8\n〒々〆" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("8"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("〒"), // Double quote
+                                    FlickDirection.UP to FlickAction.Input("々"),   // Single quote
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〆"),
+                                )
+                            ),
+                            "9\n^|\\" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("9"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("^"),   // Square brackets
+                                    FlickDirection.UP to FlickAction.Input("|"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("\\"),   // Curly braces
+                                )
+                            ),
+                            "0\n〜…" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("0"),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("〜"),
+                                    FlickDirection.UP to FlickAction.Input("…"),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("√"),
+                                )
+                            ),
+                            "( ) [ ]" to listOf(
+                                mapOf(
+                                    FlickDirection.TAP to FlickAction.Input("("),
+                                    FlickDirection.UP_LEFT_FAR to FlickAction.Input(")"),
+                                    FlickDirection.UP to FlickAction.Input("["),
+                                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("]"),
+                                )
+                            ),
+                            ".,-/" to listOf(symbols3),
+                        )
+                    }
+
+                spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(spaceActionMap))
+                }
+
+                return KeyboardLayout(keys, flickMaps, 5, 4)
+            }
+        }
+    }
+
+    private fun createHiraganaEffectiveLayout(
+        inputStyle: String, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -6637,8 +5831,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
-            ),
-            KeyData(
+            ), KeyData(
                 "CursorMoveLeft",
                 1,
                 0,
@@ -6646,155 +5839,121 @@ object KeyboardDefaultLayouts {
                 KeyAction.MoveCursorLeft,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
-            ),
-            KeyData(
-                "SwitchToNumber",
+            ), KeyData(
+                katakanaToggleStates[0].label ?: "",
                 2,
                 0,
                 false,
-                KeyAction.SwitchToNumberLayout,
+                katakanaToggleStates[0].action,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom
-            ),
-            KeyData(
-                "SwitchToKana",
+                dynamicStates = katakanaToggleStates,
+                keyId = "katakana_toggle_key",
+            ), KeyData(
+                "SwitchToEnglish",
                 3,
                 0,
                 false,
-                KeyAction.SwitchToKanaLayout,
+                KeyAction.SwitchToEnglishLayout,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
-            ),
-            KeyData(
-                "@#/_",
-                0,
-                1,
-                true,
-                keyType = when (inputStyle) {
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+            ), KeyData(
+                "あ", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "ABC",
-                0,
-                2,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "か", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "DEF",
-                0,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "さ", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "GHI",
-                1,
-                1,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "た", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "JKL",
-                1,
-                2,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "な", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "MNO",
-                1,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "は", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "PQRS",
-                2,
-                1,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "ま", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "TUV",
-                2,
-                2,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "や", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "WXYZ",
-                2,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "ら", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                "a/A",
+            ), KeyData(
+                dakutenToggleStates[0].label ?: "",
                 3,
                 1,
                 false,
-                action = KeyAction.ToggleCase,
-                isSpecialKey = false
-            ),
-            KeyData(
-                "' \" ( )",
-                3,
-                2,
-                true,
-                keyType = when (inputStyle) {
+                dakutenToggleStates[0].action,
+                dynamicStates = dakutenToggleStates,
+                keyId = "dakuten_toggle_key",
+                keyType = KeyType.CROSS_FLICK
+            ), KeyData(
+                "わ", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            KeyData(
-                ". , ? !",
-                3,
-                3,
-                true,
-                keyType = when (inputStyle) {
+            ), KeyData(
+                "、。?!", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ),
-            if (isFlickDeleteEnabled) {
+            ), if (isFlickDeleteEnabled) {
                 KeyData(
                     "Del",
                     0,
@@ -6818,8 +5977,7 @@ object KeyboardDefaultLayouts {
                     rowSpan = 1,
                     drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
                 )
-            },
-            KeyData(
+            }, KeyData(
                 "CursorMoveRight",
                 1,
                 4,
@@ -6827,8 +5985,7 @@ object KeyboardDefaultLayouts {
                 KeyAction.MoveCursorRight,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24,
-            ),
-            KeyData(
+            ), KeyData(
                 spaceConvertStatesCursor[0].label ?: "",
                 2,
                 4,
@@ -6839,8 +5996,720 @@ object KeyboardDefaultLayouts {
                 rowSpan = 1,
                 keyId = "space_convert_key",
                 keyType = KeyType.CROSS_FLICK
-            ),
+            ), KeyData(
+                enterKeyStatesCursor[0].label ?: "",
+                3,
+                4,
+                false,
+                enterKeyStatesCursor[0].action,
+                dynamicStates = enterKeyStatesCursor,
+                isSpecialKey = true,
+                rowSpan = 1,
+                drawableResId = enterKeyStatesCursor[0].drawableResId,
+                keyId = "enter_key"
+            )
+        )
+
+        when (inputStyle) {
+            "second-flick" -> {
+                val pasteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Paste,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.SelectAll,
+                        drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.Copy,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
+                    )
+                )
+                val cursorMoveActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                    )
+                )
+
+                val spaceActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Space,
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.Space,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+                    )
+                )
+
+                val conversionActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Convert,
+                    ),
+                )
+
+                // 状態0 (^_^): タップ操作のみを持つマップ
+                val emojiStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.InputText("^_^"), label = "^_^"
+                    )
+                    // この状態ではフリックアクションを定義しない
+                )
+                // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
+                val dakutenStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
+                    )
+                )
+
+                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                        )
+                    }
+
+                dakutenToggleStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(emojiStateFlickMap))
+                }
+                dakutenToggleStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(dakutenStateFlickMap))
+                }
+
+                spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(spaceActionMap))
+                }
+
+                spaceConvertStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(conversionActionMap))
+                }
+
+                // 2段階フリック用の文字マップ (isDefaultKey = true の場合に利用)
+                val twoStepFlickMaps = mapOf(
+                    // あ行
+                    "あ" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "あ",
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "あ",
+                            TfbiFlickDirection.UP_RIGHT to "ぁ",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "あ",
+                            TfbiFlickDirection.LEFT to "い",
+                            TfbiFlickDirection.DOWN_LEFT to "ぃ",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "あ",
+                            TfbiFlickDirection.UP to "う",
+                            TfbiFlickDirection.UP_LEFT to "ぅ"
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "あ",
+                            TfbiFlickDirection.RIGHT to "え",
+                            TfbiFlickDirection.DOWN_RIGHT to "ぇ"
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "あ",
+                            TfbiFlickDirection.DOWN to "お",
+                            TfbiFlickDirection.DOWN_RIGHT to "ぉ",
+                        )
+                    ),
+                    // か行
+                    "か" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "か",
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "か",
+                            TfbiFlickDirection.UP_RIGHT to "が",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "か",
+                            TfbiFlickDirection.LEFT to "き",
+                            TfbiFlickDirection.DOWN_LEFT to "ぎ",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "か",
+                            TfbiFlickDirection.UP to "く",
+                            TfbiFlickDirection.UP_LEFT to "ぐ"
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "か",
+                            TfbiFlickDirection.RIGHT to "け",
+                            TfbiFlickDirection.DOWN_RIGHT to "げ"
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "か",
+                            TfbiFlickDirection.DOWN to "こ",
+                            TfbiFlickDirection.DOWN_RIGHT to "ご",
+                        )
+                    ),
+                    // さ行
+                    "さ" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "さ",
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "さ",
+                            TfbiFlickDirection.UP_RIGHT to "ざ",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "さ",
+                            TfbiFlickDirection.LEFT to "し",
+                            TfbiFlickDirection.DOWN_LEFT to "じ",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "さ",
+                            TfbiFlickDirection.UP to "す",
+                            TfbiFlickDirection.UP_LEFT to "ず"
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "さ",
+                            TfbiFlickDirection.RIGHT to "せ",
+                            TfbiFlickDirection.DOWN_RIGHT to "ぜ"
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "さ",
+                            TfbiFlickDirection.DOWN to "そ",
+                            TfbiFlickDirection.DOWN_RIGHT to "ぞ",
+                        )
+                    ),
+                    // た行
+                    "た" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "た",
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "た",
+                            TfbiFlickDirection.UP_RIGHT to "だ",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "た",
+                            TfbiFlickDirection.LEFT to "ち",
+                            TfbiFlickDirection.DOWN_LEFT to "ぢ",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "た",
+                            TfbiFlickDirection.UP to "つ",
+                            TfbiFlickDirection.UP_LEFT to "づ",
+                            TfbiFlickDirection.UP_RIGHT to "っ"
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "た",
+                            TfbiFlickDirection.RIGHT to "て",
+                            TfbiFlickDirection.DOWN_RIGHT to "で"
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "た",
+                            TfbiFlickDirection.DOWN to "と",
+                            TfbiFlickDirection.DOWN_RIGHT to "ど",
+                        )
+                    ),
+                    // な行
+                    "な" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "な",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "な",
+                            TfbiFlickDirection.LEFT to "に",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "な",
+                            TfbiFlickDirection.UP to "ぬ",
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "な",
+                            TfbiFlickDirection.RIGHT to "ね",
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "な",
+                            TfbiFlickDirection.DOWN to "の",
+                        )
+                    ),
+                    // は行
+                    "は" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "は",
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "は",
+                            TfbiFlickDirection.UP_RIGHT to "ば",
+                        ), TfbiFlickDirection.UP_LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "は",
+                            TfbiFlickDirection.UP_LEFT to "ぱ",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "は",
+                            TfbiFlickDirection.LEFT to "ひ",
+                            TfbiFlickDirection.DOWN_LEFT to "び",
+                            TfbiFlickDirection.UP_LEFT to "ぴ",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "は",
+                            TfbiFlickDirection.UP to "ふ",
+                            TfbiFlickDirection.UP_RIGHT to "ぷ",
+                            TfbiFlickDirection.UP_LEFT to "ぶ",
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "は",
+                            TfbiFlickDirection.RIGHT to "へ",
+                            TfbiFlickDirection.DOWN_RIGHT to "べ",
+                            TfbiFlickDirection.UP_RIGHT to "ぺ"
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "は",
+                            TfbiFlickDirection.DOWN to "ほ",
+                            TfbiFlickDirection.DOWN_RIGHT to "ぼ",
+                            TfbiFlickDirection.DOWN_LEFT to "ぽ",
+                        )
+                    ),
+                    // ま行
+                    "ま" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "ま",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "ま",
+                            TfbiFlickDirection.LEFT to "み",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "ま",
+                            TfbiFlickDirection.UP to "む",
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "ま",
+                            TfbiFlickDirection.RIGHT to "め",
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "ま",
+                            TfbiFlickDirection.DOWN to "も",
+                        )
+                    ),
+                    // や行
+                    "や" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "や",
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "や",
+                            TfbiFlickDirection.UP_RIGHT to "ゃ",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "や",
+                            TfbiFlickDirection.LEFT to "(",
+                            TfbiFlickDirection.DOWN_LEFT to "「",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "や",
+                            TfbiFlickDirection.UP to "ゆ",
+                            TfbiFlickDirection.UP_LEFT to "ゅ",
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "や",
+                            TfbiFlickDirection.RIGHT to ")",
+                            TfbiFlickDirection.DOWN_RIGHT to "」",
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "や",
+                            TfbiFlickDirection.DOWN to "よ",
+                            TfbiFlickDirection.DOWN_RIGHT to "ょ",
+                        )
+                    ),
+                    // ら行
+                    "ら" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "ら",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "ら",
+                            TfbiFlickDirection.LEFT to "り",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "ら",
+                            TfbiFlickDirection.UP to "る",
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "ら",
+                            TfbiFlickDirection.RIGHT to "れ",
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "ら",
+                            TfbiFlickDirection.DOWN to "ろ",
+                        )
+                    ),
+                    // わ行
+                    "わ" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "わ",
+                        ), TfbiFlickDirection.UP_RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "わ",
+                            TfbiFlickDirection.UP_RIGHT to "ゎ",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "わ",
+                            TfbiFlickDirection.LEFT to "を",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "わ",
+                            TfbiFlickDirection.UP to "ん",
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "わ",
+                            TfbiFlickDirection.RIGHT to "ー",
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "わ",
+                            TfbiFlickDirection.DOWN to "〜",
+                        )
+                    ),
+                    // 記号
+                    "、。?!" to mapOf(
+                        TfbiFlickDirection.TAP to mapOf(
+                            TfbiFlickDirection.TAP to "、",
+                        ), TfbiFlickDirection.LEFT to mapOf(
+                            TfbiFlickDirection.TAP to "、",
+                            TfbiFlickDirection.LEFT to "。",
+                        ), TfbiFlickDirection.UP to mapOf(
+                            TfbiFlickDirection.TAP to "、",
+                            TfbiFlickDirection.UP to "？",
+                            TfbiFlickDirection.UP_LEFT to "：",
+                            TfbiFlickDirection.UP_RIGHT to "・",
+                        ), TfbiFlickDirection.RIGHT to mapOf(
+                            TfbiFlickDirection.TAP to "、",
+                            TfbiFlickDirection.RIGHT to "！",
+                        ), TfbiFlickDirection.DOWN to mapOf(
+                            TfbiFlickDirection.TAP to "、",
+                            TfbiFlickDirection.DOWN to "…",
+                        )
+                    )
+                )
+
+                return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
+            }
+
+            "sumire" -> {
+                return createHiraganaLayout(isFlickDeleteEnabled)
+            }
+
+            else -> {
+                val cursorMoveActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                    )
+                )
+
+                val spaceActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Space,
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.Space,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+                    )
+                )
+
+                val conversionActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Convert,
+                    ),
+                )
+
+                // 状態0 (^_^): タップ操作のみを持つマップ
+                val emojiStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.InputText("^_^"), label = "^_^"
+                    )
+                    // この状態ではフリックアクションを定義しない
+                )
+
+                // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
+                val dakutenStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
+                    )
+                )
+
+                val a = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("あ"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("い"),
+                    FlickDirection.UP to FlickAction.Input("う"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("え"),
+                    FlickDirection.DOWN to FlickAction.Input("お")
+                )
+                val ka = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("か"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("き"),
+                    FlickDirection.UP to FlickAction.Input("く"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("け"),
+                    FlickDirection.DOWN to FlickAction.Input("こ")
+                )
+                val sa = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("さ"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("し"),
+                    FlickDirection.UP to FlickAction.Input("す"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("せ"),
+                    FlickDirection.DOWN to FlickAction.Input("そ")
+                )
+                val ta = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("た"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("ち"),
+                    FlickDirection.UP to FlickAction.Input("つ"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("て"),
+                    FlickDirection.DOWN to FlickAction.Input("と")
+                )
+                val na = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("な"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("に"),
+                    FlickDirection.UP to FlickAction.Input("ぬ"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ね"),
+                    FlickDirection.DOWN to FlickAction.Input("の")
+                )
+                val ha = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("は"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("ひ"),
+                    FlickDirection.UP to FlickAction.Input("ふ"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("へ"),
+                    FlickDirection.DOWN to FlickAction.Input("ほ")
+                )
+                val ma = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("ま"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("み"),
+                    FlickDirection.UP to FlickAction.Input("む"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("め"),
+                    FlickDirection.DOWN to FlickAction.Input("も")
+                )
+                val ya = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("や"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
+                    FlickDirection.UP to FlickAction.Input("ゆ"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
+                    FlickDirection.DOWN to FlickAction.Input("よ")
+                )
+                val ra = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("ら"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("り"),
+                    FlickDirection.UP to FlickAction.Input("る"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("れ"),
+                    FlickDirection.DOWN to FlickAction.Input("ろ")
+                )
+                val wa = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("わ"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
+                    FlickDirection.UP to FlickAction.Input("ん"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
+                )
+                val symbols = mapOf(
+                    FlickDirection.TAP to FlickAction.Input("、"),
+                    FlickDirection.UP to FlickAction.Input("？"),
+                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("。"),
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
+                    FlickDirection.DOWN to FlickAction.Input("…")
+                )
+
+                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "あ" to listOf(a),
+                            "か" to listOf(ka),
+                            "さ" to listOf(sa),
+                            "た" to listOf(ta),
+                            "な" to listOf(na),
+                            "は" to listOf(ha),
+                            "ま" to listOf(ma),
+                            "や" to listOf(ya),
+                            "ら" to listOf(ra),
+                            "わ" to listOf(wa),
+                            "、。?!" to listOf(symbols),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "あ" to listOf(a),
+                            "か" to listOf(ka),
+                            "さ" to listOf(sa),
+                            "た" to listOf(ta),
+                            "な" to listOf(na),
+                            "は" to listOf(ha),
+                            "ま" to listOf(ma),
+                            "や" to listOf(ya),
+                            "ら" to listOf(ra),
+                            "わ" to listOf(wa),
+                            "、。?!" to listOf(symbols),
+                        )
+                    }
+
+                dakutenToggleStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(emojiStateFlickMap))
+                }
+                dakutenToggleStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(dakutenStateFlickMap))
+                }
+
+                spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(spaceActionMap))
+                }
+
+                spaceConvertStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(conversionActionMap))
+                }
+
+                return KeyboardLayout(keys, flickMaps, 5, 4)
+            }
+        }
+    }
+
+    private fun createEnglishEffectiveLayout(
+        isUpperCase: Boolean, inputStyle: String, isFlickDeleteEnabled: Boolean
+    ): KeyboardLayout {
+        val keys = listOf(
             KeyData(
+                "",
+                0,
+                0,
+                false,
+                KeyAction.SwitchToNextIme,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+            ), KeyData(
+                "CursorMoveLeft",
+                1,
+                0,
+                false,
+                KeyAction.MoveCursorLeft,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ), KeyData(
+                "SwitchToNumber",
+                2,
+                0,
+                false,
+                KeyAction.SwitchToNumberLayout,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+            ), KeyData(
+                "SwitchToKana",
+                3,
+                0,
+                false,
+                KeyAction.SwitchToKanaLayout,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
+            ), KeyData(
+                "@#/_", 0, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "ABC", 0, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "DEF", 0, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "GHI", 1, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "JKL", 1, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "MNO", 1, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "PQRS", 2, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "TUV", 2, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "WXYZ", 2, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
+            ), KeyData(
+                "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                ". , ? !", 3, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            }, KeyData(
+                "CursorMoveRight",
+                1,
+                4,
+                false,
+                KeyAction.MoveCursorRight,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24,
+            ), KeyData(
+                spaceConvertStatesCursor[0].label ?: "",
+                2,
+                4,
+                true,
+                spaceConvertStatesCursor[0].action,
+                dynamicStates = spaceConvertStatesCursor,
+                isSpecialKey = true,
+                rowSpan = 1,
+                keyId = "space_convert_key",
+                keyType = KeyType.CROSS_FLICK
+            ), KeyData(
                 enterKeyStatesCursor[0].label ?: "",
                 3,
                 4,
@@ -6856,8 +6725,7 @@ object KeyboardDefaultLayouts {
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Space,
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
                 KeyAction.Space,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -6943,8 +6811,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Delete,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
@@ -7001,12 +6868,7 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp
             ),
             KeyData(
-                ":",
-                1,
-                0,
-                false,
-                isSpecialKey = true,
-                action = KeyAction.InputText(":")
+                ":", 1, 0, false, isSpecialKey = true, action = KeyAction.InputText(":")
             ),
             KeyData(
                 "SwitchToKana",
@@ -7055,14 +6917,10 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "2\n￥$€", 0, 2,
-                false,
-                keyType = KeyType.STANDARD_FLICK
+                "2\n￥$€", 0, 2, false, keyType = KeyType.STANDARD_FLICK
             ),
             KeyData(
-                "3\n%°&", 0, 3,
-                false,
-                keyType = KeyType.STANDARD_FLICK
+                "3\n%°&", 0, 3, false, keyType = KeyType.STANDARD_FLICK
             ),
             KeyData("5\n+x÷", 1, 2, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("6\n< = >", 1, 3, false, keyType = KeyType.STANDARD_FLICK),
@@ -7096,12 +6954,7 @@ object KeyboardDefaultLayouts {
                 )
             },
             KeyData(
-                "-",
-                1,
-                4,
-                false,
-                isSpecialKey = true,
-                action = KeyAction.InputText("-")
+                "-", 1, 4, false, isSpecialKey = true, action = KeyAction.InputText("-")
             ),
             KeyData(
                 spaceConvertStatesCursor[0].label ?: "",
@@ -7132,8 +6985,7 @@ object KeyboardDefaultLayouts {
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.Space,
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
                 KeyAction.Space,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
 
@@ -7149,8 +7001,7 @@ object KeyboardDefaultLayouts {
         // 状態0 (^_^): タップ操作のみを持つマップ
         val emojiStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.InputText("^_^"),
-                label = "^_^"
+                KeyAction.InputText("^_^"), label = "^_^"
             )
             // この状態ではフリックアクションを定義しない
         )
@@ -7158,20 +7009,13 @@ object KeyboardDefaultLayouts {
         // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
         val dakutenStateFlickMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
-                KeyAction.ToggleDakuten,
-                label = " 小゛゜"
-            ),
-            FlickDirection.UP to FlickAction.Action(
-                KeyAction.InputText("ひらがな小文字"),
-                label = "小"
-            ),
-            FlickDirection.UP_LEFT to FlickAction.Action(
-                KeyAction.InputText("濁点"),
-                label = "゛"
-            ),
-            FlickDirection.UP_RIGHT to FlickAction.Action(
-                KeyAction.InputText("半濁点"),
-                label = "゜"
+                KeyAction.ToggleDakuten, label = " 小゛゜"
+            ), FlickDirection.UP to FlickAction.Action(
+                KeyAction.InputText("ひらがな小文字"), label = "小"
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.InputText("濁点"), label = "゛"
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.InputText("半濁点"), label = "゜"
             )
         )
 
@@ -7181,8 +7025,7 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Delete,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ),
-                    FlickDirection.UP_LEFT to FlickAction.Action(
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
