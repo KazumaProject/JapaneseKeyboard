@@ -5827,7 +5827,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
             if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                36
+                keyboardHeight + 42
             } else {
                 keyboardHeight + mainView.shortcutToolbarRecyclerview.height
             }
@@ -5924,7 +5924,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true && !isSymbol) {
             if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                36
+                keyboardHeight + 42
             } else {
                 keyboardHeight + mainView.shortcutToolbarRecyclerview.height
             }
@@ -6017,7 +6017,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
             if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                36
+                keyboardHeight + 42
             } else {
                 keyboardHeight + mainView.shortcutToolbarRecyclerview.height
             }
@@ -6256,7 +6256,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
             if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                36
+                keyboardHeight + 42
             } else {
                 keyboardHeight + mainView.shortcutToolbarRecyclerview.height
             }
