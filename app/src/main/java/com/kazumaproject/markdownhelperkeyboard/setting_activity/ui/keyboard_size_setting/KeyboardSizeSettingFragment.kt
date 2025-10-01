@@ -16,10 +16,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import androidx.viewpager2.widget.ViewPager2
 import androidx.window.layout.WindowMetricsCalculator
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.adapter.KeyboardViewPagerAdapter
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import javax.inject.Inject
@@ -35,9 +37,9 @@ class KeyboardSettingFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var isRightAligned = true
-    private var isFloatingMode = false // フローティングモードの状態を管理する変数
+    private var isFloatingMode = false
+    private var areControlsVisible = true
 
-    // Define min/max dimensions for the keyboard
     private val minHeightDp = 100
     private val maxHeightDp = 420
     private val minWidthPercent = 32
@@ -55,74 +57,137 @@ class KeyboardSettingFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupMenu()
-        // SharedPreferencesから状態を読み込む
         isRightAligned = appPreference.keyboard_position ?: true
         isFloatingMode = appPreference.is_floating_mode ?: false
 
-        // Set initial state and setup listeners
-        setInitialKeyboardView()
+        setupViewPager()
+        applyCurrentPageDimensions()
         setupKeyboardPositionButton()
-        setupFloatingButton() // フローティングボタンのリスナーをセットアップ
+        setupFloatingButton()
         setupResetButton()
         updateKeyboardAlignment()
-        updateFloatingModeUI() // UIの初期状態をセットアップ
+        updateFloatingModeUI()
+        // ▼▼▼ 正しい関数呼び出しに修正 ▼▼▼
         setupResizeHandles()
         setupMoveHandle()
+        // ▲▲▲ 正しい関数呼び出しに修正 ▲▲▲
+
+        updateControlsVisibility()
     }
 
-    /**
-     * Sets up the modern, lifecycle-aware MenuProvider to handle the "Up" button.
-     */
+    private fun setupViewPager() {
+        val adapter = KeyboardViewPagerAdapter()
+        binding.keyboardViewPager.adapter = adapter
+        binding.keyboardViewPager.isUserInputEnabled = false
+
+        binding.keyboardViewPager.registerOnPageChangeCallback(object :
+            ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                applyCurrentPageDimensions()
+                updateTooltipUI(position)
+
+                isRightAligned = if (position == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+                    appPreference.keyboard_position ?: true
+                } else {
+                    appPreference.qwerty_keyboard_position ?: true
+                }
+                updateKeyboardAlignment()
+
+                binding.floatingKeyboardSettingBtn.visibility =
+                    if (position == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) View.VISIBLE else View.GONE
+            }
+        })
+
+        binding.tenkeyTooltipButton.setOnClickListener {
+            binding.keyboardViewPager.setCurrentItem(
+                KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION,
+                true
+            )
+        }
+        binding.qwertyTooltipButton.setOnClickListener {
+            binding.keyboardViewPager.setCurrentItem(
+                KeyboardViewPagerAdapter.QWERTY_PAGE_POSITION,
+                true
+            )
+        }
+
+        updateTooltipUI(binding.keyboardViewPager.currentItem)
+        binding.floatingKeyboardSettingBtn.visibility =
+            if (binding.keyboardViewPager.currentItem == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) View.VISIBLE else View.GONE
+    }
+
+    private fun applyCurrentPageDimensions() {
+        val position = binding.keyboardViewPager.currentItem
+        val heightPref: Int
+        val widthPref: Int
+        val marginBottomPref: Int
+        val positionPref: Boolean
+
+        if (position == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+            heightPref = appPreference.keyboard_height ?: 220
+            widthPref = appPreference.keyboard_width ?: 100
+            marginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
+            positionPref = appPreference.keyboard_position ?: true
+        } else { // QWERTY
+            heightPref = appPreference.qwerty_keyboard_height ?: 220
+            widthPref = appPreference.qwerty_keyboard_width ?: 100
+            marginBottomPref = appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            positionPref = appPreference.qwerty_keyboard_position ?: true
+        }
+        isRightAligned = positionPref
+
+        val density = resources.displayMetrics.density
+        val heightInPx = (heightPref * density).toInt()
+        val marginBottomInPx = (marginBottomPref * density).toInt()
+
+        val screenWidth = WindowMetricsCalculator.getOrCreate()
+            .computeCurrentWindowMetrics(requireActivity()).bounds.width()
+        val widthInPx = if (widthPref >= 98) {
+            ViewGroup.LayoutParams.MATCH_PARENT
+        } else {
+            (screenWidth * (widthPref / 100f)).toInt()
+        }
+
+        val layoutParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
+        layoutParams.height = heightInPx
+        layoutParams.width = widthInPx
+        layoutParams.bottomMargin = marginBottomInPx
+        binding.keyboardContainer.layoutParams = layoutParams
+    }
+
     private fun setupMenu() {
         (activity as? AppCompatActivity)?.supportActionBar?.setDisplayHomeAsUpEnabled(true)
         val menuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {}
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.menu_keyboard_settings, menu)
+            }
+
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                if (menuItem.itemId == android.R.id.home) {
-                    parentFragmentManager.popBackStack()
-                    return true
+                return when (menuItem.itemId) {
+                    android.R.id.home -> {
+                        parentFragmentManager.popBackStack()
+                        true
+                    }
+
+                    R.id.action_toggle_visibility -> {
+                        areControlsVisible = !areControlsVisible
+                        updateControlsVisibility()
+                        true
+                    }
+
+                    else -> false
                 }
-                return false
             }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    /**
-     * Applies the saved dimensions from preferences to the keyboard container on startup.
-     */
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setInitialKeyboardView() {
-        val heightFromPreference = appPreference.keyboard_height ?: maxHeightDp
-        val widthFromPreference = appPreference.keyboard_width ?: maxWidthPercent
-        val marginBottomFromPreference = appPreference.keyboard_vertical_margin_bottom ?: 0
-
-        val density = resources.displayMetrics.density
-        val heightInPx = (heightFromPreference * density).toInt()
-        val marginBottomInPx = (marginBottomFromPreference * density).toInt()
-
-        val screenWidth = WindowMetricsCalculator.getOrCreate()
-            .computeCurrentWindowMetrics(requireActivity()).bounds.width()
-
-        val layoutParams = binding.keyboardContainer.layoutParams as ConstraintLayout.LayoutParams
-        layoutParams.height = heightInPx
-        layoutParams.width = if (widthFromPreference == maxWidthPercent) {
-            ViewGroup.LayoutParams.MATCH_PARENT
-        } else {
-            (screenWidth * (widthFromPreference / 100f)).toInt()
-        }
-        layoutParams.bottomMargin = marginBottomInPx
-        binding.keyboardContainer.layoutParams = layoutParams
-        binding.keyboardView.setOnTouchListener { _, _ ->
-            true
-        }
-    }
-
+    // ▼▼▼ 移動専用の関数を復活させ、中央の `handle_move` を対象にするように修正 ▼▼▼
     @SuppressLint("ClickableViewAccessibility")
     private fun setupMoveHandle() {
         var initialY = 0f
         var initialBottomMargin = 0
-
         val density = resources.displayMetrics.density
 
         binding.handleMove.setOnTouchListener { _, event ->
@@ -137,19 +202,22 @@ class KeyboardSettingFragment : Fragment() {
 
                 MotionEvent.ACTION_MOVE -> {
                     val deltaY = event.rawY - initialY
-                    // Yが小さい（上方向）にドラッグするとdeltaYは負になるため、マージンは増加する
                     val newBottomMargin = initialBottomMargin - deltaY
-                    // 画面外にドラッグできないようにマージンを制限（例: 0以上）
                     layoutParams.bottomMargin = newBottomMargin.toInt().coerceAtLeast(0)
                     binding.keyboardContainer.requestLayout()
                     true
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    // dpに変換して設定を保存
                     val finalMarginDp = (layoutParams.bottomMargin / density).roundToInt()
-                    appPreference.keyboard_vertical_margin_bottom = finalMarginDp
-                    Timber.d("savePreferences: vertical margin bottom = $finalMarginDp dp")
+                    val currentPage = binding.keyboardViewPager.currentItem
+
+                    if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+                        appPreference.keyboard_vertical_margin_bottom = finalMarginDp
+                    } else { // QWERTY
+                        appPreference.qwerty_keyboard_vertical_margin_bottom = finalMarginDp
+                    }
+                    Timber.d("Saved vertical margin for page $currentPage: $finalMarginDp dp")
                     true
                 }
 
@@ -157,10 +225,9 @@ class KeyboardSettingFragment : Fragment() {
             }
         }
     }
+    // ▲▲▲ 移動専用の関数を復活 ▲▲▲
 
-    /**
-     * Initializes touch listeners for all four resize handles.
-     */
+    // ▼▼▼ リサイズ専用の関数に修正 (`handle_top`の機能をリサイズに戻しました) ▼▼▼
     @SuppressLint("ClickableViewAccessibility")
     private fun setupResizeHandles() {
         var initialY = 0f
@@ -175,28 +242,27 @@ class KeyboardSettingFragment : Fragment() {
         val maxHeightPx = maxHeightDp * density
         val minWidthPx = screenWidth * (minWidthPercent / 100f)
 
-        // Common function to save preferences on ACTION_UP
         fun savePreferences() {
-            val finalHeightPx = (binding.keyboardContainer.height / density).roundToInt()
-            val finalWidthPx =
+            val finalHeightDp = (binding.keyboardContainer.height / density).roundToInt()
+            val finalWidthPercent =
                 ((binding.keyboardContainer.width.toFloat() / screenWidth) * 100).roundToInt()
+            val finalWidthValue = if (finalWidthPercent >= 98) 100 else finalWidthPercent
 
-            appPreference.keyboard_height = finalHeightPx
-            appPreference.keyboard_width = if (finalWidthPx >= 90) {
-                100
-            } else {
-                finalWidthPx
+            val currentPage = binding.keyboardViewPager.currentItem
+            if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+                appPreference.keyboard_height = finalHeightDp
+                appPreference.keyboard_width = finalWidthValue
+            } else { // QWERTY
+                appPreference.qwerty_keyboard_height = finalHeightDp
+                appPreference.qwerty_keyboard_width = finalWidthValue
             }
-
-            Timber.d("savePreferences: $finalWidthPx $finalHeightPx")
+            Timber.d("Saved dimensions for page $currentPage: H=$finalHeightDp dp, W=$finalWidthValue %")
         }
 
-        // Top Handle
         binding.handleTop.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialY = event.rawY
-                    initialHeight = binding.keyboardContainer.height
+                    initialY = event.rawY; initialHeight = binding.keyboardContainer.height
                 }
 
                 MotionEvent.ACTION_MOVE -> {
@@ -211,12 +277,10 @@ class KeyboardSettingFragment : Fragment() {
             true
         }
 
-        // Bottom Handle
         binding.handleBottom.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialY = event.rawY
-                    initialHeight = binding.keyboardContainer.height
+                    initialY = event.rawY; initialHeight = binding.keyboardContainer.height
                 }
 
                 MotionEvent.ACTION_MOVE -> {
@@ -231,12 +295,10 @@ class KeyboardSettingFragment : Fragment() {
             true
         }
 
-        // Left Handle
         binding.handleLeft.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = event.rawX
-                    initialWidth = binding.keyboardContainer.width
+                    initialX = event.rawX; initialWidth = binding.keyboardContainer.width
                 }
 
                 MotionEvent.ACTION_MOVE -> {
@@ -252,12 +314,10 @@ class KeyboardSettingFragment : Fragment() {
             true
         }
 
-        // Right Handle
         binding.handleRight.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    initialX = event.rawX
-                    initialWidth = binding.keyboardContainer.width
+                    initialX = event.rawX; initialWidth = binding.keyboardContainer.width
                 }
 
                 MotionEvent.ACTION_MOVE -> {
@@ -273,6 +333,7 @@ class KeyboardSettingFragment : Fragment() {
             true
         }
     }
+    // ▲▲▲ リサイズ専用の関数に修正 ▲▲▲
 
     private fun setupKeyboardPositionButton() {
         binding.keyboardPositionButton.setOnClickListener {
@@ -281,47 +342,48 @@ class KeyboardSettingFragment : Fragment() {
         }
     }
 
-    /**
-     * フローティングボタンのクリックリスナーをセットアップ
-     */
     private fun setupFloatingButton() {
         binding.floatingKeyboardSettingBtn.setOnClickListener {
             isFloatingMode = !isFloatingMode
-            appPreference.is_floating_mode = isFloatingMode // 設定を保存
+            appPreference.is_floating_mode = isFloatingMode
             updateFloatingModeUI()
         }
     }
 
-    /**
-     * Sets up the listener for the new reset button.
-     */
     private fun setupResetButton() {
         binding.resetLayoutButton.setOnClickListener {
-            // Set preferences to default values
-            appPreference.keyboard_height = 220
-            appPreference.keyboard_width = maxWidthPercent
-            appPreference.keyboard_position = true // Default to right-aligned
-            appPreference.keyboard_vertical_margin_bottom = 0
-            appPreference.is_floating_mode = false // フローティングモードをOFFにリセット
+            val currentPage = binding.keyboardViewPager.currentItem
 
-            // Update local state and UI
-            isRightAligned = true
-            isFloatingMode = false // ローカルの状態もリセット
-            setInitialKeyboardView()
+            if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+                appPreference.keyboard_height = 220
+                appPreference.keyboard_width = 100
+                appPreference.keyboard_vertical_margin_bottom = 0
+                appPreference.keyboard_position = true
+            } else {
+                appPreference.qwerty_keyboard_height = 220
+                appPreference.qwerty_keyboard_width = 100
+                appPreference.qwerty_keyboard_vertical_margin_bottom = 0
+                appPreference.qwerty_keyboard_position = true
+            }
+
+            applyCurrentPageDimensions()
             updateKeyboardAlignment()
-            updateFloatingModeUI() // フローティングボタンのUIを更新
         }
     }
 
     private fun updateKeyboardAlignment() {
-        appPreference.keyboard_position = isRightAligned
+        val currentPage = binding.keyboardViewPager.currentItem
+        if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+            appPreference.keyboard_position = isRightAligned
+        } else {
+            appPreference.qwerty_keyboard_position = isRightAligned
+        }
 
         val constraintLayout = binding.keyboardSettingConstraint
         val constraintSet = ConstraintSet()
         constraintSet.clone(constraintLayout)
 
         if (isRightAligned) {
-            // Align container to the right
             constraintSet.connect(
                 binding.keyboardContainer.id,
                 ConstraintSet.END,
@@ -330,15 +392,11 @@ class KeyboardSettingFragment : Fragment() {
             )
             constraintSet.clear(binding.keyboardContainer.id, ConstraintSet.START)
             binding.keyboardPositionButton.setBackgroundColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    com.kazumaproject.core.R.color.blue
-                )
+                ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue)
             )
             binding.keyboardPositionButton.text =
                 getString(R.string.key_size_position_button_text_right)
         } else {
-            // Align container to the left
             constraintSet.connect(
                 binding.keyboardContainer.id,
                 ConstraintSet.START,
@@ -358,18 +416,12 @@ class KeyboardSettingFragment : Fragment() {
         constraintSet.applyTo(constraintLayout)
     }
 
-    /**
-     * フローティングモードの状態に基づいてUIを更新
-     */
     private fun updateFloatingModeUI() {
         if (isFloatingMode) {
             binding.floatingKeyboardSettingBtn.text =
                 getString(R.string.key_size_floating_button_text_on)
             binding.floatingKeyboardSettingBtn.setBackgroundColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    com.kazumaproject.core.R.color.blue
-                )
+                ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue)
             )
         } else {
             binding.floatingKeyboardSettingBtn.text =
@@ -383,6 +435,36 @@ class KeyboardSettingFragment : Fragment() {
         }
     }
 
+    private fun updateTooltipUI(selectedPosition: Int) {
+        val selectedColor =
+            ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue)
+        val defaultColor = ContextCompat.getColor(
+            requireContext(),
+            com.kazumaproject.core.R.color.qwety_key_bg_color
+        )
+
+        binding.tenkeyTooltipButton.setBackgroundColor(
+            if (selectedPosition == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) selectedColor else defaultColor
+        )
+        binding.qwertyTooltipButton.setBackgroundColor(
+            if (selectedPosition == KeyboardViewPagerAdapter.QWERTY_PAGE_POSITION) selectedColor else defaultColor
+        )
+    }
+
+    private fun updateControlsVisibility() {
+        val visibility = if (areControlsVisible) View.VISIBLE else View.GONE
+        binding.keyboardPositionTitle.visibility = visibility
+        binding.keyboardPositionButton.visibility = visibility
+        binding.resetLayoutButton.visibility = visibility
+        binding.tenkeyTooltipButton.visibility = visibility
+        binding.qwertyTooltipButton.visibility = visibility
+
+        if (areControlsVisible && binding.keyboardViewPager.currentItem == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+            binding.floatingKeyboardSettingBtn.visibility = View.VISIBLE
+        } else {
+            binding.floatingKeyboardSettingBtn.visibility = View.GONE
+        }
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
