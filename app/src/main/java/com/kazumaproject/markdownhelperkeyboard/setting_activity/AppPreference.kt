@@ -67,6 +67,11 @@ object AppPreference {
     private val KEYBOARD_VERTICAL_MARGIN_BOTTOM =
         Pair("keyboard_vertical_margin_bottom_preference", 0)
     private val KEYBOARD_FLOATING_PREFERENCE = Pair("keyboard_floating_preference", false)
+    private val QWERTY_KEYBOARD_HEIGHT = Pair("qwerty_keyboard_height_preference", 220)
+    private val QWERTY_KEYBOARD_WIDTH = Pair("qwerty_keyboard_width_preference", 100)
+    private val QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM =
+        Pair("qwerty_keyboard_vertical_margin_bottom_preference", 0)
+    private val QWERTY_KEYBOARD_POSITION = Pair("qwerty_keyboard_position_preference", true)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
@@ -380,10 +385,44 @@ object AppPreference {
             it.putInt(KEYBOARD_WIDTH.first, value ?: 100)
         }
 
+    var qwerty_keyboard_height: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_HEIGHT.first, QWERTY_KEYBOARD_HEIGHT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_HEIGHT.first, value ?: 220)
+        }
+
+    var qwerty_keyboard_width: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_WIDTH.first, QWERTY_KEYBOARD_WIDTH.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_WIDTH.first, value ?: 100)
+        }
+
+    var qwerty_keyboard_vertical_margin_bottom: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM.first,
+            QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM.first, value ?: 0)
+        }
+
     var keyboard_position: Boolean?
         get() = preferences.getBoolean(KEYBOARD_POSITION.first, KEYBOARD_POSITION.second)
         set(value) = preferences.edit {
             it.putBoolean(KEYBOARD_POSITION.first, value ?: true)
+        }
+
+    var qwerty_keyboard_position: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_KEYBOARD_POSITION.first,
+            QWERTY_KEYBOARD_POSITION.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_KEYBOARD_POSITION.first, value ?: true)
         }
 
     var keyboard_vertical_margin_bottom: Int?

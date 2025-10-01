@@ -5234,7 +5234,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (candidateTabVisibility == true) {
                         mainView.candidateTabLayout.isVisible = true
                     }
-                    mainView.shortcutToolbarRecyclerview.isVisible = false
+                    if (shortcutTollbarVisibility == true){
+                        mainView.shortcutToolbarRecyclerview.isInvisible = true
+                    }else{
+                        mainView.shortcutToolbarRecyclerview.isVisible = false
+                    }
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
@@ -5433,11 +5437,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.candidateTabLayout.isVisible = false
                         val tab = mainView.candidateTabLayout.getTabAt(0)
                         mainView.candidateTabLayout.selectTab(tab)
-                        if (shortcutTollbarVisibility == true) {
-                            mainView.shortcutToolbarRecyclerview.isVisible = true
-                        } else {
-                            mainView.shortcutToolbarRecyclerview.isVisible = false
-                        }
+                        mainView.shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -5826,11 +5826,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                keyboardHeight + 80
-            } else {
-                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-            }
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
         } else {
             keyboardHeight
         }
@@ -5923,11 +5919,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true && !isSymbol) {
-            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                keyboardHeight + 80
-            } else {
-                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-            }
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
         } else {
             keyboardHeight
         }
@@ -6016,11 +6008,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                keyboardHeight + 80
-            } else {
-                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-            }
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
         } else {
             keyboardHeight
         }
@@ -6255,11 +6243,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            if (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true) {
-                keyboardHeight + 80
-            } else {
-                keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-            }
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
         } else {
             keyboardHeight
         }
