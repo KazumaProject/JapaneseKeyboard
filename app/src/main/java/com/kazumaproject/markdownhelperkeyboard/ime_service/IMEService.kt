@@ -7974,6 +7974,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 com.kazumaproject.core.R.drawable.content_copy_24dp -> {
                     copyAction()
                 }
+
+                com.kazumaproject.core.R.drawable.content_paste_24px -> {
+                    pasteAction()
+                }
             }
         }
     }

@@ -231,13 +231,13 @@ class KeyboardSettingFragment : Fragment() {
         var initialWidth = 0
 
         val density = resources.displayMetrics.density
+        // ScreenWidth remains useful for min/max calculations in pixels
         val screenWidth = WindowMetricsCalculator.getOrCreate()
             .computeCurrentWindowMetrics(requireActivity()).bounds.width()
         val minHeightPx = minHeightDp * density
         val maxHeightPx = maxHeightDp * density
         val minWidthPx = screenWidth * (minWidthPercent / 100f)
 
-        // ▼▼▼ 保存ロジックを「高さ専用」と「幅専用」に分離 ▼▼▼
         fun saveHeightPreference() {
             val finalHeightDp = (binding.keyboardContainer.height / density).roundToInt()
             val currentPage = binding.keyboardViewPager.currentItem
@@ -250,8 +250,21 @@ class KeyboardSettingFragment : Fragment() {
         }
 
         fun saveWidthPreference() {
-            val finalWidthPercent =
-                ((binding.keyboardContainer.width.toFloat() / screenWidth) * 100).roundToInt()
+            // ▼▼▼ Correct calculation logic starts here ▼▼▼
+            // Get the parent view (the ConstraintLayout) to find the available width
+            val parentView = binding.keyboardSettingConstraint
+            // Calculate the actual available width by subtracting the horizontal padding
+            val availableWidth =
+                (parentView.width - parentView.paddingLeft - parentView.paddingRight).toFloat()
+
+            // Prevent division by zero if layout hasn't been measured yet
+            if (availableWidth <= 0) return
+
+            // Calculate the percentage based on the available width
+            val currentWidth = binding.keyboardContainer.width.toFloat()
+            val finalWidthPercent = ((currentWidth / availableWidth) * 100).roundToInt()
+            // ▲▲▲ Correct calculation logic ends here ▲▲▲
+
             val finalWidthValue = if (finalWidthPercent >= 98) 100 else finalWidthPercent
 
             val currentPage = binding.keyboardViewPager.currentItem
@@ -262,7 +275,6 @@ class KeyboardSettingFragment : Fragment() {
             }
             Timber.d("Saved Width for page $currentPage: $finalWidthValue %")
         }
-        // ▲▲▲ ここまで変更 ▲▲▲
 
         binding.handleTop.setOnTouchListener { _, event ->
             when (event.action) {
@@ -276,7 +288,7 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.height = newHeight.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-                // ▼▼▼ 高さ専用の保存関数を呼び出すように変更 ▼▼▼
+
                 MotionEvent.ACTION_UP -> saveHeightPreference()
             }
             true
@@ -294,7 +306,7 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.height = newHeight.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-                // ▼▼▼ 高さ専用の保存関数を呼び出すように変更 ▼▼▼
+
                 MotionEvent.ACTION_UP -> saveHeightPreference()
             }
             true
@@ -313,7 +325,7 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.width = newWidth.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-                // ▼▼▼ 幅専用の保存関数を呼び出すように変更 ▼▼▼
+
                 MotionEvent.ACTION_UP -> saveWidthPreference()
             }
             true
@@ -332,7 +344,7 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.width = newWidth.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-                // ▼▼▼ 幅専用の保存関数を呼び出すように変更 ▼▼▼
+
                 MotionEvent.ACTION_UP -> saveWidthPreference()
             }
             true
