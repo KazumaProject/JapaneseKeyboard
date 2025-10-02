@@ -1218,6 +1218,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val heightPref = appPreference.keyboard_height ?: 280
             val widthPref = appPreference.keyboard_width ?: 100
             val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
+
             val density = resources.displayMetrics.density
             val screenWidth = resources.displayMetrics.widthPixels
             val isPortrait =
@@ -3056,6 +3057,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 showKeyboard(nextType)
                 keyboardSelectionPopupWindow?.dismiss()
+                setKeyboardSizeSwitchKeyboard(mainView)
             }
 
             keyboardSelectionPopupWindow?.setOnDismissListener {
@@ -5234,9 +5236,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (candidateTabVisibility == true) {
                         mainView.candidateTabLayout.isVisible = true
                     }
-                    if (shortcutTollbarVisibility == true){
+                    if (shortcutTollbarVisibility == true) {
                         mainView.shortcutToolbarRecyclerview.isInvisible = true
-                    }else{
+                    } else {
                         mainView.shortcutToolbarRecyclerview.isVisible = false
                     }
                 }
@@ -5437,7 +5439,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.candidateTabLayout.isVisible = false
                         val tab = mainView.candidateTabLayout.getTabAt(0)
                         mainView.candidateTabLayout.selectTab(tab)
-                        mainView.shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
+                        mainView.shortcutToolbarRecyclerview.isVisible =
+                            shortcutTollbarVisibility == true
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -5755,9 +5758,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("Keyboard Height: setKeyboardSizeForHeight called")
         if (hasHardwareKeyboardConnected != true) return
         val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenWidth = resources.displayMetrics.widthPixels
+        val positionPref = appPreference.keyboard_position ?: true
+
+        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
+        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
+        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyKeyboardMarginBottomPref =
+            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
@@ -5765,11 +5777,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (height * density).toInt()
             }
 
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+
             else -> {
                 val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
             }
         }
+
+        val widthPx = when {
+            widthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val qwertyWidthPx = when {
+            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
+            }
+        }
+
         val defaultHeightSizeByDevice = when {
             isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
                 when (candidateViewHeight) {
@@ -5830,11 +5868,49 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             keyboardHeight
         }
+        val finalKeyboardWidth =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyWidthPx
+            } else {
+                widthPx
+            }
+
+        val gravity =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                if (qwertyPositionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            } else {
+                if (positionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            }
+
+        val finalBottomMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyKeyboardMarginBottomPref
+            } else {
+                keyboardBottomMargin
+            }
+
+        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            mainView.suggestionViewParent.layoutParams = params
+        }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = finalKeyboardHeight
-            params.bottomMargin = keyboardBottomMargin
+            params.width = finalKeyboardWidth
+            params.bottomMargin = finalBottomMargin
+            params.gravity = gravity
             mainView.root.layoutParams = params
         }
+
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
@@ -5843,9 +5919,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         Timber.d("Keyboard Height: setKeyboardSizeForHeightSymbol called")
         val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenWidth = resources.displayMetrics.widthPixels
+        val positionPref = appPreference.keyboard_position ?: true
+
+        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
+        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
+        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyKeyboardMarginBottomPref =
+            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
 
         val heightPx = when {
             isSymbol -> {
@@ -5857,11 +5942,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (height * density).toInt()
             }
 
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+
             else -> {
                 val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
             }
         }
+
+        val widthPx = when {
+            widthPref == 100 || isSymbol -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val qwertyWidthPx = when {
+            qwertyWidthPref == 100 || isSymbol -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
+            }
+        }
+
         val defaultHeightSizeByDevice = when {
             isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
                 when (candidateViewHeight) {
@@ -5924,9 +6035,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardHeight
         }
 
+        val finalKeyboardWidth =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyWidthPx
+            } else {
+                widthPx
+            }
+
+        val gravity =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                if (qwertyPositionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            } else {
+                if (positionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            }
+
+        val finalBottomMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyKeyboardMarginBottomPref
+            } else {
+                keyboardBottomMargin
+            }
+
+        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            mainView.suggestionViewParent.layoutParams = params
+        }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = finalKeyboardHeight
-            params.bottomMargin = keyboardBottomMargin
+            params.width = finalKeyboardWidth
+            params.bottomMargin = finalBottomMargin
+            params.gravity = gravity
             mainView.root.layoutParams = params
         }
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
@@ -5937,9 +6085,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         Timber.d("Keyboard Height: setKeyboardSizeForHeightForFloatingMode called")
         val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenWidth = resources.displayMetrics.widthPixels
+        val positionPref = appPreference.keyboard_position ?: true
+
+        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
+        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
+        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyKeyboardMarginBottomPref =
+            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
@@ -5947,11 +6104,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (height * density).toInt()
             }
 
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+
             else -> {
                 val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
             }
         }
+
+        val widthPx = when {
+            widthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val qwertyWidthPx = when {
+            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
+            }
+        }
+
         val additionalHeightInDp = when {
             isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
                 when (candidateViewHeight) {
@@ -6007,14 +6190,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 additionalHeightInDp
             )
         }
+
         val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
             keyboardHeight + mainView.shortcutToolbarRecyclerview.height
         } else {
             keyboardHeight
         }
+
+        val finalKeyboardWidth =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyWidthPx
+            } else {
+                widthPx
+            }
+
+        val gravity =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                if (qwertyPositionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            } else {
+                if (positionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            }
+
+        val finalBottomMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyKeyboardMarginBottomPref
+            } else {
+                keyboardBottomMargin
+            }
+
+        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            mainView.suggestionViewParent.layoutParams = params
+        }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = finalKeyboardHeight
-            params.bottomMargin = keyboardBottomMargin
+            params.width = finalKeyboardWidth
+            params.bottomMargin = finalBottomMargin
+            params.gravity = gravity
             mainView.root.layoutParams = params
         }
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
@@ -6025,22 +6247,54 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputType.isPassword()) return
         val columnNum = candidateColumns ?: "1"
 
-        // --- Start of height calculation ---
         val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenWidth = resources.displayMetrics.widthPixels
+        val positionPref = appPreference.keyboard_position ?: true
 
-        // Calculate base keyboard height in pixels, scaled by density
+        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
+        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
+        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyKeyboardMarginBottomPref =
+            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+
         val heightPx = when {
             keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
 
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+
             else -> {
                 val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
+            }
+        }
+
+        val widthPx = when {
+            widthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val qwertyWidthPx = when {
+            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
             }
         }
 
@@ -6143,11 +6397,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             totalHeight
         }
 
+        val finalKeyboardWidth =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyWidthPx
+            } else {
+                widthPx
+            }
+
+        val gravity =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                if (qwertyPositionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            } else {
+                if (positionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            }
+
+        val finalBottomMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyKeyboardMarginBottomPref
+            } else {
+                keyboardBottomMargin
+            }
+
+        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            mainView.suggestionViewParent.layoutParams = params
+        }
+
         // --- Apply the calculated height ---
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             // Set the final calculated height and bottom margin
             params.height = finalKeyboardHeight
-            params.bottomMargin = keyboardBottomMargin
+            params.width = finalKeyboardWidth
+            params.bottomMargin = finalBottomMargin
             mainView.root.layoutParams = params
         }
 
@@ -6165,9 +6455,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         Timber.d("Keyboard Height: setKeyboardHeightDefault called")
         val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
         val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenWidth = resources.displayMetrics.widthPixels
+        val positionPref = appPreference.keyboard_position ?: true
+
+        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
+        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
+        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyKeyboardMarginBottomPref =
+            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
@@ -6175,11 +6474,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 (height * density).toInt()
             }
 
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+
             else -> {
                 val clampedHeight = heightPref.coerceIn(180, 420)
                 (clampedHeight * density).toInt()
             }
         }
+
+        val widthPx = when {
+            widthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val qwertyWidthPx = when {
+            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
+            }
+        }
+
         val additionalHeightInDp = when {
             isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
                 when (candidateViewHeight) {
@@ -6248,9 +6573,217 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardHeight
         }
 
+        val finalKeyboardWidth =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyWidthPx
+            } else {
+                widthPx
+            }
+
+        val gravity =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                if (qwertyPositionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            } else {
+                if (positionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            }
+
+        val finalBottomMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyKeyboardMarginBottomPref
+            } else {
+                keyboardBottomMargin
+            }
+
+        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            mainView.suggestionViewParent.layoutParams = params
+        }
+
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.height = finalKeyboardHeight
-            params.bottomMargin = keyboardBottomMargin
+            params.width = finalKeyboardWidth
+            params.gravity = gravity
+            params.bottomMargin = finalBottomMargin
+            mainView.root.layoutParams = params
+        }
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+    }
+
+    /**
+     *
+     * Reset keyboard size when switching to new
+     * **/
+    private fun setKeyboardSizeSwitchKeyboard(mainView: MainLayoutBinding) {
+
+        Timber.d("Keyboard Height: setKeyboardSizeSwitchKeyboard called")
+        val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 100
+        val positionPref = appPreference.keyboard_position ?: true
+        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val density = resources.displayMetrics.density
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
+        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
+        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyKeyboardMarginBottomPref =
+            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+        val screenWidth = resources.displayMetrics.widthPixels
+
+        val heightPx = when {
+            keyboardSymbolViewState.value -> {
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+
+            else -> {
+                val clampedHeight = heightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+
+        val widthPx = when {
+            widthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val qwertyWidthPx = when {
+            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
+            }
+        }
+
+        val additionalHeightInDp = when {
+            isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 48
+                    "2" -> 54
+                    "3" -> 60
+                    else -> 48
+                }
+            }
+
+            isTablet == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            isTablet == false && !isPortrait -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            else -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+        }
+        val keyboardHeight = if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                additionalHeightInDp
+            )
+        } else {
+            if (isPortrait) {
+                if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                    additionalHeightInDp
+                )
+            } else {
+                if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                    additionalHeightInDp
+                )
+            }
+        }
+
+        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
+            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
+        } else {
+            keyboardHeight
+        }
+
+        val finalKeyboardWidth =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyWidthPx
+            } else {
+                widthPx
+            }
+
+        val gravity =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                if (qwertyPositionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            } else {
+                if (positionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            }
+
+        val finalBottomMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyKeyboardMarginBottomPref
+            } else {
+                keyboardBottomMargin
+            }
+
+        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.bottomMargin = heightPx
+            params.gravity = gravity
+            mainView.suggestionViewParent.layoutParams = params
+        }
+
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.height = finalKeyboardHeight
+            params.width = finalKeyboardWidth
+            params.bottomMargin = finalBottomMargin
+            params.gravity = gravity
             mainView.root.layoutParams = params
         }
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
@@ -10191,6 +10724,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             _tenKeyQWERTYMode.update { type }
         }
+
+        mainLayoutBinding?.let { mainView ->
+            setKeyboardSizeSwitchKeyboard(mainView)
+        }
     }
 
     private fun smallBigLetterConversionEnglish(
@@ -10550,15 +11087,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val widthPref = appPreference.keyboard_width ?: 100
         val positionPref = appPreference.keyboard_position ?: true
         val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
+
+        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
+        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
+        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyKeyboardMarginBottomPref =
+            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
+        val keyboardMarginBottom =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                (qwertyKeyboardMarginBottomPref * density).toInt()
+            } else {
+                (keyboardMarginBottomPref * density).toInt()
+            }
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
+            }
+
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
             }
 
             else -> {
@@ -10567,11 +11121,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+        val heightPxQWERTY = when {
+            keyboardSymbolViewState.value -> {
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+
+            else -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+
         Timber.d("setKeyboardSize: $heightPx $keyboardMarginBottom")
 
         val widthPx = when {
-            widthPref == 100 || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || keyboardSymbolViewState.value -> {
+            widthPref == 100 || keyboardSymbolViewState.value -> {
                 ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
             }
 
             else -> {
@@ -10585,10 +11156,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Gravity.BOTTOM or Gravity.START
         }
 
+        val gravityQWERTY = if (qwertyPositionPref) {
+            Gravity.BOTTOM or Gravity.END
+        } else {
+            Gravity.BOTTOM or Gravity.START
+        }
+
         fun applyHeightAndGravity(view: View) {
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                 params.height = heightPx
                 params.gravity = gravity
+                view.layoutParams = params
+            }
+        }
+
+        fun applyHeightAndGravityQWERTY(view: View) {
+            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                params.height = heightPxQWERTY
+                params.gravity = gravityQWERTY
                 view.layoutParams = params
             }
         }
@@ -10600,7 +11185,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         applyHeightAndGravity(binding.candidatesRowView)
         applyHeightAndGravity(binding.keyboardSymbolView)
-        applyHeightAndGravity(binding.qwertyView)
+        applyHeightAndGravityQWERTY(binding.qwertyView)
         applyHeightAndGravity(binding.customLayoutDefault)
 
         (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
