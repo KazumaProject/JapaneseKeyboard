@@ -67,10 +67,8 @@ class KeyboardSettingFragment : Fragment() {
         setupResetButton()
         updateKeyboardAlignment()
         updateFloatingModeUI()
-        // ▼▼▼ 正しい関数呼び出しに修正 ▼▼▼
         setupResizeHandles()
         setupMoveHandle()
-        // ▲▲▲ 正しい関数呼び出しに修正 ▲▲▲
 
         updateControlsVisibility()
     }
@@ -183,7 +181,6 @@ class KeyboardSettingFragment : Fragment() {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    // ▼▼▼ 移動専用の関数を復活させ、中央の `handle_move` を対象にするように修正 ▼▼▼
     @SuppressLint("ClickableViewAccessibility")
     private fun setupMoveHandle() {
         var initialY = 0f
@@ -225,9 +222,7 @@ class KeyboardSettingFragment : Fragment() {
             }
         }
     }
-    // ▲▲▲ 移動専用の関数を復活 ▲▲▲
 
-    // ▼▼▼ リサイズ専用の関数に修正 (`handle_top`の機能をリサイズに戻しました) ▼▼▼
     @SuppressLint("ClickableViewAccessibility")
     private fun setupResizeHandles() {
         var initialY = 0f
@@ -242,22 +237,32 @@ class KeyboardSettingFragment : Fragment() {
         val maxHeightPx = maxHeightDp * density
         val minWidthPx = screenWidth * (minWidthPercent / 100f)
 
-        fun savePreferences() {
+        // ▼▼▼ 保存ロジックを「高さ専用」と「幅専用」に分離 ▼▼▼
+        fun saveHeightPreference() {
             val finalHeightDp = (binding.keyboardContainer.height / density).roundToInt()
+            val currentPage = binding.keyboardViewPager.currentItem
+            if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
+                appPreference.keyboard_height = finalHeightDp
+            } else { // QWERTY
+                appPreference.qwerty_keyboard_height = finalHeightDp
+            }
+            Timber.d("Saved Height for page $currentPage: $finalHeightDp dp")
+        }
+
+        fun saveWidthPreference() {
             val finalWidthPercent =
                 ((binding.keyboardContainer.width.toFloat() / screenWidth) * 100).roundToInt()
             val finalWidthValue = if (finalWidthPercent >= 98) 100 else finalWidthPercent
 
             val currentPage = binding.keyboardViewPager.currentItem
             if (currentPage == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
-                appPreference.keyboard_height = finalHeightDp
                 appPreference.keyboard_width = finalWidthValue
             } else { // QWERTY
-                appPreference.qwerty_keyboard_height = finalHeightDp
                 appPreference.qwerty_keyboard_width = finalWidthValue
             }
-            Timber.d("Saved dimensions for page $currentPage: H=$finalHeightDp dp, W=$finalWidthValue %")
+            Timber.d("Saved Width for page $currentPage: $finalWidthValue %")
         }
+        // ▲▲▲ ここまで変更 ▲▲▲
 
         binding.handleTop.setOnTouchListener { _, event ->
             when (event.action) {
@@ -271,8 +276,8 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.height = newHeight.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-
-                MotionEvent.ACTION_UP -> savePreferences()
+                // ▼▼▼ 高さ専用の保存関数を呼び出すように変更 ▼▼▼
+                MotionEvent.ACTION_UP -> saveHeightPreference()
             }
             true
         }
@@ -289,8 +294,8 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.height = newHeight.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-
-                MotionEvent.ACTION_UP -> savePreferences()
+                // ▼▼▼ 高さ専用の保存関数を呼び出すように変更 ▼▼▼
+                MotionEvent.ACTION_UP -> saveHeightPreference()
             }
             true
         }
@@ -308,8 +313,8 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.width = newWidth.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-
-                MotionEvent.ACTION_UP -> savePreferences()
+                // ▼▼▼ 幅専用の保存関数を呼び出すように変更 ▼▼▼
+                MotionEvent.ACTION_UP -> saveWidthPreference()
             }
             true
         }
@@ -327,13 +332,12 @@ class KeyboardSettingFragment : Fragment() {
                     binding.keyboardContainer.layoutParams.width = newWidth.toInt()
                     binding.keyboardContainer.requestLayout()
                 }
-
-                MotionEvent.ACTION_UP -> savePreferences()
+                // ▼▼▼ 幅専用の保存関数を呼び出すように変更 ▼▼▼
+                MotionEvent.ACTION_UP -> saveWidthPreference()
             }
             true
         }
     }
-    // ▲▲▲ リサイズ専用の関数に修正 ▲▲▲
 
     private fun setupKeyboardPositionButton() {
         binding.keyboardPositionButton.setOnClickListener {

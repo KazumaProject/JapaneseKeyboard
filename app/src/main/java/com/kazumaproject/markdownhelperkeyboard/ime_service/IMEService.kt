@@ -6135,6 +6135,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
+        Timber.d("setKeyboardSizeForHeightForFloatingMode: $widthPref $qwertyWidthPref")
+
         val additionalHeightInDp = when {
             isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true -> {
                 when (candidateViewHeight) {
