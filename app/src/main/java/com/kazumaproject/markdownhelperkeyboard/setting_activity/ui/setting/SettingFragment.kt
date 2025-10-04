@@ -182,6 +182,16 @@ class SettingFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val keyboardLetterSizePreference =
+            findPreference<Preference>("keyboard_key_letter_size_fragment_preference")
+
+        keyboardLetterSizePreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_keyCandidateLetterSizeFragment
+            )
+            true
+        }
+
         val clipBoardHistoryPreference =
             findPreference<Preference>("clipboard_history_preference_fragment")
         clipBoardHistoryPreference?.apply {
