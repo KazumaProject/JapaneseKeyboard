@@ -29,6 +29,11 @@
             android:title="@string/keyboard_theme_title"
             app:summary="@string/keyboard_theme_summary" />
 
+        <Preference
+            android:key="keyboard_key_letter_size_fragment_preference"
+            android:title="@string/key_candidate_letter_size_preference_title"
+            app:summary="@string/key_candidate_letter_size_preference_summary" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_height_fix_enable_preference"

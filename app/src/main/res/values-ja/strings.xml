@@ -296,4 +296,7 @@
     <string name="keyboard_theme_dialog_title">ベースカラーの選択</string>
     <string name="delete_key_left_flick_title">削除キーの左フリック</string>
     <string name="delete_key_left_summary">削除キーを左にフリックすると、カーソルの前にある特定の記号までの文字列もしくは全ての文字列をまとめて削除します。\n（対象: 句読点「。、！？」、括弧「「」『』」、記号「ー」、コンマ「,」、ピリオド「.」）</string>
+    <string name="key_candidate_letter_size_preference_title">キー・変換候補の文字サイズ</string>
+    <string name="key_candidate_letter_size_preference_summary">キーボードのキーと変換候補に表示される文字の大きさを設定できます</string>
+    <string name="fragment_key_candidate_letter_size_title">文字の大きさ</string>
 </resources>

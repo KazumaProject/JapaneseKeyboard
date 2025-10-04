@@ -70,6 +70,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
+    private var candidateTextSize: Float = 14f
+
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
     }
@@ -362,6 +364,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    fun setCandidateTextSize(size: Float) {
+        if (candidateTextSize == size) return
+        candidateTextSize = size
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     private fun onBindSuggestionViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
         val paddingLength = when {
@@ -381,6 +389,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             suggestion.string.padStart(suggestion.string.length + paddingLength)
                 .plus(" ".repeat(paddingLength))
         }
+
+        holder.text.textSize = candidateTextSize
+
         holder.typeText.text = when (suggestion.type) {
             (1).toByte() -> ""
             /** 予測 **/

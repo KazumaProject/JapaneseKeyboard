@@ -376,6 +376,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var switchQWERTYPassword: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
     private var isDeleteLeftFlickPreference: Boolean? = true
+    private var tenkeyHeightPreferenceValue: Int? = 280
+    private var tenkeyWidthPreferenceValue: Int? = 100
+    private var qwertyHeightPreferenceValue: Int? = 280
+    private var qwertyWidthPreferenceValue: Int? = 100
+    private var tenkeyPositionPreferenceValue: Boolean? = true
+    private var tenkeyBottomMarginPreferenceValue: Int? = 0
+    private var qwertyPositionPreferenceValue: Boolean? = true
+    private var qwertyBottomMarginPreferenceValue: Int? = 0
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -517,6 +525,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.TextPassword,
             InputTypeForIME.TextVisiblePassword,
             InputTypeForIME.TextWebPassword,
+        )
+
+        private val passwordTypes = setOf(
+            InputTypeForIME.TextWebPassword,
+            InputTypeForIME.TextPassword,
+            InputTypeForIME.NumberPassword,
+            InputTypeForIME.TextVisiblePassword,
         )
 
     }
@@ -686,6 +701,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
             isDeleteLeftFlickPreference = delete_key_left_flick_preference
 
+            tenkeyHeightPreferenceValue = keyboard_height ?: 280
+            tenkeyWidthPreferenceValue = keyboard_width ?: 100
+            qwertyHeightPreferenceValue = qwerty_keyboard_height ?: 280
+            qwertyWidthPreferenceValue = qwerty_keyboard_width ?: 100
+
+            tenkeyPositionPreferenceValue = keyboard_position ?: true
+            tenkeyBottomMarginPreferenceValue = keyboard_vertical_margin_bottom ?: 0
+            qwertyPositionPreferenceValue = qwerty_keyboard_position ?: true
+            qwertyBottomMarginPreferenceValue = qwerty_keyboard_vertical_margin_bottom ?: 0
+
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -735,12 +760,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
         suggestionAdapter?.suggestions = emptyList()
+        suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionClickNum = 0
         if (!restarting) {
             setCurrentInputType(editorInfo)
             resetKeyboard()
             if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
                 mainLayoutBinding?.let { mainView ->
+                    Timber.d("TenKeyQWERTYMode.Sumire: ${mainView.keyboardView.currentInputMode.value} ${switchQWERTYPassword}")
                     when (mainView.keyboardView.currentInputMode.value) {
                         InputMode.ModeJapanese -> {
                             customKeyboardMode = KeyboardInputMode.HIRAGANA
@@ -749,7 +776,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         InputMode.ModeEnglish -> {
                             if (switchQWERTYPassword == true) {
-                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                                if (currentInputType in passwordTypes) {
+                                    mainView.qwertyView.resetQWERTYKeyboard()
+                                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                                } else {
+                                    customKeyboardMode = KeyboardInputMode.ENGLISH
+                                    updateKeyboardLayout()
+                                }
                             } else {
                                 customKeyboardMode = KeyboardInputMode.ENGLISH
                                 updateKeyboardLayout()
@@ -764,7 +797,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             if (switchQWERTYPassword == true) {
-                if (currentInputType in englishTypes) {
+                if (currentInputType in passwordTypes) {
                     mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                 }
@@ -1003,6 +1036,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         showCandidateInPasswordPreference = null
         showCandidateInPasswordComposePreference = null
         isVibration = null
+        tenkeyHeightPreferenceValue = null
+        tenkeyWidthPreferenceValue = null
+        qwertyHeightPreferenceValue = null
+        qwertyWidthPreferenceValue = null
+        tenkeyPositionPreferenceValue = null
+        tenkeyBottomMarginPreferenceValue = null
+        qwertyPositionPreferenceValue = null
+        qwertyBottomMarginPreferenceValue = null
         vibrationTimingStr = null
         mozcUTPersonName = null
         romajiConverter = null
@@ -1215,8 +1256,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
             setFloatingKeyboardListeners(floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding)
-            val heightPref = appPreference.keyboard_height ?: 280
-            val widthPref = appPreference.keyboard_width ?: 100
+            val heightPref = tenkeyHeightPreferenceValue ?: 280
+            val widthPref = tenkeyWidthPreferenceValue ?: 100
             val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
 
             val density = resources.displayMetrics.density
@@ -3878,7 +3919,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             override fun onKey(text: String, isFlick: Boolean) {
                 // 通常の文字が入力された場合（変更なし）
                 clearDeleteBufferWithView()
-                Timber.d("onKey: $text")
+                Timber.d("onKey: $text ${qwertyMode.value}")
                 vibrate()
 
                 when (qwertyMode.value) {
@@ -3927,6 +3968,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     TenKeyQWERTYMode.Sumire -> {
+                        Timber.d("TenKeyQWERTYMode.Sumire: $text $isFlick")
                         handleOnKeyForSumire(
                             text, mainView, isFlick
                         )
@@ -5555,6 +5597,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             qwertyMode.collectLatest {
+                Timber.d("qwertyMode value: $it")
                 when (it) {
                     TenKeyQWERTYMode.Default -> {
                         suggestionAdapter?.updateState(
@@ -5581,9 +5624,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 keyboardView.isVisible = false
                             }
-                            qwertyView.isVisible = true
                             customLayoutDefault.isVisible = false
                             qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
+                            qwertyView.isVisible = true
                         }
                     }
 
@@ -5757,19 +5800,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         Timber.d("Keyboard Height: setKeyboardSizeForHeight called")
         if (hasHardwareKeyboardConnected != true) return
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val heightPref = tenkeyHeightPreferenceValue ?: 280
+        val widthPref = tenkeyWidthPreferenceValue ?: 100
+        val keyboardBottomMargin = tenkeyBottomMarginPreferenceValue ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val screenWidth = resources.displayMetrics.widthPixels
-        val positionPref = appPreference.keyboard_position ?: true
+        val positionPref = tenkeyPositionPreferenceValue ?: true
 
-        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
-        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
-        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
+        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
+        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
         val qwertyKeyboardMarginBottomPref =
-            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            qwertyBottomMarginPreferenceValue ?: 0
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
@@ -5918,19 +5961,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding, isSymbol: Boolean
     ) {
         Timber.d("Keyboard Height: setKeyboardSizeForHeightSymbol called")
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val heightPref = tenkeyHeightPreferenceValue ?: 280
+        val widthPref = tenkeyWidthPreferenceValue ?: 100
+        val keyboardBottomMargin = tenkeyBottomMarginPreferenceValue ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val screenWidth = resources.displayMetrics.widthPixels
-        val positionPref = appPreference.keyboard_position ?: true
+        val positionPref = tenkeyPositionPreferenceValue ?: true
 
-        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
-        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
-        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
+        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
+        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
         val qwertyKeyboardMarginBottomPref =
-            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            qwertyBottomMarginPreferenceValue ?: 0
 
         val heightPx = when {
             isSymbol -> {
@@ -6084,19 +6127,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         Timber.d("Keyboard Height: setKeyboardSizeForHeightForFloatingMode called")
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val heightPref = tenkeyHeightPreferenceValue ?: 280
+        val widthPref = tenkeyWidthPreferenceValue ?: 100
+        val keyboardBottomMargin = tenkeyBottomMarginPreferenceValue ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val screenWidth = resources.displayMetrics.widthPixels
-        val positionPref = appPreference.keyboard_position ?: true
+        val positionPref = tenkeyPositionPreferenceValue ?: true
 
-        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
-        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
-        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
+        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
+        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
         val qwertyKeyboardMarginBottomPref =
-            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            qwertyBottomMarginPreferenceValue ?: 0
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
@@ -6249,19 +6292,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputType.isPassword()) return
         val columnNum = candidateColumns ?: "1"
 
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val heightPref = tenkeyHeightPreferenceValue ?: 280
+        val widthPref = tenkeyWidthPreferenceValue ?: 100
+        val keyboardBottomMargin = tenkeyBottomMarginPreferenceValue ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val screenWidth = resources.displayMetrics.widthPixels
-        val positionPref = appPreference.keyboard_position ?: true
+        val positionPref = tenkeyPositionPreferenceValue ?: true
 
-        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
-        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
-        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
+        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
+        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
         val qwertyKeyboardMarginBottomPref =
-            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            qwertyBottomMarginPreferenceValue ?: 0
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
@@ -6366,20 +6409,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val additionalHeightForColumnsInDp =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE || (isGalaxyDevice() && keyboardHeightFixForSpecificDevicePreference == true)) {
-                when (columnNum) {
-                    "2" -> 37
-                    "3" -> 75
-                    else -> 0
-                }
-            } else {
-                if (isTablet == true) {
+            when (candidateViewHeight) {
+                "1" -> {
                     when (columnNum) {
                         "2" -> 37
                         "3" -> 75
                         else -> 0
                     }
-                } else {
+                }
+
+                "2" -> {
+                    when (columnNum) {
+                        "2" -> 50
+                        "3" -> 100
+                        else -> 0
+                    }
+                }
+
+                "3" -> {
+                    when (columnNum) {
+                        "2" -> 70
+                        "3" -> 140
+                        else -> 0
+                    }
+                }
+
+                else -> {
                     when (columnNum) {
                         "2" -> 70
                         "3" -> 140
@@ -6456,19 +6511,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         Timber.d("Keyboard Height: setKeyboardHeightDefault called")
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val heightPref = tenkeyHeightPreferenceValue ?: 280
+        val widthPref = tenkeyWidthPreferenceValue ?: 100
+        val keyboardBottomMargin = tenkeyBottomMarginPreferenceValue ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val screenWidth = resources.displayMetrics.widthPixels
-        val positionPref = appPreference.keyboard_position ?: true
+        val positionPref = tenkeyPositionPreferenceValue ?: true
 
-        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
-        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
-        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
+        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
+        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
         val qwertyKeyboardMarginBottomPref =
-            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            qwertyBottomMarginPreferenceValue ?: 0
 
         val heightPx = when {
             keyboardSymbolViewState.value -> {
@@ -6627,18 +6682,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setKeyboardSizeSwitchKeyboard(mainView: MainLayoutBinding) {
 
         Timber.d("Keyboard Height: setKeyboardSizeSwitchKeyboard called")
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val positionPref = appPreference.keyboard_position ?: true
-        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val heightPref = tenkeyHeightPreferenceValue ?: 280
+        val widthPref = tenkeyWidthPreferenceValue ?: 100
+        val positionPref = tenkeyPositionPreferenceValue ?: true
+        val keyboardBottomMargin = tenkeyBottomMarginPreferenceValue ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
-        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
-        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
+        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
+        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
         val qwertyKeyboardMarginBottomPref =
-            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            qwertyBottomMarginPreferenceValue ?: 0
         val screenWidth = resources.displayMetrics.widthPixels
 
         val heightPx = when {
@@ -11089,16 +11144,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setKeyboardSize() {
         val binding = mainLayoutBinding ?: return
 
-        val heightPref = appPreference.keyboard_height ?: 280
-        val widthPref = appPreference.keyboard_width ?: 100
-        val positionPref = appPreference.keyboard_position ?: true
-        val keyboardMarginBottomPref = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val heightPref = tenkeyHeightPreferenceValue ?: 280
+        val widthPref = tenkeyWidthPreferenceValue ?: 100
+        val positionPref = tenkeyPositionPreferenceValue ?: true
+        val keyboardMarginBottomPref = tenkeyBottomMarginPreferenceValue ?: 0
 
-        val qwertyHeightPref = appPreference.qwerty_keyboard_height ?: 280
-        val qwertyWidthPref = appPreference.qwerty_keyboard_width ?: 100
-        val qwertyPositionPref = appPreference.qwerty_keyboard_position ?: true
+        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
+        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
+        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
         val qwertyKeyboardMarginBottomPref =
-            appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0
+            qwertyBottomMarginPreferenceValue ?: 0
 
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
