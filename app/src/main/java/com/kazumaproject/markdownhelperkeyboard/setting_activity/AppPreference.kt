@@ -118,6 +118,9 @@ object AppPreference {
 
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
 
+    private val KEY_LETTER_SIZE = Pair("key_letter_size_preference", 0.0f)
+    private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -579,6 +582,18 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(DELETE_KEY_LEFT_FLICK_PREFERENCE.first, value)
+        }
+
+    var key_letter_size: Float?
+        get() = preferences.getFloat(KEY_LETTER_SIZE.first, KEY_LETTER_SIZE.second)
+        set(value) = preferences.edit {
+            it.putFloat(KEY_LETTER_SIZE.first, value ?: KEY_LETTER_SIZE.second)
+        }
+
+    var candidate_letter_size: Float?
+        get() = preferences.getFloat(CANDIDATE_LETTER_SIZE.first, CANDIDATE_LETTER_SIZE.second)
+        set(value) = preferences.edit {
+            it.putFloat(CANDIDATE_LETTER_SIZE.first, value ?: CANDIDATE_LETTER_SIZE.second)
         }
 
     fun migrateSumirePreferenceIfNeeded() {

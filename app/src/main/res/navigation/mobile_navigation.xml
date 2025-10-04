@@ -31,6 +31,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_ngWordFragment"
             app:destination="@id/ngWordFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_keyCandidateLetterSizeFragment"
+            app:destination="@id/keyCandidateLetterSizeFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -114,5 +117,10 @@
         android:id="@+id/ngWordFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.ng_word.ui.NgWordFragment"
         android:label="@string/ng_word_fragment_title" />
+    <fragment
+        android:id="@+id/keyCandidateLetterSizeFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.key_candidate_letter_size.KeyCandidateLetterSizeFragment"
+        android:label="@string/fragment_key_candidate_letter_size_title"
+        tools:layout="@layout/fragment_key_candidate_letter_size" />
 
 </navigation>

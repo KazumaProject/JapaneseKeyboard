@@ -454,6 +454,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
     }
 
+    /**
+     * Sets the text size for the main keys (key1 to key12).
+     * @param size The new text size in sp.
+     */
+    fun setKeyLetterSize(size: Float) {
+        binding.apply {
+            val keyButtons = listOf(
+                key1, key2, key3, key4, key5, key6,
+                key7, key8, key9, key11, key12
+            )
+            keyButtons.forEach { button ->
+                button.textSize = size
+            }
+        }
+    }
+
     private fun setMaterialYouTheme(
         isDarkMode: Boolean,
         isDynamicColorEnable: Boolean
