@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
+package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting
 
 import android.graphics.Bitmap
 import android.text.SpannableString
@@ -31,7 +31,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import timber.log.Timber
 
-class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
         private const val VIEW_TYPE_EMPTY = 0
@@ -240,7 +240,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
                 customLayouts.size
             } else {
-                1
+                suggestions.size
             }
         }
     }
