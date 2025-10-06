@@ -11,9 +11,10 @@ import com.kazumaproject.core.domain.extensions.getSpannableStringForNumberButto
 import com.kazumaproject.tenkey.R
 
 fun AppCompatButton.setTenKeyTextJapanese(
-    keyId: Int
+    keyId: Int,
+    delta: Int
 ) {
-    textSize = KEY_JAPANESE_SIZE
+    textSize = KEY_JAPANESE_SIZE + delta
     setTextColor(
         ContextCompat.getColor(
             context,
