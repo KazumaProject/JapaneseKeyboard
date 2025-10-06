@@ -1,9 +1,10 @@
 name: Android Release CI
 
+# Run this workflow when a new tag like 'v1.0.0' is pushed
 on:
   push:
     tags:
-      - 'v*'  # v1.0.0 のようにタグをプッシュしたときに実行
+      - 'v*'
 
 jobs:
   build:
@@ -11,25 +12,28 @@ jobs:
 
     strategy:
       matrix:
-        # 必要に応じて matrix を使って複数 API Level / ビルドツールを並列に回せますが、
-        # 今回は単一のセットで大丈夫なら省略しても OK です。
+        # Although we only have one configuration, the matrix is kept for future flexibility
         api-level: [ 35 ]
         build-tools: [ '35.0.0' ]
         target: [ 'android-35' ]
 
     steps:
-      # 1. コードチェックアウト
+      # 1. Checkout code with full history
+      # fetch-depth: 0 is required to get all tags and commit history
+      # for the automatic release note generation.
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-      # 2. JDK 17 セットアップ
+      # 2. Set up JDK 17
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. Android SDK セットアップ
+      # 3. Set up Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v2
         with:
@@ -37,7 +41,7 @@ jobs:
           build-tools: ${{ matrix.build-tools }}
           target: ${{ matrix.target }}
 
-      # 4. Gradle キャッシュ
+      # 4. Cache Gradle dependencies
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -48,15 +52,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 5. JKS を Secrets から復号して my-release-key.jks に出力
+      # 5. Decode JKS keystore from GitHub Secrets
       - name: Decode JKS from Base64
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
 
-      # 6. local.properties に署名情報を追記
+      # 6. Create local.properties with signing information
       - name: Add signing info to local.properties
         run: |
-          # local.properties が存在しなければ新規作成
+          # Create the file if it doesn't exist
           if [ ! -f local.properties ]; then
             touch local.properties
           fi
@@ -66,37 +70,21 @@ jobs:
           echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"   >> local.properties
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> local.properties
 
-      # 7. リリース APK をビルド
+      # 7. Build the signed release APK
       - name: Build Signed Release APK
         run: ./gradlew clean assembleRelease
 
-      # ↓（あらためて）どのファイルがあるか確認しておく
-      - name: List APK directory
-        run: ls -R app/build/outputs/apk
-
-      # 8. リリース作成
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 8. Create GitHub Release and upload APK
+      # This single step replaces the previous 'Create Release' and 'Upload Asset' steps.
+      # It automatically generates release notes from merged Pull Requests.
+      - name: Create Release and Upload APK
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          body: |
-            # ${{ github.ref_name }} リリースノート
-            • このリリースには署名済みのAPKが含まれます。
-            ## 変更・追加された機能
-
-      # 9. リネーム後のファイルをアップロード
-      - name: Upload APK to Release
-        uses: actions/upload-release-asset@v1
+          # This option tells the action to automatically create release notes
+          # based on the Pull Requests merged since the last tag.
+          generate_release_notes: true
+          # Specifies the file(s) to upload as release assets.
+          files: app/build/outputs/apk/release/app-release.apk
         env:
+          # The GITHUB_TOKEN is required to authorize the action to create a release.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: app/build/outputs/apk/release/app-release.apk
-          asset_name: app-release.apk
-          asset_content_type: application/vnd.android.package-archive
