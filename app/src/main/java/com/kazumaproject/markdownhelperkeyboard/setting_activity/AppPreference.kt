@@ -119,7 +119,9 @@ object AppPreference {
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
 
     private val KEY_LETTER_SIZE = Pair("key_letter_size_preference", 0.0f)
+    private val KEY_ICON_PADDING = Pair("key_icon_padding_preference", 24)
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
+    private val KEY_SWITCH_KEY_MODE_PADDING = Pair("key_switch_key_mode_padding_preference", 24)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -590,10 +592,28 @@ object AppPreference {
             it.putFloat(KEY_LETTER_SIZE.first, value ?: KEY_LETTER_SIZE.second)
         }
 
+    var key_icon_padding: Int?
+        get() = preferences.getInt(KEY_ICON_PADDING.first, KEY_ICON_PADDING.second)
+        set(value) = preferences.edit {
+            it.putInt(KEY_ICON_PADDING.first, value ?: KEY_ICON_PADDING.second)
+        }
+
     var candidate_letter_size: Float?
         get() = preferences.getFloat(CANDIDATE_LETTER_SIZE.first, CANDIDATE_LETTER_SIZE.second)
         set(value) = preferences.edit {
             it.putFloat(CANDIDATE_LETTER_SIZE.first, value ?: CANDIDATE_LETTER_SIZE.second)
+        }
+
+    var key_switch_key_mode_padding: Int?
+        get() = preferences.getInt(
+            KEY_SWITCH_KEY_MODE_PADDING.first,
+            KEY_SWITCH_KEY_MODE_PADDING.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEY_SWITCH_KEY_MODE_PADDING.first,
+                value ?: KEY_SWITCH_KEY_MODE_PADDING.second
+            )
         }
 
     fun migrateSumirePreferenceIfNeeded() {

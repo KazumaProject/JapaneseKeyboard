@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.key_candidate_letter_size
 
 import android.annotation.SuppressLint
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -14,6 +16,8 @@ import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.kazumaproject.core.domain.extensions.dpToPx
+import com.kazumaproject.core.domain.extensions.isGalaxyDevice
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyCandidateLetterSizeBinding
@@ -39,6 +43,13 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     private val defaultKeyTextSize = 17.0f
     private val defaultCandidateTextSize = 14.0f
 
+    private val minIconPadding = 0
+    private val maxIconPadding = 64
+    private val defaultIconPadding = 50
+
+    private val maxSwitchKeyModePadding = 64
+    private val defaultSwitchKeyModePadding = 24
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         suggestionAdapter = SuggestionAdapter()
@@ -55,12 +66,14 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        setKeyboardSize()
         setupRecyclerView()
         setupPreviewData()
         setupKeyLetterSizeSeekBar()
         setupCandidateLetterSizeSeekBar()
-        setupMenu() // ★ Call the new menu setup function
+        setupKeyIconPaddingSeekBar()
+        setupKeySwitchKeyModePaddingSeekBar()
+        setupMenu()
 
         binding.tenkeyLetterSizePreview.apply {
             isClickable = false
@@ -71,24 +84,133 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         }
     }
 
-    // ★ New function to set up the menu using the modern API
+    private fun setKeyboardSize() {
+        val heightPref = appPreference.keyboard_height ?: 280
+        val widthPref = appPreference.keyboard_width ?: 280
+        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
+        val density = resources.displayMetrics.density
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenWidth = resources.displayMetrics.widthPixels
+        val positionPref = appPreference.keyboard_position ?: true
+        val clampedHeight = heightPref.coerceIn(180, 420)
+        val candidateViewHeight = appPreference.candidate_view_height_preference
+
+        val heightPx = (clampedHeight * density).toInt()
+
+        val widthPx = when {
+            widthPref == 100 -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val defaultHeightSizeByDevice = when {
+            isGalaxyDevice() && appPreference.keyboard_height_fix_for_specific_device_preference == true -> {
+                when (candidateViewHeight) {
+                    "1" -> 48
+                    "2" -> 54
+                    "3" -> 60
+                    else -> 48
+                }
+            }
+
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            isPortrait -> {
+                when (candidateViewHeight) {
+                    "1" -> 52
+                    "2" -> 58
+                    "3" -> 64
+                    else -> 52
+                }
+            }
+
+            else -> {
+                when (candidateViewHeight) {
+                    "1" -> 100
+                    "2" -> 110
+                    "3" -> 120
+                    else -> 100
+                }
+            }
+        }
+        val keyboardHeight = if (isPortrait) {
+            heightPx + requireContext().dpToPx(
+                defaultHeightSizeByDevice
+            )
+        } else {
+            heightPx + requireContext().dpToPx(
+                defaultHeightSizeByDevice
+            )
+        }
+
+
+        (binding.suggestionLetterSizeRecyclerview.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
+
+            params.width = widthPx
+            if (positionPref) {
+                params.startToStart = -1
+                params.endToEnd =
+                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.endToEnd = -1
+                params.startToStart =
+                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            }
+
+            binding.suggestionLetterSizeRecyclerview.layoutParams = params
+        }
+
+        (binding.tenkeyLetterSizePreview.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
+            params.width = widthPx
+            params.height = keyboardHeight
+            params.bottomMargin = 56
+            params.bottomToBottom =
+                androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            if (positionPref) {
+                params.startToStart = -1
+                params.endToEnd =
+                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            } else {
+                params.endToEnd = -1
+                params.startToStart =
+                    androidx.constraintlayout.widget.ConstraintLayout.LayoutParams.PARENT_ID
+            }
+            binding.tenkeyLetterSizePreview.layoutParams = params
+        }
+
+    }
+
     private fun setupMenu() {
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                // Add menu items here
                 menuInflater.inflate(R.menu.fragment_reset_menu, menu)
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // Handle the menu selection
                 return when (menuItem.itemId) {
                     R.id.action_reset -> {
                         resetSettings()
-                        true // Consume the event
+                        true
                     }
 
-                    else -> false // Let the system handle other items
+                    android.R.id.home -> {
+                        parentFragmentManager.popBackStack()
+                        true
+                    }
+
+                    else -> false
                 }
             }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
@@ -108,6 +230,18 @@ class KeyCandidateLetterSizeFragment : Fragment() {
             (100 * (defaultCandidateTextSize - minCandidateTextSize) / (maxCandidateTextSize - minCandidateTextSize)).toInt()
         binding.candidateLetterSizeSeekbar.progress = candidateProgress
         suggestionAdapter.setCandidateTextSize(defaultCandidateTextSize)
+
+        appPreference.key_icon_padding = 0
+        val actualPadding = defaultIconPadding
+        val iconPaddingProgress =
+            (100 * (maxIconPadding - actualPadding) / (maxIconPadding - minIconPadding)).toInt()
+        binding.keyIconPaddingSeekbar.progress = iconPaddingProgress
+        binding.tenkeyLetterSizePreview.setKeyIconPadding(actualPadding)
+
+        appPreference.key_switch_key_mode_padding = defaultSwitchKeyModePadding
+        val switchKeyModeProgress = maxSwitchKeyModePadding - defaultSwitchKeyModePadding
+        binding.keySwitchKeyModePaddingSeekbar.progress = switchKeyModeProgress
+        binding.tenkeyLetterSizePreview.setKeySwitchKeyModePadding(defaultSwitchKeyModePadding)
     }
 
     private fun setupKeyLetterSizeSeekBar() {
@@ -172,6 +306,81 @@ class KeyCandidateLetterSizeFragment : Fragment() {
             (100 * (savedCandidateSize - minCandidateTextSize) / (maxCandidateTextSize - minCandidateTextSize)).toInt()
         binding.candidateLetterSizeSeekbar.progress = candidateProgress
         suggestionAdapter.setCandidateTextSize(savedCandidateSize)
+    }
+
+    /**
+     * Sets up the SeekBar for adjusting key icon padding based on a delta
+     * from the default value.
+     */
+    private fun setupKeyIconPaddingSeekBar() {
+        binding.keyIconPaddingSeekbar.setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    val newPadding =
+                        maxIconPadding - (progress.toFloat() / 100f) * (maxIconPadding - minIconPadding)
+                    binding.tenkeyLetterSizePreview.setKeyIconPadding(newPadding.toInt())
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                seekBar?.let {
+                    val newPadding =
+                        maxIconPadding - (it.progress.toFloat() / 100f) * (maxIconPadding - minIconPadding)
+                    val paddingDelta = newPadding - defaultIconPadding
+                    appPreference.key_icon_padding = paddingDelta.toInt()
+                }
+            }
+        })
+
+        // Configure the SeekBar's initial state
+        binding.keyIconPaddingSeekbar.max = 100
+        val savedDelta = appPreference.key_icon_padding ?: 0
+        val actualPadding = defaultIconPadding + savedDelta
+
+        // ★ 変更：実際のパディング値からprogressを逆算する式も反転させる
+        val iconPaddingProgress =
+            (100 * (maxIconPadding - actualPadding) / (maxIconPadding - minIconPadding)).toInt()
+        binding.keyIconPaddingSeekbar.progress = iconPaddingProgress
+
+        // Update the preview with the initial value
+        binding.tenkeyLetterSizePreview.post {
+            binding.tenkeyLetterSizePreview.setKeyIconPadding(actualPadding.toInt())
+        }
+    }
+
+    /**
+     * Controls padding for ONLY the keySwitchKeyMode key.
+     * Saves the setting as an absolute value.
+     */
+    private fun setupKeySwitchKeyModePaddingSeekBar() {
+        binding.keySwitchKeyModePaddingSeekbar.max = maxSwitchKeyModePadding
+        binding.keySwitchKeyModePaddingSeekbar.setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    val newPadding = maxSwitchKeyModePadding - progress
+                    binding.tenkeyLetterSizePreview.setKeySwitchKeyModePadding(newPadding)
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                seekBar?.let {
+                    val newPadding = maxSwitchKeyModePadding - it.progress
+                    appPreference.key_switch_key_mode_padding = newPadding
+                }
+            }
+        })
+
+        val savedPadding = appPreference.key_switch_key_mode_padding ?: defaultSwitchKeyModePadding
+        binding.keySwitchKeyModePaddingSeekbar.progress = maxSwitchKeyModePadding - savedPadding
+        binding.tenkeyLetterSizePreview.post {
+            binding.tenkeyLetterSizePreview.setKeySwitchKeyModePadding(savedPadding)
+        }
     }
 
     private fun setupRecyclerView() {
