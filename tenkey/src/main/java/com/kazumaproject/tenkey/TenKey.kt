@@ -15,7 +15,6 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.widget.ImageView
 import android.widget.PopupWindow
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
@@ -113,6 +112,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var longPressListener: LongPressListener? = null
 
     private var flickSensitivity: Int = 100
+
+    private var keySizeDelta = 0
 
     /** ← REPLACED AtomicReference with StateFlow **/
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
@@ -432,7 +433,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         setViewsNotFocusable()
 
         // Initially display Japanese text on main keys
-        binding.key12.setTenKeyTextJapanese(binding.key12.id)
+        binding.key12.setTenKeyTextJapanese(binding.key12.id, delta = keySizeDelta)
 
         // Set default drawable for small/dakuten key
         setBackgroundSmallLetterKey()
@@ -475,20 +476,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     /**
-     * Sets the padding for the side/icon keys.
-     * @param paddingInPx The padding value in pixels to be applied uniformly.
+     * Sets the padding delta to keySize Delta.
+     * @param delta The delta value from preference.
      */
-    fun setKeyIconPadding(paddingInPx: Int) {
-        binding.apply {
-            val iconKeys = listOf(
-                keySmallLetter, keyReturn, keySoftLeft, keyMoveCursorRight,
-                sideKeySymbol, keyDelete, keySpace, keyEnter
-            )
-            iconKeys.forEach { view ->
-                view.setPadding(paddingInPx)
-                view.scaleType = ImageView.ScaleType.FIT_CENTER
-            }
-        }
+    fun setKeyLetterSizeDelta(delta: Int) {
+        this.keySizeDelta = delta
     }
 
     /**
@@ -818,7 +810,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             if (it == binding.sideKeySymbol) return false
                             // ← UPDATE: use state flow's value to set text after finger-up
                             when (currentInputMode.value) {
-                                InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
+                                InputMode.ModeJapanese -> it.setTenKeyTextJapanese(
+                                    it.id,
+                                    delta = keySizeDelta
+                                )
+
                                 InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
                                 InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                             }
@@ -941,7 +937,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                             if (it == binding.sideKeySymbol) return false
                                             when (currentInputMode.value) {
                                                 InputMode.ModeJapanese -> it.setTenKeyTextJapanese(
-                                                    it.id
+                                                    it.id, delta = keySizeDelta
                                                 )
 
                                                 InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
@@ -1061,7 +1057,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     if (it == binding.sideKeySymbol) return false
                                     it.isPressed = false
                                     when (currentInputMode.value) {
-                                        InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
+                                        InputMode.ModeJapanese -> it.setTenKeyTextJapanese(
+                                            it.id,
+                                            delta = keySizeDelta
+                                        )
+
                                         InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
                                         InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                                     }
@@ -1096,16 +1096,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun setTextToAllButtons() {
-        binding.key1.setTenKeyTextJapanese(binding.key1.id)
-        binding.key2.setTenKeyTextJapanese(binding.key2.id)
-        binding.key3.setTenKeyTextJapanese(binding.key3.id)
-        binding.key4.setTenKeyTextJapanese(binding.key4.id)
-        binding.key5.setTenKeyTextJapanese(binding.key5.id)
-        binding.key6.setTenKeyTextJapanese(binding.key6.id)
-        binding.key7.setTenKeyTextJapanese(binding.key7.id)
-        binding.key8.setTenKeyTextJapanese(binding.key8.id)
-        binding.key9.setTenKeyTextJapanese(binding.key9.id)
-        binding.key11.setTenKeyTextJapanese(binding.key11.id)
+        binding.key1.setTenKeyTextJapanese(binding.key1.id, delta = keySizeDelta)
+        binding.key2.setTenKeyTextJapanese(binding.key2.id, delta = keySizeDelta)
+        binding.key3.setTenKeyTextJapanese(binding.key3.id, delta = keySizeDelta)
+        binding.key4.setTenKeyTextJapanese(binding.key4.id, delta = keySizeDelta)
+        binding.key5.setTenKeyTextJapanese(binding.key5.id, delta = keySizeDelta)
+        binding.key6.setTenKeyTextJapanese(binding.key6.id, delta = keySizeDelta)
+        binding.key7.setTenKeyTextJapanese(binding.key7.id, delta = keySizeDelta)
+        binding.key8.setTenKeyTextJapanese(binding.key8.id, delta = keySizeDelta)
+        binding.key9.setTenKeyTextJapanese(binding.key9.id, delta = keySizeDelta)
+        binding.key11.setTenKeyTextJapanese(binding.key11.id, delta = keySizeDelta)
     }
 
     /** Determine which Key enum corresponds to the touch coordinates **/
@@ -1647,7 +1647,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 if (it is AppCompatButton) {
                     if (it == binding.sideKeySymbol) return
                     when (currentInputMode.value) {
-                        InputMode.ModeJapanese -> it.setTenKeyTextJapanese(it.id)
+                        InputMode.ModeJapanese -> it.setTenKeyTextJapanese(
+                            it.id,
+                            delta = keySizeDelta
+                        )
+
                         InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
                         InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
                     }
@@ -1832,28 +1836,28 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun setKeysInJapaneseText() {
         binding.apply {
             key1.apply {
-                setTenKeyTextJapanese(key1.id)
+                setTenKeyTextJapanese(key1.id,delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key2.setTenKeyTextJapanese(key2.id)
+            key2.setTenKeyTextJapanese(key2.id,delta = keySizeDelta)
             key3.apply {
-                setTenKeyTextJapanese(key3.id)
+                setTenKeyTextJapanese(key3.id,delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key4.setTenKeyTextJapanese(key4.id)
-            key5.setTenKeyTextJapanese(key5.id)
-            key6.setTenKeyTextJapanese(key6.id)
+            key4.setTenKeyTextJapanese(key4.id,delta = keySizeDelta)
+            key5.setTenKeyTextJapanese(key5.id,delta = keySizeDelta)
+            key6.setTenKeyTextJapanese(key6.id,delta = keySizeDelta)
             key7.apply {
-                setTenKeyTextJapanese(key7.id)
+                setTenKeyTextJapanese(key7.id,delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key8.setTenKeyTextJapanese(key8.id)
+            key8.setTenKeyTextJapanese(key8.id,delta = keySizeDelta)
             key9.apply {
-                setTenKeyTextJapanese(key9.id)
+                setTenKeyTextJapanese(key9.id,delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key11.setTenKeyTextJapanese(key11.id)
-            key12.setTenKeyTextJapanese(key12.id)
+            key11.setTenKeyTextJapanese(key11.id,delta = keySizeDelta)
+            key12.setTenKeyTextJapanese(key12.id,delta = keySizeDelta)
             keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(

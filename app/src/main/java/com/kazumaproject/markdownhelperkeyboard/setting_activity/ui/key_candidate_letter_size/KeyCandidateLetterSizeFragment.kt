@@ -41,13 +41,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     private val defaultKeyTextSize = 17.0f
     private val defaultCandidateTextSize = 14.0f
 
-    private val minIconPadding = 0
-    private val maxIconPadding = 64
-    private val defaultIconPadding = 50
-
-    private val maxSwitchKeyModePadding = 64
-    private val defaultSwitchKeyModePadding = 24
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         suggestionAdapter = SuggestionAdapter()
@@ -69,8 +62,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         setupPreviewData()
         setupKeyLetterSizeSeekBar()
         setupCandidateLetterSizeSeekBar()
-        setupKeyIconPaddingSeekBar()
-        setupKeySwitchKeyModePaddingSeekBar()
         setupMenu()
 
         binding.tenkeyLetterSizePreview.apply {
@@ -186,18 +177,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
             (100 * (defaultCandidateTextSize - minCandidateTextSize) / (maxCandidateTextSize - minCandidateTextSize)).toInt()
         binding.candidateLetterSizeSeekbar.progress = candidateProgress
         suggestionAdapter.setCandidateTextSize(defaultCandidateTextSize)
-
-        appPreference.key_icon_padding = 0
-        val actualPadding = defaultIconPadding
-        val iconPaddingProgress =
-            (100 * (maxIconPadding - actualPadding) / (maxIconPadding - minIconPadding)).toInt()
-        binding.keyIconPaddingSeekbar.progress = iconPaddingProgress
-        binding.tenkeyLetterSizePreview.setKeyIconPadding(actualPadding)
-
-        appPreference.key_switch_key_mode_padding = defaultSwitchKeyModePadding
-        val switchKeyModeProgress = maxSwitchKeyModePadding - defaultSwitchKeyModePadding
-        binding.keySwitchKeyModePaddingSeekbar.progress = switchKeyModeProgress
-        binding.tenkeyLetterSizePreview.setKeySwitchKeyModePadding(defaultSwitchKeyModePadding)
     }
 
     private fun setupKeyLetterSizeSeekBar() {
@@ -262,81 +241,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
             (100 * (savedCandidateSize - minCandidateTextSize) / (maxCandidateTextSize - minCandidateTextSize)).toInt()
         binding.candidateLetterSizeSeekbar.progress = candidateProgress
         suggestionAdapter.setCandidateTextSize(savedCandidateSize)
-    }
-
-    /**
-     * Sets up the SeekBar for adjusting key icon padding based on a delta
-     * from the default value.
-     */
-    private fun setupKeyIconPaddingSeekBar() {
-        binding.keyIconPaddingSeekbar.setOnSeekBarChangeListener(object :
-            SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val newPadding =
-                        maxIconPadding - (progress.toFloat() / 100f) * (maxIconPadding - minIconPadding)
-                    binding.tenkeyLetterSizePreview.setKeyIconPadding(newPadding.toInt())
-                }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                seekBar?.let {
-                    val newPadding =
-                        maxIconPadding - (it.progress.toFloat() / 100f) * (maxIconPadding - minIconPadding)
-                    val paddingDelta = newPadding - defaultIconPadding
-                    appPreference.key_icon_padding = paddingDelta.toInt()
-                }
-            }
-        })
-
-        // Configure the SeekBar's initial state
-        binding.keyIconPaddingSeekbar.max = 100
-        val savedDelta = appPreference.key_icon_padding ?: 0
-        val actualPadding = defaultIconPadding + savedDelta
-
-        // ★ 変更：実際のパディング値からprogressを逆算する式も反転させる
-        val iconPaddingProgress =
-            (100 * (maxIconPadding - actualPadding) / (maxIconPadding - minIconPadding)).toInt()
-        binding.keyIconPaddingSeekbar.progress = iconPaddingProgress
-
-        // Update the preview with the initial value
-        binding.tenkeyLetterSizePreview.post {
-            binding.tenkeyLetterSizePreview.setKeyIconPadding(actualPadding.toInt())
-        }
-    }
-
-    /**
-     * Controls padding for ONLY the keySwitchKeyMode key.
-     * Saves the setting as an absolute value.
-     */
-    private fun setupKeySwitchKeyModePaddingSeekBar() {
-        binding.keySwitchKeyModePaddingSeekbar.max = maxSwitchKeyModePadding
-        binding.keySwitchKeyModePaddingSeekbar.setOnSeekBarChangeListener(object :
-            SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val newPadding = maxSwitchKeyModePadding - progress
-                    binding.tenkeyLetterSizePreview.setKeySwitchKeyModePadding(newPadding)
-                }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                seekBar?.let {
-                    val newPadding = maxSwitchKeyModePadding - it.progress
-                    appPreference.key_switch_key_mode_padding = newPadding
-                }
-            }
-        })
-
-        val savedPadding = appPreference.key_switch_key_mode_padding ?: defaultSwitchKeyModePadding
-        binding.keySwitchKeyModePaddingSeekbar.progress = maxSwitchKeyModePadding - savedPadding
-        binding.tenkeyLetterSizePreview.post {
-            binding.tenkeyLetterSizePreview.setKeySwitchKeyModePadding(savedPadding)
-        }
     }
 
     private fun setupRecyclerView() {
