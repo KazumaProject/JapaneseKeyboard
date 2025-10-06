@@ -52,25 +52,47 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/keyboard_position_button" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tenkey_tooltip_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="4dp"
+            android:text="TenKey"
+            app:layout_constraintEnd_toStartOf="@id/qwerty_tooltip_button"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/reset_layout_button" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/qwerty_tooltip_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="QWERTY"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/tenkey_tooltip_button"
+            app:layout_constraintTop_toTopOf="@id/tenkey_tooltip_button" />
+
         <FrameLayout
             android:id="@+id/keyboard_container"
             android:layout_width="match_parent"
             android:layout_height="280dp"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/resize_border"
             android:clickable="false"
             android:focusable="false"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/reset_layout_button"
+            app:layout_constraintTop_toBottomOf="@+id/tenkey_tooltip_button"
             app:layout_constraintVertical_bias="1.0">
 
-            <com.kazumaproject.tenkey.TenKey
-                android:id="@+id/keyboard_view"
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/keyboard_view_pager"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:clickable="false"
-                android:focusable="false" />
+                android:layout_gravity="center" />
 
             <ImageView
                 android:id="@+id/handle_move"

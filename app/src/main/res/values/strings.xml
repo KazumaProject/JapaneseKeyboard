@@ -295,4 +295,15 @@
     <string name="keyboard_theme_dialog_title">Select Base Color</string>
     <string name="delete_key_left_flick_title">Delete Key Left Flick</string>
     <string name="delete_key_left_summary">When you flick the delete key to the left, it deletes the text or symbols before the cursor. \n(Targets: punctuation [。、!?], brackets [「」『』], symbol [ー], comma [,], and period [.])</string>
+    <string name="key_candidate_letter_size_preference_title">Key and Candidate Text Size</string>
+    <string name="key_candidate_letter_size_preference_summary">Adjust the size of the characters shown on the keyboard keys and conversion candidates.</string>
+    <string name="fragment_key_candidate_letter_size_title">Letter Size</string>
+
+    <string name="setting_candidate_letter_size">Candidate letter size</string>
+    <string name="setting_key_letter_size">Key letter size</string>
+    <string name="setting_key_icon_size">Key icon size (Standard)</string>
+    <string name="setting_mode_switch_key_icon_size">Mode switch key icon size</string>
+    <string name="candidate_view_height_setting_fragment_title">Candidate View height</string>
+    <string name="candidate_height_preference_title">Candidate Height</string>
+    <string name="candidate_height_preference_sumary">Adjust the height of the candidate bar</string>
 </resources>
