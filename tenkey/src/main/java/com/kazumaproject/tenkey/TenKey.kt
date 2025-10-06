@@ -5,13 +5,17 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.InsetDrawable
+import android.graphics.drawable.ScaleDrawable
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.widget.ImageView
 import android.widget.PopupWindow
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
@@ -451,6 +455,128 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 handleCurrentInputModeSwitch(inputMode)
                 binding.keySwitchKeyMode.setInputMode(inputMode, false)
             }
+        }
+    }
+
+    /**
+     * Sets the text size for the main keys (key1 to key12).
+     * @param size The new text size in sp.
+     */
+    fun setKeyLetterSize(size: Float) {
+        binding.apply {
+            val keyButtons = listOf(
+                key1, key2, key3, key4, key5, key6,
+                key7, key8, key9, key11, key12
+            )
+            keyButtons.forEach { button ->
+                button.textSize = size
+            }
+        }
+    }
+
+    /**
+     * Sets the padding for the side/icon keys.
+     * @param paddingInPx The padding value in pixels to be applied uniformly.
+     */
+    fun setKeyIconPadding(paddingInPx: Int) {
+        binding.apply {
+            val iconKeys = listOf(
+                keySmallLetter, keyReturn, keySoftLeft, keyMoveCursorRight,
+                sideKeySymbol, keyDelete, keySpace, keyEnter
+            )
+            iconKeys.forEach { view ->
+                view.setPadding(paddingInPx)
+                view.scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+        }
+    }
+
+    /**
+     * Applies padding ONLY to the keySwitchKeyMode key.
+     * @param paddingInPx The absolute padding value from its dedicated SeekBar.
+     */
+    fun setKeySwitchKeyModePadding(paddingInPx: Int) {
+        binding.keySwitchKeyMode.setPadding(paddingInPx)
+    }
+
+    /**
+     * Scales the size of the side/icon keys.
+     * @param scale The scale factor. 1.0f is normal size.
+     */
+    fun setKeyIconScale(scale: Float) {
+        binding.apply {
+            val iconKeys = listOf(
+                keySmallLetter, keyReturn, keySoftLeft, keyMoveCursorRight,
+                sideKeySymbol, keySwitchKeyMode, keyDelete, keySpace, keyEnter
+            )
+            iconKeys.forEach { view ->
+                view.scaleX = scale
+                view.scaleY = scale
+            }
+        }
+    }
+
+    /**
+     * Resizes only the icon drawable within the ImageButton.
+     * @param scale The desired scale of the icon. 1.0f is default size,
+     * 0.5f is half size, 1.5f is 50% larger, etc.
+     */
+    fun setKeyIconDrawableScale(scale: Float) {
+        binding.apply {
+            val iconKeys = listOf(
+                keySmallLetter, keyReturn, keySoftLeft, keyMoveCursorRight,
+                sideKeySymbol, keySwitchKeyMode, keyDelete, keySpace, keyEnter
+            )
+
+            iconKeys.forEach { view ->
+                // Check if we've already created a ScaleDrawable for this view
+                var scaleDrawable = view.tag as? ScaleDrawable
+
+                if (scaleDrawable == null) {
+                    // First time: create the wrapper
+                    val originalDrawable = view.drawable
+                    scaleDrawable = ScaleDrawable(originalDrawable, Gravity.CENTER, 1f, 1f)
+
+                    // Replace the button's drawable with our new wrapper
+                    view.setImageDrawable(scaleDrawable)
+                    // Store it in the tag for future updates
+                    view.tag = scaleDrawable
+                }
+
+                // Convert the scale (e.g., 1.2f) to a level (0-10000)
+                // We'll cap the max scale at 2.0f (200%) for this example
+                val level = (scale.coerceIn(0f, 2f) / 2f * 10000).toInt()
+                scaleDrawable.level = level
+            }
+        }
+    }
+
+    /**
+     * Sets the visual size of the icons inside the ImageButtons by wrapping them in an InsetDrawable.
+     * @param insetInPx The inset in pixels. A larger value makes the icon appear smaller.
+     */
+    fun setKeyIconSize(insetInPx: Int) {
+        binding.apply {
+            val deleteDrawable =
+                ContextCompat.getDrawable(context, com.kazumaproject.core.R.drawable.backspace_24px)
+            keyDelete.setImageDrawable(InsetDrawable(deleteDrawable, insetInPx))
+            keyReturn.setImageDrawable(InsetDrawable(cachedUndoDrawable, insetInPx))
+            keySoftLeft.setImageDrawable(InsetDrawable(cachedArrowLeftDrawable, insetInPx))
+            sideKeySymbol.setImageDrawable(InsetDrawable(cachedSymbolDrawable, insetInPx))
+            keyMoveCursorRight.setImageDrawable(InsetDrawable(cachedArrowRightDrawable, insetInPx))
+            keySpace.setImageDrawable(InsetDrawable(cachedSpaceDrawable, insetInPx))
+
+            // This key changes its icon based on the input mode, so we must check the current state.
+            val smallLetterDrawable = if (currentInputMode.value == InputMode.ModeNumber) {
+                cachedNumberSmallDrawable
+            } else {
+                cachedLanguageDrawable
+            }
+            keySmallLetter.setImageDrawable(InsetDrawable(smallLetterDrawable, insetInPx))
+
+            keySwitchKeyMode.setPadding(insetInPx)
+
+            keyEnter.setPadding(insetInPx)
         }
     }
 
