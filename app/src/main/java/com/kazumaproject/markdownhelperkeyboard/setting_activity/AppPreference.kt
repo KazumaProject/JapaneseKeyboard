@@ -122,6 +122,9 @@ object AppPreference {
     private val KEY_ICON_PADDING = Pair("key_icon_padding_preference", 24)
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
     private val KEY_SWITCH_KEY_MODE_PADDING = Pair("key_switch_key_mode_padding_preference", 24)
+    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 110)
+    private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP =
+        Pair("candidate_view_empty_height_dp_preference", 110)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -534,6 +537,25 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(KEYBOARD_FLOATING_POSITION_Y.first, value)
+        }
+
+    var candidate_view_height_dp: Int?
+        get() = preferences.getInt(
+            CANDIDATE_VIEW_HEIGHT_DP.first, CANDIDATE_VIEW_HEIGHT_DP.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CANDIDATE_VIEW_HEIGHT_DP.first, value ?: CANDIDATE_VIEW_HEIGHT_DP.second)
+        }
+
+    var candidate_view_empty_height_dp: Int?
+        get() = preferences.getInt(
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP.first, CANDIDATE_VIEW_EMPTY_HEIGHT_DP.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                CANDIDATE_VIEW_EMPTY_HEIGHT_DP.first,
+                value ?: CANDIDATE_VIEW_EMPTY_HEIGHT_DP.second
+            )
         }
 
     var candidate_column_preference: String
