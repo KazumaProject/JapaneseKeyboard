@@ -25,11 +25,18 @@
             android:title="@string/keyboard_screen_size_preference_title" />
 
         <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="candidate_view_height_setting_fragment_preference"
+            android:title="変換候補の高さ"
+            app:summary="変換候補を表示するレイアウトの高さの設定ができます" />
+
+        <Preference
             android:key="keyboard_theme_fragment_preference"
             android:title="@string/keyboard_theme_title"
             app:summary="@string/keyboard_theme_summary" />
 
         <Preference
+            android:icon="@drawable/outline_border_color_24"
             android:key="keyboard_key_letter_size_fragment_preference"
             android:title="@string/key_candidate_letter_size_preference_title"
             app:summary="@string/key_candidate_letter_size_preference_summary" />
