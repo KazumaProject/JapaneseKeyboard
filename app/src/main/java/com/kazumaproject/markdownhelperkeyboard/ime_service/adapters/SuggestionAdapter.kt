@@ -240,7 +240,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
                 customLayouts.size
             } else {
-                suggestions.size
+                1
             }
         }
     }
