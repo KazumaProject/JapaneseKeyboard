@@ -19,7 +19,6 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCandidateViewHeightSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
-import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
@@ -32,7 +31,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
     @Inject
     lateinit var appPreference: AppPreference
 
-    private lateinit var suggestionAdapter: SuggestionAdapter
+    private lateinit var suggestionAdapter: SuggestionAdapter2
     private lateinit var candidateList: List<Candidate>
 
     private var _binding: FragmentCandidateViewHeightSettingBinding? = null
@@ -47,7 +46,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        suggestionAdapter = SuggestionAdapter()
+        suggestionAdapter = SuggestionAdapter2()
         candidateList = (1..16).map { index ->
             Candidate(
                 string = "候補 $index",
