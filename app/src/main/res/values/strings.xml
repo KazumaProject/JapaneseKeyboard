@@ -304,4 +304,6 @@
     <string name="setting_key_icon_size">Key icon size (Standard)</string>
     <string name="setting_mode_switch_key_icon_size">Mode switch key icon size</string>
     <string name="candidate_view_height_setting_fragment_title">Candidate View height</string>
+    <string name="candidate_height_preference_title">Candidate Height</string>
+    <string name="candidate_height_preference_sumary">Adjust the height of the candidate bar</string>
 </resources>
