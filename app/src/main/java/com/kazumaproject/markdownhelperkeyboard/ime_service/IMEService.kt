@@ -908,6 +908,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+
+                keyboardView.setKeyLetterSize((appPreference.key_letter_size ?: 0.0f) + 17f)
+                keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
+
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 qwertyView.setSpecialKeyVisibility(
