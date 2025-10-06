@@ -67,6 +67,11 @@ object AppPreference {
     private val KEYBOARD_VERTICAL_MARGIN_BOTTOM =
         Pair("keyboard_vertical_margin_bottom_preference", 0)
     private val KEYBOARD_FLOATING_PREFERENCE = Pair("keyboard_floating_preference", false)
+    private val QWERTY_KEYBOARD_HEIGHT = Pair("qwerty_keyboard_height_preference", 220)
+    private val QWERTY_KEYBOARD_WIDTH = Pair("qwerty_keyboard_width_preference", 100)
+    private val QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM =
+        Pair("qwerty_keyboard_vertical_margin_bottom_preference", 0)
+    private val QWERTY_KEYBOARD_POSITION = Pair("qwerty_keyboard_position_preference", true)
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
@@ -85,9 +90,6 @@ object AppPreference {
     private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
     private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
 
-    private val KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE =
-        Pair("keyboard_height_fix_enable_preference", false)
-
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(
             KeyboardType.TENKEY,
@@ -102,8 +104,6 @@ object AppPreference {
 
     private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
 
-    private val CANDIDATE_VIEW_HEIGHT_PREFERENCE = Pair("candidate_view_height_preference", "2")
-
     private val CANDIDATE_TAB_PREFERENCE = Pair("candidate_tab_visibility_preference", false)
 
     private val SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE =
@@ -112,6 +112,14 @@ object AppPreference {
     private val APP_THEME_SEED_COLOR = Pair("app_theme_seed_color_preference", 0x00000000)
 
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
+
+    private val KEY_LETTER_SIZE = Pair("key_letter_size_preference", 0.0f)
+    private val KEY_ICON_PADDING = Pair("key_icon_padding_preference", 24)
+    private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
+    private val KEY_SWITCH_KEY_MODE_PADDING = Pair("key_switch_key_mode_padding_preference", 24)
+    private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 110)
+    private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP =
+        Pair("candidate_view_empty_height_dp_preference", 110)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -380,10 +388,44 @@ object AppPreference {
             it.putInt(KEYBOARD_WIDTH.first, value ?: 100)
         }
 
+    var qwerty_keyboard_height: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_HEIGHT.first, QWERTY_KEYBOARD_HEIGHT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_HEIGHT.first, value ?: 220)
+        }
+
+    var qwerty_keyboard_width: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_WIDTH.first, QWERTY_KEYBOARD_WIDTH.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_WIDTH.first, value ?: 100)
+        }
+
+    var qwerty_keyboard_vertical_margin_bottom: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM.first,
+            QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM.first, value ?: 0)
+        }
+
     var keyboard_position: Boolean?
         get() = preferences.getBoolean(KEYBOARD_POSITION.first, KEYBOARD_POSITION.second)
         set(value) = preferences.edit {
             it.putBoolean(KEYBOARD_POSITION.first, value ?: true)
+        }
+
+    var qwerty_keyboard_position: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_KEYBOARD_POSITION.first,
+            QWERTY_KEYBOARD_POSITION.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_KEYBOARD_POSITION.first, value ?: true)
         }
 
     var keyboard_vertical_margin_bottom: Int?
@@ -439,15 +481,6 @@ object AppPreference {
             it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
         }
 
-    var keyboard_height_fix_for_specific_device_preference: Boolean?
-        get() = preferences.getBoolean(
-            KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.first,
-            KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.second
-        )
-        set(value) = preferences.edit {
-            it.putBoolean(KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.first, value ?: false)
-        }
-
     var sumire_input_selection_preference: String?
         get() = preferences.getString(
             SUMIRE_INPUT_SELECTION_PREFERENCE.first, SUMIRE_INPUT_SELECTION_PREFERENCE.second
@@ -492,20 +525,31 @@ object AppPreference {
             it.putInt(KEYBOARD_FLOATING_POSITION_Y.first, value)
         }
 
+    var candidate_view_height_dp: Int?
+        get() = preferences.getInt(
+            CANDIDATE_VIEW_HEIGHT_DP.first, CANDIDATE_VIEW_HEIGHT_DP.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CANDIDATE_VIEW_HEIGHT_DP.first, value ?: CANDIDATE_VIEW_HEIGHT_DP.second)
+        }
+
+    var candidate_view_empty_height_dp: Int?
+        get() = preferences.getInt(
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP.first, CANDIDATE_VIEW_EMPTY_HEIGHT_DP.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                CANDIDATE_VIEW_EMPTY_HEIGHT_DP.first,
+                value ?: CANDIDATE_VIEW_EMPTY_HEIGHT_DP.second
+            )
+        }
+
     var candidate_column_preference: String
         get() = preferences.getString(
             CANDIDATE_COLUMN_PREFERENCE.first, CANDIDATE_COLUMN_PREFERENCE.second
         ) ?: "1"
         set(value) = preferences.edit {
             it.putString(CANDIDATE_COLUMN_PREFERENCE.first, value)
-        }
-
-    var candidate_view_height_preference: String
-        get() = preferences.getString(
-            CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, CANDIDATE_VIEW_HEIGHT_PREFERENCE.second
-        ) ?: "2"
-        set(value) = preferences.edit {
-            it.putString(CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, value)
         }
 
     var candidate_tab_preference: Boolean
@@ -540,6 +584,36 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(DELETE_KEY_LEFT_FLICK_PREFERENCE.first, value)
+        }
+
+    var key_letter_size: Float?
+        get() = preferences.getFloat(KEY_LETTER_SIZE.first, KEY_LETTER_SIZE.second)
+        set(value) = preferences.edit {
+            it.putFloat(KEY_LETTER_SIZE.first, value ?: KEY_LETTER_SIZE.second)
+        }
+
+    var key_icon_padding: Int?
+        get() = preferences.getInt(KEY_ICON_PADDING.first, KEY_ICON_PADDING.second)
+        set(value) = preferences.edit {
+            it.putInt(KEY_ICON_PADDING.first, value ?: KEY_ICON_PADDING.second)
+        }
+
+    var candidate_letter_size: Float?
+        get() = preferences.getFloat(CANDIDATE_LETTER_SIZE.first, CANDIDATE_LETTER_SIZE.second)
+        set(value) = preferences.edit {
+            it.putFloat(CANDIDATE_LETTER_SIZE.first, value ?: CANDIDATE_LETTER_SIZE.second)
+        }
+
+    var key_switch_key_mode_padding: Int?
+        get() = preferences.getInt(
+            KEY_SWITCH_KEY_MODE_PADDING.first,
+            KEY_SWITCH_KEY_MODE_PADDING.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEY_SWITCH_KEY_MODE_PADDING.first,
+                value ?: KEY_SWITCH_KEY_MODE_PADDING.second
+            )
         }
 
     fun migrateSumirePreferenceIfNeeded() {

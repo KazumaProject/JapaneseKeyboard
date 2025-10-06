@@ -159,6 +159,29 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val candidateColumnListPreference =
+            findPreference<ListPreference>("candidate_column_preference")
+        candidateColumnListPreference?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
+                if (newValue is String) {
+                    when (newValue) {
+                        "1" -> {
+                            appPreference.candidate_view_height_dp = 110
+                        }
+
+                        "2" -> {
+                            appPreference.candidate_view_height_dp = 165
+                        }
+
+                        "3" -> {
+                            appPreference.candidate_view_height_dp = 230
+                        }
+                    }
+                }
+                true
+            }
+        }
+
         val appVersionPreference = findPreference<Preference>("app_version_preference")
         appVersionPreference?.apply {
             summary = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -180,6 +203,27 @@ class SettingFragment : PreferenceFragmentCompat() {
                 R.id.action_navigation_setting_to_keyboardSelectionFragment
             )
             true
+        }
+
+        val keyboardLetterSizePreference =
+            findPreference<Preference>("keyboard_key_letter_size_fragment_preference")
+
+        keyboardLetterSizePreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_keyCandidateLetterSizeFragment
+            )
+            true
+        }
+
+        val candidateHeightFragmentSetting =
+            findPreference<Preference>("candidate_view_height_setting_fragment_preference")
+        candidateHeightFragmentSetting?.apply {
+            setOnPreferenceClickListener {
+                findNavController().navigate(
+                    R.id.action_navigation_setting_to_candidateViewHeightSettingFragment
+                )
+                true
+            }
         }
 
         val clipBoardHistoryPreference =
