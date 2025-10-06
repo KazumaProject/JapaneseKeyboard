@@ -21,37 +21,17 @@
             android:paddingBottom="16dp">
 
             <TextView
-                android:id="@+id/key_letter_size_label"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="16dp"
-                android:layout_marginEnd="16dp"
-                android:text="キーの文字サイズ"
-                android:textAppearance="?attr/textAppearanceBody1"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
-
-            <SeekBar
-                android:id="@+id/key_letter_size_seekbar"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginTop="8dp"
-                app:layout_constraintTop_toBottomOf="@+id/key_letter_size_label" />
-
-            <TextView
                 android:id="@+id/candidate_letter_size_label"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="16dp"
-                android:text="候補の文字サイズ"
+                android:text="@string/setting_candidate_letter_size"
                 android:textAppearance="?attr/textAppearanceBody1"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/key_letter_size_seekbar" />
+                app:layout_constraintTop_toTopOf="parent" />
 
             <SeekBar
                 android:id="@+id/candidate_letter_size_seekbar"
@@ -61,17 +41,37 @@
                 app:layout_constraintTop_toBottomOf="@+id/candidate_letter_size_label" />
 
             <TextView
+                android:id="@+id/key_letter_size_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="16dp"
+                android:text="@string/setting_key_letter_size"
+                android:textAppearance="?attr/textAppearanceBody1"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/candidate_letter_size_seekbar" />
+
+            <SeekBar
+                android:id="@+id/key_letter_size_seekbar"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@+id/key_letter_size_label" />
+
+            <TextView
                 android:id="@+id/key_icon_padding_label"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="16dp"
-                android:text="キーアイコンのサイズ (変換キー以外)"
+                android:text="@string/setting_key_icon_size"
                 android:textAppearance="?attr/textAppearanceBody1"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/candidate_letter_size_seekbar" />
+                app:layout_constraintTop_toBottomOf="@+id/key_letter_size_seekbar" />
 
             <SeekBar
                 android:id="@+id/key_icon_padding_seekbar"
@@ -86,7 +86,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="16dp"
-                android:text="モード切り替えキーのアイコンサイズ"
+                android:text="@string/setting_mode_switch_key_icon_size"
                 android:textAppearance="?attr/textAppearanceBody1"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/key_icon_padding_seekbar" />
