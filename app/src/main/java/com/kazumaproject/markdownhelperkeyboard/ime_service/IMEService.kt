@@ -682,8 +682,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
-            keyboardHeightFixForSpecificDevicePreference =
-                keyboard_height_fix_for_specific_device_preference ?: false
             userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
             isVibration = vibration_preference ?: true
             vibrationTimingStr = vibration_timing_preference ?: "both"
@@ -691,7 +689,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireInputKeyLayoutType = sumire_input_method
             sumireInputStyle = sumire_keyboard_style
             candidateColumns = candidate_column_preference
-            candidateViewHeight = candidate_view_height_preference
             candidateTabVisibility = candidate_tab_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true

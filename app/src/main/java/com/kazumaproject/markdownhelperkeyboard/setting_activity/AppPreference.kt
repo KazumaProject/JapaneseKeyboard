@@ -90,9 +90,6 @@ object AppPreference {
     private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
     private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
 
-    private val KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE =
-        Pair("keyboard_height_fix_enable_preference", false)
-
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(
             KeyboardType.TENKEY,
@@ -106,8 +103,6 @@ object AppPreference {
     private val SYMBOL_MODE_PREFERENCE = Pair("symbol_mode_preference", "EMOJI")
 
     private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
-
-    private val CANDIDATE_VIEW_HEIGHT_PREFERENCE = Pair("candidate_view_height_preference", "2")
 
     private val CANDIDATE_TAB_PREFERENCE = Pair("candidate_tab_visibility_preference", false)
 
@@ -486,15 +481,6 @@ object AppPreference {
             it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
         }
 
-    var keyboard_height_fix_for_specific_device_preference: Boolean?
-        get() = preferences.getBoolean(
-            KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.first,
-            KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.second
-        )
-        set(value) = preferences.edit {
-            it.putBoolean(KEYBOARD_HEIGHT_FIX_FOR_SPECIFIC_DEVICE.first, value ?: false)
-        }
-
     var sumire_input_selection_preference: String?
         get() = preferences.getString(
             SUMIRE_INPUT_SELECTION_PREFERENCE.first, SUMIRE_INPUT_SELECTION_PREFERENCE.second
@@ -564,14 +550,6 @@ object AppPreference {
         ) ?: "1"
         set(value) = preferences.edit {
             it.putString(CANDIDATE_COLUMN_PREFERENCE.first, value)
-        }
-
-    var candidate_view_height_preference: String
-        get() = preferences.getString(
-            CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, CANDIDATE_VIEW_HEIGHT_PREFERENCE.second
-        ) ?: "2"
-        set(value) = preferences.edit {
-            it.putString(CANDIDATE_VIEW_HEIGHT_PREFERENCE.first, value)
         }
 
     var candidate_tab_preference: Boolean
