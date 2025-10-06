@@ -37,12 +37,6 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
-            android:key="keyboard_height_fix_enable_preference"
-            android:summary="@string/keyboard_height_fix_specific_device_summary_on"
-            android:title="@string/keyboard_height_fix_specific_device_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
             android:key="switch_qwerty_keyboard_password_preference"
             android:summaryOff="@string/switch_qwerty_password_summary_off"
             android:summaryOn="@string/switch_qwerty_password_summary_on"
@@ -74,8 +68,8 @@
             <Preference
                 android:icon="@drawable/outline_border_color_24"
                 android:key="candidate_view_height_setting_fragment_preference"
-                android:title="変換欄の高さ"
-                app:summary="変換候補を表示するレイアウトの高さの設定ができます" />
+                android:title="@string/candidate_height_preference_title"
+                app:summary="@string/candidate_height_preference_sumary" />
 
             <ListPreference
                 android:defaultValue="1"
@@ -85,15 +79,6 @@
                 android:key="candidate_column_preference"
                 android:summary="@string/preference_summary_num_column_conversion"
                 android:title="@string/preference_title_num_columns_conversion" />
-
-            <ListPreference
-                android:defaultValue="2"
-                android:dialogTitle="@string/candidate_height_dialog_title"
-                android:entries="@array/candidate_view_height_entries"
-                android:entryValues="@array/candidate_view_height_values"
-                android:key="candidate_view_height_preference"
-                android:summary="@string/candidate_view_height_summary"
-                android:title="@string/candidate_view_height_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="true"

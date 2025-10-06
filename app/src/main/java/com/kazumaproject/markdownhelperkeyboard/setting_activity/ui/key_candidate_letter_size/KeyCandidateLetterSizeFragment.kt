@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.key_candida
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -17,7 +16,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kazumaproject.core.domain.extensions.dpToPx
-import com.kazumaproject.core.domain.extensions.isGalaxyDevice
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyCandidateLetterSizeBinding
@@ -87,13 +85,11 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     private fun setKeyboardSize() {
         val heightPref = appPreference.keyboard_height ?: 280
         val widthPref = appPreference.keyboard_width ?: 280
-        val keyboardBottomMargin = appPreference.keyboard_vertical_margin_bottom ?: 0
         val density = resources.displayMetrics.density
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val screenWidth = resources.displayMetrics.widthPixels
         val positionPref = appPreference.keyboard_position ?: true
         val clampedHeight = heightPref.coerceIn(180, 420)
-        val candidateViewHeight = appPreference.candidate_view_height_preference
 
         val heightPx = (clampedHeight * density).toInt()
 
@@ -106,57 +102,17 @@ class KeyCandidateLetterSizeFragment : Fragment() {
                 (screenWidth * (widthPref / 100f)).toInt()
             }
         }
-
-        val defaultHeightSizeByDevice = when {
-            isGalaxyDevice() && appPreference.keyboard_height_fix_for_specific_device_preference == true -> {
-                when (candidateViewHeight) {
-                    "1" -> 48
-                    "2" -> 54
-                    "3" -> 60
-                    else -> 48
-                }
-            }
-
-            Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                when (candidateViewHeight) {
-                    "1" -> 52
-                    "2" -> 58
-                    "3" -> 64
-                    else -> 52
-                }
-            }
-
-            isPortrait -> {
-                when (candidateViewHeight) {
-                    "1" -> 52
-                    "2" -> 58
-                    "3" -> 64
-                    else -> 52
-                }
-            }
-
-            else -> {
-                when (candidateViewHeight) {
-                    "1" -> 100
-                    "2" -> 110
-                    "3" -> 120
-                    else -> 100
-                }
-            }
-        }
         val keyboardHeight = if (isPortrait) {
             heightPx + requireContext().dpToPx(
-                defaultHeightSizeByDevice
+                appPreference.candidate_view_empty_height_dp ?: 110
             )
         } else {
             heightPx + requireContext().dpToPx(
-                defaultHeightSizeByDevice
+                appPreference.candidate_view_empty_height_dp ?: 110
             )
         }
 
-
         (binding.suggestionLetterSizeRecyclerview.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams)?.let { params ->
-
             params.width = widthPx
             if (positionPref) {
                 params.startToStart = -1

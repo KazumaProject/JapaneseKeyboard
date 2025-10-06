@@ -305,4 +305,6 @@
     <string name="setting_key_icon_size">キーアイコンのサイズ（通常）</string>
     <string name="setting_mode_switch_key_icon_size">モード切替キーのアイコンサイズ</string>
     <string name="candidate_view_height_setting_fragment_title">変換欄の高さ</string>
+    <string name="candidate_height_preference_title">変換欄の高さ</string>
+    <string name="candidate_height_preference_sumary">変換候補を表示するレイアウトの高さの設定ができます</string>
 </resources>
