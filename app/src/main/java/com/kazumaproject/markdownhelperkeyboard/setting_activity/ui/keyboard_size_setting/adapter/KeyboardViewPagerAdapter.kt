@@ -1,17 +1,19 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.adapter
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
+import com.kazumaproject.tenkey.TenKey
 
 class KeyboardViewPagerAdapter : RecyclerView.Adapter<KeyboardViewPagerAdapter.ViewHolder>() {
 
-    // 表示するページのレイアウトリスト
     private val pageLayouts = listOf(
         R.layout.page_tenkey,
-        R.layout.page_qwerty // QWERTYレイアウトを追加
+        R.layout.page_qwerty
     )
 
     companion object {
@@ -24,8 +26,21 @@ class KeyboardViewPagerAdapter : RecyclerView.Adapter<KeyboardViewPagerAdapter.V
         return ViewHolder(view)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        // 必要に応じて、各ページのビューに対する処理をここに記述
+        when (position) {
+            TEN_KEY_PAGE_POSITION -> {
+                holder.tenKeyView?.setOnTouchListener { _, _ ->
+                    true
+                }
+            }
+
+            QWERTY_PAGE_POSITION -> {
+                holder.qwertyView?.setOnTouchListener { _, _ ->
+                    true
+                }
+            }
+        }
     }
 
     override fun getItemCount(): Int = pageLayouts.size
@@ -34,5 +49,10 @@ class KeyboardViewPagerAdapter : RecyclerView.Adapter<KeyboardViewPagerAdapter.V
         return pageLayouts[position]
     }
 
-    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView)
+    // Updated ViewHolder to hold references to the specific keyboard views
+    class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        // These can be nullable because a given layout will only have one of them.
+        val tenKeyView: TenKey? = itemView.findViewById(R.id.keyboard_view)
+        val qwertyView: QWERTYKeyboardView? = itemView.findViewById(R.id.qwerty_view)
+    }
 }
