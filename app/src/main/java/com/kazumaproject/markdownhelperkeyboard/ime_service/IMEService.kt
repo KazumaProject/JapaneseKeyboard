@@ -258,6 +258,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingKeyboardView: PopupWindow? = null
     private var floatingKeyboardBinding: FloatingKeyboardLayoutBinding? = null
     private var isKeyboardFloatingMode: Boolean? = false
+    private var isKeyboardRounded: Boolean? = false
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -374,6 +375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTWeb: Boolean? = false
     private var switchQWERTYPassword: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
+    private var clipboardPreviewVisibility: Boolean? = true
     private var isDeleteLeftFlickPreference: Boolean? = true
     private var tenkeyHeightPreferenceValue: Int? = 280
     private var tenkeyWidthPreferenceValue: Int? = 100
@@ -694,10 +696,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
             isKeyboardFloatingMode = is_floating_mode ?: false
+            isKeyboardRounded = keyboard_corner_round_preference
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
             isDeleteLeftFlickPreference = delete_key_left_flick_preference
+
+            clipboardPreviewVisibility = clipboard_preview_preference
 
             tenkeyHeightPreferenceValue = keyboard_height ?: 280
             tenkeyWidthPreferenceValue = keyboard_width ?: 100
@@ -905,6 +910,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         mainLayoutBinding?.let { mainView ->
             mainView.apply {
+                if (isKeyboardRounded == true) {
+                    if (DynamicColors.isDynamicColorAvailable()) {
+                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_root)
+                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
+                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
+                    } else {
+                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
+                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                    }
+                } else {
+                    if (DynamicColors.isDynamicColorAvailable()) {
+                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                    } else {
+                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                    }
+                }
+
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -1035,6 +1062,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = null
         switchQWERTYPassword = null
         shortcutTollbarVisibility = null
+        clipboardPreviewVisibility = null
         isDeleteLeftFlickPreference = null
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
@@ -1074,6 +1102,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isCustomKeyboardTwoWordsOutputEnable = null
         tenkeyQWERTYSwitchNumber = null
         isKeyboardFloatingMode = null
+        isKeyboardRounded = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
@@ -1369,25 +1398,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
             if (deletedBuffer.isEmpty()) {
-                // getPrimaryClipContentでクリップボードの内容を取得
                 when (val item = clipboardUtil.getPrimaryClipContent()) {
                     is ClipboardItem.Image -> {
-                        // 画像だった場合の処理
-                        setPasteEnabled(true)
-                        // ★新しいメソッドでBitmapをアダプターに渡す
-                        setClipboardImagePreview(item.bitmap)
+                        if (clipboardPreviewVisibility == true) {
+                            setPasteEnabled(true)
+                            setClipboardImagePreview(item.bitmap)
+                        } else {
+                            setPasteEnabled(false)
+                        }
                     }
 
                     is ClipboardItem.Text -> {
-                        // テキストだった場合の処理
-                        setPasteEnabled(true)
-                        setClipboardPreview(item.text)
+                        if (clipboardPreviewVisibility == true) {
+                            setPasteEnabled(true)
+                            setClipboardPreview(item.text)
+                        } else {
+                            setPasteEnabled(false)
+                        }
                     }
 
                     is ClipboardItem.Empty -> {
-                        // 空だった場合の処理
                         setPasteEnabled(false)
-                        setClipboardPreview("") // 念のためプレビューもクリア
+                        setClipboardPreview("")
                     }
                 }
             } else {
@@ -4179,8 +4211,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (!selectedText.isNullOrEmpty()) {
                             clipboardUtil.setClipBoard(selectedText.toString())
                             suggestionAdapter?.apply {
-                                setPasteEnabled(true)
-                                setClipboardPreview(selectedText.toString())
+                                if (clipboardPreviewVisibility == true) {
+                                    setPasteEnabled(true)
+                                    setClipboardPreview(selectedText.toString())
+                                } else {
+                                    setPasteEnabled(false)
+                                }
                             }
                         }
                     }
@@ -4559,8 +4595,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (!selectedText.isNullOrEmpty()) {
                             clipboardUtil.setClipBoard(selectedText.toString())
                             suggestionAdapter?.apply {
-                                setPasteEnabled(true)
-                                setClipboardPreview(selectedText.toString())
+                                if (clipboardPreviewVisibility == true) {
+                                    setPasteEnabled(true)
+                                    setClipboardPreview(selectedText.toString())
+                                } else {
+                                    setPasteEnabled(false)
+                                }
                             }
                         }
                     }
@@ -4707,8 +4747,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!selectedText.isNullOrEmpty()) {
             clipboardUtil.setClipBoard(selectedText.toString())
             suggestionAdapter?.apply {
-                setPasteEnabled(true)
-                setClipboardPreview(selectedText.toString())
+                if (clipboardPreviewVisibility == true) {
+                    setPasteEnabled(true)
+                    setClipboardPreview(selectedText.toString())
+                } else {
+                    setPasteEnabled(false)
+                }
             }
         }
     }
@@ -4743,8 +4787,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!selectedText.isNullOrEmpty()) {
             clipboardUtil.setClipBoard(selectedText.toString())
             suggestionAdapter?.apply {
-                setPasteEnabled(true)
-                setClipboardPreview(selectedText.toString())
+                if (clipboardPreviewVisibility == true) {
+                    setPasteEnabled(true)
+                    setClipboardPreview(selectedText.toString())
+                } else {
+                    setPasteEnabled(false)
+                }
             }
             sendKeyEvent(
                 KeyEvent(
@@ -4932,21 +4980,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.apply {
             when (val item = clipboardUtil.getPrimaryClipContent()) {
                 is ClipboardItem.Image -> {
-                    // 画像だった場合
-                    setPasteEnabled(true)
-                    // ★新しいメソッドを呼び出してBitmapを渡す
-                    setClipboardImagePreview(item.bitmap)
+                    if (clipboardPreviewVisibility == true) {
+                        setPasteEnabled(true)
+                        setClipboardImagePreview(item.bitmap)
+                    } else {
+                        setPasteEnabled(false)
+                    }
                 }
 
                 is ClipboardItem.Text -> {
-                    // テキストだった場合
-                    setPasteEnabled(true)
-                    // 既存のメソッドを呼び出す（これにより画像プレビューはクリアされる）
-                    setClipboardPreview(item.text)
+                    if (clipboardPreviewVisibility == true) {
+                        setPasteEnabled(true)
+                        setClipboardPreview(item.text)
+                    } else {
+                        setPasteEnabled(false)
+                    }
                 }
 
                 is ClipboardItem.Empty -> {
-                    // 空だった場合
                     setPasteEnabled(false)
                     setClipboardPreview("")
                 }
@@ -5316,16 +5367,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (deletedBuffer.isEmpty()) {
                                 when (val item = clipboardUtil.getPrimaryClipContent()) {
                                     is ClipboardItem.Image -> {
-                                        // 画像だった場合の処理
-                                        setPasteEnabled(true)
-                                        // ★新しいメソッドでBitmapをアダプターに渡す
-                                        setClipboardImagePreview(item.bitmap)
+                                        if (clipboardPreviewVisibility == true) {
+                                            setPasteEnabled(true)
+                                            setClipboardImagePreview(item.bitmap)
+                                        } else {
+                                            setPasteEnabled(false)
+                                        }
                                     }
 
                                     is ClipboardItem.Text -> {
-                                        // テキストだった場合の処理
-                                        setPasteEnabled(true)
-                                        setClipboardPreview(item.text)
+                                        if (clipboardPreviewVisibility == true) {
+                                            setPasteEnabled(true)
+                                            setClipboardPreview(item.text)
+                                        } else {
+                                            setPasteEnabled(false)
+                                        }
                                     }
 
                                     is ClipboardItem.Empty -> {
@@ -5901,6 +5957,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardBottomMargin
             }
 
+        if (shortcutTollbarVisibility == true) {
+            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
+                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
+                mainView.shortcutToolbarRecyclerview.layoutParams = param
+            }
+        }
+
         (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.bottomMargin = heightPx
             params.gravity = gravity
@@ -6022,6 +6085,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardBottomMargin
             }
 
+        if (shortcutTollbarVisibility == true) {
+            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
+                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
+                mainView.shortcutToolbarRecyclerview.layoutParams = param
+            }
+        }
+
         (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.bottomMargin = heightPx
             params.gravity = gravity
@@ -6139,6 +6209,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else {
                 keyboardBottomMargin
             }
+
+        if (shortcutTollbarVisibility == true) {
+            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
+                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
+                mainView.shortcutToolbarRecyclerview.layoutParams = param
+            }
+        }
 
         (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.bottomMargin = heightPx
@@ -6390,6 +6467,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardBottomMargin
             }
 
+        if (shortcutTollbarVisibility == true) {
+            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
+                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
+                mainView.shortcutToolbarRecyclerview.layoutParams = param
+            }
+        }
+
         (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.bottomMargin = heightPx
             params.gravity = gravity
@@ -6508,6 +6592,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else {
                 keyboardBottomMargin
             }
+
+        if (shortcutTollbarVisibility == true) {
+            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
+                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
+                mainView.shortcutToolbarRecyclerview.layoutParams = param
+            }
+        }
 
         (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
             params.bottomMargin = heightPx
