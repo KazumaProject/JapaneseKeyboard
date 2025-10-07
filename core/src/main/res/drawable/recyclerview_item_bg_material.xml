@@ -11,7 +11,7 @@
     <!-- Normal state -->
     <item>
         <shape>
-            <solid android:color="?attr/colorSurfaceContainer" /> <!-- Normal background color -->
+            <solid android:color="@android:color/transparent" /> <!-- Normal background color -->
             <corners android:radius="16dp" /> <!-- Rounded corners -->
         </shape>
     </item>

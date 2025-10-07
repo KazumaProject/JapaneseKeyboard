@@ -306,4 +306,10 @@
     <string name="candidate_view_height_setting_fragment_title">Candidate View height</string>
     <string name="candidate_height_preference_title">Candidate Height</string>
     <string name="candidate_height_preference_sumary">Adjust the height of the candidate bar</string>
+
+    <string name="pref_clipboard_preview_title">Show clipboard contents in the conversion bar</string>
+    <string name="pref_clipboard_preview_summary">When text or images are copied to the clipboard, show them in the conversion bar.</string>
+
+    <string name="pref_round_corner_keyboard_title">Round the keyboard’s corners</string>
+    <string name="pref_round_corner_keyboard_summary">When on, all four corners of the keyboard are rounded.</string>
 </resources>
