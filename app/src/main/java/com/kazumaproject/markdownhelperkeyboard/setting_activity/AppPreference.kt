@@ -121,6 +121,12 @@ object AppPreference {
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP =
         Pair("candidate_view_empty_height_dp_preference", 110)
 
+    private val CLIP_BOARD_PREVIEW_PREFERENCE =
+        Pair("clipboard_preview_enable_preference", true)
+
+    private val ROUND_KEYBOARD_CORNER_PREFERENCE =
+        Pair("round_corner_keyboard_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -596,6 +602,24 @@ object AppPreference {
         get() = preferences.getFloat(CANDIDATE_LETTER_SIZE.first, CANDIDATE_LETTER_SIZE.second)
         set(value) = preferences.edit {
             it.putFloat(CANDIDATE_LETTER_SIZE.first, value ?: CANDIDATE_LETTER_SIZE.second)
+        }
+
+    var clipboard_preview_preference: Boolean
+        get() = preferences.getBoolean(
+            CLIP_BOARD_PREVIEW_PREFERENCE.first,
+            CLIP_BOARD_PREVIEW_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CLIP_BOARD_PREVIEW_PREFERENCE.first, value)
+        }
+
+    var keyboard_corner_round_preference: Boolean
+        get() = preferences.getBoolean(
+            ROUND_KEYBOARD_CORNER_PREFERENCE.first,
+            ROUND_KEYBOARD_CORNER_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ROUND_KEYBOARD_CORNER_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
