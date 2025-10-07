@@ -40,8 +40,13 @@
             android:key="switch_qwerty_keyboard_password_preference"
             android:summaryOff="@string/switch_qwerty_password_summary_off"
             android:summaryOn="@string/switch_qwerty_password_summary_on"
-            android:title="@string/switch_qwerty_preference_title"
-            app:defaultValue="false" />
+            android:title="@string/switch_qwerty_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="round_corner_keyboard_preference"
+            android:summary="@string/pref_round_corner_keyboard_summary"
+            android:title="@string/pref_round_corner_keyboard_title" />
 
         <PreferenceCategory android:title="@string/conversion_preference_title">
             <SeekBarPreference
@@ -117,6 +122,12 @@
                 android:key="undo_enable_preference"
                 android:summary="@string/undo_enable_summary"
                 android:title="@string/undo_enable_title" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="true"
+                android:key="clipboard_preview_enable_preference"
+                android:summary="@string/pref_clipboard_preview_summary"
+                android:title="@string/pref_clipboard_preview_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"

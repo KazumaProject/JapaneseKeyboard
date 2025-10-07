@@ -307,4 +307,10 @@
     <string name="candidate_view_height_setting_fragment_title">変換欄の高さ</string>
     <string name="candidate_height_preference_title">変換欄の高さ</string>
     <string name="candidate_height_preference_sumary">変換候補を表示するレイアウトの高さの設定ができます</string>
+
+    <string name="pref_clipboard_preview_title">クリップボードの内容を変換欄に表示</string>
+    <string name="pref_clipboard_preview_summary">クリップボードにコピーした文字や画像を検知したとき、変換欄に表示します。</string>
+
+    <string name="pref_round_corner_keyboard_title">キーボードの角を丸くする</string>
+    <string name="pref_round_corner_keyboard_summary">オンにすると、キーボード枠の四隅が丸くなります</string>
 </resources>
