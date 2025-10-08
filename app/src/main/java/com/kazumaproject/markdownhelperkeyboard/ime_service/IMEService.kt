@@ -767,6 +767,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapter?.suggestions = emptyList()
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
+        suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionClickNum = 0
         if (!restarting) {
             setCurrentInputType(editorInfo)
