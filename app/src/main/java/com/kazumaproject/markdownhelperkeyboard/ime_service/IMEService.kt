@@ -4143,6 +4143,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
                     KeyAction.DeleteUntilSymbol -> {}
+                    KeyAction.MoveCursorDown -> {}
+                    KeyAction.MoveCursorUp -> {}
                 }
             }
 
@@ -4188,6 +4190,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
                     KeyAction.DeleteUntilSymbol -> {}
+                    KeyAction.MoveCursorDown -> {}
+                    KeyAction.MoveCursorUp -> {}
                 }
             }
 
@@ -4288,6 +4292,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
                     KeyAction.DeleteUntilSymbol -> {}
+                    KeyAction.MoveCursorDown -> {
+
+                    }
+
+                    KeyAction.MoveCursorUp -> {}
                 }
             }
 
@@ -4347,9 +4356,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCursorLeft -> {
                         cancelLeftLongPress()
+                        cancelRightLongPress()
                     }
 
                     KeyAction.MoveCursorRight -> {
+                        cancelLeftLongPress()
                         cancelRightLongPress()
                     }
 
@@ -4401,6 +4412,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             val insertString = inputString.value
                             deleteWordOrSymbolsBeforeCursor(insertString)
                         }
+                        stopDeleteLongPress()
+                    }
+
+                    KeyAction.MoveCursorDown -> {
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
+                    }
+
+                    KeyAction.MoveCursorUp -> {
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
                     }
                 }
             }
@@ -4703,6 +4725,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (isDeleteLeftFlickPreference == true) {
                             val insertString = inputString.value
                             deleteWordOrSymbolsBeforeCursor(insertString)
+                        }
+                    }
+
+                    KeyAction.MoveCursorDown -> {
+                        val insertString = inputString.value
+                        if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
+                        }
+                    }
+
+                    KeyAction.MoveCursorUp -> {
+                        val insertString = inputString.value
+                        if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
                         }
                     }
                 }
