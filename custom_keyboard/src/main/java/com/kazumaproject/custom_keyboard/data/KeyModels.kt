@@ -31,6 +31,8 @@ sealed class KeyAction {
     // カーソル操作系
     data object MoveCursorLeft : KeyAction()
     data object MoveCursorRight : KeyAction()
+    data object MoveCursorUp : KeyAction()
+    data object MoveCursorDown : KeyAction()
     data object SelectLeft : KeyAction()
     data object SelectRight : KeyAction()
     data object SelectAll : KeyAction()
