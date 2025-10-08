@@ -4794,11 +4794,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setPasteEnabled(false)
                 }
             }
-            sendKeyEvent(
-                KeyEvent(
-                    KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL
-                )
-            )
+            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         }
     }
 
@@ -7824,7 +7820,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onClick() {
                     if (!deleteKeyLongKeyPressed.get()) {
                         vibrate()
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                        sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
                     }
                     stopDeleteLongPress()
                 }
@@ -7903,7 +7899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onClick() {
                     if (!deleteKeyLongKeyPressed.get()) {
                         vibrate()
-                        sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+                        sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
                     }
                     stopDeleteLongPress()
                 }
@@ -9403,11 +9399,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     '」',
                     '『',
                     '』',
-                    'ー',
                     ',',
                     '.',
                     '!',
                     "?",
+                    ' ',
+                    '　',
+                    '\n'
                 )
 
             var deleteCount = 0
@@ -9513,6 +9511,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setEnterKeyPress() {
+        Timber.d("setEnterKeyPress: $currentInputType")
         when (currentInputType) {
             InputTypeForIME.TextMultiLine,
             InputTypeForIME.TextImeMultiLine,
@@ -9546,16 +9545,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.TextEditTextInWebView,
                 -> {
                 Timber.d("Enter key: called 3\n")
-                sendKeyEvent(
-                    KeyEvent(
-                        KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER
-                    )
-                )
-                sendKeyEvent(
-                    KeyEvent(
-                        KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER
-                    )
-                )
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
             }
 
             InputTypeForIME.TextNextLine -> {
@@ -9835,18 +9825,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleLeftCursorMoveAction() {
-        val extractedText = getExtractedText(ExtractedTextRequest(), 0) ?: return
-        val currentSelectionStart = extractedText.selectionStart
-        val newPosition = (currentSelectionStart - 1).coerceAtLeast(0) // 0未満にならないようにする
-        setSelection(newPosition, newPosition)
+        Timber.d("handleLeftCursorMoveAction: called")
+        sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
     }
 
     private fun handleRightCursorMoveAction() {
-        val extractedText = getExtractedText(ExtractedTextRequest(), 0) ?: return
-        val currentSelectionStart = extractedText.selectionStart
-        val textLength = extractedText.text.length
-        val newPosition = (currentSelectionStart + 1).coerceAtMost(textLength)
-        setSelection(newPosition, newPosition)
+        sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
     }
 
     private fun handleDeleteKeyInHenkan(suggestions: List<Candidate>, insertString: String) {
@@ -9964,7 +9948,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun finishInputEnterKey() {
         _inputString.update { "" }
         finishComposingText()
-        setComposingText("", 0)
         resetFlagsEnterKeyNotHenkan()
     }
 
@@ -9973,63 +9956,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * This correctly handles complex emojis and user text selections.
      */
     private fun deleteLastGraphemeOrSelection() {
-        val selectedText = getSelectedText(0)
-        if (!selectedText.isNullOrEmpty()) {
-            commitText("", 1)
-        } else {
-            val beforeText = getTextBeforeCursor(100, 0)
-
-            if (beforeText.isNullOrEmpty()) {
-                deleteSurroundingTextInCodePoints(1, 0)
-                return
-            }
-
-            val breakIterator = BreakIterator.getCharacterInstance()
-            breakIterator.setText(beforeText.toString())
-
-            val end = breakIterator.last()
-            val start = breakIterator.previous()
-
-            if (start != BreakIterator.DONE) {
-                val charsToDelete = end - start
-                deleteSurroundingText(charsToDelete, 0)
-            } else {
-                deleteSurroundingTextInCodePoints(1, 0)
-            }
-        }
+        sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
     }
 
     private fun handleLeftKeyPress(gestureType: GestureType, insertString: String) {
+        Timber.d("called handleLeftKeyPress $insertString ${stringInTail.get()} $gestureType")
         if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
             when (gestureType) {
                 GestureType.FlickRight -> {
-                    if (!isCursorAtBeginning()) {
-                        handleLeftCursorMoveAction()
-                    }
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
                 }
 
                 GestureType.FlickTop -> {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP))
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_UP))
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
                 }
 
                 GestureType.FlickLeft -> {
-                    if (!isCursorAtBeginning()) {
-                        handleLeftCursorMoveAction()
-                    }
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
                 }
 
                 GestureType.FlickBottom -> {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN))
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_DOWN))
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
                 }
 
                 GestureType.Null -> {}
                 GestureType.Down -> {}
                 GestureType.Tap -> {
-                    if (!isCursorAtBeginning()) {
-                        handleLeftCursorMoveAction()
-                    }
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
                 }
             }
         } else if (!isHenkan.get()) {
@@ -10073,6 +10026,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun asyncLeftLongPress() {
+        Timber.d("asyncLeftLongPress called")
         if (leftLongPressJob?.isActive == true) return
         leftLongPressJob = scope.launch {
             var finalSuggestionFlag: CandidateShowFlag? = null
@@ -10080,6 +10034,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             while (isActive && leftCursorKeyLongKeyPressed.get() && !onLeftKeyLongPressUp.get()) {
 
                 val insertString = inputString.value
+
+                Timber.d("asyncLeftLongPress called while loop")
 
                 // tail があり composing が空 → Idle で抜ける
                 if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
@@ -10096,6 +10052,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         handleLeftCursorMoveAction()
                     }
+                } else {
+                    handleLeftCursorMoveAction()
                 }
 
                 delay(LONG_DELAY_TIME)
@@ -10166,33 +10124,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (stringInTail.get().isEmpty()) {
             when (gestureType) {
                 GestureType.FlickRight -> {
-                    if (!isCursorAtEnd()) {
-                        handleRightCursorMoveAction()
-                    }
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
                 }
 
                 GestureType.FlickTop -> {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP))
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_UP))
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
                 }
 
                 GestureType.FlickLeft -> {
-                    if (!isCursorAtEnd()) {
-                        handleRightCursorMoveAction()
-                    }
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
                 }
 
                 GestureType.FlickBottom -> {
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN))
-                    sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_DOWN))
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
                 }
 
                 GestureType.Null -> {}
                 GestureType.Down -> {}
                 GestureType.Tap -> {
-                    if (!isCursorAtEnd()) {
-                        handleRightCursorMoveAction()
-                    }
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
                 }
             }
         } else {
@@ -10224,9 +10174,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (selectMode.value) {
                 extendOrShrinkSelectionRight()
             } else {
-                if (!isCursorAtEnd()) {
-                    handleRightCursorMoveAction()
-                }
+                handleRightCursorMoveAction()
             }
         } else {
             val dropString = stringInTail.get().first()
