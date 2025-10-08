@@ -363,6 +363,18 @@ object KeyboardDefaultLayouts {
             ), FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ),
+            FlickDirection.UP to FlickAction.Action(
+                KeyAction.MoveCursorUp,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ),
+            FlickDirection.DOWN to FlickAction.Action(
+                KeyAction.MoveCursorDown,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
             )
         )
         val a = mapOf(
@@ -595,8 +607,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishLayout(
-        isUpperCase: Boolean,
-        isFlickDeleteEnabled: Boolean
+        isUpperCase: Boolean, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
         // KeyDataのリストは変更ありません
         val keys = listOf(
@@ -721,6 +732,18 @@ object KeyboardDefaultLayouts {
             ), FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ),
+            FlickDirection.UP to FlickAction.Action(
+                KeyAction.MoveCursorUp,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ),
+            FlickDirection.DOWN to FlickAction.Action(
+                KeyAction.MoveCursorDown,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
             )
         )
 
@@ -931,31 +954,25 @@ object KeyboardDefaultLayouts {
                     ". , ? !" to listOf(symbols3),
 
                     "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
-                        abcLower,
-                        abcUpper
+                        abcLower, abcUpper
                     ),
                     "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
-                        defLower,
-                        defUpper
+                        defLower, defUpper
                     ),
                     "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
-                        ghiLower,
-                        ghiUpper
+                        ghiLower, ghiUpper
                     ),
                     "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
-                        jklLower,
-                        jklUpper
+                        jklLower, jklUpper
                     ),
                     "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
-                        mnoLower,
-                        mnoUpper
+                        mnoLower, mnoUpper
                     ),
                     "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
                         pqrsLower, pqrsUpper
                     ),
                     "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
-                        tuvLower,
-                        tuvUpper
+                        tuvLower, tuvUpper
                     ),
                     "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
                         wxyzLower, wxyzUpper
@@ -971,31 +988,25 @@ object KeyboardDefaultLayouts {
                     ". , ? !" to listOf(symbols3),
 
                     "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
-                        abcLower,
-                        abcUpper
+                        abcLower, abcUpper
                     ),
                     "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
-                        defLower,
-                        defUpper
+                        defLower, defUpper
                     ),
                     "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
-                        ghiLower,
-                        ghiUpper
+                        ghiLower, ghiUpper
                     ),
                     "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
-                        jklLower,
-                        jklUpper
+                        jklLower, jklUpper
                     ),
                     "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
-                        mnoLower,
-                        mnoUpper
+                        mnoLower, mnoUpper
                     ),
                     "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
                         pqrsLower, pqrsUpper
                     ),
                     "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
-                        tuvLower,
-                        tuvUpper
+                        tuvLower, tuvUpper
                     ),
                     "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
                         wxyzLower, wxyzUpper
@@ -1128,6 +1139,18 @@ object KeyboardDefaultLayouts {
             ), FlickDirection.UP_RIGHT to FlickAction.Action(
                 KeyAction.MoveCursorRight,
                 drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            ),
+            FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ),
+            FlickDirection.UP to FlickAction.Action(
+                KeyAction.MoveCursorUp,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ),
+            FlickDirection.DOWN to FlickAction.Action(
+                KeyAction.MoveCursorDown,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
             )
         )
 
@@ -2739,6 +2762,15 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                     )
                 )
                 val spaceActionMap = mapOf(
@@ -3618,6 +3650,18 @@ object KeyboardDefaultLayouts {
                 ), FlickDirection.UP_RIGHT to FlickAction.Action(
                     KeyAction.MoveCursorRight,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                ),
+                FlickDirection.UP_LEFT to FlickAction.Action(
+                    KeyAction.MoveCursorLeft,
+                    drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                ),
+                FlickDirection.UP to FlickAction.Action(
+                    KeyAction.MoveCursorUp,
+                    drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                ),
+                FlickDirection.DOWN to FlickAction.Action(
+                    KeyAction.MoveCursorDown,
+                    drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                 )
             )
 
@@ -3945,6 +3989,18 @@ object KeyboardDefaultLayouts {
                 ), FlickDirection.UP_RIGHT to FlickAction.Action(
                     KeyAction.MoveCursorRight,
                     drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                ),
+                FlickDirection.UP_LEFT to FlickAction.Action(
+                    KeyAction.MoveCursorLeft,
+                    drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                ),
+                FlickDirection.UP to FlickAction.Action(
+                    KeyAction.MoveCursorUp,
+                    drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                ),
+                FlickDirection.DOWN to FlickAction.Action(
+                    KeyAction.MoveCursorDown,
+                    drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                 )
             )
             val symbols3 = mapOf(
@@ -3970,8 +4026,7 @@ object KeyboardDefaultLayouts {
                         FlickDirection.TAP to FlickAction.Action(
                             KeyAction.Delete,
                             drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                        ),
-                        FlickDirection.UP_LEFT to FlickAction.Action(
+                        ), FlickDirection.UP_LEFT to FlickAction.Action(
                             KeyAction.DeleteUntilSymbol,
                             drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
@@ -4384,11 +4439,20 @@ object KeyboardDefaultLayouts {
                 )
                 val cursorMoveActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.MoveCursorLeft,
+                        KeyAction.MoveCursorRight,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                     ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                     )
                 )
 
@@ -5262,6 +5326,15 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                     )
                 )
 
@@ -5588,6 +5661,15 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                     )
                 )
 
@@ -5838,6 +5920,7 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.MoveCursorLeft,
                 isSpecialKey = true,
+                keyType = KeyType.CROSS_FLICK,
                 drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
             ), KeyData(
                 katakanaToggleStates[0].label ?: "",
@@ -5984,6 +6067,7 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.MoveCursorRight,
                 isSpecialKey = true,
+                keyType = KeyType.CROSS_FLICK,
                 drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24,
             ), KeyData(
                 spaceConvertStatesCursor[0].label ?: "",
@@ -6024,13 +6108,42 @@ object KeyboardDefaultLayouts {
                         drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
                     )
                 )
-                val cursorMoveActionMap = mapOf(
+
+                val cursorLeftActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
                     ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val cursorRightActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                     )
                 )
 
@@ -6084,13 +6197,15 @@ object KeyboardDefaultLayouts {
                         )
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
-                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
                             "Del" to listOf(deleteActionMap)
                         )
                     } else {
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
-                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
                         )
                     }
 
@@ -6374,13 +6489,41 @@ object KeyboardDefaultLayouts {
             }
 
             else -> {
-                val cursorMoveActionMap = mapOf(
+                val cursorLeftActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val cursorRightActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
                     )
                 )
 
@@ -6511,7 +6654,8 @@ object KeyboardDefaultLayouts {
                             )
                         )
                         mutableMapOf(
-                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
                             "あ" to listOf(a),
                             "か" to listOf(ka),
                             "さ" to listOf(sa),
@@ -6527,7 +6671,8 @@ object KeyboardDefaultLayouts {
                         )
                     } else {
                         mutableMapOf(
-                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
                             "あ" to listOf(a),
                             "か" to listOf(ka),
                             "さ" to listOf(sa),
@@ -6581,6 +6726,7 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.MoveCursorLeft,
                 isSpecialKey = true,
+                keyType = KeyType.CROSS_FLICK,
                 drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
             ), KeyData(
                 "SwitchToNumber",
@@ -6697,6 +6843,7 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.MoveCursorRight,
                 isSpecialKey = true,
+                keyType = KeyType.CROSS_FLICK,
                 drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24,
             ), KeyData(
                 spaceConvertStatesCursor[0].label ?: "",
@@ -6805,6 +6952,44 @@ object KeyboardDefaultLayouts {
             FlickDirection.DOWN to FlickAction.Input("-")
         )
 
+        val cursorLeftActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.MoveCursorRight,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ), FlickDirection.UP to FlickAction.Action(
+                KeyAction.MoveCursorUp,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ), FlickDirection.DOWN to FlickAction.Action(
+                KeyAction.MoveCursorDown,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+            )
+        )
+
+        val cursorRightActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.MoveCursorRight,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.MoveCursorRight,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ), FlickDirection.UP to FlickAction.Action(
+                KeyAction.MoveCursorUp,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ), FlickDirection.DOWN to FlickAction.Action(
+                KeyAction.MoveCursorDown,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+            )
+        )
+
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
             if (isFlickDeleteEnabled) {
                 val deleteActionMap = mapOf(
@@ -6818,6 +7003,8 @@ object KeyboardDefaultLayouts {
                     )
                 )
                 mutableMapOf(
+                    "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                    "CursorMoveRight" to listOf(cursorRightActionMap),
                     "@#/_" to listOf(symbols1),
                     "ABC" to listOf(abc),
                     "DEF" to listOf(def),
@@ -6833,6 +7020,8 @@ object KeyboardDefaultLayouts {
                 )
             } else {
                 mutableMapOf(
+                    "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                    "CursorMoveRight" to listOf(cursorRightActionMap),
                     "@#/_" to listOf(symbols1),
                     "ABC" to listOf(abc),
                     "DEF" to listOf(def),
