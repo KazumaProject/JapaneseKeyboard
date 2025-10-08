@@ -132,6 +132,36 @@ fun getLastCharacterAsString(ic: InputConnection): String {
     val start = bi.preceding(end).let { if (it == BreakIterator.DONE) 0 else it }
 
     // ④ その範囲を丸ごと取り出す
+    val temp = beforeText.substring(start, end)
+    if (temp == "あ゙" || temp == "ぁ゙" || temp == "ア゙" || temp == "ァ゙"
+        || temp == "い゙" || temp == "ぃ゙" || temp == "ゐ゙" || temp == "イ゙" || temp == "ィ゙"
+        || temp == "ぅ゙" || temp == "ゥ゙"
+        || temp == "え゙" || temp == "エ゙" || temp == "ぇ゙" || temp == "ェ゙" || temp == "ゑ゙"
+        || temp == "お゙" || temp == "ぉ゙" || temp == "オ゙" || temp == "ォ゙"
+        || temp == "や゙" || temp == "ゃ゙" || temp == "ヤ゙" || temp == "ャ゙"
+        || temp == "ゆ゙" || temp == "ゅ゙" || temp == "ユ゙" || temp == "ュ゙"
+        || temp == "よ゙" || temp == "ょ゙" || temp == "ヨ゙" || temp == "ョ゙"
+        || temp == "な゙" || temp == "ナ゙"
+        || temp == "に゙" || temp == "ニ゙"
+        || temp == "ぬ゙" || temp == "ヌ゙"
+        || temp == "ね゙" || temp == "ネ゙"
+        || temp == "の゙" || temp == "ノ゙"
+        || temp == "ま゙" || temp == "マ゙"
+        || temp == "み゙" || temp == "ミ゙"
+        || temp == "む゙" || temp == "ム゙"
+        || temp == "め゙" || temp == "メ゙"
+        || temp == "も゙" || temp == "モ゙"
+        || temp == "ら゙" || temp == "ラ゙"
+        || temp == "り゙" || temp == "リ゙"
+        || temp == "る゙" || temp == "ル゙"
+        || temp == "れ゙" || temp == "レ゙"
+        || temp == "ろ゙" || temp == "ロ゙"
+        || temp == "わ゙" || temp == "ヷ"
+        || temp == "を゙" || temp == "ヺ"
+        || temp == "ん゙" || temp == "ン゙"
+    ) {
+        return "゙"
+    }
     return beforeText.substring(start, end)
 }
 
