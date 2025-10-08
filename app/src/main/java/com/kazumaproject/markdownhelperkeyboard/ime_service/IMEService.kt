@@ -9644,6 +9644,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         com.kazumaproject.core.R.drawable.baseline_delete_24
                                     )
                                 )
+                                Timber.d("delete: $beforeChar")
                                 suggestionAdapter?.apply {
                                     setUndoEnabled(true)
                                     setUndoPreviewText(deletedBuffer.toString())
