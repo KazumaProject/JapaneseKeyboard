@@ -18,6 +18,9 @@ interface QWERTYKeyMapHolder {
 
     val keysSymbolJP: Set<QWERTYKey>
     fun getKeyInfoSymbolJP(key: QWERTYKey): QWERTYKeyInfo
+
+    val keysDefaultJPWithNumberRow: Set<QWERTYKey>
+    fun getKeyInfoDefaultJPWithNumberRow(key: QWERTYKey): QWERTYKeyInfo
 }
 
 class QWERTYKeyMap : QWERTYKeyMapHolder {
@@ -296,6 +299,56 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
         QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyCommaJP
     )
 
+    private val listDefaultJPWithNumberRow: Map<QWERTYKey, QWERTYKeyInfo> = mapOf(
+        QWERTYKey.QWERTYKeyA to QWERTYKeyInfo.KeyAJP,
+        QWERTYKey.QWERTYKeyB to QWERTYKeyInfo.KeyBJP,
+        QWERTYKey.QWERTYKeyC to QWERTYKeyInfo.KeyCJP,
+        QWERTYKey.QWERTYKeyD to QWERTYKeyInfo.KeyDJP,
+        QWERTYKey.QWERTYKeyE to QWERTYKeyInfo.KeyENumber,
+        QWERTYKey.QWERTYKeyF to QWERTYKeyInfo.KeyFJP,
+        QWERTYKey.QWERTYKeyG to QWERTYKeyInfo.KeyGJP,
+        QWERTYKey.QWERTYKeyH to QWERTYKeyInfo.KeyHJP,
+        QWERTYKey.QWERTYKeyI to QWERTYKeyInfo.KeyINumber,
+        QWERTYKey.QWERTYKeyJ to QWERTYKeyInfo.KeyJJP,
+        QWERTYKey.QWERTYKeyK to QWERTYKeyInfo.KeyKJP,
+        QWERTYKey.QWERTYKeyAtMark to QWERTYKeyInfo.KeyLJP,
+        QWERTYKey.QWERTYKeyL to QWERTYKeyInfo.KeyMinusJP,
+        QWERTYKey.QWERTYKeyM to QWERTYKeyInfo.KeyMJP,
+        QWERTYKey.QWERTYKeyN to QWERTYKeyInfo.KeyNJP,
+        QWERTYKey.QWERTYKeyO to QWERTYKeyInfo.KeyONumber,
+        QWERTYKey.QWERTYKeyP to QWERTYKeyInfo.KeyPNumber,
+        QWERTYKey.QWERTYKeyQ to QWERTYKeyInfo.KeyQNumber,
+        QWERTYKey.QWERTYKeyR to QWERTYKeyInfo.KeyRNumber,
+        QWERTYKey.QWERTYKeyS to QWERTYKeyInfo.KeySJP,
+        QWERTYKey.QWERTYKeyT to QWERTYKeyInfo.KeyTNumber,
+        QWERTYKey.QWERTYKeyU to QWERTYKeyInfo.KeyUNumber,
+        QWERTYKey.QWERTYKeyV to QWERTYKeyInfo.KeyVJP,
+        QWERTYKey.QWERTYKeyW to QWERTYKeyInfo.KeyWNumber,
+        QWERTYKey.QWERTYKeyX to QWERTYKeyInfo.KeyXJP,
+        QWERTYKey.QWERTYKeyY to QWERTYKeyInfo.KeyYNumber,
+        QWERTYKey.QWERTYKeyZ to QWERTYKeyInfo.KeyZJP,
+        QWERTYKey.QWERTYKeyShift to QWERTYKeyInfo.KeyShift,
+        QWERTYKey.QWERTYKeyDelete to QWERTYKeyInfo.KeyDelete,
+        QWERTYKey.QWERTYKeySwitchDefaultLayout to QWERTYKeyInfo.KeySwitchDefaultLayout,
+        QWERTYKey.QWERTYKeySwitchMode to QWERTYKeyInfo.KeySwitchMode,
+        QWERTYKey.QWERTYKeySpace to QWERTYKeyInfo.KeySpace,
+        QWERTYKey.QWERTYKeyReturn to QWERTYKeyInfo.KeyReturn,
+
+        QWERTYKey.QWERTYKeyKuten to QWERTYKeyInfo.KeyDotJP,
+        QWERTYKey.QWERTYKeyTouten to QWERTYKeyInfo.KeyCommaJP,
+
+        QWERTYKey.QWERTYKey1 to QWERTYKeyInfo.Key1JP,
+        QWERTYKey.QWERTYKey2 to QWERTYKeyInfo.Key2JP,
+        QWERTYKey.QWERTYKey3 to QWERTYKeyInfo.Key3JP,
+        QWERTYKey.QWERTYKey4 to QWERTYKeyInfo.Key4JP,
+        QWERTYKey.QWERTYKey5 to QWERTYKeyInfo.Key5JP,
+        QWERTYKey.QWERTYKey6 to QWERTYKeyInfo.Key6JP,
+        QWERTYKey.QWERTYKey7 to QWERTYKeyInfo.Key7JP,
+        QWERTYKey.QWERTYKey8 to QWERTYKeyInfo.Key8JP,
+        QWERTYKey.QWERTYKey9 to QWERTYKeyInfo.Key9JP,
+        QWERTYKey.QWERTYKey0 to QWERTYKeyInfo.Key0JP,
+    )
+
     override val keysDefault: Set<QWERTYKey>
         get() = listDefault.keys
 
@@ -336,6 +389,13 @@ class QWERTYKeyMap : QWERTYKeyMapHolder {
 
     override fun getKeyInfoSymbolJP(key: QWERTYKey): QWERTYKeyInfo {
         return listSymbolJP.getOrDefault(key, QWERTYKeyInfo.Null)
+    }
+
+    override val keysDefaultJPWithNumberRow: Set<QWERTYKey>
+        get() = listDefaultJPWithNumberRow.keys
+
+    override fun getKeyInfoDefaultJPWithNumberRow(key: QWERTYKey): QWERTYKeyInfo {
+        return listDefaultJPWithNumberRow.getOrDefault(key, QWERTYKeyInfo.Null)
     }
 
 }

@@ -61,12 +61,18 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private var flickSensitivity: Int = 100
 
+    private var defaultTextSize = 14f
+
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity
+    }
+
+    fun setDefaultTextSize(textSize: Float) {
+        this.defaultTextSize = textSize
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -103,7 +109,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                     setImageResource(keyData.drawableResId)
                     contentDescription = keyData.label
 
-                    // ▼ 変更点2: 背景に InsetDrawable を使用
                     val originalBg = ContextCompat.getDrawable(
                         context,
                         if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
@@ -121,6 +126,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                 AutoSizeButton(context).apply {
                     isFocusable = false
                     isAllCaps = false
+                    if (!keyData.isSpecialKey) {
+                        setDefaultTextSize(defaultTextSize)
+                    }
                     if (keyData.label.contains("\n")) {
                         val parts = keyData.label.split("\n", limit = 2)
                         val primaryText = parts[0]

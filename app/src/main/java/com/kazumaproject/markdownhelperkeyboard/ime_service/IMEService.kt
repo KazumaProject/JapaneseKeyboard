@@ -8160,6 +8160,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                             mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                            setKeyboardSizeSwitchKeyboard(mainView)
                         }
 
                         else -> {
@@ -8783,6 +8784,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
                             mainView.qwertyView.setRomajiMode(false)
+                            setKeyboardSizeSwitchKeyboard(mainView)
                         } else {
                             setSideKeySpaceDrawable(
                                 cachedSpaceDrawable
