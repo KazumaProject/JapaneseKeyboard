@@ -29,8 +29,8 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 557
-        versionName "1.4.436"
+        versionCode 558
+        versionName "1.4.437"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 

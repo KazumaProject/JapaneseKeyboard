@@ -12,6 +12,8 @@ class AutoSizeButton @JvmOverloads constructor(
     defStyleAttr: Int = androidx.appcompat.R.attr.buttonStyle
 ) : AppCompatButton(context, attrs, defStyleAttr) {
 
+    private var defaultTextSize = 14f
+
     private val textBounds = Rect()
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -21,13 +23,16 @@ class AutoSizeButton @JvmOverloads constructor(
         }
     }
 
+    fun setDefaultTextSize(textSize: Float) {
+        this.defaultTextSize = textSize
+    }
+
     private fun adjustTextSize(buttonWidth: Int, buttonHeight: Int) {
         if (text.isNullOrEmpty() || buttonWidth <= 0 || buttonHeight <= 0) return
 
-        val defaultSpSize = 14f
         var currentTextSizePx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP,
-            defaultSpSize,
+            defaultTextSize,
             context.resources.displayMetrics
         )
         paint.textSize = currentTextSizePx

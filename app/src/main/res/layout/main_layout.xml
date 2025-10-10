@@ -32,6 +32,7 @@
             android:id="@+id/suggestion_visibility"
             android:layout_width="42dp"
             android:layout_height="42dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/recyclerview_size_button_bg"
             android:scaleType="center"
             android:src="@drawable/outline_arrow_drop_down_24"
