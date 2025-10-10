@@ -243,15 +243,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_b -> {
-                                                        it.topRightChar = '!'
+                                                        it.topRightChar = ';'
                                                     }
 
                                                     R.id.key_c -> {
-                                                        it.topRightChar = '\"'
+                                                        it.topRightChar = '\''
                                                     }
 
                                                     R.id.key_d -> {
-                                                        it.topRightChar = '+'
+                                                        it.topRightChar = '$'
                                                     }
 
                                                     R.id.key_e -> {
@@ -259,15 +259,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_f -> {
-                                                        it.topRightChar = '-'
+                                                        it.topRightChar = '_'
                                                     }
 
                                                     R.id.key_g -> {
-                                                        it.topRightChar = '='
+                                                        it.topRightChar = '&'
                                                     }
 
                                                     R.id.key_h -> {
-                                                        it.topRightChar = '/'
+                                                        it.topRightChar = '-'
                                                     }
 
                                                     R.id.key_i -> {
@@ -275,7 +275,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_j -> {
-                                                        it.topRightChar = '#'
+                                                        it.topRightChar = '+'
                                                     }
 
                                                     R.id.key_k -> {
@@ -287,11 +287,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_m -> {
-                                                        it.topRightChar = '…'
+                                                        it.topRightChar = '?'
                                                     }
 
                                                     R.id.key_n -> {
-                                                        it.topRightChar = '~'
+                                                        it.topRightChar = '!'
                                                     }
 
                                                     R.id.key_o -> {
@@ -311,7 +311,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_s -> {
-                                                        it.topRightChar = '*'
+                                                        it.topRightChar = '#'
                                                     }
 
                                                     R.id.key_t -> {
@@ -323,7 +323,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_v -> {
-                                                        it.topRightChar = '?'
+                                                        it.topRightChar = ':'
                                                     }
 
                                                     R.id.key_w -> {
@@ -331,7 +331,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_x -> {
-                                                        it.topRightChar = ':'
+                                                        it.topRightChar = '"'
                                                     }
 
                                                     R.id.key_y -> {
@@ -339,7 +339,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_z -> {
-                                                        it.topRightChar = '\''
+                                                        it.topRightChar = '*'
                                                     }
                                                 }
                                             }
@@ -1073,15 +1073,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_b -> {
-                                            it.topRightChar = '!'
+                                            it.topRightChar = ';'
                                         }
 
                                         R.id.key_c -> {
-                                            it.topRightChar = '\"'
+                                            it.topRightChar = '\''
                                         }
 
                                         R.id.key_d -> {
-                                            it.topRightChar = '+'
+                                            it.topRightChar = '$'
                                         }
 
                                         R.id.key_e -> {
@@ -1089,15 +1089,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_f -> {
-                                            it.topRightChar = '-'
+                                            it.topRightChar = '_'
                                         }
 
                                         R.id.key_g -> {
-                                            it.topRightChar = '='
+                                            it.topRightChar = '&'
                                         }
 
                                         R.id.key_h -> {
-                                            it.topRightChar = '/'
+                                            it.topRightChar = '-'
                                         }
 
                                         R.id.key_i -> {
@@ -1105,7 +1105,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_j -> {
-                                            it.topRightChar = '#'
+                                            it.topRightChar = '+'
                                         }
 
                                         R.id.key_k -> {
@@ -1117,11 +1117,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_m -> {
-                                            it.topRightChar = '…'
+                                            it.topRightChar = '?'
                                         }
 
                                         R.id.key_n -> {
-                                            it.topRightChar = '~'
+                                            it.topRightChar = '!'
                                         }
 
                                         R.id.key_o -> {
@@ -1141,7 +1141,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_s -> {
-                                            it.topRightChar = '*'
+                                            it.topRightChar = '#'
                                         }
 
                                         R.id.key_t -> {
@@ -1153,7 +1153,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_v -> {
-                                            it.topRightChar = '?'
+                                            it.topRightChar = ':'
                                         }
 
                                         R.id.key_w -> {
@@ -1161,7 +1161,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_x -> {
-                                            it.topRightChar = ':'
+                                            it.topRightChar = '"'
                                         }
 
                                         R.id.key_y -> {
@@ -1169,7 +1169,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_z -> {
-                                            it.topRightChar = '\''
+                                            it.topRightChar = '*'
                                         }
                                     }
                                 }
@@ -2155,7 +2155,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     qwertyKeyMap.getKeyInfoDefaultJP(key)
                 }
             } else {
-                qwertyKeyMap.getKeyInfoDefault(key)
+                if (isNumberKeysShow) {
+                    qwertyKeyMap.getKeyInfoDefaultWithNumberRow(key)
+                } else {
+                    qwertyKeyMap.getKeyInfoDefault(key)
+                }
             }
 
             QWERTYMode.Number -> {
