@@ -569,6 +569,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var countToggleKatakana = 0
 
+    private var hardKeyboardShiftPressd = false
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -767,6 +769,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapter?.suggestions = emptyList()
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
+        suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionClickNum = 0
         if (!restarting) {
             setCurrentInputType(editorInfo)
@@ -1456,8 +1459,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
     }
-
-    private var hardKeyboardShiftPressd = false
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
@@ -8059,6 +8060,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleDeleteKeyTap(insertString, suggestionList)
                             }
                             stopDeleteLongPress()
+                            //hardKeyboardShiftPressd = false
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
@@ -8159,6 +8161,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                             mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                            setKeyboardSizeSwitchKeyboard(mainView)
                         }
 
                         else -> {
@@ -8782,6 +8785,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
                             mainView.qwertyView.setRomajiMode(false)
+                            setKeyboardSizeSwitchKeyboard(mainView)
                         } else {
                             setSideKeySpaceDrawable(
                                 cachedSpaceDrawable
