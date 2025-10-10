@@ -569,6 +569,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var countToggleKatakana = 0
 
+    private var hardKeyboardShiftPressd = false
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -1457,8 +1459,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
     }
-
-    private var hardKeyboardShiftPressd = false
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
@@ -8060,6 +8060,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleDeleteKeyTap(insertString, suggestionList)
                             }
                             stopDeleteLongPress()
+                            //hardKeyboardShiftPressd = false
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
