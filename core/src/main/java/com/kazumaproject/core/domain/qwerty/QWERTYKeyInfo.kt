@@ -35,8 +35,8 @@ sealed class QWERTYKeyInfo {
     object KeyB : QWERTYVariation() {
         override val tap: Char get() = 'b'
         override val capChar: Char get() = 'B'
-        override val variations: List<Char> = listOf('¡', '!', 'b', 'ƀ', 'ɓ', 'B')
-        override val capVariations: List<Char> = listOf('¡', '!', 'B', 'Ɓ', 'Ƀ')
+        override val variations: List<Char> = listOf(';')
+        override val capVariations: List<Char> = listOf(';')
     }
 
     object KeyC : QWERTYVariation() {
@@ -44,27 +44,20 @@ sealed class QWERTYKeyInfo {
         override val capChar: Char get() = 'C'
         override val variations: List<Char>
             get() = listOf(
+                '\'',
                 'ç',
-                '\"',
-                'c',
-                'ç',
-                'ć',
-                'č',
-                'ĉ',
-                'ċ',
-                'C'
             )
         override val capVariations: List<Char>
             get() = listOf(
-                'ç', '\"', 'C', 'Ç', 'Ć', 'Č', 'Ĉ', 'Ċ'
+                '\"', 'Ç',
             )
     }
 
     object KeyD : QWERTYVariation() {
         override val tap: Char get() = 'd'
         override val capChar: Char get() = 'D'
-        override val variations: List<Char> get() = listOf('+', 'd', 'ď', 'đ', 'D')
-        override val capVariations: List<Char> get() = listOf('+', 'D', 'Ď', 'Đ')
+        override val variations: List<Char> get() = listOf('$')
+        override val capVariations: List<Char> get() = listOf('$')
     }
 
     object KeyE : QWERTYVariation() {
@@ -719,183 +712,183 @@ sealed class QWERTYKeyInfo {
     object KeyAJP : QWERTYVariation() {
         override val tap: Char get() = 'a'
         override val capChar: Char get() = 'A'
-        override val variations: List<Char> get() = listOf('@', 'α', 'a', 'ａ', 'A')
-        override val capVariations: List<Char> get() = listOf('@', 'α', '＠', 'A', 'Ａ')
+        override val variations: List<Char> get() = listOf('@')
+        override val capVariations: List<Char> get() = listOf('@')
     }
 
     object KeyBJP : QWERTYVariation() {
         override val tap: Char get() = 'b'
         override val capChar: Char get() = 'B'
-        override val variations: List<Char> get() = listOf('¡', '!', 'b', 'ｂ', 'B')
-        override val capVariations: List<Char> get() = listOf('¡', '!', 'B', 'Ｂ')
+        override val variations: List<Char> get() = listOf(';')
+        override val capVariations: List<Char> get() = listOf(';')
     }
 
     object KeyCJP : QWERTYVariation() {
         override val tap: Char get() = 'c'
         override val capChar: Char get() = 'C'
-        override val variations: List<Char> get() = listOf('ç', '\"', 'c', 'ｃ', 'C')
-        override val capVariations: List<Char> get() = listOf('ç', '\"', 'C', 'Ｃ')
+        override val variations: List<Char> get() = listOf('\'')
+        override val capVariations: List<Char> get() = listOf('\'')
     }
 
     object KeyDJP : QWERTYVariation() {
         override val tap: Char get() = 'd'
         override val capChar: Char get() = 'D'
-        override val variations: List<Char> get() = listOf('+', 'd', 'ｄ', 'D')
-        override val capVariations: List<Char> get() = listOf('+', 'D', 'Ｄ')
+        override val variations: List<Char> get() = listOf('¥')
+        override val capVariations: List<Char> get() = listOf('¥')
     }
 
     object KeyEJP : QWERTYVariation() {
         override val tap: Char get() = 'e'
         override val capChar: Char get() = 'E'
-        override val variations: List<Char> get() = listOf('e', 'ｅ', '3', 'E')
-        override val capVariations: List<Char> get() = listOf('E', 'Ｅ', '3')
+        override val variations: List<Char> get() = listOf('3')
+        override val capVariations: List<Char> get() = listOf('3')
     }
 
     object KeyFJP : QWERTYVariation() {
         override val tap: Char get() = 'f'
         override val capChar: Char get() = 'F'
-        override val variations: List<Char> get() = listOf('-', 'f', 'ｆ', 'F')
-        override val capVariations: List<Char> get() = listOf('-', 'F', 'Ｆ')
+        override val variations: List<Char> get() = listOf('_')
+        override val capVariations: List<Char> get() = listOf('_')
     }
 
     object KeyGJP : QWERTYVariation() {
         override val tap: Char get() = 'g'
         override val capChar: Char get() = 'G'
-        override val variations: List<Char> get() = listOf('=', 'g', 'ｇ', 'G')
-        override val capVariations: List<Char> get() = listOf('=', 'G', 'Ｇ')
+        override val variations: List<Char> get() = listOf('&')
+        override val capVariations: List<Char> get() = listOf('&')
     }
 
     object KeyHJP : QWERTYVariation() {
         override val tap: Char get() = 'h'
         override val capChar: Char get() = 'H'
-        override val variations: List<Char> get() = listOf('/', 'h', 'ｈ', 'H')
-        override val capVariations: List<Char> get() = listOf('/', 'H', 'Ｈ')
+        override val variations: List<Char> get() = listOf('-')
+        override val capVariations: List<Char> get() = listOf('-')
     }
 
     object KeyIJP : QWERTYVariation() {
         override val tap: Char get() = 'i'
         override val capChar: Char get() = 'I'
-        override val variations: List<Char> get() = listOf('i', 'ｉ', '8', 'I')
-        override val capVariations: List<Char> get() = listOf('I', 'Ｉ', '8')
+        override val variations: List<Char> get() = listOf('8')
+        override val capVariations: List<Char> get() = listOf('8')
     }
 
     object KeyJJP : QWERTYVariation() {
         override val tap: Char get() = 'j'
         override val capChar: Char get() = 'J'
-        override val variations: List<Char> get() = listOf('#', 'j', 'ｊ', 'J')
-        override val capVariations: List<Char> get() = listOf('#', 'J', 'Ｊ')
+        override val variations: List<Char> get() = listOf('+')
+        override val capVariations: List<Char> get() = listOf('+')
     }
 
     object KeyKJP : QWERTYVariation() {
         override val tap: Char get() = 'k'
         override val capChar: Char get() = 'K'
-        override val variations: List<Char> get() = listOf('(', 'k', 'ｋ', 'K')
-        override val capVariations: List<Char> get() = listOf('(', 'K', 'Ｋ')
+        override val variations: List<Char> get() = listOf('(')
+        override val capVariations: List<Char> get() = listOf('(')
     }
 
     object KeyLJP : QWERTYVariation() {
         override val tap: Char get() = 'l'
         override val capChar: Char get() = 'L'
-        override val variations: List<Char> get() = listOf(')', 'l', 'ｌ', 'L')
-        override val capVariations: List<Char> get() = listOf(')', 'L', 'Ｌ')
+        override val variations: List<Char> get() = listOf(')')
+        override val capVariations: List<Char> get() = listOf(')')
     }
 
     object KeyMJP : QWERTYVariation() {
         override val tap: Char get() = 'm'
         override val capChar: Char get() = 'M'
-        override val variations: List<Char> get() = listOf('_', '…', 'm', 'ｍ', 'M')
-        override val capVariations: List<Char> get() = listOf('_', '…', 'M', 'Ｍ')
+        override val variations: List<Char> get() = listOf('?')
+        override val capVariations: List<Char> get() = listOf('?')
     }
 
     object KeyNJP : QWERTYVariation() {
         override val tap: Char get() = 'n'
         override val capChar: Char get() = 'N'
-        override val variations: List<Char> get() = listOf('ñ', '~', 'n', 'ｎ', 'N')
-        override val capVariations: List<Char> get() = listOf('Ñ', '~', '〜', 'N', 'Ｎ')
+        override val variations: List<Char> get() = listOf('!')
+        override val capVariations: List<Char> get() = listOf('!')
     }
 
     object KeyOJP : QWERTYVariation() {
         override val tap: Char get() = 'o'
         override val capChar: Char get() = 'O'
-        override val variations: List<Char> get() = listOf('o', 'ｏ', '9', 'O')
-        override val capVariations: List<Char> get() = listOf('O', 'Ｏ', '9')
+        override val variations: List<Char> get() = listOf('9')
+        override val capVariations: List<Char> get() = listOf('9')
     }
 
     object KeyPJP : QWERTYVariation() {
         override val tap: Char get() = 'p'
         override val capChar: Char get() = 'P'
-        override val variations: List<Char> get() = listOf('p', 'ｐ', '0', 'P')
-        override val capVariations: List<Char> get() = listOf('P', 'Ｐ', '0')
+        override val variations: List<Char> get() = listOf('0')
+        override val capVariations: List<Char> get() = listOf('0')
     }
 
     object KeyQJP : QWERTYVariation() {
         override val tap: Char get() = 'q'
         override val capChar: Char get() = 'Q'
-        override val variations: List<Char> get() = listOf('q', 'ｑ', '1', 'Q')
-        override val capVariations: List<Char> get() = listOf('Q', 'Ｑ', '1')
+        override val variations: List<Char> get() = listOf('1')
+        override val capVariations: List<Char> get() = listOf('1')
     }
 
     object KeyRJP : QWERTYVariation() {
         override val tap: Char get() = 'r'
         override val capChar: Char get() = 'R'
-        override val variations: List<Char> get() = listOf('r', 'ｒ', '4', 'R')
-        override val capVariations: List<Char> get() = listOf('R', 'Ｒ', '4')
+        override val variations: List<Char> get() = listOf('4')
+        override val capVariations: List<Char> get() = listOf('4')
     }
 
     object KeySJP : QWERTYVariation() {
         override val tap: Char get() = 's'
         override val capChar: Char get() = 'S'
-        override val variations: List<Char> get() = listOf('β', '*', 's', 'ｓ')
-        override val capVariations: List<Char> get() = listOf('β', '*', 'S', 'Ｓ')
+        override val variations: List<Char> get() = listOf('#')
+        override val capVariations: List<Char> get() = listOf('#')
     }
 
     object KeyTJP : QWERTYVariation() {
         override val tap: Char get() = 't'
         override val capChar: Char get() = 'T'
-        override val variations: List<Char> get() = listOf('t', 'ｔ', '5', 'T')
-        override val capVariations: List<Char> get() = listOf('T', 'Ｔ', '5')
+        override val variations: List<Char> get() = listOf('5')
+        override val capVariations: List<Char> get() = listOf('5')
     }
 
     object KeyUJP : QWERTYVariation() {
         override val tap: Char get() = 'u'
         override val capChar: Char get() = 'U'
-        override val variations: List<Char> get() = listOf('u', 'ｕ', '7', 'U')
-        override val capVariations: List<Char> get() = listOf('U', 'Ｕ', '7')
+        override val variations: List<Char> get() = listOf('7')
+        override val capVariations: List<Char> get() = listOf('7')
     }
 
     object KeyVJP : QWERTYVariation() {
         override val tap: Char get() = 'v'
         override val capChar: Char get() = 'V'
-        override val variations: List<Char> get() = listOf('¿', '?', 'v', 'ｖ', 'V')
-        override val capVariations: List<Char> get() = listOf('¿', '?', 'V', 'Ｖ')
+        override val variations: List<Char> get() = listOf(':')
+        override val capVariations: List<Char> get() = listOf(':')
     }
 
     object KeyWJP : QWERTYVariation() {
         override val tap: Char get() = 'w'
         override val capChar: Char get() = 'W'
-        override val variations: List<Char> get() = listOf('w', 'ｗ', '2', 'W')
-        override val capVariations: List<Char> get() = listOf('W', 'Ｗ', '2')
+        override val variations: List<Char> get() = listOf('2')
+        override val capVariations: List<Char> get() = listOf('2')
     }
 
     object KeyXJP : QWERTYVariation() {
         override val tap: Char get() = 'x'
         override val capChar: Char get() = 'X'
-        override val variations: List<Char> get() = listOf(':', 'x', 'ｘ', 'X')
-        override val capVariations: List<Char> get() = listOf(':', 'X', 'Ｘ')
+        override val variations: List<Char> get() = listOf('"')
+        override val capVariations: List<Char> get() = listOf('"')
     }
 
     object KeyYJP : QWERTYVariation() {
         override val tap: Char get() = 'y'
         override val capChar: Char get() = 'Y'
-        override val variations: List<Char> get() = listOf('y', 'ｙ', '6', 'Y')
-        override val capVariations: List<Char> get() = listOf('Y', 'Ｙ', '6')
+        override val variations: List<Char> get() = listOf('6')
+        override val capVariations: List<Char> get() = listOf('6')
     }
 
     object KeyZJP : QWERTYVariation() {
         override val tap: Char get() = 'z'
         override val capChar: Char get() = 'Z'
-        override val variations: List<Char> get() = listOf(',', '\'', 'z', 'ｚ', 'Z')
-        override val capVariations: List<Char> get() = listOf(',', '\'', 'Z', 'Ｚ')
+        override val variations: List<Char> get() = listOf('*')
+        override val capVariations: List<Char> get() = listOf('*')
     }
 
     object KeyBracketLeftJP : QWERTYVariation() {
@@ -951,8 +944,78 @@ sealed class QWERTYKeyInfo {
     object KeyMinusJP : QWERTYVariation() {
         override val tap: Char get() = 'ー'
         override val capChar: Char get() = 'ー'
-        override val variations: List<Char> get() = listOf('ー', '|', '〜')
-        override val capVariations: List<Char>? get() = null
+        override val variations: List<Char> get() = listOf('/')
+        override val capVariations: List<Char> get() = listOf('/')
+    }
+
+    object KeyQNumber : QWERTYVariation() {
+        override val tap: Char get() = 'q'
+        override val capChar: Char get() = 'Q'
+        override val variations: List<Char> get() = listOf('%')
+        override val capVariations: List<Char> get() = listOf('%')
+    }
+
+    object KeyWNumber : QWERTYVariation() {
+        override val tap: Char get() = 'w'
+        override val capChar: Char get() = 'W'
+        override val variations: List<Char> get() = listOf('\\')
+        override val capVariations: List<Char> get() = listOf('\\')
+    }
+
+    object KeyENumber : QWERTYVariation() {
+        override val tap: Char get() = 'e'
+        override val capChar: Char get() = 'E'
+        override val variations: List<Char> get() = listOf('|')
+        override val capVariations: List<Char> get() = listOf('|')
+    }
+
+    object KeyRNumber : QWERTYVariation() {
+        override val tap: Char get() = 'r'
+        override val capChar: Char get() = 'R'
+        override val variations: List<Char> get() = listOf('=')
+        override val capVariations: List<Char> get() = listOf('=')
+    }
+
+    object KeyTNumber : QWERTYVariation() {
+        override val tap: Char get() = 't'
+        override val capChar: Char get() = 'T'
+        override val variations: List<Char> get() = listOf('[')
+        override val capVariations: List<Char> get() = listOf('[')
+    }
+
+    object KeyYNumber : QWERTYVariation() {
+        override val tap: Char get() = 'y'
+        override val capChar: Char get() = 'Y'
+        override val variations: List<Char> get() = listOf(']')
+        override val capVariations: List<Char> get() = listOf(']')
+    }
+
+    object KeyUNumber : QWERTYVariation() {
+        override val tap: Char get() = 'u'
+        override val capChar: Char get() = 'U'
+        override val variations: List<Char> get() = listOf('<')
+        override val capVariations: List<Char> get() = listOf('<')
+    }
+
+    object KeyINumber : QWERTYVariation() {
+        override val tap: Char get() = 'i'
+        override val capChar: Char get() = 'I'
+        override val variations: List<Char> get() = listOf('>')
+        override val capVariations: List<Char> get() = listOf('>')
+    }
+
+    object KeyONumber : QWERTYVariation() {
+        override val tap: Char get() = 'o'
+        override val capChar: Char get() = 'O'
+        override val variations: List<Char> get() = listOf('{')
+        override val capVariations: List<Char> get() = listOf('{')
+    }
+
+    object KeyPNumber : QWERTYVariation() {
+        override val tap: Char get() = 'p'
+        override val capChar: Char get() = 'P'
+        override val variations: List<Char> get() = listOf('}')
+        override val capVariations: List<Char> get() = listOf('}')
     }
 
 }
