@@ -1305,7 +1305,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
             val heightPx = when {
-                keyboardSymbolViewState.value -> { // Emoji keyboard state
+                keyboardSymbolViewState.value -> {
                     val height = if (isPortrait) 320 else 220
                     (height * density).toInt()
                 }
@@ -8060,7 +8060,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleDeleteKeyTap(insertString, suggestionList)
                             }
                             stopDeleteLongPress()
-                            hardKeyboardShiftPressd = false
+                            //hardKeyboardShiftPressd = false
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
