@@ -8060,7 +8060,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleDeleteKeyTap(insertString, suggestionList)
                             }
                             stopDeleteLongPress()
-                            //hardKeyboardShiftPressd = false
+                            hardKeyboardShiftPressd = false
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
