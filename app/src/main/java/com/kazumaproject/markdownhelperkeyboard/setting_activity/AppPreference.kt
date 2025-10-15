@@ -72,6 +72,26 @@ object AppPreference {
     private val QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM =
         Pair("qwerty_keyboard_vertical_margin_bottom_preference", 0)
     private val QWERTY_KEYBOARD_POSITION = Pair("qwerty_keyboard_position_preference", true)
+
+    private val KEYBOARD_HEIGHT_LANDSCAPE = Pair("keyboard_height_landscape_preference", 220)
+    private val KEYBOARD_WIDTH_LANDSCAPE = Pair("keyboard_width_landscape_preference", 100)
+    private val KEYBOARD_POSITION_LANDSCAPE = Pair("keyboard_position_landscape_preference", true)
+    private val KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE =
+        Pair("keyboard_vertical_margin_bottom_landscape_preference", 0)
+    private val QWERTY_KEYBOARD_HEIGHT_LANDSCAPE =
+        Pair("qwerty_keyboard_height_landscape_preference", 220)
+    private val QWERTY_KEYBOARD_WIDTH_LANDSCAPE =
+        Pair("qwerty_keyboard_width_landscape_preference", 100)
+    private val QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE =
+        Pair("qwerty_keyboard_vertical_margin_bottom_landscape_preference", 0)
+    private val QWERTY_KEYBOARD_POSITION_LANDSCAPE =
+        Pair("qwerty_keyboard_position_landscape_preference", true)
+
+    private val CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE =
+        Pair("candidate_view_height_dp_landscape_preference", 110)
+    private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE =
+        Pair("candidate_view_empty_height_dp_landscape_preference", 110)
+
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
@@ -440,6 +460,96 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(KEYBOARD_VERTICAL_MARGIN_BOTTOM.first, value ?: 0)
+        }
+
+    var keyboard_height_landscape: Int?
+        get() = preferences.getInt(
+            KEYBOARD_HEIGHT_LANDSCAPE.first, KEYBOARD_HEIGHT_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_HEIGHT_LANDSCAPE.first, value ?: 220)
+        }
+
+    var keyboard_width_landscape: Int?
+        get() = preferences.getInt(
+            KEYBOARD_WIDTH_LANDSCAPE.first, KEYBOARD_WIDTH_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_WIDTH_LANDSCAPE.first, value ?: 100)
+        }
+
+    var keyboard_position_landscape: Boolean?
+        get() = preferences.getBoolean(
+            KEYBOARD_POSITION_LANDSCAPE.first, KEYBOARD_POSITION_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_POSITION_LANDSCAPE.first, value ?: true)
+        }
+
+    var keyboard_vertical_margin_bottom_landscape: Int?
+        get() = preferences.getInt(
+            KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE.first,
+            KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE.first, value ?: 0)
+        }
+
+    var qwerty_keyboard_height_landscape: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.first, QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_HEIGHT_LANDSCAPE.first, value ?: 220)
+        }
+
+    var qwerty_keyboard_width_landscape: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_WIDTH_LANDSCAPE.first, QWERTY_KEYBOARD_WIDTH_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_WIDTH_LANDSCAPE.first, value ?: 100)
+        }
+
+    var qwerty_keyboard_vertical_margin_bottom_landscape: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE.first,
+            QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(QWERTY_KEYBOARD_VERTICAL_MARGIN_BOTTOM_LANDSCAPE.first, value ?: 0)
+        }
+
+    var qwerty_keyboard_position_landscape: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_KEYBOARD_POSITION_LANDSCAPE.first,
+            QWERTY_KEYBOARD_POSITION_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_KEYBOARD_POSITION_LANDSCAPE.first, value ?: true)
+        }
+
+    var candidate_view_height_dp_landscape: Int?
+        get() = preferences.getInt(
+            CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.first, CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.first,
+                value ?: CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.second
+            )
+        }
+
+    var candidate_view_empty_height_dp_landscape: Int?
+        get() = preferences.getInt(
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE.first,
+            CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE.first,
+                value ?: CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE.second
+            )
         }
 
     var flick_input_only_preference: Boolean?

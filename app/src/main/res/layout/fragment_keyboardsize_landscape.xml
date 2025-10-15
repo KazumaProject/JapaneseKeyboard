@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:fillViewport="true"
+    tools:context=".setting_activity.ui.keyboard_size_landscape_setting.KeyboardSizeLandscapeFragment">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/keyboard_setting_constraint"
@@ -24,22 +26,10 @@
             android:layout_width="0dp"
             android:layout_height="64dp"
             android:layout_marginTop="8dp"
-            android:layout_marginEnd="8dp"
             android:textColor="@color/keyboard_icon_color"
-            app:layout_constraintEnd_toStartOf="@+id/floating_keyboard_setting_btn"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/keyboard_position_title" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/floating_keyboard_setting_btn"
-            android:layout_width="0dp"
-            android:layout_height="64dp"
-            android:text="フローティング OFF"
-            android:textColor="@color/keyboard_icon_color"
-            android:textSize="12sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/keyboard_position_button"
-            app:layout_constraintTop_toTopOf="@+id/keyboard_position_button" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/reset_layout_button"
@@ -79,13 +69,14 @@
             android:id="@+id/keyboard_container"
             android:layout_width="match_parent"
             android:layout_height="280dp"
+            android:layout_marginTop="8dp"
             android:background="@drawable/resize_border"
             android:clickable="false"
             android:focusable="false"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintVertical_bias="1.0"
-            app:layout_constraintTop_toBottomOf="@+id/tenkey_tooltip_button">
+            app:layout_constraintTop_toBottomOf="@+id/tenkey_tooltip_button"
+            app:layout_constraintVertical_bias="1.1">
 
             <androidx.viewpager2.widget.ViewPager2
                 android:id="@+id/keyboard_view_pager"

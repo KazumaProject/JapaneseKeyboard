@@ -16,7 +16,8 @@
     <string name="keyboard_selection_summary">キーボードの追加、削除ができます</string>
     <string name="keyboard_selection_preference_title">キーボードの選択</string>
     <string name="category_title_keyboard">キーボード</string>
-    <string name="keyboard_screen_size_preference_title">位置とサイズの設定</string>
+    <string name="keyboard_screen_size_preference_title">位置とサイズの設定(縦画面)</string>
+    <string name="keyboard_screen_landscape_size_preference_title">位置とサイズの設定(横画面)</string>
     <string name="keyboard_screen_preference_summary">キーボードの位置とサイズの設定を変更できます</string>
     <string name="keyboard_height_fix_specific_device_title">端末別の高さ補正</string>
     <string name="keyboard_height_fix_specific_device_summary_on">一部端末向けの高さ補正は有効です（例：Galaxy）。</string>
@@ -306,6 +307,7 @@
     <string name="setting_mode_switch_key_icon_size">モード切替キーのアイコンサイズ</string>
     <string name="candidate_view_height_setting_fragment_title">変換欄の高さ</string>
     <string name="candidate_height_preference_title">変換欄の高さ</string>
+    <string name="candidate_height_landscape_preference_title">変換欄の高さ(横画面)</string>
     <string name="candidate_height_preference_sumary">変換候補を表示するレイアウトの高さの設定ができます</string>
 
     <string name="pref_clipboard_preview_title">クリップボードの内容を変換欄に表示</string>
@@ -313,4 +315,5 @@
 
     <string name="pref_round_corner_keyboard_title">キーボードの角を丸くする</string>
     <string name="pref_round_corner_keyboard_summary">オンにすると、キーボード枠の四隅が丸くなります</string>
+    <string name="keyboard_size_landscape_title">キーボードのサイズ（横画面）</string>
 </resources>
