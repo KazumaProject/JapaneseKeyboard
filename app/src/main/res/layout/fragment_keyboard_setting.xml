@@ -79,14 +79,13 @@
             android:id="@+id/keyboard_container"
             android:layout_width="match_parent"
             android:layout_height="280dp"
-            android:layout_marginTop="8dp"
             android:background="@drawable/resize_border"
             android:clickable="false"
             android:focusable="false"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/tenkey_tooltip_button"
-            app:layout_constraintVertical_bias="1.0">
+            app:layout_constraintVertical_bias="1.0"
+            app:layout_constraintTop_toBottomOf="@+id/tenkey_tooltip_button">
 
             <androidx.viewpager2.widget.ViewPager2
                 android:id="@+id/keyboard_view_pager"
