@@ -6790,11 +6790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             else -> {
-                if (isPortrait) {
-                    (screenWidth * (widthPref / 100f)).toInt()
-                } else {
-                    (screenWidth * (widthPref / 100f)).toInt()
-                }
+                (screenWidth * (widthPref / 100f)).toInt()
             }
         }
 
@@ -6807,11 +6803,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             else -> {
-                if (isPortrait) {
-                    (screenWidth * (qwertyWidthPref / 100f)).toInt()
-                } else {
-                    (screenHeight * (qwertyWidthPref / 100f)).toInt()
-                }
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
             }
         }
 
