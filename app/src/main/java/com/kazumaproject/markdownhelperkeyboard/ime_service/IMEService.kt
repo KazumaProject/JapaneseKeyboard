@@ -4185,10 +4185,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.DeleteUntilSymbol -> {}
                     KeyAction.MoveCursorDown -> {}
                     KeyAction.MoveCursorUp -> {}
+                    KeyAction.Cancel -> {}
                 }
             }
 
             override fun onActionUpAfterLongPress(action: KeyAction) {
+                Timber.d("onActionUpAfterLongPress: $action")
                 when (action) {
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
@@ -4232,11 +4234,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.DeleteUntilSymbol -> {}
                     KeyAction.MoveCursorDown -> {}
                     KeyAction.MoveCursorUp -> {}
+                    KeyAction.Cancel -> {
+                        stopDeleteLongPress()
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
+                    }
                 }
             }
 
             override fun onFlickDirectionChanged(direction: FlickDirection) {
                 vibrate()
+                Timber.d("onFlickDirectionChanged: $direction")
             }
 
             override fun onFlickActionLongPress(action: KeyAction) {
@@ -4337,6 +4345,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.MoveCursorUp -> {}
+                    KeyAction.Cancel -> {}
                 }
             }
 
@@ -4461,6 +4470,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.MoveCursorUp -> {
+                        cancelLeftLongPress()
+                        cancelRightLongPress()
+                    }
+
+                    KeyAction.Cancel -> {
+                        stopDeleteLongPress()
                         cancelLeftLongPress()
                         cancelRightLongPress()
                     }
@@ -4781,6 +4796,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
                         }
                     }
+
+                    KeyAction.Cancel -> {}
                 }
             }
         })
@@ -5930,511 +5947,121 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun setKeyboardSizeForHeight(
-        mainView: MainLayoutBinding
-    ) {
-        Timber.d("Keyboard Height: setKeyboardSizeForHeight called")
-        if (hasHardwareKeyboardConnected != true) return
+    // 設定値を保持するためのデータクラス
+    private data class KeyboardSizePreferences(
+        val heightPref: Int,
+        val widthPref: Int,
+        val bottomMargin: Int,
+        val positionIsEnd: Boolean, // true: End, false: Start
+        val candidateEmptyHeight: Int,
+        val qwertyHeightPref: Int,
+        val qwertyWidthPref: Int,
+        val qwertyBottomMargin: Int,
+        val qwertyPositionIsEnd: Boolean
+    )
+
+    private fun getKeyboardSizePreferences(): KeyboardSizePreferences {
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-
-        val heightPref = if (isPortrait) {
-            tenkeyHeightPreferenceValue ?: 280
-        } else {
-            tenkeyHeightLandScapePreferenceValue ?: 280
-        }
-        val widthPref = if (isPortrait) {
-            tenkeyWidthPreferenceValue ?: 100
-        } else {
-            tenkeyWidthLandScapePreferenceValue ?: 100
-        }
-        val keyboardBottomMargin = if (isPortrait) {
-            tenkeyBottomMarginPreferenceValue ?: 0
-        } else {
-            tenkeyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-        val positionPref = if (isPortrait) {
-            tenkeyPositionPreferenceValue ?: true
-        } else {
-            tenkeyLandScapePositionPreferenceValue ?: true
-        }
-
-        val candidateEmptyHeight = if (isPortrait) {
-            candidateViewHeightEmptyPreferenceValue ?: 110
-        } else {
-            candidateViewLandScapeHeightEmptyPreferenceValue ?: 110
-        }
-
-        val qwertyHeightPref = if (isPortrait) {
-            qwertyHeightPreferenceValue ?: 280
-        } else {
-            qwertyHeightLandScapePreferenceValue ?: 280
-        }
-        val qwertyWidthPref = if (isPortrait) {
-            qwertyWidthPreferenceValue ?: 100
-        } else {
-            qwertyWidthLandScapePreferenceValue ?: 100
-        }
-        val qwertyPositionPref = if (isPortrait) {
-            qwertyPositionPreferenceValue ?: true
-        } else {
-            qwertyLandScapePositionPreferenceValue ?: true
-        }
-        val qwertyKeyboardMarginBottomPref = if (isPortrait) {
-            qwertyBottomMarginPreferenceValue ?: 0
-        } else {
-            qwertyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-
-        Timber.d("keyboard size set height normal: $heightPref $isPortrait")
-        Timber.d("keyboard size set width narmal: $widthPref")
-
-        val heightPx = when {
-            keyboardSymbolViewState.value -> {
-                val height = if (isPortrait) 320 else 220
-                (height * density).toInt()
-            }
-
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                val clampedHeight = if (isPortrait) {
-                    qwertyHeightPref.coerceIn(180, 420)
-                } else {
-                    qwertyHeightPref.coerceIn(100, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-
-            else -> {
-                val clampedHeight = if (isPortrait) {
-                    heightPref.coerceIn(180, 420)
-                } else {
-                    heightPref.coerceIn(60, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-        }
-
-        val widthPx = when {
-            widthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-
-        val qwertyWidthPx = when {
-            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (qwertyWidthPref / 100f)).toInt()
-            }
-        }
-
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
+        return if (isPortrait) {
+            KeyboardSizePreferences(
+                heightPref = tenkeyHeightPreferenceValue ?: 280,
+                widthPref = tenkeyWidthPreferenceValue ?: 100,
+                bottomMargin = tenkeyBottomMarginPreferenceValue ?: 0,
+                positionIsEnd = tenkeyPositionPreferenceValue ?: true,
+                candidateEmptyHeight = candidateViewHeightEmptyPreferenceValue ?: 110,
+                qwertyHeightPref = qwertyHeightPreferenceValue ?: 280,
+                qwertyWidthPref = qwertyWidthPreferenceValue ?: 100,
+                qwertyBottomMargin = qwertyBottomMarginPreferenceValue ?: 0,
+                qwertyPositionIsEnd = qwertyPositionPreferenceValue ?: true
             )
         } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
+            KeyboardSizePreferences(
+                heightPref = tenkeyHeightLandScapePreferenceValue ?: 280,
+                widthPref = tenkeyWidthLandScapePreferenceValue ?: 100,
+                bottomMargin = tenkeyLandScapeBottomMarginPreferenceValue ?: 0,
+                positionIsEnd = tenkeyLandScapePositionPreferenceValue ?: true,
+                candidateEmptyHeight = candidateViewLandScapeHeightEmptyPreferenceValue ?: 110,
+                qwertyHeightPref = qwertyHeightLandScapePreferenceValue ?: 280,
+                qwertyWidthPref = qwertyWidthLandScapePreferenceValue ?: 100,
+                qwertyBottomMargin = qwertyLandScapeBottomMarginPreferenceValue ?: 0,
+                qwertyPositionIsEnd = qwertyLandScapePositionPreferenceValue ?: true
             )
         }
-
-        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-        } else {
-            keyboardHeight
-        }
-        val finalKeyboardWidth =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyWidthPx
-            } else {
-                widthPx
-            }
-
-        val gravity =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                if (qwertyPositionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            } else {
-                if (positionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            }
-
-        val finalBottomMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyKeyboardMarginBottomPref
-            } else {
-                keyboardBottomMargin
-            }
-
-        if (shortcutTollbarVisibility == true) {
-            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
-                mainView.shortcutToolbarRecyclerview.layoutParams = param
-            }
-        }
-
-        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            mainView.suggestionViewParent.layoutParams = params
-        }
-
-        (mainView.keyboardView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.keyboardView.layoutParams = params
-        }
-
-        (mainView.customLayoutDefault.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.customLayoutDefault.layoutParams = params
-        }
-
-        (mainView.qwertyView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.qwertyView.layoutParams = params
-        }
-
-        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight
-            params.width = finalKeyboardWidth
-            params.bottomMargin = finalBottomMargin
-            params.gravity = gravity
-            mainView.root.layoutParams = params
-        }
-
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
-    private fun setKeyboardSizeForHeightSymbol(
-        mainView: MainLayoutBinding, isSymbol: Boolean
+    /**
+     * キーボードのレイアウトサイズを計算し、ビューに適用する統合関数
+     * @param mainView バインディングオブジェクト
+     * @param isSymbolOverride シンボルキーボード状態を強制的に上書きする場合にtrue/falseを指定
+     * @param isFloating フローティングモードの場合にtrue
+     * @param addCandidateTabHeight 候補タブの高さを追加する場合にtrue
+     */
+    private fun updateKeyboardLayout(
+        mainView: MainLayoutBinding,
+        isSymbolOverride: Boolean? = null,
+        isFloating: Boolean = false,
+        addCandidateTabHeight: Boolean = false
     ) {
-        Timber.d("Keyboard Height: setKeyboardSizeForHeightSymbol called")
+        // 1. 設定値の読み込み
+        val prefs = getKeyboardSizePreferences()
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
+        val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value
 
-        val heightPref = if (isPortrait) {
-            tenkeyHeightPreferenceValue ?: 280
-        } else {
-            tenkeyHeightLandScapePreferenceValue ?: 280
-        }
-        val widthPref = if (isPortrait) {
-            tenkeyWidthPreferenceValue ?: 100
-        } else {
-            tenkeyWidthLandScapePreferenceValue ?: 100
-        }
-        val keyboardBottomMargin = if (isPortrait) {
-            tenkeyBottomMarginPreferenceValue ?: 0
-        } else {
-            tenkeyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-        val positionPref = if (isPortrait) {
-            tenkeyPositionPreferenceValue ?: true
-        } else {
-            tenkeyLandScapePositionPreferenceValue ?: true
-        }
-
-        val candidateEmptyHeight = if (isPortrait) {
-            candidateViewHeightEmptyPreferenceValue ?: 110
-        } else {
-            candidateViewLandScapeHeightEmptyPreferenceValue ?: 110
-        }
-
-        val qwertyHeightPref = if (isPortrait) {
-            qwertyHeightPreferenceValue ?: 280
-        } else {
-            qwertyHeightLandScapePreferenceValue ?: 280
-        }
-        val qwertyWidthPref = if (isPortrait) {
-            qwertyWidthPreferenceValue ?: 100
-        } else {
-            qwertyWidthLandScapePreferenceValue ?: 100
-        }
-        val qwertyPositionPref = if (isPortrait) {
-            qwertyPositionPreferenceValue ?: true
-        } else {
-            qwertyLandScapePositionPreferenceValue ?: true
-        }
-        val qwertyKeyboardMarginBottomPref = if (isPortrait) {
-            qwertyBottomMarginPreferenceValue ?: 0
-        } else {
-            qwertyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-
-        Timber.d("keyboard size set height symbol: $heightPref $isPortrait")
-        Timber.d("keyboard size set width symbol: $widthPref")
-
+        // 2. ピクセル値の計算
         val heightPx = when {
             isSymbol -> {
-                val height = if (isPortrait) {
-                    320
-                } else {
-                    220
-                }
-                (height * density).toInt()
-            }
-
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                val clampedHeight = if (isPortrait) {
-                    qwertyHeightPref.coerceIn(180, 420)
-                } else {
-                    qwertyHeightPref.coerceIn(100, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-
-            else -> {
-                val clampedHeight = if (isPortrait) {
-                    heightPref.coerceIn(180, 420)
-                } else {
-                    heightPref.coerceIn(60, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-        }
-
-        val widthPx = when {
-            widthPref == 100 || isSymbol -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-
-        val qwertyWidthPx = when {
-            qwertyWidthPref == 100 || isSymbol -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (qwertyWidthPref / 100f)).toInt()
-            }
-        }
-
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
-            )
-        } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
-            )
-        }
-
-        val finalKeyboardHeight = if (shortcutTollbarVisibility == true && !isSymbol) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-        } else {
-            keyboardHeight
-        }
-
-        val finalKeyboardWidth =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyWidthPx
-            } else {
-                widthPx
-            }
-
-        val gravity =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                if (qwertyPositionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            } else {
-                if (positionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            }
-
-        val finalBottomMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyKeyboardMarginBottomPref
-            } else {
-                keyboardBottomMargin
-            }
-
-        if (shortcutTollbarVisibility == true) {
-            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
-                mainView.shortcutToolbarRecyclerview.layoutParams = param
-            }
-        }
-
-        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            mainView.suggestionViewParent.layoutParams = params
-        }
-
-        (mainView.keyboardView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.keyboardView.layoutParams = params
-        }
-
-        (mainView.customLayoutDefault.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.customLayoutDefault.layoutParams = params
-        }
-
-        (mainView.qwertyView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.qwertyView.layoutParams = params
-        }
-
-        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight
-            params.width = finalKeyboardWidth
-            params.bottomMargin = finalBottomMargin
-            params.gravity = gravity
-            mainView.root.layoutParams = params
-        }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
-    }
-
-    private fun setKeyboardSizeForHeightForFloatingMode(
-        mainView: MainLayoutBinding
-    ) {
-        Timber.d("Keyboard Height: setKeyboardSizeForHeightForFloatingMode called")
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-
-        val heightPref = if (isPortrait) {
-            tenkeyHeightPreferenceValue ?: 280
-        } else {
-            tenkeyHeightLandScapePreferenceValue ?: 280
-        }
-        val widthPref = if (isPortrait) {
-            tenkeyWidthPreferenceValue ?: 100
-        } else {
-            tenkeyWidthLandScapePreferenceValue ?: 100
-        }
-        val keyboardBottomMargin = if (isPortrait) {
-            tenkeyBottomMarginPreferenceValue ?: 0
-        } else {
-            tenkeyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-        val positionPref = if (isPortrait) {
-            tenkeyPositionPreferenceValue ?: true
-        } else {
-            tenkeyLandScapePositionPreferenceValue ?: true
-        }
-
-        val candidateEmptyHeight = if (isPortrait) {
-            candidateViewHeightEmptyPreferenceValue ?: 110
-        } else {
-            candidateViewLandScapeHeightEmptyPreferenceValue ?: 110
-        }
-
-        val qwertyHeightPref = if (isPortrait) {
-            qwertyHeightPreferenceValue ?: 280
-        } else {
-            qwertyHeightLandScapePreferenceValue ?: 280
-        }
-        val qwertyWidthPref = if (isPortrait) {
-            qwertyWidthPreferenceValue ?: 100
-        } else {
-            qwertyWidthLandScapePreferenceValue ?: 100
-        }
-        val qwertyPositionPref = if (isPortrait) {
-            qwertyPositionPreferenceValue ?: true
-        } else {
-            qwertyLandScapePositionPreferenceValue ?: true
-        }
-        val qwertyKeyboardMarginBottomPref = if (isPortrait) {
-            qwertyBottomMarginPreferenceValue ?: 0
-        } else {
-            qwertyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-
-        Timber.d("keyboard size set height floating: $heightPref $isPortrait")
-        Timber.d("keyboard size set width floating: $widthPref")
-
-        val heightPx = when {
-            keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
 
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
                 val clampedHeight = if (isPortrait) {
-                    qwertyHeightPref.coerceIn(180, 420)
+                    prefs.qwertyHeightPref.coerceIn(180, 420)
+                } else if (isFloating) {
+                    prefs.qwertyHeightPref
                 } else {
-                    qwertyHeightPref
+                    prefs.qwertyHeightPref.coerceIn(100, 420)
                 }
                 (clampedHeight * density).toInt()
             }
 
             else -> {
                 val clampedHeight = if (isPortrait) {
-                    heightPref.coerceIn(180, 420)
+                    prefs.heightPref.coerceIn(180, 420)
+                } else if (isFloating) {
+                    prefs.heightPref
                 } else {
-                    heightPref
+                    prefs.heightPref.coerceIn(60, 420)
                 }
                 (clampedHeight * density).toInt()
             }
         }
 
         val widthPx = when {
-            widthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
+            prefs.widthPref == 100 || isSymbol -> ViewGroup.LayoutParams.MATCH_PARENT
+            else -> (screenWidth * (prefs.widthPref / 100f)).toInt()
         }
 
         val qwertyWidthPx = when {
-            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (qwertyWidthPref / 100f)).toInt()
-            }
+            prefs.qwertyWidthPref == 100 || isSymbol -> ViewGroup.LayoutParams.MATCH_PARENT
+            else -> (screenWidth * (prefs.qwertyWidthPref / 100f)).toInt()
         }
 
-        Timber.d("setKeyboardSizeForHeightForFloatingMode: $widthPref $qwertyWidthPref $heightPx $heightPref")
-
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
+        // 3. 最終的な高さ、幅、Gravity、マージンの決定
+        val baseKeyboardHeight = if (isPortrait) {
+            if (isSymbol) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                prefs.candidateEmptyHeight
             )
         } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
-            )
+            if (isSymbol) heightPx else heightPx + applicationContext.dpToPx(prefs.candidateEmptyHeight)
         }
 
-        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-        } else {
-            keyboardHeight
+        val finalKeyboardHeight = when {
+            addCandidateTabHeight && candidateTabVisibility == true -> baseKeyboardHeight + mainView.candidateTabLayout.height
+            !addCandidateTabHeight && shortcutTollbarVisibility == true && !isSymbol -> baseKeyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            else -> baseKeyboardHeight
         }
 
         val finalKeyboardWidth =
@@ -6444,28 +6071,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPx
             }
 
-        val gravity =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                if (qwertyPositionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            } else {
-                if (positionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            }
-
         val finalBottomMargin =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyKeyboardMarginBottomPref
+                prefs.qwertyBottomMargin
             } else {
-                keyboardBottomMargin
+                prefs.bottomMargin
             }
 
+        val positionIsEnd =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                prefs.qwertyPositionIsEnd
+            } else {
+                prefs.positionIsEnd
+            }
+        val gravity =
+            if (positionIsEnd) (Gravity.BOTTOM or Gravity.END) else (Gravity.BOTTOM or Gravity.START)
+
+        // 4. レイアウトパラメータの適用
+        applyKeyboardLayoutParameters(
+            mainView,
+            heightPx,
+            finalKeyboardHeight,
+            finalKeyboardWidth,
+            gravity,
+            finalBottomMargin
+        )
+
+        // 5. 個別処理
+        if (addCandidateTabHeight) {
+            val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
+            params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
+            mainView.suggestionVisibility.layoutParams = params
+        }
+    }
+
+    /**
+     * 計算されたレイアウトパラメータを各ビューに適用するヘルパー関数
+     */
+    private fun applyKeyboardLayoutParameters(
+        mainView: MainLayoutBinding,
+        heightPx: Int,
+        finalKeyboardHeight: Int,
+        finalKeyboardWidth: Int,
+        gravity: Int,
+        finalBottomMargin: Int
+    ) {
         if (shortcutTollbarVisibility == true) {
             (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
                 param.bottomMargin = heightPx + mainView.suggestionViewParent.height
@@ -6473,28 +6123,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
 
-        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            mainView.suggestionViewParent.layoutParams = params
-        }
-
-        (mainView.keyboardView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.keyboardView.layoutParams = params
-        }
-
-        (mainView.customLayoutDefault.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.customLayoutDefault.layoutParams = params
-        }
-
-        (mainView.qwertyView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.qwertyView.layoutParams = params
+        listOf(
+            mainView.suggestionViewParent,
+            mainView.keyboardView,
+            mainView.customLayoutDefault,
+            mainView.qwertyView
+        ).forEach { view ->
+            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                if (view != mainView.suggestionViewParent) params.height = heightPx
+                else params.bottomMargin = heightPx
+                params.gravity = gravity
+                view.layoutParams = params
+            }
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
@@ -6504,585 +6144,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.gravity = gravity
             mainView.root.layoutParams = params
         }
+
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
+    }
+
+    private fun setKeyboardSizeForHeight(mainView: MainLayoutBinding) {
+        Timber.d("Keyboard Height: setKeyboardSizeForHeight called")
+        if (hasHardwareKeyboardConnected == true) return
+        updateKeyboardLayout(mainView)
+    }
+
+    private fun setKeyboardSizeForHeightSymbol(mainView: MainLayoutBinding, isSymbol: Boolean) {
+        Timber.d("Keyboard Height: setKeyboardSizeForHeightSymbol called")
+        updateKeyboardLayout(mainView, isSymbolOverride = isSymbol)
+    }
+
+    private fun setKeyboardSizeForHeightForFloatingMode(mainView: MainLayoutBinding) {
+        Timber.d("Keyboard Height: setKeyboardSizeForHeightForFloatingMode called")
+        updateKeyboardLayout(mainView, isFloating = true)
     }
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
         if (currentInputType.isPassword()) return
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-
-        val heightPref = if (isPortrait) {
-            tenkeyHeightPreferenceValue ?: 280
-        } else {
-            tenkeyHeightLandScapePreferenceValue ?: 220
-        }
-        val widthPref = if (isPortrait) {
-            tenkeyWidthPreferenceValue ?: 100
-        } else {
-            tenkeyWidthLandScapePreferenceValue ?: 100
-        }
-        val keyboardBottomMargin = if (isPortrait) {
-            tenkeyBottomMarginPreferenceValue ?: 0
-        } else {
-            tenkeyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-        val positionPref = if (isPortrait) {
-            tenkeyPositionPreferenceValue ?: true
-        } else {
-            tenkeyLandScapePositionPreferenceValue ?: true
-        }
-
-        val qwertyHeightPref = if (isPortrait) {
-            qwertyHeightPreferenceValue ?: 280
-        } else {
-            qwertyHeightLandScapePreferenceValue ?: 280
-        }
-        val qwertyWidthPref = if (isPortrait) {
-            qwertyWidthPreferenceValue ?: 100
-        } else {
-            qwertyWidthLandScapePreferenceValue ?: 100
-        }
-        val qwertyPositionPref = if (isPortrait) {
-            qwertyPositionPreferenceValue ?: true
-        } else {
-            qwertyLandScapePositionPreferenceValue ?: true
-        }
-        val qwertyKeyboardMarginBottomPref = if (isPortrait) {
-            qwertyBottomMarginPreferenceValue ?: 0
-        } else {
-            qwertyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-
-        Timber.d("keyboard size set height addition: $heightPref $isPortrait")
-        Timber.d("keyboard size set width addtion: $widthPref")
-
-        val heightPx = when {
-            keyboardSymbolViewState.value -> {
-                val height = if (isPortrait) 320 else 220
-                (height * density).toInt()
-            }
-
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                val clampedHeight = if (isPortrait) {
-                    qwertyHeightPref.coerceIn(180, 420)
-                } else {
-                    qwertyHeightPref.coerceIn(60, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-
-            else -> {
-                val clampedHeight = if (isPortrait) {
-                    heightPref.coerceIn(180, 420)
-                } else {
-                    heightPref.coerceIn(60, 420)
-                }
-                Timber.d("Orientation: ${if (isPortrait) "Portrait" else "Landscape"}")
-                Timber.d("Clamped DP height: $clampedHeight")
-                Timber.d("Screen Height: ${resources.displayMetrics.heightPixels}")
-                (clampedHeight * density).toInt()
-            }
-        }
-
-        val widthPx = when {
-            widthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-
-        val qwertyWidthPx = when {
-            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (qwertyWidthPref / 100f)).toInt()
-            }
-        }
-
-        // Determine additional height for suggestion bar in dp
-        val suggestionHeightInDp = if (isPortrait) {
-            candidateViewHeightPreferenceValue ?: 110
-        } else {
-            candidateViewLandScapeHeightPreferenceValue ?: 110
-        }
-
-        // Calculate the main keyboard height including suggestions, all in pixels
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                suggestionHeightInDp
-            )
-        } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                suggestionHeightInDp
-            )
-        }
-
-        val finalKeyboardHeight = if (candidateTabVisibility == true) {
-            keyboardHeight + mainView.candidateTabLayout.height
-        } else {
-            keyboardHeight
-        }
-
-        val finalKeyboardWidth =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyWidthPx
-            } else {
-                widthPx
-            }
-
-        val gravity =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                if (qwertyPositionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            } else {
-                if (positionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            }
-
-        val finalBottomMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyKeyboardMarginBottomPref
-            } else {
-                keyboardBottomMargin
-            }
-
-        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            mainView.suggestionViewParent.layoutParams = params
-        }
-
-        (mainView.keyboardView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.keyboardView.layoutParams = params
-        }
-
-        (mainView.customLayoutDefault.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.customLayoutDefault.layoutParams = params
-        }
-
-        (mainView.qwertyView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.qwertyView.layoutParams = params
-        }
-
-        // --- Apply the calculated height ---
-        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            // Set the final calculated height and bottom margin
-            params.height = finalKeyboardHeight
-            params.width = finalKeyboardWidth
-            params.bottomMargin = finalBottomMargin
-            mainView.root.layoutParams = params
-        }
-
-        // Adjust suggestion view constraints since it's no longer attached to the parent bottom
-        val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
-        params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
-        mainView.suggestionVisibility.layoutParams = params
-
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        updateKeyboardLayout(mainView, addCandidateTabHeight = true)
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
-        if (isKeyboardFloatingMode == true) {
-            return
-        }
         Timber.d("Keyboard Height: setKeyboardHeightDefault called")
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-        val screenHeight = resources.displayMetrics.heightPixels
-
-        val heightPref = if (isPortrait) {
-            tenkeyHeightPreferenceValue ?: 280
-        } else {
-            tenkeyHeightLandScapePreferenceValue ?: 280
-        }
-        val widthPref = if (isPortrait) {
-            tenkeyWidthPreferenceValue ?: 100
-        } else {
-            tenkeyWidthLandScapePreferenceValue ?: 100
-        }
-        val keyboardBottomMargin = if (isPortrait) {
-            tenkeyBottomMarginPreferenceValue ?: 0
-        } else {
-            tenkeyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-        val positionPref = if (isPortrait) {
-            tenkeyPositionPreferenceValue ?: true
-        } else {
-            tenkeyLandScapePositionPreferenceValue ?: true
-        }
-
-        val candidateEmptyHeight = if (isPortrait) {
-            candidateViewHeightEmptyPreferenceValue ?: 110
-        } else {
-            candidateViewLandScapeHeightEmptyPreferenceValue ?: 110
-        }
-
-        val qwertyHeightPref = if (isPortrait) {
-            qwertyHeightPreferenceValue ?: 280
-        } else {
-            qwertyHeightLandScapePreferenceValue ?: 280
-        }
-        val qwertyWidthPref = if (isPortrait) {
-            qwertyWidthPreferenceValue ?: 100
-        } else {
-            qwertyWidthLandScapePreferenceValue ?: 100
-        }
-        val qwertyPositionPref = if (isPortrait) {
-            qwertyPositionPreferenceValue ?: true
-        } else {
-            qwertyLandScapePositionPreferenceValue ?: true
-        }
-        val qwertyKeyboardMarginBottomPref = if (isPortrait) {
-            qwertyBottomMarginPreferenceValue ?: 0
-        } else {
-            qwertyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-
-        val heightPx = when {
-            keyboardSymbolViewState.value -> {
-                val height = if (isPortrait) 320 else 220
-                (height * density).toInt()
-            }
-
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                val clampedHeight = if (isPortrait) {
-                    qwertyHeightPref.coerceIn(180, 420)
-                } else {
-                    qwertyHeightPref.coerceIn(100, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-
-            else -> {
-                val clampedHeight = if (isPortrait) {
-                    heightPref.coerceIn(180, 420)
-                } else {
-                    heightPref.coerceIn(60, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-        }
-
-        val widthPx = when {
-            widthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-
-        Timber.d("keyboard size set height default: $heightPref $isPortrait $tenkeyHeightPreferenceValue $tenkeyHeightLandScapePreferenceValue $heightPx")
-        Timber.d("keyboard size set width default: $widthPref $widthPx")
-
-        val qwertyWidthPx = when {
-            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (qwertyWidthPref / 100f)).toInt()
-            }
-        }
-
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
-            )
-        } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
-            )
-        }
-
-        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-        } else {
-            keyboardHeight
-        }
-
-        val finalKeyboardWidth =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyWidthPx
-            } else {
-                widthPx
-            }
-
-        val gravity =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                if (qwertyPositionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            } else {
-                if (positionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            }
-
-        val finalBottomMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyKeyboardMarginBottomPref
-            } else {
-                keyboardBottomMargin
-            }
-
-        if (shortcutTollbarVisibility == true) {
-            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
-                mainView.shortcutToolbarRecyclerview.layoutParams = param
-            }
-        }
-
-        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            mainView.suggestionViewParent.layoutParams = params
-        }
-
-        (mainView.keyboardView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.keyboardView.layoutParams = params
-        }
-
-        (mainView.customLayoutDefault.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.customLayoutDefault.layoutParams = params
-        }
-
-        (mainView.qwertyView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.qwertyView.layoutParams = params
-        }
-
-        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight
-            params.width = finalKeyboardWidth
-            params.gravity = gravity
-            params.bottomMargin = finalBottomMargin
-            mainView.root.layoutParams = params
-        }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        if (isKeyboardFloatingMode == true) return
+        updateKeyboardLayout(mainView)
     }
 
-    /**
-     *
-     * Reset keyboard size when switching to new
-     * **/
     private fun setKeyboardSizeSwitchKeyboard(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardSizeSwitchKeyboard called")
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-
-        val heightPref = if (isPortrait) {
-            tenkeyHeightPreferenceValue ?: 280
-        } else {
-            tenkeyHeightLandScapePreferenceValue ?: 280
-        }
-        val widthPref = if (isPortrait) {
-            tenkeyWidthPreferenceValue ?: 100
-        } else {
-            tenkeyWidthLandScapePreferenceValue ?: 100
-        }
-        val keyboardBottomMargin = if (isPortrait) {
-            tenkeyBottomMarginPreferenceValue ?: 0
-        } else {
-            tenkeyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-        val positionPref = if (isPortrait) {
-            tenkeyPositionPreferenceValue ?: true
-        } else {
-            tenkeyLandScapePositionPreferenceValue ?: true
-        }
-
-        val candidateEmptyHeight = if (isPortrait) {
-            candidateViewHeightEmptyPreferenceValue ?: 110
-        } else {
-            candidateViewLandScapeHeightEmptyPreferenceValue ?: 110
-        }
-
-        val qwertyHeightPref = if (isPortrait) {
-            qwertyHeightPreferenceValue ?: 280
-        } else {
-            qwertyHeightLandScapePreferenceValue ?: 280
-        }
-        val qwertyWidthPref = if (isPortrait) {
-            qwertyWidthPreferenceValue ?: 100
-        } else {
-            qwertyWidthLandScapePreferenceValue ?: 100
-        }
-        val qwertyPositionPref = if (isPortrait) {
-            qwertyPositionPreferenceValue ?: true
-        } else {
-            qwertyLandScapePositionPreferenceValue ?: true
-        }
-        val qwertyKeyboardMarginBottomPref = if (isPortrait) {
-            qwertyBottomMarginPreferenceValue ?: 0
-        } else {
-            qwertyLandScapeBottomMarginPreferenceValue ?: 0
-        }
-
-        Timber.d("keyboard size set height switch: $heightPref $isPortrait")
-        Timber.d("keyboard size set width switch: $widthPref")
-
-        val heightPx = when {
-            keyboardSymbolViewState.value -> {
-                val height = if (isPortrait) 320 else 220
-                (height * density).toInt()
-            }
-
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                val clampedHeight = if (isPortrait) {
-                    qwertyHeightPref.coerceIn(180, 420)
-                } else {
-                    qwertyHeightPref.coerceIn(100, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-
-            else -> {
-                val clampedHeight = if (isPortrait) {
-                    heightPref.coerceIn(180, 420)
-                } else {
-                    heightPref.coerceIn(60, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-        }
-
-        val widthPx = when {
-            widthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-
-        val qwertyWidthPx = when {
-            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            else -> {
-                (screenWidth * (qwertyWidthPref / 100f)).toInt()
-            }
-        }
-
-        val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
-            )
-        } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
-                candidateEmptyHeight
-            )
-        }
-
-        val finalKeyboardHeight = if (shortcutTollbarVisibility == true) {
-            keyboardHeight + mainView.shortcutToolbarRecyclerview.height
-        } else {
-            keyboardHeight
-        }
-
-        val finalKeyboardWidth =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyWidthPx
-            } else {
-                widthPx
-            }
-
-        val gravity =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                if (qwertyPositionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            } else {
-                if (positionPref) {
-                    Gravity.BOTTOM or Gravity.END
-                } else {
-                    Gravity.BOTTOM or Gravity.START
-                }
-            }
-
-        val finalBottomMargin =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                qwertyKeyboardMarginBottomPref
-            } else {
-                keyboardBottomMargin
-            }
-
-        if (shortcutTollbarVisibility == true) {
-            (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
-                mainView.shortcutToolbarRecyclerview.layoutParams = param
-            }
-        }
-
-        (mainView.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            mainView.suggestionViewParent.layoutParams = params
-        }
-
-        (mainView.keyboardView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.keyboardView.layoutParams = params
-        }
-
-        (mainView.customLayoutDefault.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.customLayoutDefault.layoutParams = params
-        }
-
-        (mainView.qwertyView.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = heightPx
-            params.gravity = gravity
-            mainView.qwertyView.layoutParams = params
-        }
-
-        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight
-            params.width = finalKeyboardWidth
-            params.bottomMargin = finalBottomMargin
-            params.gravity = gravity
-            mainView.root.layoutParams = params
-        }
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        updateKeyboardLayout(mainView)
     }
 
     private fun updateSuggestionViewVisibility(
