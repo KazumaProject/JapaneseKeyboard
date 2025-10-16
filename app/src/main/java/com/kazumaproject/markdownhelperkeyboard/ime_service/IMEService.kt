@@ -406,6 +406,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputKeyLayoutType: String? = "toggle"
     private var sumireInputStyle: String? = "default"
     private var candidateColumns: String? = "1"
+    private var candidateColumnsLandscape: String? = "1"
     private var candidateViewHeight: String? = "2"
     private var candidateTabVisibility: Boolean? = false
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
@@ -703,6 +704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireInputKeyLayoutType = sumire_input_method
             sumireInputStyle = sumire_keyboard_style
             candidateColumns = candidate_column_preference
+            candidateColumnsLandscape = candidate_column_landscape_preference
             candidateTabVisibility = candidate_tab_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
@@ -1131,6 +1133,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputKeyLayoutType = null
         sumireInputStyle = null
         candidateColumns = null
+        candidateColumnsLandscape = null
         candidateViewHeight = null
         candidateTabVisibility = null
         isTablet = null
@@ -6038,12 +6041,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val widthPx = when {
-            prefs.widthPref == 100 || isSymbol -> ViewGroup.LayoutParams.MATCH_PARENT
+            prefs.widthPref == 100 -> ViewGroup.LayoutParams.MATCH_PARENT
             else -> (screenWidth * (prefs.widthPref / 100f)).toInt()
         }
 
         val qwertyWidthPx = when {
-            prefs.qwertyWidthPref == 100 || isSymbol -> ViewGroup.LayoutParams.MATCH_PARENT
+            prefs.qwertyWidthPref == 100 -> ViewGroup.LayoutParams.MATCH_PARENT
             else -> (screenWidth * (prefs.qwertyWidthPref / 100f)).toInt()
         }
 
@@ -6202,18 +6205,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
+                val clampedHeight = qwertyHeightPref.coerceIn(60, 420)
                 (clampedHeight * density).toInt()
             }
 
             else -> {
-                val clampedHeight = heightPref.coerceIn(180, 420)
+                val clampedHeight = heightPref.coerceIn(60, 420)
                 (clampedHeight * density).toInt()
             }
         }
 
         val widthPx = when {
-            widthPref == 100 || keyboardSymbolViewState.value -> {
+            widthPref == 100 -> {
                 ViewGroup.LayoutParams.MATCH_PARENT
             }
 
@@ -6223,7 +6226,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val qwertyWidthPx = when {
-            qwertyWidthPref == 100 || keyboardSymbolViewState.value -> {
+            qwertyWidthPref == 100 -> {
                 ViewGroup.LayoutParams.MATCH_PARENT
             }
 
@@ -7437,7 +7440,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setMainSuggestionColumn(
         mainView: MainLayoutBinding
     ) {
-        val columnNum = candidateColumns ?: "1"
+        val isPortrait =
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val columnNum = if (isPortrait) {
+            candidateColumns ?: "1"
+        } else {
+            candidateColumnsLandscape ?: "1"
+        }
 
         val adapter = mainView.suggestionRecyclerView.adapter
         mainView.suggestionRecyclerView.adapter = null

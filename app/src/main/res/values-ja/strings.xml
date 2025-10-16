@@ -25,6 +25,7 @@
     <string name="conversion_preference_title">変換候補</string>
     <string name="n_best_preference_summary">表示する変換候補の最大数を設定します。</string>
     <string name="preference_title_num_columns_conversion">変換候補の列数</string>
+    <string name="preference_title_num_columns_conversion_landscape">変換候補の列数(横画面)</string>
     <string name="preference_summary_num_column_conversion">変換候補を表示するときの列数を設定します</string>
     <string name="preference_dialog_title_num_columns_conversion">候補の列数を選んでください</string>
     <string name="candidate_view_height_title">変換候補の高さ</string>
