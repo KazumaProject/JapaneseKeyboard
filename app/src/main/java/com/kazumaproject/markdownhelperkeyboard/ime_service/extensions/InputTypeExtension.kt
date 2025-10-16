@@ -209,13 +209,6 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
         InputType.TYPE_TEXT_VARIATION_PERSON_NAME -> return InputTypeForIME.TextPersonName
     }
 
-    // 2. Check for strong, purpose-defining actions FIRST.
-    // These actions (like Search) are unambiguous and override any other flags.
-    when (imeAction) {
-        EditorInfo.IME_ACTION_SEARCH -> return InputTypeForIME.TextSearchView
-        EditorInfo.IME_ACTION_NEXT -> return InputTypeForIME.TextNextLine
-    }
-
     // 3. THEN, check for structural flags.
     // If a field is multi-line, it should be treated as such, even if it has a weaker
     // "Done" action. This correctly identifies composition fields.
@@ -224,6 +217,13 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     }
     if ((inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE) != 0) {
         return InputTypeForIME.TextImeMultiLine
+    }
+
+    // 2. Check for strong, purpose-defining actions FIRST.
+    // These actions (like Search) are unambiguous and override any other flags.
+    when (imeAction) {
+        EditorInfo.IME_ACTION_SEARCH -> return InputTypeForIME.TextSearchView
+        EditorInfo.IME_ACTION_NEXT -> return InputTypeForIME.TextNextLine
     }
 
     // 4. FINALLY, check for weaker actions for non-multi-line fields.
