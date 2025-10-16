@@ -15,6 +15,7 @@ enum class KeyboardInputMode {
  * これにより、Stringでの判定をなくし、型安全なアクション処理を実現する
  */
 sealed class KeyAction {
+    data object Cancel : KeyAction()
     // 文字列入力系
     data class InputText(val text: String) : KeyAction()
 

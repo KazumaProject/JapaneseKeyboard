@@ -37,6 +37,12 @@
         <action
             android:id="@+id/action_navigation_setting_to_candidateViewHeightSettingFragment"
             app:destination="@id/candidateViewHeightSettingFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_keyboardSizeLandscapeFragment"
+            app:destination="@id/keyboardSizeLandscapeFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_candidateHeightLandscapeSettingFragment"
+            app:destination="@id/candidateHeightLandscapeSettingFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -130,5 +136,15 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.CandidateViewHeightSettingFragment"
         android:label="@string/candidate_view_height_setting_fragment_title"
         tools:layout="@layout/fragment_candidate_view_height_setting" />
+    <fragment
+        android:id="@+id/keyboardSizeLandscapeFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_landscape_setting.KeyboardSizeLandscapeFragment"
+        android:label="@string/keyboard_size_landscape_title"
+        tools:layout="@layout/fragment_keyboardsize_landscape" />
+    <fragment
+        android:id="@+id/candidateHeightLandscapeSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_landscape_setting.CandidateHeightLandscapeSettingFragment"
+        android:label="@string/candidate_height_landscape_preference_title"
+        tools:layout="@layout/fragment_candidate_height_landscape_setting" />
 
 </navigation>

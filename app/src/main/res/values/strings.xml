@@ -312,4 +312,10 @@
 
     <string name="pref_round_corner_keyboard_title">Round the keyboard’s corners</string>
     <string name="pref_round_corner_keyboard_summary">When on, all four corners of the keyboard are rounded.</string>
+
+    <string name="keyboard_screen_landscape_size_preference_title">Position and Size(Landscape)</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="keyboard_size_landscape_title">Keyboard Size（Landscape）</string>
+    <string name="candidate_height_landscape_preference_title">Candidate Height(Landscape)</string>
 </resources>

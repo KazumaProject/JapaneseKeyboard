@@ -117,18 +117,62 @@ class GraphBuilder {
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(node)
             }
 
-            // 3. システム辞書からCommon Prefix Searchを実行
+            // 1. Always perform the standard common prefix search
+            val commonPrefixSearchSystem: List<String> = yomiTrie.commonPrefixSearch(
+                str = subStr,
+                succinctBitVector = succinctBitVectorLBSYomi
+            )
+            if (commonPrefixSearchSystem.isNotEmpty()) foundInAnyDictionary = true
+
+            for (yomiStr in commonPrefixSearchSystem) {
+                val nodeIndex = yomiTrie.getNodeIndex(
+                    yomiStr,
+                    succinctBitVectorLBSYomi,
+                )
+                if (nodeIndex > 0) { // ルートノードは除く
+                    val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
+                    val listToken = tokenArray.getListDictionaryByYomiTermId(
+                        termId,
+                        succinctBitVectorTokenArray
+                    )
+
+                    val tangoList = listToken.map {
+                        Node(
+                            l = tokenArray.leftIds[it.posTableIndex.toInt()],
+                            r = tokenArray.rightIds[it.posTableIndex.toInt()],
+                            score = it.wordCost.toInt(),
+                            f = it.wordCost.toInt(),
+                            g = it.wordCost.toInt(),
+                            tango = when (it.nodeId) {
+                                -2 -> yomiStr
+                                -1 -> yomiStr.hiraToKata()
+                                else -> tangoTrie.getLetter(
+                                    it.nodeId,
+                                    succinctBitVector = succinctBitVectorTangoLBS
+                                )
+                            },
+                            len = yomiStr.length.toShort(),
+                            sPos = i,
+                        )
+                    }.filter { cand ->
+                        ngWords.none { ng -> ng == cand.tango }
+                    }
+                    val endIndex = i + yomiStr.length
+                    graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
+                }
+            }
+
             if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
-                val commonPrefixSearchSystem: List<OmissionSearchResult> =
+                val omissionSearchResults: List<OmissionSearchResult> =
                     yomiTrie.commonPrefixSearchWithOmission(
                         str = subStr,
                         succinctBitVector = succinctBitVectorLBSYomi
                     )
-                if (commonPrefixSearchSystem.isNotEmpty()) foundInAnyDictionary = true
+                if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
 
-                Timber.d("omissionResult: ${commonPrefixSearchSystem.size} $str $subStr")
+                Timber.d("omissionResult: ${omissionSearchResults.size} $str $subStr")
 
-                for (omissionResult in commonPrefixSearchSystem) {
+                for (omissionResult in omissionSearchResults) {
                     val nodeIndex = yomiTrie.getNodeIndex(
                         omissionResult.yomi,
                         succinctBitVectorLBSYomi,
@@ -140,6 +184,7 @@ class GraphBuilder {
                             succinctBitVectorTokenArray
                         )
 
+                        // Note the different scoring logic for omission results
                         val tangoList = listToken.map {
                             Node(
                                 l = tokenArray.leftIds[it.posTableIndex.toInt()],
@@ -174,50 +219,6 @@ class GraphBuilder {
                                 ngWords.none { ng -> ng == cand.tango }
                             }
                         val endIndex = i + omissionResult.yomi.length
-                        graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
-                    }
-                }
-            } else {
-                val commonPrefixSearchSystem: List<String> = yomiTrie.commonPrefixSearch(
-                    str = subStr,
-                    succinctBitVector = succinctBitVectorLBSYomi
-                )
-                if (commonPrefixSearchSystem.isNotEmpty()) foundInAnyDictionary = true
-
-                for (yomiStr in commonPrefixSearchSystem) {
-                    val nodeIndex = yomiTrie.getNodeIndex(
-                        yomiStr,
-                        succinctBitVectorLBSYomi,
-                    )
-                    if (nodeIndex > 0) { // ルートノードは除く
-                        val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                        val listToken = tokenArray.getListDictionaryByYomiTermId(
-                            termId,
-                            succinctBitVectorTokenArray
-                        )
-
-                        val tangoList = listToken.map {
-                            Node(
-                                l = tokenArray.leftIds[it.posTableIndex.toInt()],
-                                r = tokenArray.rightIds[it.posTableIndex.toInt()],
-                                score = it.wordCost.toInt(),
-                                f = it.wordCost.toInt(),
-                                g = it.wordCost.toInt(),
-                                tango = when (it.nodeId) {
-                                    -2 -> yomiStr
-                                    -1 -> yomiStr.hiraToKata()
-                                    else -> tangoTrie.getLetter(
-                                        it.nodeId,
-                                        succinctBitVector = succinctBitVectorTangoLBS
-                                    )
-                                },
-                                len = yomiStr.length.toShort(),
-                                sPos = i,
-                            )
-                        }.filter { cand ->
-                            ngWords.none { ng -> ng == cand.tango }
-                        }
-                        val endIndex = i + yomiStr.length
                         graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
                     }
                 }

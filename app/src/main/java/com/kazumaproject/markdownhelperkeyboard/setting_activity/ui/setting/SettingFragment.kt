@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -91,6 +92,7 @@ class SettingFragment : PreferenceFragmentCompat() {
 
     override fun onResume() {
         super.onResume()
+        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         isKeyboardBoardEnabled()?.let { enabled ->
             if (!enabled) {
                 goToKeyboardSettingScreen()
@@ -215,12 +217,33 @@ class SettingFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val keyboardSizeLandscapePreference =
+            findPreference<Preference>("keyboard_screen_landscape_preference")
+
+        keyboardSizeLandscapePreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_keyboardSizeLandscapeFragment
+            )
+            true
+        }
+
         val candidateHeightFragmentSetting =
             findPreference<Preference>("candidate_view_height_setting_fragment_preference")
         candidateHeightFragmentSetting?.apply {
             setOnPreferenceClickListener {
                 findNavController().navigate(
                     R.id.action_navigation_setting_to_candidateViewHeightSettingFragment
+                )
+                true
+            }
+        }
+
+        val candidateHeightLandscapeFragmentSetting =
+            findPreference<Preference>("candidate_view_height_landscape_setting_fragment_preference")
+        candidateHeightLandscapeFragmentSetting?.apply {
+            setOnPreferenceClickListener {
+                findNavController().navigate(
+                    R.id.action_navigation_setting_to_candidateHeightLandscapeSettingFragment
                 )
                 true
             }
