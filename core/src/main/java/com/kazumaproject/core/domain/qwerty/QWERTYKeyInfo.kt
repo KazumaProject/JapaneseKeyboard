@@ -1008,5 +1008,4 @@ sealed class QWERTYKeyInfo {
         override val variations: List<Char> get() = listOf('}')
         override val capVariations: List<Char> get() = listOf('}')
     }
-
 }
