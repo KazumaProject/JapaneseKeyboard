@@ -198,41 +198,47 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     val variation = inputType and InputType.TYPE_MASK_VARIATION
     val imeAction = editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION
 
-    // 1. Check for the most specific variations first (e.g., Password).
+    // 優先度1: 最も具体的なテキスト「種類」を先にチェック (パスワード、メールアドレスなど)
     when (variation) {
-        InputType.TYPE_TEXT_VARIATION_PASSWORD -> return InputTypeForIME.TextPassword
+        InputType.TYPE_TEXT_VARIATION_PASSWORD,
+        InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD -> return InputTypeForIME.TextPassword
+
         InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD -> return InputTypeForIME.TextVisiblePassword
-        InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD -> return InputTypeForIME.TextWebPassword
-        InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS -> return InputTypeForIME.TextEmailAddress
-        InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> return InputTypeForIME.TextWebEmailAddress
+        InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+        InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> return InputTypeForIME.TextEmailAddress
+
         InputType.TYPE_TEXT_VARIATION_URI -> return InputTypeForIME.TextUri
         InputType.TYPE_TEXT_VARIATION_PERSON_NAME -> return InputTypeForIME.TextPersonName
     }
 
-    // 3. THEN, check for structural flags.
-    // If a field is multi-line, it should be treated as such, even if it has a weaker
-    // "Done" action. This correctly identifies composition fields.
-    if ((inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0) {
-        return InputTypeForIME.TextMultiLine
-    }
-    if ((inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE) != 0) {
-        return InputTypeForIME.TextImeMultiLine
-    }
-
-    // 2. Check for strong, purpose-defining actions FIRST.
-    // These actions (like Search) are unambiguous and override any other flags.
+    // 優先度2: 強い目的を持つアクションを先に評価
     when (imeAction) {
         EditorInfo.IME_ACTION_SEARCH -> return InputTypeForIME.TextSearchView
+        EditorInfo.IME_ACTION_GO -> return InputTypeForIME.TextUri // ブラウザのURLバーなど
+    }
+
+    // 優先度3: 複数行の判定（最重要）
+    val isMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
+    val isImeMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE) != 0
+
+    if (isMultiLine && !isImeMultiLine) {
+        // 「真の」複数行フィールド。
+        // 開発者が「Enterでアクション実行」を意図していないため、改行を優先する。
+        return InputTypeForIME.TextMultiLine
+    }
+
+    // ここに到達するのは以下のいずれかの場合:
+    // 1. single-line のフィールド
+    // 2. multi-line だが、Enterキーでアクションを実行すべきフィールド (isImeMultiLine == true)
+
+    // 優先度4: 残りのIMEアクションを評価
+    when (imeAction) {
         EditorInfo.IME_ACTION_NEXT -> return InputTypeForIME.TextNextLine
+        EditorInfo.IME_ACTION_DONE -> return InputTypeForIME.TextDone
+        EditorInfo.IME_ACTION_SEND -> return InputTypeForIME.TextDone
     }
 
-    // 4. FINALLY, check for weaker actions for non-multi-line fields.
-    // This will only be reached if the field is single-line.
-    if (imeAction == EditorInfo.IME_ACTION_DONE) {
-        return InputTypeForIME.TextDone
-    }
-
-    // 5. Fallbacks.
+    // 優先度5: フォールバック
     if ((inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
         return InputTypeForIME.TextNoSuggestion
     }
@@ -242,7 +248,13 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
         if (hint.contains("password")) return InputTypeForIME.TextPassword
     }
 
-    // 6. Default.
+    // 優先度6: デフォルト
+    // isMultiLineがtrueでもここに到達することがある（isImeMultiLineがtrueの場合）
+    // その場合、適切なアクションが指定されていなければ、デフォルトのTextとして扱う
+    if (isMultiLine) {
+        return InputTypeForIME.TextMultiLine
+    }
+
     return InputTypeForIME.Text
 }
 
