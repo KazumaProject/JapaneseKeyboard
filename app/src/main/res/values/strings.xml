@@ -24,6 +24,7 @@
     <string name="conversion_preference_title">Conversion</string>
     <string name="n_best_preference_summary">Set the maximum number of conversion candidates to display.</string>
     <string name="preference_title_num_columns_conversion">Number of columns for conversion candidates</string>
+    <string name="preference_title_num_columns_conversion_landscape">Number of columns for conversion candidates(Landscape)</string>
     <string name="preference_summary_num_column_conversion">Set the number of columns when displaying conversion candidates.</string>
     <string name="preference_dialog_title_num_columns_conversion">Please select the number of candidate columns.</string>
     <string name="candidate_view_height_title">Height of conversion candidates</string>

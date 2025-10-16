@@ -123,6 +123,8 @@ object AppPreference {
     private val SYMBOL_MODE_PREFERENCE = Pair("symbol_mode_preference", "EMOJI")
 
     private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
+    private val CANDIDATE_COLUMN_LANDSCAPE_PREFERENCE =
+        Pair("candidate_column_landscape_preference", "1")
 
     private val CANDIDATE_TAB_PREFERENCE = Pair("candidate_tab_visibility_preference", false)
 
@@ -666,6 +668,15 @@ object AppPreference {
         ) ?: "1"
         set(value) = preferences.edit {
             it.putString(CANDIDATE_COLUMN_PREFERENCE.first, value)
+        }
+
+    var candidate_column_landscape_preference: String
+        get() = preferences.getString(
+            CANDIDATE_COLUMN_LANDSCAPE_PREFERENCE.first,
+            CANDIDATE_COLUMN_LANDSCAPE_PREFERENCE.second
+        ) ?: "1"
+        set(value) = preferences.edit {
+            it.putString(CANDIDATE_COLUMN_LANDSCAPE_PREFERENCE.first, value)
         }
 
     var candidate_tab_preference: Boolean

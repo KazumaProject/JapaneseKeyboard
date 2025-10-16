@@ -406,6 +406,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireInputKeyLayoutType: String? = "toggle"
     private var sumireInputStyle: String? = "default"
     private var candidateColumns: String? = "1"
+    private var candidateColumnsLandscape: String? = "1"
     private var candidateViewHeight: String? = "2"
     private var candidateTabVisibility: Boolean? = false
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
@@ -414,7 +415,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isNgWordEnable: Boolean? = false
     private var deleteKeyHighLight: Boolean? = true
     private var customKeyboardSuggestionPreference: Boolean? = true
-    private var keyboardHeightFixForSpecificDevicePreference: Boolean? = false
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -704,6 +704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireInputKeyLayoutType = sumire_input_method
             sumireInputStyle = sumire_keyboard_style
             candidateColumns = candidate_column_preference
+            candidateColumnsLandscape = candidate_column_landscape_preference
             candidateTabVisibility = candidate_tab_preference
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
@@ -1132,13 +1133,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireInputKeyLayoutType = null
         sumireInputStyle = null
         candidateColumns = null
+        candidateColumnsLandscape = null
         candidateViewHeight = null
         candidateTabVisibility = null
         isTablet = null
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
-        keyboardHeightFixForSpecificDevicePreference = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
@@ -6040,12 +6041,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val widthPx = when {
-            prefs.widthPref == 100 || isSymbol -> ViewGroup.LayoutParams.MATCH_PARENT
+            prefs.widthPref == 100 -> ViewGroup.LayoutParams.MATCH_PARENT
             else -> (screenWidth * (prefs.widthPref / 100f)).toInt()
         }
 
         val qwertyWidthPx = when {
-            prefs.qwertyWidthPref == 100 || isSymbol -> ViewGroup.LayoutParams.MATCH_PARENT
+            prefs.qwertyWidthPref == 100 -> ViewGroup.LayoutParams.MATCH_PARENT
             else -> (screenWidth * (prefs.qwertyWidthPref / 100f)).toInt()
         }
 
@@ -6148,6 +6149,172 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
+    private fun setKeyboardHeightWithAdditionalOriginal(mainView: MainLayoutBinding) {
+        Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
+        if (currentInputType.isPassword()) return
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val screenWidth = resources.displayMetrics.widthPixels
+        val density = resources.displayMetrics.density
+
+        val heightPref = if (isPortrait) {
+            tenkeyHeightPreferenceValue ?: 280
+        } else {
+            tenkeyHeightLandScapePreferenceValue ?: 220
+        }
+        val widthPref = if (isPortrait) {
+            tenkeyWidthPreferenceValue ?: 100
+        } else {
+            tenkeyWidthLandScapePreferenceValue ?: 100
+        }
+        val keyboardBottomMargin = if (isPortrait) {
+            tenkeyBottomMarginPreferenceValue ?: 0
+        } else {
+            tenkeyLandScapeBottomMarginPreferenceValue ?: 0
+        }
+
+        val positionPref = if (isPortrait) {
+            tenkeyPositionPreferenceValue ?: true
+        } else {
+            tenkeyLandScapePositionPreferenceValue ?: true
+        }
+        val qwertyHeightPref = if (isPortrait) {
+            qwertyHeightPreferenceValue ?: 280
+        } else {
+            qwertyHeightLandScapePreferenceValue ?: 220
+        }
+        val qwertyWidthPref = if (isPortrait) {
+            qwertyWidthPreferenceValue ?: 100
+        } else {
+            qwertyWidthLandScapePreferenceValue ?: 100
+        }
+        val qwertyPositionPref = if (isPortrait) {
+            qwertyPositionPreferenceValue ?: true
+        } else {
+            qwertyLandScapePositionPreferenceValue ?: true
+        }
+        val qwertyKeyboardMarginBottomPref = if (isPortrait) {
+            qwertyBottomMarginPreferenceValue ?: 0
+        } else {
+            qwertyLandScapeBottomMarginPreferenceValue ?: 0
+        }
+
+        val heightPx = when {
+            keyboardSymbolViewState.value -> {
+                val height = if (isPortrait) 320 else 220
+                (height * density).toInt()
+            }
+
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                val clampedHeight = qwertyHeightPref.coerceIn(60, 420)
+                (clampedHeight * density).toInt()
+            }
+
+            else -> {
+                val clampedHeight = heightPref.coerceIn(60, 420)
+                (clampedHeight * density).toInt()
+            }
+        }
+
+        val widthPx = when {
+            widthPref == 100 -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (widthPref / 100f)).toInt()
+            }
+        }
+
+        val qwertyWidthPx = when {
+            qwertyWidthPref == 100 -> {
+                ViewGroup.LayoutParams.MATCH_PARENT
+            }
+
+            else -> {
+                (screenWidth * (qwertyWidthPref / 100f)).toInt()
+            }
+        }
+
+        val suggestionHeightInDp = if (isPortrait) {
+            candidateViewHeightPreferenceValue ?: 110
+        } else {
+            candidateViewLandScapeHeightPreferenceValue ?: 110
+        }
+
+        val keyboardHeight = if (isPortrait) {
+            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+                suggestionHeightInDp
+            )
+        } else {
+            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+                suggestionHeightInDp
+            )
+        }
+
+        val finalKeyboardHeight = if (candidateTabVisibility == true) {
+            keyboardHeight + mainView.candidateTabLayout.height
+        } else {
+            keyboardHeight
+        }
+
+        val finalKeyboardWidth =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyWidthPx
+            } else {
+                widthPx
+            }
+
+        val gravity =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                if (qwertyPositionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            } else {
+                if (positionPref) {
+                    Gravity.BOTTOM or Gravity.END
+                } else {
+                    Gravity.BOTTOM or Gravity.START
+                }
+            }
+
+        val finalBottomMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                qwertyKeyboardMarginBottomPref
+            } else {
+                keyboardBottomMargin
+            }
+
+        listOf(
+            mainView.suggestionViewParent,
+            mainView.keyboardView,
+            mainView.customLayoutDefault,
+            mainView.qwertyView
+        ).forEach { view ->
+            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                if (view != mainView.suggestionViewParent) params.height = heightPx
+                else params.bottomMargin = heightPx
+                params.gravity = gravity
+                view.layoutParams = params
+            }
+        }
+
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.height = finalKeyboardHeight
+            params.width = finalKeyboardWidth
+            params.bottomMargin = finalBottomMargin
+            mainView.root.layoutParams = params
+        }
+
+        // Adjust suggestion view constraints since it's no longer attached to the parent bottom
+        val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
+        params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
+        mainView.suggestionVisibility.layoutParams = params
+
+        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+    }
+
     private fun setKeyboardSizeForHeight(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardSizeForHeight called")
         if (hasHardwareKeyboardConnected == true) return
@@ -6166,8 +6333,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
-        if (currentInputType.isPassword()) return
-        updateKeyboardLayout(mainView, addCandidateTabHeight = true)
+        setKeyboardHeightWithAdditionalOriginal(mainView)
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
@@ -7274,7 +7440,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setMainSuggestionColumn(
         mainView: MainLayoutBinding
     ) {
-        val columnNum = candidateColumns ?: "1"
+        val isPortrait =
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+
+        val columnNum = if (isPortrait) {
+            candidateColumns ?: "1"
+        } else {
+            candidateColumnsLandscape ?: "1"
+        }
 
         val adapter = mainView.suggestionRecyclerView.adapter
         mainView.suggestionRecyclerView.adapter = null
@@ -7294,6 +7467,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val gridLayoutManager = GridLayoutManager(
                     this@IMEService, spanCount, GridLayoutManager.HORIZONTAL, false
                 )
+
+                gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                    override fun getSpanSize(position: Int): Int {
+                        return when (adapter?.getItemViewType(position)) {
+                            // If the item is the empty view or the custom layout picker,
+                            // make it span all columns.
+                            SuggestionAdapter.VIEW_TYPE_EMPTY,
+                            SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> spanCount
+                            // Otherwise (for regular suggestions), make it span just one column.
+                            else -> 1
+                        }
+                    }
+                }
+
                 val spacingInPixels =
                     resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.grid_spacing)
 
