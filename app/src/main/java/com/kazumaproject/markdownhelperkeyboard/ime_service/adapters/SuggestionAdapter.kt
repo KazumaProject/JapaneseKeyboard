@@ -34,9 +34,9 @@ import timber.log.Timber
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
-        private const val VIEW_TYPE_EMPTY = 0
-        private const val VIEW_TYPE_SUGGESTION = 1
-        private const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
+        const val VIEW_TYPE_EMPTY = 0
+        const val VIEW_TYPE_SUGGESTION = 1
+        const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
     }
 
     enum class HelperIcon {

@@ -99,6 +99,18 @@
         <item>3</item>
     </string-array>
 
+    <string-array name="candidate_column_entries_landscape">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="candidate_column_values_landscape">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
     <string-array name="candidate_view_height_entries">
         <item>小</item>
         <item>中(デフォルト)</item>
