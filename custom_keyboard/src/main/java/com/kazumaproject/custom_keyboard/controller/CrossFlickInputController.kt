@@ -3,6 +3,7 @@ package com.kazumaproject.custom_keyboard.controller
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PointF
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -10,6 +11,7 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.view.CrossFlickPopupView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +77,7 @@ class CrossFlickInputController(private val context: Context) {
     }
 
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
+        Log.d("handleTouchEvent CrossFlick", "${event.action}")
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
                 isLongPressMode = false
@@ -154,14 +157,21 @@ class CrossFlickInputController(private val context: Context) {
 
                 val isFlick = currentDirection != CrossDirection.TAP
 
+
+                Log.d("CrossFlick Up", "$flickActionToCommit $isLongPressTriggered $isFlick")
+
                 if (isLongPressTriggered) {
-                    // ロングプレスが発火済みの場合は、UpAfterLongPress を呼び出す
-                    flickActionToCommit?.let { listener?.onFlickUpAfterLongPress(it, isFlick) }
+                    if (flickActionToCommit == null) {
+                        listener?.onFlickUpAfterLongPress(
+                            FlickAction.Action(KeyAction.Cancel),
+                            isFlick
+                        )
+                    } else {
+                        flickActionToCommit.let { listener?.onFlickUpAfterLongPress(it, isFlick) }
+                    }
                 } else {
-                    // ロングプレスが発火していない場合は、通常の onFlick を呼び出す
                     flickActionToCommit?.let { listener?.onFlick(it, isFlick) }
                 }
-                // ▲▲▲ 修正 ▲▲▲
 
                 dismissAllPopups()
                 return true
@@ -170,7 +180,6 @@ class CrossFlickInputController(private val context: Context) {
         return false
     }
 
-    // ... (calculateDirection, showPopup, showAllPopups, highlightPopup, dismissAllPopups は変更なし)
     private fun calculateDirection(dx: Float, dy: Float): CrossDirection {
         val absDx = abs(dx)
         val absDy = abs(dy)
