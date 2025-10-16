@@ -530,13 +530,7 @@ fun Char.getDakutenFlickTop(): Char? {
 }
 
 fun Char.isHiragana(): Boolean {
-    val excludedHiragana = listOf(
-        'な', 'に', 'ぬ', 'ね', 'の',
-        'ま', 'み', 'む', 'め', 'も',
-        'ら', 'り', 'る', 'れ', 'ろ',
-        'を', 'ん'
-    )
-    return this in '\u3040'..'\u309F' && this !in excludedHiragana
+    return this in '\u3040'..'\u309F'
 }
 
 fun Char.isLatinAlphabet(): Boolean {
