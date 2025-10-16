@@ -2263,7 +2263,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
 
         // 表示位置を計算 (キーの上中央)
-        val xOffset = -(popupWidth / 2) + (anchorView.width / 2)
+        val xOffset = if (variations.isNotEmpty() && variations.size == 1) {
+            (-(popupWidth / 2) + (anchorView.width / 2))
+        } else {
+            (anchorView.width / 2)
+        }
         val yOffset = -anchorView.height - popupHeight
 
         popup.showAsDropDown(anchorView, xOffset, yOffset)
@@ -2741,15 +2745,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_b -> {
-                                it.topRightChar = '!'
+                                it.topRightChar = '#'
                             }
 
                             R.id.key_c -> {
-                                it.topRightChar = '\"'
+                                it.topRightChar = '\''
                             }
 
                             R.id.key_d -> {
-                                it.topRightChar = '+'
+                                it.topRightChar = '$'
                             }
 
                             R.id.key_e -> {
@@ -2757,15 +2761,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_f -> {
-                                it.topRightChar = '-'
+                                it.topRightChar = '_'
                             }
 
                             R.id.key_g -> {
-                                it.topRightChar = '='
+                                it.topRightChar = '&'
                             }
 
                             R.id.key_h -> {
-                                it.topRightChar = '/'
+                                it.topRightChar = '-'
                             }
 
                             R.id.key_i -> {
@@ -2773,7 +2777,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_j -> {
-                                it.topRightChar = '#'
+                                it.topRightChar = '+'
                             }
 
                             R.id.key_k -> {
@@ -2785,11 +2789,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_m -> {
-                                it.topRightChar = '…'
+                                it.topRightChar = '?'
                             }
 
                             R.id.key_n -> {
-                                it.topRightChar = '~'
+                                it.topRightChar = '!'
                             }
 
                             R.id.key_o -> {
@@ -2809,7 +2813,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_s -> {
-                                it.topRightChar = '*'
+                                it.topRightChar = '#'
                             }
 
                             R.id.key_t -> {
@@ -2821,7 +2825,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_v -> {
-                                it.topRightChar = '?'
+                                it.topRightChar = ':'
                             }
 
                             R.id.key_w -> {
@@ -2829,7 +2833,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_x -> {
-                                it.topRightChar = ':'
+                                it.topRightChar = '"'
                             }
 
                             R.id.key_y -> {
@@ -2837,7 +2841,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_z -> {
-                                it.topRightChar = '\''
+                                it.topRightChar = '*'
                             }
                         }
                     }
