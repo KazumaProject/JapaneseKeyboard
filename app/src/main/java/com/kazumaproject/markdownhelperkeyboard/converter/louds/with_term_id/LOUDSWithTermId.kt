@@ -686,12 +686,7 @@ class LOUDSWithTermId {
             'や' -> listOf('や', 'ゃ')
             'ゆ' -> listOf('ゆ', 'ゅ')
             'よ' -> listOf('よ', 'ょ')
-            'あ' -> listOf('あ', 'ぁ')
-            'い' -> listOf('い', 'ぃ')
-            'う' -> listOf('う', 'ぅ')
-            'え' -> listOf('え', 'ぇ')
-            'お' -> listOf('お', 'ぉ')
-            else -> listOf(char) // 上記以外はそのまま
+            else -> listOf(char)
         }
     }
 
