@@ -368,3 +368,91 @@ fun String.hasNConsecutiveChars(n: Int): Boolean {
     val regex = Regex("(.)\\1{$n,}")
     return regex.containsMatchIn(this)
 }
+
+/**
+ * getCharVariationsで定義された文字のバリエーションから、
+ * その文字の基本形（濁点や小文字ではない文字）を返すためのマップ。
+ * 例：'が' -> 'か', 'っ' -> 'つ'
+ */
+private val charVariationToBaseMap: Map<Char, Char> by lazy {
+    val map = mutableMapOf<Char, Char>()
+    // getCharVariationsで定義されているすべての基本文字
+    val baseChars = listOf(
+        'か', 'き', 'く', 'け', 'こ',
+        'さ', 'し', 'す', 'せ', 'そ',
+        'た', 'ち', 'つ', 'て', 'と',
+        'は', 'ひ', 'ふ', 'へ', 'ほ',
+        'や', 'ゆ', 'よ',
+        'あ', 'い', 'う', 'え', 'お'
+    )
+    for (base in baseChars) {
+        for (variation in getCharVariations(base)) {
+            map[variation] = base
+        }
+    }
+    map
+}
+
+/**
+ * 文字の基本形を返すヘルパー関数。
+ * @param char 変換元の文字
+ * @return 基本形の文字
+ */
+private fun getBaseChar(char: Char): Char {
+    return charVariationToBaseMap[char] ?: char
+}
+
+
+/**
+ * (拡張関数)
+ * 文字列内に、同じバリエーションの文字が合計でN個以上出現するかどうかを判定します。
+ * 'か'と'が'、'つ'と'っ'などは同じバリエーションと見なされます。
+ *
+ * @param n 出現回数のしきい値
+ * @return 条件を満たす文字グループが存在する場合は true、そうでない場合は false
+ */
+fun String.hasNCharVariations(n: Int): Boolean {
+    if (n <= 1 && this.isNotEmpty()) return true
+    if (this.length < n) return false
+
+    // 文字の基本形ごとに出現回数をカウントするマップ
+    val counts = mutableMapOf<Char, Int>()
+
+    // 文字列を一度だけループし、各文字の基本形のカウントを増やす
+    for (char in this) {
+        val baseChar = getBaseChar(char)
+        counts[baseChar] = counts.getOrDefault(baseChar, 0) + 1
+    }
+
+    // いずれかのカウントがn以上であれば true を返す
+    return counts.any { it.value >= n }
+}
+
+private fun getCharVariations(char: Char): List<Char> {
+    return when (char) {
+        'か' -> listOf('が')
+        'き' -> listOf('ぎ')
+        'く' -> listOf('ぐ')
+        'け' -> listOf('げ')
+        'こ' -> listOf('ご')
+        'さ' -> listOf('ざ')
+        'し' -> listOf('じ')
+        'す' -> listOf('ず')
+        'せ' -> listOf('ぜ')
+        'そ' -> listOf('ぞ')
+        'た' -> listOf('だ')
+        'ち' -> listOf('ぢ')
+        'つ' -> listOf('づ', 'っ')
+        'て' -> listOf('で')
+        'と' -> listOf('ど')
+        'は' -> listOf('ば', 'ぱ')
+        'ひ' -> listOf('び', 'ぴ')
+        'ふ' -> listOf('ぶ', 'ぷ')
+        'へ' -> listOf('べ', 'ぺ')
+        'ほ' -> listOf('ぼ', 'ぽ')
+        'や' -> listOf('ゃ')
+        'ゆ' -> listOf('ゅ')
+        'よ' -> listOf('ょ')
+        else -> listOf(char) // 上記以外はそのまま
+    }
+}
