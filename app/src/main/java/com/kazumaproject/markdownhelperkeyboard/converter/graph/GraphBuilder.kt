@@ -8,16 +8,13 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
 import timber.log.Timber
 
 class GraphBuilder {
-
-    companion object {
-        const val SCORE_BONUS_PER_OMISSION = 250
-    }
 
     suspend fun constructGraph(
         str: String,
@@ -61,6 +58,7 @@ class GraphBuilder {
         succinctBitVectorneologdTangoLBS: SuccinctBitVector?,
         isOmissionSearchEnable: Boolean
     ): MutableMap<Int, MutableList<Node>> {
+        if (str.isAllHalfWidthAscii()) return mutableMapOf()
         val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
         graph[0] = mutableListOf(BOS)
         graph[str.length + 1] = mutableListOf(
@@ -189,16 +187,7 @@ class GraphBuilder {
                             Node(
                                 l = tokenArray.leftIds[it.posTableIndex.toInt()],
                                 r = tokenArray.rightIds[it.posTableIndex.toInt()],
-                                score = when {
-                                    omissionResult.omissionCount > 0 && omissionResult.yomi.length == 1 ->
-                                        it.wordCost + 1500
-
-                                    omissionResult.omissionCount > 0 ->
-                                        it.wordCost + (SCORE_BONUS_PER_OMISSION * omissionResult.omissionCount)
-
-                                    else ->
-                                        (it.wordCost - 100).coerceAtLeast(0)
-                                },
+                                score = it.wordCost.toInt(),
                                 f = it.wordCost.toInt(),
                                 g = it.wordCost.toInt(),
                                 tango = when (it.nodeId) {

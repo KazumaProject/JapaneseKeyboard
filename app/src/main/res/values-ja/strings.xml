@@ -317,4 +317,6 @@
     <string name="pref_round_corner_keyboard_title">キーボードの角を丸くする</string>
     <string name="pref_round_corner_keyboard_summary">オンにすると、キーボード枠の四隅が丸くなります</string>
     <string name="keyboard_size_landscape_title">キーボードのサイズ（横画面）</string>
+    <string name="conversion_separation_title">変換キーで文節を分割</string>
+    <string name="conversion_separation_summary">変換キーを押すと、入力中の文を文節ごとに分割し、最初の文節を選択状態にします。</string>
 </resources>
