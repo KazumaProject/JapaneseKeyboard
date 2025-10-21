@@ -16,6 +16,10 @@ import timber.log.Timber
 
 class GraphBuilder {
 
+    companion object {
+        const val SCORE_BONUS_PER_OMISSION = 250
+    }
+
     suspend fun constructGraph(
         str: String,
         yomiTrie: LOUDSWithTermId,
@@ -171,6 +175,7 @@ class GraphBuilder {
                 Timber.d("omissionResult: ${omissionSearchResults.size} $str $subStr")
 
                 for (omissionResult in omissionSearchResults) {
+                    Timber.d("omissionResult in for loop: $omissionResult")
                     val nodeIndex = yomiTrie.getNodeIndex(
                         omissionResult.yomi,
                         succinctBitVectorLBSYomi,
@@ -211,6 +216,7 @@ class GraphBuilder {
                         graph.computeIfAbsent(endIndex) { mutableListOf() }.addAll(tangoList)
                     }
                 }
+                Timber.d("omissionResult: finished for loop")
             }
 
             // 4. wiki辞書からCommon Prefix Searchを実行

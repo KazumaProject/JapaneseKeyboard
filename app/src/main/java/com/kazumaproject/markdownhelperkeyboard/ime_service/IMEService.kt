@@ -259,6 +259,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingKeyboardBinding: FloatingKeyboardLayoutBinding? = null
     private var isKeyboardFloatingMode: Boolean? = false
     private var isKeyboardRounded: Boolean? = false
+    private var bunsetsuSeparation: Boolean? = false
+    private var bunsetsuPositionList: List<Int>? = emptyList()
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -711,6 +713,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
             isKeyboardFloatingMode = is_floating_mode ?: false
             isKeyboardRounded = keyboard_corner_round_preference
+            bunsetsuSeparation = bunsetsu_separation_preference
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
@@ -1146,6 +1149,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyQWERTYSwitchNumber = null
         isKeyboardFloatingMode = null
         isKeyboardRounded = null
+        bunsetsuSeparation = null
+        bunsetsuPositionList = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         System.gc()
@@ -1479,7 +1484,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             hasTail && caretTop -> {
                 stringInTail.set("")
                 if (_inputString.value.isNotEmpty()) {
-                    _inputString.value = ""
+                    _inputString.update { "" }
                     setComposingText("", 0)
                 }
                 suggestionAdapter?.suggestions =
@@ -1488,13 +1493,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // Caret moved while tail exists → commit tail
             hasTail -> {
-                _inputString.value = tail
+                _inputString.update { tail }
                 stringInTail.set("")
             }
 
             // No tail but still holding input → cleanup
             _inputString.value.isNotEmpty() -> {
-                _inputString.value = ""
+                _inputString.update { "" }
                 setComposingText("", 0)
             }
         }
@@ -2525,9 +2530,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Key.SideKeyCursorRight -> {
                 if (!rightCursorKeyLongKeyPressed.get()) {
                     if (isHenkan.get()) {
-                        handleJapaneseModeSpaceKey(
-                            mainView, suggestions, insertString
-                        )
+                        if (bunsetsuSeparation == true) {
+                            handleJapaneseModeSpaceKey(
+                                mainView, suggestions, insertString
+                            )
+                        } else {
+                            handleJapaneseModeSpaceKey(
+                                mainView, suggestions, insertString
+                            )
+                        }
                     } else {
                         actionInRightKeyPressed(gestureType, insertString)
                     }
@@ -6516,7 +6527,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail")
+        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()}")
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
@@ -6534,7 +6545,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (stringInTail.get().isNotEmpty()) {
-                setComposingText(stringInTail.get(), 0)
+                setComposingText(stringInTail.get(), 1)
                 onLeftKeyLongPressUp.set(true)
                 onDeleteLongPressUp.set(true)
             } else {
@@ -8192,6 +8203,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun processCandidate(
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
+        Timber.d("processCandidate ${candidate.type.toInt()} ${insertString.length == candidate.length.toInt()}")
         when (candidate.type.toInt()) {
             15 -> {
                 val readingCorrection = candidate.string.correctReading()
@@ -8224,7 +8236,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode && bunsetsuSeparation != true) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
@@ -8253,7 +8265,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate,
         insertString: String
     ) {
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode && bunsetsuSeparation != true) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
@@ -8323,6 +8335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentSpaceKeyIndex = 0
         currentKatakanaKeyIndex = 0
         currentDakutenKeyIndex = 0
+        bunsetsuPositionList = emptyList()
     }
 
     private fun actionInDestroy() {
@@ -8439,29 +8452,40 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setComposingTextAfterEdit(
-        inputString: String, spannableString: SpannableString
+        inputString: String,
+        spannableString: SpannableString,
     ) {
+        // stringInTail が空でなければ、下線の終了位置を延長する
+        val underlineEnd = if (stringInTail.get().isNotEmpty()) {
+            inputString.length + stringInTail.get().length
+        } else {
+            inputString.length
+        }
+
         spannableString.apply {
+            // 背景色は inputString の部分だけ
             setSpan(
                 BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.blue)),
                 0,
                 inputString.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
             )
+
+            // 下線は stringInTail があればそこまで含める
             setSpan(
                 UnderlineSpan(),
                 0,
-                inputString.length,
+                underlineEnd, // 計算した終了位置を使用
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
             )
         }
-        Timber.d("launchInputString: setComposingTextAfterEdit $spannableString")
         setComposingText(spannableString, 1)
     }
 
     private fun setEnterKeyAction(
         suggestions: List<Candidate>, currentInputMode: InputMode, insertString: String
     ) {
+        Timber.d("setEnterKeyAction: $insertString $bunsetsuPositionList")
         val index = (suggestionClickNum - 1).coerceAtLeast(0)
         val nextSuggestion = suggestions[index]
         processCandidate(
@@ -8768,7 +8792,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("setSuggestionOnView: tabPosition first: $inputString $suggestionClickNum")
         if (inputString.isEmpty() || suggestionClickNum > 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
-        Timber.d("setSuggestionOnView: tabPosition: $tabPosition")
+        Timber.d("setSuggestionOnView: tabPosition: $tabPosition $bunsetsuPositionList")
         if (candidateTabVisibility == true) {
             when (tabPosition) {
                 0 -> {
@@ -9034,19 +9058,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = kanaKanjiEngine.getCandidates(
-            input = insertString,
-            n = nBest ?: 4,
-            mozcUtPersonName = mozcUTPersonName,
-            mozcUTPlaces = mozcUTPlaces,
-            mozcUTWiki = mozcUTWiki,
-            mozcUTNeologd = mozcUTNeologd,
-            mozcUTWeb = mozcUTWeb,
-            userDictionaryRepository = userDictionaryRepository,
-            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            ngWords = ngWords,
-            isOmissionSearchEnable = isOmissionSearchEnable ?: false
-        )
+        val engineCandidates = if (bunsetsuSeparation == true) {
+            val candidates = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false
+            )
+            bunsetsuPositionList = candidates.second
+            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()}")
+            return candidates.first.distinctBy { it.string }
+        } else {
+            kanaKanjiEngine.getCandidates(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false
+            )
+        }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
@@ -9139,6 +9182,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun deleteWordOrSymbolsBeforeCursor(insertString: String) {
         val inputConnection = currentInputConnection ?: return
+        if (isHenkan.get()) return
 
         if (insertString.isNotEmpty()) {
             _inputString.update { "" }
@@ -9402,9 +9446,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     keyboardView.let { tenkey ->
                         when (tenkey.currentInputMode.value) {
-                            InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                this, suggestions, insertString
-                            )
+                            InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                                        this, suggestions, insertString
+                                    )
+                                } else {
+                                    handleJapaneseModeSpaceKey(
+                                        this, suggestions, insertString
+                                    )
+                                }
+                            }
 
                             else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
                         }
@@ -9493,19 +9545,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
 
+    private var isSeparationWithBunsetsu = false
+
     private fun handleJapaneseModeSpaceKeyWithBunsetsu(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
     ) {
-        isHenkan.set(true)
-        suggestionClickNum += 1
-        suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
-        mainView.suggestionRecyclerView.apply {
-            smoothScrollToPosition(
-                (suggestionClickNum - 1 + 2).coerceAtLeast(0).coerceAtMost(suggestions.size - 1)
+        val position = bunsetsuPositionList?.firstOrNull()
+
+        if (position != null) {
+            // 区切り位置がある場合：文字列を分割する
+            val head = insertString.substring(0, position)
+            val tail = insertString.substring(position)
+
+            _inputString.update { head }
+            stringInTail.set(tail)
+            Timber.d(
+                "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
             )
-            suggestionAdapter?.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
+            isHenkan.set(true)
+        } else {
+            isHenkan.set(true)
+            suggestionClickNum += 1
+            suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
+            mainView.suggestionRecyclerView.apply {
+                smoothScrollToPosition(
+                    (suggestionClickNum - 1 + 2).coerceAtLeast(0).coerceAtMost(suggestions.size - 1)
+                )
+                suggestionAdapter?.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
+            }
+            setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
+            Timber.d(
+                "handleJapaneseModeSpaceKeyWithBunsetsu called: No split position. Full string to tail: $insertString"
+            )
         }
-        setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
 
     private fun handleJapaneseModeSpaceKeyFloating(
@@ -9609,6 +9681,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteKeyInHenkan(suggestions: List<Candidate>, insertString: String) {
+        suggestionClickNum -= 1
+        mainLayoutBinding?.let { mainView ->
+            mainView.suggestionRecyclerView.apply {
+                smoothScrollToPosition(
+                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
+                        0
+                    )
+                )
+                suggestionAdapter?.updateHighlightPosition(
+                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
+                        0
+                    )
+                )
+            }
+            setConvertLetterInJapaneseFromButton(suggestions, false, mainView, insertString)
+        }
+    }
+
+    private fun handleDeleteKeyInHenkanBunsetsuMode(
+        suggestions: List<Candidate>,
+        insertString: String
+    ) {
         suggestionClickNum -= 1
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
@@ -9970,6 +10064,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleNonHenkan(insertString: String) {
+        Timber.d("handleNonHenkan: $insertString ${stringInTail.get()}")
         englishSpaceKeyPressed.set(false)
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
@@ -10461,6 +10556,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (suggestionClickNum > suggestions.size) suggestionClickNum = 0
         val listIterator = suggestions.listIterator((suggestionClickNum - 1).coerceAtLeast(0))
+        Timber.d("setConvertLetterInJapaneseFromButton ${listIterator.hasPrevious()} ${listIterator.hasNext()} $isSpaceKey")
         when {
             !listIterator.hasPrevious() && isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
@@ -10520,6 +10616,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String) {
+        Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $insertString ${stringInTail.get()}")
         if (stringInTail.get().isNotEmpty()) {
             commitText("$insertString $stringInTail", 1)
             stringInTail.set("")
@@ -10538,6 +10635,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setSpaceKeyActionEnglishAndNumberEmpty(isFlick: Boolean) {
+        Timber.d("setSpaceKeyActionEnglishAndNumberEmpty: $isFlick ${stringInTail.get()}")
         if (stringInTail.get().isNotEmpty()) {
             commitText(" $stringInTail", 1)
             stringInTail.set("")
@@ -10584,6 +10682,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isFirstClickHasStringTail = true
         }
 
+        Timber.d("setSuggestionComposingText: $isFirstClickHasStringTail $suggestionClickNum ${stringInTail.get()}")
+
         val index = (suggestionClickNum - 1).coerceAtLeast(0)
         if (suggestionClickNum <= 0) suggestionClickNum = 1
 
@@ -10591,7 +10691,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val candidateType = nextSuggestion.type.toInt()
         val suggestionText = nextSuggestion.string
         val suggestionLength = nextSuggestion.length.toInt()
-
         if (candidateType == 5 || candidateType == 7 || candidateType == 8) {
             val tail = insertString.substring(suggestionLength)
             if (!isFirstClickHasStringTail) stringInTail.set(tail)
@@ -10600,8 +10699,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val fullText = correctedReading + stringInTail
             applyComposingText(fullText, correctedReading.length)
             return
-        } else {
-            if (!isFirstClickHasStringTail) stringInTail.set("")
         }
         val fullText = suggestionText + stringInTail
         applyComposingText(fullText, suggestionText.length)
