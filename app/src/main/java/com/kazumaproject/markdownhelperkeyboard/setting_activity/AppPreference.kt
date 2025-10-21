@@ -149,6 +149,9 @@ object AppPreference {
     private val ROUND_KEYBOARD_CORNER_PREFERENCE =
         Pair("round_corner_keyboard_preference", false)
 
+    private val BUNSETSU_SEPARATION_PREFERENCE =
+        Pair("conversion_bunsetsu_separation_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -741,6 +744,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(ROUND_KEYBOARD_CORNER_PREFERENCE.first, value)
+        }
+
+    var bunsetsu_separation_preference: Boolean
+        get() = preferences.getBoolean(
+            BUNSETSU_SEPARATION_PREFERENCE.first,
+            BUNSETSU_SEPARATION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(BUNSETSU_SEPARATION_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {

@@ -82,11 +82,15 @@ class FindPath {
     private fun forwardDp(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
-        connectionIds: ShortArray
+        connectionIds: ShortArray,
+        beamWidth: Int = 50 // ★ 枝刈りの幅 (例: 各位置で上位50件だけ残す)
     ) {
-        for (i in 1..length + 1) {
+        for (i in 1..length + 1) { // 1からEOSまで
             val nodes = graph[i]
                 ?: continue
+
+            // ★ 1. (変更なし)
+            //    この位置(i)に来る全ノードの最小コスト(f)を計算
             for (node in nodes) {
                 val nodeScore = node.f
                 var score = Int.MAX_VALUE
@@ -100,6 +104,7 @@ class FindPath {
                         node.r.toInt(),
                         connectionIds
                     )
+                    // `prev.f` は (i - len) 時点で計算済みの最小コスト
                     val tempCost = prev.f + nodeScore + edgeCost
                     if (tempCost < score) {
                         score = tempCost
@@ -107,7 +112,23 @@ class FindPath {
                     }
                 }
                 node.prev = bestPrev
-                node.f = score
+                node.f = score // `node.f` に「BOSからこのノードまでの最小コスト」が確定
+            }
+
+            // ★ 2. (新規追加) 枝刈り処理
+            //    この位置(i)の全ノードのコスト計算が終わった後、
+            //    コストが悪いものを捨てる
+            //    (注: EOS (i = length + 1) は枝刈りしない)
+            if (i <= length && nodes.size > beamWidth) {
+
+                // .f (BOSからの最小コスト) が小さい順にソート
+                nodes.sortBy { it.f }
+
+                // 上位 `beamWidth` 件だけを残す
+                val prunedNodes = nodes.take(beamWidth).toMutableList()
+
+                // graph のリストを、枝刈り後のリストで置き換える
+                graph[i] = prunedNodes
             }
         }
     }
