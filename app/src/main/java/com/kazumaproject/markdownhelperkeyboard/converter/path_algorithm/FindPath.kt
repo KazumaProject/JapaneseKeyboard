@@ -6,6 +6,7 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import timber.log.Timber
 import java.util.PriorityQueue
 
 class FindPath {
@@ -83,14 +84,12 @@ class FindPath {
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray,
-        beamWidth: Int = 50 // ★ 枝刈りの幅 (例: 各位置で上位50件だけ残す)
+        beamWidth: Int = 20
     ) {
-        for (i in 1..length + 1) { // 1からEOSまで
+        for (i in 1..length + 1) {
             val nodes = graph[i]
                 ?: continue
 
-            // ★ 1. (変更なし)
-            //    この位置(i)に来る全ノードの最小コスト(f)を計算
             for (node in nodes) {
                 val nodeScore = node.f
                 var score = Int.MAX_VALUE
@@ -120,7 +119,7 @@ class FindPath {
             //    コストが悪いものを捨てる
             //    (注: EOS (i = length + 1) は枝刈りしない)
             if (i <= length && nodes.size > beamWidth) {
-
+                val originalNodeCount = nodes.size
                 // .f (BOSからの最小コスト) が小さい順にソート
                 nodes.sortBy { it.f }
 
@@ -129,6 +128,7 @@ class FindPath {
 
                 // graph のリストを、枝刈り後のリストで置き換える
                 graph[i] = prunedNodes
+                Timber.d("    - forwardDp 枝刈り @位置$i: $originalNodeCount -> ${prunedNodes.size} ノード")
             }
         }
     }
@@ -189,14 +189,29 @@ class FindPath {
         length: Int,
         connectionIds: ShortArray,
         n: Int
-    ): Pair<List<Candidate>, List<Int>> { // ★★★ 戻り値はPair
+    ): Pair<List<Candidate>, List<Int>> {
+        // --- ▼▼▼ ログ追加 ▼▼▼ ---
+        val totalStartTime = System.currentTimeMillis()
+        Timber.d("▼ backwardAStarWithBunsetsu 開始 (入力長: $length)")
+
+        val forwardDpStartTime = System.currentTimeMillis()
+        // --- ▲▲▲ ログ追加 ▲▲▲ ---
+
         forwardDp(
             graph,
             length,
             connectionIds
         )
+
+        // --- ▼▼▼ ログ追加 ▼▼▼ ---
+        val forwardDpTime = System.currentTimeMillis() - forwardDpStartTime
+        Timber.d("  ├─ forwardDp 処理時間: ${forwardDpTime}ms")
+
+        val backwardAStarStartTime = System.currentTimeMillis()
+        // --- ▲▲▲ ログ追加 ▲▲▲ ---
+
         val resultFinal: MutableList<Candidate> = mutableListOf()
-        var bestBunsetsuPositions: List<Int> = emptyList() // 最適経路の文節位置を保持
+        var bestBunsetsuPositions: List<Int> = emptyList()
         val foundStrings = HashSet<String>()
         val pQueue: PriorityQueue<Pair<Node, Int>> =
             PriorityQueue(
@@ -206,10 +221,20 @@ class FindPath {
                     .thenBy { System.identityHashCode(it.first) }
             )
 
-        val eos = Pair(graph[length + 1]?.get(0) ?: return Pair(emptyList(), emptyList()), 0)
-        pQueue.add(eos)
+        graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
+            ?: return Pair(emptyList(), emptyList())
+
+        // --- ▼▼▼ ログ用変数 ▼▼▼ ---
+        var loopCount = 0
+        var maxQueueSize = 0
+        // --- ▲▲▲ ログ用変数 ▲▲▲ ---
 
         while (pQueue.isNotEmpty()) {
+            // --- ▼▼▼ ログ追加 ▼▼▼ ---
+            loopCount++
+            maxQueueSize = maxOf(maxQueueSize, pQueue.size)
+            // --- ▲▲▲ ログ追加 ▲▲▲ ---
+
             val node: Pair<Node, Int>? = pQueue.poll()
 
             node?.let {
@@ -217,9 +242,7 @@ class FindPath {
                     val stringFromNode = getStringFromNode(node.first)
 
                     if (foundStrings.add(stringFromNode)) {
-                        // 最初の候補（=最適候補）が見つかった時点で文節位置を計算
                         if (resultFinal.isEmpty()) {
-                            // ★★★ 内部メソッドを呼び出す
                             bestBunsetsuPositions = getBunsetsuPositions(node.first)
                         }
 
@@ -252,10 +275,28 @@ class FindPath {
                     }
                 }
                 if (resultFinal.size >= n) {
+                    // --- ▼▼▼ ログ追加 ▼▼▼ ---
+                    val backwardAStarTime = System.currentTimeMillis() - backwardAStarStartTime
+                    val totalTime = System.currentTimeMillis() - totalStartTime
+                    Timber.d("  ├─ 後方A*探索 処理時間: ${backwardAStarTime}ms (早期リターン)")
+                    Timber.d("  │  ├─ ループ回数: $loopCount 回")
+                    Timber.d("  │  └─ pQueue最大サイズ: $maxQueueSize")
+                    Timber.d("▼ backwardAStarWithBunsetsu 完了 (全体: ${totalTime}ms)")
+                    // --- ▲▲▲ ログ追加 ▲▲▲ ---
                     return Pair(resultFinal, bestBunsetsuPositions)
                 }
             }
         }
+
+        // --- ▼▼▼ ログ追加 ▼▼▼ ---
+        val backwardAStarTime = System.currentTimeMillis() - backwardAStarStartTime
+        val totalTime = System.currentTimeMillis() - totalStartTime
+        Timber.d("  ├─ 後方A*探索 処理時間: ${backwardAStarTime}ms")
+        Timber.d("  │  ├─ ループ回数: $loopCount 回")
+        Timber.d("  │  └─ pQueue最大サイズ: $maxQueueSize")
+        Timber.d("▼ backwardAStarWithBunsetsu 完了 (全体: ${totalTime}ms)")
+        // --- ▲▲▲ ログ追加 ▲▲▲ ---
+
         return Pair(resultFinal.sortedBy { it.score }, bestBunsetsuPositions)
     }
 
