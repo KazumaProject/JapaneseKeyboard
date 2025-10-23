@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
@@ -1082,7 +1083,7 @@ class KanaKanjiEngine {
 
         Timber.d("graph size:$graph")
 
-//        val t0 = SystemClock.elapsedRealtimeNanos()
+        val t0 = SystemClock.elapsedRealtimeNanos()
 
         val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
             Pair(
@@ -1100,11 +1101,11 @@ class KanaKanjiEngine {
             findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
         }
 
-//        val tookMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1_000_000.0
-//
-//        Timber.d(
-//            "getCandidatesWithBunsetsuSeparation: $tookMs",
-//        )
+        val tookMs = (SystemClock.elapsedRealtimeNanos() - t0) / 1_000_000.0
+
+        Timber.d(
+            "getCandidatesWithBunsetsuSeparation: $tookMs",
+        )
 
 
         if (input.isDigitsOnly()) {
