@@ -15,10 +15,6 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
 
 class GraphBuilder {
 
-    companion object {
-        const val SCORE_BONUS_PER_OMISSION = 250
-    }
-
     /**
      * グラフにノードを追加または更新する。
      * 同じ終了位置に【同じ単語】かつ【同じ品詞ID(l/r)】のノードが既に存在する場合、

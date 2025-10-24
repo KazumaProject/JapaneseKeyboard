@@ -261,6 +261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isKeyboardRounded: Boolean? = false
     private var bunsetsuSeparation: Boolean? = false
     private var bunsetsuPositionList: List<Int>? = emptyList()
+    private var henkanPressedWithBunsetsuDetect: Boolean = false
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -2077,6 +2078,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         return true
                     }
                     isHenkan.set(false)
+                    henkanPressedWithBunsetsuDetect = false
                 }
                 return super.onKeyUp(keyCode, event)
             }
@@ -2867,6 +2869,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingText("", 0)
             mainView.root.post {
                 isHenkan.set(false)
+                henkanPressedWithBunsetsuDetect = false
                 char?.let {
                     sendCharFlick(
                         charToSend = it, insertString = "", sb = sb
@@ -2898,6 +2901,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingText("", 0)
             floatingKeyboardLayoutBinding.root.post {
                 isHenkan.set(false)
+                henkanPressedWithBunsetsuDetect = false
                 char?.let {
                     sendCharFlick(
                         charToSend = it, insertString = "", sb = sb
@@ -2926,6 +2930,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingText("", 0)
             mainView.root.post {
                 isHenkan.set(false)
+                henkanPressedWithBunsetsuDetect = false
                 char?.let {
                     sendCharTap(
                         charToSend = it, insertString = "", sb = sb
@@ -2953,6 +2958,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingText("", 0)
             floatingKeyboardLayoutBinding.root.post {
                 isHenkan.set(false)
+                henkanPressedWithBunsetsuDetect = false
                 char?.let {
                     sendCharTap(
                         charToSend = it, insertString = "", sb = sb
@@ -5362,6 +5368,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
 
         val spannableString = if (insertString.length == selectedSuggestion?.length?.toInt()) {
             SpannableString(insertString + stringInTail)
@@ -5939,7 +5946,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     listAdapter.updateHighlightPosition(-1)
                     currentHighlightIndex = -1
                     isHenkan.set(false)
-
+                    henkanPressedWithBunsetsuDetect = false
                 } else {
                     mainView.root.alpha = 1f
                     requestCursorUpdates(0)
@@ -8305,6 +8312,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
         isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
         isContinuousTapInputEnabled.set(false)
         leftCursorKeyLongKeyPressed.set(false)
         rightCursorKeyLongKeyPressed.set(false)
@@ -8336,6 +8344,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentKatakanaKeyIndex = 0
         currentDakutenKeyIndex = 0
         bunsetsuPositionList = emptyList()
+        henkanPressedWithBunsetsuDetect = false
     }
 
     private fun actionInDestroy() {
@@ -8352,6 +8361,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetFlagsSuggestionClick() {
         isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
         englishSpaceKeyPressed.set(false)
         onDeleteLongPressUp.set(false)
@@ -8366,6 +8376,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetFlagsEnterKey() {
         isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
         englishSpaceKeyPressed.set(false)
         onDeleteLongPressUp.set(false)
@@ -8379,6 +8390,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetFlagsEnterKeyNotHenkan() {
         isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
         suggestionClickNum = 0
         englishSpaceKeyPressed.set(false)
         onDeleteLongPressUp.set(false)
@@ -8406,6 +8418,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         englishSpaceKeyPressed.set(false)
         onDeleteLongPressUp.set(false)
         isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
@@ -8485,7 +8498,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setEnterKeyAction(
         suggestions: List<Candidate>, currentInputMode: InputMode, insertString: String
     ) {
-        Timber.d("setEnterKeyAction: $insertString $bunsetsuPositionList")
+        Timber.d("setEnterKeyAction: $insertString $bunsetsuPositionList $henkanPressedWithBunsetsuDetect")
         val index = (suggestionClickNum - 1).coerceAtLeast(0)
         val nextSuggestion = suggestions[index]
         processCandidate(
@@ -8848,6 +8861,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
     }
 
@@ -8882,6 +8899,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
     }
 
@@ -8913,6 +8934,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
             }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
@@ -8993,19 +9018,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = kanaKanjiEngine.getCandidatesOriginal(
-            input = insertString,
-            n = nBest ?: 4,
-            mozcUtPersonName = mozcUTPersonName,
-            mozcUTPlaces = mozcUTPlaces,
-            mozcUTWiki = mozcUTWiki,
-            mozcUTNeologd = mozcUTNeologd,
-            mozcUTWeb = mozcUTWeb,
-            userDictionaryRepository = userDictionaryRepository,
-            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            ngWords = ngWords,
-            isOmissionSearchEnable = isOmissionSearchEnable ?: false
-        )
+        val engineCandidates = if (bunsetsuSeparation == true) {
+            val result = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false
+            )
+            bunsetsuPositionList = result.second
+            return result.first
+        } else {
+            kanaKanjiEngine.getCandidatesOriginal(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false
+            )
+        }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
@@ -9142,18 +9185,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = kanaKanjiEngine.getCandidatesWithoutPrediction(
-            input = insertString,
-            n = nBest ?: 4,
-            mozcUtPersonName = mozcUTPersonName,
-            mozcUTPlaces = mozcUTPlaces,
-            mozcUTWiki = mozcUTWiki,
-            mozcUTNeologd = mozcUTNeologd,
-            mozcUTWeb = mozcUTWeb,
-            userDictionaryRepository = userDictionaryRepository,
-            learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            ngWords = ngWords
-        )
+        val engineCandidates = if (bunsetsuSeparation == true) {
+            val resultWithBunsetsu = kanaKanjiEngine.getCandidatesWithoutPredictionWithBunsetsu(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords
+            )
+            bunsetsuPositionList = resultWithBunsetsu.second
+            return resultWithBunsetsu.first
+        } else {
+            kanaKanjiEngine.getCandidatesWithoutPrediction(
+                input = insertString,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                ngWords = ngWords
+            )
+        }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
@@ -9545,8 +9605,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
 
-    private var isSeparationWithBunsetsu = false
-
     private fun handleJapaneseModeSpaceKeyWithBunsetsu(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
     ) {
@@ -9563,6 +9621,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
             )
             isHenkan.set(true)
+            henkanPressedWithBunsetsuDetect = true
         } else {
             isHenkan.set(true)
             suggestionClickNum += 1
@@ -9738,6 +9797,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             setEnterKeyPress()
             isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
@@ -9753,6 +9813,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             setEnterKeyPress()
             isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
@@ -10539,6 +10600,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 key.toString()
             }
             isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
             suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
         } else {
@@ -10629,6 +10691,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isHenkan.get()) {
             suggestionAdapter?.suggestions = emptyList()
             isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(-1)
         }
@@ -10670,6 +10733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isHenkan.get()) {
             suggestionAdapter?.suggestions = emptyList()
             isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(-1)
         }
