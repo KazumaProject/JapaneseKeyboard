@@ -259,17 +259,7 @@ class FindPath {
         graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
             ?: return Pair(emptyList(), emptyList())
 
-        // --- ▼▼▼ ログ用変数 ▼▼▼ ---
-        var loopCount = 0
-        var maxQueueSize = 0
-        // --- ▲▲▲ ログ用変数 ▲▲▲ ---
-
         while (pQueue.isNotEmpty()) {
-            // --- ▼▼▼ ログ追加 ▼▼▼ ---
-            loopCount++
-            maxQueueSize = maxOf(maxQueueSize, pQueue.size)
-            // --- ▲▲▲ ログ追加 ▲▲▲ ---
-
             val node: Pair<Node, Int>? = pQueue.poll()
 
             node?.let {
