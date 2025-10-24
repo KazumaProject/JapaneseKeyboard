@@ -10,7 +10,6 @@ import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
-import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
@@ -595,9 +594,9 @@ class LOUDSWithTermId {
     fun commonPrefixSearchWithOmission(
         str: String,
         succinctBitVector: SuccinctBitVector
-    ): List<OmissionSearchResult> {
-        val results = mutableSetOf<OmissionSearchResult>()
-        searchRecursiveWithOmission(str, 0, 0, "", 0, results, succinctBitVector)
+    ): List<String> {
+        val results = mutableSetOf<String>()
+        searchRecursiveWithOmission(str, 0, 0, "", results, succinctBitVector)
         return results.toList()
     }
 
@@ -611,12 +610,11 @@ class LOUDSWithTermId {
         strIndex: Int,
         currentNodeIndex: Int,
         currentYomi: String,
-        omissionCount: Int, // BooleanからIntに変更
-        results: MutableSet<OmissionSearchResult>,
+        results: MutableSet<String>,
         succinctBitVector: SuccinctBitVector
     ) {
         if (isLeaf[currentNodeIndex]) {
-            results.add(OmissionSearchResult(currentYomi, omissionCount))
+            results.add(currentYomi)
         }
 
         if (strIndex >= originalStr.length) {
@@ -632,18 +630,11 @@ class LOUDSWithTermId {
                 val labelNodeId = succinctBitVector.rank1(childPos)
                 if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
 
-                    val newOmissionCount = if (variant != charToMatch) {
-                        omissionCount + 1
-                    } else {
-                        omissionCount
-                    }
-
                     searchRecursiveWithOmission(
                         originalStr,
                         strIndex + 1,
                         childPos,
                         currentYomi + variant,
-                        newOmissionCount,
                         results,
                         succinctBitVector
                     )
@@ -691,7 +682,7 @@ class LOUDSWithTermId {
             'う' -> listOf('う', 'ぅ')
             'え' -> listOf('え', 'ぇ')
             'お' -> listOf('お', 'ぉ')
-            else -> listOf(char) // 上記以外はそのまま
+            else -> listOf(char)
         }
     }
 

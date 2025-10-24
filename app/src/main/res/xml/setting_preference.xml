@@ -65,6 +65,12 @@
                 app:showSeekBarValue="true" />
 
             <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="conversion_bunsetsu_separation_preference"
+                android:title="@string/conversion_separation_title"
+                app:summary="@string/conversion_separation_summary" />
+
+            <SwitchPreferenceCompat
                 android:key="shortcut_toolbar_visibility_preference"
                 android:title="@string/shortcut_toolbar_title"
                 app:defaultValue="false"
