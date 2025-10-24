@@ -114,6 +114,56 @@ class FindPath {
                 node.f = score // `node.f` に「BOSからこのノードまでの最小コスト」が確定
             }
 
+            // ★ 2. 枝刈り処理
+            //    この位置(i)の全ノードのコスト計算が終わった後、
+            //    コストが悪いものを捨てる
+            //    (注: EOS (i = length + 1) は枝刈りしない)
+            if (i <= length && nodes.size > beamWidth) {
+                nodes.sortBy { it.f }
+
+                // 上位 `beamWidth` 件だけを残す
+                val prunedNodes = nodes.take(beamWidth).toMutableList()
+
+                // graph のリストを、枝刈り後のリストで置き換える
+                graph[i] = prunedNodes
+            }
+        }
+    }
+
+    private fun forwardDpWithLog(
+        graph: MutableMap<Int, MutableList<Node>>,
+        length: Int,
+        connectionIds: ShortArray,
+        beamWidth: Int = 20
+    ) {
+        for (i in 1..length + 1) {
+            val nodes = graph[i]
+                ?: continue
+
+            for (node in nodes) {
+                val nodeScore = node.f
+                var score = Int.MAX_VALUE
+                var bestPrev: Node? = null
+                val prevNodes =
+                    getPrevNodes(graph, node, i)
+
+                for (prev in prevNodes) {
+                    val edgeCost = getEdgeCost(
+                        prev.l.toInt(),
+                        node.r.toInt(),
+                        connectionIds
+                    )
+                    // `prev.f` は (i - len) 時点で計算済みの最小コスト
+                    val tempCost = prev.f + nodeScore + edgeCost
+                    if (tempCost < score) {
+                        score = tempCost
+                        bestPrev = prev
+                    }
+                }
+                node.prev = bestPrev
+                node.f = score // `node.f` に「BOSからこのノードまでの最小コスト」が確定
+            }
+
             // ★ 2. (新規追加) 枝刈り処理
             //    この位置(i)の全ノードのコスト計算が終わった後、
             //    コストが悪いものを捨てる
@@ -185,6 +235,89 @@ class FindPath {
      * @return 候補リストと、最適候補の文節区切り位置リストのPair。
      */
     fun backwardAStarWithBunsetsu(
+        graph: MutableMap<Int, MutableList<Node>>,
+        length: Int,
+        connectionIds: ShortArray,
+        n: Int
+    ): Pair<List<Candidate>, List<Int>> {
+        forwardDp(
+            graph,
+            length,
+            connectionIds
+        )
+        val resultFinal: MutableList<Candidate> = mutableListOf()
+        var bestBunsetsuPositions: List<Int> = emptyList()
+        val foundStrings = HashSet<String>()
+        val pQueue: PriorityQueue<Pair<Node, Int>> =
+            PriorityQueue(
+                compareBy<Pair<Node, Int>> { it.second }
+                    .thenBy { it.first.sPos }
+                    .thenBy { it.first.len }
+                    .thenBy { System.identityHashCode(it.first) }
+            )
+
+        graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
+            ?: return Pair(emptyList(), emptyList())
+
+        // --- ▼▼▼ ログ用変数 ▼▼▼ ---
+        var loopCount = 0
+        var maxQueueSize = 0
+        // --- ▲▲▲ ログ用変数 ▲▲▲ ---
+
+        while (pQueue.isNotEmpty()) {
+            // --- ▼▼▼ ログ追加 ▼▼▼ ---
+            loopCount++
+            maxQueueSize = maxOf(maxQueueSize, pQueue.size)
+            // --- ▲▲▲ ログ追加 ▲▲▲ ---
+
+            val node: Pair<Node, Int>? = pQueue.poll()
+
+            node?.let {
+                if (node.first.tango == "BOS") {
+                    val stringFromNode = getStringFromNode(node.first)
+
+                    if (foundStrings.add(stringFromNode)) {
+                        if (resultFinal.isEmpty()) {
+                            bestBunsetsuPositions = getBunsetsuPositions(node.first)
+                        }
+
+                        val candidate = Candidate(
+                            string = stringFromNode,
+                            type = when {
+                                stringFromNode.isAllFullWidthNumericSymbol() -> (30).toByte()
+                                stringFromNode.isAllHalfWidthNumericSymbol() -> (31).toByte()
+                                else -> (1).toByte()
+                            },
+                            length = length.toUByte(),
+                            score = if (stringFromNode.any { it.isDigit() }) node.second + 2000 else node.second,
+                            leftId = node.first.next?.l,
+                            rightId = node.first.next?.r
+                        )
+                        resultFinal.add(candidate)
+                    }
+                } else {
+                    val prevNodes = getPrevNodes2(graph, node.first, node.first.sPos).flatten()
+                    for (prevNode in prevNodes) {
+                        val edgeScore = getEdgeCost(
+                            prevNode.l.toInt(),
+                            node.first.r.toInt(),
+                            connectionIds
+                        )
+                        prevNode.g = node.first.g + edgeScore + node.first.score
+                        prevNode.next = node.first
+                        val result2 = Pair(prevNode, prevNode.g + prevNode.f)
+                        pQueue.add(result2)
+                    }
+                }
+                if (resultFinal.size >= n) {
+                    return Pair(resultFinal, bestBunsetsuPositions)
+                }
+            }
+        }
+        return Pair(resultFinal.sortedBy { it.score }, bestBunsetsuPositions)
+    }
+
+    fun backwardAStarWithBunsetsuWithLog(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray,
