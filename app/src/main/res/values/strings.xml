@@ -319,4 +319,6 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="keyboard_size_landscape_title">Keyboard Size（Landscape）</string>
     <string name="candidate_height_landscape_preference_title">Candidate Height(Landscape)</string>
+    <string name="conversion_separation_title">Split with Convert key</string>
+    <string name="conversion_separation_summary">Split the composing text into segments and select the first one.</string>
 </resources>
