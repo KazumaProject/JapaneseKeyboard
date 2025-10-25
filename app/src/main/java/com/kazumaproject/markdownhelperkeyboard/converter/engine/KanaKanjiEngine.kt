@@ -563,7 +563,6 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>,
         isOmissionSearchEnable: Boolean
     ): List<Candidate> {
 
@@ -578,7 +577,6 @@ class KanaKanjiEngine {
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
-            ngWords = ngWords,
             wikiYomiTrie = wikiYomiTrie,
             wikiTangoTrie = wikiTangoTrie,
             wikiTokenArray = wikiTokenArray,
@@ -1031,7 +1029,6 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>,
         isOmissionSearchEnable: Boolean
     ): Pair<List<Candidate>, List<Int>> {
 
@@ -1046,7 +1043,6 @@ class KanaKanjiEngine {
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
-            ngWords = ngWords,
             wikiYomiTrie = wikiYomiTrie,
             wikiTangoTrie = wikiTangoTrie,
             wikiTokenArray = wikiTokenArray,
@@ -1505,7 +1501,6 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>,
         isOmissionSearchEnable: Boolean
     ): Pair<List<Candidate>, List<Int>> {
 
@@ -1520,7 +1515,6 @@ class KanaKanjiEngine {
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
-            ngWords = ngWords,
             wikiYomiTrie = wikiYomiTrie,
             wikiTangoTrie = wikiTangoTrie,
             wikiTokenArray = wikiTokenArray,
@@ -1939,7 +1933,6 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>,
         isOmissionSearchEnable: Boolean
     ): List<Candidate> {
 
@@ -1954,7 +1947,6 @@ class KanaKanjiEngine {
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
-            ngWords = ngWords,
             wikiYomiTrie = wikiYomiTrie,
             wikiTangoTrie = wikiTangoTrie,
             wikiTokenArray = wikiTokenArray,
@@ -2365,7 +2357,6 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2379,7 +2370,6 @@ class KanaKanjiEngine {
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
-            ngWords = ngWords,
             wikiYomiTrie = wikiYomiTrie,
             wikiTangoTrie = wikiTangoTrie,
             wikiTokenArray = wikiTokenArray,
@@ -2788,7 +2778,6 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>
     ): Pair<List<Candidate>, List<Int>> {
 
         val graph = graphBuilder.constructGraph(
@@ -2802,7 +2791,6 @@ class KanaKanjiEngine {
             succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
             userDictionaryRepository = userDictionaryRepository,
             learnRepository = learnRepository,
-            ngWords = ngWords,
             wikiYomiTrie = wikiYomiTrie,
             wikiTangoTrie = wikiTangoTrie,
             wikiTokenArray = wikiTokenArray,
