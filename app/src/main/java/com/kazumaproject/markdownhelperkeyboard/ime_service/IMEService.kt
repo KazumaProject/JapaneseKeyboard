@@ -8834,6 +8834,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
     ) {
         val candidates = getSuggestionList(insertString)
+        Timber.d("setCandidates: ${candidates.map { it.string }}")
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -9029,11 +9030,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
             bunsetsuPositionList = result.second
-            return result.first
+            result.first
         } else {
             kanaKanjiEngine.getCandidatesOriginal(
                 input = insertString,
@@ -9045,7 +9045,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
@@ -9112,12 +9111,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
             bunsetsuPositionList = candidates.second
-            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()}")
-            return candidates.first.distinctBy { it.string }
+            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords")
+            candidates.first
         } else {
             kanaKanjiEngine.getCandidates(
                 input = insertString,
@@ -9129,7 +9127,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
@@ -9196,10 +9193,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords
             )
             bunsetsuPositionList = resultWithBunsetsu.second
-            return resultWithBunsetsu.first
+            resultWithBunsetsu.first
         } else {
             kanaKanjiEngine.getCandidatesWithoutPrediction(
                 input = insertString,
@@ -9211,7 +9207,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords
             )
         }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates

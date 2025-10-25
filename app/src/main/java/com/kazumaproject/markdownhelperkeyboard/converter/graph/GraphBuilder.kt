@@ -61,7 +61,6 @@ class GraphBuilder {
         succinctBitVectorTangoLBS: SuccinctBitVector,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        ngWords: List<String>,
         wikiYomiTrie: LOUDSWithTermId?,
         wikiTangoTrie: LOUDS?,
         wikiTokenArray: TokenArray?,
@@ -173,19 +172,17 @@ class GraphBuilder {
                                 succinctBitVector = succinctBitVectorTangoLBS
                             )
                         }
-                        if (ngWords.none { ng -> ng == tango }) {
-                            val node = Node(
-                                l = tokenArray.leftIds[token.posTableIndex.toInt()],
-                                r = tokenArray.rightIds[token.posTableIndex.toInt()],
-                                score = token.wordCost.toInt(),
-                                f = token.wordCost.toInt(),
-                                g = token.wordCost.toInt(),
-                                tango = tango,
-                                len = yomiStr.length.toShort(),
-                                sPos = i
-                            )
-                            addOrUpdateNode(graph, endIndex, node)
-                        }
+                        val node = Node(
+                            l = tokenArray.leftIds[token.posTableIndex.toInt()],
+                            r = tokenArray.rightIds[token.posTableIndex.toInt()],
+                            score = token.wordCost.toInt(),
+                            f = token.wordCost.toInt(),
+                            g = token.wordCost.toInt(),
+                            tango = tango,
+                            len = yomiStr.length.toShort(),
+                            sPos = i
+                        )
+                        addOrUpdateNode(graph, endIndex, node)
                     }
                 }
             }
@@ -215,19 +212,17 @@ class GraphBuilder {
                                     succinctBitVector = succinctBitVectorTangoLBS
                                 )
                             }
-                            if (ngWords.none { ng -> ng == tango }) {
-                                val node = Node(
-                                    l = tokenArray.leftIds[token.posTableIndex.toInt()],
-                                    r = tokenArray.rightIds[token.posTableIndex.toInt()],
-                                    score = token.wordCost.toInt(), // SCORE_BONUS_PER_OMISSION を追加しても良い
-                                    f = token.wordCost.toInt(),
-                                    g = token.wordCost.toInt(),
-                                    tango = tango,
-                                    len = omissionResult.length.toShort(),
-                                    sPos = i
-                                )
-                                addOrUpdateNode(graph, endIndex, node)
-                            }
+                            val node = Node(
+                                l = tokenArray.leftIds[token.posTableIndex.toInt()],
+                                r = tokenArray.rightIds[token.posTableIndex.toInt()],
+                                score = token.wordCost.toInt(), // SCORE_BONUS_PER_OMISSION を追加しても良い
+                                f = token.wordCost.toInt(),
+                                g = token.wordCost.toInt(),
+                                tango = tango,
+                                len = omissionResult.length.toShort(),
+                                sPos = i
+                            )
+                            addOrUpdateNode(graph, endIndex, node)
                         }
                     }
                 }
@@ -262,19 +257,17 @@ class GraphBuilder {
                                     succinctBitVector = succinctBitVectorWikiTangoLBS
                                 )
                             }
-                            if (ngWords.none { ng -> ng == tango }) {
-                                val node = Node(
-                                    l = wikiTokenArray.leftIds[token.posTableIndex.toInt()],
-                                    r = wikiTokenArray.rightIds[token.posTableIndex.toInt()],
-                                    score = token.wordCost.toInt(),
-                                    f = token.wordCost.toInt(),
-                                    g = token.wordCost.toInt(),
-                                    tango = tango,
-                                    len = yomiStr.length.toShort(),
-                                    sPos = i
-                                )
-                                addOrUpdateNode(graph, endIndex, node)
-                            }
+                            val node = Node(
+                                l = wikiTokenArray.leftIds[token.posTableIndex.toInt()],
+                                r = wikiTokenArray.rightIds[token.posTableIndex.toInt()],
+                                score = token.wordCost.toInt(),
+                                f = token.wordCost.toInt(),
+                                g = token.wordCost.toInt(),
+                                tango = tango,
+                                len = yomiStr.length.toShort(),
+                                sPos = i
+                            )
+                            addOrUpdateNode(graph, endIndex, node)
                         }
                     }
                 }
@@ -309,19 +302,17 @@ class GraphBuilder {
                                     succinctBitVector = succinctBitVectorwebTangoLBS
                                 )
                             }
-                            if (ngWords.none { ng -> ng == tango }) {
-                                val node = Node(
-                                    l = webTokenArray.leftIds[token.posTableIndex.toInt()],
-                                    r = webTokenArray.rightIds[token.posTableIndex.toInt()],
-                                    score = token.wordCost.toInt(),
-                                    f = token.wordCost.toInt(),
-                                    g = token.wordCost.toInt(),
-                                    tango = tango,
-                                    len = yomiStr.length.toShort(),
-                                    sPos = i
-                                )
-                                addOrUpdateNode(graph, endIndex, node)
-                            }
+                            val node = Node(
+                                l = webTokenArray.leftIds[token.posTableIndex.toInt()],
+                                r = webTokenArray.rightIds[token.posTableIndex.toInt()],
+                                score = token.wordCost.toInt(),
+                                f = token.wordCost.toInt(),
+                                g = token.wordCost.toInt(),
+                                tango = tango,
+                                len = yomiStr.length.toShort(),
+                                sPos = i
+                            )
+                            addOrUpdateNode(graph, endIndex, node)
                         }
                     }
                 }
@@ -357,19 +348,17 @@ class GraphBuilder {
                                     succinctBitVector = succinctBitVectorpersonTangoLBS
                                 )
                             }
-                            if (ngWords.none { ng -> ng == tango }) {
-                                val node = Node(
-                                    l = personTokenArray.leftIds[token.posTableIndex.toInt()],
-                                    r = personTokenArray.rightIds[token.posTableIndex.toInt()],
-                                    score = token.wordCost.toInt(),
-                                    f = token.wordCost.toInt(),
-                                    g = token.wordCost.toInt(),
-                                    tango = tango,
-                                    len = yomiStr.length.toShort(),
-                                    sPos = i
-                                )
-                                addOrUpdateNode(graph, endIndex, node)
-                            }
+                            val node = Node(
+                                l = personTokenArray.leftIds[token.posTableIndex.toInt()],
+                                r = personTokenArray.rightIds[token.posTableIndex.toInt()],
+                                score = token.wordCost.toInt(),
+                                f = token.wordCost.toInt(),
+                                g = token.wordCost.toInt(),
+                                tango = tango,
+                                len = yomiStr.length.toShort(),
+                                sPos = i
+                            )
+                            addOrUpdateNode(graph, endIndex, node)
                         }
                     }
                 }
@@ -405,19 +394,17 @@ class GraphBuilder {
                                     succinctBitVector = succinctBitVectorneologdTangoLBS
                                 )
                             }
-                            if (ngWords.none { ng -> ng == tango }) {
-                                val node = Node(
-                                    l = neologdTokenArray.leftIds[token.posTableIndex.toInt()],
-                                    r = neologdTokenArray.rightIds[token.posTableIndex.toInt()],
-                                    score = token.wordCost.toInt(),
-                                    f = token.wordCost.toInt(),
-                                    g = token.wordCost.toInt(),
-                                    tango = tango,
-                                    len = yomiStr.length.toShort(),
-                                    sPos = i
-                                )
-                                addOrUpdateNode(graph, endIndex, node)
-                            }
+                            val node = Node(
+                                l = neologdTokenArray.leftIds[token.posTableIndex.toInt()],
+                                r = neologdTokenArray.rightIds[token.posTableIndex.toInt()],
+                                score = token.wordCost.toInt(),
+                                f = token.wordCost.toInt(),
+                                g = token.wordCost.toInt(),
+                                tango = tango,
+                                len = yomiStr.length.toShort(),
+                                sPos = i
+                            )
+                            addOrUpdateNode(graph, endIndex, node)
                         }
                     }
                 }
