@@ -1439,10 +1439,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
 
-        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
+        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd ${inputString.value} ${stringInTail.get()}")
 
         // Skip if composing text is active
-        if (candidatesStart != -1 || candidatesEnd != -1) return
+        if (candidatesStart != -1 || candidatesEnd != -1) {
+            return
+        }
 
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
@@ -1479,6 +1481,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
         val caretTop = newSelStart == 0 && newSelEnd == 0
+
+        Timber.d("onUpdateSelection tail: $tail $caretTop")
 
         when {
             // Caret at top and tail exists → clear everything
