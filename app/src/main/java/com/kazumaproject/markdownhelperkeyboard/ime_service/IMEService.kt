@@ -8172,7 +8172,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 input = learnMultiple.getInput(),
                 output = learnMultiple.getInputAndStringBuilder().second,
                 candidate = candidate,
-                insertString = insertString
+                insertString = insertString,
+                position = position
             )
         }
         if (stringInTail.get().isNullOrEmpty()) {
@@ -8243,7 +8244,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode && bunsetsuSeparation != true) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
@@ -8270,20 +8271,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         output: String,
         candidate: Candidate,
-        insertString: String
+        insertString: String,
+        position: Int
     ) {
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode && bunsetsuSeparation != true) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode && position != 0) {
             ioScope.launch {
                 try {
-                    learnRepository.upsertLearnedData(
-                        LearnEntity(
-                            input = input,
-                            out = output,
-                            score = ((candidate.score - 800 * input.length).coerceAtLeast(0)).toShort(),
-                            leftId = candidate.leftId,
-                            rightId = candidate.rightId
-                        )
-                    )
                     learnRepository.upsertLearnedData(
                         LearnEntity(
                             input = insertString,
@@ -8834,7 +8827,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
     ) {
         val candidates = getSuggestionList(insertString)
-        Timber.d("setCandidates: ${candidates.map { it.string }}")
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -9605,7 +9597,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         val position = bunsetsuPositionList?.firstOrNull()
 
-        if (position != null) {
+        if (position != null && stringInTail.get().isEmpty()) {
             // 区切り位置がある場合：文字列を分割する
             val head = insertString.substring(0, position)
             val tail = insertString.substring(position)
@@ -9735,28 +9727,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteKeyInHenkan(suggestions: List<Candidate>, insertString: String) {
-        suggestionClickNum -= 1
-        mainLayoutBinding?.let { mainView ->
-            mainView.suggestionRecyclerView.apply {
-                smoothScrollToPosition(
-                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
-                        0
-                    )
-                )
-                suggestionAdapter?.updateHighlightPosition(
-                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
-                        0
-                    )
-                )
-            }
-            setConvertLetterInJapaneseFromButton(suggestions, false, mainView, insertString)
-        }
-    }
-
-    private fun handleDeleteKeyInHenkanBunsetsuMode(
-        suggestions: List<Candidate>,
-        insertString: String
-    ) {
         suggestionClickNum -= 1
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
