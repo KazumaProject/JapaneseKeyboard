@@ -1439,10 +1439,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
 
-        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd")
+        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd ${inputString.value} ${stringInTail.get()}")
 
         // Skip if composing text is active
-        if (candidatesStart != -1 || candidatesEnd != -1) return
+        if (candidatesStart != -1 || candidatesEnd != -1) {
+            return
+        }
 
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
@@ -1479,6 +1481,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
         val caretTop = newSelStart == 0 && newSelEnd == 0
+
+        Timber.d("onUpdateSelection tail: $tail $caretTop")
 
         when {
             // Caret at top and tail exists → clear everything
@@ -8172,7 +8176,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 input = learnMultiple.getInput(),
                 output = learnMultiple.getInputAndStringBuilder().second,
                 candidate = candidate,
-                insertString = insertString
+                insertString = insertString,
+                position = position
             )
         }
         if (stringInTail.get().isNullOrEmpty()) {
@@ -8243,7 +8248,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode && bunsetsuSeparation != true) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
@@ -8270,20 +8275,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         output: String,
         candidate: Candidate,
-        insertString: String
+        insertString: String,
+        position: Int
     ) {
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode && bunsetsuSeparation != true) {
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode && position != 0) {
             ioScope.launch {
                 try {
-                    learnRepository.upsertLearnedData(
-                        LearnEntity(
-                            input = input,
-                            out = output,
-                            score = ((candidate.score - 800 * input.length).coerceAtLeast(0)).toShort(),
-                            leftId = candidate.leftId,
-                            rightId = candidate.rightId
-                        )
-                    )
                     learnRepository.upsertLearnedData(
                         LearnEntity(
                             input = insertString,
@@ -9029,11 +9026,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
             bunsetsuPositionList = result.second
-            return result.first
+            result.first
         } else {
             kanaKanjiEngine.getCandidatesOriginal(
                 input = insertString,
@@ -9045,7 +9041,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
@@ -9112,12 +9107,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
             bunsetsuPositionList = candidates.second
-            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()}")
-            return candidates.first.distinctBy { it.string }
+            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords")
+            candidates.first
         } else {
             kanaKanjiEngine.getCandidates(
                 input = insertString,
@@ -9129,7 +9123,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
@@ -9196,10 +9189,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords
             )
             bunsetsuPositionList = resultWithBunsetsu.second
-            return resultWithBunsetsu.first
+            resultWithBunsetsu.first
         } else {
             kanaKanjiEngine.getCandidatesWithoutPrediction(
                 input = insertString,
@@ -9211,7 +9203,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mozcUTWeb = mozcUTWeb,
                 userDictionaryRepository = userDictionaryRepository,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                ngWords = ngWords
             )
         }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
@@ -9610,7 +9601,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         val position = bunsetsuPositionList?.firstOrNull()
 
-        if (position != null) {
+        if (position != null && stringInTail.get().isEmpty()) {
             // 区切り位置がある場合：文字列を分割する
             val head = insertString.substring(0, position)
             val tail = insertString.substring(position)
@@ -9740,28 +9731,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteKeyInHenkan(suggestions: List<Candidate>, insertString: String) {
-        suggestionClickNum -= 1
-        mainLayoutBinding?.let { mainView ->
-            mainView.suggestionRecyclerView.apply {
-                smoothScrollToPosition(
-                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
-                        0
-                    )
-                )
-                suggestionAdapter?.updateHighlightPosition(
-                    if (suggestionClickNum == 1) 1 else (suggestionClickNum - 1).coerceAtLeast(
-                        0
-                    )
-                )
-            }
-            setConvertLetterInJapaneseFromButton(suggestions, false, mainView, insertString)
-        }
-    }
-
-    private fun handleDeleteKeyInHenkanBunsetsuMode(
-        suggestions: List<Candidate>,
-        insertString: String
-    ) {
         suggestionClickNum -= 1
         mainLayoutBinding?.let { mainView ->
             mainView.suggestionRecyclerView.apply {
