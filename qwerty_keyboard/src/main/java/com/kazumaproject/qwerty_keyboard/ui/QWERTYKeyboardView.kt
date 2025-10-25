@@ -790,11 +790,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     keyS.text = "/"
                                     keyD.text = ";"
                                     keyF.text = "|"
-                                    keyH.text = "|"
+                                    keyH.text = ">"
                                     keyJ.text = "\""
                                     keyK.text = "\'"
-                                    keyAtMark.text = "￥"
+                                    keyAtMark.text = "$"
                                     keyL.text = "€"
+                                    keyZ.text = "。"
+                                    keyX.text = "、"
                                 }
 
                                 else -> {
@@ -1052,11 +1054,30 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                 QWERTYMode.Default -> key123.text =
                                     resources.getString(com.kazumaproject.core.R.string.string_123)
 
-                                QWERTYMode.Number -> key123.text =
-                                    resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
+                                QWERTYMode.Number -> {
+                                    key123.text =
+                                        resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
+                                    keyF.text = ";"
+                                    keyJ.text = "￥"
+                                    keyK.text = "&"
+                                    keyL.text = "\""
+                                    keyZ.text = "."
+                                    keyX.text = ","
+                                }
 
-                                QWERTYMode.Symbol -> key123.text =
-                                    resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
+                                QWERTYMode.Symbol -> {
+                                    key123.text =
+                                        resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
+                                    keyD.text = "\\"
+                                    keyF.text = "~"
+                                    keyH.text = ">"
+                                    keyJ.text = "$"
+                                    keyH.text = ">"
+                                    keyK.text = "€"
+                                    keyL.text = "・"
+                                    keyZ.text = "."
+                                    keyX.text = ","
+                                }
                             }
                             keyKuten.text = "."
                             keyTouten.text = ","
