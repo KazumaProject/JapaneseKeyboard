@@ -262,6 +262,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuSeparation: Boolean? = false
     private var bunsetsuPositionList: List<Int>? = emptyList()
     private var henkanPressedWithBunsetsuDetect: Boolean = false
+    private var conversionKeySwipePreference: Boolean? = false
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -715,6 +716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isKeyboardFloatingMode = is_floating_mode ?: false
             isKeyboardRounded = keyboard_corner_round_preference
             bunsetsuSeparation = bunsetsu_separation_preference
+            conversionKeySwipePreference = conversion_key_swipe_cursor_move_preference
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
@@ -1151,6 +1153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isKeyboardFloatingMode = null
         isKeyboardRounded = null
         bunsetsuSeparation = null
+        conversionKeySwipePreference = null
         bunsetsuPositionList = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -3347,6 +3350,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
+            if (conversionKeySwipePreference == true) {
+                _cursorMoveMode.update { true }
+                isSpaceKeyLongPressed = true
+            } else {
+                mainLayoutBinding?.let {
+                    if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                        if (isHenkan.get()) return
+                        isSpaceKeyLongPressed = true
+                        if (hasConvertedKatakana) {
+                            if (isLiveConversionEnable == true) {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString.hiraganaToKatakana(),
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            } else {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString,
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            }
+                        } else {
+                            if (isLiveConversionEnable == true) {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString,
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            } else {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString.hiraganaToKatakana(),
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            }
+                        }
+                        hasConvertedKatakana = !hasConvertedKatakana
+                    }
+                }
+            }
+        } else {
+            _cursorMoveMode.update { true }
+            isSpaceKeyLongPressed = true
+        }
+        Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+    }
+
+    private fun handleSpaceLongActionSumire() {
+        Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+        val insertString = inputString.value
+        if (insertString.isNotEmpty()) {
             mainLayoutBinding?.let {
                 if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                     if (isHenkan.get()) return
@@ -4101,7 +4168,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Convert, KeyAction.Space -> {
-                        handleSpaceLongAction()
+                        handleSpaceLongActionSumire()
                     }
 
                     KeyAction.Copy -> {
@@ -4276,7 +4343,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
-                        handleSpaceLongAction()
+                        handleSpaceLongActionSumire()
                     }
 
                     KeyAction.Copy -> {
@@ -7952,9 +8019,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySpace -> {
-                            if (inputString.value.isEmpty()) {
+                            if (conversionKeySwipePreference == true) {
                                 setCursorMode(true)
                                 isSpaceKeyLongPressed = true
+                            }else{
+                                if (inputString.value.isEmpty()) {
+                                    setCursorMode(true)
+                                    isSpaceKeyLongPressed = true
+                                }
                             }
                         }
 
