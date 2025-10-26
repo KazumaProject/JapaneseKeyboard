@@ -972,8 +972,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
-
-                keyboardView.setKeyLetterSize((appPreference.key_letter_size ?: 0.0f) + 17f)
+                val defaultLetterSize = when (mainView.keyboardView.currentInputMode.value) {
+                    InputMode.ModeJapanese -> 17f
+                    InputMode.ModeEnglish -> 12f
+                    InputMode.ModeNumber -> 16f
+                    else -> 17f
+                }
+                keyboardView.setKeyLetterSize(
+                    (appPreference.key_letter_size ?: 0.0f) + defaultLetterSize
+                )
                 keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
