@@ -815,8 +815,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     delta = keySizeDelta
                                 )
 
-                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
-                                InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
+                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
+                                    it.id,
+                                    delta = keySizeDelta
+                                )
+
+                                InputMode.ModeNumber -> it.setTenKeyTextNumber(
+                                    it.id,
+                                    delta = keySizeDelta
+                                )
                             }
                         }
                         if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
@@ -940,8 +947,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                                     it.id, delta = keySizeDelta
                                                 )
 
-                                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
-                                                InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
+                                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
+                                                    it.id,
+                                                    delta = keySizeDelta
+                                                )
+
+                                                InputMode.ModeNumber -> it.setTenKeyTextNumber(
+                                                    it.id,
+                                                    delta = keySizeDelta
+                                                )
                                             }
                                         }
                                         if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
@@ -1062,8 +1076,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                             delta = keySizeDelta
                                         )
 
-                                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
-                                        InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
+                                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
+                                            it.id,
+                                            delta = keySizeDelta
+                                        )
+
+                                        InputMode.ModeNumber -> it.setTenKeyTextNumber(
+                                            it.id,
+                                            delta = keySizeDelta
+                                        )
                                     }
                                 }
                             }
@@ -1652,8 +1673,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             delta = keySizeDelta
                         )
 
-                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(it.id)
-                        InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id)
+                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
+                            it.id,
+                            delta = keySizeDelta
+                        )
+
+                        InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id, delta = keySizeDelta)
                     }
                 }
             }
@@ -1836,28 +1861,28 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun setKeysInJapaneseText() {
         binding.apply {
             key1.apply {
-                setTenKeyTextJapanese(key1.id,delta = keySizeDelta)
+                setTenKeyTextJapanese(key1.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key2.setTenKeyTextJapanese(key2.id,delta = keySizeDelta)
+            key2.setTenKeyTextJapanese(key2.id, delta = keySizeDelta)
             key3.apply {
-                setTenKeyTextJapanese(key3.id,delta = keySizeDelta)
+                setTenKeyTextJapanese(key3.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key4.setTenKeyTextJapanese(key4.id,delta = keySizeDelta)
-            key5.setTenKeyTextJapanese(key5.id,delta = keySizeDelta)
-            key6.setTenKeyTextJapanese(key6.id,delta = keySizeDelta)
+            key4.setTenKeyTextJapanese(key4.id, delta = keySizeDelta)
+            key5.setTenKeyTextJapanese(key5.id, delta = keySizeDelta)
+            key6.setTenKeyTextJapanese(key6.id, delta = keySizeDelta)
             key7.apply {
-                setTenKeyTextJapanese(key7.id,delta = keySizeDelta)
+                setTenKeyTextJapanese(key7.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key8.setTenKeyTextJapanese(key8.id,delta = keySizeDelta)
+            key8.setTenKeyTextJapanese(key8.id, delta = keySizeDelta)
             key9.apply {
-                setTenKeyTextJapanese(key9.id,delta = keySizeDelta)
+                setTenKeyTextJapanese(key9.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key11.setTenKeyTextJapanese(key11.id,delta = keySizeDelta)
-            key12.setTenKeyTextJapanese(key12.id,delta = keySizeDelta)
+            key11.setTenKeyTextJapanese(key11.id, delta = keySizeDelta)
+            key12.setTenKeyTextJapanese(key12.id, delta = keySizeDelta)
             keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
@@ -1874,28 +1899,28 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun setKeysInEnglishText() {
         binding.apply {
             key1.apply {
-                setTenKeyTextEnglish(key1.id)
+                setTenKeyTextEnglish(key1.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
             key2.apply {
-                setTenKeyTextEnglish(key2.id)
+                setTenKeyTextEnglish(key2.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key3.setTenKeyTextEnglish(key3.id)
-            key4.setTenKeyTextEnglish(key4.id)
-            key5.setTenKeyTextEnglish(key5.id)
-            key6.setTenKeyTextEnglish(key6.id)
+            key3.setTenKeyTextEnglish(key3.id, delta = keySizeDelta)
+            key4.setTenKeyTextEnglish(key4.id, delta = keySizeDelta)
+            key5.setTenKeyTextEnglish(key5.id, delta = keySizeDelta)
+            key6.setTenKeyTextEnglish(key6.id, delta = keySizeDelta)
             key7.apply {
-                setTenKeyTextEnglish(key7.id)
+                setTenKeyTextEnglish(key7.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key8.setTenKeyTextEnglish(key8.id)
+            key8.setTenKeyTextEnglish(key8.id, delta = keySizeDelta)
             key9.apply {
-                setTenKeyTextEnglish(key9.id)
+                setTenKeyTextEnglish(key9.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key11.setTenKeyTextEnglish(key11.id)
-            key12.setTenKeyTextEnglish(key12.id)
+            key11.setTenKeyTextEnglish(key11.id, delta = keySizeDelta)
+            key12.setTenKeyTextEnglish(key12.id, delta = keySizeDelta)
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
                 cachedArrowRightDrawable
@@ -1912,28 +1937,28 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun setKeysInNumberText() {
         binding.apply {
             key1.apply {
-                setTenKeyTextNumber(key1.id)
+                setTenKeyTextNumber(key1.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key2.setTenKeyTextNumber(key2.id)
+            key2.setTenKeyTextNumber(key2.id, delta = keySizeDelta)
             key3.apply {
-                setTenKeyTextNumber(key3.id)
+                setTenKeyTextNumber(key3.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key4.setTenKeyTextNumber(key4.id)
-            key5.setTenKeyTextNumber(key5.id)
-            key6.setTenKeyTextNumber(key6.id)
+            key4.setTenKeyTextNumber(key4.id, delta = keySizeDelta)
+            key5.setTenKeyTextNumber(key5.id, delta = keySizeDelta)
+            key6.setTenKeyTextNumber(key6.id, delta = keySizeDelta)
             key7.apply {
-                setTenKeyTextNumber(key7.id)
+                setTenKeyTextNumber(key7.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key8.setTenKeyTextNumber(key8.id)
+            key8.setTenKeyTextNumber(key8.id, delta = keySizeDelta)
             key9.apply {
-                setTenKeyTextNumber(key9.id)
+                setTenKeyTextNumber(key9.id, delta = keySizeDelta)
                 setCompoundDrawables(null, null, null, null)
             }
-            key11.setTenKeyTextNumber(key11.id)
-            key12.setTenKeyTextNumber(key12.id)
+            key11.setTenKeyTextNumber(key11.id, delta = keySizeDelta)
+            key12.setTenKeyTextNumber(key12.id, delta = keySizeDelta)
 
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
