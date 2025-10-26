@@ -847,12 +847,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setCurrentInputTypeRestart(editorInfo)
         }
         updateClipboardPreview()
-        if (!hasPhysicalKeyboard) {
-            setKeyboardSize()
-            applyFloatingModeState(keyboardFloatingMode.value)
-        } else {
-            checkForPhysicalKeyboard(true)
-        }
 
         Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}\n${candidateTabVisibility}")
         suppressSuggestions = if (showCandidateInPasswordPreference == true) {
@@ -944,6 +938,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         mainLayoutBinding?.let { mainView ->
+            if (!hasPhysicalKeyboard) {
+                setKeyboardSizeSwitchKeyboard(mainView)
+                applyFloatingModeState(keyboardFloatingMode.value)
+            } else {
+                checkForPhysicalKeyboard(true)
+            }
             mainView.apply {
                 if (isKeyboardRounded == true) {
                     if (DynamicColors.isDynamicColorAvailable()) {
@@ -1419,7 +1419,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         setTenKeyListeners(mainView)
                     }
-                    setKeyboardSize()
+                    setKeyboardSizeSwitchKeyboard(mainView)
                     updateClipboardPreview()
                     mainView.suggestionRecyclerView.isVisible = suggestionViewStatus.value
                 }
@@ -2255,7 +2255,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             mainView.root.alpha = 1f
-            setKeyboardSize()
             setKeyboardSizeForHeightForFloatingMode(mainView)
             floatingKeyboardView?.dismiss()
         }
@@ -5678,7 +5677,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 Timber.d("keyboardSymbolViewState: $isSymbolKeyboardShow")
-                setKeyboardSize()
+                setKeyboardSizeSwitchKeyboard(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                         setSymbolsFloating(floatingKeyboardLayoutBinding)
@@ -5954,8 +5953,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     mainView.root.alpha = 1f
                     requestCursorUpdates(0)
-                    setKeyboardSize()
-                    setKeyboardSizeForHeight(mainView)
+                    setKeyboardSizeForHeightPhysicalKeyboard(mainView)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
                 }
@@ -6337,9 +6335,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
 
-    private fun setKeyboardSizeForHeight(mainView: MainLayoutBinding) {
-        Timber.d("Keyboard Height: setKeyboardSizeForHeight called")
-        if (hasHardwareKeyboardConnected == true) return
+    private fun setKeyboardSizeForHeightPhysicalKeyboard(mainView: MainLayoutBinding) {
+        Timber.d("Keyboard Height: setKeyboardSizeForHeight called $hasHardwareKeyboardConnected")
         updateKeyboardLayout(mainView)
     }
 
@@ -7339,7 +7336,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         if (keyboardOrder.isEmpty()) return@apply
                         showKeyboard(keyboardOrder[0])
-                        setKeyboardSize()
+                        setKeyboardSizeSwitchKeyboard(mainView)
                     }
                 }
             }
@@ -10761,136 +10758,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                 }
             }
-        }
-    }
-
-    private fun setKeyboardSize() {
-        val binding = mainLayoutBinding ?: return
-
-        val heightPref = tenkeyHeightPreferenceValue ?: 280
-        val widthPref = tenkeyWidthPreferenceValue ?: 100
-        val positionPref = tenkeyPositionPreferenceValue ?: true
-        val keyboardMarginBottomPref = tenkeyBottomMarginPreferenceValue ?: 0
-
-        val qwertyHeightPref = qwertyHeightPreferenceValue ?: 280
-        val qwertyWidthPref = qwertyWidthPreferenceValue ?: 100
-        val qwertyPositionPref = qwertyPositionPreferenceValue ?: true
-        val qwertyKeyboardMarginBottomPref =
-            qwertyBottomMarginPreferenceValue ?: 0
-
-        val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-        val keyboardMarginBottom =
-            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
-                (qwertyKeyboardMarginBottomPref * density).toInt()
-            } else {
-                (keyboardMarginBottomPref * density).toInt()
-            }
-
-        val heightPx = when {
-            keyboardSymbolViewState.value -> {
-                val height = if (isPortrait) 320 else 220
-                (height * density).toInt()
-            }
-
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                val clampedHeight = if (isPortrait) {
-                    qwertyHeightPref.coerceIn(180, 420)
-                } else {
-                    qwertyHeightPref.coerceIn(100, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-
-            else -> {
-                val clampedHeight = if (isPortrait) {
-                    heightPref.coerceIn(180, 420)
-                } else {
-                    heightPref.coerceIn(60, 420)
-                }
-                (clampedHeight * density).toInt()
-            }
-        }
-
-        val heightPxQWERTY = when {
-            keyboardSymbolViewState.value -> {
-                val height = if (isPortrait) 320 else 220
-                (height * density).toInt()
-            }
-
-
-            else -> {
-                val clampedHeight = qwertyHeightPref.coerceIn(180, 420)
-                (clampedHeight * density).toInt()
-            }
-        }
-
-        Timber.d("setKeyboardSize: $heightPx $keyboardMarginBottom")
-
-        val widthPx = when {
-            widthPref == 100 || keyboardSymbolViewState.value -> {
-                ViewGroup.LayoutParams.MATCH_PARENT
-            }
-
-            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                (screenWidth * (qwertyWidthPref / 100f)).toInt()
-            }
-
-            else -> {
-                (screenWidth * (widthPref / 100f)).toInt()
-            }
-        }
-
-        val gravity = if (positionPref) {
-            Gravity.BOTTOM or Gravity.END
-        } else {
-            Gravity.BOTTOM or Gravity.START
-        }
-
-        val gravityQWERTY = if (qwertyPositionPref) {
-            Gravity.BOTTOM or Gravity.END
-        } else {
-            Gravity.BOTTOM or Gravity.START
-        }
-
-        fun applyHeightAndGravity(view: View) {
-            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                params.height = heightPx
-                params.gravity = gravity
-                view.layoutParams = params
-            }
-        }
-
-        fun applyHeightAndGravityQWERTY(view: View) {
-            (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                params.height = heightPxQWERTY
-                params.gravity = gravityQWERTY
-                view.layoutParams = params
-            }
-        }
-
-        if (isTablet == true) {
-            applyHeightAndGravity(binding.tabletView)
-        } else {
-            applyHeightAndGravity(binding.keyboardView)
-        }
-        applyHeightAndGravity(binding.candidatesRowView)
-        applyHeightAndGravity(binding.keyboardSymbolView)
-        applyHeightAndGravityQWERTY(binding.qwertyView)
-        applyHeightAndGravity(binding.customLayoutDefault)
-
-        (binding.suggestionViewParent.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.bottomMargin = heightPx
-            params.gravity = gravity
-            binding.suggestionViewParent.layoutParams = params
-        }
-
-        (binding.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.width = widthPx
-            params.gravity = gravity
-            params.bottomMargin = keyboardMarginBottom
-            binding.root.layoutParams = params
         }
     }
 
