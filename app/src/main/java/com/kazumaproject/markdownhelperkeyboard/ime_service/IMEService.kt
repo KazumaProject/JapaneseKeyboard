@@ -262,6 +262,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuSeparation: Boolean? = false
     private var bunsetsuPositionList: List<Int>? = emptyList()
     private var henkanPressedWithBunsetsuDetect: Boolean = false
+    private var conversionKeySwipePreference: Boolean? = false
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -715,6 +716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isKeyboardFloatingMode = is_floating_mode ?: false
             isKeyboardRounded = keyboard_corner_round_preference
             bunsetsuSeparation = bunsetsu_separation_preference
+            conversionKeySwipePreference = conversion_key_swipe_cursor_move_preference
             _keyboardFloatingMode.update { is_floating_mode ?: false }
             switchQWERTYPassword = switch_qwerty_password ?: false
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
@@ -970,8 +972,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
-
-                keyboardView.setKeyLetterSize((appPreference.key_letter_size ?: 0.0f) + 17f)
+                val defaultLetterSize = when (mainView.keyboardView.currentInputMode.value) {
+                    InputMode.ModeJapanese -> 17f
+                    InputMode.ModeEnglish -> 12f
+                    InputMode.ModeNumber -> 16f
+                    else -> 17f
+                }
+                keyboardView.setKeyLetterSize(
+                    (appPreference.key_letter_size ?: 0.0f) + defaultLetterSize
+                )
                 keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -996,6 +1005,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 candidateTabLayout.visibility = View.INVISIBLE
                 shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
+                if (tenkeyQWERTYSwitchNumber == true && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && keyboardOrder[currentKeyboardOrder] == KeyboardType.TENKEY) {
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
+                    mainView.qwertyView.setRomajiMode(false)
+                    setKeyboardSizeSwitchKeyboard(mainView)
+                }
             }
             setMainSuggestionColumn(mainView)
         }
@@ -1151,6 +1166,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isKeyboardFloatingMode = null
         isKeyboardRounded = null
         bunsetsuSeparation = null
+        conversionKeySwipePreference = null
         bunsetsuPositionList = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -3347,6 +3363,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
+            if (conversionKeySwipePreference == true) {
+                _cursorMoveMode.update { true }
+                isSpaceKeyLongPressed = true
+            } else {
+                mainLayoutBinding?.let {
+                    if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                        if (isHenkan.get()) return
+                        isSpaceKeyLongPressed = true
+                        if (hasConvertedKatakana) {
+                            if (isLiveConversionEnable == true) {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString.hiraganaToKatakana(),
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            } else {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString,
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            }
+                        } else {
+                            if (isLiveConversionEnable == true) {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString,
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            } else {
+                                applyFirstSuggestion(
+                                    Candidate(
+                                        string = insertString.hiraganaToKatakana(),
+                                        type = (3).toByte(),
+                                        length = insertString.length.toUByte(),
+                                        score = 4000
+                                    )
+                                )
+                            }
+                        }
+                        hasConvertedKatakana = !hasConvertedKatakana
+                    }
+                }
+            }
+        } else {
+            _cursorMoveMode.update { true }
+            isSpaceKeyLongPressed = true
+        }
+        Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+    }
+
+    private fun handleSpaceLongActionSumire() {
+        Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+        val insertString = inputString.value
+        if (insertString.isNotEmpty()) {
             mainLayoutBinding?.let {
                 if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                     if (isHenkan.get()) return
@@ -4101,7 +4181,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Convert, KeyAction.Space -> {
-                        handleSpaceLongAction()
+                        handleSpaceLongActionSumire()
                     }
 
                     KeyAction.Copy -> {
@@ -4276,7 +4356,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
-                        handleSpaceLongAction()
+                        handleSpaceLongActionSumire()
                     }
 
                     KeyAction.Copy -> {
@@ -7816,6 +7896,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySpace -> {
+                            Timber.d("onReleasedQWERTYKey: QWERTYKeySpace $isSpaceKeyLongPressed")
                             if (!isSpaceKeyLongPressed) {
                                 handleSpaceKeyClickInQWERTY(insertString, mainView, suggestionList)
                             }
@@ -7844,6 +7925,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorRight -> {
@@ -7862,6 +7944,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             rightCursorKeyLongKeyPressed.set(false)
                             rightLongPressJob?.cancel()
                             rightLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorUp -> {
@@ -7872,6 +7955,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorDown -> {
@@ -7882,6 +7966,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
@@ -7952,9 +8037,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySpace -> {
-                            if (inputString.value.isEmpty()) {
+                            if (conversionKeySwipePreference == true) {
                                 setCursorMode(true)
                                 isSpaceKeyLongPressed = true
+                            } else {
+                                if (inputString.value.isEmpty()) {
+                                    setCursorMode(true)
+                                    isSpaceKeyLongPressed = true
+                                }
                             }
                         }
 
@@ -10646,8 +10736,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String) {
         Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $insertString ${stringInTail.get()}")
         if (stringInTail.get().isNotEmpty()) {
+            val extractedText = getExtractedText(ExtractedTextRequest(), 0)
+            val currentCursorPosition = extractedText?.selectionEnd ?: 0
             commitText("$insertString $stringInTail", 1)
+            val newCursorPosition =
+                (currentCursorPosition - stringInTail.get().length + 1).coerceAtLeast(0)
             stringInTail.set("")
+            setSelection(newCursorPosition, newCursorPosition)
+            Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $currentCursorPosition ${extractedText?.text}")
         } else {
             commitText("$insertString ", 1)
         }

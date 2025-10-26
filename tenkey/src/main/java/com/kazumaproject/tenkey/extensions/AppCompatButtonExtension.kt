@@ -38,9 +38,10 @@ fun AppCompatButton.setTenKeyTextJapanese(
 }
 
 fun AppCompatButton.setTenKeyTextEnglish(
-    keyId: Int
+    keyId: Int,
+    delta: Int
 ) {
-    textSize = KEY_ENGLISH_SIZE
+    textSize = KEY_ENGLISH_SIZE + delta
     setTextColor(
         ContextCompat.getColor(
             context,
@@ -64,9 +65,10 @@ fun AppCompatButton.setTenKeyTextEnglish(
 }
 
 fun AppCompatButton.setTenKeyTextNumber(
-    keyId: Int
+    keyId: Int,
+    delta: Int
 ) {
-    textSize = KEY_NUMBER_SIZE
+    textSize = KEY_NUMBER_SIZE + delta
     setTextColor(
         ContextCompat.getColor(
             context,

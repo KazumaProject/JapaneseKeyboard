@@ -182,6 +182,12 @@
                 android:summaryOn="@string/omission_search_summary_on"
                 android:title="@string/omission_search_title" />
 
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="conversion_key_swipe_cursor_move_preference"
+                android:summary="@string/pref_summary_space_longpress_cursor"
+                android:title="@string/pref_title_space_longpress_cursor" />
+
             <SeekBarPreference
                 android:defaultValue="100"
                 android:key="flick_sensitivity_preference"
