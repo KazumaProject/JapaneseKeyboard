@@ -998,6 +998,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 candidateTabLayout.visibility = View.INVISIBLE
                 shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
+                if (tenkeyQWERTYSwitchNumber == true && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && keyboardOrder[currentKeyboardOrder] == KeyboardType.TENKEY) {
+                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                    mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
+                    mainView.qwertyView.setRomajiMode(false)
+                    setKeyboardSizeSwitchKeyboard(mainView)
+                }
             }
             setMainSuggestionColumn(mainView)
         }
@@ -7883,6 +7889,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySpace -> {
+                            Timber.d("onReleasedQWERTYKey: QWERTYKeySpace $isSpaceKeyLongPressed")
                             if (!isSpaceKeyLongPressed) {
                                 handleSpaceKeyClickInQWERTY(insertString, mainView, suggestionList)
                             }
@@ -7911,6 +7918,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorRight -> {
@@ -7929,6 +7937,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             rightCursorKeyLongKeyPressed.set(false)
                             rightLongPressJob?.cancel()
                             rightLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorUp -> {
@@ -7939,6 +7948,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorDown -> {
@@ -7949,6 +7959,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             leftCursorKeyLongKeyPressed.set(false)
                             leftLongPressJob?.cancel()
                             leftLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
@@ -8022,7 +8033,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (conversionKeySwipePreference == true) {
                                 setCursorMode(true)
                                 isSpaceKeyLongPressed = true
-                            }else{
+                            } else {
                                 if (inputString.value.isEmpty()) {
                                     setCursorMode(true)
                                     isSpaceKeyLongPressed = true
@@ -10718,8 +10729,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setSpaceKeyActionEnglishAndNumberNotEmpty(insertString: String) {
         Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $insertString ${stringInTail.get()}")
         if (stringInTail.get().isNotEmpty()) {
+            val extractedText = getExtractedText(ExtractedTextRequest(), 0)
+            val currentCursorPosition = extractedText?.selectionEnd ?: 0
             commitText("$insertString $stringInTail", 1)
+            val newCursorPosition =
+                (currentCursorPosition - stringInTail.get().length + 1).coerceAtLeast(0)
             stringInTail.set("")
+            setSelection(newCursorPosition, newCursorPosition)
+            Timber.d("setSpaceKeyActionEnglishAndNumberNotEmpty: $currentCursorPosition ${extractedText?.text}")
         } else {
             commitText("$insertString ", 1)
         }
