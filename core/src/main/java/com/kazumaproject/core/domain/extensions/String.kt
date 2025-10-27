@@ -456,3 +456,32 @@ private fun getCharVariations(char: Char): List<Char> {
         else -> listOf(char) // 上記以外はそのまま
     }
 }
+
+/**
+ * 文字列内の半角英数字・記号を全角に変換します。
+ * @param input 変換元の文字列
+ * @return 全角に変換された文字列
+ */
+fun String.toZenkaku(): String {
+    val sb = StringBuilder()
+    for (char in this) {
+        when (char) {
+            // 半角英字 (a-z, A-Z)
+            in 'a'..'z' -> sb.append(char + ('ａ' - 'a'))
+            in 'A'..'Z' -> sb.append(char + ('Ａ' - 'A'))
+            // 半角数字 (0-9)
+            in '0'..'9' -> sb.append(char + ('０' - '0'))
+            // Mapのキーに含まれる主な記号
+            '-' -> sb.append('－')
+            '~' -> sb.append('～')
+            '.' -> sb.append('．')
+            ',' -> sb.append('，')
+            '/' -> sb.append('／')
+            '[' -> sb.append('［')
+            ']' -> sb.append('］')
+            // 上記以外の文字はそのまま追加
+            else -> sb.append(char)
+        }
+    }
+    return sb.toString()
+}

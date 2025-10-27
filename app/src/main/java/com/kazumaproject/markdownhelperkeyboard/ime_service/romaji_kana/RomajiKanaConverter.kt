@@ -320,7 +320,6 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
      * @param text 変換対象の文字列。
      * @return 変換後の文字列。
      */
-
     fun convertQWERTY(text: String): String {
         val result = StringBuilder()
         var i = 0
@@ -383,75 +382,71 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     }
 
     /**
-     * 文字列をスキャンし、全角アルファベットの連続部分のみをローマ字として解釈し、かなに変換します。
-     * 半角アルファベットやその他の文字は一切変換せず、そのまま出力します。
-     *
-     * 例:
-     * - "これはｔｅｓｔです" -> "これはてすとです"
-     * - "This is a ｐｅｎ" -> "This is a ぺん"
+     * QWERTYレイアウトからの入力を想定し、ローマ字文字列をひらがな／記号に変換します。
+     * 半角の `[` と `]` は変換せずにそのまま出力します。
      *
      * @param text 変換対象の文字列。
      * @return 変換後の文字列。
      */
-    fun convertZenkakuOnly(text: String): String {
-        val result = StringBuilder()
-        val zenkakuBuffer = StringBuilder()
 
-        for (char in text) {
-            // 文字が全角アルファベットか判定
-            if (char in '\uFF21'..'\uFF3A' || char in '\uFF41'..'\uFF5A') {
-                // 全角なら半角に変換してバッファに貯める
-                zenkakuBuffer.append((char.code - 0xFEE0).toChar())
-            } else {
-                // 全角アルファベット以外の文字が来た場合
-                // 1. バッファに何か貯まっていれば、それを変換して結果に追加
-                if (zenkakuBuffer.isNotEmpty()) {
-                    result.append(convert(zenkakuBuffer.toString()))
-                    zenkakuBuffer.clear()
+    fun convertQWERTYZenkaku(text: String): String {
+        val result = StringBuilder()
+        var i = 0
+
+        while (i < text.length) {
+            val currentChar = text[i]
+
+            // 1. '[' または ']' の場合は、変換せずにそのまま追加し、次の文字へ進む
+            if (currentChar == '[' || currentChar == ']') {
+                result.append(currentChar)
+                i++
+                continue
+            }
+
+            // ★★★ この関数の中核的な変更点 ★★★
+            // 2. 促音（「っ」）のルールを追加
+            //    - 次の文字が存在し、現在の文字と同じ子音である場合（'n'を除く）
+            if (i + 1 < text.length &&
+                currentChar == text[i + 1] &&
+                currentChar in "ｋｓｔｃｐｂｄｆｇｈｌｊｍｑｒｖｗｘｙｚ"
+            ) { // 促音になりうる子音を指定
+                result.append("っ")
+                i++ // ★重要★ インデックスを1つだけ進める
+                continue
+            }
+
+            // 3. 「n」の特別ルールをチェックする
+            //    - 次の文字が存在し、それが「a,i,u,e,o,y,n」のいずれでもない場合
+            if (currentChar == 'ｎ' && i + 1 < text.length && text[i + 1] !in "ａｉｕｅｏｙｎ") {
+                result.append("ん")
+                i++
+                continue
+            }
+
+            var matched = false
+            // 4. 上記のルールに当てはまらない場合、通常通りもっとも長い組み合わせから探す
+            for (len in maxKeyLength downTo 1) {
+                if (i + len > text.length) continue
+
+                val segment = text.substring(i, i + len)
+                // 'ss'のような組み合わせはマッピングテーブルから削除するか、このロジックで処理されるので不要
+                val mapping = romajiToKana[segment]
+
+                if (mapping != null) {
+                    val (kana, consume) = mapping
+                    result.append(kana)
+                    i += consume
+                    matched = true
+                    break
                 }
-                // 2. 現在の文字（非・全角アルファベット）を結果に追加
-                result.append(char)
+            }
+
+            // 5. マッチしなかった文字はそのまま追加
+            if (!matched) {
+                result.append(text[i])
+                i++
             }
         }
-
-        // ループ終了後、バッファにまだ文字が残っている場合（文字列の末尾が全角アルファベットだった場合）
-        if (zenkakuBuffer.isNotEmpty()) {
-            result.append(convert(zenkakuBuffer.toString()))
-        }
-
-        return result.toString()
-    }
-
-    /**
-     * convertZenkakuOnlyと同様に、全角アルファベット部分のみを変換しますが、
-     * 変換ロジックとしてQWERTY用の`convertQWERTY`を使用します。
-     * @param text 変換対象の文字列。
-     * @return 変換後の文字列。
-     */
-    fun convertQWERTYZenkakuOnly(text: String): String {
-        val result = StringBuilder()
-        val zenkakuBuffer = StringBuilder()
-
-        for (char in text) {
-            // 文字が全角アルファベットか判定
-            if (char in '\uFF21'..'\uFF3A' || char in '\uFF41'..'\uFF5A') {
-                // 全角なら半角に変換してバッファに貯める
-                zenkakuBuffer.append((char.code - 0xFEE0).toChar())
-            } else {
-                // 全角アルファベット以外の文字が来た場合
-                if (zenkakuBuffer.isNotEmpty()) {
-                    result.append(convertQWERTY(zenkakuBuffer.toString()))
-                    zenkakuBuffer.clear()
-                }
-                result.append(char)
-            }
-        }
-
-        // ループ終了後、バッファにまだ文字が残っている場合
-        if (zenkakuBuffer.isNotEmpty()) {
-            result.append(convertQWERTY(zenkakuBuffer.toString()))
-        }
-
         return result.toString()
     }
 
@@ -468,6 +463,29 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
 
         // バッファの末尾が "n" なら "ん" に変換し、そうでなければバッファの文字をそのまま確定
         val toCommit = if (string.endsWith("n")) {
+            // "n" より前の部分と "ん" を結合する (例: "ろn" -> "ろ" + "ん")
+            string.dropLast(1) + "ん"
+        } else {
+            string
+        }
+
+        // UI上で削除すべき文字数は、変換前のバッファ全体の文字数
+        // 元のコードでは '1' に固定されていましたが、"ろn" (2文字) などを正しく置換するために、
+        // 本来はこちらが意図した動作だと思われます。
+        val toDelete = string.length
+
+        // 確定した文字列と、削除すべき文字数を返す
+        return Pair(toCommit, toDelete)
+    }
+
+    fun flushZenkaku(string: String): Pair<String, Int> {
+        Timber.d("Enter Key flush: $string")
+        if (string.isEmpty()) {
+            return Pair("", 0)
+        }
+
+        // バッファの末尾が "n" なら "ん" に変換し、そうでなければバッファの文字をそのまま確定
+        val toCommit = if (string.endsWith("ｎ")) {
             // "n" より前の部分と "ん" を結合する (例: "ろn" -> "ろ" + "ん")
             string.dropLast(1) + "ん"
         } else {
