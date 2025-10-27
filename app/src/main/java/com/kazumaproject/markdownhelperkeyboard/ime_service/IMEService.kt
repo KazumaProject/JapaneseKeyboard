@@ -987,7 +987,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
 
                 setTabsToTabLayout(mainView)
-                setCandidateTabLayout(mainView)
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -1425,6 +1424,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         systemBottomInset = insets.bottom
                         windowInsets
                     }
+                    setCandidateTabLayout(mainView)
                     setupCustomKeyboardListeners(mainView)
                     setSuggestionRecyclerView(
                         mainView, FlexboxLayoutManager(applicationContext).apply {
