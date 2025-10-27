@@ -276,7 +276,6 @@ class RomajiMapRepository @Inject constructor(
             "nyu" to Pair("にゅ", 3),
             "nye" to Pair("にぇ", 3),
             "nyo" to Pair("にょ", 3),
-            "n" to Pair("n", 1),
             "nn" to Pair("ん", 2),
             "xn" to Pair("ん", 2),
 
