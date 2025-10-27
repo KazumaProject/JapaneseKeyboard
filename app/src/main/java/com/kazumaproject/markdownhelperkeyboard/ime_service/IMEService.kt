@@ -128,6 +128,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.Floati
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
@@ -441,6 +442,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val deletedBuffer = StringBuilder()
 
     private var keyboardOrder: List<KeyboardType> = emptyList()
+    private var candidateTabOrder: List<CandidateTab> = emptyList()
 
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
 
@@ -673,6 +675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _suggestionViewStatus.update { true }
         appPreference.apply {
             keyboardOrder = keyboard_order
+            candidateTabOrder = candidate_tab_order
             mozcUTPersonName = mozc_ut_person_names_preference ?: false
             mozcUTPlaces = mozc_ut_places_preference ?: false
             mozcUTWiki = mozc_ut_wiki_preference ?: false
@@ -982,6 +985,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (appPreference.key_letter_size ?: 0.0f) + defaultLetterSize
                 )
                 keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
+
+                setTabsToTabLayout(mainView)
+                setCandidateTabLayout(mainView)
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -1420,8 +1426,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         windowInsets
                     }
                     setupCustomKeyboardListeners(mainView)
-                    setTabsToTabLayout(mainView)
-                    setCandidateTabLayout(mainView)
                     setSuggestionRecyclerView(
                         mainView, FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
@@ -4356,9 +4360,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
-                        if (conversionKeySwipePreference == true){
+                        if (conversionKeySwipePreference == true) {
                             mainView.customLayoutDefault.setCursorMode(true)
-                        }else{
+                        } else {
                             handleSpaceLongActionSumire()
                         }
                     }
@@ -7312,14 +7316,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setTabsToTabLayout(
         mainView: MainLayoutBinding
     ) {
-        mainView.candidateTabLayout.apply {
-            val tab1 = newTab().setText("予測")
-            val tab2 = newTab().setText("変換")
-            val tab3 = newTab().setText("英数カナ")
+        mainView.candidateTabLayout.removeAllTabs()
 
-            addTab(tab1)
-            addTab(tab2)
-            addTab(tab3)
+        candidateTabOrder.forEach { tabType ->
+            val tab = mainView.candidateTabLayout.newTab()
+            tab.text = getCandidateTabDisplayName(tabType)
+            mainView.candidateTabLayout.addTab(tab)
+        }
+    }
+
+    private fun getCandidateTabDisplayName(candidateTab: CandidateTab): String {
+        return when (candidateTab) {
+            CandidateTab.PREDICTION -> "予測"
+            CandidateTab.CONVERSION -> "変換"
+            CandidateTab.EISUKANA -> "英数カナ"
         }
     }
 
@@ -7329,38 +7339,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.candidateTabLayout.apply {
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
-                    when (tab?.position) {
-                        0 -> {
-                            val input = inputString.value
-                            if (input.isNotEmpty()) {
-                                ioScope.launch {
-                                    setCandidates(input)
-                                    withContext(Dispatchers.Main) {
-                                        hideFirstRowCandidatesInFullScreen(mainView)
+                    tab?.let { t ->
+                        if (t.position > candidateTabOrder.size - 1) return
+                        when (candidateTabOrder[t.position]) {
+                            CandidateTab.PREDICTION -> {
+                                val input = inputString.value
+                                if (input.isNotEmpty()) {
+                                    ioScope.launch {
+                                        setCandidates(input)
+                                        withContext(Dispatchers.Main) {
+                                            hideFirstRowCandidatesInFullScreen(mainView)
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        1 -> {
-                            val input = inputString.value
-                            if (input.isNotEmpty()) {
-                                ioScope.launch {
-                                    setCandidatesWithoutPrediction(input)
-                                    withContext(Dispatchers.Main) {
-                                        hideFirstRowCandidatesInFullScreen(mainView)
+                            CandidateTab.CONVERSION -> {
+                                val input = inputString.value
+                                if (input.isNotEmpty()) {
+                                    ioScope.launch {
+                                        setCandidatesWithoutPrediction(input)
+                                        withContext(Dispatchers.Main) {
+                                            hideFirstRowCandidatesInFullScreen(mainView)
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        2 -> {
-                            val input = inputString.value
-                            if (input.isNotEmpty()) {
-                                ioScope.launch {
-                                    setCandidatesEnglishKana(input)
-                                    withContext(Dispatchers.Main) {
-                                        hideFirstRowCandidatesInFullScreen(mainView)
+                            CandidateTab.EISUKANA -> {
+                                val input = inputString.value
+                                if (input.isNotEmpty()) {
+                                    ioScope.launch {
+                                        setCandidatesEnglishKana(input)
+                                        withContext(Dispatchers.Main) {
+                                            hideFirstRowCandidatesInFullScreen(mainView)
+                                        }
                                     }
                                 }
                             }
@@ -8898,23 +8911,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition $bunsetsuPositionList")
         if (candidateTabVisibility == true) {
-            when (tabPosition) {
-                0 -> {
-                    setCandidates(inputString)
-                }
+            if (candidateTabOrder.isNotEmpty() && tabPosition < candidateTabOrder.size) {
+                when (candidateTabOrder[tabPosition]) {
+                    CandidateTab.PREDICTION -> {
+                        setCandidates(inputString)
+                    }
 
-                1 -> {
-                    setCandidatesWithoutPrediction(inputString)
-                }
+                    CandidateTab.CONVERSION -> {
+                        setCandidatesWithoutPrediction(inputString)
+                    }
 
-                2 -> {
-                    setCandidatesEnglishKana(inputString)
+                    CandidateTab.EISUKANA -> {
+                        setCandidatesEnglishKana(inputString)
+                    }
                 }
-
-                else -> {
-                    setCandidates(inputString)
-                }
-
+            } else {
+                setCandidates(inputString)
             }
         } else {
             setCandidatesOriginal(inputString)

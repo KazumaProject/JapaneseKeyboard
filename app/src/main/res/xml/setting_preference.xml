@@ -83,6 +83,12 @@
                 app:summary="@string/candidate_tab_summary" />
 
             <Preference
+                android:key="candidate_tab_order_preference"
+                android:dependency="candidate_tab_visibility_preference"
+                android:title="@string/candidate_tab_order_preference_title"
+                app:summary="@string/candidate_tab_order_preference_summary"/>
+
+            <Preference
                 android:icon="@drawable/outline_border_color_24"
                 android:key="candidate_view_height_setting_fragment_preference"
                 android:title="@string/candidate_height_preference_title"

@@ -43,6 +43,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_candidateHeightLandscapeSettingFragment"
             app:destination="@id/candidateHeightLandscapeSettingFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_candidateTabOrderFragment"
+            app:destination="@id/candidateTabOrderFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -146,5 +149,9 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_landscape_setting.CandidateHeightLandscapeSettingFragment"
         android:label="@string/candidate_height_landscape_preference_title"
         tools:layout="@layout/fragment_candidate_height_landscape_setting" />
+    <fragment
+        android:id="@+id/candidateTabOrderFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_tab_order.ui.CandidateTabOrderFragment"
+        android:label="@string/candidate_tab_order_preference_title" />
 
 </navigation>
