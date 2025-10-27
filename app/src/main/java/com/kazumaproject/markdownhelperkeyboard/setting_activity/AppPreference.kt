@@ -168,6 +168,8 @@ object AppPreference {
     private val CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE =
         Pair("conversion_key_swipe_cursor_move_preference", false)
 
+    private val ROMAJI_MAP_DATA_VERSION = Pair("romaji_map_data_version", 0)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -789,6 +791,12 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE.first, value)
+        }
+
+    var romaji_map_data_version: Int
+        get() = preferences.getInt(ROMAJI_MAP_DATA_VERSION.first, ROMAJI_MAP_DATA_VERSION.second)
+        set(value) = preferences.edit {
+            it.putInt(ROMAJI_MAP_DATA_VERSION.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
