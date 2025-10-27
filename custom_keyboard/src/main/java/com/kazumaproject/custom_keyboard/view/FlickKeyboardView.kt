@@ -33,6 +33,7 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
+import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -63,6 +64,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private var defaultTextSize = 14f
 
+    private var isCursorMode: Boolean = false
+    private var cursorInitialX = 0f
+    private var cursorInitialY = 0f
+
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
@@ -73,6 +78,18 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setDefaultTextSize(textSize: Float) {
         this.defaultTextSize = textSize
+    }
+
+    /**
+     * Enables or disables cursor movement mode.
+     * When enabled, swipe gestures on the keyboard will move the cursor
+     * instead of triggering key inputs. The mode is automatically disabled
+     * when the user lifts their finger.
+     *
+     * @param enabled True to enable cursor mode, false to disable.
+     */
+    fun setCursorMode(enabled: Boolean) {
+        isCursorMode = enabled
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -542,6 +559,52 @@ class FlickKeyboardView @JvmOverloads constructor(
         val action = event.actionMasked
         val pointerIndex = event.actionIndex
         val pointerId = event.getPointerId(pointerIndex)
+
+        if (isCursorMode) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    // Store the initial touch position for cursor movement
+                    cursorInitialX = event.x
+                    cursorInitialY = event.y
+                    return true // Consume the event
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val threshold = 30f // Movement detection threshold in pixels
+                    val currentX = event.x
+                    val currentY = event.y
+
+                    val dx = currentX - cursorInitialX
+                    val dy = currentY - cursorInitialY
+
+                    // Horizontal movement
+                    if (abs(dx) > abs(dy) && abs(dx) > threshold) {
+                        val action2 =
+                            if (dx < 0f) KeyAction.MoveCursorLeft else KeyAction.MoveCursorRight
+                        listener?.onAction(action2, this, false)
+                        cursorInitialX = currentX // Reset the origin for continuous swiping
+                        cursorInitialY = currentY
+                    }
+                    // Vertical movement
+                    else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
+                        // Assuming you have CURSOR_UP and CURSOR_DOWN in your KeyAction enum
+                        val action2 =
+                            if (dy < 0f) KeyAction.MoveCursorUp else KeyAction.MoveCursorDown
+                        listener?.onAction(action2, this, false)
+                        cursorInitialX = currentX // Reset the origin
+                        cursorInitialY = currentY
+                    }
+                    return true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    // Exit cursor mode when the finger is lifted
+                    setCursorMode(false)
+                    crossFlickControllers.forEach { it.dismissAllPopups() }
+                    return true
+                }
+            }
+        }
 
         when (action) {
             MotionEvent.ACTION_DOWN -> {

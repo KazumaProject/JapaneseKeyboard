@@ -4356,7 +4356,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
-                        handleSpaceLongActionSumire()
+                        if (conversionKeySwipePreference == true){
+                            mainView.customLayoutDefault.setCursorMode(true)
+                        }else{
+                            handleSpaceLongActionSumire()
+                        }
                     }
 
                     KeyAction.Copy -> {
@@ -4420,7 +4424,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
-                    KeyAction.Space -> {}
+                    KeyAction.Space -> {
+                        mainView.customLayoutDefault.setCursorMode(true)
+                    }
 
                     KeyAction.SwitchToNextIme -> {
                         showListPopup()
@@ -4521,6 +4527,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Convert, KeyAction.Space -> {
+                        mainView.customLayoutDefault.setCursorMode(false)
                         isSpaceKeyLongPressed = false
                         if (inputString.value.isEmpty()) {
                             val isHankaku = hankakuPreference == true
