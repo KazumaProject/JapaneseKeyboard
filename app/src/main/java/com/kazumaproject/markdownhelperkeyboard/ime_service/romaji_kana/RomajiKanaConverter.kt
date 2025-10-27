@@ -383,6 +383,79 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     }
 
     /**
+     * 文字列をスキャンし、全角アルファベットの連続部分のみをローマ字として解釈し、かなに変換します。
+     * 半角アルファベットやその他の文字は一切変換せず、そのまま出力します。
+     *
+     * 例:
+     * - "これはｔｅｓｔです" -> "これはてすとです"
+     * - "This is a ｐｅｎ" -> "This is a ぺん"
+     *
+     * @param text 変換対象の文字列。
+     * @return 変換後の文字列。
+     */
+    fun convertZenkakuOnly(text: String): String {
+        val result = StringBuilder()
+        val zenkakuBuffer = StringBuilder()
+
+        for (char in text) {
+            // 文字が全角アルファベットか判定
+            if (char in '\uFF21'..'\uFF3A' || char in '\uFF41'..'\uFF5A') {
+                // 全角なら半角に変換してバッファに貯める
+                zenkakuBuffer.append((char.code - 0xFEE0).toChar())
+            } else {
+                // 全角アルファベット以外の文字が来た場合
+                // 1. バッファに何か貯まっていれば、それを変換して結果に追加
+                if (zenkakuBuffer.isNotEmpty()) {
+                    result.append(convert(zenkakuBuffer.toString()))
+                    zenkakuBuffer.clear()
+                }
+                // 2. 現在の文字（非・全角アルファベット）を結果に追加
+                result.append(char)
+            }
+        }
+
+        // ループ終了後、バッファにまだ文字が残っている場合（文字列の末尾が全角アルファベットだった場合）
+        if (zenkakuBuffer.isNotEmpty()) {
+            result.append(convert(zenkakuBuffer.toString()))
+        }
+
+        return result.toString()
+    }
+
+    /**
+     * convertZenkakuOnlyと同様に、全角アルファベット部分のみを変換しますが、
+     * 変換ロジックとしてQWERTY用の`convertQWERTY`を使用します。
+     * @param text 変換対象の文字列。
+     * @return 変換後の文字列。
+     */
+    fun convertQWERTYZenkakuOnly(text: String): String {
+        val result = StringBuilder()
+        val zenkakuBuffer = StringBuilder()
+
+        for (char in text) {
+            // 文字が全角アルファベットか判定
+            if (char in '\uFF21'..'\uFF3A' || char in '\uFF41'..'\uFF5A') {
+                // 全角なら半角に変換してバッファに貯める
+                zenkakuBuffer.append((char.code - 0xFEE0).toChar())
+            } else {
+                // 全角アルファベット以外の文字が来た場合
+                if (zenkakuBuffer.isNotEmpty()) {
+                    result.append(convertQWERTY(zenkakuBuffer.toString()))
+                    zenkakuBuffer.clear()
+                }
+                result.append(char)
+            }
+        }
+
+        // ループ終了後、バッファにまだ文字が残っている場合
+        if (zenkakuBuffer.isNotEmpty()) {
+            result.append(convertQWERTY(zenkakuBuffer.toString()))
+        }
+
+        return result.toString()
+    }
+
+    /**
      * バッファに残っている未確定文字列を確定させ、UIに表示すべき文字列を返します。
      * 末尾の 'n' は 'ん' に変換します。
      * @return Pair( toShow, toDelete )
