@@ -230,12 +230,6 @@
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
-                android:key="qwerty_action_after_shift_key_preference"
-                android:summary="@string/pref_qwerty_shift_key_action_summary"
-                android:title="@string/pref_qwerty_shift_key_action_title" />
-
-            <SwitchPreferenceCompat
-                android:defaultValue="false"
                 android:key="qwerty_show_cursor_buttons_preference"
                 android:summaryOff="@string/qwerty_show_cursor_buttons_summary_off"
                 android:summaryOn="@string/qwerty_show_cursor_buttons_summary_on"
