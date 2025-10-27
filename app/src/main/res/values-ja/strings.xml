@@ -324,4 +324,6 @@
     <string name="add_candidate_tab_title">新しい候補タブを追加</string>
     <string name="candidate_tab_order_preference_title">候補タブの並び順</string>
     <string name="candidate_tab_order_preference_summary">候補タブの表示順を変更します</string>
+    <string name="pref_qwerty_shift_key_action_title">Shift キー動作 (ローマ字)</string>
+    <string name="pref_qwerty_shift_key_action_summary">Shift 直後の 1 キーのみ大文字英字に統一します</string>
 </resources>

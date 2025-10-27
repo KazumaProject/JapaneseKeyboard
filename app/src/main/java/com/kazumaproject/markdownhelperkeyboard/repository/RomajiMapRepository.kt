@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
+import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,6 +50,28 @@ class RomajiMapRepository @Inject constructor(
      * Set a specific map as active, deactivating all others.
      */
     suspend fun setActiveMap(mapId: Long) = romajiMapDao.setActiveMap(mapId)
+
+    /**
+     * Finds the non-deletable (default) map and updates its data with the
+     * latest hardcoded default map data. This can be used to refresh
+     * the default settings after an app update.
+     */
+    suspend fun updateDefaultMap() {
+        if (romajiMapDao.count() == 0) return
+        val nonDeletableMap = romajiMapDao.getNonDeletableMap()
+        Timber.d("updateDefaultMap: ${nonDeletableMap?.mapData?.size}")
+        if (nonDeletableMap != null) {
+            if (nonDeletableMap.mapData.size != 312){
+                val updatedMap = nonDeletableMap.copy(
+                    mapData = getDefaultMapData()
+                )
+                romajiMapDao.update(updatedMap)
+                Timber.d("Default Romaji map has been successfully updated.")
+            }
+        } else {
+            Timber.w("Could not find a non-deletable map to update.")
+        }
+    }
 
     /**
      * Checks if any maps exist. If not, creates and inserts the
@@ -276,7 +299,6 @@ class RomajiMapRepository @Inject constructor(
             "nyu" to Pair("にゅ", 3),
             "nye" to Pair("にぇ", 3),
             "nyo" to Pair("にょ", 3),
-            "n" to Pair("n", 1),
             "nn" to Pair("ん", 2),
             "xn" to Pair("ん", 2),
 

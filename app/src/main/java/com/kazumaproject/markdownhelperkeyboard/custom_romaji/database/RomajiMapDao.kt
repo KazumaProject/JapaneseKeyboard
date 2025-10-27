@@ -35,6 +35,13 @@ interface RomajiMapDao {
     @Query("SELECT COUNT(*) FROM romaji_maps")
     suspend fun count(): Int
 
+    /**
+     * Finds the single non-deletable map in the database.
+     * Assumes there is only one such map.
+     */
+    @Query("SELECT * FROM romaji_maps WHERE isDeletable = 0 LIMIT 1")
+    suspend fun getNonDeletableMap(): RomajiMapEntity?
+
     @Transaction
     suspend fun setActiveMap(mapId: Long) {
         deactivateAllMaps()
