@@ -275,7 +275,7 @@ class CrossFlickInputController(private val context: Context) {
         }
     }
 
-    private fun dismissAllPopups() {
+    fun dismissAllPopups() {
         popupWindows.values.forEach { if (it.isShowing) it.dismiss() }
         popupWindows.clear()
         popupViews.clear()
