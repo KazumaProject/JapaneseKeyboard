@@ -197,6 +197,16 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val candidateTabOrderPreference = findPreference<Preference>("candidate_tab_order_preference")
+        candidateTabOrderPreference?.apply {
+            setOnPreferenceClickListener {
+                findNavController().navigate(
+                    R.id.action_navigation_setting_to_candidateTabOrderFragment
+                )
+                true
+            }
+        }
+
         val keyboardSelectionPreference =
             findPreference<Preference>("keyboard_selection_preference")
 
