@@ -6,6 +6,7 @@ import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 
 object AppPreference {
@@ -120,6 +121,18 @@ object AppPreference {
         )
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
+
+    private val defaultCandidateTabJson = gson.toJson(
+        listOf(
+            CandidateTab.PREDICTION,
+            CandidateTab.CONVERSION,
+            CandidateTab.EISUKANA,
+        )
+    )
+
+    private val CANDIDATE_TAB_ORDER_PREFERENCE =
+        Pair("candidate_tab_preference", defaultCandidateTabJson)
+
     private val SYMBOL_MODE_PREFERENCE = Pair("symbol_mode_preference", "EMOJI")
 
     private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
@@ -278,6 +291,17 @@ object AppPreference {
         set(value) = preferences.edit {
             val json = gson.toJson(value)
             it.putString(KEYBOARD_ORDER.first, json)
+        }
+
+    var candidate_tab_order: List<CandidateTab>
+        get() {
+            val json = preferences.getString(CANDIDATE_TAB_ORDER_PREFERENCE.first, CANDIDATE_TAB_ORDER_PREFERENCE.second)
+            val type = object : TypeToken<List<CandidateTab>>() {}.type
+            return gson.fromJson(json, type)
+        }
+        set(value) = preferences.edit {
+            val json = gson.toJson(value)
+            it.putString(CANDIDATE_TAB_ORDER_PREFERENCE.first, json)
         }
 
     var symbol_mode_preference: SymbolMode
