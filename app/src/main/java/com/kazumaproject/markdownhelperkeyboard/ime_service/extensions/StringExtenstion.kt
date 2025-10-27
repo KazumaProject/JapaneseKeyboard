@@ -34,6 +34,43 @@ fun String.isAllHalfWidthAscii(): Boolean =
     isNotEmpty() && all { it.isHalfWidthAscii() }
 
 /**
+ * Checks if a character is a full-width (全角) character.
+ * This includes full-width alphanumeric characters, symbols, katakana, hiragana, and kanji.
+ */
+fun Char.isFullWidth(): Boolean {
+    // The primary range for full-width characters starts from U+FF01.
+    // This also includes hiragana, katakana, and common kanji ranges.
+    return this in '\uFF01'..'\uFF5E' || // Full-width ASCII variants
+            this in '\u3000'..'\u303F' || // Japanese punctuation and symbols
+            this in '\u3040'..'\u309F' || // Hiragana
+            this in '\u30A0'..'\u30FF' || // Katakana
+            this in '\u4E00'..'\u9FFF' || // CJK Unified Ideographs (common Kanji)
+            this == '\u2010' // Full-width hyphen
+}
+
+/**
+ * Checks if the entire string is composed of full-width (全角) characters.
+ */
+fun String.isAllFullWidth(): Boolean =
+    isNotEmpty() && all { it.isFullWidth() }
+
+/**
+ * Checks if a character is a full-width alphanumeric or symbol character.
+ * This covers the range from U+FF01 (！) to U+FF5E (～) and the full-width space.
+ */
+fun Char.isFullWidthAscii(): Boolean {
+    // U+FF01 to U+FF5E contains the full-width versions of ASCII letters, numbers, and symbols.
+    // U+3000 is the full-width space.
+    return this in '\uFF01'..'\uFF5E' || this == '\u3000'
+}
+
+/**
+ * Checks if the entire string is composed of full-width alphanumeric characters and symbols.
+ */
+fun String.isAllFullWidthAscii(): Boolean =
+    isNotEmpty() && all { it.isFullWidthAscii() }
+
+/**
  * 3. 半角ASCII文字列を全角に変換する拡張関数
  * - スペースは例外的にU+3000に変換します。
  * - その他の文字は、基本的にオフセット `0xFEE0` を加算して変換します。
