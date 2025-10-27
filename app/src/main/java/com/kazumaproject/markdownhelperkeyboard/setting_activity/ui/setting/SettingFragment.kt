@@ -24,6 +24,7 @@ import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
@@ -41,6 +42,9 @@ class SettingFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var userDictionaryRepository: UserDictionaryRepository
+
+    @Inject
+    lateinit var romajiMapRepository: RomajiMapRepository
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
@@ -72,6 +76,10 @@ class SettingFragment : PreferenceFragmentCompat() {
                         )
                     )
                 }
+            }
+            if (appPreference.romaji_map_data_version == 0) {
+                romajiMapRepository.updateDefaultMap()
+                appPreference.romaji_map_data_version = 1
             }
         }
     }
@@ -197,7 +205,8 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val candidateTabOrderPreference = findPreference<Preference>("candidate_tab_order_preference")
+        val candidateTabOrderPreference =
+            findPreference<Preference>("candidate_tab_order_preference")
         candidateTabOrderPreference?.apply {
             setOnPreferenceClickListener {
                 findNavController().navigate(

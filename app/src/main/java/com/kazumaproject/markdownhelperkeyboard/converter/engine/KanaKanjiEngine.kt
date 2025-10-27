@@ -6,6 +6,7 @@ import androidx.core.text.isDigitsOnly
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.convertFullWidthToHalfWidth
+import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoticon.Emoticon
@@ -24,6 +25,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommas
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.groupAndReplaceJapaneseForNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllFullWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.replaceJapaneseCharactersForEnglish
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWidth
@@ -1661,7 +1663,9 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
-        } else {
+        }else if (input.isAllFullWidthAscii()){
+            englishEngine.getCandidates(input.toHankakuAlphabet())
+        }  else {
             emptyList()
         }
 

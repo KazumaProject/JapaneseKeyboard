@@ -78,6 +78,7 @@ import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHiragana
+import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
 import com.kazumaproject.core.domain.key.Key
@@ -588,6 +589,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var hardKeyboardShiftPressd = false
 
+    private var isDefaultRomajiHenkanMap = false
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -987,7 +990,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
 
                 setTabsToTabLayout(mainView)
-                setCandidateTabLayout(mainView)
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -1425,6 +1427,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         systemBottomInset = insets.bottom
                         windowInsets
                     }
+                    setCandidateTabLayout(mainView)
                     setupCustomKeyboardListeners(mainView)
                     setSuggestionRecyclerView(
                         mainView, FlexboxLayoutManager(applicationContext).apply {
@@ -5989,9 +5992,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             romajiMapRepository.getActiveMap().map { entity ->
-                entity?.mapData ?: romajiMapRepository.getDefaultMapData()
-            }.distinctUntilChanged().collectLatest { activeMapData ->
-                romajiConverter = RomajiKanaConverter(activeMapData)
+                entity?.let {
+                    Pair(it.mapData, it.isDeletable)
+                } ?: Pair(romajiMapRepository.getDefaultMapData(), false)
+            }.distinctUntilChanged().collectLatest { (activeMapData, isDeletable) ->
+                val converterMap = if (!isDeletable) {
+                    activeMapData.mapKeys { (key, _) -> key.toZenkaku() }
+                } else {
+                    activeMapData
+                }
+                isDefaultRomajiHenkanMap = !isDeletable
+                romajiConverter = RomajiKanaConverter(converterMap)
             }
         }
 
@@ -7898,7 +7909,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 handleDeleteKeyTap(insertString, suggestionList)
                             }
                             stopDeleteLongPress()
-                            //hardKeyboardShiftPressd = false
+                            if (isDefaultRomajiHenkanMap) {
+                                hardKeyboardShiftPressd = false
+                            }
                         }
 
                         QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
@@ -8013,18 +8026,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     if (hardKeyboardShiftPressd) {
                                         handleTap(tap, insertString, sb, mainView)
                                     } else {
-                                        sb.append(insertString).append(tap)
-                                        romajiConverter?.let { converter ->
-                                            _inputString.update {
-                                                converter.convertQWERTY(sb.toString())
+                                        tap?.let { c ->
+                                            val charToAppend = if (isDefaultRomajiHenkanMap) {
+                                                c.toZenkaku()
+                                            } else {
+                                                c
+                                            }
+                                            sb.append(insertString).append(charToAppend)
+                                            romajiConverter?.let { converter ->
+                                                _inputString.update {
+                                                    converter.convertQWERTYZenkaku(sb.toString())
+                                                }
                                             }
                                         }
                                     }
                                 } else {
                                     tap?.let { c ->
                                         romajiConverter?.let { converter ->
+                                            val charToAppend = if (isDefaultRomajiHenkanMap) {
+                                                c.toZenkaku()
+                                            } else {
+                                                c
+                                            }
                                             _inputString.update {
-                                                converter.convertQWERTY(c.toString())
+                                                converter.convertQWERTYZenkaku(
+                                                    charToAppend.toString()
+                                                )
                                             }
                                         }
                                     }
@@ -9657,7 +9684,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.apply {
                 when (mainView.keyboardView.currentInputMode.value) {
                     InputMode.ModeJapanese -> {
-                        val insertStringEndWithN = romajiConverter?.flush(insertString)?.first
+                        val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
+                            romajiConverter?.flushZenkaku(insertString)?.first
+                        } else {
+                            romajiConverter?.flush(insertString)?.first
+                        }
                         if (insertStringEndWithN == null) {
                             _inputString.update { insertString }
                             if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
