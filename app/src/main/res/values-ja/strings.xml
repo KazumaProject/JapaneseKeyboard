@@ -321,4 +321,7 @@
     <string name="conversion_separation_summary">変換キーを押すと、入力中の文字列を分割し、最初の文節を選択状態にします。</string>
     <string name="pref_title_space_longpress_cursor">スペース長押しでカーソル移動</string>
     <string name="pref_summary_space_longpress_cursor">未確定（プリエディット）入力中、スペースキーを長押しするとカーソルを移動します</string>
+    <string name="add_candidate_tab_title">新しい候補タブを追加</string>
+    <string name="candidate_tab_order_preference_title">候補タブの並び順</string>
+    <string name="candidate_tab_order_preference_summary">候補タブの表示順を変更します</string>
 </resources>
