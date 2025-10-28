@@ -8028,6 +8028,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
                                     if (hardKeyboardShiftPressd) {
+                                        Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
                                         handleTap(tap, insertString, sb, mainView)
                                     } else {
                                         tap?.let { c ->
@@ -8047,7 +8048,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     tap?.let { c ->
                                         romajiConverter?.let { converter ->
-                                            val charToAppend = if (isDefaultRomajiHenkanMap) {
+                                            val charToAppend = if (isDefaultRomajiHenkanMap && !hardKeyboardShiftPressd) {
                                                 c.toZenkaku()
                                             } else {
                                                 c
