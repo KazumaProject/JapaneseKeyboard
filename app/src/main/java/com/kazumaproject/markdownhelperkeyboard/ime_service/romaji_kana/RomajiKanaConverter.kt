@@ -12,8 +12,8 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     private val validPrefixes: Set<String> =
         romajiToKana.keys.flatMap { key -> (1..key.length).map { key.substring(0, it) } }.toSet()
 
-    private val halfWidthRomajiToKana: Map<String, Pair<String, Int>> = romajiToKana.mapKeys { (key, _) ->
-        key.convertFullWidthToHalfWidth()
+    init {
+
     }
 
     /**
@@ -316,6 +316,14 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
             }
         }
         return result.toString()
+    }
+
+    /**
+     * romajiToKanaのキーをすべて半角に変換したキャッシュ用のマップ。
+     * lazyを使っているので、最初にアクセスされた時に一度だけ変換処理が実行される。
+     */
+    private val halfWidthRomajiToKana: Map<String, Pair<String, Int>> by lazy {
+        romajiToKana.mapKeys { (key, _) -> key.convertFullWidthToHalfWidth() }
     }
 
     /**
