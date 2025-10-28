@@ -3371,7 +3371,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
             if (conversionKeySwipePreference == true) {
-                if (!isHenkan.get()){
+                if (!isHenkan.get()) {
                     _cursorMoveMode.update { true }
                     isSpaceKeyLongPressed = true
                 }
@@ -4366,7 +4366,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
                         if (conversionKeySwipePreference == true) {
-                            if (!isHenkan.get()){
+                            if (!isHenkan.get()) {
                                 mainView.customLayoutDefault.setCursorMode(true)
                             }
                         } else {
@@ -6224,6 +6224,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             finalBottomMargin
         )
 
+        if (isSymbol) {
+            (mainView.keyboardSymbolView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
+                param.height = heightPx
+                param.width = finalKeyboardWidth
+                mainView.keyboardSymbolView.layoutParams = param
+            }
+        }
+
         // 5. 個別処理
         if (addCandidateTabHeight) {
             val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
@@ -8048,11 +8056,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     tap?.let { c ->
                                         romajiConverter?.let { converter ->
-                                            val charToAppend = if (isDefaultRomajiHenkanMap && !hardKeyboardShiftPressd) {
-                                                c.toZenkaku()
-                                            } else {
-                                                c
-                                            }
+                                            val charToAppend =
+                                                if (isDefaultRomajiHenkanMap && !hardKeyboardShiftPressd) {
+                                                    c.toZenkaku()
+                                                } else {
+                                                    c
+                                                }
                                             _inputString.update {
                                                 converter.convertQWERTYZenkaku(
                                                     charToAppend.toString()
@@ -8090,7 +8099,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySpace -> {
                             if (conversionKeySwipePreference == true) {
-                                if (!isHenkan.get()){
+                                if (!isHenkan.get()) {
                                     setCursorMode(true)
                                     isSpaceKeyLongPressed = true
                                 }
@@ -8152,6 +8161,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             cachedClickedSymbolHistory =
                 historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
         }
+        Timber.d("setSymbols: ${cachedEmoji?.size}")
         mainView.keyboardSymbolView.setSymbolLists(
             emojiList = cachedEmoji ?: emptyList(),
             emoticons = cachedEmoticons ?: emptyList(),
