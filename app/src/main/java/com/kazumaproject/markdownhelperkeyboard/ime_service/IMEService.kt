@@ -8083,6 +8083,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             } else {
                                                 c
                                             }
+                                            Timber.d("QWERTY romaji : $charToAppend")
                                             sb.append(insertString).append(charToAppend)
                                             romajiConverter?.let { converter ->
                                                 _inputString.update {
@@ -8100,6 +8101,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 } else {
                                                     c
                                                 }
+                                            Timber.d("QWERTY romaji 2: $charToAppend")
                                             _inputString.update {
                                                 converter.convertQWERTYZenkaku(
                                                     charToAppend.toString()
