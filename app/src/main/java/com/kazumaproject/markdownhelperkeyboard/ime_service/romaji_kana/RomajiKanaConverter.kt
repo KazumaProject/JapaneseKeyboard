@@ -485,7 +485,7 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
             val currentChar = text[i]
 
             // 1. '[' または ']' の場合は、変換せずにそのまま追加し、次の文字へ進む
-            if (currentChar == '[' || currentChar == ']') {
+            if (currentChar == '［' || currentChar == '］') {
                 result.append(currentChar)
                 i++
                 continue
