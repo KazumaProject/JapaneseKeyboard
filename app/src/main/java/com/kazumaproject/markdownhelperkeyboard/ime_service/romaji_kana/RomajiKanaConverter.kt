@@ -12,6 +12,10 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     private val validPrefixes: Set<String> =
         romajiToKana.keys.flatMap { key -> (1..key.length).map { key.substring(0, it) } }.toSet()
 
+    private val halfWidthRomajiToKana: Map<String, Pair<String, Int>> = romajiToKana.mapKeys { (key, _) ->
+        key.convertFullWidthToHalfWidth()
+    }
+
     /**
      * かなからローマ字への逆引きマップ。
      * 初期化時に一度だけ生成されるように `lazy` を使用します。
@@ -315,67 +319,74 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     }
 
     /**
-     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
-     * 例:
-     *   convert("a")   == "あ"
-     *   convert("shi") == "し"
-     *   convert("konnichiwa") == "こんにちは"
-     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
-     * 二重子音（qq,vv,ww,…,tch など）は「っ+子音」に。
-     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
-     * 「n」の後に母音(a,i,u,e,o)や「y」「n」が続かない場合は「ん」として処理します。
+     * Converts a given Romaji string into Hiragana/symbols based on a set of rules.
+     *
+     * This function adheres to the following conversion logic:
+     *
+     * 1.  **Longest Match First**: Prioritizes longer Romaji combinations (e.g., "shi" over "s").
+     * 2.  **Sokuon (っ)**: Handles double consonants like "kk", "tt", "pp" by converting them to a "っ" followed by the next character's conversion (e.g., "chotto" -> "ちょっと").
+     * 3.  **Hatsuon (ん)**: Treats an 'n' as "ん" if it is not followed by a vowel (a, i, u, e, o), 'y', or another 'n' (e.g., "kantan" -> "かんたん").
+     * 4.  **Width Insensitive**: Processes both full-width and half-width Romaji characters by normalizing them to half-width internally.
+     *
+     * @param text The Romaji string to be converted.
+     * @return The resulting Hiragana/symbol string.
+     *
+     * Example Usage:
+     * convertCustomLayout("konnichiwa") // returns "こんにちは"
+     * convertCustomLayout("chotto")     // returns "ちょっと"
+     * convertCustomLayout("kantan")     // returns "かんたん"
+     * convertCustomLayout("ｇｒｅａｔ")   // returns "ぐれあt" (assuming "g" and "r" are mapped)
      */
     fun convertCustomLayout(text: String): String {
         val result = StringBuilder()
         var i = 0
+        val normalizedText = text.convertFullWidthToHalfWidth() // Normalize the entire string once
 
-        while (i < text.length) {
-            val currentChar = text[i]
+        while (i < normalizedText.length) {
+            val currentChar = normalizedText[i]
 
-            // 1. まず「n」の特別ルールをチェックする
-            if (currentChar == 'n' && i + 1 < text.length && text[i + 1] !in "aiueoyn") {
-                result.append("ん")
-                i++
-                continue
-            }
-
-            // ★★★ 変更点①：促音（「っ」）の特別ルールを追加 ★★★
-            //    - 次の文字が存在し、現在の文字と同じ子音である場合（'n'を除く）
-            if (i + 1 < text.length &&
-                currentChar == text[i + 1] &&
-                currentChar in "kstcpbdfghjmqrvwz"
-            ) { // 促音になりうる子音を指定
-                result.append("っ")
-                i++ // ★重要★ インデックスを1つだけ進める
-                continue
-            }
-
-            var matched = false
-            // 2. 上記のルールに当てはまらない場合、通常通りもっとも長い組み合わせから探す
-            for (len in maxKeyLength downTo 1) {
-                if (i + len > text.length) continue
-
-                val segment = text.substring(i, i + len)
-                val halfWidthKeyMapping = romajiToKana.mapKeys { (key, _) ->
-                    key.convertFullWidthToHalfWidth()
+            // Rule 1: Special handling for 'n' (Hatsuon)
+            // If 'n' is the last character or not followed by a vowel/y/n.
+            if (currentChar == 'n') {
+                if (i + 1 >= normalizedText.length || normalizedText[i + 1] !in "aiueoyn") {
+                    result.append("ん")
+                    i++
+                    continue
                 }
-                val mapping = halfWidthKeyMapping[segment]
+            }
+
+            // Rule 2: Special handling for double consonants (Sokuon)
+            // Check if the current character is a consonant and is followed by the same one.
+            if (i + 1 < normalizedText.length &&
+                currentChar == normalizedText[i + 1] &&
+                currentChar in "kstcpbdfghjmqrvwz" // Consonants that can form a sokuon
+            ) {
+                result.append("っ")
+                i++ // Consume one of the double consonants, the loop will handle the next one
+                continue
+            }
+
+            // Rule 3: Longest match lookup
+            var matched = false
+            // Iterate from the longest possible key length down to 1
+            for (len in maxKeyLength downTo 1) {
+                if (i + len > normalizedText.length) continue
+
+                val segment = normalizedText.substring(i, i + len)
+                val mapping = halfWidthRomajiToKana[segment] // Use the cached, half-width map
 
                 if (mapping != null) {
                     val (kana, consume) = mapping
-
-                    // ★★★ 変更点②：複雑な促音処理を削除し、単純化 ★★★
                     result.append(kana)
-
                     i += consume
                     matched = true
-                    break
+                    break // Exit the inner loop once the longest match is found
                 }
             }
 
-            // 3. マッチしなかった文字はそのまま追加
+            // If no match was found in the map, append the character as is
             if (!matched) {
-                result.append(text[i])
+                result.append(normalizedText[i])
                 i++
             }
         }
