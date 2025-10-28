@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana
 
 import android.view.KeyEvent
+import com.kazumaproject.convertFullWidthToHalfWidth
 import timber.log.Timber
 
 class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int>>) {
@@ -291,6 +292,74 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
 
                 val segment = text.substring(i, i + len)
                 val mapping = romajiToKana[segment]
+
+                if (mapping != null) {
+                    val (kana, consume) = mapping
+
+                    // ★★★ 変更点②：複雑な促音処理を削除し、単純化 ★★★
+                    result.append(kana)
+
+                    i += consume
+                    matched = true
+                    break
+                }
+            }
+
+            // 3. マッチしなかった文字はそのまま追加
+            if (!matched) {
+                result.append(text[i])
+                i++
+            }
+        }
+        return result.toString()
+    }
+
+    /**
+     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
+     * 例:
+     *   convert("a")   == "あ"
+     *   convert("shi") == "し"
+     *   convert("konnichiwa") == "こんにちは"
+     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
+     * 二重子音（qq,vv,ww,…,tch など）は「っ+子音」に。
+     * 与えられたローマ字文字列をひらがな／記号にまとめて変換します。
+     * 「n」の後に母音(a,i,u,e,o)や「y」「n」が続かない場合は「ん」として処理します。
+     */
+    fun convertCustomLayout(text: String): String {
+        val result = StringBuilder()
+        var i = 0
+
+        while (i < text.length) {
+            val currentChar = text[i]
+
+            // 1. まず「n」の特別ルールをチェックする
+            if (currentChar == 'n' && i + 1 < text.length && text[i + 1] !in "aiueoyn") {
+                result.append("ん")
+                i++
+                continue
+            }
+
+            // ★★★ 変更点①：促音（「っ」）の特別ルールを追加 ★★★
+            //    - 次の文字が存在し、現在の文字と同じ子音である場合（'n'を除く）
+            if (i + 1 < text.length &&
+                currentChar == text[i + 1] &&
+                currentChar in "kstcpbdfghjmqrvwz"
+            ) { // 促音になりうる子音を指定
+                result.append("っ")
+                i++ // ★重要★ インデックスを1つだけ進める
+                continue
+            }
+
+            var matched = false
+            // 2. 上記のルールに当てはまらない場合、通常通りもっとも長い組み合わせから探す
+            for (len in maxKeyLength downTo 1) {
+                if (i + len > text.length) continue
+
+                val segment = text.substring(i, i + len)
+                val halfWidthKeyMapping = romajiToKana.mapKeys { (key, _) ->
+                    key.convertFullWidthToHalfWidth()
+                }
+                val mapping = halfWidthKeyMapping[segment]
 
                 if (mapping != null) {
                     val (kana, consume) = mapping
