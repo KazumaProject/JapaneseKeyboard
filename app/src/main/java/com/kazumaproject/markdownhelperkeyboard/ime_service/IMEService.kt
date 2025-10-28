@@ -3371,8 +3371,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
             if (conversionKeySwipePreference == true) {
-                _cursorMoveMode.update { true }
-                isSpaceKeyLongPressed = true
+                if (!isHenkan.get()){
+                    _cursorMoveMode.update { true }
+                    isSpaceKeyLongPressed = true
+                }
             } else {
                 mainLayoutBinding?.let {
                     if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
@@ -4364,7 +4366,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
                         if (conversionKeySwipePreference == true) {
-                            mainView.customLayoutDefault.setCursorMode(true)
+                            if (!isHenkan.get()){
+                                mainView.customLayoutDefault.setCursorMode(true)
+                            }
                         } else {
                             handleSpaceLongActionSumire()
                         }
@@ -8085,8 +8089,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySpace -> {
                             if (conversionKeySwipePreference == true) {
-                                setCursorMode(true)
-                                isSpaceKeyLongPressed = true
+                                if (!isHenkan.get()){
+                                    setCursorMode(true)
+                                    isSpaceKeyLongPressed = true
+                                }
                             } else {
                                 if (inputString.value.isEmpty()) {
                                     setCursorMode(true)
@@ -9691,18 +9697,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         if (insertStringEndWithN == null) {
                             _inputString.update { insertString }
-                            if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                this@apply, suggestions, insertString
-                            )
+                            if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                                        this, suggestions, insertString
+                                    )
+                                } else {
+                                    handleJapaneseModeSpaceKey(
+                                        this, suggestions, insertString
+                                    )
+                                }
+                            }
                         } else {
                             _inputString.update { insertStringEndWithN }
                             scope.launch {
                                 delay(64)
                                 val newSuggestionList =
                                     suggestionAdapter?.suggestions ?: emptyList()
-                                if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                    this@apply, newSuggestionList, insertStringEndWithN
-                                )
+                                if (newSuggestionList.isNotEmpty()) {
+                                    if (bunsetsuSeparation == true) {
+                                        handleJapaneseModeSpaceKeyWithBunsetsu(
+                                            mainView, suggestions, insertString
+                                        )
+                                    } else {
+                                        handleJapaneseModeSpaceKey(
+                                            mainView, suggestions, insertString
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
