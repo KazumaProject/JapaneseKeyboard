@@ -1603,8 +1603,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Timber.d("onKeyDown: F6 Pressed $insertString")
                                 if (insertString.isAllEnglishLetters()) {
                                     romajiConverter?.let { converter ->
-                                        _inputString.update {
-                                            converter.convert(insertString.lowercase()).toHiragana()
+                                        if (isDefaultRomajiHenkanMap) {
+                                            _inputString.update {
+                                                converter.convertCustomLayout(insertString.lowercase())
+                                                    .toHiragana()
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                converter.convert(insertString.lowercase())
+                                                    .toHiragana()
+                                            }
                                         }
                                     }
                                 } else {
@@ -1621,9 +1629,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Timber.d("onKeyDown: F7 Pressed $insertString")
                                 if (insertString.isAllEnglishLetters()) {
                                     romajiConverter?.let { converter ->
-                                        _inputString.update {
-                                            converter.convert(insertString.lowercase())
-                                                .toZenkakuKatakana()
+                                        if (isDefaultRomajiHenkanMap) {
+                                            _inputString.update {
+                                                converter.convertCustomLayout(insertString.lowercase())
+                                                    .toZenkakuKatakana()
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                converter.convert(insertString.lowercase())
+                                                    .toZenkakuKatakana()
+                                            }
                                         }
                                     }
                                 } else {
@@ -1640,9 +1655,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 Timber.d("onKeyDown: F8 Pressed $insertString")
                                 if (insertString.isAllEnglishLetters()) {
                                     romajiConverter?.let { converter ->
-                                        _inputString.update {
-                                            converter.convert(insertString.lowercase())
-                                                .toHankakuKatakana()
+                                        if (isDefaultRomajiHenkanMap) {
+                                            _inputString.update {
+                                                converter.convertCustomLayout(insertString.lowercase())
+                                                    .toHankakuKatakana()
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                converter.convert(insertString.lowercase())
+                                                    .toHankakuKatakana()
+                                            }
                                         }
                                     }
                                 } else {
@@ -4108,7 +4130,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             override fun onKey(text: String, isFlick: Boolean) {
                 // 通常の文字が入力された場合（変更なし）
                 clearDeleteBufferWithView()
-                Timber.d("onKey: $text ${qwertyMode.value}")
+                Timber.d("onKey: $text ${qwertyMode.value} $isDefaultRomajiHenkanMap")
                 vibrate()
 
                 when (qwertyMode.value) {
@@ -4120,8 +4142,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val sb = StringBuilder()
                                 sb.append(insertString).append(text)
                                 romajiConverter?.let { converter ->
-                                    _inputString.update {
-                                        converter.convert(sb.toString())
+                                    if (isDefaultRomajiHenkanMap) {
+                                        _inputString.update {
+                                            converter.convertCustomLayout(sb.toString())
+                                        }
+                                    } else {
+                                        _inputString.update {
+                                            converter.convert(sb.toString())
+                                        }
                                     }
                                 }
                             } else {
@@ -4140,8 +4168,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     val sb = StringBuilder()
                                     sb.append(insertString).append(text)
                                     romajiConverter?.let { converter ->
-                                        _inputString.update {
-                                            converter.convert(sb.toString())
+                                        if (isDefaultRomajiHenkanMap) {
+                                            _inputString.update {
+                                                converter.convertCustomLayout(sb.toString())
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                converter.convert(sb.toString())
+                                            }
                                         }
                                     }
                                 } else {
