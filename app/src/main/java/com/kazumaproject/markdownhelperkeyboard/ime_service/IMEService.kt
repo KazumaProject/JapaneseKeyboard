@@ -9718,11 +9718,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 if (newSuggestionList.isNotEmpty()) {
                                     if (bunsetsuSeparation == true) {
                                         handleJapaneseModeSpaceKeyWithBunsetsu(
-                                            mainView, suggestions, insertString
+                                            mainView, newSuggestionList, insertString
                                         )
                                     } else {
                                         handleJapaneseModeSpaceKey(
-                                            mainView, suggestions, insertString
+                                            mainView, newSuggestionList, insertString
                                         )
                                     }
                                 }
