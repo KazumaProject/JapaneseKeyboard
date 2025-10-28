@@ -6176,7 +6176,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // 2. ピクセル値の計算
         val heightPx = when {
-            isSymbol -> {
+
+            isSymbol || keyboardSymbolViewState.value -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
@@ -6300,11 +6301,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.suggestionViewParent,
             mainView.keyboardView,
             mainView.customLayoutDefault,
-            mainView.qwertyView
+            mainView.qwertyView,
+            mainView.candidatesRowView
         ).forEach { view ->
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                if (view != mainView.suggestionViewParent) params.height = heightPx
-                else params.bottomMargin = heightPx
+                if (view != mainView.suggestionViewParent) {
+                    params.height = heightPx
+                } else {
+                    params.bottomMargin = heightPx
+                }
                 params.gravity = gravity
                 view.layoutParams = params
             }
