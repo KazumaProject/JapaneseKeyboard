@@ -811,47 +811,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionClickNum = 0
-        if (!restarting) {
-            setCurrentInputType(editorInfo)
-            if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
-                mainLayoutBinding?.let { mainView ->
-                    Timber.d("TenKeyQWERTYMode.Sumire: ${mainView.keyboardView.currentInputMode.value} ${switchQWERTYPassword}")
-                    when (mainView.keyboardView.currentInputMode.value) {
-                        InputMode.ModeJapanese -> {
-                            customKeyboardMode = KeyboardInputMode.HIRAGANA
-                            updateKeyboardLayout()
-                        }
+        setCurrentInputType(editorInfo)
+        if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
+            mainLayoutBinding?.let { mainView ->
+                Timber.d("TenKeyQWERTYMode.Sumire: ${mainView.keyboardView.currentInputMode.value} ${switchQWERTYPassword}")
+                when (mainView.keyboardView.currentInputMode.value) {
+                    InputMode.ModeJapanese -> {
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        updateKeyboardLayout()
+                    }
 
-                        InputMode.ModeEnglish -> {
-                            if (switchQWERTYPassword == true) {
-                                if (currentInputType in passwordTypes) {
-                                    mainView.qwertyView.resetQWERTYKeyboard()
-                                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                                } else {
-                                    customKeyboardMode = KeyboardInputMode.ENGLISH
-                                    updateKeyboardLayout()
-                                }
+                    InputMode.ModeEnglish -> {
+                        if (switchQWERTYPassword == true) {
+                            if (currentInputType in passwordTypes) {
+                                mainView.qwertyView.resetQWERTYKeyboard()
+                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             } else {
                                 customKeyboardMode = KeyboardInputMode.ENGLISH
                                 updateKeyboardLayout()
                             }
-                        }
-
-                        InputMode.ModeNumber -> {
-                            customKeyboardMode = KeyboardInputMode.SYMBOLS
+                        } else {
+                            customKeyboardMode = KeyboardInputMode.ENGLISH
                             updateKeyboardLayout()
                         }
                     }
+
+                    InputMode.ModeNumber -> {
+                        customKeyboardMode = KeyboardInputMode.SYMBOLS
+                        updateKeyboardLayout()
+                    }
                 }
             }
-            if (switchQWERTYPassword == true) {
-                if (currentInputType in passwordTypes) {
-                    mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                }
+        }
+        if (switchQWERTYPassword == true) {
+            if (currentInputType in passwordTypes) {
+                mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
+                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
             }
-        } else {
-            setCurrentInputTypeRestart(editorInfo)
         }
         updateClipboardPreview()
 
