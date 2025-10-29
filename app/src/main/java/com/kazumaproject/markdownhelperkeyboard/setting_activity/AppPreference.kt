@@ -173,6 +173,9 @@ object AppPreference {
 
     private val ROMAJI_MAP_DATA_VERSION = Pair("romaji_map_data_version", 0)
 
+    private val QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE =
+        Pair("qwerty_romaji_shift_conversion_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -812,6 +815,15 @@ object AppPreference {
         get() = preferences.getInt(ROMAJI_MAP_DATA_VERSION.first, ROMAJI_MAP_DATA_VERSION.second)
         set(value) = preferences.edit {
             it.putInt(ROMAJI_MAP_DATA_VERSION.first, value)
+        }
+
+    var qwerty_romaji_shift_conversion_preference: Boolean
+        get() = preferences.getBoolean(
+            QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE.first,
+            QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
