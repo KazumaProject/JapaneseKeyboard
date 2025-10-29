@@ -610,8 +610,18 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable
         )
 
-        val resultNBestFinalDeferred: List<Candidate> =
+        val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
+            listOf(
+                Candidate(
+                    string = input,
+                    type = (1).toByte(),
+                    length = input.length.toUByte(),
+                    score = 4000
+                )
+            )
+        } else {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
+        }
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -1076,8 +1086,20 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable
         )
 
-        val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> =
+        val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
+            Pair(
+                listOf(
+                    Candidate(
+                        string = input,
+                        type = (1).toByte(),
+                        length = input.length.toUByte(),
+                        score = 4000
+                    )
+                ), emptyList()
+            )
+        } else {
             findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
+        }
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -1663,9 +1685,9 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
-        }else if (input.isAllFullWidthAscii()){
+        } else if (input.isAllFullWidthAscii()) {
             englishEngine.getCandidates(input.toHankakuAlphabet())
-        }  else {
+        } else {
             emptyList()
         }
 
@@ -1982,8 +2004,18 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable
         )
 
-        val resultNBestFinalDeferred: List<Candidate> =
+        val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
+            listOf(
+                Candidate(
+                    string = input,
+                    type = (1).toByte(),
+                    length = input.length.toUByte(),
+                    score = 4000
+                )
+            )
+        } else {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
+        }
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -2405,8 +2437,18 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = false
         )
 
-        val resultNBestFinalDeferred: List<Candidate> =
+        val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
+            listOf(
+                Candidate(
+                    string = input,
+                    type = (1).toByte(),
+                    length = input.length.toUByte(),
+                    score = 4000
+                )
+            )
+        } else {
             findPath.backwardAStar(graph, input.length, connectionIds, n)
+        }
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -2826,8 +2868,20 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = false
         )
 
-        val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> =
+        val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
+            Pair(
+                listOf(
+                    Candidate(
+                        string = input,
+                        type = (1).toByte(),
+                        length = input.length.toUByte(),
+                        score = 4000
+                    )
+                ), emptyList()
+            )
+        } else {
             findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
+        }
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
