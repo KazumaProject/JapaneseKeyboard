@@ -159,6 +159,9 @@ object AppPreference {
     private val CLIP_BOARD_PREVIEW_PREFERENCE =
         Pair("clipboard_preview_enable_preference", true)
 
+    private val CLIP_BOARD_PREVIEW_TAP_DELETE_PREFERENCE =
+        Pair("clipboard_preview_tap_delete_preference", false)
+
     private val ROUND_KEYBOARD_CORNER_PREFERENCE =
         Pair("round_corner_keyboard_preference", false)
 
@@ -297,7 +300,10 @@ object AppPreference {
 
     var candidate_tab_order: List<CandidateTab>
         get() {
-            val json = preferences.getString(CANDIDATE_TAB_ORDER_PREFERENCE.first, CANDIDATE_TAB_ORDER_PREFERENCE.second)
+            val json = preferences.getString(
+                CANDIDATE_TAB_ORDER_PREFERENCE.first,
+                CANDIDATE_TAB_ORDER_PREFERENCE.second
+            )
             val type = object : TypeToken<List<CandidateTab>>() {}.type
             return gson.fromJson(json, type)
         }
@@ -764,6 +770,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CLIP_BOARD_PREVIEW_PREFERENCE.first, value)
+        }
+
+    var clipboard_preview_tap_delete_preference: Boolean
+        get() = preferences.getBoolean(
+            CLIP_BOARD_PREVIEW_TAP_DELETE_PREFERENCE.first,
+            CLIP_BOARD_PREVIEW_TAP_DELETE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CLIP_BOARD_PREVIEW_TAP_DELETE_PREFERENCE.first, value)
         }
 
     var keyboard_corner_round_preference: Boolean
