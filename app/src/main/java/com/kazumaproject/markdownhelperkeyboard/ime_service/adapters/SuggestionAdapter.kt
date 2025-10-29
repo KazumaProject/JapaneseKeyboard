@@ -62,6 +62,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     // Internal flags to track enable/disable state
     private var isUndoEnabled: Boolean = false
     private var isPasteEnabled: Boolean = true
+    private var isClipboardDescriptionShow: Boolean = true
 
     private var currentMode: TenKeyQWERTYMode = TenKeyQWERTYMode.Default
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
@@ -128,6 +129,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     fun setPasteEnabled(enabled: Boolean) {
         isPasteEnabled = enabled
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
+    fun setClipboardDescriptionTextVisibility(visibility: Boolean) {
+        isClipboardDescriptionShow = visibility
         if (suggestions.isEmpty()) {
             notifyItemChanged(0)
         }
@@ -350,7 +358,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
 
             // テキスト用の説明は、画像がない場合にのみ表示
-            clipboardPreviewTextDescription?.isVisible = isPasteEnabled && clipboardBitmap == null
+            clipboardPreviewTextDescription?.isVisible = isPasteEnabled && clipboardBitmap == null && isClipboardDescriptionShow
 
             pasteIconParent?.apply {
                 setOnClickListener {
