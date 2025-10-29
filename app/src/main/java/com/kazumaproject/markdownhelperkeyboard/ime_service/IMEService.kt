@@ -370,6 +370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowSwitchRomajiEnglishPreference: Boolean? = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var qwertyShowKeymapSymbolsPreference: Boolean? = false
+    private var qwertyRomajiShiftConversionPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
     private var showCandidateInPasswordComposePreference: Boolean? = false
     private var isVibration: Boolean? = true
@@ -704,6 +705,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
             qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
+            qwertyRomajiShiftConversionPreference = qwerty_romaji_shift_conversion_preference
             showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
@@ -1123,6 +1125,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
         qwertyShowSwitchRomajiEnglishPreference = null
+        qwertyRomajiShiftConversionPreference = null
         qwertyShowPopupWindowPreference = null
         switchQWERTYPassword = null
         shortcutTollbarVisibility = null
@@ -7893,7 +7896,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         else -> {
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
-                                    if (hardKeyboardShiftPressd) {
+                                    if (hardKeyboardShiftPressd && qwertyRomajiShiftConversionPreference != true) {
                                         Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
                                         handleTap(tap, insertString, sb, mainView)
                                     } else {
