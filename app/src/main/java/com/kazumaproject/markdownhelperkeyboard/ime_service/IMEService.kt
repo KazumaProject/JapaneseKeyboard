@@ -815,11 +815,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setCurrentInputType(editorInfo)
             if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
                 mainLayoutBinding?.let { mainView ->
-                    val excludeResetKeyboardOrderFlag =
-                        mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && switchQWERTYPassword == true && currentInputType in passwordTypes
-                    if (!excludeResetKeyboardOrderFlag) {
-                        resetKeyboard()
-                    }
                     Timber.d("TenKeyQWERTYMode.Sumire: ${mainView.keyboardView.currentInputMode.value} ${switchQWERTYPassword}")
                     when (mainView.keyboardView.currentInputMode.value) {
                         InputMode.ModeJapanese -> {
@@ -977,6 +972,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
                         mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
                     }
+                }
+
+                val excludeResetKeyboardOrderFlag =
+                    mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && switchQWERTYPassword == true && currentInputType in passwordTypes
+                if (!excludeResetKeyboardOrderFlag) {
+                    resetKeyboard()
                 }
 
                 suggestionRecyclerView.isVisible = true
