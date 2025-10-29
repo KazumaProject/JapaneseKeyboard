@@ -164,10 +164,10 @@
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
+                android:dependency="clipboard_preview_enable_preference"
                 android:key="clipboard_preview_tap_delete_preference"
                 android:summary="@string/pref_clipboard_tap_delete_summary"
-                android:title="@string/pref_clipboard_tap_delete_title"
-                android:dependency="clipboard_preview_enable_preference"/>
+                android:title="@string/pref_clipboard_tap_delete_title" />
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
@@ -275,6 +275,13 @@
                 android:title="@string/qwerty_romaji_english_visibility_title"
                 app:defaultValue="true"
                 app:summary="@string/qwerty_romaji_english_visibility_summary" />
+
+            <SwitchPreferenceCompat
+                android:key="qwerty_romaji_shift_conversion_preference"
+                android:title="@string/pref_romaji_shift_title"
+                app:defaultValue="false"
+                app:summary="@string/pref_romaji_shift_summary" />
+
         </PreferenceCategory>
 
         <PreferenceCategory android:title="@string/category_symbol_keyboard_title">
