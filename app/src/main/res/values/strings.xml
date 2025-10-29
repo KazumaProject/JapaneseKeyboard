@@ -328,4 +328,6 @@
     <string name="candidate_tab_order_preference_summary">Change the display order of candidate tabs</string>
     <string name="pref_qwerty_shift_key_action_title">Shift key behavior (Romaji)</string>
     <string name="pref_qwerty_shift_key_action_summary"> Makes only the first letter after Shift uppercase for consistency in all cases</string>
+    <string name="pref_clipboard_tap_delete_title">Tap to remove from candidate bar</string>
+    <string name="pref_clipboard_tap_delete_summary">When you tap a clipboard item in the candidate bar, it will be removed from the bar.</string>
 </resources>

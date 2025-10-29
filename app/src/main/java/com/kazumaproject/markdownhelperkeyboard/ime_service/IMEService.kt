@@ -382,6 +382,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var switchQWERTYPassword: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
     private var clipboardPreviewVisibility: Boolean? = true
+    private var clipboardPreviewTapToDelete: Boolean? = false
     private var isDeleteLeftFlickPreference: Boolean? = true
     private var tenkeyHeightPreferenceValue: Int? = 280
     private var tenkeyWidthPreferenceValue: Int? = 100
@@ -729,6 +730,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isDeleteLeftFlickPreference = delete_key_left_flick_preference
 
             clipboardPreviewVisibility = clipboard_preview_preference
+            clipboardPreviewTapToDelete = clipboard_preview_tap_delete_preference
 
             tenkeyHeightPreferenceValue = keyboard_height ?: 280
             tenkeyWidthPreferenceValue = keyboard_width ?: 100
@@ -812,6 +814,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionClickNum = 0
         setCurrentInputType(editorInfo)
+        suggestionAdapter?.setClipboardDescriptionTextVisibility(
+            !(clipboardPreviewTapToDelete ?: false)
+        )
         if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
             mainLayoutBinding?.let { mainView ->
                 Timber.d("TenKeyQWERTYMode.Sumire: ${mainView.keyboardView.currentInputMode.value} ${switchQWERTYPassword}")
@@ -1122,6 +1127,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         switchQWERTYPassword = null
         shortcutTollbarVisibility = null
         clipboardPreviewVisibility = null
+        clipboardPreviewTapToDelete = null
         isDeleteLeftFlickPreference = null
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
@@ -7334,6 +7340,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         pasteAction()
+                        if (clipboardPreviewTapToDelete == true) {
+                            clipboardUtil.clearClipboard()
+                            adapter.apply {
+                                setClipboardPreview("")
+                                setPasteEnabled(false)
+                            }
+                        }
                     }
                 }
             }
