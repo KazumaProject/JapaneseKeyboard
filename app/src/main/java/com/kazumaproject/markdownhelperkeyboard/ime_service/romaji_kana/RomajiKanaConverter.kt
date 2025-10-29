@@ -353,16 +353,6 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
         while (i < normalizedText.length) {
             val currentChar = normalizedText[i]
 
-            // Rule 1: Special handling for 'n' (Hatsuon)
-            // If 'n' is the last character or not followed by a vowel/y/n.
-            if (currentChar == 'n') {
-                if (i + 1 >= normalizedText.length || normalizedText[i + 1] !in "aiueoyn") {
-                    result.append("ん")
-                    i++
-                    continue
-                }
-            }
-
             // Rule 2: Special handling for double consonants (Sokuon)
             // Check if the current character is a consonant and is followed by the same one.
             if (i + 1 < normalizedText.length &&
