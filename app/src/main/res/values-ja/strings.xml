@@ -326,4 +326,7 @@
     <string name="candidate_tab_order_preference_summary">候補タブの表示順を変更します</string>
     <string name="pref_qwerty_shift_key_action_title">Shift キー動作 (ローマ字)</string>
     <string name="pref_qwerty_shift_key_action_summary">Shift 直後の 1 キーのみ大文字英字に統一します</string>
+    <string name="pref_clipboard_tap_delete_title">クリップボード タップで候補から削除</string>
+    <string name="pref_clipboard_tap_delete_summary">クリップボード項目をタップしたとき、変換欄から削除します。
+</string>
 </resources>

@@ -164,6 +164,13 @@
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
+                android:key="clipboard_preview_tap_delete_preference"
+                android:summary="@string/pref_clipboard_tap_delete_summary"
+                android:title="@string/pref_clipboard_tap_delete_title"
+                android:dependency="clipboard_preview_enable_preference"/>
+
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
                 android:key="space_key_preference"
                 android:summary="@string/space_key_summary"
                 android:title="@string/space_key_title" />
