@@ -94,6 +94,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
+        Log.d("FlickKeyboardView","setKeyboard")
         this.removeAllViews()
         flickControllers.forEach { it.cancel() }
         flickControllers.clear()
