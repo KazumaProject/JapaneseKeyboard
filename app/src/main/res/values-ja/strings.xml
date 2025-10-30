@@ -330,4 +330,7 @@
     <string name="pref_clipboard_tap_delete_summary">クリップボード項目をタップしたとき、変換欄から削除します。</string>
     <string name="pref_romaji_shift_title">Shift直後の1文字だけ大文字</string>
     <string name="pref_romaji_shift_summary">ローマ字入力で、Shiftキーを押した直後の最初の1文字のみをアルファベットの大文字にします。</string>
+    <string name="tablet_preference_category_title">タブレット</string>
+    <string name="pref_tablet_layout_title">タブレットのレイアウト</string>
+    <string name="pref_tablet_layout_summary">タブレットでは五十音（かな）レイアウトを使用します。</string>
 </resources>

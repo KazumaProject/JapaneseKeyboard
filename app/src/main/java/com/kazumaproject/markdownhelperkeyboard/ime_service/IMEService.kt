@@ -373,6 +373,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyRomajiShiftConversionPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
     private var showCandidateInPasswordComposePreference: Boolean? = false
+    private var tabletGojuonLayoutPreference: Boolean? = true
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
     private var mozcUTPersonName: Boolean? = false
@@ -670,6 +671,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInput(attribute, restarting)
         Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
+        isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
         if (!restarting) {
             resetAllFlags()
         } else {
@@ -707,6 +709,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
             qwertyRomajiShiftConversionPreference = qwerty_romaji_shift_conversion_preference
             showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
+            tabletGojuonLayoutPreference = tablet_gojuon_layout_preference
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
             customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
@@ -1136,6 +1139,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
         showCandidateInPasswordComposePreference = null
+        tabletGojuonLayoutPreference = null
         isVibration = null
         tenkeyHeightPreferenceValue = null
         tenkeyWidthPreferenceValue = null
@@ -1449,9 +1453,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setQWERTYKeyboard(mainView)
                     if (isTablet == true) {
                         setTabletKeyListeners(mainView)
-                    } else {
-                        setTenKeyListeners(mainView)
                     }
+                    setTenKeyListeners(mainView)
                     setKeyboardSizeSwitchKeyboard(mainView)
                     updateClipboardPreview()
                     mainView.suggestionRecyclerView.isVisible = suggestionViewStatus.value
@@ -3606,11 +3609,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             when (type) {
                 KeyboardType.TENKEY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
-                        if (isTablet == true) {
+                        if (isTablet == true && tabletGojuonLayoutPreference == true) {
                             tabletView.isVisible = true
                             tabletView.resetLayout()
+                            keyboardView.isVisible = false
                         } else {
                             keyboardView.isVisible = true
+                            tabletView.isVisible = false
                         }
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                     } else {
@@ -5842,8 +5847,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 customLayoutDefault.visibility = View.INVISIBLE
                             }
 
-                            tabletView.isVisible -> {
+                            tabletView.isVisible && tabletGojuonLayoutPreference == true -> {
                                 tabletView.visibility = View.INVISIBLE
+                            }
+
+                            tabletView.isVisible && tabletGojuonLayoutPreference != true -> {
+                                keyboardView.visibility = View.INVISIBLE
                             }
 
                             keyboardView.isVisible -> {
@@ -5920,10 +5929,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             TenKeyQWERTYMode.Default, emptyList()
                         )
                         mainView.apply {
-                            if (isTablet == true) {
+                            if (isTablet == true && tabletGojuonLayoutPreference == true) {
                                 tabletView.isVisible = true
+                                keyboardView.isVisible = false
                             } else {
                                 keyboardView.isVisible = true
+                                tabletView.isVisible = false
                             }
                             qwertyView.isVisible = false
                             customLayoutDefault.isVisible = false
@@ -5935,7 +5946,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
                         )
                         mainView.apply {
-                            if (isTablet == true) {
+                            if (isTablet == true && tabletGojuonLayoutPreference == true) {
                                 tabletView.isVisible = false
                             } else {
                                 keyboardView.isVisible = false
@@ -5951,7 +5962,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
                         )
                         mainView.apply {
-                            if (isTablet == true) {
+                            if (isTablet == true && tabletGojuonLayoutPreference == true) {
                                 tabletView.isVisible = false
                             } else {
                                 keyboardView.isVisible = false
@@ -5971,7 +5982,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             TenKeyQWERTYMode.Custom, customLayouts
                         )
                         mainView.apply {
-                            if (isTablet == true) {
+                            if (isTablet == true && tabletGojuonLayoutPreference == true) {
                                 tabletView.isVisible = false
                             } else {
                                 keyboardView.isVisible = false
@@ -5986,7 +5997,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             TenKeyQWERTYMode.Sumire, emptyList()
                         )
                         mainView.apply {
-                            if (isTablet == true) {
+                            if (isTablet == true && tabletGojuonLayoutPreference == true) {
                                 tabletView.isVisible = false
                             } else {
                                 keyboardView.isVisible = false
@@ -6001,7 +6012,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             TenKeyQWERTYMode.Sumire, emptyList()
                         )
                         mainView.apply {
-                            if (isTablet == true) {
+                            if (isTablet == true && tabletGojuonLayoutPreference == true) {
                                 tabletView.isVisible = false
                             } else {
                                 keyboardView.isVisible = false
@@ -6273,6 +6284,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (mainView.keyboardSymbolView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
                 param.height = heightPx
                 param.width = finalKeyboardWidth
+                mainView.keyboardSymbolView.layoutParams = param
+            }
+        }
+
+        if (isTablet == true) {
+            (mainView.tabletView.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
+                param.height = heightPx
                 mainView.keyboardSymbolView.layoutParams = param
             }
         }
@@ -7896,21 +7914,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         else -> {
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
-                                    if (hardKeyboardShiftPressd && qwertyRomajiShiftConversionPreference != true) {
-                                        Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
-                                        handleTap(tap, insertString, sb, mainView)
-                                    } else {
-                                        tap?.let { c ->
-                                            val charToAppend = if (isDefaultRomajiHenkanMap) {
-                                                c.toZenkaku()
-                                            } else {
-                                                c
+                                    Timber.d("QWERTY romaji not empty: $hardKeyboardShiftPressd $qwertyRomajiShiftConversionPreference")
+                                    if (qwertyRomajiShiftConversionPreference == true){
+                                        if (hardKeyboardShiftPressd) {
+                                            Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
+                                            tap?.let { c ->
+                                                val charToAppend = if (isDefaultRomajiHenkanMap && c.isLowerCase()) {
+                                                    c.toZenkaku()
+                                                } else {
+                                                    c
+                                                }
+                                                Timber.d("QWERTY romaji : $charToAppend")
+                                                sb.append(insertString).append(charToAppend)
+                                                romajiConverter?.let { converter ->
+                                                    _inputString.update {
+                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                    }
+                                                }
                                             }
-                                            Timber.d("QWERTY romaji : $charToAppend")
-                                            sb.append(insertString).append(charToAppend)
-                                            romajiConverter?.let { converter ->
-                                                _inputString.update {
-                                                    converter.convertQWERTYZenkaku(sb.toString())
+                                        } else {
+                                            tap?.let { c ->
+                                                val charToAppend = if (isDefaultRomajiHenkanMap) {
+                                                    c.toZenkaku()
+                                                } else {
+                                                    c
+                                                }
+                                                Timber.d("QWERTY romaji : $charToAppend")
+                                                sb.append(insertString).append(charToAppend)
+                                                romajiConverter?.let { converter ->
+                                                    _inputString.update {
+                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }else{
+                                        if (hardKeyboardShiftPressd) {
+                                            Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
+                                            handleTap(tap, insertString, sb, mainView)
+                                        } else {
+                                            tap?.let { c ->
+                                                val charToAppend = if (isDefaultRomajiHenkanMap) {
+                                                    c.toZenkaku()
+                                                } else {
+                                                    c
+                                                }
+                                                Timber.d("QWERTY romaji : $charToAppend")
+                                                sb.append(insertString).append(charToAppend)
+                                                romajiConverter?.let { converter ->
+                                                    _inputString.update {
+                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                    }
                                                 }
                                             }
                                         }
