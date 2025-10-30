@@ -176,6 +176,9 @@ object AppPreference {
     private val QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE =
         Pair("qwerty_romaji_shift_conversion_preference", false)
 
+    private val TABLET_GOJUON_LAYOUT_PREFERENCE =
+        Pair("tablet_use_gojuon_layout_preference", true)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -824,6 +827,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE.first, value)
+        }
+
+    var tablet_gojuon_layout_preference: Boolean
+        get() = preferences.getBoolean(
+            TABLET_GOJUON_LAYOUT_PREFERENCE.first,
+            TABLET_GOJUON_LAYOUT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TABLET_GOJUON_LAYOUT_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
