@@ -332,4 +332,7 @@
     <string name="pref_clipboard_tap_delete_summary">When you tap a clipboard item in the candidate bar, it will be removed from the bar.</string>
     <string name="pref_romaji_shift_title">Capitalize only the first character after Shift</string>
     <string name="pref_romaji_shift_summary">In romaji input, only the first character after pressing the Shift key becomes uppercase.</string>
+    <string name="tablet_preference_category_title">Tablet</string>
+    <string name="pref_tablet_layout_title">Tablet layout</string>
+    <string name="pref_tablet_layout_summary">Use the kana (Gojūon) layout on tablets.</string>
 </resources>
