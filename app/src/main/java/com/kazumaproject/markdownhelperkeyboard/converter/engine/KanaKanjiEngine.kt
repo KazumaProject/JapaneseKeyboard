@@ -812,6 +812,8 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
+        } else if (input.isAllFullWidthAscii()) {
+            englishEngine.getCandidates(input.toHankakuAlphabet())
         } else {
             emptyList()
         }
@@ -1291,6 +1293,8 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
+        } else if (input.isAllFullWidthAscii()) {
+            englishEngine.getCandidates(input.toHankakuAlphabet())
         } else {
             emptyList()
         }
@@ -2114,6 +2118,8 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
+        } else if (input.isAllFullWidthAscii()) {
+            englishEngine.getCandidates(input.toHankakuAlphabet())
         } else {
             emptyList()
         }
@@ -2637,6 +2643,8 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
+        } else if (input.isAllFullWidthAscii()) {
+            englishEngine.getCandidates(input.toHankakuAlphabet())
         } else {
             emptyList()
         }
@@ -3071,6 +3079,8 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
+        } else if (input.isAllFullWidthAscii()) {
+            englishEngine.getCandidates(input.toHankakuAlphabet())
         } else {
             emptyList()
         }
@@ -3364,6 +3374,8 @@ class KanaKanjiEngine {
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
             englishEngine.getCandidates(input)
+        } else if (input.isAllFullWidthAscii()) {
+            englishEngine.getCandidates(input.toHankakuAlphabet())
         } else {
             emptyList()
         }
