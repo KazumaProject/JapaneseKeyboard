@@ -872,15 +872,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         if (isKeyboardFloatingMode == true) {
-            val widthPref = appPreference.keyboard_width ?: 100
-
-            val density = resources.displayMetrics.density
+            val isPortrait =
+                resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val screenWidth = resources.displayMetrics.widthPixels
+            val density = resources.displayMetrics.density
 
-            val screenWidthDp = (screenWidth / density).toInt()
-            val widthDp = (screenWidthDp * (widthPref / 100f)).toInt()
+            val widthPref = if (isPortrait) {
+                tenkeyWidthPreferenceValue ?: 100
+            } else {
+                tenkeyWidthLandScapePreferenceValue ?: 100
+            }
+
+            val widthPx = when {
+                widthPref == 100 -> {
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                }
+
+                else -> {
+                    (screenWidth * (widthPref / 100f)).toInt()
+                }
+            }
             changeFloatingKeyboardSize(
-                newWidthDp = widthDp
+                newWidthDp = widthPx
             )
 
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
@@ -1068,7 +1081,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
 
             floatingDockView.setText("あ")
-
             floatingModeSwitchWindow = PopupWindow(
                 floatingModeSwitchView,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -1323,8 +1335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun changeFloatingKeyboardSize(newWidthDp: Int? = null) {
         val popupWindow = floatingKeyboardView ?: return
 
-        val density = resources.displayMetrics.density
-        val newWidthPx = newWidthDp?.let { (it * density).toInt() } ?: popupWindow.width
+        val newWidthPx = newWidthDp ?: popupWindow.width
 
         val savedX = appPreference.keyboard_floating_position_x
         val savedY = appPreference.keyboard_floating_position_y
@@ -1352,7 +1363,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
         }
-
 
         floatingDockView = FloatingDockView(ctx).apply {
             setText("あ")
@@ -1414,11 +1424,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (screenWidth * (widthPref / 100f)).toInt()
                 }
             }
-            floatingKeyboardView = PopupWindow(
-                floatingKeyboardLayoutBinding.root,
-                widthPx,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
+            if (floatingKeyboardView == null){
+                floatingKeyboardView = PopupWindow(
+                    floatingKeyboardLayoutBinding.root,
+                    widthPx,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+            }else{
+                floatingKeyboardView?.dismiss()
+                floatingKeyboardView = null
+
+                floatingKeyboardView = PopupWindow(
+                    floatingKeyboardLayoutBinding.root,
+                    widthPx,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                )
+            }
         }
 
         keyboardContainer?.let { container ->
@@ -2282,7 +2303,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun applyFloatingModeState(isFloatingMode: Boolean) {
         val mainView = mainLayoutBinding ?: return
-        Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode")
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             floatingKeyboardView?.dismiss()
             return
@@ -2295,6 +2315,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             mainView.root.alpha = 0f
             floatingKeyboardView?.apply {
+                Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${this.isShowing}")
                 if (!this.isShowing) {
                     val anchorView = window.window?.decorView
                     if (anchorView != null && anchorView.windowToken != null) {
@@ -6775,6 +6796,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+
             if (isKeyboardFloatingMode == true) {
                 floatingKeyboardBinding?.keyboardViewFloating?.apply {
                     when (currentInputType) {
@@ -6789,6 +6811,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         InputTypeForIME.TextPersonName,
                         InputTypeForIME.TextPhonetic,
                         InputTypeForIME.TextWebEditText,
+                        InputTypeForIME.TextUri,
                             -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
@@ -6809,7 +6832,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
-                        InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
+                        InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
@@ -6833,8 +6856,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
+                        InputTypeForIME.TextEmailAddress,
                         InputTypeForIME.TextEditTextInWebView,
-                        InputTypeForIME.TextUri,
                         InputTypeForIME.TextPostalAddress,
                         InputTypeForIME.TextWebEmailAddress,
                         InputTypeForIME.TextPassword,
