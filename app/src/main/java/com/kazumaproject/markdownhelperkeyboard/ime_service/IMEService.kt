@@ -120,7 +120,10 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionA
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getEnterKeyIndexSumire
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCharacterAsString
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInEn
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInJp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
@@ -3635,70 +3638,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                        val qwertyEnterKeyText = when (currentInputType) {
-                            InputTypeForIME.Text,
-                            InputTypeForIME.TextAutoComplete,
-                            InputTypeForIME.TextAutoCorrect,
-                            InputTypeForIME.TextCapCharacters,
-                            InputTypeForIME.TextCapSentences,
-                            InputTypeForIME.TextCapWords,
-                            InputTypeForIME.TextFilter,
-                            InputTypeForIME.TextNoSuggestion,
-                            InputTypeForIME.TextPersonName,
-                            InputTypeForIME.TextPhonetic,
-                            InputTypeForIME.TextWebEditText,
-                                -> {
-                                "return"
-                            }
-
-                            InputTypeForIME.TextMultiLine,
-                            InputTypeForIME.TextImeMultiLine,
-                            InputTypeForIME.TextShortMessage,
-                            InputTypeForIME.TextLongMessage,
-                                -> {
-                                "return"
-                            }
-
-                            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                                "return"
-                            }
-
-                            InputTypeForIME.TextDone -> {
-                                "return"
-                            }
-
-                            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                                "search"
-                            }
-
-                            InputTypeForIME.TextEditTextInWebView,
-                            InputTypeForIME.TextUri,
-                            InputTypeForIME.TextPostalAddress,
-                            InputTypeForIME.TextWebEmailAddress,
-                            InputTypeForIME.TextPassword,
-                            InputTypeForIME.TextVisiblePassword,
-                            InputTypeForIME.TextWebPassword,
-                                -> {
-                                "return"
-                            }
-
-                            InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                                "return"
-                            }
-
-                            InputTypeForIME.Number,
-                            InputTypeForIME.NumberDecimal,
-                            InputTypeForIME.NumberPassword,
-                            InputTypeForIME.NumberSigned,
-                            InputTypeForIME.Phone,
-                            InputTypeForIME.Date,
-                            InputTypeForIME.Datetime,
-                            InputTypeForIME.Time,
-                                -> {
-                                "return"
-                            }
-
-                        }
+                        val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
                         qwertyView.resetQWERTYKeyboard(qwertyEnterKeyText)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
@@ -3717,70 +3657,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
                         keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                        val qwertyEnterKeyText = when (currentInputType) {
-                            InputTypeForIME.Text,
-                            InputTypeForIME.TextAutoComplete,
-                            InputTypeForIME.TextAutoCorrect,
-                            InputTypeForIME.TextCapCharacters,
-                            InputTypeForIME.TextCapSentences,
-                            InputTypeForIME.TextCapWords,
-                            InputTypeForIME.TextFilter,
-                            InputTypeForIME.TextNoSuggestion,
-                            InputTypeForIME.TextPersonName,
-                            InputTypeForIME.TextPhonetic,
-                            InputTypeForIME.TextWebEditText,
-                                -> {
-                                "確定"
-                            }
-
-                            InputTypeForIME.TextMultiLine,
-                            InputTypeForIME.TextImeMultiLine,
-                            InputTypeForIME.TextShortMessage,
-                            InputTypeForIME.TextLongMessage,
-                                -> {
-                                "改行"
-                            }
-
-                            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                                "確定"
-                            }
-
-                            InputTypeForIME.TextDone -> {
-                                "確定"
-                            }
-
-                            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                                "検索"
-                            }
-
-                            InputTypeForIME.TextEditTextInWebView,
-                            InputTypeForIME.TextUri,
-                            InputTypeForIME.TextPostalAddress,
-                            InputTypeForIME.TextWebEmailAddress,
-                            InputTypeForIME.TextPassword,
-                            InputTypeForIME.TextVisiblePassword,
-                            InputTypeForIME.TextWebPassword,
-                                -> {
-                                "確定"
-                            }
-
-                            InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                                "確定"
-                            }
-
-                            InputTypeForIME.Number,
-                            InputTypeForIME.NumberDecimal,
-                            InputTypeForIME.NumberPassword,
-                            InputTypeForIME.NumberSigned,
-                            InputTypeForIME.Phone,
-                            InputTypeForIME.Date,
-                            InputTypeForIME.Datetime,
-                            InputTypeForIME.Time,
-                                -> {
-                                "確定"
-                            }
-
-                        }
+                        val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInJp()
                         qwertyView.setRomajiKeyboard(
                             qwertyEnterKeyText
                         )
@@ -3798,70 +3675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("showKeyboard keyboard: ${this.keyboardView.currentInputMode.value}")
                     customLayoutDefault.isVisible = true
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
-                        currentEnterKeyIndex = when (currentInputType) {
-                            InputTypeForIME.Text,
-                            InputTypeForIME.TextAutoComplete,
-                            InputTypeForIME.TextAutoCorrect,
-                            InputTypeForIME.TextCapCharacters,
-                            InputTypeForIME.TextCapSentences,
-                            InputTypeForIME.TextCapWords,
-                            InputTypeForIME.TextFilter,
-                            InputTypeForIME.TextNoSuggestion,
-                            InputTypeForIME.TextPersonName,
-                            InputTypeForIME.TextPhonetic,
-                            InputTypeForIME.TextWebEditText,
-                                -> {
-                                1
-                            }
-
-                            InputTypeForIME.TextMultiLine,
-                            InputTypeForIME.TextImeMultiLine,
-                            InputTypeForIME.TextShortMessage,
-                            InputTypeForIME.TextLongMessage,
-                                -> {
-                                0
-                            }
-
-                            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                                4
-                            }
-
-                            InputTypeForIME.TextDone -> {
-                                1
-                            }
-
-                            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                                3
-                            }
-
-                            InputTypeForIME.TextEditTextInWebView,
-                            InputTypeForIME.TextUri,
-                            InputTypeForIME.TextPostalAddress,
-                            InputTypeForIME.TextWebEmailAddress,
-                            InputTypeForIME.TextPassword,
-                            InputTypeForIME.TextVisiblePassword,
-                            InputTypeForIME.TextWebPassword,
-                                -> {
-                                1
-                            }
-
-                            InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                                1
-                            }
-
-                            InputTypeForIME.Number,
-                            InputTypeForIME.NumberDecimal,
-                            InputTypeForIME.NumberPassword,
-                            InputTypeForIME.NumberSigned,
-                            InputTypeForIME.Phone,
-                            InputTypeForIME.Date,
-                            InputTypeForIME.Datetime,
-                            InputTypeForIME.Time,
-                                -> {
-                                1
-                            }
-
-                        }
+                        currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
                         val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
                             mode = customKeyboardMode,
                             dynamicKeyStates = mapOf(
@@ -3928,6 +3742,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             TenKeyQWERTYMode.TenKeyQWERTY -> {}
             TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {}
             TenKeyQWERTYMode.Sumire -> {
+                Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
+
+                mainLayoutBinding?.customLayoutDefault?.apply {
+                    updateDynamicKey(
+                        keyId = "enter_key",
+                        stateIndex = currentEnterKeyIndex
+                    )
+                    updateDynamicKey(
+                        keyId = "dakuten_toggle_key",
+                        stateIndex = currentDakutenKeyIndex
+                    )
+                    updateDynamicKey(
+                        keyId = "space_convert_key",
+                        stateIndex = currentSpaceKeyIndex
+                    )
+                    updateDynamicKey(
+                        keyId = "katakana_toggle_key",
+                        stateIndex = currentKatakanaKeyIndex
+                    )
+                }
+            }
+
+            TenKeyQWERTYMode.Number -> {
+
+            }
+
+        }
+    }
+
+    private fun createNewKeyboardLayoutForSumire() {
+        Timber.d("updateKeyboardLayout: ${qwertyMode.value} $currentEnterKeyIndex")
+        when (qwertyMode.value) {
+            TenKeyQWERTYMode.Custom -> {
+                //setInitialKeyboardTab()
+            }
+
+            TenKeyQWERTYMode.Default -> {}
+            TenKeyQWERTYMode.TenKeyQWERTY -> {}
+            TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {}
+            TenKeyQWERTYMode.Sumire -> {
                 val dynamicStates = mapOf(
                     "enter_key" to currentEnterKeyIndex,
                     "dakuten_toggle_key" to currentDakutenKeyIndex,
@@ -3948,8 +3802,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             TenKeyQWERTYMode.Number -> {
-                val finalLayout = KeyboardDefaultLayouts.createNumberLayout()
-                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+
             }
 
         }
@@ -4010,99 +3863,63 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setSumireKeyboardDakutenKey() {
         // 0と1を交互に切り替える
         currentDakutenKeyIndex = 1
-        updateKeyboardLayout()
-    }
-
-    private fun setSumireKeyboardDakutenKeyEmpty() {
-        // 0と1を交互に切り替える
-        currentDakutenKeyIndex = 0
-        updateKeyboardLayout()
+        mainLayoutBinding?.customLayoutDefault?.apply {
+            updateDynamicKey(
+                keyId = "dakuten_toggle_key",
+                stateIndex = 1
+            )
+        }
     }
 
     private fun setSumireKeyboardEnterKey(index: Int) {
         currentEnterKeyIndex = index
-        updateKeyboardLayout()
+        mainLayoutBinding?.customLayoutDefault?.apply {
+            updateDynamicKey(
+                keyId = "enter_key",
+                stateIndex = index
+            )
+        }
     }
 
     private fun setSumireKeyboardSpaceKey(index: Int) {
         currentSpaceKeyIndex = index
-        updateKeyboardLayout()
+        mainLayoutBinding?.customLayoutDefault?.apply {
+            updateDynamicKey(
+                keyId = "space_convert_key",
+                stateIndex = index
+            )
+        }
     }
 
     private fun setSumireKeyboardSwitchNumberAndKatakanaKey(index: Int) {
         currentKatakanaKeyIndex = index
-        updateKeyboardLayout()
+        mainLayoutBinding?.customLayoutDefault?.apply {
+            updateDynamicKey(
+                keyId = "katakana_toggle_key",
+                stateIndex = index
+            )
+        }
     }
 
     private fun resetSumireKeyboardDakutenMode() {
         currentDakutenKeyIndex = 0
-        currentEnterKeyIndex = when (currentInputType) {
-            InputTypeForIME.Text,
-            InputTypeForIME.TextAutoComplete,
-            InputTypeForIME.TextAutoCorrect,
-            InputTypeForIME.TextCapCharacters,
-            InputTypeForIME.TextCapSentences,
-            InputTypeForIME.TextCapWords,
-            InputTypeForIME.TextFilter,
-            InputTypeForIME.TextNoSuggestion,
-            InputTypeForIME.TextPersonName,
-            InputTypeForIME.TextPhonetic,
-            InputTypeForIME.TextWebEditText,
-                -> {
-                1
-            }
-
-            InputTypeForIME.TextMultiLine,
-            InputTypeForIME.TextImeMultiLine,
-            InputTypeForIME.TextShortMessage,
-            InputTypeForIME.TextLongMessage,
-                -> {
-                0
-            }
-
-            InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject, InputTypeForIME.TextNextLine -> {
-                4
-            }
-
-            InputTypeForIME.TextDone -> {
-                1
-            }
-
-            InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                3
-            }
-
-            InputTypeForIME.TextEditTextInWebView,
-            InputTypeForIME.TextUri,
-            InputTypeForIME.TextPostalAddress,
-            InputTypeForIME.TextWebEmailAddress,
-            InputTypeForIME.TextPassword,
-            InputTypeForIME.TextVisiblePassword,
-            InputTypeForIME.TextWebPassword,
-                -> {
-                1
-            }
-
-            InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                1
-            }
-
-            InputTypeForIME.Number,
-            InputTypeForIME.NumberDecimal,
-            InputTypeForIME.NumberPassword,
-            InputTypeForIME.NumberSigned,
-            InputTypeForIME.Phone,
-            InputTypeForIME.Date,
-            InputTypeForIME.Datetime,
-            InputTypeForIME.Time,
-                -> {
-                1
-            }
-
-        }
+        currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
         currentSpaceKeyIndex = 0
         Timber.d("resetSumireKeyboardDakutenMode called: $currentEnterKeyIndex")
-        updateKeyboardLayout()
+        mainLayoutBinding?.customLayoutDefault?.apply {
+            updateDynamicKey(
+                keyId = "enter_key",
+                stateIndex = currentEnterKeyIndex
+            )
+            updateDynamicKey(
+                keyId = "dakuten_toggle_key",
+                stateIndex = 0
+            )
+            updateDynamicKey(
+                keyId = "space_convert_key",
+                stateIndex = 0
+            )
+        }
     }
 
     private fun showKeyboardPicker() {
@@ -4743,7 +4560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
                             KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
                         }
-                        updateKeyboardLayout()
+                        createNewKeyboardLayoutForSumire()
 
                         val inputMode = when (customKeyboardMode) {
                             KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
@@ -4878,21 +4695,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchToEnglishLayout -> {
                         customKeyboardMode = KeyboardInputMode.ENGLISH
-                        updateKeyboardLayout()
+                        createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeEnglish
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
                     KeyAction.SwitchToKanaLayout -> {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
-                        updateKeyboardLayout()
+                        createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeJapanese
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
                     KeyAction.SwitchToNumberLayout -> {
                         customKeyboardMode = KeyboardInputMode.SYMBOLS
-                        updateKeyboardLayout()
+                        createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeNumber
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
@@ -5582,7 +5399,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     if (mainView.customLayoutDefault.isVisible) {
                         setSumireKeyboardDakutenKey()
-                        setSumireKeyboardEnterKey(1)
+                        setSumireKeyboardEnterKey(5)
                         when (mainView.keyboardView.currentInputMode.value) {
                             InputMode.ModeJapanese -> {
                                 setSumireKeyboardSpaceKey(1)
@@ -5655,145 +5472,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                             mainView.qwertyView.apply {
                                 setSpaceKeyText("空白")
-                                val qwertyEnterKeyText = when (currentInputType) {
-                                    InputTypeForIME.Text,
-                                    InputTypeForIME.TextAutoComplete,
-                                    InputTypeForIME.TextAutoCorrect,
-                                    InputTypeForIME.TextCapCharacters,
-                                    InputTypeForIME.TextCapSentences,
-                                    InputTypeForIME.TextCapWords,
-                                    InputTypeForIME.TextFilter,
-                                    InputTypeForIME.TextNoSuggestion,
-                                    InputTypeForIME.TextPersonName,
-                                    InputTypeForIME.TextPhonetic,
-                                    InputTypeForIME.TextWebEditText,
-                                        -> {
-                                        "確定"
-                                    }
-
-                                    InputTypeForIME.TextMultiLine,
-                                    InputTypeForIME.TextImeMultiLine,
-                                    InputTypeForIME.TextShortMessage,
-                                    InputTypeForIME.TextLongMessage,
-                                        -> {
-                                        "改行"
-                                    }
-
-                                    InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject -> {
-                                        "確定"
-                                    }
-
-                                    InputTypeForIME.TextNextLine -> {
-                                        "次"
-                                    }
-
-                                    InputTypeForIME.TextDone -> {
-                                        "確定"
-                                    }
-
-                                    InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                                        "検索"
-                                    }
-
-                                    InputTypeForIME.TextEditTextInWebView,
-                                    InputTypeForIME.TextUri,
-                                    InputTypeForIME.TextPostalAddress,
-                                    InputTypeForIME.TextWebEmailAddress,
-                                    InputTypeForIME.TextPassword,
-                                    InputTypeForIME.TextVisiblePassword,
-                                    InputTypeForIME.TextWebPassword,
-                                        -> {
-                                        "確定"
-                                    }
-
-                                    InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                                        "確定"
-                                    }
-
-                                    InputTypeForIME.Number,
-                                    InputTypeForIME.NumberDecimal,
-                                    InputTypeForIME.NumberPassword,
-                                    InputTypeForIME.NumberSigned,
-                                    InputTypeForIME.Phone,
-                                    InputTypeForIME.Date,
-                                    InputTypeForIME.Datetime,
-                                    InputTypeForIME.Time,
-                                        -> {
-                                        "確定"
-                                    }
-
-                                }
+                                val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInJp()
                                 setReturnKeyText(qwertyEnterKeyText)
                             }
                         } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
-                            val qwertyEnterKeyText = when (currentInputType) {
-                                InputTypeForIME.Text,
-                                InputTypeForIME.TextAutoComplete,
-                                InputTypeForIME.TextAutoCorrect,
-                                InputTypeForIME.TextCapCharacters,
-                                InputTypeForIME.TextCapSentences,
-                                InputTypeForIME.TextCapWords,
-                                InputTypeForIME.TextFilter,
-                                InputTypeForIME.TextNoSuggestion,
-                                InputTypeForIME.TextPersonName,
-                                InputTypeForIME.TextPhonetic,
-                                InputTypeForIME.TextWebEditText,
-                                    -> {
-                                    "return"
-                                }
-
-                                InputTypeForIME.TextMultiLine,
-                                InputTypeForIME.TextImeMultiLine,
-                                InputTypeForIME.TextShortMessage,
-                                InputTypeForIME.TextLongMessage,
-                                    -> {
-                                    "return"
-                                }
-
-                                InputTypeForIME.TextEmailAddress, InputTypeForIME.TextEmailSubject -> {
-                                    "return"
-                                }
-
-                                InputTypeForIME.TextNextLine -> {
-                                    "next"
-                                }
-
-                                InputTypeForIME.TextDone -> {
-                                    "return"
-                                }
-
-                                InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
-                                    "search"
-                                }
-
-                                InputTypeForIME.TextEditTextInWebView,
-                                InputTypeForIME.TextUri,
-                                InputTypeForIME.TextPostalAddress,
-                                InputTypeForIME.TextWebEmailAddress,
-                                InputTypeForIME.TextPassword,
-                                InputTypeForIME.TextVisiblePassword,
-                                InputTypeForIME.TextWebPassword,
-                                    -> {
-                                    "return"
-                                }
-
-                                InputTypeForIME.None, InputTypeForIME.TextNotCursorUpdate -> {
-                                    "return"
-                                }
-
-                                InputTypeForIME.Number,
-                                InputTypeForIME.NumberDecimal,
-                                InputTypeForIME.NumberPassword,
-                                InputTypeForIME.NumberSigned,
-                                InputTypeForIME.Phone,
-                                InputTypeForIME.Date,
-                                InputTypeForIME.Datetime,
-                                InputTypeForIME.Time,
-                                    -> {
-                                    "return"
-                                }
-
-                            }
+                            val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
                             mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
                         }
                         setKeyboardHeightDefault(mainView)
@@ -7915,15 +7598,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 if (insertString.isNotEmpty()) {
                                     Timber.d("QWERTY romaji not empty: $hardKeyboardShiftPressd $qwertyRomajiShiftConversionPreference")
-                                    if (qwertyRomajiShiftConversionPreference == true){
+                                    if (qwertyRomajiShiftConversionPreference == true) {
                                         if (hardKeyboardShiftPressd) {
                                             Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
                                             tap?.let { c ->
-                                                val charToAppend = if (isDefaultRomajiHenkanMap && c.isLowerCase()) {
-                                                    c.toZenkaku()
-                                                } else {
-                                                    c
-                                                }
+                                                val charToAppend =
+                                                    if (isDefaultRomajiHenkanMap && c.isLowerCase()) {
+                                                        c.toZenkaku()
+                                                    } else {
+                                                        c
+                                                    }
                                                 Timber.d("QWERTY romaji : $charToAppend")
                                                 sb.append(insertString).append(charToAppend)
                                                 romajiConverter?.let { converter ->
@@ -7948,7 +7632,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 }
                                             }
                                         }
-                                    }else{
+                                    } else {
                                         if (hardKeyboardShiftPressd) {
                                             Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
                                             handleTap(tap, insertString, sb, mainView)
