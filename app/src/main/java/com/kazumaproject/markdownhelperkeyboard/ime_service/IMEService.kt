@@ -6248,6 +6248,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setKeyboardSizeSwitchKeyboard(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardSizeSwitchKeyboard called")
+        if (isKeyboardFloatingMode == true) return
         updateKeyboardLayout(mainView)
     }
 
