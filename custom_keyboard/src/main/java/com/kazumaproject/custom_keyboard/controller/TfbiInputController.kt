@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
@@ -86,11 +87,22 @@ class TfbiInputController(
         // ★ タッチイベントをまずGestureDetectorに渡す
         gestureDetector.onTouchEvent(event)
 
+        Log.d("TfbInput", "handleTouchEvent: ${MotionEvent.actionToString(event.action)}")
+
         val view = attachedView ?: return false
         when (event.action) {
-            MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
-            MotionEvent.ACTION_MOVE -> handleTouchMove(event, view)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> handleTouchUp(event)
+            MotionEvent.ACTION_DOWN -> {
+                Log.d("TfbInput: handleTouchEvent","ACTION_DOWN")
+                handleTouchDown(event, view)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                Log.d("TfbInput: handleTouchEvent","ACTION_MOVE")
+                handleTouchMove(event, view)
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                Log.d("TfbInput: handleTouchEvent","ACTION_UP")
+                handleTouchUp(event)
+            }
         }
         return true
     }
@@ -159,7 +171,13 @@ class TfbiInputController(
     }
 
     private fun handleTouchUp(event: MotionEvent) {
-        // ★ 長押しタイマーのキャンセル処理は不要になった
+        // ▼▼▼ ログ追加 ▼▼▼
+        Log.d(
+            "TfbInput",
+            "handleTouchUp: START. Current state = $flickState"
+        )
+        // ▲▲▲ ログ追加 ▲▲▲
+
         var finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
             val dx = event.x - intermediateTouchX
@@ -167,8 +185,22 @@ class TfbiInputController(
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             finalSecondDirection =
                 calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
+
+            // ▼▼▼ ログ追加 ▼▼▼
+            Log.d(
+                "TfbInput",
+                "handleTouchUp: State=FIRST_FLICK_DETERMINED. dx=$dx, dy=$dy, calculatedDir=$finalSecondDirection"
+            )
+            // ▲▲▲ ログ追加 ▲▲▲
+
             if (finalSecondDirection == TfbiFlickDirection.TAP && currentSecondFlickDirection != TfbiFlickDirection.TAP) {
                 finalSecondDirection = currentSecondFlickDirection
+                // ▼▼▼ ログ追加 ▼▼▼
+                Log.d(
+                    "TfbInput",
+                    "handleTouchUp: Using currentSecondFlickDirection. finalDir=$finalSecondDirection"
+                )
+                // ▲▲▲ ログ追加 ▲▲▲
             }
         } else {
             val dx = event.x - initialTouchX
@@ -177,7 +209,25 @@ class TfbiInputController(
             firstFlickDirection =
                 calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
             finalSecondDirection = TfbiFlickDirection.TAP
+
+            // ▼▼▼ ログ追加 ▼▼▼
+            Log.d(
+                "TfbInput",
+                "handleTouchUp: State=NEUTRAL. dx=$dx, dy=$dy. firstDir=$firstFlickDirection, finalDir=$finalSecondDirection"
+            )
+            // ▲▲▲ ログ追加 ▲▲▲
         }
+
+        // ▼▼▼ ログ追加 ▼▼▼
+        if (listener == null) {
+            Log.w("TfbInput", "handleTouchUp: Listener is NULL!")
+        }
+        Log.d(
+            "TfbInput",
+            "handleTouchUp: Calling onFlick(first=$firstFlickDirection, second=$finalSecondDirection)"
+        )
+        // ▲▲▲ ログ追加 ▲▲▲
+
         listener?.onFlick(firstFlickDirection, finalSecondDirection)
         resetState()
     }
