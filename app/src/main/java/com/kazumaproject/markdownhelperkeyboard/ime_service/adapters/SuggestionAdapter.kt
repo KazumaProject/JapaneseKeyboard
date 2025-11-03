@@ -296,6 +296,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private fun onBindEmptyViewHolder(holder: EmptyViewHolder) {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
+        Timber.d("SuggestionAdapter onBindEmptyViewHolder: $clipboardText $isPasteEnabled")
         holder.apply {
             incognitoIcon?.apply {
                 if (incognitoIconDrawable != null) {
@@ -358,7 +359,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
 
             // テキスト用の説明は、画像がない場合にのみ表示
-            clipboardPreviewTextDescription?.isVisible = isPasteEnabled && clipboardBitmap == null && isClipboardDescriptionShow
+            clipboardPreviewTextDescription?.isVisible =
+                isPasteEnabled && clipboardBitmap == null && isClipboardDescriptionShow
 
             pasteIconParent?.apply {
                 setOnClickListener {

@@ -1509,11 +1509,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
             if (deletedBuffer.isEmpty()) {
+                Timber.d("SuggestionAdapter onUpdateSelection clipboard: ")
                 when (val item = clipboardUtil.getPrimaryClipContent()) {
                     is ClipboardItem.Image -> {
                         if (clipboardPreviewVisibility == true) {
-                            setPasteEnabled(true)
-                            setClipboardImagePreview(item.bitmap)
+                            if (clipboardPreviewTapToDelete != true){
+                                setPasteEnabled(true)
+                                setClipboardImagePreview(item.bitmap)
+                            }
                         } else {
                             setPasteEnabled(false)
                         }
@@ -1521,8 +1524,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     is ClipboardItem.Text -> {
                         if (clipboardPreviewVisibility == true) {
-                            setPasteEnabled(true)
-                            setClipboardPreview(item.text)
+                            if (clipboardPreviewTapToDelete != true){
+                                setPasteEnabled(true)
+                                setClipboardPreview(item.text)
+                            }
                         } else {
                             setPasteEnabled(false)
                         }
@@ -5090,8 +5095,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             when (val item = clipboardUtil.getPrimaryClipContent()) {
                 is ClipboardItem.Image -> {
                     if (clipboardPreviewVisibility == true) {
-                        setPasteEnabled(true)
-                        setClipboardImagePreview(item.bitmap)
+                        if (clipboardPreviewTapToDelete != true){
+                            setPasteEnabled(true)
+                            setClipboardImagePreview(item.bitmap)
+                        }else{
+                            setPasteEnabled(false)
+                        }
                     } else {
                         setPasteEnabled(false)
                     }
@@ -5099,8 +5108,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 is ClipboardItem.Text -> {
                     if (clipboardPreviewVisibility == true) {
-                        setPasteEnabled(true)
-                        setClipboardPreview(item.text)
+                        if (clipboardPreviewTapToDelete != true){
+                            setPasteEnabled(true)
+                            setClipboardPreview(item.text)
+                        }
                     } else {
                         setPasteEnabled(false)
                     }
@@ -7081,9 +7092,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
+                        Timber.d("SuggestionAdapter.HelperIcon.PASTE: clicked")
                         pasteAction()
                         if (clipboardPreviewTapToDelete == true) {
-                            clipboardUtil.clearClipboard()
+                            //clipboardUtil.clearClipboard()
                             adapter.apply {
                                 setClipboardPreview("")
                                 setPasteEnabled(false)
