@@ -16,8 +16,15 @@ fun Char.isEnglishLetter(): Boolean {
     return this in 'a'..'z' || this in 'A'..'Z'
 }
 
+fun Char.isEnglishLetterZenkaku(): Boolean {
+    return this in 'A'..'Z'
+}
+
 fun String.isAllEnglishLetters(): Boolean =
     isNotEmpty() && all { it.isEnglishLetter() }
+
+fun String.isAllEnglishLettersZenakaku(): Boolean =
+    isNotEmpty() && all { it.isEnglishLetterZenkaku() }
 
 /**
  * 1. 文字が半角ASCII（英数記号）であるかチェックする拡張関数

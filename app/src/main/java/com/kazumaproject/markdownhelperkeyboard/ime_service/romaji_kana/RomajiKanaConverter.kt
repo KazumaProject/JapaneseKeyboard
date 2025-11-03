@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana
 
 import android.view.KeyEvent
 import com.kazumaproject.convertFullWidthToHalfWidth
+import com.kazumaproject.core.domain.extensions.toZenkaku
 import timber.log.Timber
 
 class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int>>) {
@@ -11,10 +12,6 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     private val maxKeyLength = romajiToKana.keys.maxOf { it.length }
     private val validPrefixes: Set<String> =
         romajiToKana.keys.flatMap { key -> (1..key.length).map { key.substring(0, it) } }.toSet()
-
-    init {
-
-    }
 
     /**
      * かなからローマ字への逆引きマップ。
@@ -176,7 +173,9 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
                 val tail = buffer.takeLast(len).toString()
                 // 「'n' 一文字だけ」は nn のためにスキップ
                 if (tail == "n" && buffer.length == 1) continue
-                val mapping = romajiToKana[tail]
+                val mapping = halfWidthRomajiToKana[tail]
+
+                Timber.d("handleKeyEvent: $c $tail $mapping")
                 if (mapping != null) {
                     val (kana, consume) = mapping
                     val toDelete = (consume - 1).coerceAtLeast(0)
@@ -230,6 +229,125 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
         buffer.clear()
         return Pair(str, 0)
     }
+
+    /**
+     * @return Pair( toShow, toDelete )
+     *   - toShow: 新たに“追加”表示する文字列
+     *   - toDelete: 画面上で“直前に”消すべき文字数
+     */
+    fun handleKeyEventZenkaku(event: KeyEvent): Pair<String, Int> {
+
+        val unicode = when (event.keyCode) {
+            KeyEvent.KEYCODE_COMMA -> '、'.code
+            KeyEvent.KEYCODE_PERIOD -> '。'.code
+            KeyEvent.KEYCODE_BACKSLASH -> '￥'.code
+            KeyEvent.KEYCODE_LEFT_BRACKET -> '「'.code
+            KeyEvent.KEYCODE_RIGHT_BRACKET -> '」'.code
+            KeyEvent.KEYCODE_SEMICOLON -> '；'.code
+            KeyEvent.KEYCODE_APOSTROPHE -> '\u2019'.code
+            KeyEvent.KEYCODE_MINUS -> 'ー'.code
+            KeyEvent.KEYCODE_EQUALS -> '＝'.code
+            KeyEvent.KEYCODE_1 -> '１'.code
+            KeyEvent.KEYCODE_2 -> '２'.code
+            KeyEvent.KEYCODE_3 -> '３'.code
+            KeyEvent.KEYCODE_4 -> '４'.code
+            KeyEvent.KEYCODE_5 -> '５'.code
+            KeyEvent.KEYCODE_6 -> '６'.code
+            KeyEvent.KEYCODE_7 -> '７'.code
+            KeyEvent.KEYCODE_8 -> '８'.code
+            KeyEvent.KEYCODE_9 -> '９'.code
+            KeyEvent.KEYCODE_0 -> '０'.code
+            KeyEvent.KEYCODE_GRAVE -> '｀'.code
+            else -> event.unicodeChar
+        }
+
+        if (unicode == 0) return Pair("", 0)
+
+        val c = unicode.toChar().toZenkaku()
+
+        // ────────── 1) 英字以外は確定 ──────────
+        if (c !in 'ａ'..'ｚ') {
+            // バッファに'n'が残っている状態で記号などが入力された場合の処理
+            if (buffer.isNotEmpty()) {
+                // バッファが"n"なら"ん"に変換して確定させる
+                val toCommit = if (buffer.toString() == "ｎ") "ん" else buffer.toString()
+                val toDelete = buffer.length
+                surface.append(toCommit)
+                buffer.clear()
+                // 確定した文字と、今回入力された記号を両方表示
+                return Pair("$toCommit$c", toDelete)
+            }
+            // バッファが空なら、入力された記号をそのまま表示
+            surface.append(c)
+            return Pair(c.toString(), 0)
+        }
+
+        // ────────── 2) 英字はまず buffer に貯める ──────────
+        buffer.append(c)
+
+        // ────────── 3) マッピング確定チェック ──────────
+        for (len in maxKeyLength downTo 1) {
+            if (buffer.length >= len) {
+                val tail = buffer.takeLast(len).toString()
+                // 「'n' 一文字だけ」は nn のためにスキップ
+                if (tail == "ｎ" && buffer.length == 1) continue
+                val mapping = romajiToKana[tail]
+
+                Timber.d("handleKeyEvent: $c $tail $mapping")
+                if (mapping != null) {
+                    val (kana, consume) = mapping
+                    val toDelete = (consume - 1).coerceAtLeast(0)
+                    surface.append(kana)
+                    buffer.clear()
+                    when (tail) {
+                        "ｑｑ", "ｖｖ", "ｗｗ", "ｌｌ", "ｘｘ", "ｋｋ", "ｇｇ", "ｓｓ", "ｚｚ", "ｊｊ", "ｔｔ", "ｄｄ", "ｈｈ", "ｆｆ", "ｂｂ", "ｐｐ", "ｍｍ", "ｙｙ", "ｒｒ", "ｃｃ" -> {
+                            val charToAdd = tail[0]
+                            buffer.append(charToAdd)
+                            return Pair("$kana$charToAdd", toDelete)
+                        }
+
+                        "ｔｃｈ" -> {
+                            buffer.append("ｃｈ")
+                            return Pair("${kana}ｃｈ", toDelete)
+                        }
+                    }
+                    return Pair(kana, toDelete)
+                }
+            }
+        }
+
+        // ────────── 4) プレフィックスマッチのみ（未確定） ──────────
+        if (buffer.toString() in validPrefixes) {
+            val str = buffer.toString()
+            val toDelete = buffer.length - 1
+            return Pair(str, toDelete)
+        }
+
+        // ────────── 5) それ以外（プレフィックスにも乗らない） ──────────
+        if (buffer.length >= 2) {
+            val str = buffer.toString()
+
+            // 「n」の次に子音が入力された場合の処理
+            val firstChar = str[0]
+            val secondChar = str[1]
+            if (firstChar == 'ｎ' && secondChar !in "ａｉｕｅｏｙｎ") {
+                surface.append("ん")
+                buffer.delete(0, 1)
+                // 画面上の"n"(1文字)を削除し、"ん"＋子音を表示する
+                return Pair("ん$buffer", 1)
+            }
+
+            val toDelete = buffer.length - 1
+            return Pair(str, toDelete)
+        }
+
+        // ────────── 6) 最後の手段：1文字だけ確定扱い ──────────
+        val str = buffer.toString()
+        surface.append(str)
+        buffer.clear()
+        return Pair(str, 0)
+    }
+
 
     fun handleDelete(event: KeyEvent): Pair<String, Int> {
         if (event.keyCode == KeyEvent.KEYCODE_DEL) {
@@ -466,7 +584,6 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
      * @param text 変換対象の文字列。
      * @return 変換後の文字列。
      */
-
     fun convertQWERTYZenkaku(text: String): String {
         val result = StringBuilder()
         var i = 0
