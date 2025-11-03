@@ -1424,13 +1424,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (screenWidth * (widthPref / 100f)).toInt()
                 }
             }
-            if (floatingKeyboardView == null){
+            if (floatingKeyboardView == null) {
                 floatingKeyboardView = PopupWindow(
                     floatingKeyboardLayoutBinding.root,
                     widthPx,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
-            }else{
+            } else {
                 floatingKeyboardView?.dismiss()
                 floatingKeyboardView = null
 
@@ -1791,8 +1791,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     if (insertString.isNotEmpty()) {
                                         isHenkan.set(true)
                                         Timber.d("KEYCODE_SPACE is pressed")
-                                        val insertStringEndWithN =
+                                        val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
+                                            romajiConverter?.flushZenkaku(insertString)?.first
+                                        } else {
                                             romajiConverter?.flush(insertString)?.first
+                                        }
                                         Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
                                         if (insertStringEndWithN == null) {
                                             _inputString.update { insertString }
@@ -2009,7 +2012,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     listAdapter.selectHighlightedItem()
                                     scope.launch {
                                         delay(32)
-                                        romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
+                                        val letterConverted = if (isDefaultRomajiHenkanMap) {
+                                            romajiConverter?.handleKeyEventZenkaku(e)
+                                        } else {
+                                            romajiConverter?.handleKeyEvent(e)
+                                        }
+                                        letterConverted?.let { romajiResult ->
                                             Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
                                             _inputString.update {
                                                 romajiResult.first
@@ -2036,7 +2044,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         return true
                                     }
                                 } else {
-                                    romajiConverter?.handleKeyEvent(e)?.let { romajiResult ->
+                                    val letterConverted = if (isDefaultRomajiHenkanMap) {
+                                        romajiConverter?.handleKeyEventZenkaku(e)
+                                    } else {
+                                        romajiConverter?.handleKeyEvent(e)
+                                    }
+                                    letterConverted?.let { romajiResult ->
+                                        Timber.d("onKeyDown: $romajiResult")
                                         if (insertString.isNotEmpty()) {
                                             sb.append(
                                                 insertString.dropLast((romajiResult.second))
@@ -6248,6 +6262,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setKeyboardSizeSwitchKeyboard(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardSizeSwitchKeyboard called")
+        if (isKeyboardFloatingMode == true) return
         updateKeyboardLayout(mainView)
     }
 
@@ -9304,9 +9319,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isNotBlank()) {
             floatingKeyboardLayoutBinding.keyboardViewFloating.let { tenkey ->
                 when (tenkey.currentInputMode.value) {
-                    InputMode.ModeJapanese -> if (suggestions.isNotEmpty()) handleJapaneseModeSpaceKeyFloating(
-                        floatingKeyboardLayoutBinding, suggestions, insertString
-                    )
+                    InputMode.ModeJapanese -> {
+                        if (suggestions.isNotEmpty()) {
+                            if (bunsetsuSeparation == true) {
+                                handleJapaneseModeSpaceKeyWithBunsetsuFloating(
+                                    floatingKeyboardLayoutBinding, suggestions, insertString
+                                )
+                            } else {
+                                handleJapaneseModeSpaceKeyFloating(
+                                    floatingKeyboardLayoutBinding, suggestions, insertString
+                                )
+                            }
+                        }
+                    }
 
                     else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
                 }
@@ -9418,6 +9443,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapter?.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
             }
             setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
+            Timber.d(
+                "handleJapaneseModeSpaceKeyWithBunsetsu called: No split position. Full string to tail: $insertString"
+            )
+        }
+    }
+
+    private fun handleJapaneseModeSpaceKeyWithBunsetsuFloating(
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
+        suggestions: List<Candidate>,
+        insertString: String
+    ) {
+        val position = bunsetsuPositionList?.firstOrNull()
+
+        if (position != null && stringInTail.get().isEmpty()) {
+            // 区切り位置がある場合：文字列を分割する
+            val head = insertString.substring(0, position)
+            val tail = insertString.substring(position)
+
+            _inputString.update { head }
+            stringInTail.set(tail)
+            Timber.d(
+                "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
+            )
+            isHenkan.set(true)
+            henkanPressedWithBunsetsuDetect = true
+        } else {
+            isHenkan.set(true)
+            suggestionClickNum += 1
+            suggestionClickNum = suggestionClickNum.coerceAtMost(suggestions.size + 1)
+            floatingKeyboardLayoutBinding.suggestionRecyclerView.apply {
+                smoothScrollToPosition(
+                    (suggestionClickNum - 1 + 2).coerceAtLeast(0).coerceAtMost(suggestions.size - 1)
+                )
+                suggestionAdapter?.updateHighlightPosition((suggestionClickNum - 1).coerceAtLeast(0))
+            }
+            setConvertLetterInJapaneseFromButtonFloating(
+                suggestions,
+                true,
+                floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding,
+                insertString
+            )
             Timber.d(
                 "handleJapaneseModeSpaceKeyWithBunsetsu called: No split position. Full string to tail: $insertString"
             )
