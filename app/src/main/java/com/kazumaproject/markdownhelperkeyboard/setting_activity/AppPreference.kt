@@ -179,6 +179,9 @@ object AppPreference {
     private val TABLET_GOJUON_LAYOUT_PREFERENCE =
         Pair("tablet_use_gojuon_layout_preference", true)
 
+    private val LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE =
+        Pair("last_pasted_clipboard_text_preference", "")
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -836,6 +839,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TABLET_GOJUON_LAYOUT_PREFERENCE.first, value)
+        }
+
+    var last_pasted_clipboard_text_preference: String
+        get() = preferences.getString(
+            LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE.first,
+            LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE.second
+        ) ?: ""
+        set(value) = preferences.edit {
+            it.putString(LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
