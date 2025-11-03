@@ -534,25 +534,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
         private const val PAGE_SIZE: Int = 5
-        private val excludedInputTypes = setOf(
-            InputTypeForIME.Number,
-            InputTypeForIME.NumberDecimal,
-            InputTypeForIME.NumberPassword,
-            InputTypeForIME.NumberSigned,
-            InputTypeForIME.Phone,
-            InputTypeForIME.Date,
-            InputTypeForIME.Datetime,
-            InputTypeForIME.Time
-        )
-        private val englishTypes = setOf(
-            InputTypeForIME.TextEmailAddress,
-            InputTypeForIME.TextEditTextInWebView,
-            InputTypeForIME.TextPostalAddress,
-            InputTypeForIME.TextWebEmailAddress,
-            InputTypeForIME.TextPassword,
-            InputTypeForIME.TextVisiblePassword,
-            InputTypeForIME.TextWebPassword,
-        )
 
         private val passwordTypes = setOf(
             InputTypeForIME.TextWebPassword,
@@ -1223,18 +1204,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
-        if (listAdapter.currentList.isEmpty()) {
-            floatingCandidateWindow?.dismiss()
-            return
-        }
 
         if (cursorAnchorInfo == null || floatingCandidateWindow == null) {
             return
         }
-        Timber.d("onUpdateCursorAnchorInfo: baseLine:${cursorAnchorInfo.insertionMarkerBaseline}")
-        Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
-        Timber.d("onUpdateCursorAnchorInfo: top:${cursorAnchorInfo.insertionMarkerTop}")
-        Timber.d("onUpdateCursorAnchorInfo: horizontal:${cursorAnchorInfo.insertionMarkerHorizontal}")
+
         val matrix: Matrix = cursorAnchorInfo.matrix
         // カーソルのローカル座標を取得
         val cursorX = cursorAnchorInfo.insertionMarkerHorizontal
@@ -1254,6 +1228,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (screenX - 32).coerceAtLeast(0f).toInt()
         }
         val y = screenY.toInt()
+
+        if (listAdapter.currentList.isEmpty()) {
+            floatingCandidateWindow?.dismiss()
+            return
+        }
+
+        Timber.d("onUpdateCursorAnchorInfo: baseLine:${cursorAnchorInfo.insertionMarkerBaseline}")
+        Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
+        Timber.d("onUpdateCursorAnchorInfo: top:${cursorAnchorInfo.insertionMarkerTop}")
+        Timber.d("onUpdateCursorAnchorInfo: horizontal:${cursorAnchorInfo.insertionMarkerHorizontal}")
+
         physicalKeyboardFloatingXPosition = x
         physicalKeyboardFloatingYPosition = y
         initialCursorXPosition = x
@@ -1513,7 +1498,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (val item = clipboardUtil.getPrimaryClipContent()) {
                     is ClipboardItem.Image -> {
                         if (clipboardPreviewVisibility == true) {
-                            if (clipboardPreviewTapToDelete != true){
+                            if (clipboardPreviewTapToDelete != true) {
                                 setPasteEnabled(true)
                                 setClipboardImagePreview(item.bitmap)
                             }
@@ -1524,7 +1509,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     is ClipboardItem.Text -> {
                         if (clipboardPreviewVisibility == true) {
-                            if (clipboardPreviewTapToDelete != true){
+                            if (clipboardPreviewTapToDelete != true) {
                                 setPasteEnabled(true)
                                 setClipboardPreview(item.text)
                             }
@@ -1577,601 +1562,593 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
-
-            when (mainView.keyboardView.currentInputMode.value) {
-                InputMode.ModeJapanese -> {
-                    val insertString = inputString.value
-                    val suggestions = listAdapter.currentList
-                    val sb = StringBuilder()
-
-                    event?.let { e ->
-                        Timber.d("onKeyDown: ${e.keyCode} $keyCode $e")
-                        if (e.isShiftPressed || e.isCapsLockOn) {
-                            if (e.isCtrlPressed) return super.onKeyDown(keyCode, event)
-                            hardKeyboardShiftPressd = true
-                            val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
-                            char?.let { c ->
-                                if (insertString.isNotEmpty()) {
-                                    sb.append(
-                                        insertString
-                                    ).append(c)
-                                    _inputString.update {
-                                        sb.toString()
-                                    }
-                                } else {
-                                    _inputString.update {
-                                        c.toString()
-                                    }
-                                }
-                                return true
-                            }
-                            return super.onKeyDown(keyCode, event)
-                        } else if (e.isCtrlPressed) {
-                            if (keyCode == KeyEvent.KEYCODE_SPACE) {
-                                customKeyboardMode = when (customKeyboardMode) {
-                                    KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
-                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
-                                    KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
-                                }
-                                updateKeyboardLayout()
-
-                                val inputMode = when (customKeyboardMode) {
-                                    KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
-                                    KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
-                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
-                                }
-                                val showInputModeText = when (inputMode) {
-                                    InputMode.ModeJapanese -> "あ"
-                                    InputMode.ModeEnglish -> "A"
-                                    InputMode.ModeNumber -> "A"
-                                }
-                                Timber.d("e.isCtrlPressed Space: $inputMode $showInputModeText")
-                                floatingDockView.setText(showInputModeText)
-                                mainView.keyboardView.setCurrentMode(inputMode)
-
-                                showFloatingModeSwitchView(showInputModeText)
-                                finishComposingText()
-                                _inputString.update { "" }
-                                return true
-                            }
-                            if (insertString.isNotEmpty()) return true
-                            return super.onKeyDown(keyCode, event)
-                        }
-                    }
-
-                    when (keyCode) {
-                        KeyEvent.KEYCODE_F6 -> {
-                            if (insertString.isNotEmpty()) {
-                                Timber.d("onKeyDown: F6 Pressed $insertString")
-                                if (insertString.isAllEnglishLetters()) {
-                                    romajiConverter?.let { converter ->
-                                        if (isDefaultRomajiHenkanMap) {
-                                            _inputString.update {
-                                                converter.convertCustomLayout(insertString.lowercase())
-                                                    .toHiragana()
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                converter.convert(insertString.lowercase())
-                                                    .toHiragana()
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    _inputString.update {
-                                        insertString.toHiragana()
-                                    }
-                                }
-                                return true
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_F7 -> {
-                            if (insertString.isNotEmpty()) {
-                                Timber.d("onKeyDown: F7 Pressed $insertString")
-                                if (insertString.isAllEnglishLetters()) {
-                                    romajiConverter?.let { converter ->
-                                        if (isDefaultRomajiHenkanMap) {
-                                            _inputString.update {
-                                                converter.convertCustomLayout(insertString.lowercase())
-                                                    .toZenkakuKatakana()
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                converter.convert(insertString.lowercase())
-                                                    .toZenkakuKatakana()
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    _inputString.update {
-                                        insertString.toZenkakuKatakana()
-                                    }
-                                }
-                                return true
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_F8 -> {
-                            if (insertString.isNotEmpty()) {
-                                Timber.d("onKeyDown: F8 Pressed $insertString")
-                                if (insertString.isAllEnglishLetters()) {
-                                    romajiConverter?.let { converter ->
-                                        if (isDefaultRomajiHenkanMap) {
-                                            _inputString.update {
-                                                converter.convertCustomLayout(insertString.lowercase())
-                                                    .toHankakuKatakana()
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                converter.convert(insertString.lowercase())
-                                                    .toHankakuKatakana()
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    _inputString.update {
-                                        insertString.toHankakuKatakana()
-                                    }
-                                }
-                                return true
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_F9 -> {
-                            if (insertString.isNotEmpty()) {
-                                Timber.d("onKeyDown: F9 Pressed")
-                                if (insertString.isAllEnglishLetters()) {
-                                    _inputString.update {
-                                        insertString.lowercase().toZenkakuAlphabet()
-                                    }
-                                } else {
-                                    romajiConverter?.let { converter ->
-                                        _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana())
-                                                .toZenkakuAlphabet()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_F10 -> {
-                            if (insertString.isNotEmpty()) {
-                                Timber.d("onKeyDown: F10 Pressed ${insertString.isAllEnglishLetters()} ${insertString.lowercase()}")
-                                if (insertString.isAllEnglishLetters()) {
-                                    _inputString.update {
-                                        insertString.lowercase().toHankakuAlphabet()
-                                    }
-                                } else {
-                                    romajiConverter?.let { converter ->
-                                        _inputString.update {
-                                            converter.hiraganaToRomaji(insertString.toHiragana())
-                                                .toHankakuAlphabet()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_MUHENKAN -> {
-                            customKeyboardMode = KeyboardInputMode.ENGLISH
-                            updateKeyboardLayout()
-                            val inputMode = InputMode.ModeEnglish
-                            val showInputModeText = "A"
-                            Timber.d("KEYCODE_MUHENKAN: $inputMode $showInputModeText")
-                            floatingDockView.setText(showInputModeText)
-                            mainView.keyboardView.setCurrentMode(inputMode)
-                            showFloatingModeSwitchView(showInputModeText)
-                            finishComposingText()
-                            _inputString.update { "" }
-                            return true
-                        }
-
-                        KeyEvent.KEYCODE_DEL -> {
-                            when {
-                                insertString.isNotEmpty() -> {
-                                    if (isHenkan.get()) {
-                                        cancelHenkanByLongPressDeleteKey()
-                                        listAdapter.updateHighlightPosition(-1)
-                                        currentHighlightIndex = -1
-                                        return true
-                                    } else {
-                                        deleteStringCommon(insertString)
-                                        resetFlagsDeleteKey()
-                                        event?.let { e ->
-                                            romajiConverter?.handleDelete(e)
-                                        }
-                                        return true
-                                    }
-                                }
-
-                                else -> return super.onKeyDown(keyCode, event)
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_SPACE -> {
-                            when (mainView.keyboardView.currentInputMode.value) {
-                                InputMode.ModeJapanese -> {
-                                    if (insertString.isNotEmpty()) {
-                                        isHenkan.set(true)
-                                        Timber.d("KEYCODE_SPACE is pressed")
-                                        val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
-                                            romajiConverter?.flushZenkaku(insertString)?.first
-                                        } else {
-                                            romajiConverter?.flush(insertString)?.first
-                                        }
-                                        Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
-                                        if (insertStringEndWithN == null) {
-                                            _inputString.update { insertString }
-                                            floatingCandidateNextItem(insertString)
-                                        } else {
-                                            _inputString.update { insertStringEndWithN }
-                                            floatingCandidateNextItem(insertString)
-                                            scope.launch {
-                                                delay(64)
-                                                val newSuggestionList =
-                                                    suggestionAdapter?.suggestions ?: emptyList()
-                                                if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                                    mainView,
-                                                    newSuggestionList,
-                                                    insertStringEndWithN
-                                                )
-                                            }
-                                        }
-                                    } else {
-                                        if (stringInTail.get().isNotEmpty()) return true
-                                        val isFlick = hankakuPreference ?: false
-                                        setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
-                                    }
-                                }
-
-                                else -> {
-                                    handleSpaceKeyClick(false, insertString, suggestions.map {
-                                        Candidate(
-                                            string = it.word,
-                                            type = (1).toByte(),
-                                            length = insertString.length.toUByte(),
-                                            score = 0
-                                        )
-                                    }, mainView)
-                                }
-                            }
-                            return true
-                        }
-
-                        KeyEvent.KEYCODE_DPAD_LEFT -> {
-                            if (isHenkan.get()) {
-                                floatingCandidatePreviousItem(insertString)
-                                return true
-                            } else {
-                                handleLeftKeyPress(
-                                    GestureType.Tap, insertString
-                                )
-                                romajiConverter?.clear()
-                            }
-                            return true
-                        }
-
-                        KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                            if (isHenkan.get()) {
-                                Timber.d("KEYCODE_DPAD_RIGHT: called")
-                                floatingCandidateNextItem(insertString)
-                                return true
-                            } else {
-                                actionInRightKeyPressed(
-                                    GestureType.Tap, insertString
-                                )
-                                romajiConverter?.clear()
-                            }
-                            return true
-                        }
-
-                        KeyEvent.KEYCODE_DPAD_UP -> {
-                            if (insertString.isNotEmpty()) {
-                                if (isHenkan.get()) {
-                                    floatingCandidatePreviousItem(insertString)
-                                    return true
-                                } else {
-                                    when (mainView.keyboardView.currentInputMode.value) {
-                                        InputMode.ModeJapanese -> {
-                                            if (insertString.isNotEmpty()) {
-                                                isHenkan.set(true)
-                                                Timber.d("KEYCODE_SPACE is pressed")
-                                                val insertStringEndWithN =
-                                                    romajiConverter?.flush(insertString)?.first
-                                                Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
-                                                if (insertStringEndWithN == null) {
-                                                    _inputString.update { insertString }
-                                                    floatingCandidateNextItem(insertString)
-                                                } else {
-                                                    _inputString.update { insertStringEndWithN }
-                                                    floatingCandidateNextItem(insertString)
-                                                    scope.launch {
-                                                        delay(64)
-                                                        val newSuggestionList =
-                                                            suggestionAdapter?.suggestions
-                                                                ?: emptyList()
-                                                        if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                                            mainView,
-                                                            newSuggestionList,
-                                                            insertStringEndWithN
-                                                        )
-                                                    }
-                                                }
-                                            } else {
-                                                if (stringInTail.get().isNotEmpty()) return true
-                                                val isFlick = hankakuPreference ?: false
-                                                setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
-                                            }
-                                        }
-
-                                        else -> {
-                                            handleSpaceKeyClick(
-                                                false, insertString, suggestions.map {
-                                                    Candidate(
-                                                        string = it.word,
-                                                        type = (1).toByte(),
-                                                        length = insertString.length.toUByte(),
-                                                        score = 0
-                                                    )
-                                                }, mainView
-                                            )
-                                        }
-                                    }
-                                    return true
-                                }
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_DPAD_DOWN -> {
-                            if (insertString.isNotEmpty()) {
-                                if (isHenkan.get()) {
-                                    floatingCandidateNextItem(insertString)
-                                    return true
-                                } else {
-                                    when (mainView.keyboardView.currentInputMode.value) {
-                                        InputMode.ModeJapanese -> {
-                                            if (insertString.isNotEmpty()) {
-                                                isHenkan.set(true)
-                                                Timber.d("KEYCODE_SPACE is pressed")
-                                                val insertStringEndWithN =
-                                                    romajiConverter?.flush(insertString)?.first
-                                                Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN")
-                                                if (insertStringEndWithN == null) {
-                                                    _inputString.update { insertString }
-                                                    floatingCandidateNextItem(insertString)
-                                                } else {
-                                                    _inputString.update { insertStringEndWithN }
-                                                    floatingCandidateNextItem(insertString)
-                                                    scope.launch {
-                                                        delay(64)
-                                                        val newSuggestionList =
-                                                            suggestionAdapter?.suggestions
-                                                                ?: emptyList()
-                                                        if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                                            mainView,
-                                                            newSuggestionList,
-                                                            insertStringEndWithN
-                                                        )
-                                                    }
-                                                }
-                                            } else {
-                                                if (stringInTail.get().isNotEmpty()) return true
-                                                val isFlick = hankakuPreference ?: false
-                                                setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
-                                            }
-                                        }
-
-                                        else -> {
-                                            handleSpaceKeyClick(
-                                                false, insertString, suggestions.map {
-                                                    Candidate(
-                                                        string = it.word,
-                                                        type = (1).toByte(),
-                                                        length = insertString.length.toUByte(),
-                                                        score = 0
-                                                    )
-                                                }, mainView
-                                            )
-                                        }
-                                    }
-                                    return true
-                                }
-                            }
-                        }
-
-                        KeyEvent.KEYCODE_ENTER -> {
-                            if (insertString.isNotEmpty()) {
-                                if (isHenkan.get()) {
-                                    floatingCandidateEnterPressed()
-                                    return true
-                                } else {
-                                    handleNonEmptyInputEnterKey(suggestions.map {
-                                        Candidate(
-                                            string = it.word,
-                                            type = (1).toByte(),
-                                            length = insertString.length.toUByte(),
-                                            score = 0
-                                        )
-                                    }, mainView, insertString)
-                                }
-                            } else {
-                                handleEmptyInputEnterKey(mainView)
-                            }
-                            romajiConverter?.clear()
-                            return true
-                        }
-
-                        KeyEvent.KEYCODE_BACK -> {
-                            return super.onKeyDown(keyCode, event)
-                        }
-
-                        in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
-                            event?.let { e ->
-                                scope.launch {
-                                    _physicalKeyboardEnable.emit(true)
-                                }
-                                isKeyboardFloatingMode = false
-                                if (isHenkan.get()) {
-                                    listAdapter.selectHighlightedItem()
-                                    scope.launch {
-                                        delay(32)
-                                        val letterConverted = if (isDefaultRomajiHenkanMap) {
-                                            romajiConverter?.handleKeyEventZenkaku(e)
-                                        } else {
-                                            romajiConverter?.handleKeyEvent(e)
-                                        }
-                                        letterConverted?.let { romajiResult ->
-                                            Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
-                                            _inputString.update {
-                                                romajiResult.first
-                                            }
-                                        }
-                                    }
-                                    return true
-                                }
-                                if (hardKeyboardShiftPressd) {
-                                    val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
-                                    char?.let { c ->
-                                        if (insertString.isNotEmpty()) {
-                                            sb.append(
-                                                insertString
-                                            ).append(c.lowercase())
-                                            _inputString.update {
-                                                sb.toString()
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                c.lowercase()
-                                            }
-                                        }
-                                        return true
-                                    }
-                                } else {
-                                    val letterConverted = if (isDefaultRomajiHenkanMap) {
-                                        romajiConverter?.handleKeyEventZenkaku(e)
-                                    } else {
-                                        romajiConverter?.handleKeyEvent(e)
-                                    }
-                                    letterConverted?.let { romajiResult ->
-                                        Timber.d("onKeyDown: $romajiResult")
-                                        if (insertString.isNotEmpty()) {
-                                            sb.append(
-                                                insertString.dropLast((romajiResult.second))
-                                            ).append(romajiResult.first)
-                                            _inputString.update {
-                                                sb.toString()
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                romajiResult.first
-                                            }
-                                        }
-                                    }
-                                }
-                                return true
-                            }
-                            return super.onKeyDown(keyCode, null)
-                        }
-
-                        else -> {
-                            return super.onKeyDown(keyCode, event)
-                        }
-
-                    }
-                }
-
-                InputMode.ModeEnglish -> {
-                    event?.let { e ->
-                        if (e.isCtrlPressed) {
-                            if (keyCode == KeyEvent.KEYCODE_SPACE) {
-                                customKeyboardMode = when (customKeyboardMode) {
-                                    KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
-                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.HIRAGANA
-                                    KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
-                                }
-                                updateKeyboardLayout()
-
-                                val inputMode = when (customKeyboardMode) {
-                                    KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
-                                    KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
-                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeJapanese
-                                }
-                                floatingDockView.setText("あ")
-                                mainView.keyboardView.setCurrentMode(inputMode)
-
-                                showFloatingModeSwitchView("あ")
-                                return true
-                            }
-                        }
-                        when (keyCode) {
-                            KeyEvent.KEYCODE_HENKAN -> {
-                                customKeyboardMode = KeyboardInputMode.HIRAGANA
-                                updateKeyboardLayout()
-                                val inputMode = InputMode.ModeJapanese
-                                val showInputModeText = "あ"
-                                Timber.d("KEYCODE_HENKAN: $inputMode $showInputModeText")
-                                floatingDockView.setText(showInputModeText)
-                                mainView.keyboardView.setCurrentMode(inputMode)
-                                showFloatingModeSwitchView(showInputModeText)
-                                finishComposingText()
-                                _inputString.update { "" }
-                                return true
-                            }
-
-                            else -> return super.onKeyDown(keyCode, event)
-                        }
-                    }
-                    return super.onKeyDown(keyCode, event)
-                }
-
-                InputMode.ModeNumber -> {
-                    event?.let { e ->
-                        if (e.isCtrlPressed) {
-                            if (keyCode == KeyEvent.KEYCODE_SPACE) {
-                                customKeyboardMode = when (customKeyboardMode) {
-                                    KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
-                                    KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
-                                    KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
-                                }
-                                updateKeyboardLayout()
-
-                                val inputMode = when (customKeyboardMode) {
-                                    KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
-                                    KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
-                                    KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
-                                }
-                                floatingDockView.setText("あ")
-                                mainView.keyboardView.setCurrentMode(inputMode)
-
-                                showFloatingModeSwitchView("あ")
-                                return true
-                            }
-                        }
-                        when (keyCode) {
-                            KeyEvent.KEYCODE_HENKAN -> {
-                                customKeyboardMode = KeyboardInputMode.HIRAGANA
-                                updateKeyboardLayout()
-                                val inputMode = InputMode.ModeJapanese
-                                val showInputModeText = "あ"
-                                Timber.d("KEYCODE_HENKAN: $inputMode $showInputModeText")
-                                floatingDockView.setText(showInputModeText)
-                                mainView.keyboardView.setCurrentMode(inputMode)
-                                showFloatingModeSwitchView(showInputModeText)
-                                finishComposingText()
-                                _inputString.update { "" }
-                                return true
-                            }
-
-                            else -> return super.onKeyDown(keyCode, event)
-                        }
-                    }
-                    return super.onKeyDown(keyCode, event)
-                }
+            // モードに応じて処理を振り分ける
+            return when (mainView.keyboardView.currentInputMode.value) {
+                InputMode.ModeJapanese -> handleJapaneseKeyDown(keyCode, event, mainView)
+                InputMode.ModeEnglish -> handleEnglishKeyDown(keyCode, event, mainView)
+                InputMode.ModeNumber -> handleNumberKeyDown(keyCode, event, mainView)
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+// ---------------------------------------------------------------------------------
+// 1. メインのモード別ハンドラ
+// ---------------------------------------------------------------------------------
+
+    /**
+     * 日本語入力モード時のキーダウン処理
+     */
+    private fun handleJapaneseKeyDown(
+        keyCode: Int,
+        event: KeyEvent?,
+        mainView: MainLayoutBinding
+    ): Boolean {
+
+        val insertString = inputString.value
+        val suggestions = listAdapter.currentList
+
+        // 1. 修飾キー（Shift, Ctrl）の処理を先に行う
+        event?.let { e ->
+            if (e.isShiftPressed || e.isCapsLockOn) {
+                return handleJapaneseShiftPressed(keyCode, e, insertString)
+            }
+            if (e.isCtrlPressed) {
+                return handleJapaneseCtrlPressed(keyCode, e, mainView, insertString)
+            }
+        }
+
+        // 2. 通常のキーコード処理
+        return when (keyCode) {
+            // Fキー (変換)
+            KeyEvent.KEYCODE_F6,
+            KeyEvent.KEYCODE_F7,
+            KeyEvent.KEYCODE_F8,
+            KeyEvent.KEYCODE_F9,
+            KeyEvent.KEYCODE_F10 -> handleConversionKeyFloating(keyCode, insertString)
+
+            // モード切替
+            KeyEvent.KEYCODE_MUHENKAN -> switchToEnglishModeFloating(mainView)
+
+            // 編集x
+            KeyEvent.KEYCODE_DEL -> handleJapaneseDeleteFloating(keyCode, event, insertString)
+
+            // 変換・候補選択
+            KeyEvent.KEYCODE_SPACE -> handleJapaneseSpaceFloating(
+                mainView,
+                insertString,
+                suggestions
+            )
+
+            KeyEvent.KEYCODE_DPAD_LEFT -> handleJapaneseDpadLeft(insertString)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> handleJapaneseDpadRight(insertString)
+            KeyEvent.KEYCODE_DPAD_UP -> handleJapaneseDpadUp(mainView, insertString, suggestions)
+            KeyEvent.KEYCODE_DPAD_DOWN -> handleJapaneseDpadDown(
+                mainView,
+                insertString,
+                suggestions
+            )
+
+            // 確定
+            KeyEvent.KEYCODE_ENTER -> handleJapaneseEnterFloating(
+                mainView,
+                insertString,
+                suggestions
+            )
+
+            // 無視して親に渡す
+            KeyEvent.KEYCODE_BACK -> super.onKeyDown(keyCode, event)
+
+            // 文字入力
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z,
+            in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9,
+            KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS,
+            KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET,
+            KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON,
+            KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA,
+            KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH,
+            KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT,
+            KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY,
+            KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD,
+            KeyEvent.KEYCODE_NUMPAD_DOT -> handleJapaneseCharacterKeyFloating(
+                keyCode,
+                event,
+                insertString
+            )
+
+            // それ以外
+            else -> super.onKeyDown(keyCode, event)
+        }
+    }
+
+    /**
+     * 英語入力モード時のキーダウン処理
+     */
+    private fun handleEnglishKeyDown(
+        keyCode: Int,
+        event: KeyEvent?,
+        mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
+    ): Boolean {
+        event?.let { e ->
+            scope.launch {
+                _physicalKeyboardEnable.emit(true)
+            }
+            if (e.isCtrlPressed) {
+                if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                    // 英語モード時のCtrl+Spaceは日本語モードへ
+                    customKeyboardMode = when (customKeyboardMode) {
+                        KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+                        KeyboardInputMode.ENGLISH -> KeyboardInputMode.HIRAGANA
+                        KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+                    }
+                    updateKeyboardLayout()
+
+                    val inputMode = when (customKeyboardMode) {
+                        KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+                        KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+                        KeyboardInputMode.SYMBOLS -> InputMode.ModeJapanese
+                    }
+                    floatingDockView.setText("あ")
+                    mainView.keyboardView.setCurrentMode(inputMode)
+                    showFloatingModeSwitchView("あ")
+                    return true
+                }
+            }
+            when (keyCode) {
+                KeyEvent.KEYCODE_HENKAN -> {
+                    // 変換キーで日本語モードへ
+                    return switchToHiraganaMode(mainView)
+                }
+
+                else -> return super.onKeyDown(keyCode, event)
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    /**
+     * 数字入力モード時のキーダウン処理
+     */
+    private fun handleNumberKeyDown(
+        keyCode: Int,
+        event: KeyEvent?,
+        mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
+    ): Boolean {
+        event?.let { e ->
+            scope.launch {
+                _physicalKeyboardEnable.emit(true)
+            }
+            if (e.isCtrlPressed) {
+                if (keyCode == KeyEvent.KEYCODE_SPACE) {
+                    // 数字モード時のCtrl+Spaceは日本語モードへ (日本語モードのロジックと同じ)
+                    return cycleInputMode(mainView)
+                }
+            }
+            when (keyCode) {
+                KeyEvent.KEYCODE_HENKAN -> {
+                    // 変換キーで日本語モードへ
+                    return switchToHiraganaMode(mainView)
+                }
+
+                else -> return super.onKeyDown(keyCode, event)
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+
+// ---------------------------------------------------------------------------------
+// 2. 日本語入力のヘルパー関数
+// ---------------------------------------------------------------------------------
+
+    private fun handleJapaneseShiftPressed(
+        keyCode: Int,
+        event: KeyEvent,
+        insertString: String
+    ): Boolean {
+        if (event.isCtrlPressed) return super.onKeyDown(keyCode, event)
+        hardKeyboardShiftPressd = true
+        val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+        char?.let { c ->
+            val sb = StringBuilder()
+            if (insertString.isNotEmpty()) {
+                sb.append(insertString).append(c)
+                _inputString.update { sb.toString() }
+            } else {
+                _inputString.update { c.toString() }
+            }
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    private fun handleJapaneseCtrlPressed(
+        keyCode: Int,
+        event: KeyEvent,
+        mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
+        insertString: String
+    ): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_SPACE) {
+            return cycleInputMode(mainView)
+        }
+        if (insertString.isNotEmpty()) return true
+        return super.onKeyDown(keyCode, event)
+    }
+
+    /**
+     * F6-F10の文字種変換処理
+     */
+    private fun handleConversionKeyFloating(keyCode: Int, insertString: String): Boolean {
+        if (insertString.isEmpty()) {
+            return true // 元のロジックでは何もせず true を返していた
+        }
+
+        Timber.d("onKeyDown: F-Key $keyCode Pressed $insertString")
+
+        val resultString = when (keyCode) {
+            KeyEvent.KEYCODE_F6, KeyEvent.KEYCODE_F7, KeyEvent.KEYCODE_F8 -> {
+                if (insertString.isAllEnglishLetters()) {
+                    romajiConverter?.let { converter ->
+                        val romajiResult = if (isDefaultRomajiHenkanMap) {
+                            converter.convertCustomLayout(insertString.lowercase())
+                        } else {
+                            converter.convert(insertString.lowercase())
+                        }
+                        when (keyCode) {
+                            KeyEvent.KEYCODE_F6 -> romajiResult.toHiragana()
+                            KeyEvent.KEYCODE_F7 -> romajiResult.toZenkakuKatakana()
+                            KeyEvent.KEYCODE_F8 -> romajiResult.toHankakuKatakana()
+                            else -> insertString // ありえない
+                        }
+                    } ?: insertString
+                } else {
+                    when (keyCode) {
+                        KeyEvent.KEYCODE_F6 -> insertString.toHiragana()
+                        KeyEvent.KEYCODE_F7 -> insertString.toZenkakuKatakana()
+                        KeyEvent.KEYCODE_F8 -> insertString.toHankakuKatakana()
+                        else -> insertString // ありえない
+                    }
+                }
+            }
+
+            KeyEvent.KEYCODE_F9 -> {
+                if (insertString.isAllEnglishLetters()) {
+                    insertString.lowercase().toZenkakuAlphabet()
+                } else {
+                    romajiConverter?.hiraganaToRomaji(insertString.toHiragana())
+                        ?.toZenkakuAlphabet() ?: insertString
+                }
+            }
+
+            KeyEvent.KEYCODE_F10 -> {
+                if (insertString.isAllEnglishLetters()) {
+                    insertString.lowercase().toHankakuAlphabet()
+                } else {
+                    romajiConverter?.hiraganaToRomaji(insertString.toHiragana())
+                        ?.toHankakuAlphabet() ?: insertString
+                }
+            }
+
+            else -> insertString // 来ないはず
+        }
+
+        _inputString.update { resultString }
+        return true
+    }
+
+    private fun handleJapaneseDeleteFloating(
+        keyCode: Int,
+        event: KeyEvent?,
+        insertString: String
+    ): Boolean {
+        when {
+            insertString.isNotEmpty() -> {
+                if (isHenkan.get()) {
+                    cancelHenkanByLongPressDeleteKey()
+                    listAdapter.updateHighlightPosition(-1)
+                    currentHighlightIndex = -1
+                    return true
+                } else {
+                    deleteStringCommon(insertString)
+                    resetFlagsDeleteKey()
+                    event?.let { e ->
+                        romajiConverter?.handleDelete(e)
+                    }
+                    return true
+                }
+            }
+
+            else -> return super.onKeyDown(keyCode, event)
+        }
+    }
+
+    private fun handleJapaneseSpaceFloating(
+        mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
+        insertString: String,
+        suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
+    ): Boolean {
+        // InputMode.ModeJapanese の KEYCODE_SPACE のロジックをここにペースト
+        when (mainView.keyboardView.currentInputMode.value) {
+            InputMode.ModeJapanese -> {
+                if (insertString.isNotEmpty()) {
+                    isHenkan.set(true)
+                    Timber.d("KEYCODE_SPACE is pressed")
+                    val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
+                        romajiConverter?.flushZenkaku(insertString)?.first
+                    } else {
+                        romajiConverter?.flush(insertString)?.first
+                    }
+                    Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
+                    if (insertStringEndWithN == null) {
+                        _inputString.update { insertString }
+                        floatingCandidateNextItem(insertString)
+                    } else {
+                        _inputString.update { insertStringEndWithN }
+                        floatingCandidateNextItem(insertString)
+                        scope.launch {
+                            delay(64)
+                            val newSuggestionList =
+                                suggestionAdapter?.suggestions ?: emptyList()
+                            if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                mainView,
+                                newSuggestionList,
+                                insertStringEndWithN
+                            )
+                        }
+                    }
+                } else {
+                    if (stringInTail.get().isNotEmpty()) return true
+                    val isFlick = hankakuPreference ?: false
+                    setSpaceKeyActionEnglishAndNumberEmpty(isFlick)
+                }
+            }
+
+            else -> {
+                handleSpaceKeyClick(false, insertString, suggestions.map {
+                    Candidate(
+                        string = it.word,
+                        type = (1).toByte(),
+                        length = insertString.length.toUByte(),
+                        score = 0
+                    )
+                }, mainView)
+            }
+        }
+        return true
+    }
+
+    private fun handleJapaneseDpadLeft(insertString: String): Boolean {
+        if (isHenkan.get()) {
+            floatingCandidatePreviousItem(insertString)
+            return true
+        } else {
+            handleLeftKeyPress(
+                GestureType.Tap, insertString
+            )
+            romajiConverter?.clear()
+        }
+        return true
+    }
+
+    private fun handleJapaneseDpadRight(insertString: String): Boolean {
+        if (isHenkan.get()) {
+            Timber.d("KEYCODE_DPAD_RIGHT: called")
+            floatingCandidateNextItem(insertString)
+            return true
+        } else {
+            actionInRightKeyPressed(
+                GestureType.Tap, insertString
+            )
+            romajiConverter?.clear()
+        }
+        return true
+    }
+
+    private fun handleJapaneseDpadUp(
+        mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
+        insertString: String,
+        suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
+    ): Boolean {
+        if (insertString.isNotEmpty()) {
+            if (isHenkan.get()) {
+                floatingCandidatePreviousItem(insertString)
+                return true
+            } else {
+                // 非変換時はSpaceキーと同一のロジック
+                return handleJapaneseSpaceFloating(mainView, insertString, suggestions)
+            }
+        }
+        // insertStringが空の場合、元のロジックではフォールスルーしていた
+        return super.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, null)
+    }
+
+    private fun handleJapaneseDpadDown(
+        mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
+        insertString: String,
+        suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
+    ): Boolean {
+        if (insertString.isNotEmpty()) {
+            if (isHenkan.get()) {
+                floatingCandidateNextItem(insertString)
+                return true
+            } else {
+                // 非変換時はSpaceキーと同一のロジック
+                return handleJapaneseSpaceFloating(mainView, insertString, suggestions)
+            }
+        }
+        // insertStringが空の場合、元のロジックではフォールスルーしていた
+        return super.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, null)
+    }
+
+    private fun handleJapaneseEnterFloating(
+        mainView: MainLayoutBinding,
+        insertString: String,
+        suggestions: List<CandidateItem>
+    ): Boolean {
+        if (insertString.isNotEmpty()) {
+            if (isHenkan.get()) {
+                floatingCandidateEnterPressed()
+                romajiConverter?.clear()
+                return true
+            } else {
+                handleNonEmptyInputEnterKey(suggestions.map {
+                    Candidate(
+                        string = it.word,
+                        type = (1).toByte(),
+                        length = insertString.length.toUByte(),
+                        score = 0
+                    )
+                }, mainView, insertString)
+            }
+        } else {
+            handleEmptyInputEnterKey(mainView)
+        }
+        romajiConverter?.clear()
+        return true
+    }
+
+    private fun handleJapaneseCharacterKeyFloating(
+        keyCode: Int,
+        event: KeyEvent?,
+        insertString: String
+    ): Boolean {
+        event?.let { e ->
+            scope.launch {
+                _physicalKeyboardEnable.emit(true)
+            }
+            isKeyboardFloatingMode = false
+            val sb = StringBuilder() // ここで宣言
+
+            if (isHenkan.get()) {
+                listAdapter.selectHighlightedItem()
+                scope.launch {
+                    delay(32)
+                    val letterConverted = if (isDefaultRomajiHenkanMap) {
+                        romajiConverter?.handleKeyEventZenkaku(e)
+                    } else {
+                        romajiConverter?.handleKeyEvent(e)
+                    }
+                    letterConverted?.let { romajiResult ->
+                        Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
+                        _inputString.update {
+                            romajiResult.first
+                        }
+                    }
+                }
+                return true
+            }
+            if (hardKeyboardShiftPressd) {
+                val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+                char?.let { c ->
+                    if (insertString.isNotEmpty()) {
+                        sb.append(
+                            insertString
+                        ).append(c.lowercase())
+                        _inputString.update {
+                            sb.toString()
+                        }
+                    } else {
+                        _inputString.update {
+                            c.lowercase()
+                        }
+                    }
+                    return true
+                }
+            } else {
+                val letterConverted = if (isDefaultRomajiHenkanMap) {
+                    romajiConverter?.handleKeyEventZenkaku(e)
+                } else {
+                    romajiConverter?.handleKeyEvent(e)
+                }
+                letterConverted?.let { romajiResult ->
+                    Timber.d("onKeyDown: $romajiResult")
+                    if (insertString.isNotEmpty()) {
+                        sb.append(
+                            insertString.dropLast((romajiResult.second))
+                        ).append(romajiResult.first)
+                        _inputString.update {
+                            sb.toString()
+                        }
+                    } else {
+                        _inputString.update {
+                            romajiResult.first
+                        }
+                    }
+                }
+            }
+            return true
+        }
+        return super.onKeyDown(keyCode, null)
+    }
+
+
+// ---------------------------------------------------------------------------------
+// 3. 共通ヘルパー関数（モード切替など）
+// ---------------------------------------------------------------------------------
+
+    /**
+     * Ctrl+Space押下時の入力モードサイクル（日→英→数→日）
+     */
+    private fun cycleInputMode(mainView: MainLayoutBinding): Boolean {
+        customKeyboardMode = when (customKeyboardMode) {
+            KeyboardInputMode.HIRAGANA -> KeyboardInputMode.ENGLISH
+            KeyboardInputMode.ENGLISH -> KeyboardInputMode.SYMBOLS
+            KeyboardInputMode.SYMBOLS -> KeyboardInputMode.HIRAGANA
+        }
+        updateKeyboardLayout()
+
+        val inputMode = when (customKeyboardMode) {
+            KeyboardInputMode.HIRAGANA -> InputMode.ModeJapanese
+            KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
+            KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
+        }
+        val showInputModeText = when (inputMode) {
+            InputMode.ModeJapanese -> "あ"
+            InputMode.ModeEnglish -> "A"
+            InputMode.ModeNumber -> "A"
+        }
+        Timber.d("e.isCtrlPressed Space: $inputMode $showInputModeText")
+        floatingDockView.setText(showInputModeText)
+        mainView.keyboardView.setCurrentMode(inputMode)
+
+        showFloatingModeSwitchView(showInputModeText)
+        finishComposingText()
+        _inputString.update { "" }
+        return true
+    }
+
+    /**
+     * ひらがなモード（日本語入力）へ切り替える
+     */
+    private fun switchToHiraganaMode(mainView: MainLayoutBinding): Boolean {
+        customKeyboardMode = KeyboardInputMode.HIRAGANA
+        updateKeyboardLayout()
+        val inputMode = InputMode.ModeJapanese
+        val showInputModeText = "あ"
+        Timber.d("switchToHiraganaMode: $inputMode $showInputModeText")
+        floatingDockView.setText(showInputModeText)
+        mainView.keyboardView.setCurrentMode(inputMode)
+        showFloatingModeSwitchView(showInputModeText)
+        finishComposingText()
+        _inputString.update { "" }
+        return true
+    }
+
+    /**
+     * 英語モードへ切り替える (無変換キー用)
+     */
+    private fun switchToEnglishModeFloating(mainView: MainLayoutBinding): Boolean {
+        customKeyboardMode = KeyboardInputMode.ENGLISH
+        updateKeyboardLayout()
+        val inputMode = InputMode.ModeEnglish
+        val showInputModeText = "A"
+        Timber.d("switchToEnglishMode (MUHENKAN): $inputMode $showInputModeText")
+        floatingDockView.setText(showInputModeText)
+        mainView.keyboardView.setCurrentMode(inputMode)
+        showFloatingModeSwitchView(showInputModeText)
+        finishComposingText()
+        _inputString.update { "" }
+        return true
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
@@ -4292,6 +4269,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     setPasteEnabled(false)
                                 }
                             }
+                            appPreference.last_pasted_clipboard_text_preference = ""
                         }
                     }
 
@@ -4700,6 +4678,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 if (clipboardPreviewVisibility == true) {
                                     setPasteEnabled(true)
                                     setClipboardPreview(selectedText.toString())
+                                    appPreference.last_pasted_clipboard_text_preference = ""
                                 } else {
                                     setPasteEnabled(false)
                                 }
@@ -4868,6 +4847,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (clipboardPreviewVisibility == true) {
                     setPasteEnabled(true)
                     setClipboardPreview(selectedText.toString())
+                    appPreference.last_pasted_clipboard_text_preference = ""
                 } else {
                     setPasteEnabled(false)
                 }
@@ -4887,6 +4867,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             is ClipboardItem.Text -> {
                 if (item.text.isNotEmpty()) {
                     commitText(item.text, 1)
+                    appPreference.last_pasted_clipboard_text_preference = item.text
                 }
             }
 
@@ -4908,6 +4889,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (clipboardPreviewVisibility == true) {
                     setPasteEnabled(true)
                     setClipboardPreview(selectedText.toString())
+                    appPreference.last_pasted_clipboard_text_preference = ""
                 } else {
                     setPasteEnabled(false)
                 }
@@ -5091,14 +5073,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * 画像とテキストの両方を判定して、正しくプレビューの状態を設定します。
      */
     private fun updateClipboardPreview() {
+        Timber.d("SuggestionAdapter Clipboard: updateClipboardPreview")
         suggestionAdapter?.apply {
             when (val item = clipboardUtil.getPrimaryClipContent()) {
                 is ClipboardItem.Image -> {
                     if (clipboardPreviewVisibility == true) {
-                        if (clipboardPreviewTapToDelete != true){
+                        if (clipboardPreviewTapToDelete != true) {
                             setPasteEnabled(true)
                             setClipboardImagePreview(item.bitmap)
-                        }else{
+                        } else {
                             setPasteEnabled(false)
                         }
                     } else {
@@ -5108,9 +5091,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 is ClipboardItem.Text -> {
                     if (clipboardPreviewVisibility == true) {
-                        if (clipboardPreviewTapToDelete != true){
+                        if (clipboardPreviewTapToDelete != true) {
                             setPasteEnabled(true)
-                            setClipboardPreview(item.text)
+                            if (appPreference.last_pasted_clipboard_text_preference != item.text) {
+                                setClipboardPreview(item.text)
+                            }
                         }
                     } else {
                         setPasteEnabled(false)
@@ -5486,6 +5471,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         suggestionAdapter?.apply {
                             if (deletedBuffer.isEmpty()) {
+                                Timber.d("SuggestionAdapter Clipboard: from coroutine flow")
                                 when (val item = clipboardUtil.getPrimaryClipContent()) {
                                     is ClipboardItem.Image -> {
                                         if (clipboardPreviewVisibility == true) {
@@ -5498,8 +5484,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                                     is ClipboardItem.Text -> {
                                         if (clipboardPreviewVisibility == true) {
-                                            setPasteEnabled(true)
-                                            setClipboardPreview(item.text)
+                                            if (clipboardPreviewTapToDelete == true){
+                                                if (appPreference.last_pasted_clipboard_text_preference != item.text){
+                                                    setPasteEnabled(true)
+                                                    setClipboardPreview(item.text)
+                                                }else{
+                                                    setPasteEnabled(false)
+                                                }
+                                            }else{
+                                                setPasteEnabled(true)
+                                                setClipboardPreview(item.text)
+                                            }
                                         } else {
                                             setPasteEnabled(false)
                                         }
@@ -5818,6 +5813,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
+                    val showInputModeText = when (mainView.keyboardView.currentInputMode.value) {
+                        InputMode.ModeJapanese -> "あ"
+                        InputMode.ModeEnglish -> "A"
+                        InputMode.ModeNumber -> "A"
+                    }
+
+                    floatingDockView.setText(showInputModeText)
                     floatingKeyboardView?.dismiss()
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                         params.width = ViewGroup.LayoutParams.MATCH_PARENT

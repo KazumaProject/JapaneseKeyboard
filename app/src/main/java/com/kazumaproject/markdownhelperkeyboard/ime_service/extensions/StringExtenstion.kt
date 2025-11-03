@@ -16,15 +16,21 @@ fun Char.isEnglishLetter(): Boolean {
     return this in 'a'..'z' || this in 'A'..'Z'
 }
 
-fun Char.isEnglishLetterZenkaku(): Boolean {
-    return this in 'A'..'Z'
-}
-
 fun String.isAllEnglishLetters(): Boolean =
     isNotEmpty() && all { it.isEnglishLetter() }
 
-fun String.isAllEnglishLettersZenakaku(): Boolean =
-    isNotEmpty() && all { it.isEnglishLetterZenkaku() }
+/**
+ * Checks if the character is a zenkaku (full-width) English letter.
+ */
+fun Char.isZenkakuLetter(): Boolean {
+    return this in 'ａ'..'ｚ' || this in 'Ａ'..'Ｚ'
+}
+
+/**
+ * Checks if the string is not empty and contains only zenkaku (full-width) English letters.
+ */
+fun String.isAllZenkakuLetters(): Boolean =
+    isNotEmpty() && all { it.isZenkakuLetter() }
 
 /**
  * 1. 文字が半角ASCII（英数記号）であるかチェックする拡張関数
