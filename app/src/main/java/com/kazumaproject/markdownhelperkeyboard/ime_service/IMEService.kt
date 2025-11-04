@@ -613,6 +613,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listAdapter.onPagerClicked = {
             goToNextPageForFloatingCandidate()
         }
+        ioScope.launch {
+            customLayouts = keyboardRepository.getLayoutsNotFlow()
+        }
     }
 
     override fun onCreateInputView(): View? {
