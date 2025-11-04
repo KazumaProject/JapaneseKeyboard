@@ -46,6 +46,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_candidateTabOrderFragment"
             app:destination="@id/candidateTabOrderFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_enableKeyboardFragment"
+            app:destination="@id/enableKeyboardFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -153,5 +156,10 @@
         android:id="@+id/candidateTabOrderFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_tab_order.ui.CandidateTabOrderFragment"
         android:label="@string/candidate_tab_order_preference_title" />
+    <fragment
+        android:id="@+id/enableKeyboardFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.enable_keyboard_setting.EnableKeyboardFragment"
+        android:label="fragment_enable_keyboard"
+        tools:layout="@layout/fragment_enable_keyboard" />
 
 </navigation>

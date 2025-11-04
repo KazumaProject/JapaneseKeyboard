@@ -1,11 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
@@ -91,19 +88,15 @@ class SettingFragment : PreferenceFragmentCompat() {
                 requireActivity().finish()
             }
         }
-        isKeyboardBoardEnabled()?.let { enabled ->
-            if (!enabled) {
-                goToKeyboardSettingScreen()
-            }
-        }
     }
 
     override fun onResume() {
         super.onResume()
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         isKeyboardBoardEnabled()?.let { enabled ->
             if (!enabled) {
-                goToKeyboardSettingScreen()
+                findNavController().navigate(
+                    R.id.action_navigation_setting_to_enableKeyboardFragment
+                )
             }
         }
     }
@@ -496,12 +489,6 @@ class SettingFragment : PreferenceFragmentCompat() {
     private fun isKeyboardBoardEnabled(): Boolean? {
         val imm = getSystemService(requireContext(), InputMethodManager::class.java)
         return imm?.enabledInputMethodList?.any { it.packageName == requireContext().packageName }
-    }
-
-    private fun goToKeyboardSettingScreen() {
-        val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        requireActivity().startActivity(intent)
     }
 
     @SuppressLint("CheckResult")

@@ -335,4 +335,12 @@
     <string name="tablet_preference_category_title">Tablet</string>
     <string name="pref_tablet_layout_title">Tablet layout</string>
     <string name="pref_tablet_layout_summary">Use the kana (Gojūon) layout on tablets.</string>
+    <string name="welcome_title">Welcome!</string>
+    <string name="enable_keyboard_description">
+        Thank you for downloading Sumire. To use this app, you must first enable it in your device\'s keyboard settings.
+    </string>
+    <string name="enable_keyboard_button">Go to Settings</string>
+    <string name="greeting_morning">Good morning</string>
+    <string name="greeting_afternoon">Hello</string>
+    <string name="greeting_evening">Good evening</string>
 </resources>
