@@ -333,4 +333,12 @@
     <string name="tablet_preference_category_title">タブレット</string>
     <string name="pref_tablet_layout_title">タブレットのレイアウト</string>
     <string name="pref_tablet_layout_summary">タブレットでは五十音（かな）レイアウトを使用します。</string>
+    <string name="welcome_title">こんにちは</string>
+    <string name="enable_keyboard_description">
+        スミレをご利用いただきありがとうございます。このアプリを使用するには、まず端末のキーボード設定で有効にする必要があります。
+    </string>
+    <string name="enable_keyboard_button">設定に進む</string>
+    <string name="greeting_morning">おはようございます</string>
+    <string name="greeting_afternoon">こんにちは</string>
+    <string name="greeting_evening">こんばんは</string>
 </resources>
