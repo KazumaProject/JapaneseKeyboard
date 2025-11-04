@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_landscape_setting
 
 import android.annotation.SuppressLint
-import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -93,17 +92,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
         updateCandidateListAndHeight()
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Lock orientation to landscape when this fragment is visible
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
-    }
-
-    override fun onPause() {
-        super.onPause()
-        // Reset orientation to default when leaving the fragment
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-    }
 
     override fun onDestroyView() {
         super.onDestroyView()
