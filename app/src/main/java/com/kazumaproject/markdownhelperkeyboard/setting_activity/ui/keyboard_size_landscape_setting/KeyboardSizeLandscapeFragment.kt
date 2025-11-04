@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_landscape_setting
 
 import android.annotation.SuppressLint
-import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -68,16 +67,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         setupMoveHandle()
 
         updateControlsVisibility()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-    }
-
-    override fun onPause() {
-        super.onPause()
-        requireActivity().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
 
     private fun setupViewPager() {
