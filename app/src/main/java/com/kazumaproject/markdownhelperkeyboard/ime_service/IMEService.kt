@@ -3073,7 +3073,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
             Key.KeyDakutenSmall -> {
-                showListPopup()
+                if (tenkeyShowIMEButtonPreference == true) {
+                    showListPopup()
+                }
             }
 
             Key.SideKeyCursorLeft -> {
