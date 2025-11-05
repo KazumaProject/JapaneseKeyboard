@@ -366,6 +366,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isLiveConversionEnable: Boolean? = false
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
+    private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowPopupWindowPreference: Boolean? = false
     private var qwertyShowCursorButtonsPreference: Boolean? = false
@@ -686,6 +687,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             nBest = n_best_preference ?: 4
             flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
             qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
+            tenkeyShowIMEButtonPreference = tenkey_show_language_button_preference
             qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
             qwertyShowNumberButtonsPreference = qwerty_show_number_buttons ?: false
             qwertyShowSwitchRomajiEnglishPreference =
@@ -859,7 +861,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val isPortrait =
                 resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val screenWidth = resources.displayMetrics.widthPixels
-            val density = resources.displayMetrics.density
 
             val widthPref = if (isPortrait) {
                 tenkeyWidthPreferenceValue ?: 100
@@ -999,6 +1000,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (appPreference.key_letter_size ?: 0.0f) + defaultLetterSize
                 )
                 keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
+                keyboardView.setLanguageEnableKeyState(tenkeyShowIMEButtonPreference ?: true)
+                if (tenkeyShowIMEButtonPreference == true) {
+                    keyboardView.setBackgroundSmallLetterKey(cachedLogoDrawable)
+                } else {
+                    keyboardView.setBackgroundSmallLetterKey(cachedKanaDrawable)
+                }
 
                 setTabsToTabLayout(mainView)
 
@@ -1124,6 +1131,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         nBest = null
         flickSensitivityPreferenceValue = null
         qwertyShowIMEButtonPreference = null
+        tenkeyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
         qwertyShowSwitchRomajiEnglishPreference = null
@@ -5487,14 +5495,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                                     is ClipboardItem.Text -> {
                                         if (clipboardPreviewVisibility == true) {
-                                            if (clipboardPreviewTapToDelete == true){
-                                                if (appPreference.last_pasted_clipboard_text_preference != item.text){
+                                            if (clipboardPreviewTapToDelete == true) {
+                                                if (appPreference.last_pasted_clipboard_text_preference != item.text) {
                                                     setPasteEnabled(true)
                                                     setClipboardPreview(item.text)
-                                                }else{
+                                                } else {
                                                     setPasteEnabled(false)
                                                 }
-                                            }else{
+                                            } else {
                                                 setPasteEnabled(true)
                                                 setClipboardPreview(item.text)
                                             }
@@ -6506,7 +6514,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                            tenkeyShowIMEButtonPreference ?: true
                         )
                     }
                 }
@@ -6528,7 +6536,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                            tenkeyShowIMEButtonPreference ?: true
                         )
                     }
                 }
@@ -8360,12 +8368,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     )
                                 } else {
                                     setBackgroundSmallLetterKey(
-                                        cachedLogoDrawable
+                                        tenkeyShowIMEButtonPreference ?: true
                                     )
                                 }
                             } else {
                                 setBackgroundSmallLetterKey(
-                                    cachedLogoDrawable
+                                    tenkeyShowIMEButtonPreference ?: true
                                 )
                             }
                         }
@@ -8393,7 +8401,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 )
                             } else {
                                 setBackgroundSmallLetterKey(
-                                    cachedLogoDrawable
+                                    tenkeyShowIMEButtonPreference ?: true
                                 )
                             }
                         } else {
@@ -8401,7 +8409,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 cachedSpaceDrawable
                             )
                             setBackgroundSmallLetterKey(
-                                cachedLogoDrawable
+                                tenkeyShowIMEButtonPreference ?: true
                             )
                         }
                     }
@@ -8428,12 +8436,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                cachedLogoDrawable
+                                tenkeyShowIMEButtonPreference ?: true
                             )
                         }
                     } else {
                         setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                            tenkeyShowIMEButtonPreference ?: true
                         )
                     }
                 }
@@ -8460,7 +8468,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                cachedLogoDrawable
+                                tenkeyShowIMEButtonPreference ?: true
                             )
                         }
                     } else {
@@ -8468,7 +8476,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             cachedSpaceDrawable
                         )
                         setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                            tenkeyShowIMEButtonPreference ?: true
                         )
                     }
                 }
@@ -8515,7 +8523,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                cachedLogoDrawable
+                                tenkeyShowIMEButtonPreference ?: true
                             )
                         }
                         setSideKeySpaceDrawable(
@@ -8531,7 +8539,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                cachedLogoDrawable
+                                tenkeyShowIMEButtonPreference ?: true
                             )
                         }
                         setSideKeySpaceDrawable(
@@ -8567,7 +8575,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                            tenkeyShowIMEButtonPreference ?: true
                         )
                     }
                     setSideKeySpaceDrawable(
@@ -8583,7 +8591,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            cachedLogoDrawable
+                            tenkeyShowIMEButtonPreference ?: true
                         )
                     }
                     setSideKeySpaceDrawable(
@@ -10182,7 +10190,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else {
-            if (!onKeyboardSwitchLongPressUp && qwertyMode.value != TenKeyQWERTYMode.Custom) {
+            if (!onKeyboardSwitchLongPressUp && qwertyMode.value != TenKeyQWERTYMode.Custom && tenkeyShowIMEButtonPreference == true) {
                 switchNextKeyboard()
             }
         }
