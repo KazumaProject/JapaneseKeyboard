@@ -1714,9 +1714,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         pointerStartCoords.remove(firstPointerId)
                         flickLockedPointers.remove(firstPointerId)
 
-                        // ★元のロジックからlogVariationIfNeededを削除（マルチタッチキャンセル時はタップとみなさない）
-                        // val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
-                        // logVariationIfNeeded(qwertyKey)
+                        val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+                        logVariationIfNeeded(qwertyKey)
                     }
                     suppressedPointerId = firstPointerId
                     pointerButtonMap.remove(firstPointerId)
