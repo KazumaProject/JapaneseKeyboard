@@ -955,8 +955,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         mainLayoutBinding?.let { mainView ->
             if (!hasPhysicalKeyboard) {
-                setKeyboardSizeSwitchKeyboard(mainView)
-                applyFloatingModeState(isKeyboardFloatingMode ?: false)
+                if (isKeyboardFloatingMode == true) {
+                    applyFloatingModeState(true)
+                } else {
+                    setKeyboardSizeSwitchKeyboard(mainView)
+                    applyFloatingModeState(false)
+                }
             } else {
                 checkForPhysicalKeyboard(true)
             }
