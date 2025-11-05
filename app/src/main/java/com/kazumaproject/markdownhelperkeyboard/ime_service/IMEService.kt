@@ -956,7 +956,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding?.let { mainView ->
             if (!hasPhysicalKeyboard) {
                 setKeyboardSizeSwitchKeyboard(mainView)
-                applyFloatingModeState(keyboardFloatingMode.value)
+                applyFloatingModeState(isKeyboardFloatingMode ?: false)
             } else {
                 checkForPhysicalKeyboard(true)
             }
@@ -1661,9 +1661,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyCode: Int, event: KeyEvent?, mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
     ): Boolean {
         event?.let { e ->
-            scope.launch {
-                _physicalKeyboardEnable.emit(true)
-            }
             if (e.isCtrlPressed) {
                 if (keyCode == KeyEvent.KEYCODE_SPACE) {
                     // 英語モード時のCtrl+Spaceは日本語モードへ
@@ -1704,9 +1701,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyCode: Int, event: KeyEvent?, mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
     ): Boolean {
         event?.let { e ->
-            scope.launch {
-                _physicalKeyboardEnable.emit(true)
-            }
             if (e.isCtrlPressed) {
                 if (keyCode == KeyEvent.KEYCODE_SPACE) {
                     // 数字モード時のCtrl+Spaceは日本語モードへ (日本語モードのロジックと同じ)
