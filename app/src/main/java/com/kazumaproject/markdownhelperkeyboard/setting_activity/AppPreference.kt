@@ -53,6 +53,8 @@ object AppPreference {
     private val QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH =
         Pair("qwerty_show_switch_romaji_english_preference", true)
 
+    private val QWERTY_ENABLE_FLICK_UP_WINDOW = Pair("qwerty_enable_flick_up_preference", false)
+
     private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
 
     private val CANDIDATE_IN_PASSWORD = Pair("hide_candidate_password_preference", true)
@@ -265,6 +267,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SWITCH_QWERTY_PASSWORD.first, value ?: false)
+        }
+
+    var qwerty_enable_flick_up_preference: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_ENABLE_FLICK_UP_WINDOW.first, QWERTY_ENABLE_FLICK_UP_WINDOW.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_ENABLE_FLICK_UP_WINDOW.first, value ?: false)
         }
 
     var qwerty_show_popup_window: Boolean?

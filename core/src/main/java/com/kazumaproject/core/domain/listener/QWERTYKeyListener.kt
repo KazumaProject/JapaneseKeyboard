@@ -14,4 +14,16 @@ interface QWERTYKeyListener {
     )
 
     fun onLongPressQWERTYKey(qwertyKey: QWERTYKey)
+
+    /**
+     * QWERTYキーが上フリックされたときに呼び出されます。
+     * (setFlickDetectionEnabled(true) が設定されている場合のみ)
+     *
+     * @param qwertyKey フリックジェスチャーが開始されたキー
+     */
+    fun onFlickUPQWERTYKey(
+        qwertyKey: QWERTYKey,
+        tap: Char?,
+        variations: List<Char>?
+    )
 }

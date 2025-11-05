@@ -137,6 +137,31 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         QWERTYKey.QWERTYKeyCursorRight
     )
 
+    /**
+     * 上フリック検知を有効にするかどうかのフラグ
+     * true の場合、QWERTYButton での上フリックが検知され、
+     * その間のキースライドが無効になります。
+     */
+    private var enableFlickUpDetection = false
+
+    /**
+     * 各ポインターのタッチ開始座標 (X, Y) を保存するマップ
+     * Key: pointerId, Value: Pair(startX, startY)
+     */
+    private val pointerStartCoords = SparseArray<Pair<Float, Float>>()
+
+    /**
+     * 上フリックジェスチャー中として「ロック」されたポインターIDのセット
+     */
+    private val flickLockedPointers = mutableSetOf<Int>()
+
+    /**
+     * フリックと判定するための最小Y軸移動距離 (px)
+     * (タッチスロップの1.5倍を基準に設定)
+     */
+    private val flickThreshold by lazy { ViewConfiguration.get(context).scaledTouchSlop.toFloat() * 1.5f }
+
+
     init {
         isClickable = true
         isFocusable = true
@@ -1318,6 +1343,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.showPopupView = state
     }
 
+    /**
+     * 上フリックによる個別のアクションを有効にするか設定します。
+     * @param enabled trueにすると、QWERTYButtonでの上フリックが検知され、
+     * その際のキー間スライドが無効になります。
+     */
+    fun setFlickUpDetectionEnabled(enabled: Boolean) {
+        this.enableFlickUpDetection = enabled
+    }
+
     private fun setMaterialYouTheme(
         isDarkMode: Boolean, isDynamicColorEnable: Boolean
     ) {
@@ -1676,8 +1710,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         dismissKeyPreview()
                         cancelLongPressForPointer(firstPointerId)
 
-                        val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
-                        logVariationIfNeeded(qwertyKey)
+                        // ★フリック状態もクリーンアップ
+                        pointerStartCoords.remove(firstPointerId)
+                        flickLockedPointers.remove(firstPointerId)
+
+                        // ★元のロジックからlogVariationIfNeededを削除（マルチタッチキャンセル時はタップとみなさない）
+                        // val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+                        // logVariationIfNeeded(qwertyKey)
                     }
                     suppressedPointerId = firstPointerId
                     pointerButtonMap.remove(firstPointerId)
@@ -1699,7 +1738,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         variationPopupView?.updateSelection(popupX)
                     }
                 } else {
-                    // Otherwise, perform the normal move handling
+                    // Otherwise, perform the normal move handling (★これが修正済みの handlePointerMove)
                     for (i in 0 until event.pointerCount) {
                         val pid = event.getPointerId(i)
                         if (pid == suppressedPointerId || pid == lockedPointerId) continue
@@ -1714,8 +1753,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
                 // If it was the long-pressing pointer that lifted, treat it like a normal ACTION_UP.
                 if (variationPopup?.isShowing == true && pointerId == longPressedPointerId) {
-                    // This will be handled by ACTION_UP logic, so we can delegate to it.
-                    // To keep it simple, we'll just process the UP logic here.
                     if (variationPopup?.isShowing == true) {
                         variationPopupView?.getSelectedChar()?.let { selectedChar ->
                             val qwertyKey =
@@ -1743,36 +1780,46 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     suppressedPointerId = null
                 }
 
-                // If that pointer was tracked, fire its “key up” or cancel long‐press
-                val view = pointerButtonMap[pointerId]
-                view?.let {
-                    it.isPressed = false
-                    dismissKeyPreview()
-                    cancelLongPressForPointer(pointerId)
+                // ★ フリック開始座標をクリーンアップ
+                pointerStartCoords.remove(pointerId)
 
-                    val wasShift = (it.id == binding.keyShift.id)
-                    // If Shift was double‐tapped, suppress this single‐tap event
-                    if (wasShift && shiftDoubleTapped) {
-                        // Consume without notifying
-                        shiftDoubleTapped = false
-                    } else {
-                        val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                        when (qwertyKey) {
-                            QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
-                                qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
-                            }
+                // ★ フリックロックされたポインターでなければ、通常のタップ処理を実行
+                if (!flickLockedPointers.contains(pointerId)) {
+                    val view = pointerButtonMap[pointerId]
+                    view?.let {
+                        it.isPressed = false
+                        dismissKeyPreview()
+                        cancelLongPressForPointer(pointerId)
 
-                            else -> {
-                                logVariationIfNeeded(qwertyKey)
-                                setToggleShiftState(view)
+                        val wasShift = (it.id == binding.keyShift.id)
+                        // If Shift was double‐tapped, suppress this single‐tap event
+                        if (wasShift && shiftDoubleTapped) {
+                            // Consume without notifying
+                            shiftDoubleTapped = false
+                        } else {
+                            val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
+                            when (qwertyKey) {
+                                QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                                    qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
+                                }
+
+                                else -> {
+                                    logVariationIfNeeded(qwertyKey)
+                                    setToggleShiftState(view)
+                                }
                             }
                         }
                     }
                 }
+                // ★ フリックロックされたポインターの場合、何もしない（ACTION_MOVEで処理済み）
+
                 pointerButtonMap.remove(pointerId)
             }
 
             MotionEvent.ACTION_UP -> {
+                // ★ 最初に liftedId を取得
+                val liftedId = event.getPointerId(event.actionIndex)
+
                 // If a variation popup was active, finalize the selection
                 if (variationPopup?.isShowing == true) {
                     variationPopupView?.getSelectedChar()?.let { selectedChar ->
@@ -1789,8 +1836,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     variationPopup = null
                     variationPopupView = null
                     longPressedPointerId = null
-                } else {
-                    // Otherwise, perform the normal UP action
+
+                    // ★ フリックロックされていないポインターの場合、通常のタップ処理
+                } else if (!flickLockedPointers.contains(liftedId)) {
+
                     val liftedId = event.getPointerId(event.actionIndex)
                     if (suppressedPointerId == liftedId) {
                         suppressedPointerId = null
@@ -1836,6 +1885,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         }
                     }
                 }
+                // ★ フリックロックされたポインターの場合、何もしない（ACTION_MOVEで処理済み）
+
+                // ★ すべてのUP/CANCEL処理の最後に clearAllPressed を呼ぶ
                 clearAllPressed()
             }
 
@@ -1912,9 +1964,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val pid = event.getPointerId(pointerIndex)
         if (pid == suppressedPointerId) return
 
-        val x = event.getX(pointerIndex).toInt()
-        val y = event.getY(pointerIndex).toInt()
-        val view = findButtonUnder(x, y)
+        // ★ Float型で座標を取得（IntへのキャストはfindButtonUnderの呼び出し時に行う）
+        val x = event.getX(pointerIndex)
+        val y = event.getY(pointerIndex)
+
+        // 1. フリック検知のため、タッチ開始座標を保存
+        pointerStartCoords.put(pid, Pair(x, y))
+        // 2. 既存のフリックロックを（念のため）解除
+        flickLockedPointers.remove(pid)
+
+        val view = findButtonUnder(x.toInt(), y.toInt()) // ★ .toInt() をここに追加
         view?.let {
             val qwertyKey = qwertyButtonMap[it]
             qwertyKey?.let { key ->
@@ -1961,14 +2020,69 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     /**
      * Handle a MOVE event for a tracked pointer. If it slides off its original key, update pressed state.
+     * ★ (MODIFIED) Detects up-flick gestures and calls listener IMMEDIATELY.
+     * ★ (MODIFIED 2) Resets flick anchor when sliding to a new key.
      */
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
-        if (pointerId == suppressedPointerId) return
+        if (pointerId == suppressedPointerId || pointerId == lockedPointerId) return
 
-        val x = event.getX(pointerIndex).toInt()
-        val y = event.getY(pointerIndex).toInt()
+        // 1. 既に上フリックとしてロックされているポインターは、他のキーを検知しない
+        if (flickLockedPointers.contains(pointerId)) {
+            return
+        }
+
+        val x = event.getX(pointerIndex)
+        val y = event.getY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
-        val currentView = findButtonUnder(x, y)
+
+        // 2. 上フリックジェスチャーの検知
+        var isUpFlick = false
+        // ★ フリック検知は、指が何らかのキーの上にある場合のみ行う
+        if (enableFlickUpDetection && previousView != null && previousView is QWERTYButton) {
+            pointerStartCoords[pointerId]?.let { (startX, startY) ->
+                val dx = x - startX
+                val dy = y - startY
+
+                // 上フリックの条件:
+                // 1. Y軸の移動が負（上方向）
+                // 2. Y軸の移動量がX軸の移動量より大きい（垂直方向のスライド）
+                // 3. Y軸の移動量が設定した閾値(flickThreshold)を超えている
+                if (dy < 0 && abs(dy) > abs(dx) && abs(dy) > flickThreshold) {
+                    isUpFlick = true
+                }
+            }
+        }
+
+        if (isUpFlick) {
+            // 3. 上フリックを検知！
+            flickLockedPointers.add(pointerId) // このポインターを「フリックロック」する
+            previousView?.isPressed = false    // 元のキーの押下状態を解除
+            dismissKeyPreview()                // キープレビューを閉じる
+            cancelLongPressForPointer(pointerId) // 長押し検知をキャンセル
+
+            // ★ ACTION_MOVE の最中にリスナーを呼び出す
+            val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+            Log.d("QWERTYKeyboardView", "Up-flick detected on key (during MOVE): $qwertyKey")
+            val variations = getVariationInfo(qwertyKey)
+            // ★ リスナーを呼び出します。
+            // (onFlickUPQWERTYKey または onFlickQWERTYKey のどちらかで、ご自身のインターフェース定義に合わせてください)
+            variations?.let { variation ->
+                qwertyKeyListener?.onFlickUPQWERTYKey(
+                    qwertyKey = qwertyKey,
+                    tap = variation.tap,
+                    variations = variations.variations
+                )
+            }
+            // qwertyKeyListener?.onFlickQWERTYKey(qwertyKey) // もしこちらの名前で定義した場合
+
+            // ★重要: ここで return する
+            // これにより、この下の `currentView != previousView` のロジックが実行されず、
+            // 他キーへのスライド（検知）が無効化される。
+            return
+        }
+
+        // 4. 上フリックでない場合、通常のキースライド処理を実行
+        val currentView = findButtonUnder(x.toInt(), y.toInt())
 
         if (currentView != previousView) {
             // Finger moved off previous key
@@ -1985,6 +2099,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
+
+                // --- ▼▼▼ ここが最重要の修正点 ▼▼▼ ---
+                // 5. ★ 新しいキーに移動したので、フリックの開始点をリセットする
+                pointerStartCoords.put(pointerId, Pair(x, y))
+                // --- ▲▲▲ ここまで ▲▲▲ ---
+
                 if (it.id != binding.keySpace.id && it.id != binding.keyDelete.id && it.id != binding.keyShift.id && it.id != binding.key123.id && it.id != binding.keyReturn.id && it.id != binding.keySwitchDefault.id) {
                     showKeyPreview(it)
                 }
@@ -1993,6 +2113,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             } ?: run {
                 // Finger moved off any key entirely
                 pointerButtonMap.remove(pointerId)
+
+                // ★ キーから指が離れたので、フリック開始点もクリア
+                pointerStartCoords.remove(pointerId)
+
                 cancelLongPressForPointer(pointerId)
             }
         }
@@ -2008,14 +2132,21 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             cancelLongPressForPointer(pid)
         }
         pointerButtonMap.clear()
+
+        // --- ▼ここから追加▼ ---
+        // ★ フリック追跡用のマップとセットもクリアする
+        pointerStartCoords.clear()
+        flickLockedPointers.clear()
+        // --- ▲ここまで追加▲ ---
+
         dismissKeyPreview()
         suppressedPointerId = null
         variationPopup?.dismiss()
         variationPopup = null
         variationPopupView = null
         longPressedPointerId = null
-        dismissKeyPreview()
-        suppressedPointerId = null
+        // dismissKeyPreview() // 元のコードで重複していた
+        // suppressedPointerId = null // 元のコードで重複していた
         lockedPointerId = null
     }
 
