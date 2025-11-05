@@ -142,7 +142,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * true の場合、QWERTYButton での上フリックが検知され、
      * その間のキースライドが無効になります。
      */
-    private var enableFlickDetection = false
+    private var enableFlickUpDetection = false
 
     /**
      * 各ポインターのタッチ開始座標 (X, Y) を保存するマップ
@@ -1348,8 +1348,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * @param enabled trueにすると、QWERTYButtonでの上フリックが検知され、
      * その際のキー間スライドが無効になります。
      */
-    fun setFlickDetectionEnabled(enabled: Boolean) {
-        this.enableFlickDetection = enabled
+    fun setFlickUpDetectionEnabled(enabled: Boolean) {
+        this.enableFlickUpDetection = enabled
     }
 
     private fun setMaterialYouTheme(
@@ -2038,7 +2038,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         // 2. 上フリックジェスチャーの検知
         var isUpFlick = false
         // ★ フリック検知は、指が何らかのキーの上にある場合のみ行う
-        if (enableFlickDetection && previousView != null && previousView is QWERTYButton) {
+        if (enableFlickUpDetection && previousView != null && previousView is QWERTYButton) {
             pointerStartCoords[pointerId]?.let { (startX, startY) ->
                 val dx = x - startX
                 val dy = y - startY
