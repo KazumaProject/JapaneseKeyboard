@@ -1351,9 +1351,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 DynamicColors.wrapContextIfAvailable(this, R.style.Theme_MarkdownKeyboard)
             } else {
                 val baseThemedContext = ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
-                val options = DynamicColorsOptions.Builder()
-                    .setContentBasedSource(seedColor)
-                    .build()
+                val options =
+                    DynamicColorsOptions.Builder().setContentBasedSource(seedColor).build()
                 DynamicColors.wrapContextIfAvailable(baseThemedContext, options)
             }
         } else {
@@ -1591,9 +1590,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * 日本語入力モード時のキーダウン処理
      */
     private fun handleJapaneseKeyDown(
-        keyCode: Int,
-        event: KeyEvent?,
-        mainView: MainLayoutBinding
+        keyCode: Int, event: KeyEvent?, mainView: MainLayoutBinding
     ): Boolean {
 
         val insertString = inputString.value
@@ -1612,11 +1609,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 2. 通常のキーコード処理
         return when (keyCode) {
             // Fキー (変換)
-            KeyEvent.KEYCODE_F6,
-            KeyEvent.KEYCODE_F7,
-            KeyEvent.KEYCODE_F8,
-            KeyEvent.KEYCODE_F9,
-            KeyEvent.KEYCODE_F10 -> handleConversionKeyFloating(keyCode, insertString)
+            KeyEvent.KEYCODE_F6, KeyEvent.KEYCODE_F7, KeyEvent.KEYCODE_F8, KeyEvent.KEYCODE_F9, KeyEvent.KEYCODE_F10 -> handleConversionKeyFloating(
+                keyCode,
+                insertString
+            )
 
             // モード切替
             KeyEvent.KEYCODE_MUHENKAN -> switchToEnglishModeFloating(mainView)
@@ -1626,45 +1622,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // 変換・候補選択
             KeyEvent.KEYCODE_SPACE -> handleJapaneseSpaceFloating(
-                mainView,
-                insertString,
-                suggestions
+                mainView, insertString, suggestions
             )
 
             KeyEvent.KEYCODE_DPAD_LEFT -> handleJapaneseDpadLeft(insertString)
             KeyEvent.KEYCODE_DPAD_RIGHT -> handleJapaneseDpadRight(insertString)
             KeyEvent.KEYCODE_DPAD_UP -> handleJapaneseDpadUp(mainView, insertString, suggestions)
             KeyEvent.KEYCODE_DPAD_DOWN -> handleJapaneseDpadDown(
-                mainView,
-                insertString,
-                suggestions
+                mainView, insertString, suggestions
             )
 
             // 確定
             KeyEvent.KEYCODE_ENTER -> handleJapaneseEnterFloating(
-                mainView,
-                insertString,
-                suggestions
+                mainView, insertString, suggestions
             )
 
             // 無視して親に渡す
             KeyEvent.KEYCODE_BACK -> super.onKeyDown(keyCode, event)
 
             // 文字入力
-            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z,
-            in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9,
-            KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS,
-            KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET,
-            KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON,
-            KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA,
-            KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH,
-            KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT,
-            KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY,
-            KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD,
-            KeyEvent.KEYCODE_NUMPAD_DOT -> handleJapaneseCharacterKeyFloating(
-                keyCode,
-                event,
-                insertString
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> handleJapaneseCharacterKeyFloating(
+                keyCode, event, insertString
             )
 
             // それ以外
@@ -1676,9 +1654,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * 英語入力モード時のキーダウン処理
      */
     private fun handleEnglishKeyDown(
-        keyCode: Int,
-        event: KeyEvent?,
-        mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
+        keyCode: Int, event: KeyEvent?, mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
     ): Boolean {
         event?.let { e ->
             scope.launch {
@@ -1721,9 +1697,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * 数字入力モード時のキーダウン処理
      */
     private fun handleNumberKeyDown(
-        keyCode: Int,
-        event: KeyEvent?,
-        mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
+        keyCode: Int, event: KeyEvent?, mainView: MainLayoutBinding // mainViewの実際の型に置き換えてください
     ): Boolean {
         event?.let { e ->
             scope.launch {
@@ -1753,9 +1727,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 // ---------------------------------------------------------------------------------
 
     private fun handleJapaneseShiftPressed(
-        keyCode: Int,
-        event: KeyEvent,
-        insertString: String
+        keyCode: Int, event: KeyEvent, insertString: String
     ): Boolean {
         if (event.isCtrlPressed) return super.onKeyDown(keyCode, event)
         hardKeyboardShiftPressd = true
@@ -1774,9 +1746,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleJapaneseCtrlPressed(
-        keyCode: Int,
-        event: KeyEvent,
-        mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
+        keyCode: Int, event: KeyEvent, mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
         insertString: String
     ): Boolean {
         if (keyCode == KeyEvent.KEYCODE_SPACE) {
@@ -1848,9 +1818,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleJapaneseDeleteFloating(
-        keyCode: Int,
-        event: KeyEvent?,
-        insertString: String
+        keyCode: Int, event: KeyEvent?, insertString: String
     ): Boolean {
         when {
             insertString.isNotEmpty() -> {
@@ -1875,8 +1843,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleJapaneseSpaceFloating(
         mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
-        insertString: String,
-        suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
+        insertString: String, suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
     ): Boolean {
         // InputMode.ModeJapanese の KEYCODE_SPACE のロジックをここにペースト
         when (mainView.keyboardView.currentInputMode.value) {
@@ -1898,12 +1865,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         floatingCandidateNextItem(insertString)
                         scope.launch {
                             delay(64)
-                            val newSuggestionList =
-                                suggestionAdapter?.suggestions ?: emptyList()
+                            val newSuggestionList = suggestionAdapter?.suggestions ?: emptyList()
                             if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                mainView,
-                                newSuggestionList,
-                                insertStringEndWithN
+                                mainView, newSuggestionList, insertStringEndWithN
                             )
                         }
                     }
@@ -1957,8 +1921,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleJapaneseDpadUp(
         mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
-        insertString: String,
-        suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
+        insertString: String, suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
     ): Boolean {
         if (insertString.isNotEmpty()) {
             if (isHenkan.get()) {
@@ -1975,8 +1938,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleJapaneseDpadDown(
         mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
-        insertString: String,
-        suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
+        insertString: String, suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
     ): Boolean {
         if (insertString.isNotEmpty()) {
             if (isHenkan.get()) {
@@ -1992,9 +1954,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleJapaneseEnterFloating(
-        mainView: MainLayoutBinding,
-        insertString: String,
-        suggestions: List<CandidateItem>
+        mainView: MainLayoutBinding, insertString: String, suggestions: List<CandidateItem>
     ): Boolean {
         if (insertString.isNotEmpty()) {
             if (isHenkan.get()) {
@@ -2019,9 +1979,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleJapaneseCharacterKeyFloating(
-        keyCode: Int,
-        event: KeyEvent?,
-        insertString: String
+        keyCode: Int, event: KeyEvent?, insertString: String
     ): Boolean {
         event?.let { e ->
             scope.launch {
@@ -3776,20 +3734,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 mainLayoutBinding?.customLayoutDefault?.apply {
                     updateDynamicKey(
-                        keyId = "enter_key",
-                        stateIndex = currentEnterKeyIndex
+                        keyId = "enter_key", stateIndex = currentEnterKeyIndex
                     )
                     updateDynamicKey(
-                        keyId = "dakuten_toggle_key",
-                        stateIndex = currentDakutenKeyIndex
+                        keyId = "dakuten_toggle_key", stateIndex = currentDakutenKeyIndex
                     )
                     updateDynamicKey(
-                        keyId = "space_convert_key",
-                        stateIndex = currentSpaceKeyIndex
+                        keyId = "space_convert_key", stateIndex = currentSpaceKeyIndex
                     )
                     updateDynamicKey(
-                        keyId = "katakana_toggle_key",
-                        stateIndex = currentKatakanaKeyIndex
+                        keyId = "katakana_toggle_key", stateIndex = currentKatakanaKeyIndex
                     )
                 }
             }
@@ -3895,8 +3849,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentDakutenKeyIndex = 1
         mainLayoutBinding?.customLayoutDefault?.apply {
             updateDynamicKey(
-                keyId = "dakuten_toggle_key",
-                stateIndex = 1
+                keyId = "dakuten_toggle_key", stateIndex = 1
             )
         }
     }
@@ -3905,8 +3858,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentEnterKeyIndex = index
         mainLayoutBinding?.customLayoutDefault?.apply {
             updateDynamicKey(
-                keyId = "enter_key",
-                stateIndex = index
+                keyId = "enter_key", stateIndex = index
             )
         }
     }
@@ -3915,8 +3867,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentSpaceKeyIndex = index
         mainLayoutBinding?.customLayoutDefault?.apply {
             updateDynamicKey(
-                keyId = "space_convert_key",
-                stateIndex = index
+                keyId = "space_convert_key", stateIndex = index
             )
         }
     }
@@ -3925,8 +3876,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentKatakanaKeyIndex = index
         mainLayoutBinding?.customLayoutDefault?.apply {
             updateDynamicKey(
-                keyId = "katakana_toggle_key",
-                stateIndex = index
+                keyId = "katakana_toggle_key", stateIndex = index
             )
         }
     }
@@ -3938,16 +3888,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("resetSumireKeyboardDakutenMode called: $currentEnterKeyIndex")
         mainLayoutBinding?.customLayoutDefault?.apply {
             updateDynamicKey(
-                keyId = "enter_key",
-                stateIndex = currentEnterKeyIndex
+                keyId = "enter_key", stateIndex = currentEnterKeyIndex
             )
             updateDynamicKey(
-                keyId = "dakuten_toggle_key",
-                stateIndex = 0
+                keyId = "dakuten_toggle_key", stateIndex = 0
             )
             updateDynamicKey(
-                keyId = "space_convert_key",
-                stateIndex = 0
+                keyId = "space_convert_key", stateIndex = 0
             )
         }
     }
@@ -6016,12 +5963,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // 4. レイアウトパラメータの適用
         applyKeyboardLayoutParameters(
-            mainView,
-            heightPx,
-            finalKeyboardHeight,
-            finalKeyboardWidth,
-            gravity,
-            finalBottomMargin
+            mainView, heightPx, finalKeyboardHeight, finalKeyboardWidth, gravity, finalBottomMargin
         )
 
         if (isSymbol) {
@@ -6510,14 +6452,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setSideKeySpaceDrawable(
                         cachedSpaceDrawable
                     )
-                    if (currentInputMode.value == InputMode.ModeNumber) {
-                        setBackgroundSmallLetterKey(
-                            cachedNumberDrawable
-                        )
-                    } else {
-                        setBackgroundSmallLetterKey(
-                            tenkeyShowIMEButtonPreference ?: true
-                        )
+                    when (currentInputMode.value) {
+                        InputMode.ModeEnglish -> {
+                            setBackgroundSmallLetterKey(
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = true
+                            )
+                        }
+
+                        InputMode.ModeJapanese -> {
+                            setBackgroundSmallLetterKey(
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = false
+                            )
+                        }
+
+                        InputMode.ModeNumber -> {
+                            setBackgroundSmallLetterKey(
+                                cachedNumberDrawable
+                            )
+                        }
                     }
                 }
             }
@@ -6532,14 +6486,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setSideKeySpaceDrawable(
                         cachedSpaceDrawable
                     )
-                    if (currentInputMode.value == InputMode.ModeNumber) {
-                        setBackgroundSmallLetterKey(
-                            cachedNumberDrawable
-                        )
-                    } else {
-                        setBackgroundSmallLetterKey(
-                            tenkeyShowIMEButtonPreference ?: true
-                        )
+                    when (currentInputMode.value) {
+                        InputMode.ModeEnglish -> {
+                            setBackgroundSmallLetterKey(
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = true
+                            )
+                        }
+
+                        InputMode.ModeJapanese -> {
+                            setBackgroundSmallLetterKey(
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = false
+                            )
+                        }
+
+                        InputMode.ModeNumber -> {
+                            setBackgroundSmallLetterKey(
+                                cachedNumberDrawable
+                            )
+                        }
                     }
                 }
             }
@@ -7209,8 +7175,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setMainSuggestionColumn(
         mainView: MainLayoutBinding
     ) {
-        val isPortrait =
-            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
         val columnNum = if (isPortrait) {
             candidateColumns ?: "1"
@@ -7242,8 +7207,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         return when (adapter?.getItemViewType(position)) {
                             // If the item is the empty view or the custom layout picker,
                             // make it span all columns.
-                            SuggestionAdapter.VIEW_TYPE_EMPTY,
-                            SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> spanCount
+                            SuggestionAdapter.VIEW_TYPE_EMPTY, SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> spanCount
                             // Otherwise (for regular suggestions), make it span just one column.
                             else -> 1
                         }
@@ -7806,6 +7770,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
                 }
+
+                override fun onFlickUPQWERTYKey(
+                    qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
+                ) {
+                    Timber.d("onFlickUPQWERTYKey: $qwertyKey, $tap, $variations")
+                    when (vibrationTimingStr) {
+                        "both" -> {
+                            vibrate()
+                        }
+
+                        "press" -> {
+
+                        }
+
+                        "release" -> {
+
+                        }
+                    }
+                    val insertString = inputString.value
+                    val sb = StringBuilder()
+
+                    if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
+                        clearDeletedBuffer()
+                        suggestionAdapter?.setUndoEnabled(false)
+                    }
+
+                    variations?.let { variation ->
+                        if (variation.isNotEmpty()) {
+                            handleTap(variation.first(), insertString, sb, mainView)
+                        }
+                    }
+
+                }
             })
         }
     }
@@ -8300,9 +8297,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // 下線は stringInTail があればそこまで含める
             setSpan(
-                UnderlineSpan(),
-                0,
-                underlineEnd, // 計算した終了位置を使用
+                UnderlineSpan(), 0, underlineEnd, // 計算した終了位置を使用
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
             )
         }
@@ -8370,12 +8365,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     )
                                 } else {
                                     setBackgroundSmallLetterKey(
-                                        tenkeyShowIMEButtonPreference ?: true
+                                        isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                        isEnglish = false
                                     )
                                 }
                             } else {
                                 setBackgroundSmallLetterKey(
-                                    tenkeyShowIMEButtonPreference ?: true
+                                    isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                    isEnglish = false
                                 )
                             }
                         }
@@ -8403,7 +8400,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 )
                             } else {
                                 setBackgroundSmallLetterKey(
-                                    tenkeyShowIMEButtonPreference ?: true
+                                    isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                    isEnglish = false
                                 )
                             }
                         } else {
@@ -8411,7 +8409,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 cachedSpaceDrawable
                             )
                             setBackgroundSmallLetterKey(
-                                tenkeyShowIMEButtonPreference ?: true
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = false
                             )
                         }
                     }
@@ -8438,12 +8437,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                tenkeyShowIMEButtonPreference ?: true
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = false
                             )
                         }
                     } else {
                         setBackgroundSmallLetterKey(
-                            tenkeyShowIMEButtonPreference ?: true
+                            isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                            isEnglish = false
                         )
                     }
                 }
@@ -8470,7 +8471,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                tenkeyShowIMEButtonPreference ?: true
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = false
                             )
                         }
                     } else {
@@ -8478,7 +8480,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             cachedSpaceDrawable
                         )
                         setBackgroundSmallLetterKey(
-                            tenkeyShowIMEButtonPreference ?: true
+                            isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                            isEnglish = false
                         )
                     }
                 }
@@ -8525,7 +8528,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                tenkeyShowIMEButtonPreference ?: true
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = false
                             )
                         }
                         setSideKeySpaceDrawable(
@@ -8541,7 +8545,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         } else {
                             setBackgroundSmallLetterKey(
-                                tenkeyShowIMEButtonPreference ?: true
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = true
                             )
                         }
                         setSideKeySpaceDrawable(
@@ -8577,7 +8582,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            tenkeyShowIMEButtonPreference ?: true
+                            isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                            isEnglish = false
                         )
                     }
                     setSideKeySpaceDrawable(
@@ -8593,7 +8599,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         setBackgroundSmallLetterKey(
-                            tenkeyShowIMEButtonPreference ?: true
+                            isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                            isEnglish = true
                         )
                     }
                     setSideKeySpaceDrawable(
@@ -9059,24 +9066,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
             if (textBeforeCursor.isEmpty()) return
 
-            val charsToDelete =
-                setOf(
-                    '。',
-                    '、',
-                    '！',
-                    '？',
-                    '「',
-                    '」',
-                    '『',
-                    '』',
-                    ',',
-                    '.',
-                    '!',
-                    "?",
-                    ' ',
-                    '　',
-                    '\n'
-                )
+            val charsToDelete = setOf(
+                '。', '、', '！', '？', '「', '」', '『', '』', ',', '.', '!', "?", ' ', '　', '\n'
+            )
 
             var deleteCount = 0
 
@@ -10312,7 +10304,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else {
-            if (!onKeyboardSwitchLongPressUp) {
+            if (!onKeyboardSwitchLongPressUp && tenkeyShowIMEButtonPreference == true) {
                 switchNextKeyboard()
             }
         }
