@@ -238,6 +238,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         )
     }
 
+    private val cachedEnglishDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context, com.kazumaproject.core.R.drawable.english_small
+        )
+    }
+
 
     // Map each Key enum to its corresponding View (Button/ImageButton/Switch)
     private var listKeys: Map<Key, Any>
@@ -1612,12 +1618,17 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Set default drawable for the small/dakuten key **/
     fun setBackgroundSmallLetterKey(
-        isLanguageEnable: Boolean
+        isLanguageEnable: Boolean,
+        isEnglish: Boolean
     ) {
         if (isLanguageEnable) {
             binding.keySmallLetter.setImageDrawable(cachedLanguageDrawable)
         } else {
-            binding.keySmallLetter.setImageDrawable(cachedKanaDrawable)
+            if (isEnglish) {
+                binding.keySmallLetter.setImageDrawable(cachedEnglishDrawable)
+            } else {
+                binding.keySmallLetter.setImageDrawable(cachedKanaDrawable)
+            }
         }
     }
 
@@ -1864,7 +1875,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             if (isLanguageIconEnabled) {
                 keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             } else {
-                keySmallLetter.setImageDrawable(cachedKanaDrawable)
+                keySmallLetter.setImageDrawable(cachedEnglishDrawable)
             }
             keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }

@@ -341,4 +341,6 @@
     <string name="greeting_morning">おはようございます</string>
     <string name="greeting_afternoon">こんにちは</string>
     <string name="greeting_evening">こんばんは</string>
+    <string name="pref_qwerty_enable_flick_up_title">上フリックを有効にする</string>
+    <string name="pref_qwerty_enable_flick_up_summary">QWERTY キーで上方向のフリック入力を有効にします。</string>
 </resources>
