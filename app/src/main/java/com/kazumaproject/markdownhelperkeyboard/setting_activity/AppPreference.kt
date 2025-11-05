@@ -182,6 +182,9 @@ object AppPreference {
     private val LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE =
         Pair("last_pasted_clipboard_text_preference", "")
 
+    private val TENKEY_SHOW_IME_SWITCH_BUTTON =
+        Pair("tenkey_show_switch_ime_button_preference", true)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -848,6 +851,15 @@ object AppPreference {
         ) ?: ""
         set(value) = preferences.edit {
             it.putString(LAST_PASTED_CLIPBOARD_TEXT_PREFERENCE.first, value)
+        }
+
+    var tenkey_show_language_button_preference: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_SHOW_IME_SWITCH_BUTTON.first,
+            TENKEY_SHOW_IME_SWITCH_BUTTON.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_SHOW_IME_SWITCH_BUTTON.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
