@@ -5526,7 +5526,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow)
                 }
                 mainView.apply {
-                    shortcutToolbarRecyclerview.isVisible = !isSymbolKeyboardShow
+                    if (shortcutTollbarVisibility == true){
+                        shortcutToolbarRecyclerview.isVisible = !isSymbolKeyboardShow
+                    }
                     if (isSymbolKeyboardShow) {
                         when {
                             customLayoutDefault.isVisible -> {
