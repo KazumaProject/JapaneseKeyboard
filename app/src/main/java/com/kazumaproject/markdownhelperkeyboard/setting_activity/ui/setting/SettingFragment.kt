@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -26,9 +27,9 @@ import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryReposit
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -50,11 +51,8 @@ class SettingFragment : PreferenceFragmentCompat() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-        if (isTablet) {
-            appPreference.flick_input_only_preference = true
-        }
-        CoroutineScope(Dispatchers.IO).launch {
+        val romajiMapUpdated = appPreference.romaji_map_data_version
+        lifecycleScope.launch(Dispatchers.IO) {
             userDictionaryRepository.apply {
                 if (searchByReadingExactMatchSuspend("びゃんびゃんめん").isEmpty()) {
                     insert(
@@ -74,7 +72,7 @@ class SettingFragment : PreferenceFragmentCompat() {
                     )
                 }
             }
-            if (appPreference.romaji_map_data_version == 0) {
+            if (romajiMapUpdated == 0) {
                 romajiMapRepository.updateDefaultMap()
                 appPreference.romaji_map_data_version = 1
             }
@@ -92,8 +90,11 @@ class SettingFragment : PreferenceFragmentCompat() {
 
     override fun onResume() {
         super.onResume()
-        isKeyboardBoardEnabled()?.let { enabled ->
-            if (!enabled) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val enabled = withContext(Dispatchers.IO) {
+                isKeyboardBoardEnabled()
+            }
+            if (enabled == false) {
                 findNavController().navigate(
                     R.id.action_navigation_setting_to_enableKeyboardFragment
                 )
@@ -417,10 +418,12 @@ class SettingFragment : PreferenceFragmentCompat() {
             findPreference<SwitchPreferenceCompat>("mozc_ut_person_name_preference")
         mozcUTPersonName?.apply {
             this.setOnPreferenceChangeListener { _, newValue ->
-                if (newValue as Boolean) {
-                    kanaKanjiEngine.buildPersonNamesDictionary(requireContext())
-                } else {
-                    kanaKanjiEngine.releasePersonNamesDictionary()
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    if (newValue as Boolean) {
+                        kanaKanjiEngine.buildPersonNamesDictionary(requireContext())
+                    } else {
+                        kanaKanjiEngine.releasePersonNamesDictionary()
+                    }
                 }
                 true
             }
@@ -429,10 +432,12 @@ class SettingFragment : PreferenceFragmentCompat() {
         val mozcUTPlaces = findPreference<SwitchPreferenceCompat>("mozc_ut_places_preference")
         mozcUTPlaces?.apply {
             this.setOnPreferenceChangeListener { _, newValue ->
-                if (newValue as Boolean) {
-                    kanaKanjiEngine.buildPlaceDictionary(requireContext())
-                } else {
-                    kanaKanjiEngine.releasePlacesDictionary()
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    if (newValue as Boolean) {
+                        kanaKanjiEngine.buildPlaceDictionary(requireContext())
+                    } else {
+                        kanaKanjiEngine.releasePlacesDictionary()
+                    }
                 }
                 true
             }
@@ -441,10 +446,12 @@ class SettingFragment : PreferenceFragmentCompat() {
         val mozcUTWiki = findPreference<SwitchPreferenceCompat>("mozc_ut_wiki_preference")
         mozcUTWiki?.apply {
             this.setOnPreferenceChangeListener { _, newValue ->
-                if (newValue as Boolean) {
-                    kanaKanjiEngine.buildWikiDictionary(requireContext())
-                } else {
-                    kanaKanjiEngine.releaseWikiDictionary()
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    if (newValue as Boolean) {
+                        kanaKanjiEngine.buildWikiDictionary(requireContext())
+                    } else {
+                        kanaKanjiEngine.releaseWikiDictionary()
+                    }
                 }
                 true
             }
@@ -453,10 +460,12 @@ class SettingFragment : PreferenceFragmentCompat() {
         val mozcUTNeologd = findPreference<SwitchPreferenceCompat>("mozc_ut_neologd_preference")
         mozcUTNeologd?.apply {
             this.setOnPreferenceChangeListener { _, newValue ->
-                if (newValue as Boolean) {
-                    kanaKanjiEngine.buildNeologdDictionary(requireContext())
-                } else {
-                    kanaKanjiEngine.releaseNeologdDictionary()
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    if (newValue as Boolean) {
+                        kanaKanjiEngine.buildNeologdDictionary(requireContext())
+                    } else {
+                        kanaKanjiEngine.releaseNeologdDictionary()
+                    }
                 }
                 true
             }
@@ -465,10 +474,12 @@ class SettingFragment : PreferenceFragmentCompat() {
         val mozcUTWeb = findPreference<SwitchPreferenceCompat>("mozc_ut_web_preference")
         mozcUTWeb?.apply {
             this.setOnPreferenceChangeListener { _, newValue ->
-                if (newValue as Boolean) {
-                    kanaKanjiEngine.buildWebDictionary(requireContext())
-                } else {
-                    kanaKanjiEngine.releaseWebDictionary()
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    if (newValue as Boolean) {
+                        kanaKanjiEngine.buildWebDictionary(requireContext())
+                    } else {
+                        kanaKanjiEngine.releaseWebDictionary()
+                    }
                 }
                 true
             }
