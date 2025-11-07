@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavOptions
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
@@ -70,14 +72,22 @@ class MainActivity : AppCompatActivity() {
         val extra = intent?.getStringExtra("openSettingActivity")
         extra?.let { request ->
             val navController = findNavController(R.id.nav_host_fragment_activity_main)
+            val navOptions = NavOptions.Builder()
+                .setPopUpTo(
+                    navController.graph.findStartDestination().id,
+                    inclusive = false,
+                    saveState = true
+                )
+                .setLaunchSingleTop(true)
+                .setRestoreState(true)
+                .build()
             when (request) {
                 "setting_fragment_request" -> {
-                    navController.popBackStack()
-                    navController.navigate(R.id.navigation_setting)
+                    navController.navigate(R.id.navigation_setting, navOptions)
                 }
 
                 "dictionary_fragment_request" -> {
-                    navController.navigate(R.id.navigation_learn_dictionary)
+                    navController.navigate(R.id.navigation_learn_dictionary, navOptions)
                 }
             }
         }
