@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -54,8 +55,21 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
-        val extra = intent.getStringExtra("openSettingActivity")
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    /**
+     * Intentを処理して適切な画面に遷移する
+     */
+    private fun handleIntent(intent: Intent?) {
+        val extra = intent?.getStringExtra("openSettingActivity")
         extra?.let { request ->
+            val navController = findNavController(R.id.nav_host_fragment_activity_main)
             when (request) {
                 "setting_fragment_request" -> {
                     navController.popBackStack()
@@ -68,4 +82,5 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
 }
