@@ -10,6 +10,7 @@ import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
@@ -594,9 +595,11 @@ class LOUDSWithTermId {
     fun commonPrefixSearchWithOmission(
         str: String,
         succinctBitVector: SuccinctBitVector
-    ): List<String> {
-        val results = mutableSetOf<String>()
-        searchRecursiveWithOmission(str, 0, 0, "", results, succinctBitVector)
+    ): List<OmissionSearchResult> { // ★ 戻り値を List<String> から List<OmissionSearchResult> に変更
+        val results =
+            mutableSetOf<OmissionSearchResult>() // ★ 型を MutableSet<OmissionSearchResult> に変更
+        // ★ 5番目の引数として「省略発生フラグ」の初期値 false を渡す
+        searchRecursiveWithOmission(str, 0, 0, "", false, results, succinctBitVector)
         return results.toList()
     }
 
@@ -610,11 +613,13 @@ class LOUDSWithTermId {
         strIndex: Int,
         currentNodeIndex: Int,
         currentYomi: String,
-        results: MutableSet<String>,
+        omissionOccurred: Boolean, // ★「省略発生フラグ」を引数に追加
+        results: MutableSet<OmissionSearchResult>, // ★ 型を OmissionSearchResult に変更
         succinctBitVector: SuccinctBitVector
     ) {
         if (isLeaf[currentNodeIndex]) {
-            results.add(currentYomi)
+            // ★ OmissionSearchResult オブジェクトを追加
+            results.add(OmissionSearchResult(currentYomi, omissionOccurred))
         }
 
         if (strIndex >= originalStr.length) {
@@ -625,6 +630,9 @@ class LOUDSWithTermId {
         val charVariations = getCharVariations(charToMatch)
 
         for (variant in charVariations) {
+            // ★ 現在のパスで省略が発生したかを計算 (元のフラグ || 今回の文字が元と違うか)
+            val newOmissionOccurred = omissionOccurred || (variant != charToMatch)
+
             var childPos = firstChild(currentNodeIndex, succinctBitVector)
             while (childPos >= 0 && LBS[childPos]) {
                 val labelNodeId = succinctBitVector.rank1(childPos)
@@ -635,6 +643,7 @@ class LOUDSWithTermId {
                         strIndex + 1,
                         childPos,
                         currentYomi + variant,
+                        newOmissionOccurred, // ★ 更新したフラグを再帰呼び出しに渡す
                         results,
                         succinctBitVector
                     )

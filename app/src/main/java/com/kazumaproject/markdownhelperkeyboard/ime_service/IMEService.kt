@@ -5347,6 +5347,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             var prevFlag: CandidateShowFlag? = null
             suggestionFlag.collectLatest { currentFlag ->
                 val insertString = inputString.value
+                Timber.d("suggestionFlag CandidateShowFlag.Idle: [$insertString] [$stringInTail] [$prevFlag] [$currentFlag]")
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
                         physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
@@ -6578,6 +6579,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFirstSuggestion(
         candidate: Candidate
     ) {
+        beginBatchEdit()
         val commitString = if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
@@ -6585,6 +6587,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val newSpannable = createSpannableWithTail(commitString)
         setComposingTextAfterEdit(commitString, newSpannable)
+        endBatchEdit()
     }
 
     /**
@@ -6595,7 +6598,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun resetInputString() {
-        if (!isHenkan.get()) {
+        if (!isHenkan.get() && stringInTail.get().isEmpty()) {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
     }
