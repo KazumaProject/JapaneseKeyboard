@@ -5526,7 +5526,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow)
                 }
                 mainView.apply {
-                    if (shortcutTollbarVisibility == true){
+                    if (shortcutTollbarVisibility == true) {
                         shortcutToolbarRecyclerview.isVisible = !isSymbolKeyboardShow
                     }
                     if (isSymbolKeyboardShow) {
@@ -6407,7 +6407,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()}")
+        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetsuPositionList")
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
@@ -6424,23 +6424,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleDefaultInput(string)
             }
         } else {
-            if (stringInTail.get().isNotEmpty()) {
-                setComposingText(stringInTail.get(), 1)
-                onLeftKeyLongPressUp.set(true)
-                onDeleteLongPressUp.set(true)
-            } else {
-                setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
-                if (isKeyboardFloatingMode == true) {
-                    floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                        setDrawableToEnterKeyCorrespondingToImeOptionsFloating(
-                            floatingKeyboardLayoutBinding
-                        )
-                    }
-                }
-                onLeftKeyLongPressUp.set(true)
-                onRightKeyLongPressUp.set(true)
-                onDeleteLongPressUp.set(true)
-            }
+            Timber.d("setSuggestionOnView auto empty: ${stringInTail.get()} $bunsetusMultipleDetect")
             hasConvertedKatakana = false
             resetInputString()
             hardKeyboardShiftPressd = false
@@ -6513,6 +6497,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+
+            if (stringInTail.get().isNotEmpty()) {
+                setComposingText(stringInTail.get(), 1)
+                onLeftKeyLongPressUp.set(true)
+                onDeleteLongPressUp.set(true)
+                bunsetusMultipleDetect = true
+            } else {
+                setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
+                if (isKeyboardFloatingMode == true) {
+                    floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                        setDrawableToEnterKeyCorrespondingToImeOptionsFloating(
+                            floatingKeyboardLayoutBinding
+                        )
+                    }
+                }
+                onLeftKeyLongPressUp.set(true)
+                onRightKeyLongPressUp.set(true)
+                onDeleteLongPressUp.set(true)
+                if (bunsetusMultipleDetect) {
+                    delay(64L)
+                    bunsetusMultipleDetect = false
+                }
+            }
+
         }
     }
 
@@ -8311,7 +8319,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setEnterKeyAction(
         suggestions: List<Candidate>, currentInputMode: InputMode, insertString: String
     ) {
-        Timber.d("setEnterKeyAction: $insertString $bunsetsuPositionList $henkanPressedWithBunsetsuDetect")
+        Timber.d("setEnterKeyAction: $insertString ${stringInTail.get()} $bunsetsuPositionList $henkanPressedWithBunsetsuDetect")
         val index = (suggestionClickNum - 1).coerceAtLeast(0)
         val nextSuggestion = suggestions[index]
         processCandidate(
@@ -8652,6 +8660,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             setCandidatesOriginal(inputString)
         }
+        Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
 
     private suspend fun setCandidates(
@@ -8690,6 +8699,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
+        Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
+        if (bunsetsuSeparation == true) {
+            mainLayoutBinding?.let { mainView ->
+                bunsetsuPositionList?.let {
+                    if (bunsetusMultipleDetect && it.isNotEmpty()) {
+                        handleJapaneseModeSpaceKeyWithBunsetsu(
+                            mainView, filtered, insertString
+                        )
+                    }
+                }
+            }
+        }
+
     }
 
     private suspend fun setCandidatesOriginal(
@@ -8728,6 +8750,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
+        Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
+        if (bunsetsuSeparation == true) {
+            mainLayoutBinding?.let { mainView ->
+                bunsetsuPositionList?.let {
+                    if (bunsetusMultipleDetect && it.isNotEmpty()) {
+                        handleJapaneseModeSpaceKeyWithBunsetsu(
+                            mainView, filtered, insertString
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private suspend fun setCandidatesWithoutPrediction(
@@ -8765,6 +8799,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        }
+        Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
+        if (bunsetsuSeparation == true) {
+            mainLayoutBinding?.let { mainView ->
+                bunsetsuPositionList?.let {
+                    if (bunsetusMultipleDetect && it.isNotEmpty()) {
+                        handleJapaneseModeSpaceKeyWithBunsetsu(
+                            mainView, filtered, insertString
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -8937,7 +8983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
             bunsetsuPositionList = candidates.second
-            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords")
+            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.second}")
             candidates.first
         } else {
             kanaKanjiEngine.getCandidates(
@@ -9438,6 +9484,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
 
+    private var bunsetusMultipleDetect = false
+
     private fun handleJapaneseModeSpaceKeyWithBunsetsu(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
     ) {
@@ -9455,6 +9503,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             isHenkan.set(true)
             henkanPressedWithBunsetsuDetect = true
+            bunsetusMultipleDetect = true
         } else {
             isHenkan.set(true)
             suggestionClickNum += 1
