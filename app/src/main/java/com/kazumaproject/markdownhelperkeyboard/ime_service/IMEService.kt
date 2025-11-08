@@ -661,11 +661,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
-        if (!restarting) {
-            resetAllFlags()
-        } else {
-            _inputString.update { "" }
-        }
+        resetAllFlags()
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
@@ -1506,6 +1502,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
+            if (inputString.value.isEmpty() && stringInTail.get().isEmpty()){
+                beginBatchEdit()
+                setComposingText("", 0)
+                endBatchEdit()
+            }
             return
         }
 
@@ -1558,7 +1559,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 stringInTail.set("")
                 if (_inputString.value.isNotEmpty()) {
                     _inputString.update { "" }
+                    beginBatchEdit()
                     setComposingText("", 0)
+                    endBatchEdit()
                 }
                 suggestionAdapter?.suggestions =
                     emptyList() // avoid unnecessary allocations elsewhere
@@ -1566,14 +1569,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // Caret moved while tail exists → commit tail
             hasTail -> {
+                beginBatchEdit()
                 _inputString.update { tail }
                 stringInTail.set("")
+                endBatchEdit()
             }
 
             // No tail but still holding input → cleanup
             _inputString.value.isNotEmpty() -> {
                 _inputString.update { "" }
+                beginBatchEdit()
                 setComposingText("", 0)
+                endBatchEdit()
             }
         }
     }
@@ -8171,6 +8178,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentDakutenKeyIndex = 0
         bunsetsuPositionList = emptyList()
         henkanPressedWithBunsetsuDetect = false
+        bunsetusMultipleDetect = false
     }
 
     private fun actionInDestroy() {
@@ -8642,6 +8650,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.isEmpty() || suggestionClickNum > 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition $bunsetsuPositionList")
+        beginBatchEdit()
         if (candidateTabVisibility == true) {
             if (candidateTabOrder.isNotEmpty() && tabPosition < candidateTabOrder.size) {
                 when (candidateTabOrder[tabPosition]) {
@@ -8663,6 +8672,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             setCandidatesOriginal(inputString)
         }
+        endBatchEdit()
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
 
