@@ -15,6 +15,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
 
 class GraphBuilder {
 
+    companion object {
+        private const val OMISSION_SCORE_OFFSET = 1900
+    }
+
     /**
      * グラフにノードを追加または更新する。
      * 同じ終了位置に【同じ単語】かつ【同じ品詞ID(l/r)】のノードが既に存在する場合、
@@ -189,37 +193,41 @@ class GraphBuilder {
 
             // 4. システム辞書 (Omission Search)
             if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
-                val omissionSearchResults: List<String> = yomiTrie.commonPrefixSearchWithOmission(
-                    str = subStr,
-                    succinctBitVector = succinctBitVectorLBSYomi
-                )
+                val omissionSearchResults: List<OmissionSearchResult> =
+                    yomiTrie.commonPrefixSearchWithOmission(
+                        str = subStr,
+                        succinctBitVector = succinctBitVectorLBSYomi
+                    )
                 if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
                 for (omissionResult in omissionSearchResults) {
-                    val nodeIndex = yomiTrie.getNodeIndex(omissionResult, succinctBitVectorLBSYomi)
+                    val yomiStr = omissionResult.yomi
+                    val didOmit = omissionResult.omissionOccurred
+                    val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
                     if (nodeIndex > 0) {
                         val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
                         val listToken = tokenArray.getListDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorTokenArray
                         )
-                        val endIndex = i + omissionResult.length
+                        val endIndex = i + yomiStr.length
                         listToken.sortedBy { it.wordCost }.take(5).forEach { token ->
                             val tango = when (token.nodeId) {
-                                -2 -> omissionResult
-                                -1 -> omissionResult.hiraToKata()
+                                -2 -> yomiStr
+                                -1 -> yomiStr.hiraToKata()
                                 else -> tangoTrie.getLetter(
                                     token.nodeId,
                                     succinctBitVector = succinctBitVectorTangoLBS
                                 )
                             }
+                            val scoreOffset = if (didOmit) OMISSION_SCORE_OFFSET else 0
                             val node = Node(
                                 l = tokenArray.leftIds[token.posTableIndex.toInt()],
                                 r = tokenArray.rightIds[token.posTableIndex.toInt()],
-                                score = token.wordCost.toInt(), // SCORE_BONUS_PER_OMISSION を追加しても良い
-                                f = token.wordCost.toInt(),
-                                g = token.wordCost.toInt(),
+                                score = token.wordCost.toInt() + scoreOffset,
+                                f = token.wordCost.toInt() + scoreOffset,
+                                g = token.wordCost.toInt() + scoreOffset,
                                 tango = tango,
-                                len = omissionResult.length.toShort(),
+                                len = yomiStr.length.toShort(),
                                 sPos = i
                             )
                             addOrUpdateNode(graph, endIndex, node)
