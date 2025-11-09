@@ -1715,6 +1715,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         flickLockedPointers.remove(firstPointerId)
 
                         val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+                        Log.d(
+                            "QWERTYKeyboardView",
+                            "ACTION_POINTER_DOWN: First finger (pid $firstPointerId) was on key: $qwertyKey"
+                        )
+                        if (firstPointerId == 0 && qwertyKey == QWERTYKey.QWERTYKeySwitchDefaultLayout) {
+                            return true
+                        }
                         logVariationIfNeeded(qwertyKey)
                     }
                     suppressedPointerId = firstPointerId
@@ -2104,7 +2111,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 pointerStartCoords.put(pointerId, Pair(x, y))
                 // --- ▲▲▲ ここまで ▲▲▲ ---
 
-                if (it.id != binding.keySpace.id && it.id != binding.keyDelete.id && it.id != binding.keyShift.id && it.id != binding.key123.id && it.id != binding.keyReturn.id && it.id != binding.keySwitchDefault.id) {
+                if (it.id != binding.keySpace.id && it.id != binding.keyDelete.id &&
+                    it.id != binding.keyShift.id && it.id != binding.key123.id &&
+                    it.id != binding.keyReturn.id && it.id != binding.keySwitchDefault.id &&
+                    it.id != binding.switchNumberLayout.id && it.id != binding.cursorRight.id &&
+                    it.id != binding.cursorLeft.id
+                ) {
                     showKeyPreview(it)
                 }
                 // Schedule a new long‐press for this new key

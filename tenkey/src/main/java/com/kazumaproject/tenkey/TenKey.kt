@@ -607,6 +607,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        Log.d("TenKey: onDetachedFromWindow", "called")
         release()
     }
 
@@ -641,6 +642,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             initialY = event.getY(event.actionIndex),
                         )
                     }
+
+                    Log.d("TenKey: ACTION_DOWN", "called ${pressedKey.key}")
+
                     if (isCursorMode) {
                         return true
                     }
@@ -682,6 +686,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         // ← READING the state flow's current value:
                         val keyInfo = currentInputMode.value
                             .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+
+                        Log.d("TenKey: ACTION_UP in pointer", "called $keyInfo $pressedKey")
 
                         if (keyInfo == KeyInfo.Null) {
                             flickListener?.onFlick(
@@ -726,6 +732,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                     }
+                    Log.d("TenKey: ACTION_UP out", "called $pressedKey")
                     resetAllKeys()
                     popupWindowActive.hide()
                     val button = getButtonFromKey(pressedKey.key)
@@ -833,7 +840,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
                     popupWindowActive.hide()
                     longPressJob?.cancel()
-                    if (isCursorMode) return true
+                    if (isCursorMode) {
+                        return true
+                    }
+                    Log.d("TenKey: ACTION_POINTER_DOWN", "called $pressedKey ${binding.keySmallLetter.drawable == cachedLanguageDrawable}")
+                    if (pressedKey.key == Key.SideKeySymbol ||
+                        pressedKey.key == Key.SideKeyInputMode ||
+                        (pressedKey.key == Key.KeyDakutenSmall && binding.keySmallLetter.drawable == cachedLanguageDrawable)
+                    ) {
+                        return true
+                    }
                     if (event.pointerCount == 2) {
                         isLongPressed = false
                         val pointer = event.getPointerId(event.actionIndex)
@@ -945,6 +961,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             )
                             val keyInfo = currentInputMode.value
                                 .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+
+                            Log.d("TenKey: ACTION_POINTER_UP", "called [${pressedKey.key}]")
                             if (keyInfo == KeyInfo.Null) {
                                 flickListener?.onFlick(
                                     gestureType = gestureType, key = pressedKey.key, char = null

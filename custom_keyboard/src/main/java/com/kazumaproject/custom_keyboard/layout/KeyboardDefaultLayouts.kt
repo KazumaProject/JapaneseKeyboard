@@ -270,7 +270,8 @@ object KeyboardDefaultLayouts {
                 isFlickable = false,
                 action = KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ),
             KeyData("あ", 0, 1, true),
             KeyData("か", 0, 2, true),
@@ -651,7 +652,8 @@ object KeyboardDefaultLayouts {
                 isFlickable = false,
                 action = KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ),
             KeyData("@#/_", 0, 1, true),
             KeyData("ABC", 0, 2, true),
@@ -1060,7 +1062,8 @@ object KeyboardDefaultLayouts {
                 isFlickable = false,
                 action = KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ),
             // Number keys remain the same
             KeyData("1\n☆♪→", 0, 1, true),
@@ -1872,7 +1875,8 @@ object KeyboardDefaultLayouts {
                 action = KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
-                keyType = KeyType.NORMAL
+                keyType = KeyType.NORMAL,
+                keyId = "switch_next_ime"
             ),
             KeyData("5", 1, 1, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("6", 1, 2, false, keyType = KeyType.STANDARD_FLICK),
@@ -1985,7 +1989,8 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ), KeyData(
                 "あ",
                 0,
@@ -2286,7 +2291,8 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ), KeyData(
                 "@#/_",
                 0,
@@ -2552,7 +2558,8 @@ object KeyboardDefaultLayouts {
                 action = KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
-                keyType = KeyType.NORMAL
+                keyType = KeyType.NORMAL,
+                keyId = "switch_next_ime"
             ),
             KeyData("5", 1, 1, false, keyType = KeyType.STANDARD_FLICK),
             KeyData("6", 1, 2, false, keyType = KeyType.STANDARD_FLICK),
@@ -2667,7 +2674,8 @@ object KeyboardDefaultLayouts {
                         false,
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                        keyId = "switch_next_ime"
                     ), KeyData(
                         "あ", 0, 1, true, keyType = KeyType.TWO_STEP_FLICK
                     ), KeyData(
@@ -3156,7 +3164,8 @@ object KeyboardDefaultLayouts {
                         false,
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                        keyId = "switch_next_ime"
                     ), KeyData(
                         "あ", 0, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
@@ -3518,7 +3527,8 @@ object KeyboardDefaultLayouts {
                     false,
                     KeyAction.SwitchToNextIme,
                     isSpecialKey = true,
-                    drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                    drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                    keyId = "switch_next_ime"
                 ), KeyData(
                     "@#/_", 0, 1, true, keyType = when (inputStyle) {
                         "default" -> KeyType.PETAL_FLICK
@@ -3843,7 +3853,8 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ), KeyData(
                 "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
@@ -4274,7 +4285,8 @@ object KeyboardDefaultLayouts {
                         false,
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                        keyId = "switch_next_ime"
                     ), KeyData(
                         "あ", 0, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
@@ -4833,7 +4845,8 @@ object KeyboardDefaultLayouts {
                         false,
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                        keyId = "switch_next_ime"
                     ), KeyData(
                         "あ", 0, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
@@ -5196,7 +5209,8 @@ object KeyboardDefaultLayouts {
                         false,
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                        keyId = "switch_next_ime"
                     ), KeyData(
                         "@#/_", 0, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
@@ -5521,7 +5535,8 @@ object KeyboardDefaultLayouts {
                         false,
                         KeyAction.SwitchToNextIme,
                         isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                        keyId = "switch_next_ime"
                     ), KeyData(
                         "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
                             "default" -> KeyType.PETAL_FLICK
@@ -5916,7 +5931,8 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ), KeyData(
                 "CursorMoveLeft",
                 1,
@@ -6722,7 +6738,8 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ), KeyData(
                 "CursorMoveLeft",
                 1,
@@ -7058,7 +7075,8 @@ object KeyboardDefaultLayouts {
                 false,
                 KeyAction.SwitchToNextIme,
                 isSpecialKey = true,
-                drawableResId = com.kazumaproject.core.R.drawable.language_24dp
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ),
             KeyData(
                 ":", 1, 0, false, isSpecialKey = true, action = KeyAction.InputText(":")
