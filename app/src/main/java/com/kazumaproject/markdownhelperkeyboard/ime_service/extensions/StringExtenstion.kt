@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
 
 import android.view.inputmethod.InputConnection
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import timber.log.Timber
 import java.text.BreakIterator
 import java.text.Normalizer
@@ -295,4 +296,237 @@ fun String.groupAndReplaceJapaneseForNumber(): String {
         }
     }
     return result.toString()
+}
+
+/**
+ * 数字文字列を上付き文字（¹²³）に変換します。
+ */
+fun String.toSuperscriptDigits(): String {
+    return this.map {
+        when (it) {
+            '0' -> '⁰'
+            '1' -> '¹'
+            '2' -> '²'
+            '3' -> '³'
+            '4' -> '⁴'
+            '5' -> '⁵'
+            '6' -> '⁶'
+            '7' -> '⁷'
+            '8' -> '⁸'
+            '9' -> '⁹'
+            else -> it // 数字以外はそのまま
+        }
+    }.joinToString("")
+}
+
+/**
+ * 数字文字列を下付き文字（₀₁₂）に変換します。
+ */
+fun String.toSubscriptDigits(): String {
+    return this.map {
+        when (it) {
+            '0' -> '₀'
+            '1' -> '₁'
+            '2' -> '₂'
+            '3' -> '₃'
+            '4' -> '₄'
+            '5' -> '₅'
+            '6' -> '₆'
+            '7' -> '₇'
+            '8' -> '₈'
+            '9' -> '₉'
+            else -> it // 数字以外はそのまま
+        }
+    }.joinToString("")
+}
+
+/**
+ * 数値（Long）から、それに対応する特殊記号の候補リストを生成します。
+ * (例: 1 -> "①", "❶", "Ⅰ", "ⅰ", "⒈", "⑴", 0 -> "⓪")
+ * 0から50までの、Unicodeに存在する主要な記号に対応します。
+ */
+fun createValueBasedSymbolCandidates(numberValue: Long, inputLength: UByte): List<Candidate> {
+    val num = numberValue.toInt() // 範囲チェックのためIntに
+    // 0から50の範囲外の場合は空リストを返す
+    if (num < 0 || num > 50) {
+        return emptyList()
+    }
+
+    val candidates = mutableListOf<Pair<String, Int>>() // (文字列, スコア)
+
+    // 候補のタイプごとにスコアを分ける
+    val scoreCircled = 8500 // ① ㉑ ㊱ (白丸)
+    val scoreDingbat = 8490 // ❶ (黒丸)
+    val scoreRoman = 8480   // Ⅰ (ローマ数字)
+    val scoreList = 8470    // ⒈ (ピリオド)
+    val scoreParen = 8460   // ⑴ (括弧)
+
+    // 数値に基づいて候補を追加
+    when (num) {
+        0 -> {
+            candidates.add(Pair("⓪", scoreCircled))
+            candidates.add(Pair("⓿", scoreDingbat)) // 黒丸の0
+        }
+
+        1 -> {
+            candidates.add(Pair("①", scoreCircled)); candidates.add(Pair("❶", scoreDingbat))
+            candidates.add(Pair("Ⅰ", scoreRoman)); candidates.add(Pair("ⅰ", scoreRoman))
+            candidates.add(Pair("⒈", scoreList)); candidates.add(Pair("⑴", scoreParen))
+        }
+
+        2 -> {
+            candidates.add(Pair("②", scoreCircled)); candidates.add(Pair("❷", scoreDingbat))
+            candidates.add(Pair("Ⅱ", scoreRoman)); candidates.add(Pair("ⅱ", scoreRoman))
+            candidates.add(Pair("⒉", scoreList)); candidates.add(Pair("⑵", scoreParen))
+        }
+
+        3 -> {
+            candidates.add(Pair("③", scoreCircled)); candidates.add(Pair("❸", scoreDingbat))
+            candidates.add(Pair("Ⅲ", scoreRoman)); candidates.add(Pair("ⅲ", scoreRoman))
+            candidates.add(Pair("⒊", scoreList)); candidates.add(Pair("⑶", scoreParen))
+        }
+
+        4 -> {
+            candidates.add(Pair("④", scoreCircled)); candidates.add(Pair("❹", scoreDingbat))
+            candidates.add(Pair("Ⅳ", scoreRoman)); candidates.add(Pair("ⅳ", scoreRoman))
+            candidates.add(Pair("⒋", scoreList)); candidates.add(Pair("⑷", scoreParen))
+        }
+
+        5 -> {
+            candidates.add(Pair("⑤", scoreCircled)); candidates.add(Pair("❺", scoreDingbat))
+            candidates.add(Pair("Ⅴ", scoreRoman)); candidates.add(Pair("ⅴ", scoreRoman))
+            candidates.add(Pair("⒌", scoreList)); candidates.add(Pair("⑸", scoreParen))
+        }
+
+        6 -> {
+            candidates.add(Pair("⑥", scoreCircled)); candidates.add(Pair("❻", scoreDingbat))
+            candidates.add(Pair("Ⅵ", scoreRoman)); candidates.add(Pair("ⅵ", scoreRoman))
+            candidates.add(Pair("⒍", scoreList)); candidates.add(Pair("⑹", scoreParen))
+        }
+
+        7 -> {
+            candidates.add(Pair("⑦", scoreCircled)); candidates.add(Pair("❼", scoreDingbat))
+            candidates.add(Pair("Ⅶ", scoreRoman)); candidates.add(Pair("ⅶ", scoreRoman))
+            candidates.add(Pair("⒎", scoreList)); candidates.add(Pair("⑺", scoreParen))
+        }
+
+        8 -> {
+            candidates.add(Pair("⑧", scoreCircled)); candidates.add(Pair("❽", scoreDingbat))
+            candidates.add(Pair("Ⅷ", scoreRoman)); candidates.add(Pair("ⅷ", scoreRoman))
+            candidates.add(Pair("⒏", scoreList)); candidates.add(Pair("⑻", scoreParen))
+        }
+
+        9 -> {
+            candidates.add(Pair("⑨", scoreCircled)); candidates.add(Pair("❾", scoreDingbat))
+            candidates.add(Pair("Ⅸ", scoreRoman)); candidates.add(Pair("ⅸ", scoreRoman))
+            candidates.add(Pair("⒐", scoreList)); candidates.add(Pair("⑼", scoreParen))
+        }
+
+        10 -> {
+            candidates.add(Pair("⑩", scoreCircled)); candidates.add(Pair("❿", scoreDingbat))
+            candidates.add(Pair("Ⅹ", scoreRoman)); candidates.add(Pair("ⅹ", scoreRoman))
+            candidates.add(Pair("⒑", scoreList)); candidates.add(Pair("⑽", scoreParen))
+        }
+        // --- 11-20 (❶ 黒丸が終了) ---
+        11 -> {
+            candidates.add(Pair("⑪", scoreCircled))
+            candidates.add(Pair("Ⅺ", scoreRoman)); candidates.add(Pair("ⅺ", scoreRoman))
+            candidates.add(Pair("⒒", scoreList)); candidates.add(Pair("⑾", scoreParen))
+        }
+
+        12 -> {
+            candidates.add(Pair("⑫", scoreCircled))
+            candidates.add(Pair("Ⅻ", scoreRoman)); candidates.add(Pair("ⅻ", scoreRoman))
+            candidates.add(Pair("⒓", scoreList)); candidates.add(Pair("⑿", scoreParen))
+        }
+
+        13 -> {
+            candidates.add(Pair("⑬", scoreCircled))
+            candidates.add(Pair("⒔", scoreList)); candidates.add(Pair("⒀", scoreParen))
+        }
+
+        14 -> {
+            candidates.add(Pair("⑭", scoreCircled))
+            candidates.add(Pair("⒕", scoreList)); candidates.add(Pair("⒁", scoreParen))
+        }
+
+        15 -> {
+            candidates.add(Pair("⑮", scoreCircled))
+            candidates.add(Pair("⒖", scoreList)); candidates.add(Pair("⒂", scoreParen))
+        }
+
+        16 -> {
+            candidates.add(Pair("⑯", scoreCircled))
+            candidates.add(Pair("⒗", scoreList)); candidates.add(Pair("⒃", scoreParen))
+        }
+
+        17 -> {
+            candidates.add(Pair("⑰", scoreCircled))
+            candidates.add(Pair("⒘", scoreList)); candidates.add(Pair("⒄", scoreParen))
+        }
+
+        18 -> {
+            candidates.add(Pair("⑱", scoreCircled))
+            candidates.add(Pair("⒙", scoreList)); candidates.add(Pair("⒅", scoreParen))
+        }
+
+        19 -> {
+            candidates.add(Pair("⑲", scoreCircled))
+            candidates.add(Pair("⒚", scoreList)); candidates.add(Pair("⒆", scoreParen))
+        }
+
+        20 -> {
+            candidates.add(Pair("⑳", scoreCircled))
+            candidates.add(Pair("⒛", scoreList)); candidates.add(Pair("⒇", scoreParen))
+        }
+        // --- 21-35 (㉑...㉟) ---
+        // (ピリオド と 括弧 が終了)
+        21 -> candidates.add(Pair("㉑", scoreCircled))
+        22 -> candidates.add(Pair("㉒", scoreCircled))
+        23 -> candidates.add(Pair("㉓", scoreCircled))
+        24 -> candidates.add(Pair("㉔", scoreCircled))
+        25 -> candidates.add(Pair("㉕", scoreCircled))
+        26 -> candidates.add(Pair("㉖", scoreCircled))
+        27 -> candidates.add(Pair("㉗", scoreCircled))
+        28 -> candidates.add(Pair("㉘", scoreCircled))
+        29 -> candidates.add(Pair("㉙", scoreCircled))
+        30 -> candidates.add(Pair("㉚", scoreCircled))
+        31 -> candidates.add(Pair("㉛", scoreCircled))
+        32 -> candidates.add(Pair("㉜", scoreCircled))
+        33 -> candidates.add(Pair("㉝", scoreCircled))
+        34 -> candidates.add(Pair("㉞", scoreCircled))
+        35 -> candidates.add(Pair("㉟", scoreCircled))
+        // --- 36-50 (㊱...㊿) ---
+        36 -> candidates.add(Pair("㊱", scoreCircled))
+        37 -> candidates.add(Pair("㊲", scoreCircled))
+        38 -> candidates.add(Pair("㊳", scoreCircled))
+        39 -> candidates.add(Pair("㊴", scoreCircled))
+        40 -> candidates.add(Pair("㊵", scoreCircled))
+        41 -> candidates.add(Pair("㊶", scoreCircled))
+        42 -> candidates.add(Pair("㊷", scoreCircled))
+        43 -> candidates.add(Pair("㊸", scoreCircled))
+        44 -> candidates.add(Pair("㊹", scoreCircled))
+        45 -> candidates.add(Pair("㊺", scoreCircled))
+        46 -> candidates.add(Pair("㊻", scoreCircled))
+        47 -> candidates.add(Pair("㊼", scoreCircled))
+        48 -> candidates.add(Pair("㊽", scoreCircled))
+        49 -> candidates.add(Pair("㊾", scoreCircled))
+        50 -> {
+            candidates.add(Pair("㊿", scoreCircled))
+            // 50はローマ数字 (L) が存在する
+            candidates.add(Pair("Ⅼ", scoreRoman)); candidates.add(Pair("ⅼ", scoreRoman))
+        }
+    }
+
+    // PairのリストをCandidateのリストに変換
+    return candidates.map { (str, score) ->
+        Candidate(
+            string = str,
+            type = 21, // 21で統一
+            length = inputLength,
+            score = score,
+            leftId = 2040,
+            rightId = 2040
+        )
+    }
 }
