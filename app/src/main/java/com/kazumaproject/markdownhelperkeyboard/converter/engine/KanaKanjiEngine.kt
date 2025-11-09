@@ -23,6 +23,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createValueBasedSymbolCandidates
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.groupAndReplaceJapaneseForNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllFullWidthAscii
@@ -32,6 +33,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toFullWid
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toKanji
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toNumberExponent
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toSubscriptDigits
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toSuperscriptDigits
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
@@ -697,8 +700,32 @@ class KanaKanjiEngine {
                 emptyList()
             }
 
+            val superscriptCandidate = Candidate(
+                string = input.toSuperscriptDigits(),
+                type = 21,
+                score = 8000,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val subscriptCandidate = Candidate(
+                string = input.toSubscriptDigits(),
+                type = 20,
+                score = 8001,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val valueBasedCandidates = if (numberValue != null) {
+                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+            } else {
+                emptyList()
+            }
+
             // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
         val hirakanaAndKana = listOf(
@@ -1177,8 +1204,32 @@ class KanaKanjiEngine {
                 emptyList()
             }
 
+            val superscriptCandidate = Candidate(
+                string = input.toSuperscriptDigits(),
+                type = 21,
+                score = 8000,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val subscriptCandidate = Candidate(
+                string = input.toSubscriptDigits(),
+                type = 20,
+                score = 8001,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val valueBasedCandidates = if (numberValue != null) {
+                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+            } else {
+                emptyList()
+            }
+
             val finalList =
-                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
             return Pair(finalList, resultNBestFinalDeferred.second)
         }
 
@@ -1663,8 +1714,34 @@ class KanaKanjiEngine {
                 emptyList()
             }
 
+            val superscriptCandidate = Candidate(
+                string = input.toSuperscriptDigits(),
+                type = 21,
+                score = 8000,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val subscriptCandidate = Candidate(
+                string = input.toSubscriptDigits(),
+                type = 20,
+                score = 8001,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val valueBasedCandidates = if (numberValue != null) {
+                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+            } else {
+                emptyList()
+            }
+
             val finalList =
-                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+                resultNBestFinalDeferred.first + timeConversion +
+                        dateConversion + fullWidth + halfWidth +
+                        numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
 
             // 3. Combine and return all generated candidates.
             return Pair(finalList, resultNBestFinalDeferred.second)
@@ -2095,8 +2172,32 @@ class KanaKanjiEngine {
                 emptyList()
             }
 
+            val superscriptCandidate = Candidate(
+                string = input.toSuperscriptDigits(),
+                type = 21,
+                score = 8000,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val subscriptCandidate = Candidate(
+                string = input.toSubscriptDigits(),
+                type = 20,
+                score = 8001,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val valueBasedCandidates = if (numberValue != null) {
+                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+            } else {
+                emptyList()
+            }
+
             // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
         val hirakanaAndKana = listOf(
@@ -2530,8 +2631,32 @@ class KanaKanjiEngine {
                 emptyList()
             }
 
+            val superscriptCandidate = Candidate(
+                string = input.toSuperscriptDigits(),
+                type = 21,
+                score = 8000,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val subscriptCandidate = Candidate(
+                string = input.toSubscriptDigits(),
+                type = 20,
+                score = 8001,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val valueBasedCandidates = if (numberValue != null) {
+                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+            } else {
+                emptyList()
+            }
+
             // 3. Combine and return all generated candidates.
-            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+            return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
         val hirakanaAndKana = listOf(
@@ -2965,8 +3090,32 @@ class KanaKanjiEngine {
                 emptyList()
             }
 
+            val superscriptCandidate = Candidate(
+                string = input.toSuperscriptDigits(),
+                type = 21,
+                score = 8000,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val subscriptCandidate = Candidate(
+                string = input.toSubscriptDigits(),
+                type = 20,
+                score = 8001,
+                length = input.length.toUByte(),
+                leftId = 2040,
+                rightId = 2040
+            )
+
+            val valueBasedCandidates = if (numberValue != null) {
+                createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+            } else {
+                emptyList()
+            }
+
             val finalList =
-                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates
+                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
             return Pair(finalList, resultNBestFinalDeferred.second)
         }
 
