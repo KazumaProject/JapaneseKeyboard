@@ -722,11 +722,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    // ▲▲▲ NEW HELPER FUNCTIONS ▲▲▲
-
-    // ( onTouchEvent, findTargetView, onInterceptTouchEvent などの残りのコードは変更なし )
-    // ...
-    // onTouchEvent の前に、ポインターIDとViewをマッピングするためのプロパティを追加します。
     private val motionTargets = mutableMapOf<Int, View>()
     private val pointerDownTime = mutableMapOf<Int, Long>()
     private val TAG = "FlickKeyboardViewTouch"
@@ -880,7 +875,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     Log.d(
                         "FlickKeyboardView",
-                        "MotionEvent.ACTION_POINTER_DOWN called $target $downTime"
+                        "MotionEvent.ACTION_POINTER_DOWN called ${event.metaState} $target $downTime"
                     )
 
                     if (target != null && downTime != null) {
@@ -903,6 +898,26 @@ class FlickKeyboardView @JvmOverloads constructor(
                             target.dispatchTouchEvent(upEvent) // ターゲットにUPイベントをディスパッチ
                             upEvent.recycle()
                         }
+                    }
+
+                    val matchingEntry = dynamicKeyMap.entries.find { it.value.view == target }
+                    if (matchingEntry != null) {
+                        val keyId = matchingEntry.key
+                        val keyInfo = matchingEntry.value
+                        Log.d(
+                            TAG,
+                            "ACTION_POINTER_DOWN: First finger (ID: $existingPointerId) is on a dynamic key. KeyId: $keyId, KeyInfo: $keyInfo"
+                        )
+                        if (keyInfo.keyData.action == KeyAction.InputText(text = "^_^") ||
+                            keyInfo.keyData.keyId == "switch_next_ime"
+                        ) {
+                            return true
+                        }
+                    } else {
+                        Log.d(
+                            TAG,
+                            "ACTION_POINTER_DOWN: First finger (ID: $existingPointerId) is on a non-dynamic key."
+                        )
                     }
                 }
 
