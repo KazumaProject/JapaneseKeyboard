@@ -1498,16 +1498,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
 
-        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd ${inputString.value} ${stringInTail.get()}")
+        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd [${inputString.value}] [${stringInTail.get()}] [${bunsetsuPositionList}]")
 
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
-            if (inputString.value.isEmpty() && stringInTail.get().isEmpty()){
-                beginBatchEdit()
-                setComposingText("", 0)
-                endBatchEdit()
-            }
             return
+        }
+
+        Timber.d("onUpdateSelection end called: [${inputString.value}] [${stringInTail.get()}] [${bunsetusMultipleDetect}]")
+        if (stringInTail.get().isEmpty()) {
+            bunsetusMultipleDetect = false
         }
 
         // Show clipboard preview only if nothing was deleted and clipboard has data
@@ -1569,10 +1569,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // Caret moved while tail exists → commit tail
             hasTail -> {
-                beginBatchEdit()
                 _inputString.update { tail }
                 stringInTail.set("")
-                endBatchEdit()
             }
 
             // No tail but still holding input → cleanup
@@ -5357,7 +5355,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("suggestionFlag CandidateShowFlag.Idle: [$insertString] [$stringInTail] [$prevFlag] [$currentFlag]")
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
-                        physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
+                        physicalKeyboardEnable.replayCache.isEmpty() &&
+                                isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() &&
+                                !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
                             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                                 animateSuggestionImageViewVisibility(
                                     floatingKeyboardLayoutBinding.suggestionVisibility, true
@@ -5365,7 +5365,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
 
-                        physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                        physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible ||
+                                mainView.tabletView.isVisible || mainView.qwertyView.isVisible ||
+                                mainView.customLayoutDefault.isVisible) -> {
                             if (!suppressSuggestions) {
                                 animateSuggestionImageViewVisibility(
                                     mainView.suggestionVisibility, true
@@ -5374,7 +5376,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setKeyboardHeightWithAdditional(mainView)
                         }
 
-                        (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                        (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) &&
+                                (mainView.keyboardView.isVisible || mainView.tabletView.isVisible ||
+                                        mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
@@ -5421,23 +5425,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
                         suggestionAdapter?.suggestions = emptyList()
-                        if (isKeyboardFloatingMode == true) {
-                            if (!suppressSuggestions) {
-                                floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                        if (stringInTail.get().isEmpty()) {
+                            if (isKeyboardFloatingMode == true) {
+                                if (!suppressSuggestions) {
+                                    floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                                        animateSuggestionImageViewVisibility(
+                                            floatingKeyboardLayoutBinding.suggestionVisibility,
+                                            false
+                                        )
+                                    }
+                                }
+                            } else {
+                                if (mainView.suggestionVisibility.isVisible) {
                                     animateSuggestionImageViewVisibility(
-                                        floatingKeyboardLayoutBinding.suggestionVisibility, false
+                                        mainView.suggestionVisibility, false
                                     )
                                 }
                             }
-                        } else {
-                            if (mainView.suggestionVisibility.isVisible) {
-                                animateSuggestionImageViewVisibility(
-                                    mainView.suggestionVisibility, false
-                                )
+                            if (mainView.customLayoutDefault.isVisible) {
+                                resetSumireKeyboardDakutenMode()
                             }
-                        }
-                        if (mainView.customLayoutDefault.isVisible) {
-                            resetSumireKeyboardDakutenMode()
+                            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                                mainView.qwertyView.apply {
+                                    setSpaceKeyText("空白")
+                                    val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInJp()
+                                    setReturnKeyText(qwertyEnterKeyText)
+                                }
+                            } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
+                                val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
+                                mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
+                            }
+                            setKeyboardHeightDefault(mainView)
+                            setSumireKeyboardSwitchNumberAndKatakanaKey(0)
+                            countToggleKatakana = 0
+                            mainView.candidateTabLayout.isVisible = false
+                            val tab = mainView.candidateTabLayout.getTabAt(0)
+                            mainView.candidateTabLayout.selectTab(tab)
+                            mainView.shortcutToolbarRecyclerview.isVisible =
+                                shortcutTollbarVisibility == true
                         }
                         suggestionAdapter?.apply {
                             if (deletedBuffer.isEmpty()) {
@@ -5480,24 +5505,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 setPasteEnabled(false)
                             }
                         }
-                        if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                            mainView.qwertyView.apply {
-                                setSpaceKeyText("空白")
-                                val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInJp()
-                                setReturnKeyText(qwertyEnterKeyText)
-                            }
-                        } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
-                            val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
-                            mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
-                        }
-                        setKeyboardHeightDefault(mainView)
-                        setSumireKeyboardSwitchNumberAndKatakanaKey(0)
-                        countToggleKatakana = 0
-                        mainView.candidateTabLayout.isVisible = false
-                        val tab = mainView.candidateTabLayout.getTabAt(0)
-                        mainView.candidateTabLayout.selectTab(tab)
-                        mainView.shortcutToolbarRecyclerview.isVisible =
-                            shortcutTollbarVisibility == true
                     }
 
                     CandidateShowFlag.Updating -> {
@@ -6433,6 +6440,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             Timber.d("setSuggestionOnView auto empty: ${stringInTail.get()} $bunsetusMultipleDetect")
+            if (stringInTail.get().isNotEmpty()) {
+                setComposingText(stringInTail.get(), 1)
+                onLeftKeyLongPressUp.set(true)
+                onDeleteLongPressUp.set(true)
+            } else {
+                setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
+                if (isKeyboardFloatingMode == true) {
+                    floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                        setDrawableToEnterKeyCorrespondingToImeOptionsFloating(
+                            floatingKeyboardLayoutBinding
+                        )
+                    }
+                }
+                onLeftKeyLongPressUp.set(true)
+                onRightKeyLongPressUp.set(true)
+                onDeleteLongPressUp.set(true)
+            }
             hasConvertedKatakana = false
             resetInputString()
             hardKeyboardShiftPressd = false
@@ -6506,29 +6530,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
-            if (stringInTail.get().isNotEmpty()) {
-                setComposingText(stringInTail.get(), 1)
-                onLeftKeyLongPressUp.set(true)
-                onDeleteLongPressUp.set(true)
-                bunsetusMultipleDetect = true
-            } else {
-                setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
-                if (isKeyboardFloatingMode == true) {
-                    floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
-                        setDrawableToEnterKeyCorrespondingToImeOptionsFloating(
-                            floatingKeyboardLayoutBinding
-                        )
-                    }
-                }
-                onLeftKeyLongPressUp.set(true)
-                onRightKeyLongPressUp.set(true)
-                onDeleteLongPressUp.set(true)
-                if (bunsetusMultipleDetect) {
-                    delay(64L)
-                    bunsetusMultipleDetect = false
-                }
-            }
-
         }
     }
 
@@ -6586,7 +6587,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFirstSuggestion(
         candidate: Candidate
     ) {
-        beginBatchEdit()
         val commitString = if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
@@ -6594,7 +6594,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val newSpannable = createSpannableWithTail(commitString)
         setComposingTextAfterEdit(commitString, newSpannable)
-        endBatchEdit()
     }
 
     /**
@@ -6605,7 +6604,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun resetInputString() {
-        if (!isHenkan.get() && stringInTail.get().isEmpty()) {
+        Timber.d("resetInputString detect: $bunsetusMultipleDetect [${stringInTail.get()}]")
+        val henkanActive = isHenkan.get()
+        val tailIsEmpty = stringInTail.get().isEmpty()
+        val shouldCommitIdle = !bunsetusMultipleDetect || tailIsEmpty
+        if (!henkanActive && shouldCommitIdle) {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
     }
@@ -8650,7 +8653,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.isEmpty() || suggestionClickNum > 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition $bunsetsuPositionList")
-        beginBatchEdit()
         if (candidateTabVisibility == true) {
             if (candidateTabOrder.isNotEmpty() && tabPosition < candidateTabOrder.size) {
                 when (candidateTabOrder[tabPosition]) {
@@ -8672,7 +8674,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             setCandidatesOriginal(inputString)
         }
-        endBatchEdit()
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
 
@@ -9516,7 +9517,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             isHenkan.set(true)
             henkanPressedWithBunsetsuDetect = true
-            bunsetusMultipleDetect = true
+            bunsetsuPositionList?.let {
+                if (it.size > 1) {
+                    bunsetusMultipleDetect = true
+                }
+            }
         } else {
             isHenkan.set(true)
             suggestionClickNum += 1
