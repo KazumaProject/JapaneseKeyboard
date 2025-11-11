@@ -82,6 +82,7 @@ data class KeyboardLayout(
     val rowCount: Int,
     val isRomaji: Boolean = false,
     val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
+    val hierarchicalFlickMaps: Map<String, Map<TfbiFlickDirection, TfbiFlickNode>> = emptyMap()
 )
 
 /**
@@ -101,7 +102,11 @@ enum class KeyType {
 
     PETAL_FLICK,
 
-    TWO_STEP_FLICK
+    TWO_STEP_FLICK,
+
+    STICKY_TWO_STEP_FLICK,
+
+    HIERARCHICAL_FLICK
 }
 
 enum class ShapeType {

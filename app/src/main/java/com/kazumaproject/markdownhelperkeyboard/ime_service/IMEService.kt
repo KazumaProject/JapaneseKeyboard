@@ -4779,17 +4779,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         val insertString = inputString.value
         val sb = StringBuilder()
-        text.forEach {
-            if (isFlickOnlyMode == true) {
-                handleFlick(char = it, insertString, sb, mainView)
+        if (text.isNotEmpty()) {
+            if (text.length == 1) {
+                text.first().let {
+                    if (isFlickOnlyMode == true) {
+                        handleFlick(char = it, insertString, sb, mainView)
+                    } else {
+                        if (isFlick) {
+                            handleFlick(char = it, insertString, sb, mainView)
+                        } else {
+                            handleTap(char = it, insertString, sb, mainView)
+                        }
+                    }
+                }
             } else {
-                if (isFlick) {
-                    handleFlick(char = it, insertString, sb, mainView)
-                } else {
-                    handleTap(char = it, insertString, sb, mainView)
+                sb.append(insertString).append(text)
+                _inputString.update {
+                    sb.toString()
                 }
             }
         }
+
     }
 
     private fun cancelLeftLongPress() {
@@ -5448,7 +5458,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
                                 mainView.qwertyView.apply {
                                     setSpaceKeyText("空白")
-                                    val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInJp()
+                                    val qwertyEnterKeyText =
+                                        currentInputType.getQWERTYReturnTextInJp()
                                     setReturnKeyText(qwertyEnterKeyText)
                                 }
                             } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {

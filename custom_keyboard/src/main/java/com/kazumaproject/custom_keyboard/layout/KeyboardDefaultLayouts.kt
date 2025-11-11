@@ -8,6 +8,7 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
@@ -5964,6 +5965,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5972,6 +5974,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5980,6 +5983,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5988,6 +5992,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5996,6 +6001,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6004,6 +6010,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6012,6 +6019,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6020,6 +6028,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6028,6 +6037,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6045,6 +6055,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6053,6 +6064,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6502,6 +6514,588 @@ object KeyboardDefaultLayouts {
                 )
 
                 return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
+            }
+
+            "third-flick" -> {
+                val pasteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Paste,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.SelectAll,
+                        drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.Copy,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
+                    )
+                )
+
+                val cursorLeftActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val cursorRightActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val spaceActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Space,
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.Space,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+                    )
+                )
+
+                val conversionActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Convert,
+                    ),
+                )
+
+                // 状態0 (^_^): タップ操作のみを持つマップ
+                val emojiStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.InputText("^_^"), label = "^_^"
+                    )
+                    // この状態ではフリックアクションを定義しない
+                )
+                // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
+                val dakutenStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
+                    )
+                )
+
+                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                        )
+                    }
+
+                dakutenToggleStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(emojiStateFlickMap))
+                }
+                dakutenToggleStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(dakutenStateFlickMap))
+                }
+
+                spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(spaceActionMap))
+                }
+
+                spaceConvertStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(conversionActionMap))
+                }
+
+                val subMenuForKyo = mapOf(
+                    TfbiFlickDirection.DOWN to TfbiFlickNode.Input("きょ"),
+                    TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("きょう")
+                )
+
+                val hierarchicalFlickMaps = mapOf(
+                    // あ行
+                    "あ" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("あ")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("あ"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ぁ")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("あ"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("い"),
+                                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("ぃ")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("あ"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("う"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぅ")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("あ"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("え"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ぇ")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("あ"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("お"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ぉ")
+                            )
+                        )
+                    ),
+                    // か行
+                    "か" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("か")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("が")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("き"),
+                                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("ぎ"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("きゅ"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("きゃ"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                                    label = "きょ",
+                                    nextMap = subMenuForKyo
+                                )
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("く"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぐ")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("け"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("げ")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("こ"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ご")
+                            )
+                        )
+                    ),
+                    // さ行
+                    "さ" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ざ")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("し"),
+                                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("じ")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("す"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ず")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("せ"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ぜ")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("そ"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ぞ")
+                            )
+                        )
+                    ),
+                    // た行
+                    "た" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("た")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("た"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("だ")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("た"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("ち"),
+                                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("ぢ")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("た"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("つ"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("づ"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("っ")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("た"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("て"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("で")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("た"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("と"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ど")
+                            )
+                        )
+                    ),
+                    // な行
+                    "な" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("な")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("な"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("に")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("な"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("ぬ")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("な"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("ね")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("な"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("の")
+                            )
+                        )
+                    ),
+                    // は行
+                    "は" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("は")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ば")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぱ")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("ひ"),
+                                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("び"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぴ")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("ふ"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ぷ"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぶ")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("へ"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("べ"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ぺ")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("ほ"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ぼ"),
+                                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("ぽ")
+                            )
+                        )
+                    ),
+                    // ま行
+                    "ま" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ま")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ま"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("み")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ま"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("む")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ま"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("め")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ま"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("も")
+                            )
+                        )
+                    ),
+                    // や行
+                    "や" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("や")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("や"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ゃ")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("や"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("("),
+                                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("「")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("や"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("ゆ"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ゅ")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("や"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input(")"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("」")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("や"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("よ"),
+                                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ょ")
+                            )
+                        )
+                    ),
+                    // ら行
+                    "ら" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ら")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ら"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("り")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ら"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("る")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ら"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("れ")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("ら"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("ろ")
+                            )
+                        )
+                    ),
+                    // わ行
+                    "わ" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("わ")
+                            )
+                        ),
+                        TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("わ"),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ゎ")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("わ"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("を")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("わ"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("ん")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("わ"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("ー")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("わ"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("〜")
+                            )
+                        )
+                    ),
+                    // 記号
+                    "、。?!" to mapOf(
+                        TfbiFlickDirection.TAP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("、")
+                            )
+                        ),
+                        TfbiFlickDirection.LEFT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("、"),
+                                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("。")
+                            )
+                        ),
+                        TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("、"),
+                                TfbiFlickDirection.UP to TfbiFlickNode.Input("？"),
+                                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("："),
+                                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("・")
+                            )
+                        ),
+                        TfbiFlickDirection.RIGHT to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("、"),
+                                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("！")
+                            )
+                        ),
+                        TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
+                            mapOf(
+                                TfbiFlickDirection.TAP to TfbiFlickNode.Input("、"),
+                                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("…")
+                            )
+                        )
+                    )
+                )
+
+                return KeyboardLayout(
+                    keys,
+                    flickMaps,
+                    5,
+                    4,
+                    hierarchicalFlickMaps = hierarchicalFlickMaps
+                )
             }
 
             "sumire" -> {
