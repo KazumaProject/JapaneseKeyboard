@@ -699,8 +699,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.HIERARCHICAL_FLICK -> {
-                val rootMap = layout.hierarchicalFlickMaps[keyData.label]
-                if (rootMap != null) {
+                // [修正点 1] hierarchicalFlickMaps から StatefulKey を取得
+                val statefulNode = layout.hierarchicalFlickMaps[keyData.label]
+
+                if (statefulNode != null) {
                     Log.d(
                         "AttachBehavior",
                         "-> Attaching TfbiHierarchicalFlickController for ${keyData.label}"
@@ -709,6 +711,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context,
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
+
+                        // [修正点 2] onFlick と onModeChanged の両方を実装
                         this.listener = object : TfbiHierarchicalFlickController.TfbiListener {
                             override fun onFlick(character: String) {
                                 Log.d(
@@ -716,23 +720,41 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "Char: $character"
                                 )
                                 if (character.isNotEmpty()) {
-                                    // Hierarchical flick is always considered a flick
                                     this@FlickKeyboardView.listener?.onKey(
                                         text = character,
-                                        isFlick = true
+                                        isFlick = true // 階層フリックは常true
                                     )
                                 }
                             }
+
+                            override fun onModeChanged(newLabel: String) {
+                                Log.d(
+                                    "FlickKeyboardView",
+                                    "onModeChanged: keyId=${keyData.keyId}, newLabel=$newLabel"
+                                )
+
+                                // 1. dynamicKeyMap のキャッシュを更新 (存在する場合)
+                                keyData.keyId?.let { id ->
+                                    dynamicKeyMap[id]?.let { info ->
+                                        info.keyData = info.keyData.copy(label = newLabel)
+                                    }
+                                }
+
+                                // 2. 実際のViewの表示を更新
+                                val newVisualKeyData = keyData.copy(label = newLabel)
+                                updateKeyVisuals(keyView, newVisualKeyData)
+                            }
                         }
-                        // Attach with the root map
-                        attach(keyView, rootMap)
+
+                        // [修正点 3]
+                        attach(keyView, statefulNode)
                     }
                     hierarchicalTfbiControllers.add(controller)
                     return controller
                 } else {
                     Log.e(
                         "AttachBehavior",
-                        "-> FAILED HIERARCHICAL_FLICK: rootMap is NULL for key '${keyData.label}'"
+                        "-> FAILED HIERARCHICAL_FLICK: statefulNode is NULL for key '${keyData.label}'"
                     )
                 }
             }
