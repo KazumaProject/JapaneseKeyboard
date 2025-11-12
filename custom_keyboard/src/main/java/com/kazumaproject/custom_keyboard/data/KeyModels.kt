@@ -16,6 +16,7 @@ enum class KeyboardInputMode {
  */
 sealed class KeyAction {
     data object Cancel : KeyAction()
+
     // 文字列入力系
     data class InputText(val text: String) : KeyAction()
 
@@ -82,6 +83,7 @@ data class KeyboardLayout(
     val rowCount: Int,
     val isRomaji: Boolean = false,
     val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
+    val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap()
 )
 
 /**
@@ -101,7 +103,11 @@ enum class KeyType {
 
     PETAL_FLICK,
 
-    TWO_STEP_FLICK
+    TWO_STEP_FLICK,
+
+    STICKY_TWO_STEP_FLICK,
+
+    HIERARCHICAL_FLICK
 }
 
 enum class ShapeType {

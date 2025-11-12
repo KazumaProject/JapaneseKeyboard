@@ -123,6 +123,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         petalFlickControllers.forEach { it.cancel() }
         petalFlickControllers.clear()
 
+
+
         dynamicKeyMap.clear()
         currentLayout = layout
 
@@ -612,6 +614,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.TWO_STEP_FLICK -> return null
+
+            KeyType.STICKY_TWO_STEP_FLICK -> return null
+
+            KeyType.HIERARCHICAL_FLICK -> return null
         }
         return null
     }
@@ -639,6 +645,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                 controller.cancel()
                 petalFlickControllers.remove(controller)
             }
+
+
 
         }
     }
@@ -1041,6 +1049,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
         petalFlickControllers.forEach { it.cancel() }
+
 
     }
 
