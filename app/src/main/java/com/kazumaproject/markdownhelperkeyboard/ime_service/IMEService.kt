@@ -9132,6 +9132,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun deleteWordOrSymbolsBeforeCursor(insertString: String) {
         val inputConnection = currentInputConnection ?: return
         if (isHenkan.get()) return
+        if (stringInTail.get().isNotEmpty()) return
 
         if (insertString.isNotEmpty()) {
             _inputString.update { "" }
