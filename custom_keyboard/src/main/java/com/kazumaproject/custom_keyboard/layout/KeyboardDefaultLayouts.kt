@@ -2640,123 +2640,200 @@ object KeyboardDefaultLayouts {
     private fun createHiraganaToggleLayout(
         inputStyle: String, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
+        val keys = listOf(
+            KeyData(
+                "PasteActionKey",
+                0,
+                0,
+                false,
+                KeyAction.Paste,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
+                keyType = KeyType.CROSS_FLICK
+            ), KeyData(
+                "CursorMoveLeft",
+                1,
+                0,
+                false,
+                KeyAction.MoveCursorLeft,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
+                keyType = KeyType.CROSS_FLICK,
+            ), KeyData(
+                "モード",
+                2,
+                0,
+                false,
+                KeyAction.ChangeInputMode,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+            ), KeyData(
+                "",
+                3,
+                0,
+                false,
+                KeyAction.SwitchToNextIme,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
+            ), KeyData(
+                "あ", 0, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "か", 0, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "さ", 0, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "た", 1, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "な", 1, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "は", 1, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "ま", 2, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "や", 2, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "ら", 2, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                dakutenToggleStates[0].label ?: "",
+                3,
+                1,
+                false,
+                dakutenToggleStates[0].action,
+                dynamicStates = dakutenToggleStates,
+                keyId = "dakuten_toggle_key",
+                keyType = KeyType.CROSS_FLICK
+            ), KeyData(
+                "わ", 3, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "、。?!", 3, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            }, KeyData(
+                spaceConvertStates[0].label ?: "",
+                1,
+                4,
+                true,
+                spaceConvertStates[0].action,
+                dynamicStates = spaceConvertStates,
+                isSpecialKey = true,
+                rowSpan = 1,
+                keyId = "space_convert_key",
+                keyType = KeyType.CROSS_FLICK
+            ), KeyData(
+                enterKeyStates[0].label ?: "",
+                2,
+                4,
+                false,
+                enterKeyStates[0].action,
+                dynamicStates = enterKeyStates,
+                isSpecialKey = true,
+                rowSpan = 2,
+                drawableResId = enterKeyStates[0].drawableResId,
+                keyId = "enter_key"
+            )
+        )
         return when (inputStyle) {
             "second-flick" -> {
-                val keys = listOf(
-                    KeyData(
-                        "PasteActionKey",
-                        0,
-                        0,
-                        false,
-                        KeyAction.Paste,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        "CursorMoveLeft",
-                        1,
-                        0,
-                        false,
-                        KeyAction.MoveCursorLeft,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
-                        keyType = KeyType.CROSS_FLICK,
-                    ), KeyData(
-                        "モード",
-                        2,
-                        0,
-                        false,
-                        KeyAction.ChangeInputMode,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ), KeyData(
-                        "",
-                        3,
-                        0,
-                        false,
-                        KeyAction.SwitchToNextIme,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
-                        keyId = "switch_next_ime"
-                    ), KeyData(
-                        "あ", 0, 1, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "か", 0, 2, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "さ", 0, 3, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "た", 1, 1, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "な", 1, 2, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "は", 1, 3, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "ま", 2, 1, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "や", 2, 2, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "ら", 2, 3, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        dakutenToggleStates[0].label ?: "",
-                        3,
-                        1,
-                        false,
-                        dakutenToggleStates[0].action,
-                        dynamicStates = dakutenToggleStates,
-                        keyId = "dakuten_toggle_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        "わ", 3, 2, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), KeyData(
-                        "、。?!", 3, 3, true, keyType = KeyType.TWO_STEP_FLICK
-                    ), if (isFlickDeleteEnabled) {
-                        KeyData(
-                            "Del",
-                            0,
-                            4,
-                            false,
-                            deleteFlickStates[0].action,
-                            isSpecialKey = true,
-                            rowSpan = 1,
-                            drawableResId = deleteFlickStates[0].drawableResId,
-                            keyId = "delete_key",
-                            keyType = KeyType.CROSS_FLICK
-                        )
-                    } else {
-                        KeyData(
-                            "Del",
-                            0,
-                            4,
-                            false,
-                            KeyAction.Delete,
-                            isSpecialKey = true,
-                            rowSpan = 1,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                        )
-                    }, KeyData(
-                        spaceConvertStates[0].label ?: "",
-                        1,
-                        4,
-                        true,
-                        spaceConvertStates[0].action,
-                        dynamicStates = spaceConvertStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        keyId = "space_convert_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        enterKeyStates[0].label ?: "",
-                        2,
-                        4,
-                        false,
-                        enterKeyStates[0].action,
-                        dynamicStates = enterKeyStates,
-                        isSpecialKey = true,
-                        rowSpan = 2,
-                        drawableResId = enterKeyStates[0].drawableResId,
-                        keyId = "enter_key"
-                    )
-                )
                 val pasteActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Paste,
@@ -3127,170 +3204,152 @@ object KeyboardDefaultLayouts {
                 KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
             }
 
+            "third-flick" -> {
+
+                val pasteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Paste,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.SelectAll,
+                        drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.Copy,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
+                    )
+                )
+
+                val cursorLeftActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val cursorRightActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val spaceActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Space,
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.Space,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+                    )
+                )
+
+                val conversionActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Convert,
+                    ),
+                )
+
+                // 状態0 (^_^): タップ操作のみを持つマップ
+                val emojiStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.InputText("^_^"), label = "^_^"
+                    )
+                    // この状態ではフリックアクションを定義しない
+                )
+                // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
+                val dakutenStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
+                    )
+                )
+
+                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                        )
+                    }
+
+                dakutenToggleStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(emojiStateFlickMap))
+                }
+                dakutenToggleStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(dakutenStateFlickMap))
+                }
+
+                spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(spaceActionMap))
+                }
+
+                spaceConvertStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(conversionActionMap))
+                }
+
+                val hierarchicalFlickMaps = createHierarchicalFlickMaps()
+
+                return KeyboardLayout(
+                    keys,
+                    flickMaps,
+                    5,
+                    4,
+                    hierarchicalFlickMaps = hierarchicalFlickMaps
+                )
+            }
+
             "sumire" -> {
                 return createHiraganaLayout(isFlickDeleteEnabled)
             }
 
             else -> {
-                val keys = listOf(
-                    KeyData(
-                        "PasteActionKey",
-                        0,
-                        0,
-                        false,
-                        KeyAction.Paste,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px,
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        "CursorMoveLeft",
-                        1,
-                        0,
-                        false,
-                        KeyAction.MoveCursorLeft,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24,
-                        keyType = KeyType.CROSS_FLICK,
-                    ), KeyData(
-                        "モード",
-                        2,
-                        0,
-                        false,
-                        KeyAction.ChangeInputMode,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ), KeyData(
-                        "",
-                        3,
-                        0,
-                        false,
-                        KeyAction.SwitchToNextIme,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
-                        keyId = "switch_next_ime"
-                    ), KeyData(
-                        "あ", 0, 1, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "か", 0, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "さ", 0, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "た", 1, 1, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "な", 1, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "は", 1, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "ま", 2, 1, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "や", 2, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "ら", 2, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        dakutenToggleStates[0].label ?: "",
-                        3,
-                        1,
-                        false,
-                        dakutenToggleStates[0].action,
-                        dynamicStates = dakutenToggleStates,
-                        keyId = "dakuten_toggle_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        "わ", 3, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "、。?!", 3, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), if (isFlickDeleteEnabled) {
-                        KeyData(
-                            "Del",
-                            0,
-                            4,
-                            false,
-                            deleteFlickStates[0].action,
-                            isSpecialKey = true,
-                            rowSpan = 1,
-                            drawableResId = deleteFlickStates[0].drawableResId,
-                            keyId = "delete_key",
-                            keyType = KeyType.CROSS_FLICK
-                        )
-                    } else {
-                        KeyData(
-                            "Del",
-                            0,
-                            4,
-                            false,
-                            KeyAction.Delete,
-                            isSpecialKey = true,
-                            rowSpan = 1,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                        )
-                    }, KeyData(
-                        spaceConvertStates[0].label ?: "",
-                        1,
-                        4,
-                        true,
-                        spaceConvertStates[0].action,
-                        dynamicStates = spaceConvertStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        keyId = "space_convert_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        enterKeyStates[0].label ?: "",
-                        2,
-                        4,
-                        false,
-                        enterKeyStates[0].action,
-                        dynamicStates = enterKeyStates,
-                        isSpecialKey = true,
-                        rowSpan = 2,
-                        drawableResId = enterKeyStates[0].drawableResId,
-                        keyId = "enter_key"
-                    )
-                )
                 val pasteActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Paste,
@@ -4252,197 +4311,208 @@ object KeyboardDefaultLayouts {
     private fun createHiraganaFlickLayout(
         inputStyle: String, isFlickDeleteEnabled: Boolean
     ): KeyboardLayout {
+        val keys = listOf(
+            KeyData(
+                "SwitchToNumber",
+                0,
+                0,
+                false,
+                KeyAction.SwitchToNumberLayout,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
+            ), KeyData(
+                "SwitchToEnglish",
+                1,
+                0,
+                false,
+                KeyAction.SwitchToEnglishLayout,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
+            ), KeyData(
+                "SwitchToKana",
+                2,
+                0,
+                false,
+                KeyAction.SwitchToKanaLayout,
+                isSpecialKey = true,
+                isHiLighted = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
+            ), KeyData(
+                "",
+                3,
+                0,
+                false,
+                KeyAction.SwitchToNextIme,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
+            ), KeyData(
+                "あ", 0, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "か", 0, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "さ", 0, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "た", 1, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "な", 1, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "は", 1, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "ま", 2, 1, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "や", 2, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "ら", 2, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                dakutenToggleStates[0].label ?: "",
+                3,
+                1,
+                false,
+                dakutenToggleStates[0].action,
+                dynamicStates = dakutenToggleStates,
+                keyId = "dakuten_toggle_key",
+                keyType = KeyType.CROSS_FLICK
+            ), KeyData(
+                "わ", 3, 2, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), KeyData(
+                "、。?!", 3, 3, true, keyType = when (inputStyle) {
+                    "default" -> KeyType.PETAL_FLICK
+                    "circle" -> KeyType.STANDARD_FLICK
+                    "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "third-flick" -> KeyType.HIERARCHICAL_FLICK
+                    "sumire" -> KeyType.CIRCULAR_FLICK
+                    else -> KeyType.PETAL_FLICK
+                }
+            ), if (isFlickDeleteEnabled) {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    deleteFlickStates[0].action,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = deleteFlickStates[0].drawableResId,
+                    keyId = "delete_key",
+                    keyType = KeyType.CROSS_FLICK
+                )
+            } else {
+                KeyData(
+                    "Del",
+                    0,
+                    4,
+                    false,
+                    KeyAction.Delete,
+                    isSpecialKey = true,
+                    rowSpan = 1,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            }, KeyData(
+                spaceConvertStates[0].label ?: "",
+                1,
+                4,
+                true,
+                spaceConvertStates[0].action,
+                dynamicStates = spaceConvertStates,
+                isSpecialKey = true,
+                rowSpan = 1,
+                keyId = "space_convert_key",
+                keyType = KeyType.CROSS_FLICK
+            ), KeyData(
+                "CursorMoveLeft",
+                2,
+                4,
+                false,
+                KeyAction.MoveCursorRight,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
+                keyType = KeyType.CROSS_FLICK,
+            ), KeyData(
+                enterKeyStates[0].label ?: "",
+                3,
+                4,
+                false,
+                enterKeyStates[0].action,
+                dynamicStates = enterKeyStates,
+                isSpecialKey = true,
+                rowSpan = 1,
+                drawableResId = enterKeyStates[0].drawableResId,
+                keyId = "enter_key"
+            )
+        )
         when (inputStyle) {
             "second-flick" -> {
-                val keys = listOf(
-                    KeyData(
-                        "SwitchToNumber",
-                        0,
-                        0,
-                        false,
-                        KeyAction.SwitchToNumberLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
-                    ), KeyData(
-                        "SwitchToEnglish",
-                        1,
-                        0,
-                        false,
-                        KeyAction.SwitchToEnglishLayout,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
-                    ), KeyData(
-                        "SwitchToKana",
-                        2,
-                        0,
-                        false,
-                        KeyAction.SwitchToKanaLayout,
-                        isSpecialKey = true,
-                        isHiLighted = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
-                    ), KeyData(
-                        "",
-                        3,
-                        0,
-                        false,
-                        KeyAction.SwitchToNextIme,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
-                        keyId = "switch_next_ime"
-                    ), KeyData(
-                        "あ", 0, 1, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "か", 0, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "さ", 0, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "た", 1, 1, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "な", 1, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "は", 1, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "ま", 2, 1, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "や", 2, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "ら", 2, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        dakutenToggleStates[0].label ?: "",
-                        3,
-                        1,
-                        false,
-                        dakutenToggleStates[0].action,
-                        dynamicStates = dakutenToggleStates,
-                        keyId = "dakuten_toggle_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        "わ", 3, 2, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), KeyData(
-                        "、。?!", 3, 3, true, keyType = when (inputStyle) {
-                            "default" -> KeyType.PETAL_FLICK
-                            "circle" -> KeyType.STANDARD_FLICK
-                            "second-flick" -> KeyType.TWO_STEP_FLICK
-                            "sumire" -> KeyType.CIRCULAR_FLICK
-                            else -> KeyType.PETAL_FLICK
-                        }
-                    ), if (isFlickDeleteEnabled) {
-                        KeyData(
-                            "Del",
-                            0,
-                            4,
-                            false,
-                            deleteFlickStates[0].action,
-                            isSpecialKey = true,
-                            rowSpan = 1,
-                            drawableResId = deleteFlickStates[0].drawableResId,
-                            keyId = "delete_key",
-                            keyType = KeyType.CROSS_FLICK
-                        )
-                    } else {
-                        KeyData(
-                            "Del",
-                            0,
-                            4,
-                            false,
-                            KeyAction.Delete,
-                            isSpecialKey = true,
-                            rowSpan = 1,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                        )
-                    }, KeyData(
-                        spaceConvertStates[0].label ?: "",
-                        1,
-                        4,
-                        true,
-                        spaceConvertStates[0].action,
-                        dynamicStates = spaceConvertStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        keyId = "space_convert_key",
-                        keyType = KeyType.CROSS_FLICK
-                    ), KeyData(
-                        "CursorMoveLeft",
-                        2,
-                        4,
-                        false,
-                        KeyAction.MoveCursorRight,
-                        isSpecialKey = true,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
-                        keyType = KeyType.CROSS_FLICK,
-                    ), KeyData(
-                        enterKeyStates[0].label ?: "",
-                        3,
-                        4,
-                        false,
-                        enterKeyStates[0].action,
-                        dynamicStates = enterKeyStates,
-                        isSpecialKey = true,
-                        rowSpan = 1,
-                        drawableResId = enterKeyStates[0].drawableResId,
-                        keyId = "enter_key"
-                    )
-                )
                 val pasteActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.Paste,
@@ -4807,6 +4877,147 @@ object KeyboardDefaultLayouts {
                 )
 
                 return KeyboardLayout(keys, flickMaps, 5, 4, twoStepFlickKeyMaps = twoStepFlickMaps)
+            }
+
+            "third-flick" -> {
+
+                val pasteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Paste,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_paste_24px
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.SelectAll,
+                        drawableResId = com.kazumaproject.core.R.drawable.text_select_start_24dp
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.Copy,
+                        drawableResId = com.kazumaproject.core.R.drawable.content_copy_24dp
+                    )
+                )
+
+                val cursorLeftActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val cursorRightActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val spaceActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Space,
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.Space,
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+                    )
+                )
+
+                val conversionActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Convert,
+                    ),
+                )
+
+                // 状態0 (^_^): タップ操作のみを持つマップ
+                val emojiStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.InputText("^_^"), label = "^_^"
+                    )
+                    // この状態ではフリックアクションを定義しない
+                )
+                // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
+                val dakutenStateFlickMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.ToggleDakuten, label = " 小゛゜"
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.InputText("ひらがな小文字"), label = "小"
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.InputText("濁点"), label = "゛"
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.InputText("半濁点"), label = "゜"
+                    )
+                )
+
+                val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+                    if (isFlickDeleteEnabled) {
+                        val deleteActionMap = mapOf(
+                            FlickDirection.TAP to FlickAction.Action(
+                                KeyAction.Delete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                                KeyAction.DeleteUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            )
+                        )
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                            "Del" to listOf(deleteActionMap)
+                        )
+                    } else {
+                        mutableMapOf(
+                            "PasteActionKey" to listOf(pasteActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                        )
+                    }
+
+                dakutenToggleStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(emojiStateFlickMap))
+                }
+                dakutenToggleStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(dakutenStateFlickMap))
+                }
+
+                spaceConvertStates.getOrNull(0)?.label?.let { label ->
+                    flickMaps.put(label, listOf(spaceActionMap))
+                }
+
+                spaceConvertStates.getOrNull(1)?.label?.let { label ->
+                    flickMaps.put(label, listOf(conversionActionMap))
+                }
+
+                val hierarchicalFlickMaps = createHierarchicalFlickMaps()
+
+                return KeyboardLayout(
+                    keys,
+                    flickMaps,
+                    5,
+                    4,
+                    hierarchicalFlickMaps = hierarchicalFlickMaps
+                )
             }
 
             "sumire" -> {
