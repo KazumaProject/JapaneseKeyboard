@@ -4136,9 +4136,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
-                    KeyAction.SwitchToEnglishLayout -> {}
-                    KeyAction.SwitchToKanaLayout -> {}
-                    KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.SwitchToEnglishLayout -> {
+                        customKeyboardMode = KeyboardInputMode.ENGLISH
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeEnglish
+                        mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
+                    KeyAction.SwitchToKanaLayout -> {
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeJapanese
+                        mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
+                    KeyAction.SwitchToNumberLayout -> {
+                        customKeyboardMode = KeyboardInputMode.SYMBOLS
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeNumber
+                        mainView.keyboardView.setCurrentMode(inputMode)
+                    }
+
                     KeyAction.ShiftKey -> {}
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
