@@ -468,14 +468,15 @@ class TfbiHierarchicalFlickController(
 
         // Petal（周囲）に表示する文字
         val petalChars = if (showPetals) {
-            rootM.mapValues { (dir, node) ->
-                if (dir == TfbiFlickDirection.TAP) "" else { // TAPは除外
+            rootM
+                .filterKeys { it != TfbiFlickDirection.TAP }
+                .mapValues { (dir, node) ->
                     when (node) {
                         is TfbiFlickNode.Input -> node.char
                         is TfbiFlickNode.SubMenu -> {
                             node.label
                                 ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                                ?: "..."
+                                ?: "" // ← 前回の修正（"..." → ""）を反映
                         }
 
                         is TfbiFlickNode.StatefulKey -> {
@@ -484,7 +485,6 @@ class TfbiHierarchicalFlickController(
                         }
                     }
                 }
-            }
         } else {
             emptyMap()
         }
@@ -528,14 +528,15 @@ class TfbiHierarchicalFlickController(
         }
 
         // 周囲に表示する文字
-        val petalChars = map.mapValues { (dir, node) ->
-            if (dir == TfbiFlickDirection.TAP) "" else { // TAPは除外
+        val petalChars = map
+            .filterKeys { it != TfbiFlickDirection.TAP } // ★ TAPキー自体をマップから除外
+            .mapValues { (dir, node) -> // dir に TAP はもう含まれない
                 when (node) {
                     is TfbiFlickNode.Input -> node.char
                     is TfbiFlickNode.SubMenu -> {
                         node.label
                             ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                            ?: "..."
+                            ?: "" // ← 前回の修正（"..." → ""）を反映
                     }
 
                     is TfbiFlickNode.StatefulKey -> {
@@ -544,7 +545,6 @@ class TfbiHierarchicalFlickController(
                     }
                 }
             }
-        }
 
         popupView?.setCharacters(tapCharacter, petalChars)
     }
