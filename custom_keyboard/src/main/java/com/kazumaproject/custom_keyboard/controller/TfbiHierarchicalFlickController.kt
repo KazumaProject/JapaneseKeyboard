@@ -212,12 +212,15 @@ class TfbiHierarchicalFlickController(
                     currentMap = mapStack.peek()
                     currentHighlight = highlightStack.peek() // 親のハイライト(TAP)
 
+                    // ★ 修正点 (Fix 3) ★
                     // UIを親マップに戻す
-                    if (mapStack.size == 1) {
-                        showPopup(attachedView!!, false)
-                    } else {
-                        setupStageUI(currentMap!!)
-                    }
+                    // mapStack.size == 1 (root) であっても、
+                    // 既に存在する popupView の内容を更新する必要があるため、
+                    // setupStageUI を呼ぶ。
+                    // showPopup(..., false) は ACTION_DOWN 以外では
+                    // 早期リターンしてしまうため使えない。
+                    setupStageUI(currentMap!!)
+
                     popupView?.highlightDirection(currentHighlight)
                     return // イベント処理終了
                 }
@@ -469,14 +472,14 @@ class TfbiHierarchicalFlickController(
         // Petal（周囲）に表示する文字
         val petalChars = if (showPetals) {
             rootM
-                .filterKeys { it != TfbiFlickDirection.TAP }
-                .mapValues { (dir, node) ->
+                .filterKeys { it != TfbiFlickDirection.TAP } // ★ 修正点 (Fix 2): TAPキー自体をマップから除外
+                .mapValues { (dir, node) -> // dir に TAP はもう含まれない
                     when (node) {
                         is TfbiFlickNode.Input -> node.char
                         is TfbiFlickNode.SubMenu -> {
                             node.label
                                 ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                                ?: "" // ← 前回の修正（"..." → ""）を反映
+                                ?: "" // ★ 修正点 (Fix 1): "..." を "" に変更
                         }
 
                         is TfbiFlickNode.StatefulKey -> {
@@ -529,14 +532,14 @@ class TfbiHierarchicalFlickController(
 
         // 周囲に表示する文字
         val petalChars = map
-            .filterKeys { it != TfbiFlickDirection.TAP } // ★ TAPキー自体をマップから除外
+            .filterKeys { it != TfbiFlickDirection.TAP } // ★ 修正点 (Fix 2): TAPキー自体をマップから除外
             .mapValues { (dir, node) -> // dir に TAP はもう含まれない
                 when (node) {
                     is TfbiFlickNode.Input -> node.char
                     is TfbiFlickNode.SubMenu -> {
                         node.label
                             ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                            ?: "" // ← 前回の修正（"..." → ""）を反映
+                            ?: "" // ★ 修正点 (Fix 1): "..." を "" に変更
                     }
 
                     is TfbiFlickNode.StatefulKey -> {

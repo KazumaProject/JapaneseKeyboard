@@ -8098,7 +8098,8 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
                 TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("が"),
             ),
-            cancelOnTap = true
+            cancelOnTap = true,
+            label = "が"
         )
 
         val subMenu_ZA = TfbiFlickNode.SubMenu(
@@ -8106,7 +8107,8 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
                 TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ざ"),
             ),
-            cancelOnTap = true
+            cancelOnTap = true,
+            label = "ざ"
         )
 
         val subMenu_DA = TfbiFlickNode.SubMenu(
@@ -8114,7 +8116,7 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to TfbiFlickNode.Input("た"),
                 TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("だ"),
             ),
-            cancelOnTap = true
+            cancelOnTap = true, label = "だ"
         )
 
         val subMenu_BA = TfbiFlickNode.SubMenu(
@@ -8122,7 +8124,8 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
                 TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ば"),
             ),
-            cancelOnTap = true
+            cancelOnTap = true,
+            label = "ば"
         )
 
         val subMenu_PA = TfbiFlickNode.SubMenu(
@@ -8130,7 +8133,8 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
                 TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぱ"),
             ),
-            cancelOnTap = true
+            cancelOnTap = true,
+            label = "ぱ"
         )
 
         val subMenu_GU = TfbiFlickNode.SubMenu(
