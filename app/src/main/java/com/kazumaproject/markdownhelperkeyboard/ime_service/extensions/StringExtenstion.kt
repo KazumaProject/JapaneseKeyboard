@@ -530,3 +530,44 @@ fun createValueBasedSymbolCandidates(numberValue: Long, inputLength: UByte): Lis
         )
     }
 }
+
+fun String.containsDigit(): Boolean {
+    return this.any { it.isDigit() }
+}
+
+/**
+ * この文字列に含まれる全角数字（０〜９）を
+ * 対応する半角数字（0-9）に変換します。
+ *
+ * 全角数字以外の文字はそのまま維持されます。
+ *
+ * @return 半角数字に変換された新しい文字列
+ */
+fun String.convertFullWidthNumbersToHalfWidth(): String {
+    // 文字列を1文字ずつ処理します
+    return this.map { char ->
+        // 現在の文字が全角数字の範囲内かチェック
+        if (char in '０'..'９') {
+            // 全角'０'と半角'0'のUnicodeコードポイントの差を利用して変換
+            // (例: '３'.code - '０'.code は 3 となる)
+            val numericValue = char.code - '０'.code
+
+            // 半角'0'のコードポイントにその差を足して、
+            // 対応する半角文字に変換
+            ('0'.code + numericValue).toChar()
+        } else {
+            // 全角数字でなければ、その文字をそのまま返す
+            char
+        }
+    }.joinToString("") // 処理後の文字リストを結合して文字列に戻す
+}
+
+/**
+ * この文字列に全角数字（０〜９）が1文字以上含まれているかを確認します。
+ * * @return 全角数字が含まれていれば true、そうでなければ false
+ */
+fun String.containsFullWidthNumber(): Boolean {
+    // '０' (U+FF10) から '９' (U+FF19) までの文字が
+    // 1文字でも含まれているかをチェックします。
+    return this.any { it in '０'..'９' }
+}
