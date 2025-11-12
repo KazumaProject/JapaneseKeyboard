@@ -22,6 +22,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsDigit
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsFullWidthNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFullWidthNumbersToHalfWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createValueBasedSymbolCandidates
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.groupAndReplaceJapaneseForNumber
@@ -728,9 +731,18 @@ class KanaKanjiEngine {
             return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
+        if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val finalList =
+                resultWithHankaku.sortedBy { it.score }
+            // 3. Combine and return all generated candidates.
+            return finalList
+        }
+
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
+            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -1233,9 +1245,20 @@ class KanaKanjiEngine {
             return Pair(finalList, resultNBestFinalDeferred.second)
         }
 
+        if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+
+            val finalList =
+                resultWithHankaku.first.sortedBy { it.score }
+
+            // 3. Combine and return all generated candidates.
+            return Pair(finalList, resultWithHankaku.second)
+        }
+
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
+            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -1747,9 +1770,18 @@ class KanaKanjiEngine {
             return Pair(finalList, resultNBestFinalDeferred.second)
         }
 
+        if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val finalList =
+                resultWithHankaku.first.sortedBy { it.score }
+
+            return Pair(finalList, resultWithHankaku.second)
+        }
+
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
+            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -2200,9 +2232,20 @@ class KanaKanjiEngine {
             return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
+        if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+
+            val finalList =
+                resultWithHankaku.sortedBy { it.score }
+
+            // 3. Combine and return all generated candidates.
+            return finalList
+        }
+
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
+            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
         )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
@@ -2659,9 +2702,17 @@ class KanaKanjiEngine {
             return resultNBestFinalDeferred + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
         }
 
+        if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+            val finalList =
+                resultWithHankaku.sortedBy { it.score }
+            return finalList
+        }
+
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
+            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -3119,9 +3170,20 @@ class KanaKanjiEngine {
             return Pair(finalList, resultNBestFinalDeferred.second)
         }
 
+        if (input.containsDigit() && input.containsFullWidthNumber()) {
+            val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
+
+            val finalList =
+                resultWithHankaku.first.sortedBy { it.score }
+
+            // 3. Combine and return all generated candidates.
+            return Pair(finalList, resultWithHankaku.second)
+        }
+
         val hirakanaAndKana = listOf(
             Candidate(input, 3, input.length.toUByte(), 6000),
-            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000)
+            Candidate(input.hiraToKata(), 4, input.length.toUByte(), 6000),
+            Candidate(input.toHankakuKatakana(), 31, input.length.toUByte(), 6000)
         )
 
         val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
@@ -4282,5 +4344,91 @@ class KanaKanjiEngine {
         }
     }
 
+    /**
+     * Candidate リストを処理し、
+     * string に全角数字が含まれる場合、それを半角数字に変換した
+     * 新しい Candidate をリストに追加します。
+     *
+     * @param originalData 元の Pair<List<Candidate>, List<Int>>
+     * @return 元の候補と、半角変換された候補の両方を含む新しい Pair
+     */
+    private fun addHalfWidthCandidates(
+        originalData: Pair<List<Candidate>, List<Int>>
+    ): Pair<List<Candidate>, List<Int>> {
+
+        val originalList = originalData.first
+        val intList = originalData.second
+
+        // flatMap を使ってリストを変換・拡張します
+        val newList = originalList.flatMap { candidate ->
+            // 1. string に全角数字が含まれているかチェック
+            if (candidate.string.containsFullWidthNumber()) {
+
+                // 2. 全角数字を半角に変換
+                val newString = candidate.string.convertFullWidthNumbersToHalfWidth()
+
+                // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
+                val newCandidate = candidate.copy(
+                    string = newString,
+                    type = 31,
+                    score = candidate.score + 6000
+                    // type, length, score など他のプロパティはそのままコピーされます
+                )
+
+                // 4. 元の候補 (例: １８時) と、
+                //    新しい候補 (例: 18時) の両方をリストとして返す
+                listOf(candidate, newCandidate)
+
+            } else {
+                // 5. 全角数字を含まない場合は、元の候補だけをリストとして返す
+                listOf(candidate)
+            }
+        }.distinct() // 最後にリスト全体の重複を除去します
+
+        // 6. 新しく作成した候補リストと、元の Int リストで Pair を再構築して返す
+        return Pair(newList, intList)
+    }
+
+    /**
+     * Candidate リストを処理し、
+     * string に全角数字が含まれる場合、それを半角数字に変換した
+     * 新しい Candidate をリストに追加します。
+     *
+     * @param originalList 元の List<Candidate>
+     * @return 元の候補と、半角変換された候補の両方を含む新しい List
+     */
+    private fun addHalfWidthCandidates(
+        originalList: List<Candidate>
+    ): List<Candidate> {
+
+        // flatMap を使ってリストを変換・拡張します
+        val newList = originalList.flatMap { candidate ->
+            // 1. string に全角数字が含まれているかチェック
+            if (candidate.string.containsFullWidthNumber()) {
+
+                // 2. 全角数字を半角に変換
+                val newString = candidate.string.convertFullWidthNumbersToHalfWidth()
+
+                // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
+                val newCandidate = candidate.copy(
+                    string = newString,
+                    type = 31,
+                    score = candidate.score + 6000
+                    // type, length, score など他のプロパティはそのままコピーされます
+                )
+
+                // 4. 元の候補 (例: １８時) と、
+                //    新しい候補 (例: 18時) の両方をリストとして返す
+                listOf(candidate, newCandidate)
+
+            } else {
+                // 5. 全角数字を含まない場合は、元の候補だけをリストとして返す
+                listOf(candidate)
+            }
+        }.distinct() // 最後にリスト全体の重複を除去します
+
+        // 6. 新しく作成した候補リストを返す
+        return newList
+    }
 
 }
