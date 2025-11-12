@@ -4894,32 +4894,13 @@ object KeyboardDefaultLayouts {
                     )
                 )
 
-                val cursorLeftActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
-                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
-                        KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
-                    ), FlickDirection.UP to FlickAction.Action(
-                        KeyAction.MoveCursorUp,
-                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
-                    ), FlickDirection.DOWN to FlickAction.Action(
-                        KeyAction.MoveCursorDown,
-                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
-                    )
-                )
-
-                val cursorRightActionMap = mapOf(
+                val cursorMoveActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
                         KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                     ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
@@ -4982,15 +4963,13 @@ object KeyboardDefaultLayouts {
                         )
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
-                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
-                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
                             "Del" to listOf(deleteActionMap)
                         )
                     } else {
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
-                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
-                            "CursorMoveRight" to listOf(cursorRightActionMap),
+                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
                         )
                     }
 
@@ -8636,7 +8615,9 @@ object KeyboardDefaultLayouts {
                 ),
                 TfbiFlickDirection.RIGHT to TfbiFlickNode.Input(
                     char = "ぼう",
-                    triggersMode = KeyMode.DAKUTEN
+                ),
+                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input(
+                    char = "6",
                 ),
             )
         )
@@ -8710,7 +8691,9 @@ object KeyboardDefaultLayouts {
                 ),
                 TfbiFlickDirection.LEFT to TfbiFlickNode.Input(
                     char = "ぽう",
-                    triggersMode = KeyMode.HANDAKUTEN
+                ),
+                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input(
+                    char = "6",
                 ),
             )
         )
