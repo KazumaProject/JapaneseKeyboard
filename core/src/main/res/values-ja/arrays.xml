@@ -28,6 +28,7 @@
         <item>通常入力</item>
         <item>サークル入力</item>
         <item>２段フリック入力</item>
+        <item>３段フリック入力</item>
         <item>スミレ入力</item>
     </string-array>
 
@@ -35,6 +36,7 @@
         <item>default</item>
         <item>circle</item>
         <item>second-flick</item>
+        <item>third-flick</item>
         <item>sumire</item>
     </string-array>
 

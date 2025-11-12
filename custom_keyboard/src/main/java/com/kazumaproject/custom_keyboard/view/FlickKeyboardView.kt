@@ -26,6 +26,8 @@ import com.kazumaproject.custom_keyboard.controller.FlickInputController
 import com.kazumaproject.custom_keyboard.controller.PetalFlickInputController
 import com.kazumaproject.custom_keyboard.controller.PopupPosition
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
+import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
+import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -59,6 +61,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
     private val tfbiControllers = mutableListOf<TfbiInputController>()
+    private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
+    private val hierarchicalTfbiControllers = mutableListOf<TfbiHierarchicalFlickController>()
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
@@ -125,6 +129,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         petalFlickControllers.clear()
         tfbiControllers.forEach { it.cancel() }
         tfbiControllers.clear()
+        stickyTfbiControllers.forEach { it.cancel() }
+        stickyTfbiControllers.clear()
+        hierarchicalTfbiControllers.forEach { it.cancel() }
+        hierarchicalTfbiControllers.clear()
+
         dynamicKeyMap.clear()
         currentLayout = layout
 
@@ -649,6 +658,106 @@ class FlickKeyboardView @JvmOverloads constructor(
                     return controller
                 }
             }
+
+            KeyType.STICKY_TWO_STEP_FLICK -> {
+                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
+                if (twoStepMap != null) {
+                    // ★ ここで TfbiStickyFlickController をインスタンス化
+                    val controller = TfbiStickyFlickController(
+                        context,
+                        flickSensitivity = flickSensitivity.toFloat()
+                    ).apply {
+                        // ★ TfbiStickyFlickController.TfbiListener を実装
+                        this.listener = object : TfbiStickyFlickController.TfbiListener {
+                            override fun onFlick(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                val character = twoStepMap[first]?.get(second) ?: ""
+                                Log.d(
+                                    "FlickKeyboardView KeyType.STICKY_TWO_STEP_FLICK",
+                                    "$character $first $second"
+                                )
+                                if (character.isNotEmpty()) {
+                                    this@FlickKeyboardView.listener?.onKey(
+                                        text = character,
+                                        isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
+                                    )
+                                }
+                            }
+                        }
+                        attach(
+                            view = keyView,
+                            provider = { first, second ->
+                                twoStepMap[first]?.get(second) ?: ""
+                            }
+                        )
+                    }
+                    stickyTfbiControllers.add(controller) // 新しいリストに追加
+                    return controller
+                }
+            }
+
+            KeyType.HIERARCHICAL_FLICK -> {
+                // [修正点 1] hierarchicalFlickMaps から StatefulKey を取得
+                val statefulNode = layout.hierarchicalFlickMaps[keyData.label]
+
+                if (statefulNode != null) {
+                    Log.d(
+                        "AttachBehavior",
+                        "-> Attaching TfbiHierarchicalFlickController for ${keyData.label}"
+                    )
+                    val controller = TfbiHierarchicalFlickController(
+                        context,
+                        flickSensitivity = flickSensitivity.toFloat()
+                    ).apply {
+
+                        // [修正点 2] onFlick と onModeChanged の両方を実装
+                        this.listener = object : TfbiHierarchicalFlickController.TfbiListener {
+                            override fun onFlick(character: String) {
+                                Log.d(
+                                    "FlickKeyboardView KeyType.HIERARCHICAL_FLICK",
+                                    "Char: $character"
+                                )
+                                if (character.isNotEmpty()) {
+                                    this@FlickKeyboardView.listener?.onKey(
+                                        text = character,
+                                        isFlick = true // 階層フリックは常true
+                                    )
+                                }
+                            }
+
+                            override fun onModeChanged(newLabel: String) {
+                                Log.d(
+                                    "FlickKeyboardView",
+                                    "onModeChanged: keyId=${keyData.keyId}, newLabel=$newLabel"
+                                )
+
+                                // 1. dynamicKeyMap のキャッシュを更新 (存在する場合)
+                                keyData.keyId?.let { id ->
+                                    dynamicKeyMap[id]?.let { info ->
+                                        info.keyData = info.keyData.copy(label = newLabel)
+                                    }
+                                }
+
+                                // 2. 実際のViewの表示を更新
+                                val newVisualKeyData = keyData.copy(label = newLabel)
+                                updateKeyVisuals(keyView, newVisualKeyData)
+                            }
+                        }
+
+                        // [修正点 3]
+                        attach(keyView, statefulNode)
+                    }
+                    hierarchicalTfbiControllers.add(controller)
+                    return controller
+                } else {
+                    Log.e(
+                        "AttachBehavior",
+                        "-> FAILED HIERARCHICAL_FLICK: statefulNode is NULL for key '${keyData.label}'"
+                    )
+                }
+            }
         }
         return null
     }
@@ -680,6 +789,16 @@ class FlickKeyboardView @JvmOverloads constructor(
             is TfbiInputController -> {
                 controller.cancel()
                 tfbiControllers.remove(controller)
+            }
+
+            is TfbiStickyFlickController -> {
+                controller.cancel()
+                stickyTfbiControllers.remove(controller)
+            }
+
+            is TfbiHierarchicalFlickController -> {
+                controller.cancel()
+                hierarchicalTfbiControllers.remove(controller)
             }
         }
     }
@@ -1083,6 +1202,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         standardFlickControllers.forEach { it.cancel() }
         petalFlickControllers.forEach { it.cancel() }
         tfbiControllers.forEach { it.cancel() }
+        stickyTfbiControllers.forEach { it.cancel() }
+        hierarchicalTfbiControllers.forEach { it.cancel() }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {

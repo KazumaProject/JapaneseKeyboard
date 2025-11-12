@@ -30,6 +30,7 @@
         <item>Normal input</item>
         <item>Circle input</item>
         <item>Two-step flick input</item>
+        <item>Three-step flick input</item>
         <item>Sumire input</item>
     </string-array>
 
@@ -37,6 +38,7 @@
         <item>default</item>
         <item>circle</item>
         <item>second-flick</item>
+        <item>third-flick</item>
         <item>sumire</item>
     </string-array>
 
