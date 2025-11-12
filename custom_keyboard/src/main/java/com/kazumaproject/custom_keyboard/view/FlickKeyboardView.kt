@@ -26,6 +26,7 @@ import com.kazumaproject.custom_keyboard.controller.FlickInputController
 import com.kazumaproject.custom_keyboard.controller.PetalFlickInputController
 import com.kazumaproject.custom_keyboard.controller.PopupPosition
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
+import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -59,6 +60,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
     private val tfbiControllers = mutableListOf<TfbiInputController>()
+    private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
@@ -125,6 +127,10 @@ class FlickKeyboardView @JvmOverloads constructor(
         petalFlickControllers.clear()
         tfbiControllers.forEach { it.cancel() }
         tfbiControllers.clear()
+        stickyTfbiControllers.forEach { it.cancel() }
+        stickyTfbiControllers.clear()
+
+
         dynamicKeyMap.clear()
         currentLayout = layout
 
@@ -649,6 +655,47 @@ class FlickKeyboardView @JvmOverloads constructor(
                     return controller
                 }
             }
+
+            KeyType.STICKY_TWO_STEP_FLICK -> {
+                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
+                if (twoStepMap != null) {
+                    // ★ ここで TfbiStickyFlickController をインスタンス化
+                    val controller = TfbiStickyFlickController(
+                        context,
+                        flickSensitivity = flickSensitivity.toFloat()
+                    ).apply {
+                        // ★ TfbiStickyFlickController.TfbiListener を実装
+                        this.listener = object : TfbiStickyFlickController.TfbiListener {
+                            override fun onFlick(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                val character = twoStepMap[first]?.get(second) ?: ""
+                                Log.d(
+                                    "FlickKeyboardView KeyType.STICKY_TWO_STEP_FLICK",
+                                    "$character $first $second"
+                                )
+                                if (character.isNotEmpty()) {
+                                    this@FlickKeyboardView.listener?.onKey(
+                                        text = character,
+                                        isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
+                                    )
+                                }
+                            }
+                        }
+                        attach(
+                            view = keyView,
+                            provider = { first, second ->
+                                twoStepMap[first]?.get(second) ?: ""
+                            }
+                        )
+                    }
+                    stickyTfbiControllers.add(controller) // 新しいリストに追加
+                    return controller
+                }
+            }
+
+            KeyType.HIERARCHICAL_FLICK -> return null
         }
         return null
     }
@@ -681,6 +728,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                 controller.cancel()
                 tfbiControllers.remove(controller)
             }
+
+            is TfbiStickyFlickController -> {
+                controller.cancel()
+                stickyTfbiControllers.remove(controller)
+            }
+
         }
     }
 
@@ -1083,6 +1136,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         standardFlickControllers.forEach { it.cancel() }
         petalFlickControllers.forEach { it.cancel() }
         tfbiControllers.forEach { it.cancel() }
+        stickyTfbiControllers.forEach { it.cancel() }
+
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
