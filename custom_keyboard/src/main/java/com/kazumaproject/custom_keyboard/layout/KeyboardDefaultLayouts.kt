@@ -8616,9 +8616,6 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.RIGHT to TfbiFlickNode.Input(
                     char = "ぼう",
                 ),
-                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input(
-                    char = "6",
-                ),
             )
         )
 
