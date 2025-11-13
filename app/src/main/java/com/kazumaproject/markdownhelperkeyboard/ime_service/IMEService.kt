@@ -580,6 +580,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isDefaultRomajiHenkanMap = false
 
+    private var bunsetusMultipleDetect = false
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -3390,6 +3392,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isHenkan.get()) {
             cancelHenkanByLongPressDeleteKey()
             hasConvertedKatakana = isLiveConversionEnable == true
+            bunsetusMultipleDetect = false
         } else {
             onDeleteLongPressUp.set(true)
             deleteLongPress()
@@ -9527,8 +9530,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
-
-    private var bunsetusMultipleDetect = false
 
     private fun handleJapaneseModeSpaceKeyWithBunsetsu(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
