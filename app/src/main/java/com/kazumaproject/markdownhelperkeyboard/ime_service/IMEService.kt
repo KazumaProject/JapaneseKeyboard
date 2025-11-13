@@ -1558,6 +1558,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when {
             // Caret at top and tail exists → clear everything
             hasTail && caretTop -> {
+                Timber.d("onUpdateSelection hasTail && caretTop: $tail $caretTop")
                 stringInTail.set("")
                 if (_inputString.value.isNotEmpty()) {
                     _inputString.update { "" }
@@ -1571,12 +1572,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // Caret moved while tail exists → commit tail
             hasTail -> {
+                Timber.d("onUpdateSelection hasTail : $tail $caretTop")
                 _inputString.update { tail }
                 stringInTail.set("")
             }
 
+            !hasTail && !caretTop -> {
+                scope.launch {
+                    _suggestionFlag.emit(CandidateShowFlag.Idle)
+                }
+            }
+
             // No tail but still holding input → cleanup
             _inputString.value.isNotEmpty() -> {
+                Timber.d("onUpdateSelection _inputString.value.isNotEmpty() : $tail $caretTop")
                 _inputString.update { "" }
                 beginBatchEdit()
                 setComposingText("", 0)
