@@ -4042,8 +4042,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateKeyboardLayout()
                     }
 
+                    KeyAction.Space -> {
+                        mainView.customLayoutDefault.setCursorMode(true)
+                    }
+
                     KeyAction.Convert, KeyAction.Space -> {
-                        handleSpaceLongActionSumire()
+                        if (conversionKeySwipePreference == true) {
+                            if (!isHenkan.get()) {
+                                mainView.customLayoutDefault.setCursorMode(true)
+                            }
+                        } else {
+                            handleSpaceLongActionSumire()
+                        }
                     }
 
                     KeyAction.Copy -> {
