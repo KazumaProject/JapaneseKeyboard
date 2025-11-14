@@ -580,6 +580,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isDefaultRomajiHenkanMap = false
 
+    private var bunsetusMultipleDetect = false
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -1556,6 +1558,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when {
             // Caret at top and tail exists → clear everything
             hasTail && caretTop -> {
+                Timber.d("onUpdateSelection hasTail && caretTop: $tail $caretTop")
                 stringInTail.set("")
                 if (_inputString.value.isNotEmpty()) {
                     _inputString.update { "" }
@@ -1569,12 +1572,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // Caret moved while tail exists → commit tail
             hasTail -> {
+                Timber.d("onUpdateSelection hasTail : $tail $caretTop")
                 _inputString.update { tail }
                 stringInTail.set("")
             }
 
+            !hasTail && !caretTop -> {
+                scope.launch {
+                    _suggestionFlag.emit(CandidateShowFlag.Idle)
+                }
+            }
+
             // No tail but still holding input → cleanup
             _inputString.value.isNotEmpty() -> {
+                Timber.d("onUpdateSelection _inputString.value.isNotEmpty() : $tail $caretTop")
                 _inputString.update { "" }
                 beginBatchEdit()
                 setComposingText("", 0)
@@ -3390,6 +3401,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isHenkan.get()) {
             cancelHenkanByLongPressDeleteKey()
             hasConvertedKatakana = isLiveConversionEnable == true
+            bunsetusMultipleDetect = false
         } else {
             onDeleteLongPressUp.set(true)
             deleteLongPress()
@@ -4039,8 +4051,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateKeyboardLayout()
                     }
 
+                    KeyAction.Space -> {
+                        mainView.customLayoutDefault.setCursorMode(true)
+                    }
+
                     KeyAction.Convert, KeyAction.Space -> {
-                        handleSpaceLongActionSumire()
+                        if (conversionKeySwipePreference == true) {
+                            if (!isHenkan.get()) {
+                                mainView.customLayoutDefault.setCursorMode(true)
+                            }
+                        } else {
+                            handleSpaceLongActionSumire()
+                        }
                     }
 
                     KeyAction.Copy -> {
@@ -9527,8 +9549,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         setConvertLetterInJapaneseFromButton(suggestions, true, mainView, insertString)
     }
-
-    private var bunsetusMultipleDetect = false
 
     private fun handleJapaneseModeSpaceKeyWithBunsetsu(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
