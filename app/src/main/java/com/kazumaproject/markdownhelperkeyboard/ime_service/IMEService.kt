@@ -9108,7 +9108,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val lastCandidateLength = if (isLiveConversionEnable == true) {
                         suggestionAdapter?.suggestions?.first()?.string?.length ?: 0
                     } else {
-                        insertString.length - 1
+                        insertString.length
                     }
                     getLeftContext().dropLast((lastCandidateLength))
                 } catch (e: Exception) {
