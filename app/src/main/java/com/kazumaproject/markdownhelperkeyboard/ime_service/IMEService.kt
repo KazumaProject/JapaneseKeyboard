@@ -420,6 +420,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyLandScapePositionPreferenceValue: Boolean? = true
     private var qwertyLandScapeBottomMarginPreferenceValue: Int? = 0
 
+    private var zenzEnableStatePreference: Boolean? = false
+    private var zenzProfilePreference: String? = ""
+
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
     )
@@ -761,6 +764,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyLandScapePositionPreferenceValue = qwerty_keyboard_position_landscape ?: true
             qwertyLandScapeBottomMarginPreferenceValue =
                 qwerty_keyboard_vertical_margin_bottom_landscape ?: 0
+
+            zenzEnableStatePreference = enable_zenz_preference
+            zenzProfilePreference = zenz_profile_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1182,6 +1188,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyLandScapeBottomMarginPreferenceValue = null
         qwertyLandScapePositionPreferenceValue = null
         qwertyLandScapeBottomMarginPreferenceValue = null
+
+        zenzEnableStatePreference = null
+        zenzProfilePreference = null
 
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -9090,25 +9099,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun resultFromZenz(
         insertString: String
     ): Deferred<List<Candidate>> {
-        val leftContext = if (insertString.length > 1) {
-            try {
-                val a = getLeftContext()
-                Timber.d("getResultFromZenz leftContext: leftContext: [$a] insertString: [$insertString] suggestion: [${suggestionAdapter?.suggestions?.first()?.string}]")
-                val lastCandidateLength = if (isLiveConversionEnable == true) {
-                    suggestionAdapter?.suggestions?.first()?.string?.length ?: 0
-                } else {
-                    insertString.length - 1
+        val resultFromZenz: Deferred<List<Candidate>> = ioScope.async {
+            if (zenzEnableStatePreference != true) {
+                return@async emptyList()
+            }
+            val leftContext = if (insertString.length > 1) {
+                try {
+                    val lastCandidateLength = if (isLiveConversionEnable == true) {
+                        suggestionAdapter?.suggestions?.first()?.string?.length ?: 0
+                    } else {
+                        insertString.length - 1
+                    }
+                    getLeftContext().dropLast((lastCandidateLength))
+                } catch (e: Exception) {
+                    Timber.e("Error resultFromZenz leftContext: ${e.stackTrace}")
+                    ""
                 }
-                a.dropLast((lastCandidateLength))
-            } catch (e: Exception) {
-                Timber.e("Error resultFromZenz leftContext: ${e.stackTrace}")
+            } else {
                 ""
             }
-        } else {
-            ""
-        }
-        Timber.d("resultFromZenz: $insertString leftContext: [$leftContext]")
-        val resultFromZenz: Deferred<List<Candidate>> = ioScope.async {
+            Timber.d("resultFromZenz: $insertString leftContext: [$leftContext]")
             if (!insertString.isAllHiraganaWithSymbols()) {
                 return@async emptyList<Candidate>()
             }
@@ -9118,7 +9128,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return@async listOf<Candidate>(
                 Candidate(
                     string = zenzEngine.generateWithContextAndConditions(
-                        profile = "",
+                        profile = zenzProfilePreference ?: "",
                         topic = "",
                         style = "",
                         preference = "",
