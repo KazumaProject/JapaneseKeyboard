@@ -29,8 +29,8 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 593
-        versionName "1.4.472"
+        versionCode 594
+        versionName "1.4.473"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -78,6 +78,7 @@ dependencies {
     implementation project(':tabletkey')
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
+    implementation project(':zenz')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.8'
     implementation 'androidx.emoji2:emoji2:1.5.0'
