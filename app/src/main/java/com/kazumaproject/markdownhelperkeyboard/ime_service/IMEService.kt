@@ -125,7 +125,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCh
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInEn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInJp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiragana
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
@@ -8989,7 +8989,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val resultFromZenz = resultFromZenz(insertString)
+        val result =
+            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -9085,21 +9087,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.distinctBy { it.string }
     }
 
-    private fun resultFromZenz(insertString: String): Deferred<List<Candidate>> {
+    private fun resultFromZenz(
+        insertString: String
+    ): Deferred<List<Candidate>> {
         val leftContext = if (insertString.length > 1) {
             try {
-                getLeftContext().dropLast(insertString.length - 1)
+                val a = getLeftContext()
+                Timber.d("getResultFromZenz leftContext: leftContext: [$a] insertString: [$insertString] suggestion: [${suggestionAdapter?.suggestions?.first()?.string}]")
+                val lastCandidateLength = if (isLiveConversionEnable == true) {
+                    suggestionAdapter?.suggestions?.first()?.string?.length ?: 0
+                } else {
+                    insertString.length - 1
+                }
+                a.dropLast((lastCandidateLength))
             } catch (e: Exception) {
-                Timber.e("resultFromZenz: ${e.stackTrace}")
+                Timber.e("Error resultFromZenz leftContext: ${e.stackTrace}")
                 ""
             }
         } else {
-            getLeftContext()
+            ""
         }
         Timber.d("resultFromZenz: $insertString leftContext: [$leftContext]")
         val resultFromZenz: Deferred<List<Candidate>> = ioScope.async {
-            if (!insertString.isAllHiragana()) {
+            if (!insertString.isAllHiraganaWithSymbols()) {
                 return@async emptyList<Candidate>()
+            }
+            if (insertString.length == 1) {
+                return@async emptyList()
             }
             return@async listOf<Candidate>(
                 Candidate(
@@ -9122,7 +9136,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun getLeftContext(): String {
         val ic = currentInputConnection ?: return ""
-
         // カーソル前のテキストを取得
         val charSequence = ic.getTextBeforeCursor(16, 0)
         val text = charSequence?.toString() ?: ""
@@ -9199,7 +9212,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
             )
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val resultFromZenz = resultFromZenz(insertString)
+        val result =
+            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
