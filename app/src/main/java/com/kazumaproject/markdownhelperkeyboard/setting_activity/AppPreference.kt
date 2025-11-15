@@ -187,6 +187,12 @@ object AppPreference {
     private val TENKEY_SHOW_IME_SWITCH_BUTTON =
         Pair("tenkey_show_switch_ime_button_preference", true)
 
+    private val ENABLE_ZENZ_PREFERENCE =
+        Pair("enable_ai_conversion_zenz_preference", false)
+
+    private val ZENZ_PROFILE_PREFERENCE =
+        Pair("zenz_profile_string_preference", "")
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -870,6 +876,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_SHOW_IME_SWITCH_BUTTON.first, value)
+        }
+
+    var enable_zenz_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_ZENZ_PREFERENCE.first,
+            ENABLE_ZENZ_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_ZENZ_PREFERENCE.first, value)
+        }
+
+    var zenz_profile_preference: String
+        get() = preferences.getString(
+            ZENZ_PROFILE_PREFERENCE.first,
+            ZENZ_PROFILE_PREFERENCE.second
+        ) ?: ""
+        set(value) = preferences.edit {
+            it.putString(ZENZ_PROFILE_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
