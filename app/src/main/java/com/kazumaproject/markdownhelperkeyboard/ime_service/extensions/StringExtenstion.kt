@@ -104,6 +104,13 @@ private fun Char.isHiragana(): Boolean =
 fun String.isAllHiragana(): Boolean =
     isNotEmpty() && all { it.isHiragana() }
 
+private fun Char.isHiraganaWithSymbols(): Boolean =
+    this in '\u3041'..'\u3096' || this == 'ー' || this == '-' || this == '？' || this == '?'
+            || this == '！' || this == '!' || this == '。' || this == '、'
+
+fun String.isAllHiraganaWithSymbols(): Boolean =
+    isNotEmpty() && all { it.isHiraganaWithSymbols() }
+
 // 数字かどうか
 fun Char.isNumber(): Boolean =
     this.isDigit()

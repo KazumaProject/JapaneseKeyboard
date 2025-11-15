@@ -125,6 +125,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getLastCh
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInEn
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInJp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
@@ -156,9 +157,11 @@ import com.kazumaproject.tenkey.extensions.getNextInputChar
 import com.kazumaproject.tenkey.extensions.getNextReturnInputChar
 import com.kazumaproject.tenkey.extensions.isHiragana
 import com.kazumaproject.tenkey.extensions.isLatinAlphabet
+import com.kazumaproject.zenz.ZenzEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -239,6 +242,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
+    @Inject
+    lateinit var zenzEngine: ZenzEngine
+
     private var shortcutAdapter: ShortcutAdapter? = null
 
     private var romajiConverter: RomajiKanaConverter? = null
@@ -316,6 +322,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val defaultScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var cachedEmoji: List<Emoji>? = null
     private var cachedEmoticons: List<Emoticon>? = null
@@ -412,6 +419,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyLandScapeBottomMarginPreferenceValue: Int? = 0
     private var qwertyLandScapePositionPreferenceValue: Boolean? = true
     private var qwertyLandScapeBottomMarginPreferenceValue: Int? = 0
+
+    private var zenzEnableStatePreference: Boolean? = false
+    private var zenzProfilePreference: String? = ""
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -754,6 +764,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyLandScapePositionPreferenceValue = qwerty_keyboard_position_landscape ?: true
             qwertyLandScapeBottomMarginPreferenceValue =
                 qwerty_keyboard_vertical_margin_bottom_landscape ?: 0
+
+            zenzEnableStatePreference = enable_zenz_preference
+            zenzProfilePreference = zenz_profile_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1175,6 +1188,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyLandScapeBottomMarginPreferenceValue = null
         qwertyLandScapePositionPreferenceValue = null
         qwertyLandScapeBottomMarginPreferenceValue = null
+
+        zenzEnableStatePreference = null
+        zenzProfilePreference = null
 
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -8982,7 +8998,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val resultFromZenz = resultFromZenz(insertString)
+        val result =
+            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -9064,7 +9082,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val resultFromZenz = resultFromZenz(insertString)
+        val result =
+            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -9074,6 +9094,65 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }.distinctBy { it.string }
+    }
+
+    private fun resultFromZenz(
+        insertString: String
+    ): Deferred<List<Candidate>> {
+        val resultFromZenz: Deferred<List<Candidate>> = ioScope.async {
+            if (zenzEnableStatePreference != true) {
+                return@async emptyList()
+            }
+            val leftContext = if (insertString.length > 1) {
+                try {
+                    val lastCandidateLength = if (isLiveConversionEnable == true) {
+                        suggestionAdapter?.suggestions?.first()?.string?.length ?: 0
+                    } else {
+                        insertString.length - 1
+                    }
+                    getLeftContext().dropLast((lastCandidateLength))
+                } catch (e: Exception) {
+                    Timber.e("Error resultFromZenz leftContext: ${e.stackTrace}")
+                    ""
+                }
+            } else {
+                ""
+            }
+            Timber.d("resultFromZenz: $insertString leftContext: [$leftContext]")
+            if (!insertString.isAllHiraganaWithSymbols()) {
+                return@async emptyList<Candidate>()
+            }
+            if (insertString.length == 1) {
+                return@async emptyList()
+            }
+            return@async listOf<Candidate>(
+                Candidate(
+                    string = zenzEngine.generateWithContextAndConditions(
+                        profile = zenzProfilePreference ?: "",
+                        topic = "",
+                        style = "",
+                        preference = "",
+                        leftContext = leftContext.ifEmpty { "" },
+                        input = insertString.hiraganaToKatakana()
+                    ),
+                    type = (33).toByte(),
+                    length = (insertString.length).toUByte(),
+                    score = 2000,
+                )
+            )
+        }
+        return resultFromZenz
+    }
+
+    private fun getLeftContext(): String {
+        val ic = currentInputConnection ?: return ""
+        // カーソル前のテキストを取得
+        val charSequence = ic.getTextBeforeCursor(16, 0)
+        val text = charSequence?.toString() ?: ""
+
+        // 改行記号 '\n' があれば、それより後ろの部分だけを返す。
+        // 改行がない場合は、テキスト全体が返されます。
+        return text.substringAfterLast('\n')
     }
 
     private suspend fun getSuggestionListWithoutPrediction(
@@ -9143,7 +9222,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
             )
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val resultFromZenz = resultFromZenz(insertString)
+        val result =
+            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true

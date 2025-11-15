@@ -21,6 +21,7 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.MozcLicen
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NeologdLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiTextLicense
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.ZenzLicense
 import de.psdev.licensesdialog.LicensesDialog
 import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20
 import de.psdev.licensesdialog.licenses.MITLicense
@@ -58,7 +59,9 @@ class OpenSourceFragment : Fragment() {
             "merge-ut-dictionaries",
             "Salesforce/wikitext",
             "com.afollestad.material-dialogs:core:3.3.0",
-            "com.afollestad.material-dialogs:color:3.3.0"
+            "com.afollestad.material-dialogs:color:3.3.0",
+            "Miwa-Keita/zenz-v3.1-xsmall-gguf",
+            "azooKey/llama.cpp"
         )
     }
 
@@ -275,6 +278,42 @@ class OpenSourceFragment : Fragment() {
                             )
                         LicensesDialog.Builder(requireContext())
                             .setTitle("com.afollestad.material-dialogs:color:3.3.0")
+                            .setNotices(notice)
+                            .build()
+                            .show()
+                    }
+
+                    29 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright = "Copyright 2025 Miwa-Keita"
+                        val license = ZenzLicense()
+                        val notice =
+                            Notice(
+                                name,
+                                "https://huggingface.co/Miwa-Keita/zenz-v3.1-xsmall-gguf",
+                                copyright,
+                                license
+                            )
+                        LicensesDialog.Builder(requireContext())
+                            .setTitle("Miwa-Keita/zenz-v3.1-xsmall-gguf")
+                            .setNotices(notice)
+                            .build()
+                            .show()
+                    }
+
+                    30 -> {
+                        val name = OPEN_SOURCE_LICENSES[position]
+                        val copyright = "Copyright (c) 2023-2024 The ggml authors"
+                        val license = MITLicense()
+                        val notice =
+                            Notice(
+                                name,
+                                "https://github.com/azooKey/llama.cpp.git",
+                                copyright,
+                                license
+                            )
+                        LicensesDialog.Builder(requireContext())
+                            .setTitle("azooKey/llama.cpp")
                             .setNotices(notice)
                             .build()
                             .show()

@@ -38,6 +38,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
+import com.kazumaproject.zenz.ZenzEngine
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -47,6 +48,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.io.ObjectInputStream
 import java.util.zip.ZipInputStream
 import javax.inject.Singleton
@@ -797,6 +801,39 @@ object AppModule {
     fun provideEnglishSuccinctBitVectorTokenArray(@EnglishTokenArray englishTokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray): SuccinctBitVector {
         Timber.d("provideEnglishSuccinctBitVectorTokenArray: ${englishTokenArray.bitvector.size()}")
         return SuccinctBitVector(englishTokenArray.bitvector)
+    }
+
+    @Singleton
+    @Provides
+    fun providesZenzEngine(@ApplicationContext context: Context): ZenzEngine {
+        // 1. モデルファイルの設定 (Assets内のファイル名)
+        // ※ ここは実際のAssets内のファイル名に合わせて変更してください
+        val assetFileName = "ggml-model-Q5_K_M.gguf"
+
+        // 2. コピー先の内部ストレージのファイル
+        val destinationFile = File(context.filesDir, assetFileName)
+
+        // 3. ファイルが存在しない場合、または更新が必要な場合にコピーを行う
+        // (簡易的な実装として、存在しない場合のみコピーしています)
+        if (!destinationFile.exists()) {
+            try {
+                context.assets.open(assetFileName).use { inputStream ->
+                    FileOutputStream(destinationFile).use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+                Timber.d("Model file copied to: ${destinationFile.absolutePath}")
+            } catch (e: IOException) {
+                Timber.e(e, "Failed to copy model file from assets")
+                // 必要に応じて例外を投げるか、空の初期化を防ぐ処理を入れてください
+            }
+        }
+
+        // 4. ZenzEngineの初期化
+        // object なのでインスタンス化は不要ですが、初期化メソッドを呼びます
+        ZenzEngine.initModel(destinationFile.absolutePath)
+
+        return ZenzEngine
     }
 
 }
