@@ -18,9 +18,9 @@
             <option value="$PROJECT_DIR$/symbol_keyboard" />
             <option value="$PROJECT_DIR$/tabletkey" />
             <option value="$PROJECT_DIR$/tenkey" />
+            <option value="$PROJECT_DIR$/zenz" />
           </set>
         </option>
-        <option name="resolveExternalAnnotations" value="false" />
       </GradleProjectSettings>
     </option>
   </component>
