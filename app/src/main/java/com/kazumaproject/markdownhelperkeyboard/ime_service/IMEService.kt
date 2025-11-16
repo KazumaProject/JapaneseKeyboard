@@ -384,7 +384,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowKeymapSymbolsPreference: Boolean? = false
     private var qwertyRomajiShiftConversionPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
-    private var showCandidateInPasswordComposePreference: Boolean? = false
     private var tabletGojuonLayoutPreference: Boolean? = true
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
@@ -712,7 +711,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             showCandidateInPasswordPreference = show_candidates_password ?: true
             qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
             qwertyRomajiShiftConversionPreference = qwerty_romaji_shift_conversion_preference
-            showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
             tabletGojuonLayoutPreference = tablet_gojuon_layout_preference
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
@@ -844,6 +842,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (currentInputType in passwordTypes) {
                                 mainView.qwertyView.resetQWERTYKeyboard()
                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                                updateKeyboardLayout()
                             } else {
                                 customKeyboardMode = KeyboardInputMode.ENGLISH
                                 updateKeyboardLayout()
@@ -865,6 +864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (currentInputType in passwordTypes) {
                 mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                updateKeyboardLayout()
             }
         }
         updateClipboardPreview()
@@ -1171,7 +1171,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
-        showCandidateInPasswordComposePreference = null
         tabletGojuonLayoutPreference = null
         isVibration = null
         tenkeyHeightPreferenceValue = null
@@ -6613,15 +6612,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetsuPositionList")
+        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetsuPositionList [$currentInputType] [${currentInputType in passwordTypes}] [$suppressSuggestions]")
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
-                if (showCandidateInPasswordComposePreference == false) {
-                    commitText(string, 1)
-                } else {
-                    setComposingText(string, 1)
-                }
+                setComposingText(string, 1)
                 return
             }
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
