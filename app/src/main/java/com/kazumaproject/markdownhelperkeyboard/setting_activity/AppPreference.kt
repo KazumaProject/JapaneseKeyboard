@@ -193,6 +193,10 @@ object AppPreference {
     private val ZENZ_PROFILE_PREFERENCE =
         Pair("zenz_profile_string_preference", "")
 
+    private val ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE =
+        Pair("conversion_key_long_press_ai_conversion_preference", false)
+
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -894,6 +898,15 @@ object AppPreference {
         ) ?: ""
         set(value) = preferences.edit {
             it.putString(ZENZ_PROFILE_PREFERENCE.first, value)
+        }
+
+    var enable_zenz_long_press_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first,
+            ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
