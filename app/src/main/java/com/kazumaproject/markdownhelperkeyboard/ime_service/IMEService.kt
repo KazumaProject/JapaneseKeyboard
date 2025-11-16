@@ -594,7 +594,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetusMultipleDetect = false
 
     private val _zenzCandidates = MutableStateFlow<List<Candidate>>(emptyList())
-    val zenzCandidates: StateFlow<List<Candidate>> = _zenzCandidates
+    private val zenzCandidates: StateFlow<List<Candidate>> = _zenzCandidates
+    private var lastCandidate: String? = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -1152,6 +1153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hankakuPreference = null
         isLiveConversionEnable = null
         nBest = null
+        lastCandidate = null
         flickSensitivityPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         tenkeyShowIMEButtonPreference = null
@@ -5977,17 +5979,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 3. 文脈（LeftContext）の取得
         // try-catch で安全に処理
         val leftContext = try {
-            val lastCandidateLength = if (isLiveConversionEnable == true) {
-                // suggestionAdapterへのアクセスはスレッドセーフである必要があります。
-                // もしこれがUI要素に触るならメインスレッドで行う必要がありますが、
-                // データの参照だけであればこのままで動くケースが多いです。
-                suggestionAdapter?.suggestions?.firstOrNull()?.string?.length ?: 0
-            } else {
-                insertString.length
+            withContext(Dispatchers.Main) {
+                val lastCandidateLength = if (isLiveConversionEnable == true) {
+                    lastCandidate?.length ?: 0
+                } else {
+                    insertString.length
+                }
+                Timber.d("getLeftContext: $insertString lastCandidateLength:[$lastCandidateLength] suggestion: [${suggestionAdapter?.suggestions?.firstOrNull()?.string ?: ""}] lastCandidate [$lastCandidate]")
+                getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
             }
-
-            // getLeftContext がクラス内メソッドとして存在すると仮定
-            getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
         } catch (e: Exception) {
             Timber.e("Error performZenzRequest leftContext: ${e.stackTraceToString()}")
             ""
@@ -6651,6 +6651,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             _zenzCandidates.update { emptyList() }
             hasConvertedKatakana = false
             resetInputString()
+            lastCandidate = ""
             hardKeyboardShiftPressd = false
             initialCursorDetectInFloatingCandidateView = false
             initialCursorXPosition = 0
@@ -6784,6 +6785,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidate.string
         }
+        lastCandidate = commitString
         val newSpannable = createSpannableWithTail(commitString)
         setComposingTextAfterEdit(commitString, newSpannable)
     }
@@ -8365,6 +8367,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         resetKeyboard()
+        lastCandidate = ""
         _keyboardSymbolViewState.update { false }
         learnMultiple.stop()
         stopDeleteLongPress()
@@ -9242,6 +9245,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val charSequence = ic.getTextBeforeCursor(lengthToGetTextBeforeCursor, 0)
         val text = charSequence?.toString() ?: ""
 
+        Timber.d("getLeftContext: inputLength [$inputLength] text: [$text]")
         // 改行記号 '\n' があれば、それより後ろの部分だけを返す。
         // 改行がない場合は、テキスト全体が返されます。
         return text.substringAfterLast('\n')
