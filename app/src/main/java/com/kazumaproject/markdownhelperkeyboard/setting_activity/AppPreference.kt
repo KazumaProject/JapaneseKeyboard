@@ -59,8 +59,6 @@ object AppPreference {
 
     private val CANDIDATE_IN_PASSWORD = Pair("hide_candidate_password_preference", true)
 
-    private val CANDIDATE_IN_PASSWORD_COMPOSE = Pair("password_compose_preference", false)
-
     private val QWERTY_SHOW_KUTOUTEN_BUTTONS =
         Pair("qwerty_show_kutouten_buttons_preference", false)
 
@@ -301,14 +299,6 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CANDIDATE_IN_PASSWORD.first, value ?: true)
-        }
-
-    var show_candidates_password_compose: Boolean?
-        get() = preferences.getBoolean(
-            CANDIDATE_IN_PASSWORD_COMPOSE.first, CANDIDATE_IN_PASSWORD_COMPOSE.second
-        )
-        set(value) = preferences.edit {
-            it.putBoolean(CANDIDATE_IN_PASSWORD_COMPOSE.first, value ?: false)
         }
 
     var qwerty_show_kutouten_buttons: Boolean?
