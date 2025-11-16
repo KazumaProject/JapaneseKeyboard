@@ -349,4 +349,6 @@
     <string name="enable_ai_preference_summary">Enable predictive text conversion using the neural kana-kanji model “zenz-v3.1-xsmall.”</string>
     <string name="zenz_profile_preference_title">Profile Settings for zenz</string>
     <string name="zenz_profile_preference_summary">Set a profile that zenz will use for predictive conversion.\nExample: If you enter “Occupation: Doctor,” typing “chūsha” will make the candidate “injection” appear more frequently.</string>
+    <string name="conversion_key_long_press_ai_conversion_preference_title">Add AI suggestions on Convert-key long press</string>
+    <string name="conversion_key_long_press_ai_conversion_preference_summary">When detecting long-press the Convert key, add conversion suggestions from the zenz neural kana-kanji model.</string>
 </resources>
