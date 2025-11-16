@@ -7,6 +7,8 @@ android {
     namespace 'com.kazumaproject.zenz'
     compileSdk 36
 
+    ndkVersion "29.0.14206865"
+
     defaultConfig {
         minSdk 24
         targetSdk 36
