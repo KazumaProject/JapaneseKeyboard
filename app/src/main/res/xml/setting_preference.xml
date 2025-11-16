@@ -138,14 +138,6 @@
                 android:title="@string/hide_candidate_password_title" />
 
             <SwitchPreferenceCompat
-                android:defaultValue="false"
-                android:dependency="hide_candidate_password_preference"
-                android:key="password_compose_preference"
-                android:summaryOff="@string/password_compose_summary_off"
-                android:summaryOn="@string/password_compose_summary_on"
-                android:title="@string/password_compose_title" />
-
-            <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="henkan_delete_key_action_preference"
                 android:summaryOff="@string/henkan_delete_key_action_summary_off"
