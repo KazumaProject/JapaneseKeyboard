@@ -209,6 +209,12 @@
 
             <SwitchPreferenceCompat
                 android:defaultValue="false"
+                android:key="conversion_key_long_press_ai_conversion_preference"
+                android:summary="@string/conversion_key_long_press_ai_conversion_preference_summary"
+                android:title="@string/conversion_key_long_press_ai_conversion_preference_title" />
+
+            <SwitchPreferenceCompat
+                android:defaultValue="false"
                 android:key="conversion_key_swipe_cursor_move_preference"
                 android:summary="@string/pref_summary_space_longpress_cursor"
                 android:title="@string/pref_title_space_longpress_cursor" />

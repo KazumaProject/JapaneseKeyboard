@@ -422,6 +422,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var zenzEnableStatePreference: Boolean? = false
     private var zenzProfilePreference: String? = ""
+    private var zenzEnableLongPressConversionPreference: Boolean? = false
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -770,6 +771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             zenzEnableStatePreference = enable_zenz_preference
             zenzProfilePreference = zenz_profile_preference
+            zenzEnableLongPressConversionPreference = enable_zenz_long_press_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1194,6 +1196,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         zenzEnableStatePreference = null
         zenzProfilePreference = null
+        zenzEnableLongPressConversionPreference = null
 
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -3434,61 +3437,70 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
-            if (conversionKeySwipePreference == true) {
-                if (!isHenkan.get()) {
-                    _cursorMoveMode.update { true }
-                    isSpaceKeyLongPressed = true
+            if (zenzEnableLongPressConversionPreference == true) {
+                scope.launch {
+                    val candidates = performZenzRequest(insertString)
+                    _zenzCandidates.update { candidates }
                 }
+                isSpaceKeyLongPressed = true
             } else {
-                mainLayoutBinding?.let {
-                    if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                        if (isHenkan.get()) return
+                if (conversionKeySwipePreference == true) {
+                    if (!isHenkan.get()) {
+                        _cursorMoveMode.update { true }
                         isSpaceKeyLongPressed = true
-                        if (hasConvertedKatakana) {
-                            if (isLiveConversionEnable == true) {
-                                applyFirstSuggestion(
-                                    Candidate(
-                                        string = insertString.hiraganaToKatakana(),
-                                        type = (3).toByte(),
-                                        length = insertString.length.toUByte(),
-                                        score = 4000
+                    }
+                } else {
+                    mainLayoutBinding?.let {
+                        if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                            if (isHenkan.get()) return
+                            isSpaceKeyLongPressed = true
+                            if (hasConvertedKatakana) {
+                                if (isLiveConversionEnable == true) {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString.hiraganaToKatakana(),
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
                                     )
-                                )
+                                } else {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString,
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
+                                    )
+                                }
                             } else {
-                                applyFirstSuggestion(
-                                    Candidate(
-                                        string = insertString,
-                                        type = (3).toByte(),
-                                        length = insertString.length.toUByte(),
-                                        score = 4000
+                                if (isLiveConversionEnable == true) {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString,
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
                                     )
-                                )
+                                } else {
+                                    applyFirstSuggestion(
+                                        Candidate(
+                                            string = insertString.hiraganaToKatakana(),
+                                            type = (3).toByte(),
+                                            length = insertString.length.toUByte(),
+                                            score = 4000
+                                        )
+                                    )
+                                }
                             }
-                        } else {
-                            if (isLiveConversionEnable == true) {
-                                applyFirstSuggestion(
-                                    Candidate(
-                                        string = insertString,
-                                        type = (3).toByte(),
-                                        length = insertString.length.toUByte(),
-                                        score = 4000
-                                    )
-                                )
-                            } else {
-                                applyFirstSuggestion(
-                                    Candidate(
-                                        string = insertString.hiraganaToKatakana(),
-                                        type = (3).toByte(),
-                                        length = insertString.length.toUByte(),
-                                        score = 4000
-                                    )
-                                )
-                            }
+                            hasConvertedKatakana = !hasConvertedKatakana
                         }
-                        hasConvertedKatakana = !hasConvertedKatakana
                     }
                 }
             }
+
         } else {
             _cursorMoveMode.update { true }
             isSpaceKeyLongPressed = true
@@ -4070,17 +4082,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateKeyboardLayout()
                     }
 
-                    KeyAction.Space -> {
-                        mainView.customLayoutDefault.setCursorMode(true)
-                    }
-
                     KeyAction.Convert, KeyAction.Space -> {
-                        if (conversionKeySwipePreference == true) {
-                            if (!isHenkan.get()) {
-                                mainView.customLayoutDefault.setCursorMode(true)
-                            }
+                        val insertString = inputString.value
+                        if (insertString.isEmpty()) {
+                            mainView.customLayoutDefault.setCursorMode(true)
                         } else {
-                            handleSpaceLongActionSumire()
+                            if (zenzEnableLongPressConversionPreference == true) {
+                                scope.launch {
+                                    val candidates = performZenzRequest(insertString)
+                                    _zenzCandidates.update { candidates }
+                                }
+                            } else {
+                                if (conversionKeySwipePreference == true) {
+                                    if (!isHenkan.get()) {
+                                        mainView.customLayoutDefault.setCursorMode(true)
+                                    }
+                                } else {
+                                    handleSpaceLongActionSumire()
+                                }
+                            }
                         }
                     }
 
@@ -4274,12 +4294,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
-                        if (conversionKeySwipePreference == true) {
-                            if (!isHenkan.get()) {
-                                mainView.customLayoutDefault.setCursorMode(true)
+                        if (zenzEnableLongPressConversionPreference == true) {
+                            val insertString = inputString.value
+                            scope.launch {
+                                val candidates = performZenzRequest(insertString)
+                                _zenzCandidates.update { candidates }
                             }
                         } else {
-                            handleSpaceLongActionSumire()
+                            if (conversionKeySwipePreference == true) {
+                                if (!isHenkan.get()) {
+                                    mainView.customLayoutDefault.setCursorMode(true)
+                                }
+                            } else {
+                                handleSpaceLongActionSumire()
+                            }
                         }
                     }
 
@@ -5936,11 +5964,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String
     ): List<Candidate> = withContext(Dispatchers.Default) {
 
-        // 1. 基本的なチェック (設定が無効なら即終了)
-        if (zenzEnableStatePreference != true) {
-            return@withContext emptyList()
-        }
-
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
         // ※元のロジック: insertString.length == 1 の場合は emptyList
         if (insertString.length <= 1) {
@@ -6605,10 +6628,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleTenKeyQwertyInput(string)
             } else {
                 handleDefaultInput(string)
-            }
-            if (zenzEnableStatePreference == true) {
-                val candidates = performZenzRequest(string)
-                _zenzCandidates.update { candidates }
             }
         } else {
             Timber.d("setSuggestionOnView auto empty: ${stringInTail.get()} $bunsetusMultipleDetect")
@@ -7926,15 +7945,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySpace -> {
-                            if (conversionKeySwipePreference == true) {
-                                if (!isHenkan.get()) {
-                                    setCursorMode(true)
-                                    isSpaceKeyLongPressed = true
-                                }
+                            val insertString = inputString.value
+                            if (insertString.isEmpty() || !mainView.qwertyView.getRomajiMode()) {
+                                setCursorMode(true)
+                                isSpaceKeyLongPressed = true
                             } else {
-                                if (inputString.value.isEmpty()) {
-                                    setCursorMode(true)
+                                if (zenzEnableLongPressConversionPreference == true) {
+                                    scope.launch {
+                                        val candidates = performZenzRequest(insertString)
+                                        _zenzCandidates.update { candidates }
+                                    }
                                     isSpaceKeyLongPressed = true
+                                } else {
+                                    if (conversionKeySwipePreference == true) {
+                                        if (!isHenkan.get()) {
+                                            setCursorMode(true)
+                                            isSpaceKeyLongPressed = true
+                                        }
+                                    } else {
+                                        setCursorMode(true)
+                                        isSpaceKeyLongPressed = true
+                                    }
                                 }
                             }
                         }
@@ -8846,6 +8877,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             setCandidatesOriginal(inputString)
+        }
+        if (zenzEnableStatePreference == true) {
+            val candidates = performZenzRequest(inputString)
+            _zenzCandidates.update { candidates }
         }
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
