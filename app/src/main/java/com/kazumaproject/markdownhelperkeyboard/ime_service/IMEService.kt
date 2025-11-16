@@ -161,7 +161,6 @@ import com.kazumaproject.zenz.ZenzEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -170,6 +169,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -322,7 +322,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val defaultScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private val zenzScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var cachedEmoji: List<Emoji>? = null
     private var cachedEmoticons: List<Emoticon>? = null
@@ -591,6 +591,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isDefaultRomajiHenkanMap = false
 
     private var bunsetusMultipleDetect = false
+
+    private val _zenzCandidates = MutableStateFlow<List<Candidate>>(emptyList())
+    val zenzCandidates: StateFlow<List<Candidate>> = _zenzCandidates
 
     override fun onCreate() {
         super.onCreate()
@@ -5900,9 +5903,107 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
+            zenzCandidates.collectLatest { resultFromZenz ->
+                if (resultFromZenz.isNotEmpty()) {
+                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+
+                    if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+                        isContinuousTapInputEnabled.set(true)
+                        lastFlickConvertedNextHiragana.set(true)
+                        if (!hasConvertedKatakana) applyFirstSuggestion(
+                            resultFromZenz.first()
+                        )
+                    }
+                    suggestionAdapter?.suggestions =
+                        (resultFromZenz + (suggestions)).distinctBy { it.string }
+                }
+            }
+        }
+
+        launch {
             inputString.collectLatest { string ->
                 processInputString(string, mainView)
             }
+        }
+    }
+
+
+    /**
+     * Zenzエンジンを使用して変換候補を生成するサスペンド関数
+     * collectLatest 内から呼び出されることを想定しています。
+     */
+    private suspend fun performZenzRequest(
+        insertString: String
+    ): List<Candidate> = withContext(Dispatchers.Default) {
+
+        // 1. 基本的なチェック (設定が無効なら即終了)
+        if (zenzEnableStatePreference != true) {
+            return@withContext emptyList()
+        }
+
+        // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
+        // ※元のロジック: insertString.length == 1 の場合は emptyList
+        if (insertString.length <= 1) {
+            return@withContext emptyList()
+        }
+
+        if (!insertString.isAllHiraganaWithSymbols()) {
+            return@withContext emptyList()
+        }
+
+        // 3. 文脈（LeftContext）の取得
+        // try-catch で安全に処理
+        val leftContext = try {
+            val lastCandidateLength = if (isLiveConversionEnable == true) {
+                // suggestionAdapterへのアクセスはスレッドセーフである必要があります。
+                // もしこれがUI要素に触るならメインスレッドで行う必要がありますが、
+                // データの参照だけであればこのままで動くケースが多いです。
+                suggestionAdapter?.suggestions?.firstOrNull()?.string?.length ?: 0
+            } else {
+                insertString.length
+            }
+
+            // getLeftContext がクラス内メソッドとして存在すると仮定
+            getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
+        } catch (e: Exception) {
+            Timber.e("Error performZenzRequest leftContext: ${e.stackTraceToString()}")
+            ""
+        }
+
+        Timber.d("performZenzRequest: $insertString leftContext: [$leftContext]")
+
+        // 4. エンジンによる生成処理
+        try {
+            // 処理直前にキャンセルされていないかチェック
+            ensureActive()
+
+            val stringFromZenz = zenzEngine.generateWithContextAndConditions(
+                profile = zenzProfilePreference ?: "",
+                topic = "",
+                style = "",
+                preference = "",
+                leftContext = leftContext.ifEmpty { "" },
+                input = insertString.hiraganaToKatakana()
+            )
+
+            // 生成後もチェック
+            ensureActive()
+
+            // 結果を返却
+            listOf(
+                Candidate(
+                    string = stringFromZenz,
+                    type = (33).toByte(),
+                    length = (insertString.length).toUByte(),
+                    score = 2000,
+                )
+            )
+        } catch (e: CancellationException) {
+            // collectLatestによりキャンセルされた場合はここで再スローして処理を中断させる
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Error in zenzEngine generation")
+            emptyList()
         }
     }
 
@@ -6505,6 +6606,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else {
                 handleDefaultInput(string)
             }
+            if (zenzEnableStatePreference == true) {
+                val candidates = performZenzRequest(string)
+                _zenzCandidates.update { candidates }
+            }
         } else {
             Timber.d("setSuggestionOnView auto empty: ${stringInTail.get()} $bunsetusMultipleDetect")
             if (stringInTail.get().isNotEmpty()) {
@@ -6524,6 +6629,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 onRightKeyLongPressUp.set(true)
                 onDeleteLongPressUp.set(true)
             }
+            _zenzCandidates.update { emptyList() }
             hasConvertedKatakana = false
             resetInputString()
             hardKeyboardShiftPressd = false
@@ -8998,9 +9104,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
-        val resultFromZenz = resultFromZenz(insertString)
         val result =
-            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -9082,9 +9187,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
-        val resultFromZenz = resultFromZenz(insertString)
         val result =
-            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -9096,58 +9200,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.distinctBy { it.string }
     }
 
-    private fun resultFromZenz(
-        insertString: String
-    ): Deferred<List<Candidate>> {
-        val resultFromZenz: Deferred<List<Candidate>> = ioScope.async {
-            if (zenzEnableStatePreference != true) {
-                return@async emptyList()
-            }
-            val leftContext = if (insertString.length > 1) {
-                try {
-                    val lastCandidateLength = if (isLiveConversionEnable == true) {
-                        suggestionAdapter?.suggestions?.first()?.string?.length ?: 0
-                    } else {
-                        insertString.length
-                    }
-                    getLeftContext().dropLast((lastCandidateLength))
-                } catch (e: Exception) {
-                    Timber.e("Error resultFromZenz leftContext: ${e.stackTrace}")
-                    ""
-                }
-            } else {
-                ""
-            }
-            Timber.d("resultFromZenz: $insertString leftContext: [$leftContext]")
-            if (!insertString.isAllHiraganaWithSymbols()) {
-                return@async emptyList<Candidate>()
-            }
-            if (insertString.length == 1) {
-                return@async emptyList()
-            }
-            return@async listOf<Candidate>(
-                Candidate(
-                    string = zenzEngine.generateWithContextAndConditions(
-                        profile = zenzProfilePreference ?: "",
-                        topic = "",
-                        style = "",
-                        preference = "",
-                        leftContext = leftContext.ifEmpty { "" },
-                        input = insertString.hiraganaToKatakana()
-                    ),
-                    type = (33).toByte(),
-                    length = (insertString.length).toUByte(),
-                    score = 2000,
-                )
-            )
-        }
-        return resultFromZenz
-    }
-
-    private fun getLeftContext(): String {
+    private fun getLeftContext(inputLength: Int): String {
         val ic = currentInputConnection ?: return ""
+        val lengthToGetTextBeforeCursor = 8 + inputLength
         // カーソル前のテキストを取得
-        val charSequence = ic.getTextBeforeCursor(16, 0)
+        val charSequence = ic.getTextBeforeCursor(lengthToGetTextBeforeCursor, 0)
         val text = charSequence?.toString() ?: ""
 
         // 改行記号 '\n' があれば、それより後ろの部分だけを返す。
@@ -9222,9 +9279,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
             )
         }
-        val resultFromZenz = resultFromZenz(insertString)
-        val result =
-            resultFromZenz.await() + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
