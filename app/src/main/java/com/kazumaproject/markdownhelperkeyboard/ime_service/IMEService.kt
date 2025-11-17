@@ -5982,6 +5982,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     suggestionAdapter?.suggestions =
                         (resultFromZenz + (suggestions)).distinctBy { it.string }
+                } else {
+                    if (inputString.value.isEmpty()) {
+                        suggestionAdapter?.suggestions = emptyList()
+                    }
                 }
             }
         }
@@ -6000,7 +6004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private suspend fun performZenzRequest(
         insertString: String
-    ): List<Candidate> = withContext(Dispatchers.Default) {
+    ): List<Candidate> = withContext(Dispatchers.IO) {
 
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
         // ※元のロジック: insertString.length == 1 の場合は emptyList
@@ -6812,6 +6816,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFirstSuggestion(
         candidate: Candidate
     ) {
+        beginBatchEdit()
         val commitString = if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
@@ -6820,6 +6825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lastCandidate = commitString
         val newSpannable = createSpannableWithTail(commitString)
         setComposingTextAfterEdit(commitString, newSpannable)
+        endBatchEdit()
     }
 
     /**
