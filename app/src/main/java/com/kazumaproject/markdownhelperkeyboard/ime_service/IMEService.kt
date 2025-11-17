@@ -384,7 +384,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowKeymapSymbolsPreference: Boolean? = false
     private var qwertyRomajiShiftConversionPreference: Boolean? = false
     private var showCandidateInPasswordPreference: Boolean? = true
-    private var showCandidateInPasswordComposePreference: Boolean? = false
     private var tabletGojuonLayoutPreference: Boolean? = true
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
@@ -555,6 +554,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.TextVisiblePassword,
         )
 
+        private val passwordTypesWithOutNumber = setOf(
+            InputTypeForIME.TextWebPassword,
+            InputTypeForIME.TextPassword,
+            InputTypeForIME.TextVisiblePassword,
+        )
+
+        private val numberTypes = setOf(
+            InputTypeForIME.Number,
+            InputTypeForIME.NumberDecimal,
+            InputTypeForIME.NumberSigned,
+            InputTypeForIME.Phone,
+            InputTypeForIME.Date,
+            InputTypeForIME.Datetime,
+            InputTypeForIME.Time,
+        )
+
     }
 
     private var currentPage: Int = 0
@@ -712,7 +727,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             showCandidateInPasswordPreference = show_candidates_password ?: true
             qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
             qwertyRomajiShiftConversionPreference = qwerty_romaji_shift_conversion_preference
-            showCandidateInPasswordComposePreference = show_candidates_password_compose ?: false
             tabletGojuonLayoutPreference = tablet_gojuon_layout_preference
             isNgWordEnable = ng_word_preference ?: true
             deleteKeyHighLight = delete_key_high_light_preference ?: true
@@ -841,32 +855,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     InputMode.ModeEnglish -> {
                         if (switchQWERTYPassword == true) {
-                            if (currentInputType in passwordTypes) {
+                            if (currentInputType in passwordTypesWithOutNumber) {
                                 mainView.qwertyView.resetQWERTYKeyboard()
                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             } else {
-                                customKeyboardMode = KeyboardInputMode.ENGLISH
-                                updateKeyboardLayout()
+                                if (currentInputType !in numberTypes) {
+                                    customKeyboardMode = KeyboardInputMode.ENGLISH
+                                    createNewKeyboardLayoutForSumire()
+                                }
                             }
                         } else {
                             customKeyboardMode = KeyboardInputMode.ENGLISH
-                            updateKeyboardLayout()
+                            createNewKeyboardLayoutForSumire()
                         }
                     }
 
                     InputMode.ModeNumber -> {
                         customKeyboardMode = KeyboardInputMode.SYMBOLS
-                        updateKeyboardLayout()
+                        createNewKeyboardLayoutForSumire()
                     }
                 }
             }
         }
-        if (switchQWERTYPassword == true) {
-            if (currentInputType in passwordTypes) {
-                mainLayoutBinding?.qwertyView?.resetQWERTYKeyboard()
-                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-            }
-        }
+
         updateClipboardPreview()
 
         Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}\n${candidateTabVisibility}")
@@ -874,6 +885,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentInputType.isPassword()
         } else {
             false
+        }
+
+        if (currentInputType in passwordTypesWithOutNumber) {
+            if (switchQWERTYPassword == true) {
+                Timber.d("current input type in OnStartView passwordTypesWithOutNumber: [$currentInputType] [$restarting] [${mainLayoutBinding?.keyboardView?.currentInputMode?.value}] [${qwertyMode.value}]")
+                suggestionAdapter?.updateState(
+                    TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
+                )
+                mainLayoutBinding?.let { mainView ->
+                    mainView.apply {
+                        if (isTablet == true && tabletGojuonLayoutPreference == true) {
+                            tabletView.isVisible = false
+                        } else {
+                            keyboardView.isVisible = false
+                        }
+                        customLayoutDefault.isVisible = false
+                        qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
+                        qwertyView.isVisible = true
+                    }
+                }
+            } else {
+                Timber.d("current input type in OnStartView passwordTypesWithOutNumber else: [$currentInputType] [$restarting]")
+                if (isTablet == true) {
+                    mainLayoutBinding?.tabletView?.currentInputMode?.set(InputMode.ModeEnglish)
+                } else {
+                    mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeEnglish)
+                }
+            }
+        } else {
+            Timber.d("current input type in OnStartView not password: [$currentInputType] [$restarting]")
+            resetKeyboard()
         }
 
         if (isKeyboardFloatingMode == true) {
@@ -1002,12 +1044,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
                         mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
                     }
-                }
-
-                val excludeResetKeyboardOrderFlag =
-                    mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && switchQWERTYPassword == true && currentInputType in passwordTypes
-                if (!excludeResetKeyboardOrderFlag) {
-                    resetKeyboard()
                 }
 
                 suggestionRecyclerView.isVisible = true
@@ -1171,7 +1207,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
-        showCandidateInPasswordComposePreference = null
         tabletGojuonLayoutPreference = null
         isVibration = null
         tenkeyHeightPreferenceValue = null
@@ -5212,6 +5247,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentKeyboardOrder = 0
 
     private fun resetKeyboard() {
+        Timber.d("resetKeyboard called for showKeyboard")
         if (keyboardOrder.isEmpty()) return
         currentKeyboardOrder = 0
         showKeyboard(keyboardOrder[0])
@@ -5946,6 +5982,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     suggestionAdapter?.suggestions =
                         (resultFromZenz + (suggestions)).distinctBy { it.string }
+                } else {
+                    if (inputString.value.isEmpty()) {
+                        suggestionAdapter?.suggestions = emptyList()
+                    }
                 }
             }
         }
@@ -5964,7 +6004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private suspend fun performZenzRequest(
         insertString: String
-    ): List<Candidate> = withContext(Dispatchers.Default) {
+    ): List<Candidate> = withContext(Dispatchers.IO) {
 
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
         // ※元のロジック: insertString.length == 1 の場合は emptyList
@@ -6613,15 +6653,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetsuPositionList")
+        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetsuPositionList [$currentInputType] [${currentInputType in passwordTypes}] [$suppressSuggestions]")
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
-                if (showCandidateInPasswordComposePreference == false) {
-                    commitText(string, 1)
-                } else {
-                    setComposingText(string, 1)
-                }
+                setComposingText(string, 1)
                 return
             }
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
@@ -6780,6 +6816,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFirstSuggestion(
         candidate: Candidate
     ) {
+        beginBatchEdit()
         val commitString = if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
@@ -6788,6 +6825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lastCandidate = commitString
         val newSpannable = createSpannableWithTail(commitString)
         setComposingTextAfterEdit(commitString, newSpannable)
+        endBatchEdit()
     }
 
     /**
@@ -10361,7 +10399,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.None,
             InputTypeForIME.Number,
             InputTypeForIME.NumberDecimal,
-            InputTypeForIME.NumberPassword,
             InputTypeForIME.NumberSigned,
             InputTypeForIME.Phone,
             InputTypeForIME.Date,
@@ -10369,6 +10406,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.Time,
                 -> {
                 sendKeyChar(charToSend)
+            }
+
+            in passwordTypes -> {
+                if (showCandidateInPasswordPreference == true) {
+                    sendKeyChar(charToSend)
+                } else {
+                    setCurrentInputCharacterContinuous(
+                        charToSend, insertString, sb
+                    )
+                }
             }
 
             else -> {
@@ -10399,7 +10446,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.None,
             InputTypeForIME.Number,
             InputTypeForIME.NumberDecimal,
-            InputTypeForIME.NumberPassword,
             InputTypeForIME.NumberSigned,
             InputTypeForIME.Phone,
             InputTypeForIME.Date,
@@ -10407,6 +10453,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.Time,
                 -> {
                 sendKeyChar(charToSend)
+            }
+
+            in passwordTypes -> {
+                if (showCandidateInPasswordPreference == true) {
+                    sendKeyChar(charToSend)
+                } else {
+                    setCurrentInputCharacterContinuous(
+                        charToSend, insertString, sb
+                    )
+                }
             }
 
             else -> {
