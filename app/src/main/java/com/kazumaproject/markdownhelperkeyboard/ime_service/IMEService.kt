@@ -6004,7 +6004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private suspend fun performZenzRequest(
         insertString: String
-    ): List<Candidate> = withContext(Dispatchers.IO) {
+    ): List<Candidate> = withContext(Dispatchers.Default) {
 
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
         // ※元のロジック: insertString.length == 1 の場合は emptyList
