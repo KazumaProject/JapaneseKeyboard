@@ -177,7 +177,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -547,7 +546,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
         private const val PAGE_SIZE: Int = 5
-        private const val ZENZ_CURSOR_DELAY_TIME = 16L
 
         private val passwordTypes = setOf(
             InputTypeForIME.TextWebPassword,
@@ -609,9 +607,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isDefaultRomajiHenkanMap = false
 
     private var bunsetusMultipleDetect = false
-
-    private val _baseCandidates = MutableStateFlow<List<Candidate>>(emptyList())
-    private val baseCandidates: StateFlow<List<Candidate>> = _baseCandidates
 
     private val _zenzCandidates = MutableStateFlow<List<Candidate>>(emptyList())
     private val zenzCandidates: StateFlow<List<Candidate>> = _zenzCandidates
@@ -841,7 +836,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        _baseCandidates.update { emptyList() }
+        suggestionAdapter?.suggestions = emptyList()
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionClickNum = 0
@@ -1630,7 +1625,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setComposingText("", 0)
                     endBatchEdit()
                 }
-                _baseCandidates.update { emptyList() }
+                suggestionAdapter?.suggestions =
+                    emptyList() // avoid unnecessary allocations elsewhere
             }
 
             // Caret moved while tail exists → commit tail
@@ -1697,7 +1693,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return when (keyCode) {
             // Fキー (変換)
             KeyEvent.KEYCODE_F6, KeyEvent.KEYCODE_F7, KeyEvent.KEYCODE_F8, KeyEvent.KEYCODE_F9, KeyEvent.KEYCODE_F10 -> handleConversionKeyFloating(
-                keyCode, insertString
+                keyCode,
+                insertString
             )
 
             // モード切替
@@ -2652,21 +2649,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         handleLeftCursor(gestureType, insertString)
                     }
-                    onLeftKeyLongPressUp.set(true)
-                    leftCursorKeyLongKeyPressed.set(false)
-                    leftLongPressJob?.cancel()
-                    leftLongPressJob = null
-                } else {
-                    onLeftKeyLongPressUp.set(true)
-                    leftCursorKeyLongKeyPressed.set(false)
-                    leftLongPressJob?.cancel()
-                    leftLongPressJob = null
-                    scope.launch {
-                        delay(ZENZ_CURSOR_DELAY_TIME)
-                        val candidates = performZenzRequest(insertString)
-                        _zenzCandidates.update { candidates }
-                    }
                 }
+                onLeftKeyLongPressUp.set(true)
+                leftCursorKeyLongKeyPressed.set(false)
+                leftLongPressJob?.cancel()
+                leftLongPressJob = null
             }
 
             Key.SideKeyCursorRight -> {
@@ -2684,21 +2671,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         actionInRightKeyPressed(gestureType, insertString)
                     }
-                    onRightKeyLongPressUp.set(true)
-                    rightCursorKeyLongKeyPressed.set(false)
-                    rightLongPressJob?.cancel()
-                    rightLongPressJob = null
-                } else {
-                    onRightKeyLongPressUp.set(true)
-                    rightCursorKeyLongKeyPressed.set(false)
-                    rightLongPressJob?.cancel()
-                    rightLongPressJob = null
-                    scope.launch {
-                        delay(ZENZ_CURSOR_DELAY_TIME)
-                        val candidates = performZenzRequest(insertString)
-                        _zenzCandidates.update { candidates }
-                    }
                 }
+                onRightKeyLongPressUp.set(true)
+                rightCursorKeyLongKeyPressed.set(false)
+                rightLongPressJob?.cancel()
+                rightLongPressJob = null
             }
 
             Key.SideKeyDelete -> {
@@ -4308,23 +4285,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCursorLeft -> {
                         cancelLeftLongPress()
                         cancelRightLongPress()
-                        if (zenzEnableStatePreference == true) {
-                            scope.launch {
-                                val candidates = performZenzRequest(inputString.value)
-                                _zenzCandidates.update { candidates }
-                            }
-                        }
                     }
 
                     KeyAction.MoveCursorRight -> {
                         cancelLeftLongPress()
                         cancelRightLongPress()
-                        if (zenzEnableStatePreference == true) {
-                            scope.launch {
-                                val candidates = performZenzRequest(inputString.value)
-                                _zenzCandidates.update { candidates }
-                            }
-                        }
                     }
 
                     KeyAction.NewLine -> {}
@@ -4534,25 +4499,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCursorLeft -> {
                         cancelLeftLongPress()
                         cancelRightLongPress()
-                        if (zenzEnableStatePreference == true) {
-                            scope.launch {
-                                delay(ZENZ_CURSOR_DELAY_TIME)
-                                val candidates = performZenzRequest(inputString.value)
-                                _zenzCandidates.update { candidates }
-                            }
-                        }
                     }
 
                     KeyAction.MoveCursorRight -> {
                         cancelLeftLongPress()
                         cancelRightLongPress()
-                        if (zenzEnableStatePreference == true) {
-                            scope.launch {
-                                delay(ZENZ_CURSOR_DELAY_TIME)
-                                val candidates = performZenzRequest(inputString.value)
-                                _zenzCandidates.update { candidates }
-                            }
-                        }
                     }
 
                     KeyAction.NewLine -> {}
@@ -5539,7 +5490,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("suggestionFlag CandidateShowFlag.Idle: [$insertString] [$stringInTail] [$prevFlag] [$currentFlag]")
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     when {
-                        physicalKeyboardEnable.replayCache.isEmpty() && isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
+                        physicalKeyboardEnable.replayCache.isEmpty() &&
+                                isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() &&
+                                !physicalKeyboardEnable.replayCache.first()) && isKeyboardFloatingMode == true -> {
                             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                                 animateSuggestionImageViewVisibility(
                                     floatingKeyboardLayoutBinding.suggestionVisibility, true
@@ -5547,7 +5500,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
 
-                        physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                        physicalKeyboardEnable.replayCache.isEmpty() && (mainView.keyboardView.isVisible ||
+                                mainView.tabletView.isVisible || mainView.qwertyView.isVisible ||
+                                mainView.customLayoutDefault.isVisible) -> {
                             if (!suppressSuggestions) {
                                 animateSuggestionImageViewVisibility(
                                     mainView.suggestionVisibility, true
@@ -5556,7 +5511,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setKeyboardHeightWithAdditional(mainView)
                         }
 
-                        (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) && (mainView.keyboardView.isVisible || mainView.tabletView.isVisible || mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
+                        (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) &&
+                                (mainView.keyboardView.isVisible || mainView.tabletView.isVisible ||
+                                        mainView.qwertyView.isVisible || mainView.customLayoutDefault.isVisible) -> {
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
@@ -5602,7 +5559,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
-                        _baseCandidates.update { emptyList() }
+                        suggestionAdapter?.suggestions = emptyList()
                         if (stringInTail.get().isEmpty()) {
                             if (isKeyboardFloatingMode == true) {
                                 if (!suppressSuggestions) {
@@ -6012,46 +5969,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
-            baseCandidates.combine(zenzCandidates) { base, zenz ->
-                base to zenz
-            }.collectLatest { (base, zenz) ->
-                val insertString = inputString.value
-                Timber.d("baseCandidates.combine called: ${base.size} ${zenz.map { it.string }} ${leftCursorKeyLongKeyPressed.get()} ${rightCursorKeyLongKeyPressed.get()} [$insertString] [$stringInTail]")
-                // 1. Live変換での自動適用ロジック
-                if (insertString.isNotEmpty() && zenz.isNotEmpty() &&
-                    base.isNotEmpty() && isLiveConversionEnable == true &&
-                    !hasConvertedKatakana
-                ) {
-                    if (isFlickOnlyMode != true) {
-                        delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
-                    }
-                    isContinuousTapInputEnabled.set(true)
-                    lastFlickConvertedNextHiragana.set(true)
-                    applyFirstSuggestion(zenz.first())
-                } else if (insertString.isNotEmpty() && zenz.isEmpty() &&
-                    base.isNotEmpty() && isLiveConversionEnable == true &&
-                    !hasConvertedKatakana
-                ) {
-                    if (isFlickOnlyMode != true) {
-                        delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
-                    }
-                    isContinuousTapInputEnabled.set(true)
-                    lastFlickConvertedNextHiragana.set(true)
-                    applyFirstSuggestion(base.first())
-                }
+            zenzCandidates.collectLatest { resultFromZenz ->
+                if (resultFromZenz.isNotEmpty()) {
+                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
 
-                if (insertString.isNotEmpty()) {
-                    // 2. 最終的な候補リストを決める
-                    val merged = if (zenz.isNotEmpty()) {
-                        (zenz + base).distinctBy { it.string }
-                    } else {
-                        base
+                    if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+                        isContinuousTapInputEnabled.set(true)
+                        lastFlickConvertedNextHiragana.set(true)
+                        if (!hasConvertedKatakana) applyFirstSuggestion(
+                            resultFromZenz.first()
+                        )
                     }
-                    suggestionAdapter?.suggestions = merged
-                    suggestionAdapterFull?.suggestions = merged
+                    suggestionAdapter?.suggestions =
+                        (resultFromZenz + (suggestions)).distinctBy { it.string }
                 } else {
-                    suggestionAdapter?.suggestions = emptyList()
-                    suggestionAdapterFull?.suggestions = emptyList()
+                    if (inputString.value.isEmpty()) {
+                        suggestionAdapter?.suggestions = emptyList()
+                    }
                 }
             }
         }
@@ -6071,10 +6005,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun performZenzRequest(
         insertString: String
     ): List<Candidate> = withContext(Dispatchers.Default) {
-
-        if (leftCursorKeyLongKeyPressed.get() || rightCursorKeyLongKeyPressed.get()) {
-            return@withContext emptyList()
-        }
 
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
         // ※元のロジック: insertString.length == 1 の場合は emptyList
@@ -6118,10 +6048,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 leftContext = leftContext.ifEmpty { "" },
                 input = insertString.hiraganaToKatakana()
             )
-
-            if (stringFromZenz == insertString) {
-                return@withContext emptyList()
-            }
 
             // 生成後もチェック
             ensureActive()
@@ -7887,23 +7813,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     handleLeftCursor(GestureType.Tap, insertString)
                                 }
-                                onLeftKeyLongPressUp.set(true)
-                                leftCursorKeyLongKeyPressed.set(false)
-                                leftLongPressJob?.cancel()
-                                leftLongPressJob = null
-                                isSpaceKeyLongPressed = false
-                            } else {
-                                onLeftKeyLongPressUp.set(true)
-                                leftCursorKeyLongKeyPressed.set(false)
-                                leftLongPressJob?.cancel()
-                                leftLongPressJob = null
-                                isSpaceKeyLongPressed = false
-                                scope.launch {
-                                    delay(ZENZ_CURSOR_DELAY_TIME)
-                                    val candidates = performZenzRequest(insertString)
-                                    _zenzCandidates.update { candidates }
-                                }
                             }
+                            onLeftKeyLongPressUp.set(true)
+                            leftCursorKeyLongKeyPressed.set(false)
+                            leftLongPressJob?.cancel()
+                            leftLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorRight -> {
@@ -7917,23 +7832,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 } else {
                                     actionInRightKeyPressed(GestureType.Tap, insertString)
                                 }
-                                onRightKeyLongPressUp.set(true)
-                                rightCursorKeyLongKeyPressed.set(false)
-                                rightLongPressJob?.cancel()
-                                rightLongPressJob = null
-                                isSpaceKeyLongPressed = false
-                            } else {
-                                onLeftKeyLongPressUp.set(true)
-                                leftCursorKeyLongKeyPressed.set(false)
-                                leftLongPressJob?.cancel()
-                                leftLongPressJob = null
-                                isSpaceKeyLongPressed = false
-                                scope.launch {
-                                    delay(ZENZ_CURSOR_DELAY_TIME)
-                                    val candidates = performZenzRequest(insertString)
-                                    _zenzCandidates.update { candidates }
-                                }
                             }
+                            onRightKeyLongPressUp.set(true)
+                            rightCursorKeyLongKeyPressed.set(false)
+                            rightLongPressJob?.cancel()
+                            rightLongPressJob = null
+                            isSpaceKeyLongPressed = false
                         }
 
                         QWERTYKey.QWERTYKeyCursorUp -> {
@@ -8483,8 +8387,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdate resetAllFlags called")
         _inputString.update { "" }
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-        _baseCandidates.update { emptyList() }
-        _zenzCandidates.update { emptyList() }
+        suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
@@ -9016,6 +8919,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             setCandidatesOriginal(inputString)
         }
+        if (zenzEnableStatePreference == true) {
+            val candidates = performZenzRequest(inputString)
+            _zenzCandidates.update { candidates }
+        }
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
 
@@ -9038,13 +8945,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                _baseCandidates.update { filtered }
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
             }
+
         }
-        if (zenzEnableStatePreference == true) {
-            val candidatesFromZenz = performZenzRequest(insertString)
-            _zenzCandidates.update { candidatesFromZenz }
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
+        Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
         if (bunsetsuSeparation == true) {
             mainLayoutBinding?.let { mainView ->
                 bunsetsuPositionList?.let {
@@ -9078,12 +8996,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                _baseCandidates.update { filtered }
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
             }
+
         }
-        if (zenzEnableStatePreference == true) {
-            val candidatesFromZenz = performZenzRequest(insertString)
-            _zenzCandidates.update { candidatesFromZenz }
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
         if (bunsetsuSeparation == true) {
@@ -9118,12 +9046,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                _baseCandidates.update { filtered }
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
             }
+
         }
-        if (zenzEnableStatePreference == true) {
-            val candidatesFromZenz = performZenzRequest(insertString)
-            _zenzCandidates.update { candidatesFromZenz }
+        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+            if (isFlickOnlyMode != true) {
+                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+        } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
         if (bunsetsuSeparation == true) {
@@ -9158,7 +9096,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                _baseCandidates.update { filtered }
+                suggestionAdapter?.suggestions = filtered
+                suggestionAdapterFull?.suggestions = filtered
             }
 
         }
@@ -9241,7 +9180,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val result =
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -9323,7 +9263,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isOmissionSearchEnable = isOmissionSearchEnable ?: false
             )
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        val result =
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -10167,7 +10108,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (insertString.length == 1) {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
                     _inputString.update { "" }
-                    _baseCandidates.update { emptyList() }
+                    suggestionAdapter?.suggestions = emptyList()
                 } else {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
                     _inputString.update { it.dropLast(1) }
@@ -10242,9 +10183,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             var finalSuggestionFlag: CandidateShowFlag? = null
             while (isActive && rightCursorKeyLongKeyPressed.get() && !onRightKeyLongPressUp.get()) {
                 val insertString = inputString.value
-                if (stringInTail.get()
-                        .isEmpty() && insertString.isNotEmpty()
-                ) {
+                if (stringInTail.get().isEmpty() && insertString.isNotEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Updating
                     break
                 }
@@ -10264,7 +10203,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (insertString.length == 1) {
                 stringInTail.set(insertString + stringInTail.get())
                 _inputString.update { "" }
-                _baseCandidates.update { emptyList() }
+                suggestionAdapter?.suggestions = emptyList()
             } else {
                 stringInTail.set(insertString.last() + stringInTail.get())
                 _inputString.update { it.dropLast(1) }
@@ -10956,7 +10895,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ""
         }
         if (isHenkan.get()) {
-            _baseCandidates.update { emptyList() }
+            suggestionAdapter?.suggestions = emptyList()
             isHenkan.set(false)
             henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
@@ -10998,7 +10937,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         _inputString.update { "" }
         if (isHenkan.get()) {
-            _baseCandidates.update { emptyList() }
+            suggestionAdapter?.suggestions = emptyList()
             isHenkan.set(false)
             henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
