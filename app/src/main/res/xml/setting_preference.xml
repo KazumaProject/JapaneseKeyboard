@@ -62,10 +62,20 @@
                 app:summary="@string/enable_ai_preference_summary" />
 
             <EditTextPreference
-                app:defaultValue=""
                 android:key="zenz_profile_string_preference"
                 android:title="@string/zenz_profile_preference_title"
-                app:summary="@string/zenz_profile_preference_summary"/>
+                app:defaultValue=""
+                app:summary="@string/zenz_profile_preference_summary" />
+
+            <SeekBarPreference
+                android:defaultValue="300"
+                android:key="zenz_debounce_time_preference"
+                android:max="1024"
+                android:title="@string/zenz_debounce_time_preference_title"
+                app:summary="@string/zenz_debounce_time_preference_summary"
+                app:min="0"
+                app:seekBarIncrement="10"
+                app:showSeekBarValue="true" />
 
             <SeekBarPreference
                 android:defaultValue="4"
