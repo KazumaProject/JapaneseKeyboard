@@ -162,6 +162,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
@@ -176,7 +177,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -611,6 +614,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _zenzCandidates = MutableStateFlow<List<Candidate>>(emptyList())
     private val zenzCandidates: StateFlow<List<Candidate>> = _zenzCandidates
     private var lastCandidate: String? = ""
+
+    private val _zenzRequest = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 64
+    )
+    private val zenzRequest = _zenzRequest
 
     override fun onCreate() {
         super.onCreate()
@@ -5482,6 +5490,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    @OptIn(FlowPreview::class)
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
             var prevFlag: CandidateShowFlag? = null
@@ -5969,25 +5978,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
-            zenzCandidates.collectLatest { resultFromZenz ->
-                if (resultFromZenz.isNotEmpty()) {
-                    val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+            zenzRequest.debounce(300L).collectLatest {
+                val insertString = inputString.value
+                val zenzCandidates = performZenzRequest(insertString)
+                _zenzCandidates.update { zenzCandidates }
+            }
+        }
 
-                    if (isLiveConversionEnable == true && !hasConvertedKatakana) {
-                        isContinuousTapInputEnabled.set(true)
-                        lastFlickConvertedNextHiragana.set(true)
-                        if (!hasConvertedKatakana) applyFirstSuggestion(
-                            resultFromZenz.first()
-                        )
-                    }
-                    suggestionAdapter?.suggestions =
-                        (resultFromZenz + (suggestions)).distinctBy { it.string }
-                } else {
-                    if (inputString.value.isEmpty()) {
+        launch {
+            zenzCandidates.buffer(kotlinx.coroutines.channels.Channel.CONFLATED)
+                .collectLatest { resultFromZenz ->
+                    val insertString = inputString.value
+                    if (insertString.isNotEmpty()) {
+                        if (resultFromZenz.isNotEmpty()) {
+                            val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+
+                            if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+                                isContinuousTapInputEnabled.set(true)
+                                lastFlickConvertedNextHiragana.set(true)
+                                if (!hasConvertedKatakana) applyFirstSuggestion(
+                                    resultFromZenz.first()
+                                )
+                            }
+                            suggestionAdapter?.suggestions =
+                                (resultFromZenz + (suggestions)).distinctBy { it.string }
+                        } else {
+                            if (inputString.value.isEmpty()) {
+                                suggestionAdapter?.suggestions = emptyList()
+                                suggestionAdapterFull?.suggestions = emptyList()
+                            }
+                        }
+                    } else {
                         suggestionAdapter?.suggestions = emptyList()
+                        suggestionAdapterFull?.suggestions = emptyList()
                     }
                 }
-            }
         }
 
         launch {
@@ -8919,10 +8944,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             setCandidatesOriginal(inputString)
         }
-        if (zenzEnableStatePreference == true) {
-            val candidates = performZenzRequest(inputString)
-            _zenzCandidates.update { candidates }
-        }
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
 
@@ -8949,6 +8970,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapterFull?.suggestions = filtered
             }
 
+        }
+        if (zenzEnableStatePreference == true) {
+            _zenzRequest.emit(Unit)
         }
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
@@ -9000,6 +9024,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapterFull?.suggestions = filtered
             }
 
+        }
+        if (zenzEnableStatePreference == true) {
+            _zenzRequest.emit(Unit)
         }
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
