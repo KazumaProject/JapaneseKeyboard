@@ -196,6 +196,7 @@ object AppPreference {
     private val ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE =
         Pair("conversion_key_long_press_ai_conversion_preference", false)
 
+    private val ZENZ_DEBOUNCE_TIME_PREFERENCE = Pair("zenz_debounce_time_preference", 300)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -907,6 +908,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first, value)
+        }
+
+    var zenz_debounce_time_preference: Int?
+        get() = preferences.getInt(
+            ZENZ_DEBOUNCE_TIME_PREFERENCE.first, ZENZ_DEBOUNCE_TIME_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(ZENZ_DEBOUNCE_TIME_PREFERENCE.first, value ?: 300)
         }
 
     fun migrateSumirePreferenceIfNeeded() {

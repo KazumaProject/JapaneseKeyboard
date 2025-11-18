@@ -349,4 +349,6 @@
     <string name="zenz_profile_preference_summary">zenz が予測変換に利用するプロフィールを設定できます。\n例：この欄に「職業：医者」と入力すると、「ちゅうしゃ」と入力したときに「注射」が候補に出やすくなります。</string>
     <string name="conversion_key_long_press_ai_conversion_preference_title">変換キー長押しで AI 変換候補を追加する</string>
     <string name="conversion_key_long_press_ai_conversion_preference_summary">変換キーを長押ししたときに、zenz の推論結果を変換候補に追加します。</string>
+    <string name="zenz_debounce_time_preference_title">zenz の連続推論の待ち時間（デバウンス）</string>
+    <string name="zenz_debounce_time_preference_summary">設定を反映するにはキーボードの切り替えが必要です</string>
 </resources>
