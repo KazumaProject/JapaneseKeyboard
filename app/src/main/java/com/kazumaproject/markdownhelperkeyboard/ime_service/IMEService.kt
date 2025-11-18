@@ -442,6 +442,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isNgWordEnable: Boolean? = false
     private var deleteKeyHighLight: Boolean? = true
     private var customKeyboardSuggestionPreference: Boolean? = true
+    private var zenzDebounceTimePreference: Int? = 300
+
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -759,6 +761,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             switchQWERTYPassword = switch_qwerty_password ?: false
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
             isDeleteLeftFlickPreference = delete_key_left_flick_preference
+            zenzDebounceTimePreference = zenz_debounce_time_preference ?: 300
 
             clipboardPreviewVisibility = clipboard_preview_preference
             clipboardPreviewTapToDelete = clipboard_preview_tap_delete_preference
@@ -1261,6 +1264,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
+        zenzDebounceTimePreference = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
@@ -5978,7 +5982,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
-            zenzRequest.debounce(300L).collectLatest {
+            zenzRequest.debounce((zenzDebounceTimePreference ?: 300).toLong()).collectLatest {
                 val insertString = inputString.value
                 val zenzCandidates = performZenzRequest(insertString)
                 _zenzCandidates.update { zenzCandidates }
