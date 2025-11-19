@@ -350,5 +350,7 @@
     <string name="conversion_key_long_press_ai_conversion_preference_title">変換キー長押しで AI 変換候補を追加する</string>
     <string name="conversion_key_long_press_ai_conversion_preference_summary">変換キーを長押ししたときに、zenz の推論結果を変換候補に追加します。</string>
     <string name="zenz_debounce_time_preference_title">zenz の連続推論の待ち時間（デバウンス）</string>
-    <string name="zenz_debounce_time_preference_summary">設定を反映するにはキーボードの切り替えが必要です</string>
+    <string name="zenz_debounce_time_preference_summary">zenz の逐次的な変換の待ち時間を設定します。\n設定を反映するにはキーボードの切り替えが必要です</string>
+    <string name="zenz_maximum_letter_count_preference_summary">おおよそ「コンテキスト数 × 1.4」文字までが変換対象となり、それを超えた文字は切り捨てられます。</string>
+    <string name="zenz_maximum_letter_count_preference_title">zenz の変換コンテキストの上限</string>
 </resources>
