@@ -443,6 +443,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var deleteKeyHighLight: Boolean? = true
     private var customKeyboardSuggestionPreference: Boolean? = true
     private var zenzDebounceTimePreference: Int? = 300
+    private var zenzMaximumLetterSizePreference: Int? = 32
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
@@ -762,7 +763,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
             isDeleteLeftFlickPreference = delete_key_left_flick_preference
             zenzDebounceTimePreference = zenz_debounce_time_preference ?: 300
-
+            zenzMaximumLetterSizePreference = zenz_maximum_letter_size_preference ?: 32
             clipboardPreviewVisibility = clipboard_preview_preference
             clipboardPreviewTapToDelete = clipboard_preview_tap_delete_preference
 
@@ -1265,6 +1266,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
         zenzDebounceTimePreference = null
+        zenzMaximumLetterSizePreference = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
@@ -1649,6 +1651,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             !hasTail && !caretTop -> {
+                _inputString.update { "" }
+                stringInTail.set("")
                 scope.launch {
                     _suggestionFlag.emit(CandidateShowFlag.Idle)
                 }
@@ -6004,8 +6008,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     resultFromZenz.first()
                                 )
                             }
-                            suggestionAdapter?.suggestions =
-                                (resultFromZenz + (suggestions)).distinctBy { it.string }
+                            if (suggestions.isNotEmpty()) {
+                                val firstSuggestionItem = suggestions.first()
+                                if (firstSuggestionItem.length.toInt() == insertString.length) {
+                                    if (firstSuggestionItem.string != resultFromZenz.first().string) {
+                                        suggestionAdapter?.suggestions =
+                                            (listOf(resultFromZenz.first()) + (suggestions)).distinctBy { it.string }
+                                    }
+                                }
+                            }
                         } else {
                             if (inputString.value.isEmpty()) {
                                 suggestionAdapter?.suggestions = emptyList()
@@ -6075,7 +6086,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 style = "",
                 preference = "",
                 leftContext = leftContext.ifEmpty { "" },
-                input = insertString.hiraganaToKatakana()
+                input = insertString.hiraganaToKatakana(),
+                maxTokens = zenzMaximumLetterSizePreference ?: 32
             )
 
             // 生成後もチェック
@@ -9309,7 +9321,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun getLeftContext(inputLength: Int): String {
         val ic = currentInputConnection ?: return ""
-        val lengthToGetTextBeforeCursor = 8 + inputLength
+        val lengthToGetTextBeforeCursor = (8 + inputLength).coerceAtMost(64)
         // カーソル前のテキストを取得
         val charSequence = ic.getTextBeforeCursor(lengthToGetTextBeforeCursor, 0)
         val text = charSequence?.toString() ?: ""

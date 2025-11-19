@@ -283,7 +283,8 @@ JNIEXPORT jstring JNICALL
 Java_com_kazumaproject_zenz_ZenzEngine_generate(
         JNIEnv *env,
         jobject /* thiz */,
-        jstring jPrompt
+        jstring jPrompt,
+        jint maxTokens
 ) {
     if (!g_model || !g_vocab) {
         return env->NewStringUTF("Model not initialized");
@@ -294,7 +295,7 @@ Java_com_kazumaproject_zenz_ZenzEngine_generate(
     env->ReleaseStringUTFChars(jPrompt, c_prompt);
 
     // prompt は Kotlin 側で \uEE00 + 入力 + \uEE01 の形で組み立てたものを想定
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/32);
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
 
     return env->NewStringUTF(result.c_str());
 }
@@ -307,7 +308,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
         JNIEnv *env,
         jobject /* thiz */,
         jstring jLeftContext,
-        jstring jInput
+        jstring jInput,
+        jint maxTokens
 ) {
     if (!g_model || !g_vocab) {
         return env->NewStringUTF("Model not initialized");
@@ -339,7 +341,7 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
     }
 
     // ここで pure_greedy_decoding が毎回コンテキストを作って破棄してくれる
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/32);
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
 
     return env->NewStringUTF(result.c_str());
 }
@@ -356,7 +358,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         jstring jStyle,
         jstring jPreference,
         jstring jLeftContext,
-        jstring jInput
+        jstring jInput,
+        jint maxTokens
 ) {
     if (!g_model || !g_vocab) {
         return env->NewStringUTF("Model not initialized");
@@ -418,7 +421,7 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         prompt = conditions + inputTag + input + outputTag;
     }
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/32);
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
 
     return env->NewStringUTF(result.c_str());
 }
