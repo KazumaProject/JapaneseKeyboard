@@ -198,6 +198,15 @@ object AppPreference {
 
     private val ZENZ_DEBOUNCE_TIME_PREFERENCE = Pair("zenz_debounce_time_preference", 300)
 
+    private val ZENZ_MAXIMUM_LETTER_SIZE_PREFERENCE =
+        Pair("zenz_maximum_letter_count_preference", 32)
+
+    private val ZENZ_MAXIMUM_CONTEXT_SIZE_PREFERENCE =
+        Pair("zenz_maximum_context_count_preference", 512)
+
+    private val ZENZ_MAXIMUM_THREAD_SIZE_PREFERENCE =
+        Pair("zenz_maximum_thread_count_preference", 4)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -916,6 +925,30 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(ZENZ_DEBOUNCE_TIME_PREFERENCE.first, value ?: 300)
+        }
+
+    var zenz_maximum_letter_size_preference: Int?
+        get() = preferences.getInt(
+            ZENZ_MAXIMUM_LETTER_SIZE_PREFERENCE.first, ZENZ_MAXIMUM_LETTER_SIZE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(ZENZ_MAXIMUM_LETTER_SIZE_PREFERENCE.first, value ?: 32)
+        }
+
+    var zenz_maximum_context_size_preference: Int?
+        get() = preferences.getInt(
+            ZENZ_MAXIMUM_CONTEXT_SIZE_PREFERENCE.first, ZENZ_MAXIMUM_CONTEXT_SIZE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(ZENZ_MAXIMUM_CONTEXT_SIZE_PREFERENCE.first, value ?: 512)
+        }
+
+    var zenz_maximum_thread_size_preference: Int?
+        get() = preferences.getInt(
+            ZENZ_MAXIMUM_THREAD_SIZE_PREFERENCE.first, ZENZ_MAXIMUM_THREAD_SIZE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(ZENZ_MAXIMUM_THREAD_SIZE_PREFERENCE.first, value ?: 4)
         }
 
     fun migrateSumirePreferenceIfNeeded() {

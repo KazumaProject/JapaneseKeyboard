@@ -576,7 +576,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_v -> {
-                                                        it.topRightChar = '"'
+                                                        it.topRightChar = ':'
                                                     }
 
                                                     R.id.key_w -> {
@@ -584,7 +584,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                                     }
 
                                                     R.id.key_x -> {
-                                                        it.topRightChar = ':'
+                                                        it.topRightChar = '"'
                                                     }
 
                                                     R.id.key_y -> {
@@ -926,7 +926,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_v -> {
-                                            it.topRightChar = '"'
+                                            it.topRightChar = ':'
                                         }
 
                                         R.id.key_w -> {
@@ -934,7 +934,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                         }
 
                                         R.id.key_x -> {
-                                            it.topRightChar = ':'
+                                            it.topRightChar = '"'
                                         }
 
                                         R.id.key_y -> {
@@ -2766,7 +2766,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_v -> {
-                                it.topRightChar = '"'
+                                it.topRightChar = ':'
                             }
 
                             R.id.key_w -> {
@@ -2774,7 +2774,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             }
 
                             R.id.key_x -> {
-                                it.topRightChar = ':'
+                                it.topRightChar = '"'
                             }
 
                             R.id.key_y -> {
