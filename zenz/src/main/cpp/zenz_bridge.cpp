@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <string>
 #include <vector>
+#include <mutex>        // ★ 追加
 #include <android/log.h>
 #include "llama.h"
 
@@ -11,6 +12,13 @@
 // コンテキストは毎回生成・破棄する。
 static llama_model *g_model = nullptr;
 static const llama_vocab *g_vocab = nullptr;
+
+// ランタイム設定用パラメータ（Kotlin から変更可能）
+static int g_param_n_ctx           = 512;
+static int g_param_n_threads       = 4;
+static int g_param_n_threads_batch = 4;
+static int g_param_n_batch         = 512;
+static std::mutex g_param_mutex;   // 設定値の読み書き用
 
 // ------- 共通ヘルパー -------
 
@@ -128,14 +136,22 @@ static llama_context *create_context() {
     }
 
     llama_context_params cparams = llama_context_default_params();
-    cparams.n_ctx = 512;  // ZenzContext と揃える
-    cparams.n_threads = 4;    // 端末に合わせて調整してよい
-    cparams.n_threads_batch = 4;
-    cparams.n_batch = 512;
+
+    {
+        // 設定値の読み取り時のみロック（ごく短時間）
+        std::lock_guard<std::mutex> lock(g_param_mutex);
+        cparams.n_ctx           = g_param_n_ctx;
+        cparams.n_threads       = g_param_n_threads;
+        cparams.n_threads_batch = g_param_n_threads_batch;
+        cparams.n_batch         = g_param_n_batch;
+    }
 
     llama_context *ctx = llama_init_from_model(g_model, cparams);
     if (!ctx) {
         LOGE("Failed to create llama_context");
+    } else {
+        LOGI("llama_context created: n_ctx=%d, n_threads=%d, n_batch=%d",
+             cparams.n_ctx, cparams.n_threads, cparams.n_batch);
     }
     return ctx;
 }
@@ -276,6 +292,37 @@ Java_com_kazumaproject_zenz_ZenzEngine_initModel(
     env->ReleaseStringUTFChars(jModelPath, c_model_path);
 }
 
+// ------- JNI: ランタイム設定 (n_ctx / n_threads) -------
+// Kotlin: external fun setRuntimeConfig(nCtx: Int, nThreads: Int)
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_kazumaproject_zenz_ZenzEngine_setRuntimeConfig(
+        JNIEnv * /*env*/,
+        jobject /*thiz*/,
+        jint jNCtx,
+        jint jNThreads
+) {
+    std::lock_guard<std::mutex> lock(g_param_mutex);
+
+    int n_ctx     = jNCtx     > 0 ? jNCtx     : 512;
+    int n_threads = jNThreads > 0 ? jNThreads : 4;
+
+    // 適当に下限・上限
+    if (n_ctx < 128)   n_ctx = 128;
+    if (n_ctx > 4096)  n_ctx = 4096;
+
+    if (n_threads < 1) n_threads = 1;
+    if (n_threads > 8) n_threads = 8;
+
+    g_param_n_ctx           = n_ctx;
+    g_param_n_threads       = n_threads;
+    g_param_n_threads_batch = n_threads;
+    g_param_n_batch         = n_ctx;   // シンプルに n_ctx に合わせる
+
+    LOGI("setRuntimeConfig: n_ctx=%d, n_threads=%d", n_ctx, n_threads);
+}
+
 // ------- JNI: 「後半の変換結果」を返す（v1 型） -------
 
 extern "C"
@@ -283,7 +330,8 @@ JNIEXPORT jstring JNICALL
 Java_com_kazumaproject_zenz_ZenzEngine_generate(
         JNIEnv *env,
         jobject /* thiz */,
-        jstring jPrompt
+        jstring jPrompt,
+        jint maxTokens
 ) {
     if (!g_model || !g_vocab) {
         return env->NewStringUTF("Model not initialized");
@@ -294,7 +342,7 @@ Java_com_kazumaproject_zenz_ZenzEngine_generate(
     env->ReleaseStringUTFChars(jPrompt, c_prompt);
 
     // prompt は Kotlin 側で \uEE00 + 入力 + \uEE01 の形で組み立てたものを想定
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/32);
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
 
     return env->NewStringUTF(result.c_str());
 }
@@ -307,7 +355,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
         JNIEnv *env,
         jobject /* thiz */,
         jstring jLeftContext,
-        jstring jInput
+        jstring jInput,
+        jint maxTokens
 ) {
     if (!g_model || !g_vocab) {
         return env->NewStringUTF("Model not initialized");
@@ -339,12 +388,12 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
     }
 
     // ここで pure_greedy_decoding が毎回コンテキストを作って破棄してくれる
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/32);
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
 
     return env->NewStringUTF(result.c_str());
 }
 
-// ------- JNI: 条件 + 文脈 + 読み で変換（v3 条件つき） -------
+// ------- JNI: 条件 + 文脈 + 読み で変換（v3 条件つき）-------
 
 extern "C"
 JNIEXPORT jstring JNICALL
@@ -356,7 +405,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         jstring jStyle,
         jstring jPreference,
         jstring jLeftContext,
-        jstring jInput
+        jstring jInput,
+        jint maxTokens
 ) {
     if (!g_model || !g_vocab) {
         return env->NewStringUTF("Model not initialized");
@@ -418,7 +468,7 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         prompt = conditions + inputTag + input + outputTag;
     }
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/32);
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
 
     return env->NewStringUTF(result.c_str());
 }
