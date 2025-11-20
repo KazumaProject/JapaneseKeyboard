@@ -353,4 +353,8 @@
     <string name="zenz_debounce_time_preference_summary">zenz の逐次的な変換の待ち時間を設定します。\n設定を反映するにはキーボードの切り替えが必要です</string>
     <string name="zenz_maximum_letter_count_preference_summary">おおよそ「コンテキスト数 × 1.4」文字までが変換対象となり、それを超えた文字は切り捨てられます。</string>
     <string name="zenz_maximum_letter_count_preference_title">zenz の変換コンテキストの上限</string>
+    <string name="zenz_maximum_context_count_preference_title">zenz の最大のコンテキスト数</string>
+    <string name="zenz_maximum_context_count_preference_summary">zenz が一度の変換で扱うコンテキスト（左文脈・入力などを含む）の最大トークン数を設定します。値を大きくするとより長い文脈を扱えますが、メモリ使用量や処理時間が増える場合があります。</string>
+    <string name="zenz_maximum_thread_count_preference_title">zenz が使用するスレッド数</string>
+    <string name="zenz_maximum_thread_count_preference_summary">zenz が変換処理に使用する CPU スレッド数を設定します。値を大きくすると変換は速くなりますが、CPU 使用率やバッテリー消費が増える場合があります。端末の性能に応じて調整してください。</string>
 </resources>

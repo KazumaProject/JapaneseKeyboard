@@ -355,4 +355,8 @@
     <string name="zenz_debounce_time_preference_summary">Switch keyboards for this setting to take effect.</string>
     <string name="zenz_maximum_letter_count_preference_summary">Sets the maximum number of contexts zenz processes at once.\nIn practice, it converts up to roughly “contexts × 1.4” characters, and any characters beyond this limit are discarded.</string>
     <string name="zenz_maximum_letter_count_preference_title">Maximum characters for zenz conversion</string>
+    <string name="zenz_maximum_context_count_preference_title">Maximum context length for zenz</string>
+    <string name="zenz_maximum_context_count_preference_summary">Sets the maximum number of tokens zenz can use in a single conversion, including left context and input. Increasing this value allows Zenz to handle longer context, but may increase memory usage and slow down inference.</string>
+    <string name="zenz_maximum_thread_count_preference_title">Number of threads used by zenz</string>
+    <string name="zenz_maximum_thread_count_preference_summary">Sets the number of CPU threads used for zenz inference. Higher values can make conversions faster, but may increase CPU usage and battery drain. Adjust this according to your device performance.</string>
 </resources>

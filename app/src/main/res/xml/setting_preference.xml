@@ -72,20 +72,40 @@
                 android:key="zenz_debounce_time_preference"
                 android:max="1024"
                 android:title="@string/zenz_debounce_time_preference_title"
-                app:summary="@string/zenz_debounce_time_preference_summary"
                 app:min="0"
                 app:seekBarIncrement="10"
-                app:showSeekBarValue="true" />
+                app:showSeekBarValue="true"
+                app:summary="@string/zenz_debounce_time_preference_summary" />
 
             <SeekBarPreference
                 android:defaultValue="32"
                 android:key="zenz_maximum_letter_count_preference"
                 android:max="128"
                 android:title="@string/zenz_maximum_letter_count_preference_title"
-                app:summary="@string/zenz_maximum_letter_count_preference_summary"
                 app:min="32"
                 app:seekBarIncrement="5"
-                app:showSeekBarValue="true" />
+                app:showSeekBarValue="true"
+                app:summary="@string/zenz_maximum_letter_count_preference_summary" />
+
+            <SeekBarPreference
+                android:defaultValue="512"
+                android:key="zenz_maximum_context_count_preference"
+                android:max="1024"
+                android:title="@string/zenz_maximum_context_count_preference_title"
+                app:min="256"
+                app:seekBarIncrement="10"
+                app:showSeekBarValue="true"
+                app:summary="@string/zenz_maximum_context_count_preference_summary" />
+
+            <SeekBarPreference
+                android:defaultValue="4"
+                android:key="zenz_maximum_thread_count_preference"
+                android:max="8"
+                android:title="@string/zenz_maximum_thread_count_preference_title"
+                app:min="1"
+                app:seekBarIncrement="1"
+                app:showSeekBarValue="true"
+                app:summary="@string/zenz_maximum_thread_count_preference_summary" />
 
             <SeekBarPreference
                 android:defaultValue="4"
