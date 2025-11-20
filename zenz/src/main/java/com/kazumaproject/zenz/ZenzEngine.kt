@@ -8,6 +8,10 @@ object ZenzEngine {
     }
 
     external fun initModel(modelPath: String)
+    external fun setRuntimeConfig(
+        nCtx: Int,
+        nThreads: Int
+    )
     external fun generate(
         prompt: String,
         maxTokens: Int
