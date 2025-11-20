@@ -444,6 +444,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customKeyboardSuggestionPreference: Boolean? = true
     private var zenzDebounceTimePreference: Int? = 300
     private var zenzMaximumLetterSizePreference: Int? = 32
+    private var zenzMaximumContextSizePreference: Int? = 512
+    private var zenzMaximumThreadSizePreference: Int? = 4
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
@@ -764,6 +766,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isDeleteLeftFlickPreference = delete_key_left_flick_preference
             zenzDebounceTimePreference = zenz_debounce_time_preference ?: 300
             zenzMaximumLetterSizePreference = zenz_maximum_letter_size_preference ?: 32
+            zenzMaximumContextSizePreference = zenz_maximum_context_size_preference ?: 512
+            zenzMaximumThreadSizePreference = zenz_maximum_thread_size_preference ?: 4
             clipboardPreviewVisibility = clipboard_preview_preference
             clipboardPreviewTapToDelete = clipboard_preview_tap_delete_preference
 
@@ -848,6 +852,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
+        zenzEngine.setRuntimeConfig(
+            nCtx = zenzMaximumContextSizePreference ?: 512,
+            nThreads = zenzMaximumThreadSizePreference ?: 4
+        )
         suggestionAdapter?.suggestions = emptyList()
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
@@ -1267,6 +1275,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customKeyboardSuggestionPreference = null
         zenzDebounceTimePreference = null
         zenzMaximumLetterSizePreference = null
+        zenzMaximumContextSizePreference = null
+        zenzMaximumThreadSizePreference = null
         symbolKeyboardFirstItem = null
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
@@ -6009,6 +6019,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 )
                             }
                             if (suggestions.isNotEmpty()) {
+                                Timber.d("")
                                 val firstSuggestionItem = suggestions.first()
                                 if (firstSuggestionItem.length.toInt() == insertString.length) {
                                     if (firstSuggestionItem.string != resultFromZenz.first().string) {
