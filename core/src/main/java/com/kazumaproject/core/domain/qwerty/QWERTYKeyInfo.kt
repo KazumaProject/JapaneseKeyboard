@@ -16,7 +16,6 @@ sealed class QWERTYKeyInfo {
         override val variations: List<Char>
             get() = listOf(
                 '@',
-                'a',
                 'à',
                 'á',
                 'â',
@@ -24,11 +23,10 @@ sealed class QWERTYKeyInfo {
                 'ã',
                 'å',
                 'ā',
-                'A',
             )
         override val capVariations: List<Char>
             get() = listOf(
-                '@', 'A', 'À', 'Á', 'Â', 'Æ', 'Ã', 'Å', 'Ā'
+                '@', 'À', 'Á', 'Â', 'Æ', 'Ã', 'Å', 'Ā'
             )
     }
 
@@ -65,19 +63,19 @@ sealed class QWERTYKeyInfo {
         override val capChar: Char get() = 'E'
         override val variations: List<Char>
             get() = listOf(
+                '3',
                 'ē',
                 'ê',
                 'ë',
-                '3',
                 'è',
                 'é',
             )
         override val capVariations: List<Char>
             get() = listOf(
+                '3',
                 'Ē',
                 'Ê',
                 'Ë',
-                '3',
                 'È',
                 'É',
             )
@@ -109,11 +107,11 @@ sealed class QWERTYKeyInfo {
         override val capChar: Char get() = 'I'
         override val variations: List<Char>
             get() = listOf(
-                'ì', 'ï', 'ī', 'î', 'í', '8',
+                '8', 'ì', 'ï', 'ī', 'î', 'í',
             )
         override val capVariations: List<Char>
             get() = listOf(
-                'Ì', 'Ï', 'Ī', 'Î', 'Í', '8'
+                '8', 'Ì', 'Ï', 'Ī', 'Î', 'Í',
             )
     }
 
@@ -157,11 +155,11 @@ sealed class QWERTYKeyInfo {
         override val capChar: Char get() = 'O'
         override val variations: List<Char>
             get() = listOf(
-                'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'ō', 'ő', '9', 'O'
+                '9', 'ò', 'ó', 'ô', 'õ', 'ö', 'ø', 'ō', 'ő',
             )
         override val capVariations: List<Char>
             get() = listOf(
-                'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ø', 'Ō', 'Ő', '9'
+                '9', 'Ò', 'Ó', 'Ô', 'Õ', 'Ö', 'Ø', 'Ō', 'Ő',
             )
     }
 
@@ -205,11 +203,11 @@ sealed class QWERTYKeyInfo {
         override val capChar: Char get() = 'U'
         override val variations: List<Char>
             get() = listOf(
-                'ū', 'ü', 'ù', 'ú', 'û', '7',
+                '7', 'ū', 'ü', 'ù', 'ú', 'û',
             )
         override val capVariations: List<Char>
             get() = listOf(
-                'Ū', 'Ü', 'Ù', 'Ú', 'Û', '7'
+                '7', 'Ū', 'Ü', 'Ù', 'Ú', 'Û',
             )
     }
 
