@@ -109,6 +109,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.toHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
@@ -616,12 +617,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var bunsetusMultipleDetect = false
 
-    private val _zenzCandidates = MutableStateFlow<List<Candidate>>(emptyList())
-    private val zenzCandidates: StateFlow<List<Candidate>> = _zenzCandidates
+    private val _zenzCandidates = MutableStateFlow<List<ZenzCandidate>>(emptyList())
+    private val zenzCandidates: StateFlow<List<ZenzCandidate>> = _zenzCandidates
     private var lastCandidate: String? = ""
 
-    private val _zenzRequest = MutableSharedFlow<Unit>(
-        extraBufferCapacity = 64
+    private val _zenzRequest = MutableSharedFlow<String>(
+        extraBufferCapacity = 0
     )
     private val zenzRequest = _zenzRequest
 
@@ -1658,14 +1659,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("onUpdateSelection hasTail : $tail $caretTop")
                 _inputString.update { tail }
                 stringInTail.set("")
-            }
-
-            !hasTail && !caretTop -> {
-                _inputString.update { "" }
-                stringInTail.set("")
-                scope.launch {
-                    _suggestionFlag.emit(CandidateShowFlag.Idle)
-                }
             }
 
             // No tail but still holding input → cleanup
@@ -5997,35 +5990,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             zenzRequest.debounce((zenzDebounceTimePreference ?: 300).toLong()).collectLatest {
-                val insertString = inputString.value
-                val zenzCandidates = performZenzRequest(insertString)
+                val zenzCandidates = performZenzRequest(it)
                 _zenzCandidates.update { zenzCandidates }
             }
         }
 
         launch {
-            zenzCandidates.buffer(kotlinx.coroutines.channels.Channel.CONFLATED)
+            zenzCandidates
+                .buffer(kotlinx.coroutines.channels.Channel.CONFLATED)
                 .collectLatest { resultFromZenz ->
                     val insertString = inputString.value
+                    if (resultFromZenz.isNotEmpty()){
+                        Timber.d("zenzCandidates called: [$insertString] [${resultFromZenz.first().string}] [${resultFromZenz.first().originalString}]")
+                    }
                     if (insertString.isNotEmpty()) {
-                        if (resultFromZenz.isNotEmpty()) {
+                        if (resultFromZenz.isNotEmpty() &&
+                            resultFromZenz.first().originalString == insertString
+                        ) {
                             val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-
-                            if (isLiveConversionEnable == true && !hasConvertedKatakana) {
-                                isContinuousTapInputEnabled.set(true)
-                                lastFlickConvertedNextHiragana.set(true)
-                                if (!hasConvertedKatakana) applyFirstSuggestion(
-                                    resultFromZenz.first()
-                                )
-                            }
                             if (suggestions.isNotEmpty()) {
-                                Timber.d("")
-                                val firstSuggestionItem = suggestions.first()
-                                if (firstSuggestionItem.length.toInt() == insertString.length) {
-                                    if (firstSuggestionItem.string != resultFromZenz.first().string) {
-                                        suggestionAdapter?.suggestions =
-                                            (listOf(resultFromZenz.first()) + (suggestions)).distinctBy { it.string }
-                                    }
+                                val resultFromZenzToCandidate = resultFromZenz.map {
+                                    Candidate(
+                                        string = it.string,
+                                        type = it.type,
+                                        length = it.length,
+                                        score = it.score
+                                    )
+                                }
+
+                                suggestionAdapter?.suggestions =
+                                    (resultFromZenzToCandidate + (suggestions)).distinctBy { it.string }
+
+                                if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+                                    isContinuousTapInputEnabled.set(true)
+                                    lastFlickConvertedNextHiragana.set(true)
+                                    if (!hasConvertedKatakana) applyFirstSuggestion(
+                                        resultFromZenzToCandidate.first()
+                                    )
                                 }
                             }
                         } else {
@@ -6055,7 +6056,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private suspend fun performZenzRequest(
         insertString: String
-    ): List<Candidate> = withContext(Dispatchers.Default) {
+    ): List<ZenzCandidate> = withContext(Dispatchers.Default) {
 
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
         // ※元のロジック: insertString.length == 1 の場合は emptyList
@@ -6106,11 +6107,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             // 結果を返却
             listOf(
-                Candidate(
+                ZenzCandidate(
                     string = stringFromZenz,
                     type = (33).toByte(),
                     length = (insertString.length).toUByte(),
                     score = 2000,
+                    originalString = insertString
                 )
             )
         } catch (e: CancellationException) {
@@ -8999,7 +9001,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         }
         if (zenzEnableStatePreference == true) {
-            _zenzRequest.emit(Unit)
+            _zenzRequest.emit(insertString)
         }
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
@@ -9053,7 +9055,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         }
         if (zenzEnableStatePreference == true) {
-            _zenzRequest.emit(Unit)
+            _zenzRequest.emit(insertString)
         }
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
