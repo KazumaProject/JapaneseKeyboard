@@ -6,40 +6,35 @@ on:
     tags:
       - 'v*'
 
+# Release作成には書き込み権限が必要
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        # Although we only have one configuration, the matrix is kept for future flexibility
-        api-level: [ 35 ]
-        build-tools: [ '35.0.0' ]
-        target: [ 'android-35' ]
-
     steps:
-      # 1. Checkout code with full history
-      # fetch-depth: 0 is required to get all tags and commit history
-      # for the automatic release note generation.
+      # 1. Checkout code with submodules
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # v4 に更新
         with:
           fetch-depth: 0
+          submodules: recursive  # 【重要】これがないと llama.cpp が空っぽになります
 
       # 2. Set up JDK 17
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4 # v4 に更新
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. Set up Android SDK
+      # 3. Set up Android SDK (Optional but good for stability)
+      # ubuntu-latest には SDK が入っていますが、明示しておくと安心です
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v3
         with:
-          api-level: ${{ matrix.api-level }}
-          build-tools: ${{ matrix.build-tools }}
-          target: ${{ matrix.target }}
+          log-accepted-android-sdk-licenses: true # ライセンス同意エラー防止
 
       # 4. Cache Gradle dependencies
       - name: Cache Gradle
@@ -64,27 +59,29 @@ jobs:
           if [ ! -f local.properties ]; then
             touch local.properties
           fi
+          # Use absolute path for safety
+          KEYSTORE_PATH=$(pwd)/my-release-key.jks
+          
           echo "# --- SigningConfig for CI ---" >> local.properties
-          echo "KEYSTORE_FILE=../my-release-key.jks"     >> local.properties
+          echo "KEYSTORE_FILE=$KEYSTORE_PATH"     >> local.properties
           echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> local.properties
           echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"   >> local.properties
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> local.properties
+          
+          # NDKの場所を明示する必要がある場合（通常は環境変数で動きますが念のため）
+          # echo "ndk.dir=$ANDROID_NDK_HOME" >> local.properties
 
       # 7. Build the signed release APK
+      # CMake(llama.cpp)のビルドもここに含まれます
       - name: Build Signed Release APK
-        run: ./gradlew clean assembleRelease
+        run: ./gradlew clean assembleRelease --stacktrace
 
       # 8. Create GitHub Release and upload APK
-      # This single step replaces the previous 'Create Release' and 'Upload Asset' steps.
-      # It automatically generates release notes from merged Pull Requests.
       - name: Create Release and Upload APK
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2 # v2 に更新
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          # This option tells the action to automatically create release notes
-          # based on the Pull Requests merged since the last tag.
           generate_release_notes: true
-          # Specifies the file(s) to upload as release assets.
           files: app/build/outputs/apk/release/app-release.apk
         env:
-          # The GITHUB_TOKEN is required to authorize the action to create a release.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
