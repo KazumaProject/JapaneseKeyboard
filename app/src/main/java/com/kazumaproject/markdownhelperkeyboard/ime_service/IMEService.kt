@@ -684,14 +684,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     override fun onReadyForSpeech(params: Bundle?) {
                         mainLayoutBinding?.suggestionProgressbar?.isVisible = true
                     }
+
                     override fun onBeginningOfSpeech() {
 
                     }
+
                     override fun onRmsChanged(rmsdB: Float) {}
                     override fun onBufferReceived(buffer: ByteArray?) {}
                     override fun onEndOfSpeech() {
                         mainLayoutBinding?.suggestionProgressbar?.isVisible = false
                     }
+
                     override fun onError(error: Int) {
                         isListening = false
                         mainLayoutBinding?.suggestionProgressbar?.isVisible = false
@@ -1484,10 +1487,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun startVoiceInput() {
+    private fun startVoiceInput(
+        mainView: MainLayoutBinding
+    ) {
         Timber.d("startVoiceInput: [$isListening] [$speechRecognizer]")
+        mainView.suggestionProgressbar.isVisible = false
         if (isListening) return
         if (speechRecognizer == null) return
+
+        val languageValue: String = when {
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY -> {
+                "en-CA"
+            }
+
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
+                if (mainView.qwertyView.getRomajiMode()) {
+                    "ja-JP"
+                } else {
+                    "en-CA"
+                }
+            }
+
+            isTablet == true -> {
+                when (mainView.tabletView.currentInputMode.get()) {
+                    InputMode.ModeJapanese -> "ja-JP"
+                    InputMode.ModeEnglish -> "en-CA"
+                    InputMode.ModeNumber -> "ja-JP"
+                }
+            }
+
+            isTablet != true -> {
+                when (mainView.keyboardView.currentInputMode.value) {
+                    InputMode.ModeJapanese -> "ja-JP"
+                    InputMode.ModeEnglish -> "en-CA"
+                    InputMode.ModeNumber -> "ja-JP"
+                }
+            }
+
+            else -> {
+                "ja-JP"
+            }
+        }
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(
@@ -1495,7 +1535,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
             // 日本語固定にしたければ "ja-JP"
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ja-JP")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageValue)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
         }
 
@@ -7698,7 +7738,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 ShortcutType.VOICE_INPUT -> {
-                    startVoiceInput()
+                    startVoiceInput(mainView)
                 }
             }
         }
