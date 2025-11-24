@@ -20,6 +20,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMap
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_10_11
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_11_12
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_12_13
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
@@ -36,6 +37,7 @@ import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
 import com.kazumaproject.zenz.ZenzEngine
@@ -80,7 +82,8 @@ object AppModule {
             MIGRATION_8_9,
             MIGRATION_9_10,
             MIGRATION_10_11,
-            MIGRATION_11_12
+            MIGRATION_11_12,
+            MIGRATION_12_13
         )
         .build()
 
@@ -115,6 +118,10 @@ object AppModule {
     @Singleton
     @Provides
     fun providesNgWordDao(db: AppDatabase): NgWordDao = db.ngWordDao()
+
+    @Singleton
+    @Provides
+    fun providesShortCutDao(db: AppDatabase): ShortcutDao = db.shortcutDao()
 
     @Singleton
     @Provides

@@ -261,6 +261,14 @@
                 app:showSeekBarValue="true" />
         </PreferenceCategory>
 
+        <PreferenceCategory android:title="@string/shortcutsettingfragment">
+            <Preference
+                android:icon="@drawable/outline_border_color_24"
+                android:key="shortcut_toolbar_item_preference"
+                android:title="@string/shortcut_toolbar_preference_title"
+                app:summary="@string/shortcut_toolbar_preference_summary" />
+        </PreferenceCategory>
+
         <PreferenceCategory android:title="@string/category_romaji_conversion_title">
             <Preference
                 android:icon="@drawable/outline_border_color_24"

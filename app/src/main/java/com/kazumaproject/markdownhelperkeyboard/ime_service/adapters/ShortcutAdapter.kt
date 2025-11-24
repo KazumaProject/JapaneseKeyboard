@@ -8,14 +8,15 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 
-class ShortcutAdapter : ListAdapter<Int, ShortcutAdapter.ViewHolder>(DiffCallback) {
+class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(DiffCallback) {
 
     /**
      * A listener that gets called when an item is clicked.
      * The listener receives the resource ID of the clicked item.
      */
-    var onItemClicked: ((Int) -> Unit)? = null
+    var onItemClicked: ((ShortcutType) -> Unit)? = null
 
     /**
      * ViewHolder now captures clicks and calls the adapter's listener.
@@ -26,12 +27,9 @@ class ShortcutAdapter : ListAdapter<Int, ShortcutAdapter.ViewHolder>(DiffCallbac
 
         init {
             itemView.setOnClickListener {
-                // Check for a valid position to avoid crashes on list changes
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) {
-                    val resourceId = getItem(position)
-                    // Safely invoke the listener if it has been set
-                    onItemClicked?.invoke(resourceId)
+                    onItemClicked?.invoke(getItem(position))
                 }
             }
         }
@@ -44,17 +42,12 @@ class ShortcutAdapter : ListAdapter<Int, ShortcutAdapter.ViewHolder>(DiffCallbac
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val drawableResId = getItem(position)
-        holder.imageView.setImageResource(drawableResId)
+        val item = getItem(position)
+        holder.imageView.setImageResource(item.iconResId) // Enumからアイコン取得
     }
 
-    private object DiffCallback : DiffUtil.ItemCallback<Int>() {
-        override fun areItemsTheSame(oldItem: Int, newItem: Int): Boolean {
-            return oldItem == newItem
-        }
-
-        override fun areContentsTheSame(oldItem: Int, newItem: Int): Boolean {
-            return oldItem == newItem
-        }
+    private object DiffCallback : DiffUtil.ItemCallback<ShortcutType>() {
+        override fun areItemsTheSame(oldItem: ShortcutType, newItem: ShortcutType): Boolean = oldItem.id == newItem.id
+        override fun areContentsTheSame(oldItem: ShortcutType, newItem: ShortcutType): Boolean = oldItem == newItem
     }
 }
