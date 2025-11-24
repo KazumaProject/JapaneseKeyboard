@@ -359,4 +359,7 @@
     <string name="zenz_maximum_context_count_preference_summary">Sets the maximum number of tokens zenz can use in a single conversion, including left context and input. Increasing this value allows Zenz to handle longer context, but may increase memory usage and slow down inference.</string>
     <string name="zenz_maximum_thread_count_preference_title">Number of threads used by zenz</string>
     <string name="zenz_maximum_thread_count_preference_summary">Sets the number of CPU threads used for zenz inference. Higher values can make conversions faster, but may increase CPU usage and battery drain. Adjust this according to your device performance.</string>
+    <string name="shortcutsettingfragment">Toolbar Setting</string>
+    <string name="shortcut_toolbar_preference_title">Customize shortcut toolbar</string>
+    <string name="shortcut_toolbar_preference_summary">Open the screen to edit the icons shown on the toolbar.</string>
 </resources>
