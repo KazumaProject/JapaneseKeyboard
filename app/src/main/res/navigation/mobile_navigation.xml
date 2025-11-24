@@ -49,6 +49,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_enableKeyboardFragment"
             app:destination="@id/enableKeyboardFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_shortcutSettingFragment"
+            app:destination="@id/shortcutSettingFragment" />
     </fragment>
     <fragment
         android:id="@+id/openSourceFragment"
@@ -161,5 +164,9 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.enable_keyboard_setting.EnableKeyboardFragment"
         android:label="fragment_enable_keyboard"
         tools:layout="@layout/fragment_enable_keyboard" />
+    <fragment
+        android:id="@+id/shortcutSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.short_cut.ui.ShortcutSettingFragment"
+        android:label="@string/shortcutsettingfragment" />
 
 </navigation>
