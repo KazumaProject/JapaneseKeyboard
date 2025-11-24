@@ -199,6 +199,18 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
+        val shortCutToolbarItemSettingPreference = findPreference<Preference>(
+            "shortcut_toolbar_item_preference"
+        )
+        shortCutToolbarItemSettingPreference?.apply {
+            setOnPreferenceClickListener {
+                findNavController().navigate(
+                    R.id.action_navigation_setting_to_shortcutSettingFragment
+                )
+                true
+            }
+        }
+
         val candidateTabOrderPreference =
             findPreference<Preference>("candidate_tab_order_preference")
         candidateTabOrderPreference?.apply {

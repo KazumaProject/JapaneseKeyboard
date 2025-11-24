@@ -22,6 +22,8 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
+import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
+import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
@@ -38,9 +40,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         UserTemplate::class,
         ClipboardHistoryItem::class,
         RomajiMapEntity::class,
-        NgWord::class
+        NgWord::class,
+        ShortcutItem::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(
@@ -57,6 +60,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun clipboardHistoryDao(): ClipboardHistoryDao
     abstract fun romajiMapDao(): RomajiMapDao
     abstract fun ngWordDao(): NgWordDao
+    abstract fun shortcutDao(): ShortcutDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -273,6 +277,20 @@ abstract class AppDatabase : RoomDatabase() {
                     CREATE INDEX IF NOT EXISTS `index_ng_word_yomi`
                     ON `ng_word`(`yomi`)
                 """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `shortcut_items` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `typeId` TEXT NOT NULL,
+                      `sortOrder` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
                 )
             }
         }
