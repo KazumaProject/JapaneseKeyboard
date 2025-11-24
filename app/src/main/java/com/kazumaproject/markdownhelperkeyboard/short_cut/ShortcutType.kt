@@ -20,7 +20,12 @@ enum class ShortcutType(
         "select_date",
         com.kazumaproject.core.R.drawable.calendar_today_24px,
         "日付"
-    ), ;
+    ),
+    VOICE_INPUT(
+        "voice_input",
+        com.kazumaproject.core.R.drawable.settings_voice_24px,
+        "音声入力"
+    ),;
 
     companion object {
         fun fromId(id: String): ShortcutType? = entries.find { it.id == id }

@@ -20,6 +20,9 @@ import android.os.Handler
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
@@ -284,6 +287,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var henkanPressedWithBunsetsuDetect: Boolean = false
     private var conversionKeySwipePreference: Boolean? = false
 
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var isListening = false
+
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
      */
@@ -331,7 +337,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val zenzScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var cachedEmoji: List<Emoji>? = null
     private var cachedEmoticons: List<Emoticon>? = null
@@ -671,6 +676,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ioScope.launch {
             customLayouts = keyboardRepository.getLayoutsNotFlow()
             shortCurRepository.initDefaultShortcutsIfNeeded()
+        }
+
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
+                setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = true
+                    }
+                    override fun onBeginningOfSpeech() {
+
+                    }
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                    }
+                    override fun onError(error: Int) {
+                        isListening = false
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        isListening = false
+                        val matches =
+                            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: return
+                        _inputString.update { text }
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                    }
+
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        val matches =
+                            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: return
+                        _inputString.update { text }
+                    }
+
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+            }
         }
     }
 
@@ -1098,6 +1143,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 setTabsToTabLayout(mainView)
 
+                suggestionProgressbar.isVisible = false
+
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 qwertyView.setSpecialKeyVisibility(
@@ -1174,6 +1221,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        stopVoiceInput()
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
@@ -1298,6 +1346,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bunsetsuPositionList = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
         System.gc()
         dismissFloatingDock()
     }
@@ -1418,6 +1468,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (floatingDockWindow?.isShowing == true) {
             floatingDockWindow?.dismiss()
             floatingDockWindow = null
+        }
+    }
+
+    private fun updateComposingText(text: String) {
+        // 途中経過の表示用（変換中のようなイメージ）
+        currentInputConnection?.setComposingText(text, 1)
+    }
+
+    private fun commitRecognizedText(text: String) {
+        // 確定時：composing を消してから確定文字列を commit
+        currentInputConnection?.apply {
+            finishComposingText()
+            commitText(text, 1)
+        }
+    }
+
+    private fun startVoiceInput() {
+        Timber.d("startVoiceInput: [$isListening] [$speechRecognizer]")
+        if (isListening) return
+        if (speechRecognizer == null) return
+
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            // 日本語固定にしたければ "ja-JP"
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ja-JP")
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        try {
+            speechRecognizer?.startListening(intent)
+            isListening = true
+        } catch (e: SecurityException) {
+            // RECORD_AUDIO が許可されていないなど
+            isListening = false
+        }
+    }
+
+    private fun stopVoiceInput() {
+        if (!isListening) return
+        try {
+            speechRecognizer?.stopListening()
+        } catch (_: Exception) {
+        } finally {
+            isListening = false
         }
     }
 
@@ -7598,6 +7695,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 ShortcutType.DATE_PICKER -> {
                     showCurrentDateListPopup()
+                }
+
+                ShortcutType.VOICE_INPUT -> {
+                    startVoiceInput()
                 }
             }
         }
