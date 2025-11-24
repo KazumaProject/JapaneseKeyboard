@@ -20,6 +20,9 @@ import android.os.Handler
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
@@ -146,10 +149,12 @@ import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.NgWordRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
 import com.kazumaproject.tenkey.extensions.getDakutenFlickTop
@@ -244,6 +249,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var ngWordRepository: NgWordRepository
 
     @Inject
+    lateinit var shortCurRepository: ShortcutRepository
+
+    @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
     @Inject
@@ -278,6 +286,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuPositionList: List<Int>? = emptyList()
     private var henkanPressedWithBunsetsuDetect: Boolean = false
     private var conversionKeySwipePreference: Boolean? = false
+
+    private var speechRecognizer: SpeechRecognizer? = null
+    private var isListening = false
 
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
@@ -326,7 +337,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val zenzScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     private var cachedEmoji: List<Emoji>? = null
     private var cachedEmoticons: List<Emoticon>? = null
@@ -626,6 +636,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val zenzRequest = _zenzRequest
 
+    private var addUserDictionaryPopup: PopupWindow? = null
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -663,6 +675,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         ioScope.launch {
             customLayouts = keyboardRepository.getLayoutsNotFlow()
+            shortCurRepository.initDefaultShortcutsIfNeeded()
+        }
+
+        if (SpeechRecognizer.isRecognitionAvailable(this)) {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
+                setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = true
+                    }
+                    override fun onBeginningOfSpeech() {
+
+                    }
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                    }
+                    override fun onError(error: Int) {
+                        isListening = false
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        isListening = false
+                        val matches =
+                            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: return
+                        _inputString.update { text }
+                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                    }
+
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        val matches =
+                            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull() ?: return
+                        _inputString.update { text }
+                    }
+
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+            }
         }
     }
 
@@ -847,6 +900,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         keyboardSelectionPopupWindow?.dismiss()
+        addUserDictionaryPopup?.dismiss()
         _keyboardSymbolViewState.update { false }
         _selectMode.update { false }
         _cursorMoveMode.update { false }
@@ -1089,6 +1143,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 setTabsToTabLayout(mainView)
 
+                suggestionProgressbar.isVisible = false
+
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 qwertyView.setSpecialKeyVisibility(
@@ -1165,6 +1221,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        stopVoiceInput()
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
@@ -1289,6 +1346,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bunsetsuPositionList = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
         System.gc()
         dismissFloatingDock()
     }
@@ -1409,6 +1468,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (floatingDockWindow?.isShowing == true) {
             floatingDockWindow?.dismiss()
             floatingDockWindow = null
+        }
+    }
+
+    private fun updateComposingText(text: String) {
+        // 途中経過の表示用（変換中のようなイメージ）
+        currentInputConnection?.setComposingText(text, 1)
+    }
+
+    private fun commitRecognizedText(text: String) {
+        // 確定時：composing を消してから確定文字列を commit
+        currentInputConnection?.apply {
+            finishComposingText()
+            commitText(text, 1)
+        }
+    }
+
+    private fun startVoiceInput() {
+        Timber.d("startVoiceInput: [$isListening] [$speechRecognizer]")
+        if (isListening) return
+        if (speechRecognizer == null) return
+
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            // 日本語固定にしたければ "ja-JP"
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ja-JP")
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        try {
+            speechRecognizer?.startListening(intent)
+            isListening = true
+        } catch (e: SecurityException) {
+            // RECORD_AUDIO が許可されていないなど
+            isListening = false
+        }
+    }
+
+    private fun stopVoiceInput() {
+        if (!isListening) return
+        try {
+            speechRecognizer?.stopListening()
+        } catch (_: Exception) {
+        } finally {
+            isListening = false
         }
     }
 
@@ -5989,6 +6095,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
+            shortCurRepository.enabledShortcutsFlow.collectLatest {
+                shortcutAdapter?.submitList(it)
+            }
+        }
+
+        launch {
             zenzRequest.debounce((zenzDebounceTimePreference ?: 300).toLong()).collectLatest {
                 val zenzCandidates = performZenzRequest(it)
                 _zenzCandidates.update { zenzCandidates }
@@ -6000,7 +6112,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 .buffer(kotlinx.coroutines.channels.Channel.CONFLATED)
                 .collectLatest { resultFromZenz ->
                     val insertString = inputString.value
-                    if (resultFromZenz.isNotEmpty()){
+                    if (resultFromZenz.isNotEmpty()) {
                         Timber.d("zenzCandidates called: [$insertString] [${resultFromZenz.first().string}] [${resultFromZenz.first().originalString}]")
                     }
                     if (insertString.isNotEmpty()) {
@@ -7547,23 +7659,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
-        shortcutAdapter?.submitList(
-            listOf(
-                com.kazumaproject.core.R.drawable.baseline_settings_24,
-                com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24,
-                com.kazumaproject.core.R.drawable.book_3_24px,
-                com.kazumaproject.core.R.drawable.text_select_start_24dp,
-                com.kazumaproject.core.R.drawable.content_copy_24dp,
-                com.kazumaproject.core.R.drawable.language_24dp,
-            )
-        )
-        shortcutAdapter?.onItemClicked = { resourceId ->
-            when (resourceId) {
-                com.kazumaproject.core.R.drawable.baseline_settings_24 -> {
+        shortcutAdapter?.onItemClicked = { type ->
+            when (type) {
+                ShortcutType.SETTINGS -> {
                     launchSettingsActivity("setting_fragment_request")
                 }
 
-                com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24 -> {
+                ShortcutType.EMOJI -> {
                     vibrate()
                     _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
                     stringInTail.set("")
@@ -7571,33 +7673,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setComposingText("", 0)
                 }
 
-                com.kazumaproject.core.R.drawable.book_3_24px -> {
+                ShortcutType.TEMPLATE -> {
                     showUserTemplateListPopup()
                 }
 
-                com.kazumaproject.core.R.drawable.language_24dp -> {
+                ShortcutType.KEYBOARD_PICKER -> {
                     showKeyboardPicker()
                 }
 
-                com.kazumaproject.core.R.drawable.input_mode_number_select_custom -> {
-                    mainView.customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
-                }
-
-                com.kazumaproject.core.R.drawable.calendar_today_24px -> {
-                    showCurrentDateListPopup()
-                }
-
-                com.kazumaproject.core.R.drawable.text_select_start_24dp -> {
+                ShortcutType.SELECT_ALL -> {
                     selectAllText()
                 }
 
-                com.kazumaproject.core.R.drawable.content_copy_24dp -> {
+                ShortcutType.COPY -> {
                     copyAction()
                 }
 
-                com.kazumaproject.core.R.drawable.content_paste_24px -> {
+                ShortcutType.PASTE -> {
                     pasteAction()
+                }
+
+                ShortcutType.DATE_PICKER -> {
+                    showCurrentDateListPopup()
+                }
+
+                ShortcutType.VOICE_INPUT -> {
+                    startVoiceInput()
                 }
             }
         }
@@ -8405,6 +8506,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 2) 共通の後処理（入力クリア＋コミット）
         _inputString.update { "" }
         commitText(candidate.string, 1)
+    }
+
+
+    /**
+     * 実際のユーザー辞書登録処理
+     * ここを ViewModel や Repository につなげてもよい
+     */
+    private fun registerUserDictionaryEntry(reading: String, word: String) {
+
     }
 
     private fun upsertLearnDictionaryMultipleTapCandidate(
