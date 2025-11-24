@@ -14,6 +14,16 @@
         android:layout_marginBottom="@dimen/keyboard_height_land"
         android:background="@color/keyboard_bg">
 
+        <ProgressBar
+            android:id="@+id/suggestion_progressbar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/suggestion_recycler_view"
             android:layout_width="0dp"
@@ -36,9 +46,9 @@
             android:src="@drawable/outline_arrow_drop_down_24"
             android:tint="@color/keyboard_icon_color"
             android:visibility="gone"
-            app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
