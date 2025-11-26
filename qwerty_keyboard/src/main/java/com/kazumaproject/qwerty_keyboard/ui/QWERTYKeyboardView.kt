@@ -145,6 +145,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var enableFlickUpDetection = false
 
     /**
+     * 下フリック検知を有効にするかどうかのフラグ
+     * true の場合、QWERTYButton での下フリックが検知され、
+     * その間のキースライドが無効になります。
+     */
+    private var enableFlickDownDetection = false
+
+    /**
      * 各ポインターのタッチ開始座標 (X, Y) を保存するマップ
      * Key: pointerId, Value: Pair(startX, startY)
      */
@@ -1352,6 +1359,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.enableFlickUpDetection = enabled
     }
 
+    /**
+     * 下フリックによる個別のアクションを有効にするか設定します。
+     * @param enabled trueにすると、QWERTYButtonでの下フリックが検知され、
+     * その際のキー間スライドが無効になります。
+     */
+    fun setFlickDownDetectionEnabled(enabled: Boolean) {
+        this.enableFlickDownDetection = enabled
+    }
+
     private fun setMaterialYouTheme(
         isDarkMode: Boolean, isDynamicColorEnable: Boolean
     ) {
@@ -2024,6 +2040,55 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private enum class FlickDirection {
+        NONE, UP, DOWN
+    }
+
+    private fun detectFlickDirection(
+        x: Float, y: Float, startX: Float, startY: Float, threshold: Float
+    ): FlickDirection {
+        val dx = x - startX
+        val dy = y - startY
+
+        val isVertical = abs(dy) > abs(dx)
+        val isBeyondThreshold = abs(dy) > threshold
+
+        if (!isVertical || !isBeyondThreshold) return FlickDirection.NONE
+        return if (dy < 0) FlickDirection.UP else FlickDirection.DOWN
+    }
+
+    private fun applyCommonFlickEffects(pointerId: Int, previousView: View) {
+        flickLockedPointers.add(pointerId)
+        previousView.isPressed = false
+        dismissKeyPreview()
+        cancelLongPressForPointer(pointerId)
+    }
+
+    private fun handleUpFlick(previousView: View) {
+        val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        Log.d("QWERTYKeyboardView", "Up-flick detected on key (during MOVE): $qwertyKey")
+        val variations = getVariationInfo(qwertyKey)
+        variations?.let { variation ->
+            qwertyKeyListener?.onFlickUPQWERTYKey(
+                qwertyKey = qwertyKey,
+                tap = variation.tap,
+                variations = variations.variations
+            )
+        }
+    }
+
+    private fun handleDownFlick(previousView: View) {
+        val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        val charToInsert = (previousView as QWERTYButton).text.toString().firstOrNull()?.uppercaseChar()
+        if (charToInsert != null) {
+            Log.d("QWERTYKeyboardView", "Down-flick detected on key: $qwertyKey, inserting $charToInsert")
+            qwertyKeyListener?.onFlickDownQWERTYKey(
+                qwertyKey = qwertyKey,
+                character = charToInsert
+            )
+        }
+    }
+
     /**
      * Handle a MOVE event for a tracked pointer. If it slides off its original key, update pressed state.
      * ★ (MODIFIED) Detects up-flick gestures and calls listener IMMEDIATELY.
@@ -2032,7 +2097,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
         if (pointerId == suppressedPointerId || pointerId == lockedPointerId) return
 
-        // 1. 既に上フリックとしてロックされているポインターは、他のキーを検知しない
+        // 既に上下フリックとしてロックされているポインターは、他のキーを検知しない
         if (flickLockedPointers.contains(pointerId)) {
             return
         }
@@ -2041,53 +2106,32 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val y = event.getY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
 
-        // 2. 上フリックジェスチャーの検知
-        var isUpFlick = false
-        // ★ フリック検知は、指が何らかのキーの上にある場合のみ行う
-        if (enableFlickUpDetection && previousView != null && previousView is QWERTYButton) {
+        // フリックジェスチャーの検知
+        if (previousView is QWERTYButton) {
             pointerStartCoords[pointerId]?.let { (startX, startY) ->
-                val dx = x - startX
-                val dy = y - startY
+                val flickDirection = detectFlickDirection(x, y, startX, startY, flickThreshold)
 
-                // 上フリックの条件:
-                // 1. Y軸の移動が負（上方向）
-                // 2. Y軸の移動量がX軸の移動量より大きい（垂直方向のスライド）
-                // 3. Y軸の移動量が設定した閾値(flickThreshold)を超えている
-                if (dy < 0 && abs(dy) > abs(dx) && abs(dy) > flickThreshold) {
-                    isUpFlick = true
+                when (flickDirection) {
+                    FlickDirection.UP -> {
+                        if (enableFlickUpDetection) {
+                            applyCommonFlickEffects(pointerId, previousView)
+                            handleUpFlick(previousView)
+                            return
+                        }
+                    }
+                    FlickDirection.DOWN -> {
+                        if (enableFlickDownDetection) {
+                            applyCommonFlickEffects(pointerId, previousView)
+                            handleDownFlick(previousView)
+                            return
+                        }
+                    }
+                    FlickDirection.NONE -> { /* No flick, continue with normal move handling */ }
                 }
             }
         }
 
-        if (isUpFlick) {
-            // 3. 上フリックを検知！
-            flickLockedPointers.add(pointerId) // このポインターを「フリックロック」する
-            previousView?.isPressed = false    // 元のキーの押下状態を解除
-            dismissKeyPreview()                // キープレビューを閉じる
-            cancelLongPressForPointer(pointerId) // 長押し検知をキャンセル
-
-            // ★ ACTION_MOVE の最中にリスナーを呼び出す
-            val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
-            Log.d("QWERTYKeyboardView", "Up-flick detected on key (during MOVE): $qwertyKey")
-            val variations = getVariationInfo(qwertyKey)
-            // ★ リスナーを呼び出します。
-            // (onFlickUPQWERTYKey または onFlickQWERTYKey のどちらかで、ご自身のインターフェース定義に合わせてください)
-            variations?.let { variation ->
-                qwertyKeyListener?.onFlickUPQWERTYKey(
-                    qwertyKey = qwertyKey,
-                    tap = variation.tap,
-                    variations = variations.variations
-                )
-            }
-            // qwertyKeyListener?.onFlickQWERTYKey(qwertyKey) // もしこちらの名前で定義した場合
-
-            // ★重要: ここで return する
-            // これにより、この下の `currentView != previousView` のロジックが実行されず、
-            // 他キーへのスライド（検知）が無効化される。
-            return
-        }
-
-        // 4. 上フリックでない場合、通常のキースライド処理を実行
+        // 上下フリックでない場合、通常のキースライド処理を実行
         val currentView = findButtonUnder(x.toInt(), y.toInt())
 
         if (currentView != previousView) {
