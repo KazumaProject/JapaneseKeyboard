@@ -8285,6 +8285,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         "release" -> {}
                     }
+                    if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
+                        clearDeletedBuffer()
+                        suggestionAdapter?.setUndoEnabled(false)
+                    }
                     handleTap(character, inputString.value, StringBuilder(), mainView)
                 }
             })
