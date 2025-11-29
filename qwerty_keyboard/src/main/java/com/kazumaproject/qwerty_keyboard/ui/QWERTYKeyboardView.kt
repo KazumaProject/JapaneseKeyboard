@@ -35,6 +35,7 @@ import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
+import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
@@ -2078,15 +2079,23 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun handleDownFlick(previousView: View) {
+        if (previousView !is QWERTYButton) return
+
         val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
-        val charToInsert = (previousView as QWERTYButton).text.toString().firstOrNull()?.uppercaseChar()
-        if (charToInsert != null) {
-            Log.d("QWERTYKeyboardView", "Down-flick detected on key: $qwertyKey, inserting $charToInsert")
-            qwertyKeyListener?.onFlickDownQWERTYKey(
-                qwertyKey = qwertyKey,
-                character = charToInsert
-            )
+        if (qwertyKey == QWERTYKey.QWERTYKeySpace) return
+
+        val baseChar = previousView.text.firstOrNull()?.uppercaseChar() ?: return
+        val charToInsert = if (romajiModeState.value) {
+            baseChar.toZenkaku()
+        } else {
+            baseChar
         }
+
+        Log.d("QWERTYKeyboardView", "Down-flick detected on key: $qwertyKey, inserting $charToInsert")
+        qwertyKeyListener?.onFlickDownQWERTYKey(
+            qwertyKey = qwertyKey,
+            character = charToInsert
+        )
     }
 
     /**
