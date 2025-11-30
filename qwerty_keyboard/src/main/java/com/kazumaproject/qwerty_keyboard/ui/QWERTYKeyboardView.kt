@@ -1863,8 +1863,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     // ★ フリックロックされていないポインターの場合、通常のタップ処理
                 } else if (!flickLockedPointers.contains(liftedId)) {
 
-                    val liftedId = event.getPointerId(event.actionIndex)
-                    if (suppressedPointerId == liftedId) {
+                    val liftedId2 = event.getPointerId(event.actionIndex)
+                    if (suppressedPointerId == liftedId2) {
                         suppressedPointerId = null
                     }
                     if (pointerButtonMap.size == 1) {
@@ -1872,7 +1872,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         view?.let {
                             it.isPressed = false
                             dismissKeyPreview()
-                            cancelLongPressForPointer(liftedId)
+                            cancelLongPressForPointer(liftedId2)
 
                             val wasShift = (it.id == binding.keyShift.id)
                             // If Shift was double‐tapped, suppress this single‐tap event
@@ -2091,7 +2091,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             baseChar
         }
 
-        Log.d("QWERTYKeyboardView", "Down-flick detected on key: $qwertyKey, inserting $charToInsert")
+        Log.d(
+            "QWERTYKeyboardView",
+            "Down-flick detected on key: $qwertyKey, inserting $charToInsert"
+        )
         qwertyKeyListener?.onFlickDownQWERTYKey(
             qwertyKey = qwertyKey,
             character = charToInsert
@@ -2128,6 +2131,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             return
                         }
                     }
+
                     FlickDirection.DOWN -> {
                         if (enableFlickDownDetection) {
                             applyCommonFlickEffects(pointerId, previousView)
@@ -2135,7 +2139,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                             return
                         }
                     }
-                    FlickDirection.NONE -> { /* No flick, continue with normal move handling */ }
+
+                    FlickDirection.NONE -> { /* No flick, continue with normal move handling */
+                    }
                 }
             }
         }
