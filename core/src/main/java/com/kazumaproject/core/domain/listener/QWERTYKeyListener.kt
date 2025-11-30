@@ -17,7 +17,7 @@ interface QWERTYKeyListener {
 
     /**
      * QWERTYキーが上フリックされたときに呼び出されます。
-     * (setFlickDetectionEnabled(true) が設定されている場合のみ)
+     * (setFlickUpDetectionEnabled(true) が設定されている場合のみ)
      *
      * @param qwertyKey フリックジェスチャーが開始されたキー
      */
@@ -25,5 +25,17 @@ interface QWERTYKeyListener {
         qwertyKey: QWERTYKey,
         tap: Char?,
         variations: List<Char>?
+    )
+
+    /**
+     * QWERTYキーが下フリックされたときに呼び出されます。
+     * (setFlickDownDetectionEnabled(true) が設定されている場合のみ)
+     *
+     * @param qwertyKey フリックジェスチャーが開始されたキー
+     * @param character 下フリックで入力される大文字
+     */
+    fun onFlickDownQWERTYKey(
+        qwertyKey: QWERTYKey,
+        character: Char
     )
 }

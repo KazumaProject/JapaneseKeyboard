@@ -390,6 +390,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyEnableFlickUpPreference: Boolean? = false
+    private var qwertyEnableFlickDownPreference: Boolean? = false
     private var qwertyShowPopupWindowPreference: Boolean? = true
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
@@ -793,6 +794,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwerty_show_switch_romaji_english_button ?: true
             qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
             qwertyEnableFlickUpPreference = qwerty_enable_flick_up_preference ?: false
+            qwertyEnableFlickDownPreference = qwerty_enable_flick_down_preference ?: false
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
             qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
@@ -1160,6 +1162,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.updateNumberKeyState(qwertyShowNumberButtonsPreference ?: false)
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 qwertyView.setFlickUpDetectionEnabled(qwertyEnableFlickUpPreference ?: false)
+                qwertyView.setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
                 qwertyView.setNumberSwitchKeyTextStyle()
                 qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                 if (isKeyboardFloatingMode == true) {
@@ -1280,6 +1283,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyRomajiShiftConversionPreference = null
         qwertyShowPopupWindowPreference = null
         qwertyEnableFlickUpPreference = null
+        qwertyEnableFlickDownPreference = null
         switchQWERTYPassword = null
         shortcutTollbarVisibility = null
         clipboardPreviewVisibility = null
@@ -8265,7 +8269,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleTap(variation.first(), insertString, sb, mainView)
                         }
                     }
+                }
 
+                override fun onFlickDownQWERTYKey(
+                    qwertyKey: QWERTYKey,
+                    character: Char
+                ) {
+                    Timber.d("onFlickDownQWERTYKey: $qwertyKey, $character")
+                    when (vibrationTimingStr) {
+                        "both" -> {
+                            vibrate()
+                        }
+
+                        "press" -> {}
+
+                        "release" -> {}
+                    }
+                    if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
+                        clearDeletedBuffer()
+                        suggestionAdapter?.setUndoEnabled(false)
+                    }
+                    handleTap(character, inputString.value, StringBuilder(), mainView)
                 }
             })
         }
