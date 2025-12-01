@@ -57,6 +57,9 @@ object AppPreference {
 
     private val QWERTY_ENABLE_FLICK_DOWN_WINDOW = Pair("qwerty_enable_flick_down_preference", false)
 
+    private val QWERTY_ZENKAKU_SPACE_PREFERENCE =
+        Pair("qwerty_romaji_zenkaku_space_preference", false)
+
     private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
 
     private val CANDIDATE_IN_PASSWORD = Pair("hide_candidate_password_preference", true)
@@ -306,6 +309,16 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_ENABLE_FLICK_DOWN_WINDOW.first, value ?: false)
         }
+
+
+    var qwerty_enable_zenkaku_space_preference: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_ZENKAKU_SPACE_PREFERENCE.first, QWERTY_ZENKAKU_SPACE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_ZENKAKU_SPACE_PREFERENCE.first, value ?: false)
+        }
+
 
     var qwerty_show_popup_window: Boolean?
         get() = preferences.getBoolean(

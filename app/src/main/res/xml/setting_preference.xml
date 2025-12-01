@@ -304,6 +304,12 @@
                 android:title="@string/pref_qwerty_enable_flick_down_title" />
 
             <SwitchPreferenceCompat
+                android:defaultValue="false"
+                android:key="qwerty_romaji_zenkaku_space_preference"
+                android:summary="@string/qwerty_romaji_zenkaku_space_preference_summary"
+                android:title="@string/qwerty_romaji_zenkaku_space_preference_title" />
+
+            <SwitchPreferenceCompat
                 android:defaultValue="true"
                 android:key="qwerty_show_popup_window_preference"
                 android:summaryOff="@string/qwerty_show_popup_window_summary_off"
