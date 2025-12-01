@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/kana_layout_category_preference_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="tenkey_show_switch_ime_button_preference"
+            android:summary="@string/qwerty_show_switch_ime_button_summary_on"
+            android:title="@string/qwerty_show_switch_ime_button_title" />
+        <SwitchPreferenceCompat
+            android:key="tenkey_kana_english_qwerty_preference"
+            android:title="@string/kana_input_qwerty_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/kana_input_qwerty_preference_summary" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

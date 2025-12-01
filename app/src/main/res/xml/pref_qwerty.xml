@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/category_qwerty_keyboard_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="switch_qwerty_keyboard_password_preference"
+            android:summaryOff="@string/switch_qwerty_password_summary_off"
+            android:summaryOn="@string/switch_qwerty_password_summary_on"
+            android:title="@string/switch_qwerty_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_enable_flick_up_preference"
+            android:summary="@string/pref_qwerty_enable_flick_up_summary"
+            android:title="@string/pref_qwerty_enable_flick_up_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_enable_flick_down_preference"
+            android:summary="@string/pref_qwerty_enable_flick_down_summary"
+            android:title="@string/pref_qwerty_enable_flick_down_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_romaji_zenkaku_space_preference"
+            android:summary="@string/qwerty_romaji_zenkaku_space_preference_summary"
+            android:title="@string/qwerty_romaji_zenkaku_space_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="qwerty_show_popup_window_preference"
+            android:summaryOff="@string/qwerty_show_popup_window_summary_off"
+            android:summaryOn="@string/qwerty_show_popup_window_summary_on"
+            android:title="@string/qwerty_show_popup_window_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_show_cursor_buttons_preference"
+            android:summaryOff="@string/qwerty_show_cursor_buttons_summary_off"
+            android:summaryOn="@string/qwerty_show_cursor_buttons_summary_on"
+            android:title="@string/qwerty_show_cursor_buttons_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_show_kutouten_buttons_preference"
+            android:summaryOff="@string/qwerty_show_kutouten_buttons_summary_off"
+            android:summaryOn="@string/qwerty_show_kutouten_buttons_summary_on"
+            android:title="@string/qwerty_show_kutouten_buttons_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_show_number_keys_buttons_preference"
+            android:summaryOff="@string/qwerty_number_keys_summary_off"
+            android:summaryOn="@string/qwerty_number_keys_summary_on"
+            android:title="@string/qwerty_number_keys_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="qwerty_show_switch_ime_button_preference"
+            android:summaryOff="@string/qwerty_show_switch_ime_button_summary_off"
+            android:summaryOn="@string/qwerty_show_switch_ime_button_summary_on"
+            android:title="@string/qwerty_show_switch_ime_button_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_show_keymap_symbols_romaji_preference"
+            android:summaryOff="@string/qwerty_keymap_preference_summary_off"
+            android:summaryOn="@string/qwerty_keymap_preference_summary_on"
+            android:title="@string/qwerty_keymap_symbol_preference" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_show_switch_romaji_english_preference"
+            android:title="@string/qwerty_romaji_english_visibility_title"
+            app:defaultValue="true"
+            app:summary="@string/qwerty_romaji_english_visibility_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="qwerty_romaji_shift_conversion_preference"
+            android:title="@string/pref_romaji_shift_title"
+            app:defaultValue="false"
+            app:summary="@string/pref_romaji_shift_summary" />
+
+    </PreferenceCategory>
+</PreferenceScreen>

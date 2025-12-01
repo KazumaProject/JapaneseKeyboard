@@ -366,4 +366,5 @@
     <string name="shortcut_toolbar_preference_summary">Open the screen to edit the icons shown on the toolbar.</string>
     <string name="qwerty_romaji_zenkaku_space_preference_title">Full-width space on QWERTY keyboard</string>
     <string name="qwerty_romaji_zenkaku_space_preference_summary">When enabled, the space key on the romaji (QWERTY) keyboard inserts a full-width space.</string>
+    <string name="zenz_preference_category_title">Settings for zenz</string>
 </resources>

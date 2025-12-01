@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/navigation_setting"
-        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.SettingMainFragment"
         android:label="@string/setting_fragment_title"
         tools:layout="@layout/fragment_setting_main">
         <action
@@ -53,6 +53,7 @@
             android:id="@+id/action_navigation_setting_to_shortcutSettingFragment"
             app:destination="@id/shortcutSettingFragment" />
     </fragment>
+
     <fragment
         android:id="@+id/openSourceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.opensource.OpenSourceFragment"
