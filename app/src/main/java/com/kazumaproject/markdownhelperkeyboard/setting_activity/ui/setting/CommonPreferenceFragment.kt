@@ -3,14 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
-import android.view.View
-import android.view.inputmethod.InputMethodManager
-import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.os.LocaleListCompat
-import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
@@ -21,89 +16,20 @@ import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
-import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
-import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class SettingFragment : PreferenceFragmentCompat() {
+class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var appPreference: AppPreference
 
-    @Inject
-    lateinit var userDictionaryRepository: UserDictionaryRepository
-
-    @Inject
-    lateinit var romajiMapRepository: RomajiMapRepository
-
-    @Inject
-    lateinit var kanaKanjiEngine: KanaKanjiEngine
-
     private var count = 0
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        val romajiMapUpdated = appPreference.romaji_map_data_version
-        lifecycleScope.launch(Dispatchers.IO) {
-            userDictionaryRepository.apply {
-                if (searchByReadingExactMatchSuspend("びゃんびゃんめん").isEmpty()) {
-                    insert(
-                        UserWord(
-                            reading = "びゃんびゃんめん",
-                            word = "\uD883\uDEDE\uD883\uDEDE麺",
-                            posIndex = 0,
-                            posScore = 4000
-                        )
-                    )
-                }
-                if (searchByReadingExactMatchSuspend("びゃん").isEmpty()) {
-                    insert(
-                        UserWord(
-                            reading = "びゃん", word = "\uD883\uDEDE", posIndex = 0, posScore = 3000
-                        )
-                    )
-                }
-            }
-            if (romajiMapUpdated == 0) {
-                romajiMapRepository.updateDefaultMap()
-                appPreference.romaji_map_data_version = 1
-            }
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                requireActivity().finish()
-            }
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        viewLifecycleOwner.lifecycleScope.launch {
-            val enabled = withContext(Dispatchers.IO) {
-                isKeyboardBoardEnabled()
-            }
-            if (enabled == false) {
-                findNavController().navigate(
-                    R.id.action_navigation_setting_to_enableKeyboardFragment
-                )
-            }
-        }
-    }
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.setting_preference, rootKey)
+        setPreferencesFromResource(R.xml.pref_common, rootKey)
 
         val packageInfo = requireContext().packageManager.getPackageInfo(
             requireContext().packageName, 0
@@ -118,46 +44,6 @@ class SettingFragment : PreferenceFragmentCompat() {
                     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags("ja"))
                 } else {
                     AppCompatDelegate.setApplicationLocales(LocaleListCompat.getEmptyLocaleList())
-                }
-                true
-            }
-        }
-
-        val sumireStylePreference =
-            findPreference<ListPreference>("sumire_keyboard_style_preference")
-        sumireStylePreference?.apply {
-            val originalEntries = this.entries
-            val originalEntryValues = this.entryValues
-            setOnPreferenceClickListener {
-                if (count >= 5) {
-                    entries = originalEntries
-                    entryValues = originalEntryValues
-                } else {
-                    entries = originalEntries.dropLast(1).toTypedArray()
-                    entryValues = originalEntryValues.dropLast(1).toTypedArray()
-                }
-                return@setOnPreferenceClickListener true
-            }
-            summary = entries[findIndexOfValue(value)].toString()
-            setOnPreferenceChangeListener { preference, newValue ->
-                val listPreference = preference as ListPreference
-                val index = listPreference.findIndexOfValue(newValue as String)
-                if (index >= 0) {
-                    preference.summary = listPreference.entries[index].toString()
-                }
-                true
-            }
-        }
-
-        val sumireMethodPreference =
-            findPreference<ListPreference>("sumire_input_method_preference")
-        sumireMethodPreference?.apply {
-            summary = entries[findIndexOfValue(value)].toString() // 現在の選択肢をサマリーに表示
-            setOnPreferenceChangeListener { preference, newValue ->
-                val listPreference = preference as ListPreference
-                val index = listPreference.findIndexOfValue(newValue as String)
-                if (index >= 0) {
-                    preference.summary = listPreference.entries[index].toString()
                 }
                 true
             }
@@ -197,6 +83,14 @@ class SettingFragment : PreferenceFragmentCompat() {
                 count += 1
                 true
             }
+        }
+
+        val customRomajiPreference = findPreference<Preference>("custom_romaji_preference")
+        customRomajiPreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_romajiMapFragment
+            )
+            true
         }
 
         val shortCutToolbarItemSettingPreference = findPreference<Preference>(
@@ -306,49 +200,6 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val ngWordSwitchPreference =
-            findPreference<SwitchPreferenceCompat>("ng_word_enable_preference")
-        ngWordSwitchPreference?.apply {
-            title = if (isChecked) {
-                getString(R.string.ng_word_enable_title_on)
-            } else {
-                getString(R.string.ng_word_enable_title_off)
-            }
-            setOnPreferenceChangeListener { _, newValue ->
-                title = if (newValue == true) {
-                    getString(R.string.ng_word_enable_title_on)
-                } else {
-                    getString(R.string.ng_word_enable_title_off)
-                }
-                true
-            }
-        }
-
-        val ngWordPreference = findPreference<Preference>("ng_word_preference")
-        ngWordPreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
-                R.id.action_navigation_setting_to_ngWordFragment
-            )
-            true
-        }
-
-        val userDictionaryPrefixSeekBar =
-            findPreference<SeekBarPreference>("user_dictionary_prefix_match_number")
-        userDictionaryPrefixSeekBar?.apply {
-            appPreference.user_dictionary_prefix_match_number_preference?.let {
-                this.summary =
-                    resources.getString(R.string.user_dictionary_prefix_match_summary, it)
-            }
-            this.setOnPreferenceChangeListener { _, newValue ->
-                this.summary =
-                    resources.getString(
-                        R.string.user_dictionary_prefix_match_summary,
-                        newValue as Int
-                    )
-                true
-            }
-        }
-
         findPreference<SeekBarPreference>("flick_sensitivity_preference")?.apply {
             summary = when (this.value) {
                 in 0..50 -> getString(R.string.sensitivity_very_high)
@@ -400,14 +251,6 @@ class SettingFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val customRomajiPreference = findPreference<Preference>("custom_romaji_preference")
-        customRomajiPreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
-                R.id.action_navigation_setting_to_romajiMapFragment
-            )
-            true
-        }
-
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {
@@ -426,77 +269,6 @@ class SettingFragment : PreferenceFragmentCompat() {
             true
         }
 
-        val mozcUTPersonName =
-            findPreference<SwitchPreferenceCompat>("mozc_ut_person_name_preference")
-        mozcUTPersonName?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildPersonNamesDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releasePersonNamesDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        val mozcUTPlaces = findPreference<SwitchPreferenceCompat>("mozc_ut_places_preference")
-        mozcUTPlaces?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildPlaceDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releasePlacesDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        val mozcUTWiki = findPreference<SwitchPreferenceCompat>("mozc_ut_wiki_preference")
-        mozcUTWiki?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildWikiDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseWikiDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        val mozcUTNeologd = findPreference<SwitchPreferenceCompat>("mozc_ut_neologd_preference")
-        mozcUTNeologd?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildNeologdDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseNeologdDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        val mozcUTWeb = findPreference<SwitchPreferenceCompat>("mozc_ut_web_preference")
-        mozcUTWeb?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildWebDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseWebDictionary()
-                    }
-                }
-                true
-            }
-        }
-
         val seedColorPickerPreference =
             findPreference<Preference>("keyboard_theme_fragment_preference")
         seedColorPickerPreference?.apply {
@@ -506,22 +278,13 @@ class SettingFragment : PreferenceFragmentCompat() {
                 true
             }
         }
-
-    }
-
-    private fun isKeyboardBoardEnabled(): Boolean? {
-        val imm = getSystemService(requireContext(), InputMethodManager::class.java)
-        return imm?.enabledInputMethodList?.any { it.packageName == requireContext().packageName }
     }
 
     @SuppressLint("CheckResult")
     private fun showColorPickerDialog() {
-        // Get the currently saved color to show as the initial selection
         val initialColor = appPreference.seedColor
-
         MaterialDialog(requireContext()).show {
             title(text = getString(R.string.keyboard_theme_dialog_title))
-            // Show a grid of predefined colors
             colorChooser(
                 colors = intArrayOf(
                     0x00000000,
@@ -572,18 +335,13 @@ class SettingFragment : PreferenceFragmentCompat() {
                     ),
                 ),
                 initialSelection = initialColor,
-                allowCustomArgb = true // Allow user to pick any color
+                allowCustomArgb = true
             ) { _, color ->
-                // When a color is selected:
-                // 1. Save the new color to your AppPreference
                 appPreference.seedColor = color
-
-                // 2. Recreate the Activity to apply the new theme immediately
                 requireActivity().recreate()
             }
             positiveButton(android.R.string.ok)
             negativeButton(android.R.string.cancel)
         }
     }
-
 }
