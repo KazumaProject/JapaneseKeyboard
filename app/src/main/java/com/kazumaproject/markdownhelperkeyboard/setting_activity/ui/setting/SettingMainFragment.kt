@@ -87,10 +87,10 @@ class SettingMainFragment : Fragment() {
         // タブのタイトル設定
         TabLayoutMediator(binding.settingTabLayout, binding.settingViewPager) { tab, position ->
             tab.text = when (position) {
-                0 -> "共通"
+                0 -> getString(R.string.category_common)
                 1 -> "zenz"
-                2 -> "辞書"
-                3 -> "かな"
+                2 -> getString(R.string.category_dictionary)
+                3 -> getString(R.string.category_kana)
                 4 -> "QWERTY"
                 5 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
                 6 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
