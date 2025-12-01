@@ -364,4 +364,8 @@
     <string name="shortcut_toolbar_preference_summary">ツールバーに表示するアイコンを編集する画面を開きます</string>
     <string name="qwerty_romaji_zenkaku_space_preference_title">ローマ字キーボードの全角スペース</string>
     <string name="qwerty_romaji_zenkaku_space_preference_summary">オンにすると、ローマ字キーボードの空白キーで全角スペースを入力します。</string>
+    <string name="zenz_preference_category_title">zenz の設定</string>
+    <string name="category_common">共通</string>
+    <string name="category_dictionary">辞書</string>
+    <string name="category_kana">かな</string>
 </resources>
