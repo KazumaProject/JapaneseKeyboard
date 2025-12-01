@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="@string/category_ng_word_title"
+        app:summary="@string/category_ng_word_summary">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="ng_word_enable_preference" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="ng_word_preference"
+            android:title="@string/ng_word_list_title"
+            app:summary="@string/ng_word_list_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_learning_dictionary_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="learn_dictionary_preference"
+            android:summaryOff="@string/learn_dictionary_summary_off"
+            android:summaryOn="@string/learn_dictionary_summary_on"
+            android:title="@string/learn_dictionary_title" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_user_dictionary_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="user_dictionary_preference"
+            android:summaryOff="@string/user_dictionary_summary_off"
+            android:summaryOn="@string/user_dictionary_summary_on"
+            android:title="@string/user_dictionary_title" />
+
+        <SeekBarPreference
+            android:defaultValue="2"
+            android:dependency="user_dictionary_preference"
+            android:key="user_dictionary_prefix_match_number"
+            android:max="8"
+            android:title="@string/user_dictionary_prefix_match_title"
+            app:min="2"
+            app:showSeekBarValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/user_template_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="user_template_preference"
+            android:summaryOff="@string/user_template_summary_off"
+            android:summaryOn="@string/user_template_summary_on"
+            android:title="@string/user_template_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_mozc_ut_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_person_name_preference"
+            android:summaryOff="@string/mozc_ut_person_name_summary_off"
+            android:summaryOn="@string/mozc_ut_person_name_summary_on"
+            android:title="@string/mozc_ut_person_name_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_places_preference"
+            android:summaryOff="@string/mozc_ut_places_summary_off"
+            android:summaryOn="@string/mozc_ut_places_summary_on"
+            android:title="@string/mozc_ut_places_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_web_preference"
+            android:summaryOff="@string/mozc_ut_web_summary_off"
+            android:summaryOn="@string/mozc_ut_web_summary_on"
+            android:title="@string/mozc_ut_web_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_wiki_preference"
+            android:summaryOff="@string/mozc_ut_wiki_summary_off"
+            android:summaryOn="@string/mozc_ut_wiki_summary_on"
+            android:title="@string/mozc_ut_wiki_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="mozc_ut_neologd_preference"
+            android:summaryOff="@string/mozc_ut_neologd_summary_off"
+            android:summaryOn="@string/mozc_ut_neologd_summary_on"
+            android:title="@string/mozc_ut_neologd_title" />
+    </PreferenceCategory>
+
+</androidx.preference.PreferenceScreen>
