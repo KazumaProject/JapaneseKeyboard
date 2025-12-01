@@ -169,6 +169,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private val flickThreshold by lazy { ViewConfiguration.get(context).scaledTouchSlop.toFloat() * 1.5f }
 
+    /**
+     * Delte キーの左フリックを有効にするフラグ
+     */
+    private var enableDeleteLeftFlick = false
+
+    /**
+     * Delete キーの左フリック検知時のリスナー
+     */
+    private var onDeleteLeftFlickListener: (() -> Unit)? = null
 
     init {
         isClickable = true
@@ -1369,6 +1378,20 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.enableFlickDownDetection = enabled
     }
 
+    /**
+     * Delete キーの左フリック検知を有効にするか設定します。
+     */
+    fun setDeleteLeftFlickEnabled(enabled: Boolean) {
+        this.enableDeleteLeftFlick = enabled
+    }
+
+    /**
+     * Delete キーが左フリックされた際に実行する処理を登録します。
+     */
+    fun setOnDeleteLeftFlickListener(listener: () -> Unit) {
+        this.onDeleteLeftFlickListener = listener
+    }
+
     private fun setMaterialYouTheme(
         isDarkMode: Boolean, isDynamicColorEnable: Boolean
     ) {
@@ -2042,7 +2065,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private enum class FlickDirection {
-        NONE, UP, DOWN
+        NONE, UP, DOWN, LEFT
     }
 
     private fun detectFlickDirection(
@@ -2051,11 +2074,22 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val dx = x - startX
         val dy = y - startY
 
-        val isVertical = abs(dy) > abs(dx)
-        val isBeyondThreshold = abs(dy) > threshold
+        // 移動量の絶対値が大きい方を軸として判定する
+        if (abs(dx) > abs(dy)) {
+            // --- 水平方向 (Horizontal) ---
+            // 閾値を超えており、かつ dx がマイナス（左方向）の場合
+            if (abs(dx) > threshold && dx < 0) {
+                return FlickDirection.LEFT
+            }
+        } else {
+            // --- 垂直方向 (Vertical) ---
+            // 閾値を超えている場合
+            if (abs(dy) > threshold) {
+                return if (dy < 0) FlickDirection.UP else FlickDirection.DOWN
+            }
+        }
 
-        if (!isVertical || !isBeyondThreshold) return FlickDirection.NONE
-        return if (dy < 0) FlickDirection.UP else FlickDirection.DOWN
+        return FlickDirection.NONE
     }
 
     private fun applyCommonFlickEffects(pointerId: Int, previousView: View) {
@@ -2103,13 +2137,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     /**
      * Handle a MOVE event for a tracked pointer. If it slides off its original key, update pressed state.
-     * ★ (MODIFIED) Detects up-flick gestures and calls listener IMMEDIATELY.
-     * ★ (MODIFIED 2) Resets flick anchor when sliding to a new key.
+     * フリック方向（上・下・左）を判定し、必要に応じて専用の処理を行う。
      */
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
         if (pointerId == suppressedPointerId || pointerId == lockedPointerId) return
 
-        // 既に上下フリックとしてロックされているポインターは、他のキーを検知しない
+        // 既にフリック（または長押し専用）としてロックされているポインターは、それ以上処理しない
         if (flickLockedPointers.contains(pointerId)) {
             return
         }
@@ -2118,39 +2151,58 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val y = event.getY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
 
-        // フリックジェスチャーの検知
-        if (previousView is QWERTYButton) {
-            pointerStartCoords[pointerId]?.let { (startX, startY) ->
-                val flickDirection = detectFlickDirection(x, y, startX, startY, flickThreshold)
+        // ------- フリック判定（全キー対象） -------
+        pointerStartCoords[pointerId]?.let { (startX, startY) ->
+            val flickDirection = detectFlickDirection(x, y, startX, startY, flickThreshold)
 
-                when (flickDirection) {
-                    FlickDirection.UP -> {
-                        if (enableFlickUpDetection) {
-                            applyCommonFlickEffects(pointerId, previousView)
-                            handleUpFlick(previousView)
-                            return
-                        }
+            when (flickDirection) {
+                FlickDirection.UP -> {
+                    // 上フリックは QWERTYButton のみ対象
+                    if (enableFlickUpDetection && previousView is QWERTYButton) {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        handleUpFlick(previousView)
+                        return
                     }
+                }
 
-                    FlickDirection.DOWN -> {
-                        if (enableFlickDownDetection) {
-                            applyCommonFlickEffects(pointerId, previousView)
-                            handleDownFlick(previousView)
-                            return
-                        }
+                FlickDirection.DOWN -> {
+                    // 下フリックも QWERTYButton のみ対象
+                    if (enableFlickDownDetection && previousView is QWERTYButton) {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        handleDownFlick(previousView)
+                        return
                     }
+                }
 
-                    FlickDirection.NONE -> { /* No flick, continue with normal move handling */
+                FlickDirection.LEFT -> {
+                    // 左フリックは Delete キーかどうかだけ ID で判定する
+                    Log.d(
+                        "QWERTYKeyboardView",
+                        "Delete Key Left-Flick called [$enableDeleteLeftFlick] [${previousView?.id == binding.keyDelete.id}]"
+                    )
+                    if (enableDeleteLeftFlick && previousView != null && previousView.id == binding.keyDelete.id) {
+                        applyCommonFlickEffects(pointerId, previousView)
+
+                        // リスナーを実行
+                        onDeleteLeftFlickListener?.invoke()
+
+                        Log.d("QWERTYKeyboardView", "Delete Key Left-Flick detected")
+                        return
                     }
+                }
+
+                FlickDirection.NONE -> {
+                    // フリックなし → 従来の MOVE 処理へ
                 }
             }
         }
+        // ------- フリック判定ここまで -------
 
-        // 上下フリックでない場合、通常のキースライド処理を実行
+        // 上記で return されていない場合のみ、通常のキースライド処理を実行
         val currentView = findButtonUnder(x.toInt(), y.toInt())
 
         if (currentView != previousView) {
-            // Finger moved off previous key
+            // 前のキーから指が離れた
             previousView?.let {
                 it.isPressed = false
                 dismissKeyPreview()
@@ -2165,28 +2217,28 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
 
-                // --- ▼▼▼ ここが最重要の修正点 ▼▼▼ ---
-                // 5. ★ 新しいキーに移動したので、フリックの開始点をリセットする
+                // 新しいキーに移動したので、フリックの開始点をリセットする
                 pointerStartCoords.put(pointerId, Pair(x, y))
-                // --- ▲▲▲ ここまで ▲▲▲ ---
 
-                if (it.id != binding.keySpace.id && it.id != binding.keyDelete.id &&
-                    it.id != binding.keyShift.id && it.id != binding.key123.id &&
-                    it.id != binding.keyReturn.id && it.id != binding.keySwitchDefault.id &&
-                    it.id != binding.switchNumberLayout.id && it.id != binding.cursorRight.id &&
+                if (it.id != binding.keySpace.id &&
+                    it.id != binding.keyDelete.id &&
+                    it.id != binding.keyShift.id &&
+                    it.id != binding.key123.id &&
+                    it.id != binding.keyReturn.id &&
+                    it.id != binding.keySwitchDefault.id &&
+                    it.id != binding.switchNumberLayout.id &&
+                    it.id != binding.cursorRight.id &&
                     it.id != binding.cursorLeft.id
                 ) {
                     showKeyPreview(it)
                 }
-                // Schedule a new long‐press for this new key
-                //scheduleLongPressForPointer(pointerId, it)
+
+                // 必要であればここで長押しを再スケジュール
+                // scheduleLongPressForPointer(pointerId, it)
             } ?: run {
-                // Finger moved off any key entirely
+                // どのキー上でもなくなった場合
                 pointerButtonMap.remove(pointerId)
-
-                // ★ キーから指が離れたので、フリック開始点もクリア
                 pointerStartCoords.remove(pointerId)
-
                 cancelLongPressForPointer(pointerId)
             }
         }

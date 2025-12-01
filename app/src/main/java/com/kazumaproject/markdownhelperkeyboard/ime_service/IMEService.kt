@@ -1167,6 +1167,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
                 qwertyView.setNumberSwitchKeyTextStyle()
                 qwertyView.setSwitchNumberLayoutKeyVisibility(false)
+                qwertyView.setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
                     candidatesRowView.adapter = null
@@ -8292,6 +8293,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     handleTap(character, inputString.value, StringBuilder(), mainView)
                 }
             })
+
+            setOnDeleteLeftFlickListener {
+                val insertString = inputString.value
+                Timber.d("setOnDeleteLeftFlickListener called: [$insertString]")
+                deleteWordOrSymbolsBeforeCursor(insertString)
+            }
         }
     }
 
