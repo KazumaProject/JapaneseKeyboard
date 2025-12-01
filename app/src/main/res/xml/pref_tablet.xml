@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/tablet_preference_category_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="tablet_use_gojuon_layout_preference"
+            android:summary="@string/pref_tablet_layout_summary"
+            android:title="@string/pref_tablet_layout_title" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

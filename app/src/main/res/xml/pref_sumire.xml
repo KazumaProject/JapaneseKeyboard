@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:key="sumire_input_preference_category"
+        android:title="@string/category_sumire_input_keyboard_title"
+        app:isPreferenceVisible="true">
+
+        <ListPreference
+            android:defaultValue="toggle"
+            android:dialogTitle="@string/sumire_input_method_dialog_title"
+            android:entries="@array/sumire_input_method_options"
+            android:entryValues="@array/sumire_input_method_values"
+            android:key="sumire_input_method_preference"
+            android:summary="%s"
+            android:title="@string/sumire_input_method_title" />
+
+        <ListPreference
+            android:defaultValue="default"
+            android:dialogTitle="@string/sumire_keyboard_style_dialog_title"
+            android:entries="@array/sumire_keyboard_style_options"
+            android:entryValues="@array/sumire_keyboard_style_values"
+            android:key="sumire_keyboard_style_preference"
+            android:summary="%s"
+            android:title="@string/sumire_keyboard_style_title" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

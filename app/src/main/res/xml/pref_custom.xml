@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/category_custom_keyboard_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="custom_keyboard_two_words_preference"
+            android:title="@string/custom_keyboard_two_words_title"
+            app:summaryOff="@string/custom_keyboard_two_words_summary_off"
+            app:summaryOn="@string/custom_keyboard_two_words_summary_on" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="custom_keyboard_suggestion_preference"
+            android:summaryOff="@string/custom_keyboard_suggestion_summary_off"
+            android:summaryOn="@string/custom_keyboard_suggestion_summary_on"
+            android:title="@string/custom_keyboard_suggestion_title" />
+    </PreferenceCategory>
+
+</PreferenceScreen>
