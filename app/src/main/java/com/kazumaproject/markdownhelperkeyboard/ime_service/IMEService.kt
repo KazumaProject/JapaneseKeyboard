@@ -391,6 +391,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyEnableFlickUpPreference: Boolean? = false
     private var qwertyEnableFlickDownPreference: Boolean? = false
+    private var qwertyEnableZenkakuSpacePreference: Boolean? = false
     private var qwertyShowPopupWindowPreference: Boolean? = true
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
@@ -795,6 +796,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
             qwertyEnableFlickUpPreference = qwerty_enable_flick_up_preference ?: false
             qwertyEnableFlickDownPreference = qwerty_enable_flick_down_preference ?: false
+            qwertyEnableZenkakuSpacePreference = qwerty_enable_zenkaku_space_preference ?: false
             qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
             showCandidateInPasswordPreference = show_candidates_password ?: true
             qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
@@ -1284,6 +1286,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = null
         qwertyEnableFlickUpPreference = null
         qwertyEnableFlickDownPreference = null
+        qwertyEnableZenkakuSpacePreference = null
         switchQWERTYPassword = null
         shortcutTollbarVisibility = null
         clipboardPreviewVisibility = null
@@ -6156,9 +6159,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 .buffer(kotlinx.coroutines.channels.Channel.CONFLATED)
                 .collectLatest { resultFromZenz ->
                     val insertString = inputString.value
-                    if (resultFromZenz.isNotEmpty()) {
-                        Timber.d("zenzCandidates called: [$insertString] [${resultFromZenz.first().string}] [${resultFromZenz.first().originalString}]")
-                    }
                     if (insertString.isNotEmpty()) {
                         if (resultFromZenz.isNotEmpty() &&
                             resultFromZenz.first().originalString == insertString
@@ -9972,7 +9972,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (stringInTail.get().isNotEmpty()) return
-            setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+            val romajiMode = mainView.qwertyView.getRomajiMode()
+            Timber.d("handleSpaceKeyClickInQWERTY: $romajiMode")
+            if (romajiMode && qwertyEnableZenkakuSpacePreference == true) {
+                handleSpaceKeyClick(false, insertString, suggestions, mainView)
+            } else {
+                setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+            }
         }
         resetFlagsKeySpace()
     }
