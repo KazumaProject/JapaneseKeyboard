@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/category_language_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="app_setting_language_preference"
+            android:summaryOff="@string/app_language_summary_off"
+            android:summaryOn="@string/app_language_summary_on"
+            android:title="@string/language_display_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_title_keyboard">
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_selection_preference"
+            android:summary="@string/keyboard_selection_summary"
+            android:title="@string/keyboard_selection_preference_title" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_screen_preference"
+            android:summary="@string/keyboard_screen_preference_summary"
+            android:title="@string/keyboard_screen_size_preference_title" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_screen_landscape_preference"
+            android:summary="@string/keyboard_screen_preference_summary"
+            android:title="@string/keyboard_screen_landscape_size_preference_title" />
+
+        <Preference
+            android:key="keyboard_theme_fragment_preference"
+            android:title="@string/keyboard_theme_title"
+            app:summary="@string/keyboard_theme_summary" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="keyboard_key_letter_size_fragment_preference"
+            android:title="@string/key_candidate_letter_size_preference_title"
+            app:summary="@string/key_candidate_letter_size_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="round_corner_keyboard_preference"
+            android:summary="@string/pref_round_corner_keyboard_summary"
+            android:title="@string/pref_round_corner_keyboard_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/conversion_preference_title">
+
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:key="n_best_preference"
+            android:max="16"
+            android:summary="@string/n_best_preference_summary"
+            android:title="N-Best"
+            app:min="2"
+            app:showSeekBarValue="true" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="conversion_bunsetsu_separation_preference"
+            android:title="@string/conversion_separation_title"
+            app:summary="@string/conversion_separation_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="shortcut_toolbar_visibility_preference"
+            android:title="@string/shortcut_toolbar_title"
+            app:defaultValue="false"
+            app:summary="@string/shortcut_toolbar_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="candidate_tab_visibility_preference"
+            android:title="@string/candidate_tab"
+            app:defaultValue="false"
+            app:summary="@string/candidate_tab_summary" />
+
+        <Preference
+            android:dependency="candidate_tab_visibility_preference"
+            android:key="candidate_tab_order_preference"
+            android:title="@string/candidate_tab_order_preference_title"
+            app:summary="@string/candidate_tab_order_preference_summary" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="candidate_view_height_setting_fragment_preference"
+            android:title="@string/candidate_height_preference_title"
+            app:summary="@string/candidate_height_preference_sumary" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="candidate_view_height_landscape_setting_fragment_preference"
+            android:title="@string/candidate_height_landscape_preference_title"
+            app:summary="@string/candidate_height_preference_sumary" />
+
+        <ListPreference
+            android:defaultValue="1"
+            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
+            android:entries="@array/candidate_column_entries"
+            android:entryValues="@array/candidate_column_values"
+            android:key="candidate_column_preference"
+            android:summary="@string/preference_summary_num_column_conversion"
+            android:title="@string/preference_title_num_columns_conversion" />
+
+        <ListPreference
+            android:defaultValue="1"
+            android:dialogTitle="@string/preference_dialog_title_num_columns_conversion"
+            android:entries="@array/candidate_column_entries_landscape"
+            android:entryValues="@array/candidate_column_values_landscape"
+            android:key="candidate_column_landscape_preference"
+            android:summary="@string/preference_summary_num_column_conversion"
+            android:title="@string/preference_title_num_columns_conversion_landscape" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="hide_candidate_password_preference"
+            android:summaryOff="@string/hide_candidate_password_summary_off"
+            android:summaryOn="@string/hide_candidate_password_summary_on"
+            android:title="@string/hide_candidate_password_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="henkan_delete_key_action_preference"
+            android:summaryOff="@string/henkan_delete_key_action_summary_off"
+            android:summaryOn="@string/henkan_delete_key_action_summary_on"
+            android:title="@string/henkan_delete_key_action_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_function_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="flick_input_only_preference"
+            android:summaryOff="@string/flick_input_only_summary_off"
+            android:summaryOn="@string/flick_input_only_summary_on"
+            android:title="@string/flick_input_only_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="delete_key_flick_left_preference"
+            android:summary="@string/delete_key_left_summary"
+            android:title="@string/delete_key_left_flick_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="undo_enable_preference"
+            android:summary="@string/undo_enable_summary"
+            android:title="@string/undo_enable_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="clipboard_preview_enable_preference"
+            android:summary="@string/pref_clipboard_preview_summary"
+            android:title="@string/pref_clipboard_preview_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="clipboard_preview_enable_preference"
+            android:key="clipboard_preview_tap_delete_preference"
+            android:summary="@string/pref_clipboard_tap_delete_summary"
+            android:title="@string/pref_clipboard_tap_delete_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="space_key_preference"
+            android:summary="@string/space_key_summary"
+            android:title="@string/space_key_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="live_conversion_preference"
+            android:summaryOff="@string/live_conversion_summary_off"
+            android:summaryOn="@string/live_conversion_summary_on"
+            android:title="@string/live_conversion_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="omission_search_preference"
+            android:summaryOff="@string/omission_search_summary_off"
+            android:summaryOn="@string/omission_search_summary_on"
+            android:title="@string/omission_search_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="conversion_key_long_press_ai_conversion_preference"
+            android:summary="@string/conversion_key_long_press_ai_conversion_preference_summary"
+            android:title="@string/conversion_key_long_press_ai_conversion_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="conversion_key_swipe_cursor_move_preference"
+            android:summary="@string/pref_summary_space_longpress_cursor"
+            android:title="@string/pref_title_space_longpress_cursor" />
+
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="flick_sensitivity_preference"
+            android:max="200"
+            android:title="@string/flick_sensitivity_title"
+            app:min="1"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/shortcutsettingfragment">
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="shortcut_toolbar_item_preference"
+            android:title="@string/shortcut_toolbar_preference_title"
+            app:summary="@string/shortcut_toolbar_preference_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_symbol_keyboard_title">
+        <ListPreference
+            android:defaultValue="EMOJI"
+            android:dialogTitle="@string/symbol_mode_dialog_title"
+            android:entries="@array/symbol_mode_entries"
+            android:entryValues="@array/symbol_mode_values"
+            android:key="symbol_mode_preference"
+            android:summary="@string/symbol_mode_summary"
+            android:title="@string/symbol_mode_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/clipboard_history_title">
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="clipboard_history_preference_fragment"
+            android:title="@string/clipboard_history_fragment_title"
+            app:summary="@string/clipboard_history_fragment_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_operation_title">
+        <SeekBarPreference
+            android:defaultValue="1000"
+            android:dependency=""
+            android:key="time_same_pronounce_typing_preference"
+            android:max="1000"
+            android:title="@string/time_same_pronounce_typing_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/time_same_pronounce_typing_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_vibration_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="vibration_preference"
+            android:summaryOff="@string/vibration_summary_off"
+            android:summaryOn="@string/vibration_summary_on"
+            android:title="@string/vibration_title" />
+
+        <ListPreference
+            android:defaultValue="@string/vibration_default"
+            android:dependency="vibration_preference"
+            android:dialogTitle="@string/vibration_timing_dialog_title"
+            android:entries="@array/vibration_options"
+            android:entryValues="@array/vibration_values"
+            android:key="vibration_timing"
+            android:summary="@string/vibration_timing_summary"
+            android:title="@string/vibration_timing_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_romaji_conversion_title">
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="custom_romaji_preference"
+            android:title="@string/custom_romaji_title"
+            app:summary="@string/custom_romaji_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_about_app_title">
+        <Preference
+            android:key="preference_open_source"
+            android:title="@string/open_source_libraries_title" />
+        <Preference
+            android:key="app_version_preference"
+            android:title="@string/app_version_title" />
+    </PreferenceCategory>
+
+</PreferenceScreen>
