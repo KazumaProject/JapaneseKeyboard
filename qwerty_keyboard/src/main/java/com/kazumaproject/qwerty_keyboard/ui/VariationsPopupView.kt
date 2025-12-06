@@ -6,8 +6,12 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.view.View
 import androidx.core.content.ContextCompat
+import kotlin.math.ceil
 
 class VariationsPopupView(context: Context) : View(context) {
+
+    // ★ 定数設定：1行あたりの最大文字数
+    private val MAX_COLUMNS = 3
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(
@@ -36,23 +40,41 @@ class VariationsPopupView(context: Context) : View(context) {
 
     private var chars: List<Char> = emptyList()
     private var selectedIndex = -1
-    private var charWidth = 0f
+
+    // ★ 幅と高さの管理用変数
+    private var itemWidth = 0f
+    private var itemHeight = 0f
+    private var numColumns = 1
+    private var numRows = 1
 
     fun setChars(charList: List<Char>) {
         this.chars = charList
-        if (width > 0 && chars.isNotEmpty()) {
-            this.charWidth = width / chars.size.toFloat()
-        }
-        selectedIndex = if (charList.isNotEmpty()) 0 else -1
 
-        invalidate() // 再描画を要求
+        // ★ リストのサイズと最大列数から、実際の列数と行数を計算
+        if (chars.isNotEmpty()) {
+            numColumns = if (chars.size < MAX_COLUMNS) chars.size else MAX_COLUMNS
+            numRows = ceil(chars.size.toFloat() / MAX_COLUMNS).toInt()
+        }
+
+        selectedIndex = if (charList.isNotEmpty()) 0 else -1
+        requestLayout() // サイズ変更の可能性があるため
+        invalidate()
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        // ★ 1セルあたりのサイズを計算
+        if (numColumns > 0 && numRows > 0) {
+            itemWidth = width / numColumns.toFloat()
+            itemHeight = height / numRows.toFloat()
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (chars.isEmpty()) return
 
-        // ★ 1. 描画領域を丸い四角形にクリップする
+        // 描画領域をクリップ
         clipPath.reset()
         clipPath.addRoundRect(
             0f,
@@ -65,43 +87,62 @@ class VariationsPopupView(context: Context) : View(context) {
         )
         canvas.clipPath(clipPath)
 
-        // ★ 2. クリップされた領域内で背景などを描画する (以前のコードと同じ)
-        // まずビュー全体の背景を描画
+        // 背景描画
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), mainBackgroundPaint)
 
-        charWidth = width / chars.size.toFloat()
-
-        // 選択中の背景をハイライト描画
-        if (selectedIndex != -1) {
-            val start = charWidth * selectedIndex
-            canvas.drawRect(start, 0f, start + charWidth, height.toFloat(), backgroundPaint)
-        }
-
-        // 各文字を描画
+        // ★ グリッドベースでの描画
         chars.forEachIndexed { index, char ->
-            val x = charWidth * index + charWidth / 2
-            val y = (height / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f)
-            canvas.drawText(char.toString(), x, y, textPaint)
+            val col = index % MAX_COLUMNS
+            val row = index / MAX_COLUMNS
+
+            val left = col * itemWidth
+            val top = row * itemHeight
+            val right = left + itemWidth
+            val bottom = top + itemHeight
+
+            // 選択中のハイライト描画
+            if (index == selectedIndex) {
+                canvas.drawRect(left, top, right, bottom, backgroundPaint)
+            }
+
+            // 文字描画位置の計算（セルの中心）
+            val cx = left + itemWidth / 2f
+            val cy = top + (itemHeight / 2f) - ((textPaint.descent() + textPaint.ascent()) / 2f)
+
+            canvas.drawText(char.toString(), cx, cy, textPaint)
         }
     }
 
-    // タッチ座標から選択中の文字を更新
-    fun updateSelection(x: Float): Boolean {
+    // ★ タッチ判定をXY座標で行うように変更
+    fun updateSelection(x: Float, y: Float): Boolean {
         if (chars.isEmpty()) return false
-        val index = (x / charWidth).toInt()
-        val newIndex = index.coerceIn(0, chars.size - 1)
 
-        if (newIndex != selectedIndex) {
-            selectedIndex = newIndex
-            invalidate() // ハイライトを更新するために再描画
-            return true
+        // 範囲外チェック
+        if (x < 0 || x > width || y < 0 || y > height) {
+            return false
+        }
+
+        val col = (x / itemWidth).toInt()
+        val row = (y / itemHeight).toInt()
+
+        // 列と行が有効範囲内かチェック
+        if (col in 0 until numColumns && row in 0 until numRows) {
+            val newIndex = row * MAX_COLUMNS + col
+
+            // 計算したインデックスがリストの範囲内かチェック (最終行が埋まっていない場合など)
+            if (newIndex in chars.indices) {
+                if (newIndex != selectedIndex) {
+                    selectedIndex = newIndex
+                    invalidate()
+                    return true
+                }
+            }
         }
         return false
     }
 
-    // 選択された文字を取得
     fun getSelectedChar(): Char? {
-        return if (selectedIndex != -1) {
+        return if (selectedIndex != -1 && selectedIndex < chars.size) {
             chars[selectedIndex]
         } else {
             null
