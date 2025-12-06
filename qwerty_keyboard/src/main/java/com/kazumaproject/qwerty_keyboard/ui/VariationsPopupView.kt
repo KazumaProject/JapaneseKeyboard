@@ -11,7 +11,7 @@ import kotlin.math.ceil
 class VariationsPopupView(context: Context) : View(context) {
 
     // ★ 定数設定：1行あたりの最大文字数
-    private val MAX_COLUMNS = 5
+    private val MAX_COLUMNS = 3
 
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = ContextCompat.getColor(
