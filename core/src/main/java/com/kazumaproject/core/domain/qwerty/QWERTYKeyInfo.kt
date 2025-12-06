@@ -353,7 +353,8 @@ sealed class QWERTYKeyInfo {
         override val capChar: Char get() = '1'
         override val variations: List<Char> =
             listOf('１', '¹', '¼', '½', '⅐', '⅑', '⅒', '⅓', '⅕', '⅙', '⅛')
-        override val capVariations: List<Char> = listOf('１', '¹', '¼', '½', '⅐', '⅑', '⅒', '⅓', '⅕', '⅙', '⅛')
+        override val capVariations: List<Char> =
+            listOf('１', '¹', '¼', '½', '⅐', '⅑', '⅒', '⅓', '⅕', '⅙', '⅛')
     }
 
     object Key2JP : QWERTYVariation() {
@@ -380,10 +381,10 @@ sealed class QWERTYKeyInfo {
             )
         override val capVariations: List<Char>
             get() = listOf(
-            '３', '³', '¾', // 3/4
-            '⅗', // 3/5
-            '⅜'  // 3/8
-        )
+                '３', '³', '¾', // 3/4
+                '⅗', // 3/5
+                '⅜'  // 3/8
+            )
     }
 
     object Key4JP : QWERTYVariation() {
@@ -395,8 +396,8 @@ sealed class QWERTYKeyInfo {
             )
         override val capVariations: List<Char>
             get() = listOf(
-            '４', '⁴', '⅘'  // 4/5
-        )
+                '４', '⁴', '⅘'  // 4/5
+            )
     }
 
     object Key5JP : QWERTYVariation() {
@@ -409,9 +410,9 @@ sealed class QWERTYKeyInfo {
             )
         override val capVariations: List<Char>
             get() = listOf(
-            '５', '⁵', '⅚', // 5/6
-            '⅝'  // 5/8
-        )
+                '５', '⁵', '⅚', // 5/6
+                '⅝'  // 5/8
+            )
     }
 
     object Key6JP : QWERTYVariation() {
@@ -985,8 +986,26 @@ sealed class QWERTYKeyInfo {
     object KeyENumber : QWERTYVariation() {
         override val tap: Char get() = 'e'
         override val capChar: Char get() = 'E'
-        override val variations: List<Char> get() = listOf('|')
-        override val capVariations: List<Char> get() = listOf('|')
+        override val variations: List<Char>
+            get() = listOf(
+                '|',
+                'ē',
+                'ê',
+                'ë',
+                '3',
+                'è',
+                'é',
+            )
+        override val capVariations: List<Char>
+            get() = listOf(
+                '|',
+                'Ē',
+                'Ê',
+                'Ë',
+                '3',
+                'È',
+                'É',
+            )
     }
 
     object KeyRNumber : QWERTYVariation() {
@@ -1013,22 +1032,47 @@ sealed class QWERTYKeyInfo {
     object KeyUNumber : QWERTYVariation() {
         override val tap: Char get() = 'u'
         override val capChar: Char get() = 'U'
-        override val variations: List<Char> get() = listOf('<')
-        override val capVariations: List<Char> get() = listOf('<')
+        override val variations: List<Char> get() = listOf('<', 'ū', 'ü', 'ù', 'ú', 'û', '7')
+        override val capVariations: List<Char> get() = listOf('<', 'Ū', 'Ü', 'Ù', 'Ú', 'Û', '7')
     }
 
     object KeyINumber : QWERTYVariation() {
         override val tap: Char get() = 'i'
         override val capChar: Char get() = 'I'
-        override val variations: List<Char> get() = listOf('>')
-        override val capVariations: List<Char> get() = listOf('>')
+        override val variations: List<Char> get() = listOf('>', 'ì', 'ï', 'ī', 'î', 'í', '8')
+        override val capVariations: List<Char> get() = listOf('>', 'Ì', 'Ï', 'Ī', 'Î', 'Í', '8')
     }
 
     object KeyONumber : QWERTYVariation() {
         override val tap: Char get() = 'o'
         override val capChar: Char get() = 'O'
-        override val variations: List<Char> get() = listOf('{')
-        override val capVariations: List<Char> get() = listOf('{')
+        override val variations: List<Char>
+            get() = listOf(
+                '{',
+                'ò',
+                'ó',
+                'ô',
+                'õ',
+                'ö',
+                'ø',
+                'ō',
+                'ő',
+                '9',
+                'O'
+            )
+        override val capVariations: List<Char>
+            get() = listOf(
+                '{',
+                'Ò',
+                'Ó',
+                'Ô',
+                'Õ',
+                'Ö',
+                'Ø',
+                'Ō',
+                'Ő',
+                '9'
+            )
     }
 
     object KeyPNumber : QWERTYVariation() {
