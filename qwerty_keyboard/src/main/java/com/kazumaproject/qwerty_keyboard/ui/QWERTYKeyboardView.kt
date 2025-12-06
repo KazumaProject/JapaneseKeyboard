@@ -1780,8 +1780,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         // Convert screen coordinates to the popup's local coordinates
                         val location = IntArray(2)
                         variationPopupView?.getLocationOnScreen(location)
-                        val popupX = event.rawX - location[0]
-                        variationPopupView?.updateSelection(popupX)
+
+                        val touchX = event.rawX
+                        val touchY = event.rawY
+
+                        val popupX = touchX - location[0]
+                        val popupY = touchY - location[1] // ★ Y座標の相対位置を計算
+
+                        // ★ XとYの両方を渡す
+                        variationPopupView?.updateSelection(popupX, popupY)
                     }
                 } else {
                     // Otherwise, perform the normal move handling (★これが修正済みの handlePointerMove)
@@ -2527,20 +2534,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             setChars(variations)
         }
 
-        // ポップアップのサイズを計算
-        val charWidth = 80 // 1文字あたりの幅 (dpToPxなどを使って調整)
-        val popupWidth = charWidth * variations.size
-        val popupHeight = 150 // ポップアップの高さ (同様に調整)
+        // ★ サイズ計算ロジックの変更
+        val maxColumns = 5 // VariationsPopupViewの定数と合わせる必要があります
+        val itemSize = 100 // 1マスのサイズ (適宜調整してください。元は80)
+
+        // 列数と行数を計算
+        val cols = if (variations.size < maxColumns) variations.size else maxColumns
+        val rows = kotlin.math.ceil(variations.size.toFloat() / maxColumns).toInt()
+
+        val popupWidth = itemSize * cols
+        val popupHeight = 150 * rows // 行数に応じて高さを倍にする
 
         val popup = PopupWindow(variationPopupView, popupWidth, popupHeight, false).apply {
-            isTouchable = false // ポップアップ自体はタッチを受けない
+            isTouchable = false
         }
 
         // 表示位置を計算 (キーの上中央)
-        val xOffset = if (variations.isNotEmpty() && variations.size == 1) {
+        val xOffset = if (cols == 1) {
             (-(popupWidth / 2) + (anchorView.width / 2))
         } else {
-            (anchorView.width / 2)
+            // キーの中央にポップアップの中央を合わせる
+            (anchorView.width / 2) - (popupWidth / 2)
         }
         val yOffset = -anchorView.height - popupHeight
 
