@@ -52,6 +52,12 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
     private lateinit var keyActionAdapter: ArrayAdapter<String>
 
+    // サイズ設定用の変数
+    private var currentColSpan: Int = 1
+    private var currentRowSpan: Int = 1
+    private var maxColSpan: Int = 1
+    private var maxRowSpan: Int = 1
+
     // The ActionBar setup is now fully handled in onViewCreated.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,6 +127,43 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.keyActionSpinner.doAfterTextChanged {
             updateDoneButtonState()
         }
+
+        // ▼▼▼ サイズ変更ボタンのリスナー設定 ▼▼▼
+        binding.btnColPlus.setOnClickListener {
+            if (currentColSpan < maxColSpan) {
+                currentColSpan++
+                updateSizeDisplay()
+            }
+        }
+        binding.btnColMinus.setOnClickListener {
+            if (currentColSpan > 1) {
+                currentColSpan--
+                updateSizeDisplay()
+            }
+        }
+        binding.btnRowPlus.setOnClickListener {
+            if (currentRowSpan < maxRowSpan) {
+                currentRowSpan++
+                updateSizeDisplay()
+            }
+        }
+        binding.btnRowMinus.setOnClickListener {
+            if (currentRowSpan > 1) {
+                currentRowSpan--
+                updateSizeDisplay()
+            }
+        }
+    }
+
+    private fun updateSizeDisplay() {
+        binding.textColSpan.text = currentColSpan.toString()
+        binding.textRowSpan.text = currentRowSpan.toString()
+
+        // ボタンの有効/無効状態を更新
+        binding.btnColPlus.isEnabled = currentColSpan < maxColSpan
+        binding.btnColMinus.isEnabled = currentColSpan > 1
+        binding.btnRowPlus.isEnabled = currentRowSpan < maxRowSpan
+        binding.btnRowMinus.isEnabled = currentRowSpan > 1
     }
 
     private fun setupToolbarAndMenu() {
@@ -177,6 +220,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             val key = currentKeyData!!
+
+            // ▼▼▼ サイズ情報の初期化と最大値の計算 ▼▼▼
+            currentColSpan = key.colSpan
+            currentRowSpan = key.rowSpan
+            // 現在のキー位置に基づいて、グリッドからはみ出さない最大サイズを計算
+            maxColSpan = state.layout.columnCount - key.column
+            maxRowSpan = state.layout.rowCount - key.row
+
+            updateSizeDisplay()
+            // ▲▲▲ サイズ情報の初期化ここまで ▲▲▲
+
             binding.keyLabelEdittext.setText(key.label)
 
             if (key.isSpecialKey) {
@@ -251,7 +305,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             isSpecialKey = isSpecial,
             action = newAction,
             isFlickable = !isSpecial && newFlickMap.isNotEmpty(),
-            drawableResId = newDrawableResId
+            drawableResId = newDrawableResId,
+            // ▼▼▼ 変更されたサイズを適用 ▼▼▼
+            rowSpan = currentRowSpan,
+            colSpan = currentColSpan
         )
 
         viewModel.updateKeyAndFlicks(updatedKey, newFlickMap)
