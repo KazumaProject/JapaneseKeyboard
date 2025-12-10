@@ -267,6 +267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val clipboardMutex = Mutex()
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
+    private var tenkeyQKeymapGuide: Boolean? = false
 
     private var floatingCandidateWindow: PopupWindow? = null
     private lateinit var floatingCandidateView: View
@@ -438,6 +439,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzEnableStatePreference: Boolean? = false
     private var zenzProfilePreference: String? = ""
     private var zenzEnableLongPressConversionPreference: Boolean? = false
+
+    private var qwertyKeyVerticalMargin: Float? = 5.0f
+    private var qwertyKeyHorizontalGap: Float? = 2.0f
+    private var qwertyKeyIndentLarge: Float? = 23.0f
+    private var qwertyKeyIndentSmall: Float? = 9.0f
+    private var qwertyKeySideMargin: Float? = 4.0f
+    private var qwertyKeyTextSize: Float? = 18.0f
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -817,6 +825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
+            tenkeyQKeymapGuide = tenkey_keymap_guide_layout ?: false
             isKeyboardFloatingMode = is_floating_mode ?: false
             isKeyboardRounded = keyboard_corner_round_preference
             bunsetsuSeparation = bunsetsu_separation_preference
@@ -864,6 +873,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzEnableStatePreference = enable_zenz_preference
             zenzProfilePreference = zenz_profile_preference
             zenzEnableLongPressConversionPreference = enable_zenz_long_press_preference
+
+            qwertyKeyVerticalMargin = qwerty_key_vertical_margin
+            qwertyKeyHorizontalGap = qwerty_key_horizontal_gap
+            qwertyKeyIndentLarge = qwerty_key_indent_large
+            qwertyKeyIndentSmall = qwerty_key_indent_small
+            qwertyKeySideMargin = qwerty_key_side_margin
+            qwertyKeyTextSize = qwerty_key_text_size
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1148,6 +1164,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     keyboardView.setBackgroundSmallLetterKey(cachedKanaDrawable)
                 }
 
+                keyboardView.setFlickGuideEnabled(tenkeyQKeymapGuide ?: false)
+
                 setTabsToTabLayout(mainView)
 
                 suggestionProgressbar.isVisible = false
@@ -1168,6 +1186,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setNumberSwitchKeyTextStyle()
                 qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                 qwertyView.setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
+                qwertyView.setKeyMargins(
+                    verticalDp = qwertyKeyVerticalMargin ?: 5.0f,
+                    horizontalGapDp = qwertyKeyHorizontalGap ?: 2.0f,
+                    indentLargeDp = qwertyKeyIndentLarge ?: 23.0f,
+                    indentSmallDp = qwertyKeyIndentSmall ?: 9.0f,
+                    sideMarginDp = qwertyKeySideMargin ?: 4.0f,
+                    textSizeSp = qwertyKeyTextSize ?: 18.0f
+                )
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
                     candidatesRowView.adapter = null
@@ -1324,6 +1350,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzProfilePreference = null
         zenzEnableLongPressConversionPreference = null
 
+        qwertyKeyVerticalMargin = null
+        qwertyKeyHorizontalGap = null
+        qwertyKeyIndentLarge = null
+        qwertyKeyIndentSmall = null
+        qwertyKeySideMargin = null
+        qwertyKeyTextSize = null
+
         vibrationTimingStr = null
         mozcUTPersonName = null
         romajiConverter = null
@@ -1350,6 +1383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
         tenkeyQWERTYSwitchNumber = null
+        tenkeyQKeymapGuide = null
         isKeyboardFloatingMode = null
         isKeyboardRounded = null
         bunsetsuSeparation = null

@@ -13,6 +13,11 @@
             android:title="@string/kana_input_qwerty_preference_title"
             app:defaultValue="false"
             app:summary="@string/kana_input_qwerty_preference_summary" />
+        <SwitchPreferenceCompat
+            android:key="tenkey_keymap_guide"
+            android:title="@string/tenkey_keymap_guide_title"
+            app:defaultValue="false"
+            app:summary="@string/tenkey_keymap_guide_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>
