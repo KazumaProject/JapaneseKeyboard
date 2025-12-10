@@ -1,5 +1,9 @@
 package com.kazumaproject.tenkey.extensions
 
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.RelativeSizeSpan
+import android.view.Gravity
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.extensions.JP_KEY_LAYOUT_WITH_SPACE
@@ -10,9 +14,112 @@ import com.kazumaproject.core.domain.extensions.getSpannableStringForKigouButton
 import com.kazumaproject.core.domain.extensions.getSpannableStringForNumberButton
 import com.kazumaproject.tenkey.R
 
+private data class FlickChars(
+    val center: String,
+    val left: String?,
+    val top: String?,
+    val right: String?,
+    val bottom: String?
+)
+
+/**
+ * 真ん中＋上下左右の文字を 3 行の十字レイアウトで表示する Spannable を作る
+ *
+ *  例:
+ *    "  う  \n" +
+ *    "い あ え\n" +
+ *    "  お  "
+ *
+ * center: 中央に表示する文字（通常タップ）
+ * left/top/right/bottom: フリック方向に対応する文字（null または "" なら空白）
+ */
+private fun createFlickSpannable(
+    center: String,
+    left: String? = null,
+    top: String? = null,
+    right: String? = null,
+    bottom: String? = null,
+    sideScale: Float = 0.8f  // 周囲の文字を少し小さくする倍率
+): SpannableString {
+
+    val sb = StringBuilder()
+
+    var topStart = -1
+    var leftStart = -1
+    var centerStart = -1
+    var rightStart = -1
+    var bottomStart = -1
+
+    // 1行目: 上
+    if (!top.isNullOrEmpty()) {
+        sb.append("  ")              // 少し中央寄せ
+        topStart = sb.length
+        sb.append(top)
+        sb.append("  ")
+    } else {
+        sb.append("     ")           // "  " + 中央 + "  " と同じ幅をスペースで
+    }
+    sb.append("\n")
+
+    // 2行目: 左 真ん中 右
+    if (!left.isNullOrEmpty()) {
+        leftStart = sb.length
+        sb.append(left)
+    } else {
+        sb.append(" ")
+    }
+    sb.append(" ")
+
+    centerStart = sb.length
+    sb.append(center)
+    sb.append(" ")
+
+    if (!right.isNullOrEmpty()) {
+        rightStart = sb.length
+        sb.append(right)
+    } else {
+        sb.append(" ")
+    }
+    sb.append("\n")
+
+    // 3行目: 下
+    if (!bottom.isNullOrEmpty()) {
+        sb.append("  ")
+        bottomStart = sb.length
+        sb.append(bottom)
+        sb.append("  ")
+    } else {
+        sb.append("     ")
+    }
+
+    val spannable = SpannableString(sb.toString())
+
+    // 周囲は小さめ
+    fun applySideSpan(start: Int, len: Int) {
+        if (start >= 0 && len > 0) {
+            spannable.setSpan(
+                RelativeSizeSpan(sideScale),
+                start,
+                start + len,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+    }
+
+    // 中央は基準サイズ（button.textSize）をそのまま使うので span は不要でも OK
+
+    if (!left.isNullOrEmpty()) applySideSpan(leftStart, left!!.length)
+    if (!top.isNullOrEmpty()) applySideSpan(topStart, top!!.length)
+    if (!right.isNullOrEmpty()) applySideSpan(rightStart, right!!.length)
+    if (!bottom.isNullOrEmpty()) applySideSpan(bottomStart, bottom!!.length)
+
+    return spannable
+}
+
+
 fun AppCompatButton.setTenKeyTextJapanese(
     keyId: Int,
-    delta: Int
+    delta: Int,
 ) {
     textSize = KEY_JAPANESE_SIZE + delta
     setTextColor(
@@ -33,6 +140,132 @@ fun AppCompatButton.setTenKeyTextJapanese(
         R.id.key_9 -> context.getString(com.kazumaproject.core.R.string.string_ら)
         R.id.key_11 -> context.getString(com.kazumaproject.core.R.string.string_わ)
         R.id.key_12 -> getSpannableStringForKigouButtonJapanese()
+        else -> ""
+    }
+}
+
+fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
+    keyId: Int,
+    delta: Int
+) {
+    // ベースのテキストサイズ (中心) をセット
+    textSize = 11f + delta
+    setTextColor(
+        ContextCompat.getColor(
+            context,
+            com.kazumaproject.core.R.color.keyboard_icon_color
+        )
+    )
+
+    // 3行表示＋中央寄せ
+    this.isSingleLine = false
+    this.maxLines = 3
+    this.gravity = Gravity.CENTER
+    // 行間を少し詰めたいなら（好みで調整）
+    this.setLineSpacing(0f, 0.9f)
+
+    val chars: FlickChars? = when (keyId) {
+        R.id.key_1 -> FlickChars(
+            center = "あ",
+            left = "い",
+            top = "う",
+            right = "え",
+            bottom = "お"
+        )
+
+        R.id.key_2 -> FlickChars(
+            center = "か",
+            left = "き",
+            top = "く",
+            right = "け",
+            bottom = "こ"
+        )
+
+        R.id.key_3 -> FlickChars(
+            center = "さ",
+            left = "し",
+            top = "す",
+            right = "せ",
+            bottom = "そ"
+        )
+
+        R.id.key_4 -> FlickChars(
+            center = "た",
+            left = "ち",
+            top = "つ",
+            right = "て",
+            bottom = "と"
+        )
+
+        R.id.key_5 -> FlickChars(
+            center = "な",
+            left = "に",
+            top = "ぬ",
+            right = "ね",
+            bottom = "の"
+        )
+
+        R.id.key_6 -> FlickChars(
+            center = "は",
+            left = "ひ",
+            top = "ふ",
+            right = "へ",
+            bottom = "ほ"
+        )
+
+        R.id.key_7 -> FlickChars(
+            center = "ま",
+            left = "み",
+            top = "む",
+            right = "め",
+            bottom = "も"
+        )
+
+        R.id.key_8 -> FlickChars(
+            center = "や",
+            left = "(",   // や行は一般的に左/右は無しにすることが多い
+            top = "ゆ",
+            right = ")",
+            bottom = "よ"
+        )
+
+        R.id.key_9 -> FlickChars(
+            center = "ら",
+            left = "り",
+            top = "る",
+            right = "れ",
+            bottom = "ろ"
+        )
+
+        R.id.key_11 -> FlickChars(
+            center = "わ",
+            left = "を",
+            top = "ん",
+            right = "ー", // 好みで変更
+            bottom = "〜"
+        )
+        // 記号キー(key_12)は従来どおり getSpannableStringForKigouButtonJapanese を使う
+        R.id.key_12 -> null
+        else -> null
+    }
+
+    text = when {
+        chars != null -> {
+            createFlickSpannable(
+                center = chars.center,
+                left = chars.left,
+                top = chars.top,
+                right = chars.right,
+                bottom = chars.bottom,
+                sideScale = 0.6f
+            )
+        }
+
+        keyId == R.id.key_12 -> {
+            // 記号キーは今までの実装に合わせる
+            getSpannableStringForKigouButtonJapanese()
+        }
+
         else -> ""
     }
 }
