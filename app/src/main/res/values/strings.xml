@@ -370,4 +370,6 @@
     <string name="category_common">Common</string>
     <string name="category_dictionary">Dictionary</string>
     <string name="category_kana">Kana</string>
+    <string name="tenkey_keymap_guide_title">Show key guides</string>
+    <string name="tenkey_keymap_guide_summary">Displays guide characters on the keys to indicate how to input each character.</string>
 </resources>

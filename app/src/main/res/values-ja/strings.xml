@@ -368,4 +368,6 @@
     <string name="category_common">共通</string>
     <string name="category_dictionary">辞書</string>
     <string name="category_kana">かな</string>
+    <string name="tenkey_keymap_guide_title">キーガイドの表示</string>
+    <string name="tenkey_keymap_guide_summary">キーの上に入力の目安となるガイド文字を表示します</string>
 </resources>
