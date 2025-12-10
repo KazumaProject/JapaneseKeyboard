@@ -267,6 +267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val clipboardMutex = Mutex()
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
+    private var tenkeyQKeymapGuide: Boolean? = false
 
     private var floatingCandidateWindow: PopupWindow? = null
     private lateinit var floatingCandidateView: View
@@ -817,6 +818,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbolKeyboardFirstItem = symbol_mode_preference
             isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
             tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
+            tenkeyQKeymapGuide = tenkey_keymap_guide_layout ?: false
             isKeyboardFloatingMode = is_floating_mode ?: false
             isKeyboardRounded = keyboard_corner_round_preference
             bunsetsuSeparation = bunsetsu_separation_preference
@@ -1148,6 +1150,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     keyboardView.setBackgroundSmallLetterKey(cachedKanaDrawable)
                 }
 
+                keyboardView.setFlickGuideEnabled(tenkeyQKeymapGuide ?: false)
+
                 setTabsToTabLayout(mainView)
 
                 suggestionProgressbar.isVisible = false
@@ -1350,6 +1354,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
         tenkeyQWERTYSwitchNumber = null
+        tenkeyQKeymapGuide = null
         isKeyboardFloatingMode = null
         isKeyboardRounded = null
         bunsetsuSeparation = null
