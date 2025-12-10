@@ -370,4 +370,14 @@
     <string name="category_kana">かな</string>
     <string name="tenkey_keymap_guide_title">キーガイドの表示</string>
     <string name="tenkey_keymap_guide_summary">キーの上に入力の目安となるガイド文字を表示します</string>
+    <string name="qwerty_margins_settings">QWERTYレイアウトの余白設定</string>
+    <string name="vertical_margin_keys_height_gap">縦方向の余白 (キーの高さ間隔)</string>
+    <string name="horizontal_gap_between_keys">横方向の隙間 (キー同士の間隔)</string>
+    <string name="indent_large_2nd_row_indent">2段目の両端の余白</string>
+    <string name="indent_small_adjustment">2段目の余白の微調整</string>
+    <string name="side_margin_edge_keys">3段目の両端の余白</string>
+    <string name="qwerty_key_letter_size">キーの文字サイズ</string>
+    <string name="reset_to_default">初期値に戻す</string>
+    <string name="preview">プレビュー</string>
+    <string name="qwertymarginsettingfragment">キーの設定</string>
 </resources>

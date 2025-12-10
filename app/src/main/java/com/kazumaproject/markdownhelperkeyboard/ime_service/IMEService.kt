@@ -440,6 +440,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzProfilePreference: String? = ""
     private var zenzEnableLongPressConversionPreference: Boolean? = false
 
+    private var qwertyKeyVerticalMargin: Float? = 5.0f
+    private var qwertyKeyHorizontalGap: Float? = 2.0f
+    private var qwertyKeyIndentLarge: Float? = 23.0f
+    private var qwertyKeyIndentSmall: Float? = 9.0f
+    private var qwertyKeySideMargin: Float? = 4.0f
+    private var qwertyKeyTextSize: Float? = 18.0f
+
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
     )
@@ -867,6 +874,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzProfilePreference = zenz_profile_preference
             zenzEnableLongPressConversionPreference = enable_zenz_long_press_preference
 
+            qwertyKeyVerticalMargin = qwerty_key_vertical_margin
+            qwertyKeyHorizontalGap = qwerty_key_horizontal_gap
+            qwertyKeyIndentLarge = qwerty_key_indent_large
+            qwertyKeyIndentSmall = qwerty_key_indent_small
+            qwertyKeySideMargin = qwerty_key_side_margin
+            qwertyKeyTextSize = qwerty_key_text_size
+
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -1172,6 +1186,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setNumberSwitchKeyTextStyle()
                 qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                 qwertyView.setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
+                qwertyView.setKeyMargins(
+                    verticalDp = qwertyKeyVerticalMargin ?: 5.0f,
+                    horizontalGapDp = qwertyKeyHorizontalGap ?: 2.0f,
+                    indentLargeDp = qwertyKeyIndentLarge ?: 23.0f,
+                    indentSmallDp = qwertyKeyIndentSmall ?: 9.0f,
+                    sideMarginDp = qwertyKeySideMargin ?: 4.0f,
+                    textSizeSp = qwertyKeyTextSize ?: 18.0f
+                )
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
                     candidatesRowView.adapter = null
@@ -1327,6 +1349,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzEnableStatePreference = null
         zenzProfilePreference = null
         zenzEnableLongPressConversionPreference = null
+
+        qwertyKeyVerticalMargin = null
+        qwertyKeyHorizontalGap = null
+        qwertyKeyIndentLarge = null
+        qwertyKeyIndentSmall = null
+        qwertyKeySideMargin = null
+        qwertyKeyTextSize = null
 
         vibrationTimingStr = null
         mozcUTPersonName = null

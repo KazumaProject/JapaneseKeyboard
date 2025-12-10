@@ -215,6 +215,13 @@ object AppPreference {
     private val ZENZ_MAXIMUM_THREAD_SIZE_PREFERENCE =
         Pair("zenz_maximum_thread_count_preference", 4)
 
+    private val QWERTY_KEY_VERTICAL_MARGIN = Pair("qwerty_key_vertical_margin_preference", 5.0f)
+    private val QWERTY_KEY_HORIZONTAL_GAP = Pair("qwerty_key_horizontal_gap_preference", 2.0f)
+    private val QWERTY_KEY_INDENT_LARGE = Pair("qwerty_key_indent_large_preference", 23.0f)
+    private val QWERTY_KEY_INDENT_SMALL = Pair("qwerty_key_indent_small_preference", 9.0f)
+    private val QWERTY_KEY_SIDE_MARGIN = Pair("qwerty_key_side_margin_preference", 4.0f)
+    private val QWERTY_KEY_TEXT_SIZE = Pair("qwerty_key_text_size_preference", 18.0f)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -984,6 +991,46 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putInt(ZENZ_MAXIMUM_THREAD_SIZE_PREFERENCE.first, value ?: 4)
         }
+
+    var qwerty_key_vertical_margin: Float?
+        get() = preferences.getFloat(
+            QWERTY_KEY_VERTICAL_MARGIN.first,
+            QWERTY_KEY_VERTICAL_MARGIN.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                QWERTY_KEY_VERTICAL_MARGIN.first,
+                value ?: 5.0f
+            )
+        }
+
+    var qwerty_key_horizontal_gap: Float?
+        get() = preferences.getFloat(
+            QWERTY_KEY_HORIZONTAL_GAP.first,
+            QWERTY_KEY_HORIZONTAL_GAP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                QWERTY_KEY_HORIZONTAL_GAP.first,
+                value ?: 2.0f
+            )
+        }
+
+    var qwerty_key_indent_large: Float?
+        get() = preferences.getFloat(QWERTY_KEY_INDENT_LARGE.first, QWERTY_KEY_INDENT_LARGE.second)
+        set(value) = preferences.edit { it.putFloat(QWERTY_KEY_INDENT_LARGE.first, value ?: 23.0f) }
+
+    var qwerty_key_indent_small: Float?
+        get() = preferences.getFloat(QWERTY_KEY_INDENT_SMALL.first, QWERTY_KEY_INDENT_SMALL.second)
+        set(value) = preferences.edit { it.putFloat(QWERTY_KEY_INDENT_SMALL.first, value ?: 9.0f) }
+
+    var qwerty_key_side_margin: Float?
+        get() = preferences.getFloat(QWERTY_KEY_SIDE_MARGIN.first, QWERTY_KEY_SIDE_MARGIN.second)
+        set(value) = preferences.edit { it.putFloat(QWERTY_KEY_SIDE_MARGIN.first, value ?: 4.0f) }
+
+    var qwerty_key_text_size: Float?
+        get() = preferences.getFloat(QWERTY_KEY_TEXT_SIZE.first, QWERTY_KEY_TEXT_SIZE.second)
+        set(value) = preferences.edit { it.putFloat(QWERTY_KEY_TEXT_SIZE.first, value ?: 18.0f) }
 
     fun migrateSumirePreferenceIfNeeded() {
         // 古いキーが存在する場合のみ移行処理を実行
