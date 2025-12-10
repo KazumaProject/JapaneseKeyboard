@@ -36,6 +36,9 @@ object AppPreference {
     private val TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tenkey_kana_english_qwerty_preference", false)
 
+    private val TENKEY_KEYMAP_GUIDE_PREFERENCE =
+        Pair("tenkey_keymap_guide", false)
+
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
 
@@ -244,6 +247,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_SWITCH_QWERTY_PREFERENCE.first, value ?: false)
+        }
+
+    var tenkey_keymap_guide_layout: Boolean?
+        get() = preferences.getBoolean(
+            TENKEY_KEYMAP_GUIDE_PREFERENCE.first, TENKEY_KEYMAP_GUIDE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
         }
 
     var qwerty_show_ime_button: Boolean?
