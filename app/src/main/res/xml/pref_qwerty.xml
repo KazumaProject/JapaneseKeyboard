@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/category_qwerty_keyboard_title">
+
+        <Preference
+            android:key="qwerty_button_size_preference"
+            android:title="キーのサイズ"
+            app:summary="キーのサイズを変更します" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="switch_qwerty_keyboard_password_preference"
