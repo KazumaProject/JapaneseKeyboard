@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
@@ -17,6 +19,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import androidx.core.view.setPadding
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
@@ -458,7 +461,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             this.isFocusable = false
         }
 
-        setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
+        //setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
+
+        //setDynamicNeumorphismTheme(Color.parseColor("#E0E5EC"))
+
+        setCustomNeumorphismTheme(
+            backgroundColor = "#E0E5EC".toColorInt(),
+            specialKeyColor = "#E0E5EC".toColorInt(),
+            normalKeyTextColor = ContextCompat.getColor(
+                context,
+                com.kazumaproject.core.R.color.keyboard_icon_color
+            ),
+            specialKeyTextColor = ContextCompat.getColor(
+                context,
+                com.kazumaproject.core.R.color.keyboard_icon_color
+            )
+        )
 
         // ← NEW: launch a coroutine to observe changes to currentInputMode
         scope.launch {
@@ -554,6 +572,240 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 .getDrawable(context, roundRes)
 
         }
+    }
+
+    /**
+     * 動的な色指定によるニューモーフィズムテーマの適用
+     * @param targetColor 適用したいメインカラー (例: Color.parseColor("#E0E5EC"))
+     */
+    fun setDynamicNeumorphismTheme(targetColor: Int) {
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density // 角丸の半径 (8dp)
+
+        // 文字色を背景の明るさに応じて自動決定（白 または 黒）
+        val textColor =
+            if (androidx.core.graphics.ColorUtils.calculateLuminance(targetColor) > 0.5) {
+                ContextCompat.getColor(context, com.kazumaproject.core.R.color.black)
+            } else {
+                ContextCompat.getColor(context, com.kazumaproject.core.R.color.white)
+            }
+        val textTint = ColorStateList.valueOf(textColor)
+
+        // 背景色をセット（キーと同化させるため）
+        this.setBackgroundColor(targetColor)
+
+        binding.apply {
+            // 中央キー、サイドキー、Enterキーなど全てに適用
+            // （サイドキーだけ色を変えたい場合は別の引数を渡して getDynamicNeumorphDrawable を呼ぶ）
+            val commonDrawable = getDynamicNeumorphDrawable(targetColor, radius)
+
+            // 各ボタンに適用 (Drawableはmutateしないと状態が共有されてバグる可能性があるが、
+            // 今回は都度生成関数を呼ぶか、定数ならmutateする。
+            // ここではループ内で「同じ設定」でいいなら共通インスタンスの `constantState.newDrawable()` を使うとメモリ効率が良い)
+
+            val keys = listOf(
+                key1, key2, key3, key4, key5, key6,
+                key7, key8, key9, keySmallLetter, key11, key12,
+                keyReturn, keySoftLeft, sideKeySymbol,
+                keyDelete, keyMoveCursorRight, keySpace, keyEnter, keySwitchKeyMode
+            )
+
+            keys.forEach { view ->
+                // 新しいDrawableインスタンスを生成してセット
+                // (全て同じ色なら同じDrawableインスタンスを使い回しても良いが、サイズが違うとstretchされるため注意)
+                view.background = getDynamicNeumorphDrawable(targetColor, radius)
+
+                if (view is MaterialTextView || view is AppCompatButton) {
+                    (view as? MaterialTextView)?.setTextColor(textColor)
+                    (view as? AppCompatButton)?.setTextColor(textColor)
+                }
+                if (view is AppCompatImageButton) {
+                    ImageViewCompat.setImageTintList(view, textTint)
+                }
+            }
+        }
+    }
+
+    /**
+     * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
+     * @param baseColor キーのメインカラー
+     * @param radius キーの角丸の半径 (px)
+     */
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        // 1. 色の計算
+        // ハイライト色: ベース色に白(#FFFFFF)を50%混ぜる（または明るくする）
+        val highlightColor = manipulateColor(baseColor, 1.2f) // 輝度を上げる簡易版
+        // シャドウ色: ベース色に黒(#000000)を混ぜて暗くする
+        val shadowColor = manipulateColor(baseColor, 0.8f)    // 輝度を下げる簡易版
+
+        // 2. ピクセル単位のオフセット量（4dpなどをpxに変換）
+        val density = context.resources.displayMetrics.density
+        val offset = (4 * density).toInt() // 影のずれ幅
+        val padding = (2 * density).toInt() // メイン面の縮小幅
+
+        // --- A. 通常状態 (Idle) の作成 ---
+
+        // レイヤー0: 暗い影 (右下に配置)
+        val shadowDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(shadowColor)
+        }
+
+        // レイヤー1: 明るいハイライト (左上に配置)
+        val highlightDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(highlightColor)
+        }
+
+        // レイヤー2: メインの面
+        val surfaceDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(baseColor)
+        }
+
+        // LayerDrawableで重ねる (下から順に描画される)
+        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
+
+        // インセット（余白）を設定して位置をずらす
+        // setLayerInset(index, left, top, right, bottom)
+
+        // 影: 左と上を空けて、右下に表示させる
+        idleLayer.setLayerInset(0, offset, offset, 0, 0)
+
+        // ハイライト: 右と下を空けて、左上に表示させる
+        idleLayer.setLayerInset(1, 0, 0, offset, offset)
+
+        // メイン面: 全体に少し余白を入れて中央に配置（影が見えるようにする）
+        idleLayer.setLayerInset(2, padding, padding, padding, padding)
+
+
+        // --- B. 押下状態 (Pressed) の作成 ---
+
+        // 押したときは凹む表現（影を消して少し暗くする、あるいは内側の影を擬似的に表現）
+        val pressedDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            // ベース色より少し暗くすることで「押し込まれた」感を出す
+            setColor(manipulateColor(baseColor, 0.95f))
+        }
+        // Pressed状態はサイズを変えないため、IdleのSurfaceと同じ位置に合わせるためのInsetが必要ならLayerDrawableにする
+        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
+        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
+
+
+        // --- C. StateListDrawable (Selector) にまとめる ---
+        val stateListDrawable = android.graphics.drawable.StateListDrawable()
+
+        // 押された時
+        stateListDrawable.addState(
+            intArrayOf(android.R.attr.state_pressed),
+            pressedLayer
+        )
+        // 無効な時 (必要であれば)
+        stateListDrawable.addState(
+            intArrayOf(-android.R.attr.state_enabled),
+            pressedLayer // 簡易的にPressedと同じ、あるいは透明度を下げるなど
+        )
+        // 通常時
+        stateListDrawable.addState(
+            intArrayOf(),
+            idleLayer
+        )
+
+        return stateListDrawable
+    }
+
+    /**
+     * 詳細な色指定によるニューモーフィズムテーマの適用
+     *
+     * @param backgroundColor 全体の背景色および「通常キー」の背景色
+     * @param specialKeyColor 「特殊キー（Enter, Deleteなど）」の背景色
+     * @param normalKeyTextColor 通常キーの文字・アイコン色
+     * @param specialKeyTextColor 特殊キーの文字・アイコン色
+     */
+    fun setCustomNeumorphismTheme(
+        backgroundColor: Int,
+        specialKeyColor: Int,
+        normalKeyTextColor: Int,
+        specialKeyTextColor: Int
+    ) {
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density // 角丸の半径 (8dp)
+
+        // 1. 全体の背景色を設定
+        this.setBackgroundColor(backgroundColor)
+
+        binding.apply {
+            // --- キーの分類リスト定義 ---
+            val normalKeys = listOf(
+                key1, key2, key3, key4, key5, key6,
+                key7, key8, key9, key11, key12, keySmallLetter
+            )
+
+            val specialKeys = listOf(
+                keyReturn, keySoftLeft, sideKeySymbol,
+                keyDelete, keyMoveCursorRight, keySpace, keyEnter,
+                keySwitchKeyMode
+            )
+
+            // --- 色の適用処理 ---
+
+            // 2. 通常キーへの適用
+            val normalDrawableState =
+                getDynamicNeumorphDrawable(backgroundColor, radius).constantState
+
+            // ★修正: 単色のColorStateListを作成して強制適用する
+            val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
+
+            normalKeys.forEach { view ->
+                view.background = normalDrawableState?.newDrawable()?.mutate()
+
+                // テキストカラーの適用 (ColorStateListを使う)
+                if (view is MaterialTextView) view.setTextColor(normalColorStateList)
+                if (view is AppCompatButton) view.setTextColor(normalColorStateList)
+
+                // アイコンTintの適用
+                if (view is AppCompatImageButton) {
+                    ImageViewCompat.setImageTintList(view, normalColorStateList)
+                }
+            }
+
+            // 3. 特殊キーへの適用
+            val specialDrawableState =
+                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+
+            // ★修正: 単色のColorStateListを作成して強制適用する
+            val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
+
+            specialKeys.forEach { view ->
+                view.background = specialDrawableState?.newDrawable()?.mutate()
+
+                // テキストカラーの適用 (ColorStateListを使う)
+                if (view is MaterialTextView) view.setTextColor(specialColorStateList)
+                if (view is AppCompatButton) view.setTextColor(specialColorStateList)
+
+                // アイコンTintの適用
+                if (view is AppCompatImageButton) {
+                    ImageViewCompat.setImageTintList(view, specialColorStateList)
+                }
+            }
+        }
+    }
+
+    /**
+     * 色の明るさを調整するヘルパー関数
+     * @param color 元の色
+     * @param factor 1.0より大＝明るく、1.0より小＝暗く
+     */
+    private fun manipulateColor(color: Int, factor: Float): Int {
+        val a = android.graphics.Color.alpha(color)
+        val r = (android.graphics.Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (android.graphics.Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (android.graphics.Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return android.graphics.Color.argb(a, r, g, b)
     }
 
     fun setCurrentMode(inputMode: InputMode) {
