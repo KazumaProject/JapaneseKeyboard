@@ -79,6 +79,8 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
+import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHiragana
@@ -133,8 +135,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEngl
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setDrawableSolidColor
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.setLayerTypeSolidColor
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
@@ -1854,6 +1854,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                suggestionAdapter?.setCandidateTextColor(
+                                    customThemeKeyTextColor ?: Color.BLACK
+                                )
+                                suggestionAdapterFull?.setCandidateTextColor(
+                                    customThemeKeyTextColor ?: Color.BLACK
+                                )
+                                suggestionAdapter?.setCandidateEmptyDrawableColor(
+                                    customThemeSpecialKeyColor ?: Color.WHITE
+                                )
+
+                                suggestionAdapter?.setCandidateEmptyDrawableTextColor(
+                                    customThemeSpecialKeyTextColor ?: Color.BLACK
+                                )
 
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
@@ -7625,6 +7638,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.candidateTabLayout.apply {
+            setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+            setTabTextColors(
+                customThemeKeyTextColor ?: Color.BLACK,
+                customThemeSpecialKeyTextColor ?: Color.BLACK
+            )
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     tab?.let { t ->
@@ -7916,6 +7934,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
+        shortcutAdapter?.setIconColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
         shortcutAdapter?.onItemClicked = { type ->
             when (type) {
                 ShortcutType.SETTINGS -> {

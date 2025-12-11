@@ -181,7 +181,7 @@ fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
             )
         }
 
-        "custom" ->{
+        "custom" -> {
             setTextColor(colorTextInt)
         }
 
@@ -310,15 +310,36 @@ fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
 
 fun AppCompatButton.setTenKeyTextEnglish(
     keyId: Int,
-    delta: Int
+    delta: Int,
+    modeTheme: String,
+    colorTextInt: Int
 ) {
     textSize = KEY_ENGLISH_SIZE + delta
-    setTextColor(
-        ContextCompat.getColor(
-            context,
-            com.kazumaproject.core.R.color.keyboard_icon_color
-        )
-    )
+
+    when (modeTheme) {
+        "default" -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+
+        "custom" -> {
+            setTextColor(colorTextInt)
+        }
+
+        else -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+    }
+
     text = when (keyId) {
         R.id.key_1 -> context.getString(com.kazumaproject.core.R.string.string_key1_english)
         R.id.key_2 -> context.getString(com.kazumaproject.core.R.string.string_key2_english)
@@ -337,15 +358,36 @@ fun AppCompatButton.setTenKeyTextEnglish(
 
 fun AppCompatButton.setTenKeyTextNumber(
     keyId: Int,
-    delta: Int
+    delta: Int,
+    modeTheme: String,
+    colorTextInt: Int
 ) {
     textSize = KEY_NUMBER_SIZE + delta
-    setTextColor(
-        ContextCompat.getColor(
-            context,
-            com.kazumaproject.core.R.color.keyboard_icon_color
-        )
-    )
+
+    when (modeTheme) {
+        "default" -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+
+        "custom" -> {
+            setTextColor(colorTextInt)
+        }
+
+        else -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+    }
+
     text = when (keyId) {
         R.id.key_1 -> getSpannableStringForNumberButton(context.getString(com.kazumaproject.core.R.string.string_key1_number))
         R.id.key_2 -> getSpannableStringForNumberButton(context.getString(com.kazumaproject.core.R.string.string_key2_number))

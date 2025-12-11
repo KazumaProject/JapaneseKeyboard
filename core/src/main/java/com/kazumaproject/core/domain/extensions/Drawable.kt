@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
+package com.kazumaproject.core.domain.extensions
 
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
@@ -7,10 +7,10 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.ScaleDrawable
+import android.util.Log
 import android.view.View
 import androidx.annotation.ColorInt
 import androidx.annotation.IdRes
-import timber.log.Timber
 
 /**
  * 背景がLayerDrawableの場合、指定したインデックスのShape(GradientDrawable)の色を変更する拡張関数
@@ -56,17 +56,17 @@ fun View.setLayerTypeSolidColorById(@ColorInt color: Int, @IdRes layerId: Int) {
 fun View.debugDrawableType(index: Int = 0) {
     val bg = this.background
     if (bg == null) {
-        Timber.tag("DEBUG_COLOR").d("Background is null")
+        Log.d("DEBUG_COLOR", "Background is null")
         return
     }
-    Timber.tag("DEBUG_COLOR").d("Root Drawable: ${bg::class.java.simpleName}")
+    Log.d("DEBUG_COLOR", "Root Drawable: ${bg::class.java.simpleName}")
 
     if (bg is LayerDrawable) {
         if (index < bg.numberOfLayers) {
             val child = bg.getDrawable(index)
-            Timber.tag("DEBUG_COLOR").d("Child($index) Drawable: ${child::class.java.simpleName}")
+            Log.d("DEBUG_COLOR", "Child($index) Drawable: ${child::class.java.simpleName}")
         } else {
-            Timber.tag("DEBUG_COLOR").d("Index out of bounds")
+            Log.d("DEBUG_COLOR", "Index out of bounds")
         }
     }
 }

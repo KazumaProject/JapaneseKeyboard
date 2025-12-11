@@ -19,6 +19,7 @@ import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
+import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -72,6 +73,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
     private var candidateTextSize: Float = 14f
+    private var candidateTextColor: Int? = null
+
+    private var candidateEmptyDrawableColor: Int? = null
+    private var candidateEmptyDrawableTextColor: Int? = null
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -318,6 +323,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 isEnabled = isPasteEnabled
                 visibility = if (isPasteEnabled) View.VISIBLE else View.INVISIBLE
                 isFocusable = false
+
+                candidateEmptyDrawableColor?.let {
+                    this.setDrawableSolidColor(it)
+                }
             }
 
             // ★修正: 画像プレビューのロジック
@@ -330,11 +339,17 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     // なければデフォルトのアイコンを設定
                     setImageResource(com.kazumaproject.core.R.drawable.content_paste_24px)
                     scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    candidateEmptyDrawableTextColor?.let {
+                        setColorFilter(it)
+                    }
                 }
             }
 
             // テキストプレビューは、画像がない場合にのみ表示
             clipboardPreviewText?.text = if (clipboardBitmap == null) clipboardText else ""
+            candidateEmptyDrawableTextColor?.let {
+                clipboardPreviewText?.setTextColor(it)
+            }
 
             undoIconParent?.apply {
                 if (isDynamicColorEnable) {
@@ -380,6 +395,27 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setCandidateTextColor(color: Int) {
+        if (candidateTextColor == color) return
+        candidateTextColor = color
+        // 全アイテムを更新して色を反映させる
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setCandidateEmptyDrawableColor(color: Int) {
+        if (candidateEmptyDrawableColor == color) return
+        candidateEmptyDrawableColor = color
+        // 全アイテムを更新して色を反映させる
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setCandidateEmptyDrawableTextColor(color: Int) {
+        if (candidateEmptyDrawableTextColor == color) return
+        candidateEmptyDrawableTextColor = color
+        // 全アイテムを更新して色を反映させる
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     private fun onBindSuggestionViewHolder(holder: SuggestionViewHolder, position: Int) {
         val suggestion = suggestions[position]
         val paddingLength = when {
@@ -401,6 +437,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
 
         holder.text.textSize = candidateTextSize
+
+        candidateTextColor?.let { color ->
+            holder.text.setTextColor(color)
+            // 必要であれば typeText（[半]などの補足テキスト）にも同じ色、またはその色の薄い版などを適用
+            holder.typeText.setTextColor(color)
+        }
 
         holder.typeText.text = when (suggestion.type) {
             (1).toByte() -> ""

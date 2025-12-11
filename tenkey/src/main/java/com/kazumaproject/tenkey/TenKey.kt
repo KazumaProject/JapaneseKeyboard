@@ -20,7 +20,6 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.toColorInt
 import androidx.core.view.setPadding
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
@@ -124,29 +123,29 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     val currentInputMode: StateFlow<InputMode> = _currentInputMode
 
     // Popups: active (center) and directional
-    private val popupWindowActive: PopupWindow
-    private val bubbleViewActive: KeyWindowLayout
-    private val popTextActive: MaterialTextView
+    private lateinit var popupWindowActive: PopupWindow
+    private lateinit var bubbleViewActive: KeyWindowLayout
+    private lateinit var popTextActive: MaterialTextView
 
-    private val popupWindowLeft: PopupWindow
-    private val bubbleViewLeft: KeyWindowLayout
-    private val popTextLeft: MaterialTextView
+    private lateinit var popupWindowLeft: PopupWindow
+    private lateinit var bubbleViewLeft: KeyWindowLayout
+    private lateinit var popTextLeft: MaterialTextView
 
-    private val popupWindowTop: PopupWindow
-    private val bubbleViewTop: KeyWindowLayout
-    private val popTextTop: MaterialTextView
+    private lateinit var popupWindowTop: PopupWindow
+    private lateinit var bubbleViewTop: KeyWindowLayout
+    private lateinit var popTextTop: MaterialTextView
 
-    private val popupWindowRight: PopupWindow
-    private val bubbleViewRight: KeyWindowLayout
-    private val popTextRight: MaterialTextView
+    private lateinit var popupWindowRight: PopupWindow
+    private lateinit var bubbleViewRight: KeyWindowLayout
+    private lateinit var popTextRight: MaterialTextView
 
-    private val popupWindowBottom: PopupWindow
-    private val bubbleViewBottom: KeyWindowLayout
-    private val popTextBottom: MaterialTextView
+    private lateinit var popupWindowBottom: PopupWindow
+    private lateinit var bubbleViewBottom: KeyWindowLayout
+    private lateinit var popTextBottom: MaterialTextView
 
-    private val popupWindowCenter: PopupWindow
-    private val bubbleViewCenter: KeyWindowLayout
-    private val popTextCenter: MaterialTextView
+    private lateinit var popupWindowCenter: PopupWindow
+    private lateinit var bubbleViewCenter: KeyWindowLayout
+    private lateinit var popTextCenter: MaterialTextView
 
     private var isFlickGuideEnabled: Boolean = false
 
@@ -281,155 +280,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // Prepare popups using their own bindings
         // --- Active popup (center) ---
 
-        // --- Left popup ---
-        if (isDynamicColorsEnable) {
-            if (isDarkMode) {
-                val activeBinding = PopupLayoutActiveMaterialBinding.inflate(inflater, null, false)
-                popupWindowActive = PopupWindow(
-                    activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewActive = activeBinding.bubbleLayoutActive
-                popTextActive = activeBinding.popupTextActive
-                val leftBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowLeft = PopupWindow(
-                    leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewLeft = leftBinding.bubbleLayout
-                popTextLeft = leftBinding.popupText
-            } else {
-                val activeBinding =
-                    PopupLayoutActiveMaterialLightBinding.inflate(inflater, null, false)
-                popupWindowActive = PopupWindow(
-                    activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewActive = activeBinding.bubbleLayoutActive
-                popTextActive = activeBinding.popupTextActive
-                val leftBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
-                popupWindowLeft = PopupWindow(
-                    leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewLeft = leftBinding.bubbleLayout
-                popTextLeft = leftBinding.popupText
-            }
-        } else {
-            val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
-            popupWindowActive = PopupWindow(
-                activeBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-            )
-            bubbleViewActive = activeBinding.bubbleLayoutActive
-            popTextActive = activeBinding.popupTextActive
-
-            val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
-            popupWindowLeft = PopupWindow(
-                leftBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-            )
-            bubbleViewLeft = leftBinding.bubbleLayout
-            popTextLeft = leftBinding.popupText
-        }
-
-        // --- Top popup ---
-        if (isDynamicColorsEnable) {
-            if (isDarkMode) {
-                val topBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowTop = PopupWindow(
-                    topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewTop = topBinding.bubbleLayout
-                popTextTop = topBinding.popupText
-            } else {
-                val topBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
-                popupWindowTop = PopupWindow(
-                    topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewTop = topBinding.bubbleLayout
-                popTextTop = topBinding.popupText
-            }
-        } else {
-            val topBinding = PopupLayoutBinding.inflate(inflater, null, false)
-            popupWindowTop = PopupWindow(
-                topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-            )
-            bubbleViewTop = topBinding.bubbleLayout
-            popTextTop = topBinding.popupText
-        }
-
-        // --- Right popup ---
-        if (isDynamicColorsEnable) {
-            if (isDarkMode) {
-                val rightBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowRight = PopupWindow(
-                    rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewRight = rightBinding.bubbleLayout
-                popTextRight = rightBinding.popupText
-            } else {
-                val rightBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
-                popupWindowRight = PopupWindow(
-                    rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewRight = rightBinding.bubbleLayout
-                popTextRight = rightBinding.popupText
-            }
-        } else {
-            val rightBinding = PopupLayoutBinding.inflate(inflater, null, false)
-            popupWindowRight = PopupWindow(
-                rightBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-            )
-            bubbleViewRight = rightBinding.bubbleLayout
-            popTextRight = rightBinding.popupText
-        }
-
-        // --- Bottom popup ---
-        if (isDynamicColorsEnable) {
-            if (isDarkMode) {
-                val bottomBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowBottom = PopupWindow(
-                    bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewBottom = bottomBinding.bubbleLayout
-                popTextBottom = bottomBinding.popupText
-            } else {
-                val bottomBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
-                popupWindowBottom = PopupWindow(
-                    bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewBottom = bottomBinding.bubbleLayout
-                popTextBottom = bottomBinding.popupText
-            }
-        } else {
-            val bottomBinding = PopupLayoutBinding.inflate(inflater, null, false)
-            popupWindowBottom = PopupWindow(
-                bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-            )
-            bubbleViewBottom = bottomBinding.bubbleLayout
-            popTextBottom = bottomBinding.popupText
-        }
-
-        // --- Center popup (for long‐press + flick previews) ---
-        if (isDynamicColorsEnable) {
-            if (isDarkMode) {
-                val centerBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
-                popupWindowCenter = PopupWindow(
-                    centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewCenter = centerBinding.bubbleLayout
-                popTextCenter = centerBinding.popupText
-            } else {
-                val centerBinding = PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
-                popupWindowCenter = PopupWindow(
-                    centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-                )
-                bubbleViewCenter = centerBinding.bubbleLayout
-                popTextCenter = centerBinding.popupText
-            }
-        } else {
-            val centerBinding = PopupLayoutBinding.inflate(inflater, null, false)
-            popupWindowCenter = PopupWindow(
-                centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
-            )
-            bubbleViewCenter = centerBinding.bubbleLayout
-            popTextCenter = centerBinding.popupText
-        }
 
         // Build the map from Key enum to actual View references
         listKeys = mapOf(
@@ -472,26 +322,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             this.isFocusable = false
         }
 
-        when (themeMode) {
-            "default" -> {
-                setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
-            }
-
-            "custom" -> {
-                setFullCustomNeumorphismTheme(
-                    backgroundColor = customBgColor,
-                    normalKeyColor = customKeyColor,
-                    specialKeyColor = customSpecialKeyColor,
-                    normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor
-                )
-            }
-
-            else -> {
-                setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
-            }
-        }
-
         scope.launch {
             currentInputMode.collect { inputMode ->
                 Log.d("TenKey", "currentInputMode: $inputMode")
@@ -499,6 +329,220 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 handleCurrentInputModeSwitch(inputMode)
                 binding.keySwitchKeyMode.setInputMode(inputMode, false)
             }
+        }
+    }
+
+    private fun setPopupViewTheme(
+        isDynamicColorsEnable: Boolean,
+        isDarkMode: Boolean,
+        inflater: LayoutInflater
+    ) {
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val activeBinding =
+                    PopupLayoutActiveMaterialBinding.inflate(inflater, null, false)
+                popupWindowActive = PopupWindow(
+                    activeBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewActive = activeBinding.bubbleLayoutActive
+                popTextActive = activeBinding.popupTextActive
+                val leftBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowLeft = PopupWindow(
+                    leftBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewLeft = leftBinding.bubbleLayout
+                popTextLeft = leftBinding.popupText
+            } else {
+                val activeBinding =
+                    PopupLayoutActiveMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowActive = PopupWindow(
+                    activeBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewActive = activeBinding.bubbleLayoutActive
+                popTextActive = activeBinding.popupTextActive
+                val leftBinding =
+                    PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowLeft = PopupWindow(
+                    leftBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewLeft = leftBinding.bubbleLayout
+                popTextLeft = leftBinding.popupText
+            }
+        } else {
+            val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
+            popupWindowActive = PopupWindow(
+                activeBinding.root,
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+                false
+            )
+            bubbleViewActive = activeBinding.bubbleLayoutActive
+            popTextActive = activeBinding.popupTextActive
+
+            val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowLeft = PopupWindow(
+                leftBinding.root,
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+                false
+            )
+            bubbleViewLeft = leftBinding.bubbleLayout
+            popTextLeft = leftBinding.popupText
+        }
+
+        // --- Top popup ---
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val topBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowTop = PopupWindow(
+                    topBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewTop = topBinding.bubbleLayout
+                popTextTop = topBinding.popupText
+            } else {
+                val topBinding =
+                    PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowTop = PopupWindow(
+                    topBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewTop = topBinding.bubbleLayout
+                popTextTop = topBinding.popupText
+            }
+        } else {
+            val topBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowTop = PopupWindow(
+                topBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+            )
+            bubbleViewTop = topBinding.bubbleLayout
+            popTextTop = topBinding.popupText
+        }
+
+        // --- Right popup ---
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val rightBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowRight = PopupWindow(
+                    rightBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewRight = rightBinding.bubbleLayout
+                popTextRight = rightBinding.popupText
+            } else {
+                val rightBinding =
+                    PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowRight = PopupWindow(
+                    rightBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewRight = rightBinding.bubbleLayout
+                popTextRight = rightBinding.popupText
+            }
+        } else {
+            val rightBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowRight = PopupWindow(
+                rightBinding.root,
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+                false
+            )
+            bubbleViewRight = rightBinding.bubbleLayout
+            popTextRight = rightBinding.popupText
+        }
+
+        // --- Bottom popup ---
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val bottomBinding =
+                    PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowBottom = PopupWindow(
+                    bottomBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewBottom = bottomBinding.bubbleLayout
+                popTextBottom = bottomBinding.popupText
+            } else {
+                val bottomBinding =
+                    PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowBottom = PopupWindow(
+                    bottomBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewBottom = bottomBinding.bubbleLayout
+                popTextBottom = bottomBinding.popupText
+            }
+        } else {
+            val bottomBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowBottom = PopupWindow(
+                bottomBinding.root,
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+                false
+            )
+            bubbleViewBottom = bottomBinding.bubbleLayout
+            popTextBottom = bottomBinding.popupText
+        }
+
+        // --- Center popup (for long‐press + flick previews) ---
+        if (isDynamicColorsEnable) {
+            if (isDarkMode) {
+                val centerBinding =
+                    PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowCenter = PopupWindow(
+                    centerBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewCenter = centerBinding.bubbleLayout
+                popTextCenter = centerBinding.popupText
+            } else {
+                val centerBinding =
+                    PopupLayoutMaterialLightBinding.inflate(inflater, null, false)
+                popupWindowCenter = PopupWindow(
+                    centerBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewCenter = centerBinding.bubbleLayout
+                popTextCenter = centerBinding.popupText
+            }
+        } else {
+            val centerBinding = PopupLayoutBinding.inflate(inflater, null, false)
+            popupWindowCenter = PopupWindow(
+                centerBinding.root,
+                LayoutParams.WRAP_CONTENT,
+                LayoutParams.WRAP_CONTENT,
+                false
+            )
+            bubbleViewCenter = centerBinding.bubbleLayout
+            popTextCenter = centerBinding.popupText
         }
     }
 
@@ -666,16 +710,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.customSpecialKeyColor = customSpecialKeyColor
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
-
-        // 定数カラー（ライト/ダーク用）
-        val lightBaseColor = "#E0E5EC".toColorInt()
-        val lightTextColor = "#4A4A4A".toColorInt()
-
-        val darkBaseColor = "#2D2D2D".toColorInt()
-        val darkTextColor = "#E0E0E0".toColorInt()
+        val inflater = LayoutInflater.from(context)
 
         when (this.themeMode) {
             "default" -> {
+                setPopupViewTheme(
+                    isDynamicColorsEnable = isDynamicColorEnabled,
+                    isDarkMode = isNightMode,
+                    inflater = inflater
+                )
                 if (this.isDynamicColorEnabled) {
                     // Material You (Dynamic Color) を適用
                     setBackgroundColor(Color.TRANSPARENT)
@@ -723,6 +766,77 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
 
             "custom" -> {
+                val activeBinding = PopupLayoutActiveBinding.inflate(inflater, null, false)
+                popupWindowActive = PopupWindow(
+                    activeBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewActive = activeBinding.bubbleLayoutActive
+                popTextActive = activeBinding.popupTextActive
+                val activeColor = manipulateColor(customSpecialKeyColor, 1.2f)
+                bubbleViewActive.setBubbleColor(activeColor)
+                popTextActive.setTextColor(customSpecialKeyTextColor)
+
+                val leftBinding = PopupLayoutBinding.inflate(inflater, null, false)
+                popupWindowLeft = PopupWindow(
+                    leftBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewLeft = leftBinding.bubbleLayout
+                popTextLeft = leftBinding.popupText
+                bubbleViewLeft.setBubbleColor(customSpecialKeyColor)
+                popTextLeft.setTextColor(customSpecialKeyTextColor)
+
+                // --- Top popup ---
+                val topBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowTop = PopupWindow(
+                    topBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewTop = topBinding.bubbleLayout
+                popTextTop = topBinding.popupText
+                bubbleViewTop.setBubbleColor(customSpecialKeyColor)
+                popTextTop.setTextColor(customSpecialKeyTextColor)
+
+                // --- Right popup ---
+                val rightBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowRight = PopupWindow(
+                    rightBinding.root,
+                    LayoutParams.WRAP_CONTENT,
+                    LayoutParams.WRAP_CONTENT,
+                    false
+                )
+                bubbleViewRight = rightBinding.bubbleLayout
+                popTextRight = rightBinding.popupText
+                bubbleViewRight.setBubbleColor(customSpecialKeyColor)
+                popTextRight.setTextColor(customSpecialKeyTextColor)
+
+                // --- Bottom popup ---
+                val bottomBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowBottom = PopupWindow(
+                    bottomBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewBottom = bottomBinding.bubbleLayout
+                popTextBottom = bottomBinding.popupText
+                bubbleViewBottom.setBubbleColor(customSpecialKeyColor)
+                popTextBottom.setTextColor(customSpecialKeyTextColor)
+
+                // --- Center popup (for long‐press + flick previews) ---
+                val centerBinding = PopupLayoutMaterialBinding.inflate(inflater, null, false)
+                popupWindowCenter = PopupWindow(
+                    centerBinding.root, LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, false
+                )
+                bubbleViewCenter = centerBinding.bubbleLayout
+                popTextCenter = centerBinding.popupText
+                bubbleViewCenter.setBubbleColor(customSpecialKeyColor)
+                popTextCenter.setTextColor(customSpecialKeyTextColor)
+
                 setFullCustomNeumorphismTheme(
                     backgroundColor = customBgColor,
                     normalKeyColor = customKeyColor,
@@ -730,6 +844,38 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     normalKeyTextColor = customKeyTextColor,
                     specialKeyTextColor = customSpecialKeyTextColor
                 )
+            }
+
+            else -> {
+                setPopupViewTheme(
+                    isDynamicColorsEnable = isDynamicColorEnabled,
+                    isDarkMode = isNightMode,
+                    inflater = inflater
+                )
+                if (this.isDynamicColorEnabled) {
+                    // Material You (Dynamic Color) を適用
+                    setBackgroundColor(Color.TRANSPARENT)
+                    setMaterialYouTheme(this.isNightMode, true)
+                } else {
+                    // Dynamic Colorが無効な場合のデフォルト挙動
+                    if (this.isNightMode) {
+                        setFullCustomNeumorphismTheme(
+                            backgroundColor = customBgColor,
+                            normalKeyColor = customKeyColor,
+                            specialKeyColor = customSpecialKeyColor,
+                            normalKeyTextColor = customKeyTextColor,
+                            specialKeyTextColor = customSpecialKeyTextColor
+                        )
+                    } else {
+                        setFullCustomNeumorphismTheme(
+                            backgroundColor = customBgColor,
+                            normalKeyColor = customKeyColor,
+                            specialKeyColor = customSpecialKeyColor,
+                            normalKeyTextColor = customKeyTextColor,
+                            specialKeyTextColor = customSpecialKeyTextColor
+                        )
+                    }
+                }
             }
         }
     }
@@ -1184,12 +1330,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                                 InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
                                     it.id,
-                                    delta = keySizeDelta
+                                    delta = keySizeDelta,
+                                    modeTheme = themeMode,
+                                    colorTextInt = customKeyTextColor
                                 )
 
                                 InputMode.ModeNumber -> it.setTenKeyTextNumber(
                                     it.id,
-                                    delta = keySizeDelta
+                                    delta = keySizeDelta,
+                                    modeTheme = themeMode,
+                                    colorTextInt = customKeyTextColor
                                 )
                             }
                         }
@@ -1328,12 +1478,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                                                 InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
                                                     it.id,
-                                                    delta = keySizeDelta
+                                                    delta = keySizeDelta,
+                                                    modeTheme = themeMode,
+                                                    colorTextInt = customKeyTextColor
                                                 )
 
                                                 InputMode.ModeNumber -> it.setTenKeyTextNumber(
                                                     it.id,
-                                                    delta = keySizeDelta
+                                                    delta = keySizeDelta,
+                                                    modeTheme = themeMode,
+                                                    colorTextInt = customKeyTextColor
                                                 )
                                             }
                                         }
@@ -1458,12 +1612,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                                         InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
                                             it.id,
-                                            delta = keySizeDelta
+                                            delta = keySizeDelta,
+                                            modeTheme = themeMode,
+                                            colorTextInt = customKeyTextColor
                                         )
 
                                         InputMode.ModeNumber -> it.setTenKeyTextNumber(
                                             it.id,
-                                            delta = keySizeDelta
+                                            delta = keySizeDelta,
+                                            modeTheme = themeMode,
+                                            colorTextInt = customKeyTextColor
                                         )
                                     }
                                 }
@@ -2081,10 +2239,17 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                         InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
                             it.id,
-                            delta = keySizeDelta
+                            delta = keySizeDelta,
+                            modeTheme = themeMode,
+                            colorTextInt = customKeyTextColor
                         )
 
-                        InputMode.ModeNumber -> it.setTenKeyTextNumber(it.id, delta = keySizeDelta)
+                        InputMode.ModeNumber -> it.setTenKeyTextNumber(
+                            it.id,
+                            delta = keySizeDelta,
+                            modeTheme = themeMode,
+                            colorTextInt = customKeyTextColor
+                        )
                     }
                 }
             }
@@ -2325,28 +2490,65 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun setKeysInEnglishText() {
         binding.apply {
             key1.apply {
-                setTenKeyTextEnglish(key1.id, delta = keySizeDelta)
+                setTenKeyTextEnglish(
+                    key1.id,
+                    delta = keySizeDelta,
+                    modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
             key2.apply {
-                setTenKeyTextEnglish(key2.id, delta = keySizeDelta)
+                setTenKeyTextEnglish(
+                    key2.id,
+                    delta = keySizeDelta,
+                    modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
-            key3.setTenKeyTextEnglish(key3.id, delta = keySizeDelta)
-            key4.setTenKeyTextEnglish(key4.id, delta = keySizeDelta)
-            key5.setTenKeyTextEnglish(key5.id, delta = keySizeDelta)
-            key6.setTenKeyTextEnglish(key6.id, delta = keySizeDelta)
+            key3.setTenKeyTextEnglish(
+                key3.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+            key4.setTenKeyTextEnglish(
+                key4.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+            key5.setTenKeyTextEnglish(
+                key5.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+            key6.setTenKeyTextEnglish(
+                key6.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
             key7.apply {
-                setTenKeyTextEnglish(key7.id, delta = keySizeDelta)
+                setTenKeyTextEnglish(
+                    key7.id, delta = keySizeDelta, modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
-            key8.setTenKeyTextEnglish(key8.id, delta = keySizeDelta)
+            key8.setTenKeyTextEnglish(
+                key8.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
             key9.apply {
-                setTenKeyTextEnglish(key9.id, delta = keySizeDelta)
+                setTenKeyTextEnglish(
+                    key9.id, delta = keySizeDelta, modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
-            key11.setTenKeyTextEnglish(key11.id, delta = keySizeDelta)
-            key12.setTenKeyTextEnglish(key12.id, delta = keySizeDelta)
+            key11.setTenKeyTextEnglish(
+                key11.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+            key12.setTenKeyTextEnglish(
+                key12.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
                 cachedArrowRightDrawable
@@ -2367,28 +2569,61 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun setKeysInNumberText() {
         binding.apply {
             key1.apply {
-                setTenKeyTextNumber(key1.id, delta = keySizeDelta)
+                setTenKeyTextNumber(
+                    key1.id, delta = keySizeDelta, modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
-            key2.setTenKeyTextNumber(key2.id, delta = keySizeDelta)
+            key2.setTenKeyTextNumber(
+                key2.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
             key3.apply {
-                setTenKeyTextNumber(key3.id, delta = keySizeDelta)
+                setTenKeyTextNumber(
+                    key3.id, delta = keySizeDelta, modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
-            key4.setTenKeyTextNumber(key4.id, delta = keySizeDelta)
-            key5.setTenKeyTextNumber(key5.id, delta = keySizeDelta)
-            key6.setTenKeyTextNumber(key6.id, delta = keySizeDelta)
+            key4.setTenKeyTextNumber(
+                key4.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+            key5.setTenKeyTextNumber(
+                key5.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+            key6.setTenKeyTextNumber(
+                key6.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
             key7.apply {
-                setTenKeyTextNumber(key7.id, delta = keySizeDelta)
+                setTenKeyTextNumber(
+                    key7.id, delta = keySizeDelta, modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
-            key8.setTenKeyTextNumber(key8.id, delta = keySizeDelta)
+            key8.setTenKeyTextNumber(
+                key8.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
             key9.apply {
-                setTenKeyTextNumber(key9.id, delta = keySizeDelta)
+                setTenKeyTextNumber(
+                    key9.id, delta = keySizeDelta, modeTheme = themeMode,
+                    colorTextInt = customKeyTextColor
+                )
                 setCompoundDrawables(null, null, null, null)
             }
-            key11.setTenKeyTextNumber(key11.id, delta = keySizeDelta)
-            key12.setTenKeyTextNumber(key12.id, delta = keySizeDelta)
+            key11.setTenKeyTextNumber(
+                key11.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+            key12.setTenKeyTextNumber(
+                key12.id, delta = keySizeDelta, modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
 
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
