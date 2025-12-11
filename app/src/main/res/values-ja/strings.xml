@@ -294,7 +294,7 @@
     <string name="qwerty_romaji_english_visibility_title">ローマ字/英語切り替えキー</string>
     <string name="qwerty_romaji_english_visibility_summary">キーボード上にローマ字入力と英語入力を切り替えるキー（あa）を表示します</string>
     <string name="keyboard_theme_title">キーボードテーマ</string>
-    <string name="keyboard_theme_summary">キーボードのテーマカラーを選択できます。\n反映には一度キーボードを再起動する必要があります。</string>
+    <string name="keyboard_theme_summary">反映には一度キーボードを再起動する必要があります。</string>
     <string name="keyboard_theme_dialog_title">ベースカラーの選択</string>
     <string name="delete_key_left_flick_title">削除キーの左フリック</string>
     <string name="delete_key_left_summary">削除キーを左にフリックすると、カーソルの前にある特定の記号までの文字列もしくは全ての文字列をまとめて削除します。\n（対象: 句読点「。、！？」、括弧「「」『』」、記号「ー」、コンマ「,」、ピリオド「.」）</string>
@@ -380,4 +380,17 @@
     <string name="reset_to_default">初期値に戻す</string>
     <string name="preview">プレビュー</string>
     <string name="qwertymarginsettingfragment">キーの設定</string>
+    <string name="theme_category_system">システム</string>
+    <string name="theme_default">デフォルト</string>
+    <string name="theme_light">ライト</string>
+    <string name="theme_dark">ダーク</string>
+    <string name="theme_category_custom">カスタム</string>
+    <string name="theme_custom">カスタム</string>
+    <string name="theme_custom_bg_color">背景色</string>
+    <string name="theme_custom_key_color">通常キーの色</string>
+    <string name="theme_custom_special_key_color">特殊キーの色</string>
+    <string name="theme_custom_key_text_color">通常キーの文字色</string>
+    <string name="theme_custom_special_key_text_color">特殊キーの文字色</string>
+    <string name="keyboard_theme_dialog_title_2">色を選択</string>
+    <string name="keyboardthemefragment">テーマ</string>
 </resources>
