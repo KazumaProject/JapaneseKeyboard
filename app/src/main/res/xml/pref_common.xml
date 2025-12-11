@@ -31,11 +31,6 @@
             android:title="@string/keyboard_screen_landscape_size_preference_title" />
 
         <Preference
-            android:key="keyboard_theme_fragment_preference"
-            android:title="@string/keyboard_theme_title"
-            app:summary="@string/keyboard_theme_summary" />
-
-        <Preference
             android:icon="@drawable/outline_border_color_24"
             android:key="keyboard_key_letter_size_fragment_preference"
             android:title="@string/key_candidate_letter_size_preference_title"

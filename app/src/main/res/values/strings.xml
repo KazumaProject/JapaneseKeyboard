@@ -382,4 +382,17 @@
     <string name="reset_to_default">Reset to Default</string>
     <string name="preview">Preview</string>
     <string name="qwertymarginsettingfragment">Key Settings</string>
+    <string name="theme_category_system">System</string>
+    <string name="theme_default">Default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_category_custom">Custom</string>
+    <string name="theme_custom">Custom</string>
+    <string name="theme_custom_bg_color">Background color</string>
+    <string name="theme_custom_key_color">Key color</string>
+    <string name="theme_custom_special_key_color">Special key color</string>
+    <string name="theme_custom_key_text_color">Key text color</string>
+    <string name="theme_custom_special_key_text_color">Special key text color</string>
+    <string name="keyboard_theme_dialog_title_2">Select Color</string>
+    <string name="keyboardthemefragment">Keyboard Theme</string>
 </resources>
