@@ -120,14 +120,33 @@ private fun createFlickSpannable(
 fun AppCompatButton.setTenKeyTextJapanese(
     keyId: Int,
     delta: Int,
+    modeTheme: String,
+    colorTextInt: Int
 ) {
     textSize = KEY_JAPANESE_SIZE + delta
-    setTextColor(
-        ContextCompat.getColor(
-            context,
-            com.kazumaproject.core.R.color.keyboard_icon_color
-        )
-    )
+    when (modeTheme) {
+        "default" -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+
+        "custom" -> {
+            setTextColor(colorTextInt)
+        }
+
+        else -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+    }
     text = when (keyId) {
         R.id.key_1 -> context.getString(com.kazumaproject.core.R.string.string_あ)
         R.id.key_2 -> context.getString(com.kazumaproject.core.R.string.string_か)
@@ -146,16 +165,35 @@ fun AppCompatButton.setTenKeyTextJapanese(
 
 fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
     keyId: Int,
-    delta: Int
+    delta: Int,
+    modeTheme: String,
+    colorTextInt: Int
 ) {
     // ベースのテキストサイズ (中心) をセット
     textSize = 11f + delta
-    setTextColor(
-        ContextCompat.getColor(
-            context,
-            com.kazumaproject.core.R.color.keyboard_icon_color
-        )
-    )
+    when (modeTheme) {
+        "default" -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+
+        "custom" ->{
+            setTextColor(colorTextInt)
+        }
+
+        else -> {
+            setTextColor(
+                ContextCompat.getColor(
+                    context,
+                    com.kazumaproject.core.R.color.keyboard_icon_color
+                )
+            )
+        }
+    }
 
     // 3行表示＋中央寄せ
     this.isSingleLine = false

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
@@ -256,6 +257,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private var isCursorMode = false
 
+    // Theme Variables (Initialized with defaults)
+    private var themeMode: String = "default"
+    private var isNightMode: Boolean = false
+    private var isDynamicColorEnabled: Boolean = false
+    private var customBgColor: Int = Color.WHITE
+    private var customKeyColor: Int = Color.LTGRAY
+    private var customSpecialKeyColor: Int = Color.GRAY
+    private var customKeyTextColor: Int = Color.BLACK
+    private var customSpecialKeyTextColor: Int = Color.BLACK
+
     /** ← NEW: scope tied to this view; cancel it on detach **/
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -461,24 +472,26 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             this.isFocusable = false
         }
 
-        //setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
+        when (themeMode) {
+            "default" -> {
+                setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
+            }
 
-        //setDynamicNeumorphismTheme(Color.parseColor("#E0E5EC"))
+            "custom" -> {
+                setFullCustomNeumorphismTheme(
+                    backgroundColor = customBgColor,
+                    normalKeyColor = customKeyColor,
+                    specialKeyColor = customSpecialKeyColor,
+                    normalKeyTextColor = customKeyTextColor,
+                    specialKeyTextColor = customSpecialKeyTextColor
+                )
+            }
 
-        setCustomNeumorphismTheme(
-            backgroundColor = "#E0E5EC".toColorInt(),
-            specialKeyColor = "#E0E5EC".toColorInt(),
-            normalKeyTextColor = ContextCompat.getColor(
-                context,
-                com.kazumaproject.core.R.color.keyboard_icon_color
-            ),
-            specialKeyTextColor = ContextCompat.getColor(
-                context,
-                com.kazumaproject.core.R.color.keyboard_icon_color
-            )
-        )
+            else -> {
+                setMaterialYouTheme(isDarkMode, isDynamicColorsEnable)
+            }
+        }
 
-        // ← NEW: launch a coroutine to observe changes to currentInputMode
         scope.launch {
             currentInputMode.collect { inputMode ->
                 Log.d("TenKey", "currentInputMode: $inputMode")
@@ -621,6 +634,174 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
                 if (view is AppCompatImageButton) {
                     ImageViewCompat.setImageTintList(view, textTint)
+                }
+            }
+        }
+    }
+
+    /**
+     * テーマ設定を一括で適用するメイン関数
+     * メンバ変数に値を保存してからテーマを適用します。
+     * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
+     */
+    fun applyKeyboardTheme(
+        themeMode: String,
+        currentNightMode: Int,
+        isDynamicColorEnabled: Boolean,
+        customBgColor: Int,
+        customKeyColor: Int,
+        customSpecialKeyColor: Int,
+        customKeyTextColor: Int,
+        customSpecialKeyTextColor: Int
+    ) {
+        // メンバ変数に代入
+        this.themeMode = themeMode
+
+        // Int型の currentNightMode から Boolean型の isNightMode を判定
+        this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
+
+        this.isDynamicColorEnabled = isDynamicColorEnabled
+        this.customBgColor = customBgColor
+        this.customKeyColor = customKeyColor
+        this.customSpecialKeyColor = customSpecialKeyColor
+        this.customKeyTextColor = customKeyTextColor
+        this.customSpecialKeyTextColor = customSpecialKeyTextColor
+
+        // 定数カラー（ライト/ダーク用）
+        val lightBaseColor = "#E0E5EC".toColorInt()
+        val lightTextColor = "#4A4A4A".toColorInt()
+
+        val darkBaseColor = "#2D2D2D".toColorInt()
+        val darkTextColor = "#E0E0E0".toColorInt()
+
+        when (this.themeMode) {
+            "default" -> {
+                if (this.isDynamicColorEnabled) {
+                    // Material You (Dynamic Color) を適用
+                    setBackgroundColor(Color.TRANSPARENT)
+                    setMaterialYouTheme(this.isNightMode, true)
+                } else {
+                    // Dynamic Colorが無効な場合のデフォルト挙動
+                    if (this.isNightMode) {
+                        setFullCustomNeumorphismTheme(
+                            backgroundColor = customBgColor,
+                            normalKeyColor = customKeyColor,
+                            specialKeyColor = customSpecialKeyColor,
+                            normalKeyTextColor = customKeyTextColor,
+                            specialKeyTextColor = customSpecialKeyTextColor
+                        )
+                    } else {
+                        setFullCustomNeumorphismTheme(
+                            backgroundColor = customBgColor,
+                            normalKeyColor = customKeyColor,
+                            specialKeyColor = customSpecialKeyColor,
+                            normalKeyTextColor = customKeyTextColor,
+                            specialKeyTextColor = customSpecialKeyTextColor
+                        )
+                    }
+                }
+            }
+
+            "light" -> {
+                setFullCustomNeumorphismTheme(
+                    backgroundColor = customBgColor,
+                    normalKeyColor = customKeyColor,
+                    specialKeyColor = customSpecialKeyColor,
+                    normalKeyTextColor = customKeyTextColor,
+                    specialKeyTextColor = customSpecialKeyTextColor
+                )
+            }
+
+            "dark" -> {
+                setFullCustomNeumorphismTheme(
+                    backgroundColor = customBgColor,
+                    normalKeyColor = customKeyColor,
+                    specialKeyColor = customSpecialKeyColor,
+                    normalKeyTextColor = customKeyTextColor,
+                    specialKeyTextColor = customSpecialKeyTextColor
+                )
+            }
+
+            "custom" -> {
+                setFullCustomNeumorphismTheme(
+                    backgroundColor = customBgColor,
+                    normalKeyColor = customKeyColor,
+                    specialKeyColor = customSpecialKeyColor,
+                    normalKeyTextColor = customKeyTextColor,
+                    specialKeyTextColor = customSpecialKeyTextColor
+                )
+            }
+        }
+    }
+
+    /**
+     * 詳細な色指定によるニューモーフィズムテーマの適用（拡張版）
+     *
+     * @param backgroundColor View全体の背景色
+     * @param normalKeyColor 「通常キー」の背景色 (追加)
+     * @param specialKeyColor 「特殊キー（Enter, Deleteなど）」の背景色
+     * @param normalKeyTextColor 通常キーの文字・アイコン色
+     * @param specialKeyTextColor 特殊キーの文字・アイコン色
+     */
+    fun setFullCustomNeumorphismTheme(
+        backgroundColor: Int,
+        normalKeyColor: Int, // 引数を追加
+        specialKeyColor: Int,
+        normalKeyTextColor: Int,
+        specialKeyTextColor: Int
+    ) {
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density // 角丸の半径 (8dp)
+
+        // 1. 全体の背景色を設定
+        this.setBackgroundColor(backgroundColor)
+
+        binding.apply {
+            // --- キーの分類リスト定義 ---
+            val normalKeys = listOf(
+                key1, key2, key3, key4, key5, key6,
+                key7, key8, key9, key11, key12, keySmallLetter
+            )
+
+            val specialKeys = listOf(
+                keyReturn, keySoftLeft, sideKeySymbol,
+                keyDelete, keyMoveCursorRight, keySpace, keyEnter,
+                keySwitchKeyMode
+            )
+
+            // --- 色の適用処理 ---
+
+            // 2. 通常キーへの適用 (normalKeyColorを使用)
+            val normalDrawableState =
+                getDynamicNeumorphDrawable(normalKeyColor, radius).constantState
+
+            val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
+
+            normalKeys.forEach { view ->
+                view.background = normalDrawableState?.newDrawable()?.mutate()
+
+                if (view is MaterialTextView) view.setTextColor(normalColorStateList)
+                if (view is AppCompatButton) view.setTextColor(normalColorStateList)
+
+                if (view is AppCompatImageButton) {
+                    ImageViewCompat.setImageTintList(view, normalColorStateList)
+                }
+            }
+
+            // 3. 特殊キーへの適用 (specialKeyColorを使用)
+            val specialDrawableState =
+                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+
+            val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
+
+            specialKeys.forEach { view ->
+                view.background = specialDrawableState?.newDrawable()?.mutate()
+
+                if (view is MaterialTextView) view.setTextColor(specialColorStateList)
+                if (view is AppCompatButton) view.setTextColor(specialColorStateList)
+
+                if (view is AppCompatImageButton) {
+                    ImageViewCompat.setImageTintList(view, specialColorStateList)
                 }
             }
         }
@@ -1485,9 +1666,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private fun setJapaneseTextFor(button: AppCompatButton) {
         if (isFlickGuideEnabled) {
-            button.setTenKeyTextJapaneseWithFlickGuide(button.id, delta = keySizeDelta)
+            button.setTenKeyTextJapaneseWithFlickGuide(
+                button.id,
+                delta = keySizeDelta,
+                modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
         } else {
-            button.setTenKeyTextJapanese(button.id, delta = keySizeDelta)
+            button.setTenKeyTextJapanese(
+                button.id,
+                delta = keySizeDelta,
+                modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
         }
     }
 
