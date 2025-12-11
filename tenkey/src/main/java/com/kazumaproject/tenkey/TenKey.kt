@@ -719,30 +719,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     isDarkMode = isNightMode,
                     inflater = inflater
                 )
-                if (this.isDynamicColorEnabled) {
-                    // Material You (Dynamic Color) を適用
-                    setBackgroundColor(Color.TRANSPARENT)
-                    setMaterialYouTheme(this.isNightMode, true)
-                } else {
-                    // Dynamic Colorが無効な場合のデフォルト挙動
-                    if (this.isNightMode) {
-                        setFullCustomNeumorphismTheme(
-                            backgroundColor = customBgColor,
-                            normalKeyColor = customKeyColor,
-                            specialKeyColor = customSpecialKeyColor,
-                            normalKeyTextColor = customKeyTextColor,
-                            specialKeyTextColor = customSpecialKeyTextColor
-                        )
-                    } else {
-                        setFullCustomNeumorphismTheme(
-                            backgroundColor = customBgColor,
-                            normalKeyColor = customKeyColor,
-                            specialKeyColor = customSpecialKeyColor,
-                            normalKeyTextColor = customKeyTextColor,
-                            specialKeyTextColor = customSpecialKeyTextColor
-                        )
-                    }
-                }
+                setBackgroundColor(Color.TRANSPARENT)
+                setMaterialYouTheme(this.isNightMode, true)
             }
 
             "light" -> {
@@ -852,30 +830,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     isDarkMode = isNightMode,
                     inflater = inflater
                 )
-                if (this.isDynamicColorEnabled) {
-                    // Material You (Dynamic Color) を適用
-                    setBackgroundColor(Color.TRANSPARENT)
-                    setMaterialYouTheme(this.isNightMode, true)
-                } else {
-                    // Dynamic Colorが無効な場合のデフォルト挙動
-                    if (this.isNightMode) {
-                        setFullCustomNeumorphismTheme(
-                            backgroundColor = customBgColor,
-                            normalKeyColor = customKeyColor,
-                            specialKeyColor = customSpecialKeyColor,
-                            normalKeyTextColor = customKeyTextColor,
-                            specialKeyTextColor = customSpecialKeyTextColor
-                        )
-                    } else {
-                        setFullCustomNeumorphismTheme(
-                            backgroundColor = customBgColor,
-                            normalKeyColor = customKeyColor,
-                            specialKeyColor = customSpecialKeyColor,
-                            normalKeyTextColor = customKeyTextColor,
-                            specialKeyTextColor = customSpecialKeyTextColor
-                        )
-                    }
-                }
+                setBackgroundColor(Color.TRANSPARENT)
+                setMaterialYouTheme(this.isNightMode, true)
             }
         }
     }
@@ -1128,11 +1084,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
      * @param factor 1.0より大＝明るく、1.0より小＝暗く
      */
     private fun manipulateColor(color: Int, factor: Float): Int {
-        val a = android.graphics.Color.alpha(color)
-        val r = (android.graphics.Color.red(color) * factor).toInt().coerceIn(0, 255)
-        val g = (android.graphics.Color.green(color) * factor).toInt().coerceIn(0, 255)
-        val b = (android.graphics.Color.blue(color) * factor).toInt().coerceIn(0, 255)
-        return android.graphics.Color.argb(a, r, g, b)
+        val a = Color.alpha(color)
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.argb(a, r, g, b)
     }
 
     fun setCurrentMode(inputMode: InputMode) {

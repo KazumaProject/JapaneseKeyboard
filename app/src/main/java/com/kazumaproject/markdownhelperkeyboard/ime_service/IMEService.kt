@@ -7638,11 +7638,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.candidateTabLayout.apply {
-            setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
-            setTabTextColors(
-                customThemeKeyTextColor ?: Color.BLACK,
-                customThemeSpecialKeyTextColor ?: Color.BLACK
-            )
+            when (keyboardThemeMode) {
+                "custom" -> {
+                    setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+                    setTabTextColors(
+                        customThemeKeyTextColor ?: Color.BLACK,
+                        customThemeSpecialKeyTextColor ?: Color.BLACK
+                    )
+                }
+
+                else -> {}
+            }
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     tab?.let { t ->
@@ -7934,7 +7940,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
-        shortcutAdapter?.setIconColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+        when (keyboardThemeMode) {
+            "custom" -> {
+                shortcutAdapter?.setIconColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+            }
+
+            else -> {
+            }
+        }
         shortcutAdapter?.onItemClicked = { type ->
             when (type) {
                 ShortcutType.SETTINGS -> {
@@ -8146,6 +8159,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.qwertyView.apply {
+            applyKeyboardTheme(
+                themeMode = keyboardThemeMode ?: "default",
+                currentNightMode = currentNightMode,
+                isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+                customBgColor = customThemeBgColor ?: Color.WHITE,
+                customKeyColor = customThemeKeyColor ?: Color.WHITE,
+                customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+                customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+            )
+
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
                     Timber.d("Pressed Key: $qwertyKey")

@@ -7,10 +7,12 @@ import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.ScaleDrawable
+import android.graphics.drawable.VectorDrawable
 import android.util.Log
 import android.view.View
 import androidx.annotation.ColorInt
 import androidx.annotation.IdRes
+import androidx.core.graphics.drawable.DrawableCompat
 
 /**
  * 背景がLayerDrawableの場合、指定したインデックスのShape(GradientDrawable)の色を変更する拡張関数
@@ -86,21 +88,20 @@ fun View.setDrawableSolidColor(@ColorInt color: Int) {
  */
 private fun Drawable.applyColorToDrawable(@ColorInt color: Int) {
     when (this) {
-        // 1. <shape> (GradientDrawable) の場合 -> 色を変更
+        // 1. <shape> (GradientDrawable) -> setColor
         is GradientDrawable -> {
             setColor(color)
         }
 
-        // 2. <layer-list> (LayerDrawable) の場合 -> 全てのレイヤーに再帰適用
+        // 2. <layer-list> (LayerDrawable) -> 全レイヤーに再帰適用
         is LayerDrawable -> {
             for (i in 0 until numberOfLayers) {
                 getDrawable(i).applyColorToDrawable(color)
             }
         }
 
-        // 3. <selector> (StateListDrawable) の場合 -> 全ての状態のDrawableに再帰適用
+        // 3. <selector> (DrawableContainer/StateListDrawable) -> 子要素に再帰適用
         is DrawableContainer -> {
-            // StateListDrawable は DrawableContainer を継承しています
             val containerState = constantState as? DrawableContainer.DrawableContainerState
             val children = containerState?.children
             children?.filterNotNull()?.forEach { child ->
@@ -108,19 +109,29 @@ private fun Drawable.applyColorToDrawable(@ColorInt color: Int) {
             }
         }
 
-        // 4. <inset> (InsetDrawable) の場合 -> 中身に再帰適用
+        // 4. <inset> -> 中身に再帰適用
         is InsetDrawable -> {
             drawable?.applyColorToDrawable(color)
         }
 
-        // 5. <scale> (ScaleDrawable) の場合 -> 中身に再帰適用
+        // 5. <scale> -> 中身に再帰適用
         is ScaleDrawable -> {
             drawable?.applyColorToDrawable(color)
         }
 
-        // 6. 単色 (ColorDrawable) の場合 -> 色を変更
+        // 6. 単色 (ColorDrawable) -> colorプロパティ変更
         is ColorDrawable -> {
             this.color = color
+        }
+
+        // 【追加】 7. <vector> (VectorDrawable) -> setTint
+        is VectorDrawable -> {
+            setTint(color)
+        }
+
+        // 【追加】 その他のDrawable (VectorDrawableCompatなど) -> DrawableCompatでTint適用を試みる
+        else -> {
+            DrawableCompat.setTint(this, color)
         }
     }
 }
