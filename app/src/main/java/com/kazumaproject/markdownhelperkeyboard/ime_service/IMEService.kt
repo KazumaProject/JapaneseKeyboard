@@ -2932,6 +2932,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.tabletView.apply {
+            applyKeyboardTheme(
+                themeMode = keyboardThemeMode ?: "default",
+                currentNightMode = currentNightMode,
+                isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+                customBgColor = customThemeBgColor ?: Color.WHITE,
+                customKeyColor = customThemeKeyColor ?: Color.WHITE,
+                customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+                customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+            )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")

@@ -2,7 +2,12 @@ package com.kazumaproject.tabletkey
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.ColorStateList
+import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
@@ -12,10 +17,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
+import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.data.tablet.TabletCapsLockState
@@ -23,6 +31,7 @@ import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
 import com.kazumaproject.core.domain.extensions.setBottomToTopOf
+import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setEndToStartOf
 import com.kazumaproject.core.domain.extensions.setHorizontalWeight
 import com.kazumaproject.core.domain.extensions.setLargeUnicodeIcon
@@ -288,6 +297,16 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private var isDynamicColorsEnable = false
 
+    // Theme Variables (Initialized with defaults)
+    private var themeMode: String = "default"
+    private var isNightMode: Boolean = false
+    private var isDynamicColorEnabled: Boolean = false
+    private var customBgColor: Int = Color.WHITE
+    private var customKeyColor: Int = Color.LTGRAY
+    private var customSpecialKeyColor: Int = Color.GRAY
+    private var customKeyTextColor: Int = Color.BLACK
+    private var customSpecialKeyTextColor: Int = Color.BLACK
+
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
@@ -340,6 +359,229 @@ class TabletKeyboardView @JvmOverloads constructor(
                 )
             }
             return
+        }
+    }
+
+    /**
+     * テーマ設定を一括で適用するメイン関数
+     * メンバ変数に値を保存してからテーマを適用します。
+     * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
+     */
+    fun applyKeyboardTheme(
+        themeMode: String,
+        currentNightMode: Int,
+        isDynamicColorEnabled: Boolean,
+        customBgColor: Int,
+        customKeyColor: Int,
+        customSpecialKeyColor: Int,
+        customKeyTextColor: Int,
+        customSpecialKeyTextColor: Int
+    ) {
+        // メンバ変数に代入
+        this.themeMode = themeMode
+
+        // Int型の currentNightMode から Boolean型の isNightMode を判定
+        this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
+
+        this.isDynamicColorEnabled = isDynamicColorEnabled
+        this.customBgColor = customBgColor
+        this.customKeyColor = customKeyColor
+        this.customSpecialKeyColor = customSpecialKeyColor
+        this.customKeyTextColor = customKeyTextColor
+        this.customSpecialKeyTextColor = customSpecialKeyTextColor
+        LayoutInflater.from(context)
+
+        when (this.themeMode) {
+            "default" -> {
+                setBackgroundColor(Color.TRANSPARENT)
+                setMaterialYouTheme()
+                // resetLayoutを呼んでデフォルトの角丸背景などを再適用する
+                resetLayout()
+            }
+
+            "light", "dark", "custom" -> {
+                setCustomThemePopup()
+                setFullCustomNeumorphismTheme(
+                    backgroundColor = customBgColor,
+                    normalKeyColor = customKeyColor,
+                    specialKeyColor = customSpecialKeyColor,
+                    normalKeyTextColor = customKeyTextColor,
+                    specialKeyTextColor = customSpecialKeyTextColor
+                )
+            }
+
+            else -> {
+                setBackgroundColor(Color.TRANSPARENT)
+                setMaterialYouTheme()
+                resetLayout()
+            }
+        }
+    }
+
+    /**
+     * 詳細な色指定によるニューモーフィズムテーマの適用（拡張版）
+     */
+    fun setFullCustomNeumorphismTheme(
+        backgroundColor: Int,
+        normalKeyColor: Int,
+        specialKeyColor: Int,
+        normalKeyTextColor: Int,
+        specialKeyTextColor: Int
+    ) {
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density // 角丸の半径 (8dp)
+
+        // 1. 全体の背景色を設定
+        this.setBackgroundColor(backgroundColor)
+
+        binding.apply {
+            // --- キーの分類リスト定義 ---
+            val normalKeys = listOf(
+                key1, key2, key3, key4, key5, key6, key7, key8, key9, key10,
+                key11, key12, key13, key14, key15, key16, key17, key18, key19, key20,
+                key21, key22, key23, key24, key25, key26, key27, key28, key29, key30,
+                key31, key32, key33, key34, key35, key36, key37, key38, key39, key40,
+                key41, key42, key43, key44, key45, key46, key47, key48, key49, key50,
+                key51, key52, key53, key54, key55
+            )
+
+            val specialKeys = listOf(
+                keyKigou, keyPrevious, keySwitchKeyMode, keyLeftCursor,
+                keyRightCursor, keyDelete, keySpace, keyEnter
+            )
+
+            // --- 色の適用処理 ---
+
+            // 2. 通常キーへの適用
+            val normalDrawableState =
+                getDynamicNeumorphDrawable(normalKeyColor, radius).constantState
+            val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
+
+            normalKeys.forEach { view ->
+                view.background = normalDrawableState?.newDrawable()?.mutate()
+                if (view is AppCompatButton) view.setTextColor(normalColorStateList)
+            }
+
+            // 3. 特殊キーへの適用
+            val specialDrawableState =
+                getDynamicNeumorphDrawable(specialKeyColor, radius).constantState
+            val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
+
+            specialKeys.forEach { view ->
+                view.background = specialDrawableState?.newDrawable()?.mutate()
+                if (view is MaterialTextView) view.setTextColor(specialColorStateList)
+                if (view is AppCompatButton) view.setTextColor(specialColorStateList)
+                if (view is AppCompatImageButton) {
+                    ImageViewCompat.setImageTintList(view, specialColorStateList)
+                }
+            }
+
+        }
+    }
+
+    /**
+     * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
+     */
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        val highlightColor = manipulateColor(baseColor, 1.2f)
+        val shadowColor = manipulateColor(baseColor, 0.8f)
+
+        val density = context.resources.displayMetrics.density
+        val offset = (4 * density).toInt()
+        val padding = (2 * density).toInt()
+
+        // --- A. 通常状態 (Idle) の作成 ---
+        val shadowDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(shadowColor)
+        }
+        val highlightDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(highlightColor)
+        }
+        val surfaceDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(baseColor)
+        }
+
+        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
+        idleLayer.setLayerInset(0, offset, offset, 0, 0)
+        idleLayer.setLayerInset(1, 0, 0, offset, offset)
+        idleLayer.setLayerInset(2, padding, padding, padding, padding)
+
+        // --- B. 押下状態 (Pressed) の作成 ---
+        val pressedDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(manipulateColor(baseColor, 0.95f))
+        }
+        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
+        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
+
+        // --- C. StateListDrawable (Selector) にまとめる ---
+        val stateListDrawable = android.graphics.drawable.StateListDrawable()
+        stateListDrawable.addState(intArrayOf(android.R.attr.state_pressed), pressedLayer)
+        stateListDrawable.addState(intArrayOf(), idleLayer)
+
+        return stateListDrawable
+    }
+
+    /**
+     * 色の明るさを調整するヘルパー関数
+     */
+    private fun manipulateColor(color: Int, factor: Float): Int {
+        val a = Color.alpha(color)
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.argb(a, r, g, b)
+    }
+
+    /**
+     * ポップアップウィンドウ（のコンテンツビュー）にニューモーフィズムを適用する関数
+     */
+    private fun updatePopupStyle(view: View) {
+        if (themeMode == "default") return
+
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density
+
+        // ポップアップは通常キーと同じ色を使用（必要であれば専用の色変数を定義してください）
+        val bgColor = customKeyColor
+        val textColor = customKeyTextColor
+
+        // 背景にニューモーフィズムDrawableを設定
+        view.setDrawableSolidColor(bgColor)
+
+        // 内部のテキストビューを探して色を変更
+        // declarePopupWindowsでIDが popup_text または popup_text_active であると想定
+        val textView = view.findViewById<TextView>(R.id.popup_text)
+            ?: view.findViewById<TextView>(R.id.popup_text_active)
+
+        textView?.setTextColor(textColor)
+    }
+
+
+    /**
+     * 現在のテーマ設定に基づいて、単一のキーのスタイル（背景とテキスト色）を更新します。
+     * デフォルトテーマの場合は何もしません。
+     */
+    private fun updateKeyStyle(view: View, isNormalKey: Boolean) {
+        if (themeMode == "default") return
+
+        val density = context.resources.displayMetrics.density
+        val radius = 8f * density
+        val bgColor = if (isNormalKey) customKeyColor else customSpecialKeyColor
+        val textColor = if (isNormalKey) customKeyTextColor else customSpecialKeyTextColor
+
+        view.background =
+            getDynamicNeumorphDrawable(bgColor, radius).constantState?.newDrawable()?.mutate()
+
+        if (view is TextView) {
+            view.setTextColor(textColor)
         }
     }
 
@@ -420,6 +662,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             )
         }
     }
+    // ... (中略: GestureDetector, declarePopupWindows, setOnFlickListener, setOnLongPressListener, onTouch, onDetachedFromWindow, release, getGestureType, setKeyPressed, resetAllKeys, buildKeyRects..., pressedKeyByMotionEvent, getRawCoordinates, resetLongPressAction, getButtonFromKey, onLongPressed, hideAllPopWindow, setTapInActionMove, setFlickInActionMove, setFlickActionPointerDown, setSideKey... メソッドは変更なしのため省略) ...
 
     private var skipNextTouches = false
 
@@ -488,6 +731,22 @@ class TabletKeyboardView @JvmOverloads constructor(
         popTextBottom = mPopWindowBottom.contentView.findViewById(R.id.popup_text)
         bubbleViewCenter = mPopWindowCenter.contentView.findViewById(R.id.bubble_layout)
         popTextCenter = mPopWindowCenter.contentView.findViewById(R.id.popup_text)
+    }
+
+    @SuppressLint("InflateParams")
+    private fun setCustomThemePopup() {
+        bubbleViewActive.setBubbleColor(manipulateColor(customSpecialKeyColor, 1.2f))
+        bubbleViewLeft.setBubbleColor(customKeyColor)
+        bubbleViewTop.setBubbleColor(customKeyColor)
+        bubbleViewRight.setBubbleColor(customKeyColor)
+        bubbleViewBottom.setBubbleColor(customKeyColor)
+        bubbleViewCenter.setBubbleColor(customKeyColor)
+        popTextActive.setTextColor(customSpecialKeyTextColor)
+        popTextTop.setTextColor(customKeyTextColor)
+        popTextLeft.setTextColor(customKeyTextColor)
+        popTextRight.setTextColor(customKeyTextColor)
+        popTextBottom.setTextColor(customKeyTextColor)
+        popTextCenter.setTextColor(customKeyTextColor)
     }
 
     fun setOnFlickListener(flickListener: FlickListener) {
@@ -725,6 +984,10 @@ class TabletKeyboardView @JvmOverloads constructor(
                                     it.setTabletKeyTextNumber(it.id)
                                 }
                             }
+                            // 修正: 押下後に色が戻らないようにテーマを再適用
+                            if (themeMode != "default") {
+                                updateKeyStyle(it, isNormalKey = true)
+                            }
                         }
                     }
                     return false
@@ -786,6 +1049,8 @@ class TabletKeyboardView @JvmOverloads constructor(
                                         button?.let {
                                             if (it is AppCompatButton) {
                                                 it.setTabletKeyTextEnglishCaps(it.id)
+                                                // 修正: テーマ再適用
+                                                if (themeMode != "default") updateKeyStyle(it, true)
                                             }
                                         }
                                     } else if (currentInputMode.get() == InputMode.ModeEnglish &&
@@ -809,6 +1074,8 @@ class TabletKeyboardView @JvmOverloads constructor(
                                                         it.setTabletKeyTextNumber(it.id)
                                                     }
                                                 }
+                                                // 修正: テーマ再適用
+                                                if (themeMode != "default") updateKeyStyle(it, true)
                                             }
                                         }
                                     }
@@ -908,6 +1175,12 @@ class TabletKeyboardView @JvmOverloads constructor(
                                             }
                                         }
                                     }
+                                }
+                            }
+                            // 修正: 押下後に色が戻らないようにテーマを再適用
+                            button?.let {
+                                if (it is AppCompatButton && themeMode != "default") {
+                                    updateKeyStyle(it, true)
                                 }
                             }
                             pressedKey = pressedKey.copy(
@@ -1391,6 +1664,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         binding.keySpace.isPressed = false
         binding.keyEnter.isPressed = false
     }
+    // ... (中略: buildKeyRects, buildKeyRectsEnglish, buildKeyRectsNumber, pressedKeyByMotionEvent, getRawCoordinates, resetLongPressAction, getButtonFromKey, onLongPressed, hideAllPopWindow, setTapInActionMove, setFlickInActionMove, setFlickActionPointerDown, setSideKey... メソッドは変更なしのため省略) ...
 
     private fun buildKeyRects() = listOf(
         // ---- Side Keys ----
@@ -2732,6 +3006,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun getButtonFromKey(key: Key): Any? {
         return listKeys.getOrDefault(key, null)
     }
+    // ... (中略: onLongPressed, hideAllPopWindow, setTapInActionMove, setFlickInActionMove, setFlickActionPointerDown, setSideKey... メソッドは変更なしのため省略) ...
 
     private fun onLongPressed() {
         val button = getButtonFromKey(pressedKey.key)
@@ -2797,6 +3072,8 @@ class TabletKeyboardView @JvmOverloads constructor(
             button?.let {
                 if (it is AppCompatButton) {
                     it.setTabletKeyTextEnglishCaps(it.id)
+                    // 修正: テーマ再適用
+                    if (themeMode != "default") updateKeyStyle(it, true)
                 }
             }
             return
@@ -2819,6 +3096,10 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
                 }
                 it.isPressed = true
+
+                // 修正: テーマ再適用
+                if (themeMode != "default") updateKeyStyle(it, true)
+
                 if (isLongPressed) {
                     popupWindowActive.setPopUpWindowCenter(
                         context, bubbleViewActive, it
@@ -3016,6 +3297,8 @@ class TabletKeyboardView @JvmOverloads constructor(
                 button?.let {
                     if (it is AppCompatButton) {
                         it.setTabletKeyTextEnglishCaps(it.id)
+                        // 修正: テーマ再適用
+                        if (themeMode != "default") updateKeyStyle(it, true)
                     }
                 }
             } else {
@@ -3034,6 +3317,8 @@ class TabletKeyboardView @JvmOverloads constructor(
                                 it.setTabletKeyTextNumber(it.id)
                             }
                         }
+                        // 修正: テーマ再適用
+                        if (themeMode != "default") updateKeyStyle(it, true)
                     }
                 }
             }
@@ -3159,30 +3444,38 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key40.setMarginEnd(2f)
 
                     if (tabletCapsLockState.value.capsLockOn || tabletCapsLockState.value.shiftOn) {
-                        if (isDynamicColorsEnable) {
-                            binding.key5.background = ContextCompat.getDrawable(
-                                this@TabletKeyboardView.context,
-                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
-                            )
+                        if (themeMode == "default") {
+                            if (isDynamicColorsEnable) {
+                                binding.key5.background = ContextCompat.getDrawable(
+                                    this@TabletKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                                )
+                            } else {
+                                binding.key5.background = ContextCompat.getDrawable(
+                                    this@TabletKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_left
+                                )
+                            }
                         } else {
-                            binding.key5.background = ContextCompat.getDrawable(
-                                this@TabletKeyboardView.context,
-                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left
-                            )
+                            updateKeyStyle(binding.key5, isNormalKey = true)
                         }
                     }
 
                     if (tabletCapsLockState.value.zenkakuOn) {
-                        if (isDynamicColorsEnable) {
-                            binding.key55.background = ContextCompat.getDrawable(
-                                this@TabletKeyboardView.context,
-                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
-                            )
+                        if (themeMode == "default") {
+                            if (isDynamicColorsEnable) {
+                                binding.key55.background = ContextCompat.getDrawable(
+                                    this@TabletKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                                )
+                            } else {
+                                binding.key55.background = ContextCompat.getDrawable(
+                                    this@TabletKeyboardView.context,
+                                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                                )
+                            }
                         } else {
-                            binding.key55.background = ContextCompat.getDrawable(
-                                this@TabletKeyboardView.context,
-                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                            )
+                            updateKeyStyle(binding.key55, isNormalKey = true)
                         }
                     }
                 }
@@ -3253,11 +3546,15 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key39.setMarginEnd(0f)
                     key40.setMarginEnd(0f)
 
-                    if (isDynamicColorsEnable) {
-                        key55.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
-                        )
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key55.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key55, isNormalKey = true)
                     }
                 }
                 clearShiftCaps()
@@ -3332,15 +3629,21 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key38.setMarginEnd(0f)
                     key39.setMarginEnd(0f)
                     key40.setMarginEnd(0f)
-                    if (isDynamicColorsEnable) {
-                        key5.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
-                        )
-                        key55.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
-                        )
+
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key5.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                            )
+                            key55.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key5, isNormalKey = true)
+                        updateKeyStyle(key55, isNormalKey = true)
                     }
                 }
                 clearShiftCaps()
@@ -3396,15 +3699,20 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key55.setStartToEndOf(key45)
                     key45.setEndToStartOf(key55)
 
-                    if (isDynamicColorsEnable) {
-                        key5.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
-                        )
-                        key55.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
-                        )
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key5.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                            )
+                            key55.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key5, isNormalKey = true)
+                        updateKeyStyle(key55, isNormalKey = true)
                     }
                 }
                 clearShiftCaps()
@@ -3430,16 +3738,21 @@ class TabletKeyboardView @JvmOverloads constructor(
                     key39.setMarginEnd(2f)
                     key40.setMarginEnd(2f)
 
-                    if (isDynamicColorsEnable) {
-                        key5.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
-                        )
+                    if (themeMode == "default") {
+                        if (isDynamicColorsEnable) {
+                            key5.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                            )
 
-                        key55.background = ContextCompat.getDrawable(
-                            this@TabletKeyboardView.context,
-                            com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
-                        )
+                            key55.background = ContextCompat.getDrawable(
+                                this@TabletKeyboardView.context,
+                                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                            )
+                        }
+                    } else {
+                        updateKeyStyle(key5, isNormalKey = true)
+                        updateKeyStyle(key55, isNormalKey = true)
                     }
                 }
                 clearShiftCaps()
@@ -3450,6 +3763,10 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun setKeysInJapaneseText() {
         allButtonKeys.forEach {
             it.setTabletKeyTextJapanese(keyId = it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
         }
         binding.apply {
             key5.setLargeUnicodeIconScaleX(
@@ -3459,11 +3776,24 @@ class TabletKeyboardView @JvmOverloads constructor(
             key20.setLargeUnicodeIconScaleX(
                 icon = resources.getString(com.kazumaproject.core.R.string.string_よ), scaleX = 1f
             )
+
+            // key5とkey20はアイコンを設定しているため、テーマ適用の再確認が必要な場合はここで行う
+            if (themeMode != "default") {
+                updateKeyStyle(key5, isNormalKey = true)
+                updateKeyStyle(key20, isNormalKey = true)
+            }
         }
     }
 
     private fun setKeysInEnglishText(isZenkaku: Boolean) = binding.run {
-        allButtonKeys.filterNot { it == key5 }.forEach { it.setTabletKeyTextEnglish(it.id) }
+        // key5以外の全てのキーにテキストを設定
+        allButtonKeys.filterNot { it == key5 }.forEach {
+            it.setTabletKeyTextEnglish(it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
+        }
 
         val shiftOn = tabletCapsLockState.value.capsLockOn
         val ctx = root.context
@@ -3474,29 +3804,50 @@ class TabletKeyboardView @JvmOverloads constructor(
                     else com.kazumaproject.core.R.string.shift_symbol
                 ), scaleX = 1.618f
             )
-            if (isDynamicColorsEnable) {
-                background = ContextCompat.getDrawable(
-                    ctx, com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
-                )
+            if (themeMode == "default") {
+                if (isDynamicColorsEnable) {
+                    background = ContextCompat.getDrawable(
+                        ctx, com.kazumaproject.core.R.drawable.selector_corner_bottom_left_material
+                    )
+                }
+            } else {
+                updateKeyStyle(this, isNormalKey = true)
             }
         }
+
         key20.setLargeUnicodeIcon(
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
-        val zenkakuBg = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-        else {
-            if (isDynamicColorsEnable) {
-                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
-            } else {
-                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-            }
+        // key20もアイコン設定により色がリセットされる可能性があるため再適用
+        if (themeMode != "default") {
+            updateKeyStyle(key20, isNormalKey = true)
         }
 
-        key55.background = ContextCompat.getDrawable(ctx, zenkakuBg)
+        if (isZenkaku) {
+            key55.background =
+                ContextCompat.getDrawable(ctx, com.kazumaproject.core.R.drawable.zenkaku_pressed_bg)
+        } else {
+            if (themeMode == "default") {
+                val bgRes = if (isDynamicColorsEnable) {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                } else {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                }
+                key55.background = ContextCompat.getDrawable(ctx, bgRes)
+            } else {
+                updateKeyStyle(key55, isNormalKey = true)
+            }
+        }
     }
 
     private fun setKeysInEnglishCapsOnText(isZenkaku: Boolean) = binding.run {
-        allButtonKeys.filterNot { it == key5 }.forEach { it.setTabletKeyTextEnglishCaps(it.id) }
+        allButtonKeys.filterNot { it == key5 }.forEach {
+            it.setTabletKeyTextEnglishCaps(it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
+        }
 
         val ctx = root.context
         key5.apply {
@@ -3505,26 +3856,49 @@ class TabletKeyboardView @JvmOverloads constructor(
                 scaleX = 1.618f,
                 iconSizeSp = 30
             )
-            background = ContextCompat.getDrawable(
-                this@TabletKeyboardView.context, com.kazumaproject.core.R.drawable.caps_lock_on_bg
-            )
+            if (themeMode == "default") {
+                background = ContextCompat.getDrawable(
+                    this@TabletKeyboardView.context,
+                    com.kazumaproject.core.R.drawable.caps_lock_on_bg
+                )
+            } else {
+                // CapsLock ON時も通常のボタンスタイル（または必要に応じて強調色）を適用
+                updateKeyStyle(this, isNormalKey = true)
+            }
         }
+
         key20.setLargeUnicodeIcon(
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
-        val bgRes = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-        else {
-            if (isDynamicColorsEnable) {
-                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+        if (themeMode != "default") {
+            updateKeyStyle(key20, isNormalKey = true)
+        }
+
+        if (isZenkaku) {
+            key55.background =
+                ContextCompat.getDrawable(ctx, com.kazumaproject.core.R.drawable.zenkaku_pressed_bg)
+        } else {
+            if (themeMode == "default") {
+                val bgRes = if (isDynamicColorsEnable) {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                } else {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                }
+                key55.background = ContextCompat.getDrawable(ctx, bgRes)
             } else {
-                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                updateKeyStyle(key55, isNormalKey = true)
             }
         }
-        key55.background = ContextCompat.getDrawable(ctx, bgRes)
     }
 
     private fun setKeysInEnglishShiftOnText(isZenkaku: Boolean) = binding.run {
-        allButtonKeys.filterNot { it == key5 }.forEach { it.setTabletKeyTextEnglishCaps(it.id) }
+        allButtonKeys.filterNot { it == key5 }.forEach {
+            it.setTabletKeyTextEnglishCaps(it.id)
+            // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+            if (themeMode != "default") {
+                it.setTextColor(customKeyTextColor)
+            }
+        }
 
         val ctx = root.context
 
@@ -3532,45 +3906,75 @@ class TabletKeyboardView @JvmOverloads constructor(
             setLargeUnicodeIconScaleX(
                 icon = ctx.getString(com.kazumaproject.core.R.string.shift_symbol), scaleX = 1.618f
             )
-            background = ContextCompat.getDrawable(
-                ctx, com.kazumaproject.core.R.drawable.caps_lock_on_bg
-            )
+            if (themeMode == "default") {
+                background = ContextCompat.getDrawable(
+                    ctx, com.kazumaproject.core.R.drawable.caps_lock_on_bg
+                )
+            } else {
+                updateKeyStyle(this, isNormalKey = true)
+            }
         }
 
         key20.setLargeUnicodeIcon(
             icon = ctx.getString(com.kazumaproject.core.R.string.undo_symbol)
         )
+        if (themeMode != "default") {
+            updateKeyStyle(key20, isNormalKey = true)
+        }
 
-        val bgRes = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-        else {
-            if (isDynamicColorsEnable) {
-                com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+        if (isZenkaku) {
+            key55.background =
+                ContextCompat.getDrawable(ctx, com.kazumaproject.core.R.drawable.zenkaku_pressed_bg)
+        } else {
+            if (themeMode == "default") {
+                val bgRes = if (isDynamicColorsEnable) {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                } else {
+                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                }
+                key55.background = ContextCompat.getDrawable(ctx, bgRes)
             } else {
-                com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                updateKeyStyle(key55, isNormalKey = true)
             }
         }
-        key55.background = ContextCompat.getDrawable(ctx, bgRes)
     }
 
     private fun setKeysInNumberText(isZenkaku: Boolean) {
         allButtonKeys.forEach { button ->
-            if (button != binding.key5) button.setTabletKeyTextNumber(keyId = button.id)
+            if (button != binding.key5) {
+                button.setTabletKeyTextNumber(keyId = button.id)
+                // 修正: デフォルトテーマ以外の場合、テキスト色を強制的に適用
+                if (themeMode != "default") {
+                    button.setTextColor(customKeyTextColor)
+                }
+            }
         }
         binding.apply {
             val ctx = root.context
             key5.setLargeUnicodeIconScaleX(
                 icon = resources.getString(com.kazumaproject.core.R.string.tablet_number_command),
             )
-            val zenkakuBg = if (isZenkaku) com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
-            else {
-                if (isDynamicColorsEnable) {
-                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
-                } else {
-                    com.kazumaproject.core.R.drawable.selector_corner_bottom_right
-                }
+            if (themeMode != "default") {
+                updateKeyStyle(key5, isNormalKey = true)
             }
 
-            key55.background = ContextCompat.getDrawable(ctx, zenkakuBg)
+            if (isZenkaku) {
+                key55.background = ContextCompat.getDrawable(
+                    ctx,
+                    com.kazumaproject.core.R.drawable.zenkaku_pressed_bg
+                )
+            } else {
+                if (themeMode == "default") {
+                    val bgRes = if (isDynamicColorsEnable) {
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right_material
+                    } else {
+                        com.kazumaproject.core.R.drawable.selector_corner_bottom_right
+                    }
+                    key55.background = ContextCompat.getDrawable(ctx, bgRes)
+                } else {
+                    updateKeyStyle(key55, isNormalKey = true)
+                }
+            }
         }
     }
 
