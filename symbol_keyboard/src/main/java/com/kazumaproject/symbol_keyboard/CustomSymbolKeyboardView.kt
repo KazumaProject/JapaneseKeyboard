@@ -2,16 +2,27 @@ package com.kazumaproject.symbol_keyboard
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Color
+import android.graphics.PorterDuff
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.StateListDrawable
 import android.os.Handler
 import android.os.Looper
 import android.util.AttributeSet
+import android.util.TypedValue
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import android.view.ViewGroup
 import android.widget.TextView
+import androidx.annotation.ColorInt
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.Pager
@@ -57,6 +68,19 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private val clipboardAdapter = ClipboardAdapter()
     private val gridLM = GridLayoutManager(context, 3, RecyclerView.HORIZONTAL, false)
 
+    // View References for functional keys
+    private val returnButton: ShapeableImageView
+    private val deleteButton: ShapeableImageView
+
+    // Theme Colors (Default values)
+    private var themeBackgroundColor: Int = Color.WHITE
+    private var themeIconColor: Int = Color.GRAY
+    private var themeSelectedIconColor: Int = Color.BLUE
+    private var themeKeyBackgroundColor: Int = Color.LTGRAY
+
+    // Flag to check if custom theme is applied
+    private var isCustomThemeApplied = false
+
     private var emojiMap: Map<EmojiCategory, List<Emoji>> = emptyMap()
     private var emoticonMap: Map<EmoticonCategory, List<String>> = emptyMap()
     private var symbolMap: Map<SymbolCategory, List<String>> = emptyMap()
@@ -89,6 +113,16 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         categoryTab = findViewById(R.id.category_tab_layout)
         modeTab = findViewById(R.id.mode_tab_layout)
         recycler = findViewById(R.id.symbol_candidate_recycler_view)
+        returnButton = findViewById(R.id.return_jp_keyboard_button)
+        deleteButton = findViewById(R.id.symbol_keyboard_delete_key)
+
+        // Initialize default colors
+        themeIconColor =
+            ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
+        themeSelectedIconColor =
+            ContextCompat.getColor(context, com.kazumaproject.core.R.color.enter_key_bg)
+        themeKeyBackgroundColor =
+            ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_bg)
 
         recycler.apply {
             layoutManager = gridLM
@@ -154,18 +188,16 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             }
         }
 
-        findViewById<ShapeableImageView>(R.id.return_jp_keyboard_button).setOnClickListener {
+        returnButton.setOnClickListener {
             returnListener?.onClick()
         }
 
-        // region Delete Key Listener (Modified)
-        findViewById<ShapeableImageView>(R.id.symbol_keyboard_delete_key).apply {
+        deleteButton.apply {
             val handler = Handler(Looper.getMainLooper())
             var isLongPressed = false
 
             val longPressRunnable = Runnable {
                 isLongPressed = true
-                // Call the existing long click listener
                 deleteLongListener?.onLongClickListener()
             }
 
@@ -173,35 +205,28 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         isLongPressed = false
-                        // Schedule the long press runnable
                         handler.postDelayed(
                             longPressRunnable,
                             ViewConfiguration.getLongPressTimeout().toLong()
                         )
-                        true // Consume the event
+                        true
                     }
 
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        // Cancel the scheduled long press
                         handler.removeCallbacks(longPressRunnable)
-
                         if (isLongPressed) {
-                            // If a long press occurred, notify the finger-up listener
                             onDeleteFingerUpListener?.invoke()
                         } else {
-                            // Otherwise, perform a normal click
                             deleteClickListener?.onClick()
                         }
-                        true // Consume the event
+                        true
                     }
 
                     else -> false
                 }
             }
-            // Disable the standard click listener since we handle it manually
             setOnClickListener(null)
         }
-        // endregion
 
         modeTab.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
@@ -223,6 +248,194 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+    }
+
+    /**
+     * 動的にテーマカラーを適用するメソッド
+     */
+    fun setKeyboardTheme(
+        @ColorInt backgroundColor: Int,
+        @ColorInt iconColor: Int,
+        @ColorInt selectedIconColor: Int,
+        @ColorInt keyBackgroundColor: Int
+    ) {
+        this.themeBackgroundColor = backgroundColor
+        this.themeIconColor = iconColor
+        this.themeSelectedIconColor = selectedIconColor
+        this.themeKeyBackgroundColor = keyBackgroundColor
+        this.isCustomThemeApplied = true
+
+        // 1. 全体の背景色
+        this.setBackgroundColor(backgroundColor)
+
+        // 2. ColorStateList の作成
+        val states = arrayOf(
+            intArrayOf(android.R.attr.state_selected),
+            intArrayOf(-android.R.attr.state_selected)
+        )
+        val colors = intArrayOf(
+            selectedIconColor,
+            iconColor
+        )
+        val tabColorStateList = ColorStateList(states, colors)
+        val bgTintList = ColorStateList.valueOf(backgroundColor)
+
+        // 3. Category Tab の全体設定
+        categoryTab.backgroundTintList = bgTintList
+
+        categoryTab.tabIconTint = tabColorStateList
+        categoryTab.setTabTextColors(iconColor, selectedIconColor)
+        categoryTab.setSelectedTabIndicatorColor(Color.TRANSPARENT)
+        categoryTab.tabRippleColor = null // リップル削除
+
+        // ★重要: ニューモーフィズムの影が切れないようにクリッピングを無効化
+        disableClipping(categoryTab)
+
+        // ★重要: タブの生成完了を待ってから背景を適用 (postを使用)
+        categoryTab.post {
+            applyThemeToTabs(categoryTab, backgroundColor)
+        }
+
+        // 4. Mode Tab (Bottom Bar) の全体設定
+        modeTab.backgroundTintList = bgTintList
+        modeTab.tabIconTint = tabColorStateList
+        modeTab.setSelectedTabIndicatorColor(Color.TRANSPARENT)
+        modeTab.tabRippleColor = null
+
+        // ★重要: クリッピング無効化と遅延適用
+        disableClipping(modeTab)
+        modeTab.post {
+            applyThemeToTabs(modeTab, backgroundColor)
+        }
+
+        // 5. 機能キー (Return/Delete) のニューモーフィズム設定
+        val keyRadius = dpToPx(25).toFloat()
+        returnButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
+        deleteButton.background = getTabNeumorphDrawable(keyBackgroundColor, keyRadius)
+
+        val p = dpToPx(8)
+        returnButton.setPadding(p, p, p, p)
+        deleteButton.setPadding(p, p, p, p)
+
+        returnButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+        deleteButton.setColorFilter(iconColor, PorterDuff.Mode.SRC_IN)
+
+        if (currentMode == SymbolMode.CLIPBOARD) {
+            buildCategoryTabs()
+        }
+
+        symbolAdapter.setThemeColors(
+            textColor = iconColor,
+            highlightColor = selectedIconColor
+        )
+    }
+
+    /**
+     * TabLayoutとその内部のSlidingTabStripのクリッピングを無効にする
+     * これにより、領域外の「影」が描画されるようになります
+     */
+    private fun disableClipping(tabLayout: TabLayout) {
+        tabLayout.clipChildren = false
+        tabLayout.clipToPadding = false
+        val slidingTabStrip = tabLayout.getChildAt(0) as? ViewGroup
+        slidingTabStrip?.clipChildren = false
+        slidingTabStrip?.clipToPadding = false
+    }
+
+    /**
+     * TabLayout内のすべてのタブViewに対して、ニューモーフィズム背景とマージンを適用する
+     */
+    private fun applyThemeToTabs(tabLayout: TabLayout, @ColorInt baseColor: Int) {
+        val slidingTabStrip = tabLayout.getChildAt(0) as? ViewGroup ?: return
+
+        for (i in 0 until slidingTabStrip.childCount) {
+            val tabView = slidingTabStrip.getChildAt(i)
+
+            // マージンを設定 (タブ間に隙間を作り、影を表示させるスペースを確保)
+            val params = tabView.layoutParams as? ViewGroup.MarginLayoutParams
+            if (params != null) {
+                val m = dpToPx(4)
+                params.setMargins(m, m, m, m)
+                // 必要に応じてサイズ指定を解除（MATCH_PARENTなどで潰れないように）
+                // params.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                tabView.layoutParams = params
+            }
+
+            // 背景を設定
+            val radius = dpToPx(8).toFloat()
+            tabView.background = getTabNeumorphDrawable(baseColor, radius)
+
+            // パディング調整 (View内部のアイコン/テキストが影に重ならないように)
+            val p = dpToPx(4)
+            tabView.setPadding(p, p, p, p)
+
+            // 再描画要求
+            tabView.invalidate()
+        }
+        tabLayout.requestLayout()
+    }
+
+    /**
+     * タブ用のニューモーフィズムDrawableを生成する
+     * state_selected (選択中) の時に「凹む」ように設定
+     */
+    private fun getTabNeumorphDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
+        // ハイライトとシャドウの色計算
+        val highlightColor = ColorUtils.blendARGB(baseColor, Color.WHITE, 0.6f)
+        val shadowColor = ColorUtils.blendARGB(baseColor, Color.BLACK, 0.2f)
+
+        val distance = dpToPx(3)
+
+        // --- A. 通常時 (Unselected / Extruded) ---
+        val shadowDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(shadowColor)
+        }
+        val highlightDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(highlightColor)
+        }
+        val surfaceDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(baseColor)
+        }
+
+        // LayerDrawableで重ねる (Shadow -> Highlight -> Surface)
+        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
+        // Shadow: 右下
+        idleLayer.setLayerInset(0, distance, distance, 0, 0)
+        // Highlight: 左上
+        idleLayer.setLayerInset(1, 0, 0, distance, distance)
+        // Surface: 中央
+        idleLayer.setLayerInset(2, distance, distance, distance, distance)
+
+
+        // --- B. 選択時・押下時 (Selected / Pressed / Pressed In) ---
+        // ベースより少し暗くして凹みを表現
+        val pressedSurface = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(ColorUtils.blendARGB(baseColor, Color.BLACK, 0.1f))
+        }
+        val pressedLayer = LayerDrawable(arrayOf(pressedSurface))
+        // 凹んでいるので、Surfaceの位置はそのままか、少しずらす
+        pressedLayer.setLayerInset(0, distance, distance, distance, distance)
+
+
+        // --- C. StateListDrawable ---
+        val stateList = StateListDrawable()
+
+        // 選択中 (TabLayoutのタブ用)
+        stateList.addState(intArrayOf(android.R.attr.state_selected), pressedLayer)
+        // 押下中 (通常のボタン用)
+        stateList.addState(intArrayOf(android.R.attr.state_pressed), pressedLayer)
+        // 通常
+        stateList.addState(intArrayOf(), idleLayer)
+
+        return stateList
     }
 
     fun setOnDeleteButtonFingerUpListener(listener: () -> Unit) {
@@ -317,11 +530,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         this.clipboardHistoryToggleListener = l
     }
 
-    /**
-     * Sets the lists of symbols, emoticons, and other data for the keyboard.
-     * This function now takes raw lists of Emoticon and Symbol objects and
-     * performs the categorization internally.
-     */
     fun setSymbolLists(
         emojiList: List<Emoji>,
         emoticons: List<Emoticon>,
@@ -333,7 +541,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         this.symbolsHistory = symbolsHistory
         this.clipBoardItems = clipBoardItems
 
-        // Populate history lists from the provided history data
         historyEmojiList = symbolsHistory
             .filter { it.mode == SymbolMode.EMOJI }
             .map { it.symbol }
@@ -347,7 +554,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             .map { it.symbol }
             .toMutableList()
 
-        // Group the incoming lists into maps for internal use
         this.emoticonMap = emoticons
             .groupBy { it.category }
             .mapValues { entry -> entry.value.map { it.symbol } }
@@ -358,7 +564,6 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             .groupBy { it.category }
             .toSortedMap(categoryOrder)
 
-        // Initialize UI components
         currentMode = symbolMode
         buildModeTabs()
         buildCategoryTabs()
@@ -377,21 +582,36 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         ).forEach { res ->
             modeTab.addTab(modeTab.newTab().setIcon(res))
         }
+
+        // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用
+        if (isCustomThemeApplied) {
+            // postを使って描画後に適用
+            modeTab.post {
+                applyThemeToTabs(modeTab, themeBackgroundColor)
+            }
+        }
     }
 
     private fun buildCategoryTabs() {
         categoryTab.removeAllTabs()
         val historyIcon = com.kazumaproject.core.R.drawable.history_24dp
 
-        // Define colors for normal and selected states
-        val normalColor =
-            ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
-        val selectedColor =
-            ContextCompat.getColor(
-                context,
-                com.kazumaproject.core.R.color.enter_key_bg
-            )
+        val normalColor = themeIconColor
+        val selectedColor = themeSelectedIconColor
+
         categoryTab.setTabTextColors(normalColor, selectedColor)
+        categoryTab.setSelectedTabIndicatorColor(if (isCustomThemeApplied) Color.TRANSPARENT else selectedColor)
+
+        val states = arrayOf(
+            intArrayOf(android.R.attr.state_selected),
+            intArrayOf(-android.R.attr.state_selected)
+        )
+        val colors = intArrayOf(
+            selectedColor,
+            normalColor
+        )
+        val tabColorStateList = ColorStateList(states, colors)
+        categoryTab.tabIconTint = tabColorStateList
 
         when (currentMode) {
             SymbolMode.EMOJI -> {
@@ -472,6 +692,14 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     customView.findViewById<TextView>(R.id.clipboard_tab_text)
                         .setTextColor(normalColor)
                 }
+            }
+        }
+
+        // ★ テーマ適用フラグが立っている場合、タブ再構築後にテーマを適用
+        if (isCustomThemeApplied) {
+            // postを使って描画後に適用
+            categoryTab.post {
+                applyThemeToTabs(categoryTab, themeBackgroundColor)
             }
         }
     }
@@ -593,6 +821,14 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         imageItemClickListener = null
         clipboardItemLongClickListener = null
         clipboardHistoryToggleListener = null
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            dp.toFloat(),
+            resources.displayMetrics
+        ).toInt()
     }
 
     private val categoryIconRes = mapOf(

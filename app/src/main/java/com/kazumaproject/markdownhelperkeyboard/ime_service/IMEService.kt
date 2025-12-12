@@ -51,6 +51,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
+import android.widget.TextView
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -1854,6 +1855,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
                                 suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
                                 candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                val symbolKeyBg =
+                                    customThemeKeyColor ?: Color.WHITE
+                                keyboardSymbolView.setKeyboardTheme(
+                                    backgroundColor = manipulateColor(symbolKeyBg, 1.2f),
+                                    iconColor = customThemeKeyTextColor ?: Color.BLACK,
+                                    selectedIconColor = customThemeKeyTextColor ?: Color.BLACK,
+                                    keyBackgroundColor = symbolKeyBg
+                                )
                                 suggestionAdapter?.setCandidateTextColor(
                                     customThemeKeyTextColor ?: Color.BLACK
                                 )
@@ -3665,6 +3674,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding?.let { mainView ->
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
             val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
+            when (keyboardThemeMode) {
+                "custom" -> {
+                    popupView.setDrawableSolidColor(customThemeKeyColor ?: Color.WHITE)
+                }
+            }
             val listView = popupView.findViewById<ListView>(R.id.popup_listview)
 
             // A. Enable single choice mode for the ListView
@@ -3683,7 +3697,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             // B. Use your new custom layout file in the ArrayAdapter
-            val adapter = ArrayAdapter(this, R.layout.list_item_layout, items) // Use your layout
+            val adapter = object : ArrayAdapter<String>(this, R.layout.list_item_layout, items) {
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    // 親クラスのgetViewを呼び出してViewを取得
+                    val view = super.getView(position, convertView, parent) as TextView
+
+                    // カスタムテーマの場合の色設定
+                    if (keyboardThemeMode == "custom") {
+                        // ★ 1. テキスト色の変更
+                        // 背景が SpecialKeyColor (濃い色) になる可能性があるため、テキストは白か黒か、
+                        // あるいは専用の customThemeKeyTextColor 変数があればそれを使ってください。
+                        // ここでは例として、背景が濃いと仮定して白、または動的なテキスト色変数を指定します。
+                        val textColor = customThemeKeyTextColor ?: Color.BLACK // ※変数は適宜合わせてください
+                        view.setTextColor(textColor)
+
+                        // ★ 2. 選択状態に応じた背景色の変更
+                        val listView2 = parent as ListView
+                        if (listView2.isItemChecked(position)) {
+                            // 選択されているアイテムの背景色
+                            // customThemeSpecialKeyColor または ハイライト用の色を使用
+                            val highlightColor =
+                                manipulateColor(customThemeSpecialKeyColor ?: Color.LTGRAY, 1.2f)
+                            view.setBackgroundColor(highlightColor)
+
+                            // 必要であれば選択時のテキスト色もここで上書き可能
+                            view.setTextColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+                        } else {
+                            // 選択されていないアイテムの背景色
+                            // 透明 または popupView全体の背景色に合わせる
+                            view.setBackgroundColor(customThemeKeyColor ?: Color.WHITE)
+                            view.setTextColor(textColor)
+                        }
+                    }
+                    return view
+                }
+            }
             listView.adapter = adapter
 
             keyboardSelectionPopupWindow = PopupWindow(
@@ -3731,6 +3779,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             keyboardSelectionPopupWindow?.showAtLocation(mainView.root, Gravity.CENTER, 0, 0)
         }
+    }
+
+    /**
+     * 色の明るさを調整するヘルパー関数
+     * @param color 元の色
+     * @param factor 1.0より大＝明るく、1.0より小＝暗く
+     */
+    private fun manipulateColor(color: Int, factor: Float): Int {
+        val a = Color.alpha(color)
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.argb(a, r, g, b)
     }
 
 

@@ -283,17 +283,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     /** (HELPER 1) keyDataに基づいてViewを生成し、基本的な設定（背景、テキスト、パディング等）を行います */
     private fun createKeyView(keyData: KeyData): View {
         val (leftInset, topInset, rightInset, bottomInset) = if (keyData.isSpecialKey) {
-            if (themeMode == "custom") {
-                listOf(6, 12, 6, 6)
-            } else {
-                listOf(0, 0, 0, 0)
-            }
+            listOf(6, 12, 6, 6)
         } else {
-            if (themeMode == "custom") {
-                listOf(6, 9, 6, 9)
-            } else {
-                listOf(0, 0, 0, 0)
-            }
+            listOf(6, 9, 6, 9)
         }
 
         val isDarkTheme = context.isDarkThemeOn()
@@ -309,8 +301,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                 contentDescription = keyData.label
                 scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
 
-                // 影の分だけ中身を小さく見せる必要があるためパディングを設定
-                setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+                if (themeMode == "custom"){
+                    // 影の分だけ中身を小さく見せる必要があるためパディングを設定
+                    setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
+                }
 
                 val originalBg = ContextCompat.getDrawable(
                     context,
@@ -462,8 +456,13 @@ class FlickKeyboardView @JvmOverloads constructor(
             width = 0
             height = 0
 
-            // ★重要修正: すべてのキーにマージンを適用してサイズ感を統一
-            setMargins(6, 9, 6, 9)
+            if (themeMode == "custom"){
+                setMargins(3, 6, 3, 6)
+            }else{
+                if (keyData.keyType == KeyType.STANDARD_FLICK) {
+                    setMargins(6, 9, 6, 9)
+                }
+            }
         }
         keyView.layoutParams = params
         return keyView
@@ -475,8 +474,8 @@ class FlickKeyboardView @JvmOverloads constructor(
      */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
         // ★修正: 影を少し濃くしました (Shadow: 0.2->0.3, Highlight: 0.4->0.6)
-        val highlightColor = ColorUtils.blendARGB(baseColor, Color.WHITE, 0.6f)
-        val shadowColor = ColorUtils.blendARGB(baseColor, Color.BLACK, 0.3f)
+        val highlightColor = ColorUtils.blendARGB(baseColor, Color.WHITE, 0.5f)
+        val shadowColor = ColorUtils.blendARGB(baseColor, Color.BLACK, 0.2f)
 
         // 影の距離
         val distance = dpToPx(3)

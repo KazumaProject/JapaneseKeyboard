@@ -57,13 +57,12 @@ class CrossFlickInputController(private val context: Context) {
     private var isLongPressMode = false
     private var isLongPressTriggered = false
 
-    // ▼▼▼ 追加: 色設定保持用の変数 ▼▼▼
+    // 色設定保持用の変数
     private var popupBackgroundColor: Int? = null
     private var popupHighlightedColor: Int? = null
     private var popupTextColor: Int? = null
 
     /**
-     * ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
      * FlickKeyboardView から呼び出してテーマカラーをセットする
      */
     fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
@@ -89,6 +88,11 @@ class CrossFlickInputController(private val context: Context) {
         // Log.d("handleTouchEvent CrossFlick", "${event.action}")
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                // ▼▼▼ 修正: 押下状態を目視させる ▼▼▼
+                view.isPressed = true
+                view.drawableHotspotChanged(event.x, event.y)
+                // ▲▲▲ 修正終了 ▲▲▲
+
                 isLongPressMode = false
                 isLongPressTriggered = false
                 anchorView = view
@@ -117,6 +121,10 @@ class CrossFlickInputController(private val context: Context) {
             }
 
             MotionEvent.ACTION_MOVE -> {
+                // ▼▼▼ 修正: ホットスポットの追従 ▼▼▼
+                view.drawableHotspotChanged(event.x, event.y)
+                // ▲▲▲ 修正終了 ▲▲▲
+
                 val dx = event.rawX - initialTouchPoint.x
                 val dy = event.rawY - initialTouchPoint.y
 
@@ -144,6 +152,10 @@ class CrossFlickInputController(private val context: Context) {
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // ▼▼▼ 修正: 押下状態解除 ▼▼▼
+                view.isPressed = false
+                // ▲▲▲ 修正終了 ▲▲▲
+
                 longPressJob?.cancel()
 
                 val flickActionToCommit = if (currentDirection != CrossDirection.TAP) {
@@ -205,7 +217,7 @@ class CrossFlickInputController(private val context: Context) {
         val popupView = CrossFlickPopupView(context).apply {
             setContent(flickAction)
 
-            // ▼▼▼ 修正: 色設定があれば適用 ▼▼▼
+            // 色設定があれば適用
             if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
                 setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
             }
@@ -247,7 +259,7 @@ class CrossFlickInputController(private val context: Context) {
                 val popupView = CrossFlickPopupView(context).apply {
                     setContent(flickAction)
 
-                    // ▼▼▼ 修正: 色設定があれば適用 ▼▼▼
+                    // 色設定があれば適用
                     if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
                         setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
                     }
