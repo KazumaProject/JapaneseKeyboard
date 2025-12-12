@@ -22,7 +22,6 @@ import android.widget.GridLayout
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
@@ -48,7 +47,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
-    // ( OnKeyboardActionListener インターフェースは変更なし )
     interface OnKeyboardActionListener {
         fun onKey(text: String, isFlick: Boolean)
         fun onAction(action: KeyAction, view: View, isFlick: Boolean)
@@ -75,7 +73,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var cursorInitialX = 0f
     private var cursorInitialY = 0f
 
-    // ▼▼▼ MODIFIED PROPERTIES ▼▼▼
     /**
      * 動的キー（keyIdを持つキー）の情報を保持するためのマップ
      * keyId: String -> KeyInfo
@@ -96,7 +93,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         var controller: Any? = null,
         val index: Int
     )
-    // ▲▲▲ MODIFIED PROPERTIES ▲▲▲
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
@@ -113,7 +109,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.listener = listener
     }
 
-    // ( 他の set... 関数は変更なし )
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity
     }
@@ -156,7 +151,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * 色の明るさを調整するヘルパー関数
+     * 色の明るさを調整するヘルパー関数 (QWERTYKeyboardViewと統一)
      * @param color 元の色
      * @param factor 1.0より大＝明るく、1.0より小＝暗く
      */
@@ -168,7 +163,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         return Color.argb(a, r, g, b)
     }
 
-    // ▼▼▼ MODIFIED setKeyboard (Helper関数を使用) ▼▼▼
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
@@ -215,9 +209,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             this.addView(keyView)
         }
     }
-    // ▲▲▲ MODIFIED setKeyboard ▲▲▲
 
-    // ▼▼▼ NEW (Robast) updateDynamicKey ▼▼▼
     /**
      * 指定されたkeyIdを持つキーの表示と動作を、新しいstateIndexに基づいて更新します。
      * このメソッドは、必要に応じてViewの再生成とコントローラーの再アタッチを行います。
@@ -275,12 +267,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         info.keyData = newKeyData
         info.controller = newController
     }
-    // ▲▲▲ NEW (Robast) updateDynamicKey ▲▲▲
 
-
-    // ▼▼▼ NEW HELPER FUNCTIONS ▼▼▼
-
-    /** (HELPER 1) keyDataに基づいてViewを生成し、基本的な設定（背景、テキスト、パディング等）を行います */
+    /** keyDataに基づいてViewを生成し、基本的な設定（背景、テキスト、パディング等）を行います */
     private fun createKeyView(keyData: KeyData): View {
         val (leftInset, topInset, rightInset, bottomInset) = if (keyData.isSpecialKey) {
             listOf(6, 12, 6, 6)
@@ -301,7 +289,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 contentDescription = keyData.label
                 scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
 
-                if (themeMode == "custom"){
+                if (themeMode == "custom") {
                     // 影の分だけ中身を小さく見せる必要があるためパディングを設定
                     setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
                 }
@@ -322,7 +310,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
-                        // 1. ベース（ニューモーフィズム）
+                        // 1. ベース（ニューモーフィズム）- QWERTYと同じロジック
                         val neumorphDrawable = getDynamicNeumorphDrawable(
                             baseColor = customSpecialKeyColor,
                             radius = commonCornerRadius
@@ -341,7 +329,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         // 3. レイヤー化とインセット設定
                         val layerDrawable =
                             LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
-                        val inset = dpToPx(4)
+                        val inset = dpToPx(2) // QWERTYに合わせるため小さく
                         layerDrawable.setLayerInset(1, inset, inset, inset, inset)
 
                         background = layerDrawable
@@ -439,7 +427,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                         val layerDrawable =
                             LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
-                        val inset = dpToPx(4)
+                        val inset = dpToPx(2) // QWERTYに合わせる
                         layerDrawable.setLayerInset(1, inset, inset, inset, inset)
 
                         background = layerDrawable
@@ -456,9 +444,9 @@ class FlickKeyboardView @JvmOverloads constructor(
             width = 0
             height = 0
 
-            if (themeMode == "custom"){
+            if (themeMode == "custom") {
                 setMargins(3, 6, 3, 6)
-            }else{
+            } else {
                 if (keyData.keyType == KeyType.STANDARD_FLICK) {
                     setMargins(6, 9, 6, 9)
                 }
@@ -470,15 +458,16 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     /**
      * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
-     * 影の濃さを強化しています。
+     * QWERTYKeyboardViewと同じロジックを使用
      */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        // ★修正: 影を少し濃くしました (Shadow: 0.2->0.3, Highlight: 0.4->0.6)
-        val highlightColor = ColorUtils.blendARGB(baseColor, Color.WHITE, 0.5f)
-        val shadowColor = ColorUtils.blendARGB(baseColor, Color.BLACK, 0.2f)
+        // 1. 色の計算 (manipulateColorを使用)
+        val highlightColor = manipulateColor(baseColor, 1.2f)
+        val shadowColor = manipulateColor(baseColor, 0.8f)
 
-        // 影の距離
-        val distance = dpToPx(3)
+        // 2. ピクセル単位のオフセット量
+        val offset = dpToPx(4)
+        val padding = dpToPx(2)
 
         // --- A. 通常状態 (Idle) ---
         val shadowDrawable = GradientDrawable().apply {
@@ -500,23 +489,24 @@ class FlickKeyboardView @JvmOverloads constructor(
         val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
 
         // Shadow: 左と上を空けて右下にずらす
-        idleLayer.setLayerInset(0, distance, distance, 0, 0)
+        idleLayer.setLayerInset(0, offset, offset, 0, 0)
         // Highlight: 右と下を空けて左上にずらす
-        idleLayer.setLayerInset(1, 0, 0, distance, distance)
+        idleLayer.setLayerInset(1, 0, 0, offset, offset)
         // Surface: 四方を少し空けて中央に配置
-        idleLayer.setLayerInset(2, distance, distance, distance, distance)
+        idleLayer.setLayerInset(2, padding, padding, padding, padding)
 
 
         // --- B. 押下状態 (Pressed) ---
-        val pressedSurface = GradientDrawable().apply {
+        val pressedDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
-            // ベースより少し暗くする
-            setColor(ColorUtils.blendARGB(baseColor, Color.BLACK, 0.1f))
+            // ベース色より少し暗くすることで「押し込まれた」感を出す
+            setColor(manipulateColor(baseColor, 0.95f))
         }
 
-        val pressedLayer = LayerDrawable(arrayOf(pressedSurface))
-        pressedLayer.setLayerInset(0, distance, distance, distance, distance)
+        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
+        // サイズを変えないため、IdleのSurfaceと同じ位置に合わせるためのInset
+        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
 
 
         // --- C. StateListDrawable ---
@@ -527,9 +517,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         return stateList
     }
 
-    // ColorUtilsがない場合は、以下のimportを追加するか、build.gradleに androidx.core:core-ktx を確認してください
-    // import androidx.core.graphics.ColorUtils
-    /** (HELPER 2) Viewにリスナーやフリックコントローラーをアタッチします */
+    /** Viewにリスナーやフリックコントローラーをアタッチします */
     @SuppressLint("ClickableViewAccessibility")
     private fun attachKeyBehavior(keyView: View, keyData: KeyData): Any? {
         val layout = currentLayout ?: return null // currentLayoutが必須
@@ -647,7 +635,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.CROSS_FLICK -> {
-                // ▼▼▼ 修正: flickKeyMapsのキーとして、動的状態の現在のラベル(newKeyData.label)を使用する ▼▼▼
                 val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d(
                     "FlickKeyboardView KeyType.CROSS_FLICK",
@@ -741,7 +728,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
 
                         // ガイドが影に重ならないように少しインセットを入れる (任意調整)
-                        val inset = dpToPx(4)
+                        val inset = dpToPx(2) // QWERTYに合わせる
                         layerDrawable.setLayerInset(1, inset, inset, inset, inset)
 
                         keyView.background = layerDrawable
@@ -1027,12 +1014,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             KeyType.STICKY_TWO_STEP_FLICK -> {
                 val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
                 if (twoStepMap != null) {
-                    // ★ ここで TfbiStickyFlickController をインスタンス化
                     val controller = TfbiStickyFlickController(
                         context,
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
-                        // ★ TfbiStickyFlickController.TfbiListener を実装
                         this.listener = object : TfbiStickyFlickController.TfbiListener {
                             override fun onFlick(
                                 first: TfbiFlickDirection,
@@ -1064,7 +1049,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.HIERARCHICAL_FLICK -> {
-                // [修正点 1] hierarchicalFlickMaps から StatefulKey を取得
                 val statefulNode = layout.hierarchicalFlickMaps[keyData.label]
 
                 if (statefulNode != null) {
@@ -1077,7 +1061,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
 
-                        // [修正点 2] onFlick と onModeChanged の両方を実装
                         this.listener = object : TfbiHierarchicalFlickController.TfbiListener {
                             override fun onFlick(character: String) {
                                 Log.d(
@@ -1111,7 +1094,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        // [修正点 3]
                         attach(keyView, statefulNode)
                     }
                     when (themeMode) {
@@ -1136,7 +1118,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         return null
     }
 
-    /** (HELPER 3) アタッチされたビヘイビア（コントローラー）を解除します */
+    /** アタッチされたビヘイビア（コントローラー）を解除します */
     private fun detachKeyBehavior(controller: Any?) {
         // コントローラーを解除
         when (controller) {
@@ -1177,7 +1159,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /** (HELPER 4) 既存Viewのビジュアル（テキスト/アイコン）のみを更新します */
+    /** 既存Viewのビジュアル（テキスト/アイコン）のみを更新します */
     private fun updateKeyVisuals(view: View, keyData: KeyData) {
         when (view) {
             is AppCompatImageButton -> {
