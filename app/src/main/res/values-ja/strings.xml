@@ -299,7 +299,7 @@
     <string name="delete_key_left_flick_title">削除キーの左フリック</string>
     <string name="delete_key_left_summary">削除キーを左にフリックすると、カーソルの前にある特定の記号までの文字列もしくは全ての文字列をまとめて削除します。\n（対象: 句読点「。、！？」、括弧「「」『』」、記号「ー」、コンマ「,」、ピリオド「.」）</string>
     <string name="key_candidate_letter_size_preference_title">キー・変換候補の文字サイズ</string>
-    <string name="key_candidate_letter_size_preference_summary">キーボードのキーと変換候補に表示される文字の大きさを設定できます(※日本語かなのみ)</string>
+    <string name="key_candidate_letter_size_preference_summary">変換候補に表示される文字の大きさを設定できます</string>
     <string name="fragment_key_candidate_letter_size_title">文字の大きさ</string>
 
     <string name="setting_candidate_letter_size">候補欄の文字サイズ</string>
@@ -393,4 +393,7 @@
     <string name="theme_custom_special_key_text_color">特殊キーの文字色</string>
     <string name="keyboard_theme_dialog_title_2">色を選択</string>
     <string name="keyboardthemefragment">テーマ</string>
+    <string name="tenkeycandidatelettersizefragment">キーのサイズ</string>
+    <string name="kana_keyboard_letter_size_preference_titile">文字のサイズ</string>
+    <string name="kana_keyboard_letter_size_preference_summary">キーに表示する文字の大きさを調整します</string>
 </resources>
