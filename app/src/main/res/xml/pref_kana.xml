@@ -3,6 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/kana_layout_category_preference_title">
+        <Preference
+            android:key="kana_keyboard_letter_size_preference"
+            android:title="@string/kana_keyboard_letter_size_preference_titile"
+            app:summary="@string/kana_keyboard_letter_size_preference_summary" />
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="tenkey_show_switch_ime_button_preference"

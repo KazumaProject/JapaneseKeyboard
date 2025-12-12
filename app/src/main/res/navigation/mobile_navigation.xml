@@ -58,6 +58,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_keyboardThemeFragment"
             app:destination="@id/keyboardThemeFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_tenKeyCandidateLetterSizeFragment"
+            app:destination="@id/tenKeyCandidateLetterSizeFragment" />
     </fragment>
 
     <fragment
@@ -183,5 +186,9 @@
         android:id="@+id/keyboardThemeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment"
         android:label="@string/keyboardthemefragment" />
+    <fragment
+        android:id="@+id/tenKeyCandidateLetterSizeFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting.TenKeyCandidateLetterSizeFragment"
+        android:label="@string/tenkeycandidatelettersizefragment" />
 
 </navigation>
