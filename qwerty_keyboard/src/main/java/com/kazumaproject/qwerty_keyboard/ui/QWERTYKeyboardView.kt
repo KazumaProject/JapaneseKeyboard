@@ -281,26 +281,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 setMaterialYouTheme(this.isNightMode, true)
             }
 
-            "light" -> {
-                setFullCustomNeumorphismTheme(
-                    backgroundColor = customBgColor,
-                    normalKeyColor = customKeyColor,
-                    specialKeyColor = customSpecialKeyColor,
-                    normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor
-                )
-            }
-
-            "dark" -> {
-                setFullCustomNeumorphismTheme(
-                    backgroundColor = customBgColor,
-                    normalKeyColor = customKeyColor,
-                    specialKeyColor = customSpecialKeyColor,
-                    normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor
-                )
-            }
-
             "custom" -> {
                 setFullCustomNeumorphismTheme(
                     backgroundColor = customBgColor,
