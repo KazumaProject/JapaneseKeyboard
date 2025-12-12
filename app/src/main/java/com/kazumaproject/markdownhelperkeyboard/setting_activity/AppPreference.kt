@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Color
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -155,6 +156,17 @@ object AppPreference {
         Pair("shortcut_toolbar_visibility_preference", false)
 
     private val APP_THEME_SEED_COLOR = Pair("app_theme_seed_color_preference", 0x00000000)
+
+    private val KEYBOARD_THEME_MODE =
+        Pair("keyboard_theme_mode_preference", "default") // default, light, dark, custom
+    private val CUSTOM_THEME_BG_COLOR = Pair("custom_theme_bg_color_preference", Color.WHITE)
+    private val CUSTOM_THEME_KEY_COLOR = Pair("custom_theme_key_color_preference", Color.LTGRAY)
+    private val CUSTOM_THEME_SPECIAL_KEY_COLOR =
+        Pair("custom_theme_special_key_color_preference", Color.GRAY)
+    private val CUSTOM_THEME_KEY_TEXT_COLOR =
+        Pair("custom_theme_key_text_color_preference", Color.BLACK)
+    private val CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR =
+        Pair("custom_theme_special_key_text_color_preference", Color.BLACK)
 
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
 
@@ -823,6 +835,52 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(APP_THEME_SEED_COLOR.first, value)
+        }
+
+    var theme_mode: String
+        get() = preferences.getString(KEYBOARD_THEME_MODE.first, KEYBOARD_THEME_MODE.second)
+            ?: "default"
+        set(value) = preferences.edit {
+            it.putString(KEYBOARD_THEME_MODE.first, value)
+        }
+
+    var custom_theme_bg_color: Int
+        get() = preferences.getInt(CUSTOM_THEME_BG_COLOR.first, CUSTOM_THEME_BG_COLOR.second)
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_BG_COLOR.first, value)
+        }
+
+    var custom_theme_key_color: Int
+        get() = preferences.getInt(CUSTOM_THEME_KEY_COLOR.first, CUSTOM_THEME_KEY_COLOR.second)
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_KEY_COLOR.first, value)
+        }
+
+    var custom_theme_special_key_color: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_SPECIAL_KEY_COLOR.first,
+            CUSTOM_THEME_SPECIAL_KEY_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_SPECIAL_KEY_COLOR.first, value)
+        }
+
+    var custom_theme_key_text_color: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_KEY_TEXT_COLOR.first,
+            CUSTOM_THEME_KEY_TEXT_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_KEY_TEXT_COLOR.first, value)
+        }
+
+    var custom_theme_special_key_text_color: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR.first,
+            CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR.first, value)
         }
 
     var delete_key_left_flick_preference: Boolean
