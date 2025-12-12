@@ -399,7 +399,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                 resetLayout()
             }
 
-            "light", "dark", "custom" -> {
+            "custom" -> {
                 setCustomThemePopup()
                 setFullCustomNeumorphismTheme(
                     backgroundColor = customBgColor,
