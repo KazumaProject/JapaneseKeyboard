@@ -280,6 +280,16 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
+    // リーク対策: RecyclerViewの参照を断ち切る
+    override fun onDestroyView() {
+        try {
+            listView.adapter = null
+        } catch (e: Exception) {
+            // Viewが生成されていない場合などを考慮して例外は無視
+        }
+        super.onDestroyView()
+    }
+
     @SuppressLint("CheckResult")
     private fun showColorPickerDialog() {
         val initialColor = appPreference.seedColor
