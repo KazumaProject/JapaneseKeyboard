@@ -24,8 +24,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
 
     companion object {
         private const val PREF_KEY_DEFAULT = "theme_default"
-        private const val PREF_KEY_LIGHT = "theme_light"
-        private const val PREF_KEY_DARK = "theme_dark"
         private const val PREF_KEY_CUSTOM = "theme_custom"
         private const val PREF_KEY_CUSTOM_BG = "theme_custom_bg_color"
         private const val PREF_KEY_CUSTOM_KEY = "theme_custom_key_color"
@@ -34,8 +32,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val PREF_KEY_CUSTOM_SPECIAL_TEXT = "theme_custom_special_key_text_color"
 
         private const val MODE_DEFAULT = "default"
-        private const val MODE_LIGHT = "light"
-        private const val MODE_DARK = "dark"
         private const val MODE_CUSTOM = "custom"
     }
 
@@ -70,28 +66,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             }
         }
         systemCategory.addPreference(defaultPref)
-
-        // Light Theme
-        val lightPref = CheckBoxPreference(context).apply {
-            key = PREF_KEY_LIGHT
-            title = getString(R.string.theme_light) // "Light"
-            onPreferenceClickListener = Preference.OnPreferenceClickListener {
-                handleThemeSelection(MODE_LIGHT)
-                true
-            }
-        }
-        systemCategory.addPreference(lightPref)
-
-        // Dark Theme
-        val darkPref = CheckBoxPreference(context).apply {
-            key = PREF_KEY_DARK
-            title = getString(R.string.theme_dark) // "Dark"
-            onPreferenceClickListener = Preference.OnPreferenceClickListener {
-                handleThemeSelection(MODE_DARK)
-                true
-            }
-        }
-        systemCategory.addPreference(darkPref)
 
         // Custom Category
         val customCategory = PreferenceCategory(context).apply {
@@ -197,8 +171,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
     private fun updateCheckStates(selectedMode: String) {
         findPreference<CheckBoxPreference>(PREF_KEY_DEFAULT)?.isChecked =
             selectedMode == MODE_DEFAULT
-        findPreference<CheckBoxPreference>(PREF_KEY_LIGHT)?.isChecked = selectedMode == MODE_LIGHT
-        findPreference<CheckBoxPreference>(PREF_KEY_DARK)?.isChecked = selectedMode == MODE_DARK
         findPreference<CheckBoxPreference>(PREF_KEY_CUSTOM)?.isChecked = selectedMode == MODE_CUSTOM
     }
 
