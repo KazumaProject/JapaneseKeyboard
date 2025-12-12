@@ -30,6 +30,9 @@ class SettingMainFragment : Fragment() {
     private var _binding: FragmentSettingMainBinding? = null
     private val binding get() = _binding!!
 
+    // リーク対策: Mediatorを変数で保持してonDestroyViewで解放できるようにする
+    private var tabLayoutMediator: TabLayoutMediator? = null
+
     @Inject
     lateinit var appPreference: AppPreference
 
@@ -85,20 +88,23 @@ class SettingMainFragment : Fragment() {
         binding.settingViewPager.adapter = adapter
 
         // タブのタイトル設定
-        TabLayoutMediator(binding.settingTabLayout, binding.settingViewPager) { tab, position ->
-            tab.text = when (position) {
-                0 -> getString(R.string.category_common)
-                1 -> getString(R.string.keyboardthemefragment)
-                2 -> "zenz"
-                3 -> getString(R.string.category_dictionary)
-                4 -> getString(R.string.category_kana)
-                5 -> "QWERTY"
-                6 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
-                7 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
-                8 -> getString(R.string.tablet_preference_category_title) // タブレット
-                else -> ""
+        // 変数に代入してからattachする
+        tabLayoutMediator =
+            TabLayoutMediator(binding.settingTabLayout, binding.settingViewPager) { tab, position ->
+                tab.text = when (position) {
+                    0 -> getString(R.string.category_common)
+                    1 -> getString(R.string.keyboardthemefragment)
+                    2 -> "zenz"
+                    3 -> getString(R.string.category_dictionary)
+                    4 -> getString(R.string.category_kana)
+                    5 -> "QWERTY"
+                    6 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
+                    7 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
+                    8 -> getString(R.string.tablet_preference_category_title) // タブレット
+                    else -> ""
+                }
             }
-        }.attach()
+        tabLayoutMediator?.attach()
 
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
@@ -126,6 +132,11 @@ class SettingMainFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        // リーク対策: ViewPagerとMediatorの参照を断つ
+        tabLayoutMediator?.detach()
+        tabLayoutMediator = null
+        binding.settingViewPager.adapter = null
+
         super.onDestroyView()
         _binding = null
     }
