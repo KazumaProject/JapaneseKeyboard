@@ -55,6 +55,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_qwertyMarginSettingFragment"
             app:destination="@id/qwertyMarginSettingFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_keyboardThemeFragment"
+            app:destination="@id/keyboardThemeFragment" />
     </fragment>
 
     <fragment
@@ -176,5 +179,9 @@
         android:id="@+id/qwertyMarginSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.qwerty_button_size.QwertyMarginSettingFragment"
         android:label="@string/qwertymarginsettingfragment" />
+    <fragment
+        android:id="@+id/keyboardThemeFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment"
+        android:label="@string/keyboardthemefragment" />
 
 </navigation>

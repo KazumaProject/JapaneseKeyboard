@@ -3,7 +3,6 @@ package com.kazumaproject.custom_keyboard.controller
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.PointF
-import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -24,16 +23,11 @@ import kotlin.math.abs
 
 class CrossFlickInputController(private val context: Context) {
 
-    /**
-     * ▼▼▼ 修正 ▼▼▼
-     * ロングプレス後の指離しイベント用のリスナーメソッドを追加
-     */
     interface CrossFlickListener {
         fun onFlick(flickAction: FlickAction, isFlick: Boolean)
         fun onFlickLongPress(flickAction: FlickAction)
         fun onFlickUpAfterLongPress(flickAction: FlickAction, isFlick: Boolean)
     }
-    // ▲▲▲ 修正 ▲▲▲
 
     var listener: CrossFlickListener? = null
 
@@ -63,6 +57,20 @@ class CrossFlickInputController(private val context: Context) {
     private var isLongPressMode = false
     private var isLongPressTriggered = false
 
+    // 色設定保持用の変数
+    private var popupBackgroundColor: Int? = null
+    private var popupHighlightedColor: Int? = null
+    private var popupTextColor: Int? = null
+
+    /**
+     * FlickKeyboardView から呼び出してテーマカラーをセットする
+     */
+    fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
+        this.popupBackgroundColor = backgroundColor
+        this.popupHighlightedColor = highlightedColor
+        this.popupTextColor = textColor
+    }
+
     fun cancel() {
         controllerScope.cancel()
         dismissAllPopups()
@@ -77,9 +85,14 @@ class CrossFlickInputController(private val context: Context) {
     }
 
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
-        Log.d("handleTouchEvent CrossFlick", "${event.action}")
+        // Log.d("handleTouchEvent CrossFlick", "${event.action}")
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                // ▼▼▼ 修正: 押下状態を目視させる ▼▼▼
+                view.isPressed = true
+                view.drawableHotspotChanged(event.x, event.y)
+                // ▲▲▲ 修正終了 ▲▲▲
+
                 isLongPressMode = false
                 isLongPressTriggered = false
                 anchorView = view
@@ -108,6 +121,10 @@ class CrossFlickInputController(private val context: Context) {
             }
 
             MotionEvent.ACTION_MOVE -> {
+                // ▼▼▼ 修正: ホットスポットの追従 ▼▼▼
+                view.drawableHotspotChanged(event.x, event.y)
+                // ▲▲▲ 修正終了 ▲▲▲
+
                 val dx = event.rawX - initialTouchPoint.x
                 val dy = event.rawY - initialTouchPoint.y
 
@@ -119,14 +136,8 @@ class CrossFlickInputController(private val context: Context) {
                         showPopup(currentDirection)
                     } else {
                         // ロングプレスモード中のフリック先変更
-                        // 1. 新しいフリック先をハイライトする
                         highlightPopup(currentDirection)
 
-                        /**
-                         * ▼▼▼ 修正 ▼▼▼
-                         * ロングプレスモード中にフリック先が変更された場合、
-                         * その新しいフリック先のアクションで onFlickLongPress を呼び出す。
-                         */
                         val directionToCommit = if (currentDirection != CrossDirection.TAP) {
                             directionMapping[currentDirection]
                         } else {
@@ -135,20 +146,18 @@ class CrossFlickInputController(private val context: Context) {
                         val longPressAction = flickActionMap[directionToCommit]
 
                         longPressAction?.let { listener?.onFlickLongPress(it) }
-                        // ▲▲▲ 修正 ▲▲▲
                     }
                 }
                 return true
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                // ▼▼▼ 修正: 押下状態解除 ▼▼▼
+                view.isPressed = false
+                // ▲▲▲ 修正終了 ▲▲▲
+
                 longPressJob?.cancel()
 
-                /**
-                 * ▼▼▼ 修正 ▼▼▼
-                 * ロングプレスが発火したか否かで、呼び出すリスナーを分岐させる
-                 */
-                // 指を離した時点での最終的なアクションを決定
                 val flickActionToCommit = if (currentDirection != CrossDirection.TAP) {
                     flickActionMap[directionMapping[currentDirection]]
                 } else {
@@ -157,8 +166,7 @@ class CrossFlickInputController(private val context: Context) {
 
                 val isFlick = currentDirection != CrossDirection.TAP
 
-
-                Log.d("CrossFlick Up", "$flickActionToCommit $isLongPressTriggered $isFlick")
+                // Log.d("CrossFlick Up", "$flickActionToCommit $isLongPressTriggered $isFlick")
 
                 if (isLongPressTriggered) {
                     if (flickActionToCommit == null) {
@@ -208,6 +216,12 @@ class CrossFlickInputController(private val context: Context) {
 
         val popupView = CrossFlickPopupView(context).apply {
             setContent(flickAction)
+
+            // 色設定があれば適用
+            if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
+                setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
+            }
+
             setHighlight(true)
         }
 
@@ -242,7 +256,15 @@ class CrossFlickInputController(private val context: Context) {
         }
         directionMapping.forEach { (crossDir, flickDir) ->
             flickActionMap[flickDir]?.let { flickAction ->
-                val popupView = CrossFlickPopupView(context).apply { setContent(flickAction) }
+                val popupView = CrossFlickPopupView(context).apply {
+                    setContent(flickAction)
+
+                    // 色設定があれば適用
+                    if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
+                        setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
+                    }
+                }
+
                 val popupWindow = PopupWindow(popupView, anchor.width, anchor.height, false)
                     .apply { isClippingEnabled = false }
 
