@@ -535,7 +535,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT to FlickAction.Input("を"),
             FlickDirection.UP to FlickAction.Input("ん"),
             FlickDirection.UP_RIGHT to FlickAction.Input("ー"),
-            FlickDirection.DOWN to FlickAction.Input(""),
+            FlickDirection.DOWN to FlickAction.Input("〜"),
         )
 
         val wa_small = mapOf(
@@ -1789,7 +1789,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("わ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
             FlickDirection.UP to FlickAction.Input("ん"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
+            FlickDirection.DOWN to FlickAction.Input("〜")
         )
         val symbols = mapOf(
             FlickDirection.TAP to FlickAction.Input("、"),
@@ -2215,7 +2216,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("わ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
             FlickDirection.UP to FlickAction.Input("ん"),
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
+            FlickDirection.DOWN to FlickAction.Input("〜")
         )
         val symbols = mapOf(
             FlickDirection.TAP to FlickAction.Input("、"),
@@ -3322,7 +3324,8 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Input("わ"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
                     FlickDirection.UP to FlickAction.Input("ん"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
+                    FlickDirection.DOWN to FlickAction.Input("〜")
                 )
                 val symbols = mapOf(
                     FlickDirection.TAP to FlickAction.Input("、"),
@@ -5004,7 +5007,8 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Input("わ"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
                     FlickDirection.UP to FlickAction.Input("ん"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
+                    FlickDirection.DOWN to FlickAction.Input("〜")
                 )
                 val symbols = mapOf(
                     FlickDirection.TAP to FlickAction.Input("、"),
@@ -6563,7 +6567,8 @@ object KeyboardDefaultLayouts {
                     FlickDirection.TAP to FlickAction.Input("わ"),
                     FlickDirection.UP_LEFT_FAR to FlickAction.Input("を"),
                     FlickDirection.UP to FlickAction.Input("ん"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー")
+                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
+                    FlickDirection.DOWN to FlickAction.Input("〜")
                 )
                 val symbols = mapOf(
                     FlickDirection.TAP to FlickAction.Input("、"),
