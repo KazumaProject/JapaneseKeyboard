@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
@@ -19,6 +22,7 @@ import android.widget.GridLayout
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
@@ -94,6 +98,16 @@ class FlickKeyboardView @JvmOverloads constructor(
     )
     // ▲▲▲ MODIFIED PROPERTIES ▲▲▲
 
+    // Theme Variables (Initialized with defaults)
+    private var themeMode: String = "default"
+    private var isNightMode: Boolean = false
+    private var isDynamicColorEnabled: Boolean = false
+    private var customBgColor: Int = Color.WHITE
+    private var customKeyColor: Int = Color.LTGRAY
+    private var customSpecialKeyColor: Int = Color.GRAY
+    private var customKeyTextColor: Int = Color.BLACK
+    private var customSpecialKeyTextColor: Int = Color.BLACK
+
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
@@ -110,6 +124,48 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
+    }
+
+    /**
+     * テーマ設定を一括で適用するメイン関数
+     * メンバ変数に値を保存してからテーマを適用します。
+     * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
+     */
+    fun applyKeyboardTheme(
+        themeMode: String,
+        currentNightMode: Int,
+        isDynamicColorEnabled: Boolean,
+        customBgColor: Int,
+        customKeyColor: Int,
+        customSpecialKeyColor: Int,
+        customKeyTextColor: Int,
+        customSpecialKeyTextColor: Int
+    ) {
+        // メンバ変数に代入
+        this.themeMode = themeMode
+
+        // Int型の currentNightMode から Boolean型の isNightMode を判定
+        this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
+
+        this.isDynamicColorEnabled = isDynamicColorEnabled
+        this.customBgColor = customBgColor
+        this.customKeyColor = customKeyColor
+        this.customSpecialKeyColor = customSpecialKeyColor
+        this.customKeyTextColor = customKeyTextColor
+        this.customSpecialKeyTextColor = customSpecialKeyTextColor
+    }
+
+    /**
+     * 色の明るさを調整するヘルパー関数
+     * @param color 元の色
+     * @param factor 1.0より大＝明るく、1.0より小＝暗く
+     */
+    private fun manipulateColor(color: Int, factor: Float): Int {
+        val a = Color.alpha(color)
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.argb(a, r, g, b)
     }
 
     // ▼▼▼ MODIFIED setKeyboard (Helper関数を使用) ▼▼▼
@@ -233,12 +289,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         val isDarkTheme = context.isDarkThemeOn()
+        // 角丸サイズを統一
+        val commonCornerRadius = dpToPx(8).toFloat()
+
         val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
+            // ■■■ 1. 画像ボタン (AppCompatImageButton) ■■■
             AppCompatImageButton(context).apply {
                 isFocusable = false
-                elevation = 2f
+                elevation = 0f
                 setImageResource(keyData.drawableResId)
                 contentDescription = keyData.label
+                scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+
+                // 影の分だけ中身を小さく見せる必要があるためパディングを設定
+                setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
 
                 val originalBg = ContextCompat.getDrawable(
                     context,
@@ -252,14 +316,48 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (keyData.isHiLighted) {
                     isPressed = true
                 }
+
+                // ★ テーマ適用
+                when (themeMode) {
+                    "custom" -> {
+                        // 1. ベース（ニューモーフィズム）
+                        val neumorphDrawable = getDynamicNeumorphDrawable(
+                            baseColor = customSpecialKeyColor,
+                            radius = commonCornerRadius
+                        )
+
+                        // 2. 上層（透明なSegmentedDrawable）
+                        // STANDARD_FLICKと見た目を合わせるため、アイコンキーにもダミーのSegmentedDrawableを重ねる
+                        val segmentedDrawable = SegmentedBackgroundDrawable(
+                            label = "",
+                            baseColor = Color.TRANSPARENT,
+                            highlightColor = customSpecialKeyColor,
+                            textColor = customSpecialKeyTextColor,
+                            cornerRadius = commonCornerRadius
+                        )
+
+                        // 3. レイヤー化とインセット設定
+                        val layerDrawable =
+                            LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
+                        val inset = dpToPx(4)
+                        layerDrawable.setLayerInset(1, inset, inset, inset, inset)
+
+                        background = layerDrawable
+                        setColorFilter(customSpecialKeyTextColor)
+                    }
+                }
             }
         } else {
+            // ■■■ 2. テキストボタン (AutoSizeButton) ■■■
             AutoSizeButton(context).apply {
                 isFocusable = false
                 isAllCaps = false
+                elevation = 0f
+
                 if (!keyData.isSpecialKey) {
                     setDefaultTextSize(defaultTextSize)
                 }
+
                 if (keyData.label.contains("\n")) {
                     val parts = keyData.label.split("\n", limit = 2)
                     val primaryText = parts[0]
@@ -289,9 +387,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     gravity = Gravity.CENTER
                 }
 
-                val originalBg: android.graphics.drawable.Drawable? =
+                val originalBg: Drawable? =
                     if (keyData.isSpecialKey) {
-                        elevation = 2f
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                         ContextCompat.getDrawable(
                             context,
@@ -312,23 +409,119 @@ class FlickKeyboardView @JvmOverloads constructor(
                     )
                     background = insetBg
                 }
+
+                // ★ テーマ適用
+                when (themeMode) {
+                    "custom" -> {
+                        val targetBaseColor =
+                            if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
+                        val targetTextColor =
+                            if (keyData.isSpecialKey) customSpecialKeyTextColor else customKeyTextColor
+                        val targetHighlightColor = if (keyData.isSpecialKey) manipulateColor(
+                            customSpecialKeyColor,
+                            1.2f
+                        ) else customSpecialKeyColor
+
+                        val neumorphDrawable = getDynamicNeumorphDrawable(
+                            baseColor = targetBaseColor,
+                            radius = commonCornerRadius
+                        )
+
+                        val segmentedDrawable = SegmentedBackgroundDrawable(
+                            label = "",
+                            baseColor = Color.TRANSPARENT,
+                            highlightColor = targetHighlightColor,
+                            textColor = targetTextColor,
+                            cornerRadius = commonCornerRadius
+                        )
+
+                        val layerDrawable =
+                            LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
+                        val inset = dpToPx(4)
+                        layerDrawable.setLayerInset(1, inset, inset, inset, inset)
+
+                        background = layerDrawable
+                        setTextColor(targetTextColor)
+                    }
+                }
             }
         }
 
+        // LayoutParamsの設定
         val params = LayoutParams().apply {
             rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
             columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
             width = 0
             height = 0
-            elevation = 2f
-            if (keyData.keyType == KeyType.STANDARD_FLICK) {
-                setMargins(6, 9, 6, 9)
-            }
+
+            // ★重要修正: すべてのキーにマージンを適用してサイズ感を統一
+            setMargins(6, 9, 6, 9)
         }
         keyView.layoutParams = params
         return keyView
     }
 
+    /**
+     * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
+     * 影の濃さを強化しています。
+     */
+    private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
+        // ★修正: 影を少し濃くしました (Shadow: 0.2->0.3, Highlight: 0.4->0.6)
+        val highlightColor = ColorUtils.blendARGB(baseColor, Color.WHITE, 0.6f)
+        val shadowColor = ColorUtils.blendARGB(baseColor, Color.BLACK, 0.3f)
+
+        // 影の距離
+        val distance = dpToPx(3)
+
+        // --- A. 通常状態 (Idle) ---
+        val shadowDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(shadowColor)
+        }
+        val highlightDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(highlightColor)
+        }
+        val surfaceDrawable = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(baseColor)
+        }
+
+        val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
+
+        // Shadow: 左と上を空けて右下にずらす
+        idleLayer.setLayerInset(0, distance, distance, 0, 0)
+        // Highlight: 右と下を空けて左上にずらす
+        idleLayer.setLayerInset(1, 0, 0, distance, distance)
+        // Surface: 四方を少し空けて中央に配置
+        idleLayer.setLayerInset(2, distance, distance, distance, distance)
+
+
+        // --- B. 押下状態 (Pressed) ---
+        val pressedSurface = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            // ベースより少し暗くする
+            setColor(ColorUtils.blendARGB(baseColor, Color.BLACK, 0.1f))
+        }
+
+        val pressedLayer = LayerDrawable(arrayOf(pressedSurface))
+        pressedLayer.setLayerInset(0, distance, distance, distance, distance)
+
+
+        // --- C. StateListDrawable ---
+        val stateList = android.graphics.drawable.StateListDrawable()
+        stateList.addState(intArrayOf(android.R.attr.state_pressed), pressedLayer)
+        stateList.addState(intArrayOf(), idleLayer)
+
+        return stateList
+    }
+
+    // ColorUtilsがない場合は、以下のimportを追加するか、build.gradleに androidx.core:core-ktx を確認してください
+    // import androidx.core.graphics.ColorUtils
     /** (HELPER 2) Viewにリスナーやフリックコントローラーをアタッチします */
     @SuppressLint("ClickableViewAccessibility")
     private fun attachKeyBehavior(keyView: View, keyData: KeyData): Any? {
@@ -352,17 +545,55 @@ class FlickKeyboardView @JvmOverloads constructor(
                             context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
                         val textColor =
                             context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
-                        val dynamicColorTheme = FlickPopupColorTheme(
-                            segmentColor = surfaceContainerLow,
-                            segmentHighlightGradientStartColor = secondaryColor,
-                            segmentHighlightGradientEndColor = secondaryColor,
-                            centerGradientStartColor = surfaceContainerHighest,
-                            centerGradientEndColor = surfaceContainerLow,
-                            centerHighlightGradientStartColor = secondaryColor,
-                            centerHighlightGradientEndColor = secondaryColor,
-                            separatorColor = textColor,
-                            textColor = textColor
-                        )
+                        val dynamicColorTheme = when (themeMode) {
+                            "default" -> {
+                                FlickPopupColorTheme(
+                                    segmentColor = surfaceContainerLow,
+                                    segmentHighlightGradientStartColor = secondaryColor,
+                                    segmentHighlightGradientEndColor = secondaryColor,
+                                    centerGradientStartColor = surfaceContainerHighest,
+                                    centerGradientEndColor = surfaceContainerLow,
+                                    centerHighlightGradientStartColor = secondaryColor,
+                                    centerHighlightGradientEndColor = secondaryColor,
+                                    separatorColor = textColor,
+                                    textColor = textColor
+                                )
+                            }
+
+                            "custom" -> {
+                                FlickPopupColorTheme(
+                                    segmentColor = customSpecialKeyColor,
+                                    segmentHighlightGradientStartColor = customSpecialKeyColor,
+                                    segmentHighlightGradientEndColor = customSpecialKeyColor,
+                                    centerGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        0.8f
+                                    ),
+                                    centerHighlightGradientStartColor = customSpecialKeyColor,
+                                    centerHighlightGradientEndColor = customSpecialKeyColor,
+                                    separatorColor = customSpecialKeyTextColor,
+                                    textColor = customSpecialKeyTextColor
+                                )
+                            }
+
+                            else -> {
+                                FlickPopupColorTheme(
+                                    segmentColor = surfaceContainerLow,
+                                    segmentHighlightGradientStartColor = secondaryColor,
+                                    segmentHighlightGradientEndColor = secondaryColor,
+                                    centerGradientStartColor = surfaceContainerHighest,
+                                    centerGradientEndColor = surfaceContainerLow,
+                                    centerHighlightGradientStartColor = secondaryColor,
+                                    centerHighlightGradientEndColor = secondaryColor,
+                                    separatorColor = textColor,
+                                    textColor = textColor
+                                )
+                            }
+                        }
                         setPopupColors(dynamicColorTheme)
                         this.listener = object : FlickInputController.FlickListener {
                             override fun onStateChanged(
@@ -455,6 +686,15 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
                         attach(keyView, flickActionMap)
                     }
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
+                    }
                     crossFlickControllers.add(controller)
                     return controller
                 }
@@ -470,22 +710,55 @@ class FlickKeyboardView @JvmOverloads constructor(
                     // ( ... Controllerの各種設定 ... )
                     val label = keyData.label
                     val isDarkTheme = context.isDarkThemeOn()
-                    val keyBaseColor =
-                        if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest) else context.getColorFromAttr(
-                            R.attr.colorSurface
-                        )
-                    val keyHighlightColor =
-                        context.getColorFromAttr(R.attr.colorSecondaryContainer)
-                    val keyTextColor = context.getColorFromAttr(R.attr.colorOnSurface)
+                    val segmentedDrawable: SegmentedBackgroundDrawable
+                    if (themeMode == "custom") {
+                        // --- A. ニューモーフィズムモード ---
 
-                    val segmentedDrawable = SegmentedBackgroundDrawable(
-                        label = label,
-                        baseColor = keyBaseColor,
-                        highlightColor = keyHighlightColor,
-                        textColor = keyTextColor,
-                        cornerRadius = 20f
-                    )
-                    keyView.background = segmentedDrawable
+                        // ベースとなるニューモーフィズムDrawableを作成
+                        val neumorphDrawable = getDynamicNeumorphDrawable(
+                            baseColor = customKeyColor,
+                            radius = dpToPx(8).toFloat()
+                        )
+
+                        // ガイド描画用Drawable (背景は透明にして、下のニューモーフィズムを見せる)
+                        segmentedDrawable = SegmentedBackgroundDrawable(
+                            label = label,
+                            baseColor = Color.TRANSPARENT, // ★重要: 透明にする
+                            highlightColor = manipulateColor(customKeyColor, 1.2f), // ハイライト時の色
+                            textColor = customKeyTextColor,
+                            cornerRadius = 20f
+                        )
+
+                        // LayerDrawableで重ねる (下:ニューモーフィズム, 上:ガイド)
+                        val layerDrawable =
+                            LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
+
+                        // ガイドが影に重ならないように少しインセットを入れる (任意調整)
+                        val inset = dpToPx(4)
+                        layerDrawable.setLayerInset(1, inset, inset, inset, inset)
+
+                        keyView.background = layerDrawable
+
+                    } else {
+                        // --- B. デフォルトモード (既存の処理) ---
+
+                        val keyBaseColor =
+                            if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
+                            else context.getColorFromAttr(R.attr.colorSurface)
+                        val keyHighlightColor =
+                            context.getColorFromAttr(R.attr.colorSecondaryContainer)
+                        val keyTextColor = context.getColorFromAttr(R.attr.colorOnSurface)
+
+                        segmentedDrawable = SegmentedBackgroundDrawable(
+                            label = label,
+                            baseColor = keyBaseColor,
+                            highlightColor = keyHighlightColor,
+                            textColor = keyTextColor,
+                            cornerRadius = 20f
+                        )
+                        keyView.background = segmentedDrawable
+                    }
+
                     keyView.setTextColor(Color.TRANSPARENT)
 
                     val controller = StandardFlickInputController(context).apply {
@@ -505,17 +778,55 @@ class FlickKeyboardView @JvmOverloads constructor(
                         val popupTextColor = context.getColorFromAttr(R.attr.colorOnSurface)
                         val popupStrokeColor = context.getColorFromAttr(R.attr.colorOutline)
 
-                        val dynamicColorTheme = FlickPopupColorTheme(
-                            segmentHighlightGradientStartColor = popupBackgroundColor,
-                            textColor = popupTextColor,
-                            separatorColor = popupStrokeColor,
-                            segmentColor = 0,
-                            segmentHighlightGradientEndColor = 0,
-                            centerGradientStartColor = 0,
-                            centerGradientEndColor = 0,
-                            centerHighlightGradientStartColor = 0,
-                            centerHighlightGradientEndColor = 0
-                        )
+                        val dynamicColorTheme = when (themeMode) {
+                            "default" -> {
+                                FlickPopupColorTheme(
+                                    segmentHighlightGradientStartColor = popupBackgroundColor,
+                                    textColor = popupTextColor,
+                                    separatorColor = popupStrokeColor,
+                                    segmentColor = 0,
+                                    segmentHighlightGradientEndColor = 0,
+                                    centerGradientStartColor = 0,
+                                    centerGradientEndColor = 0,
+                                    centerHighlightGradientStartColor = 0,
+                                    centerHighlightGradientEndColor = 0
+                                )
+                            }
+
+                            "custom" -> {
+                                FlickPopupColorTheme(
+                                    segmentColor = customSpecialKeyColor,
+                                    segmentHighlightGradientStartColor = customSpecialKeyColor,
+                                    segmentHighlightGradientEndColor = customSpecialKeyColor,
+                                    centerGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        0.8f
+                                    ),
+                                    centerHighlightGradientStartColor = customSpecialKeyColor,
+                                    centerHighlightGradientEndColor = customSpecialKeyColor,
+                                    separatorColor = customSpecialKeyTextColor,
+                                    textColor = customSpecialKeyTextColor
+                                )
+                            }
+
+                            else -> {
+                                FlickPopupColorTheme(
+                                    segmentHighlightGradientStartColor = popupBackgroundColor,
+                                    textColor = popupTextColor,
+                                    separatorColor = popupStrokeColor,
+                                    segmentColor = 0,
+                                    segmentHighlightGradientEndColor = 0,
+                                    centerGradientStartColor = 0,
+                                    centerGradientEndColor = 0,
+                                    centerHighlightGradientStartColor = 0,
+                                    centerHighlightGradientEndColor = 0
+                                )
+                            }
+                        }
                         setPopupColors(dynamicColorTheme)
 
                         val stringMap = flickActionMap.mapValues { (_, flickAction) ->
@@ -551,17 +862,55 @@ class FlickKeyboardView @JvmOverloads constructor(
                         val textColor =
                             context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
 
-                        val dynamicColorTheme = FlickPopupColorTheme(
-                            segmentColor = surfaceContainerHighest,
-                            segmentHighlightGradientStartColor = secondaryColor,
-                            segmentHighlightGradientEndColor = secondaryColor,
-                            centerGradientStartColor = surfaceContainerHighest,
-                            centerGradientEndColor = surfaceContainerLow,
-                            centerHighlightGradientStartColor = secondaryColor,
-                            centerHighlightGradientEndColor = secondaryColor,
-                            separatorColor = textColor,
-                            textColor = textColor
-                        )
+                        val dynamicColorTheme = when (themeMode) {
+                            "default" -> {
+                                FlickPopupColorTheme(
+                                    segmentColor = surfaceContainerHighest,
+                                    segmentHighlightGradientStartColor = secondaryColor,
+                                    segmentHighlightGradientEndColor = secondaryColor,
+                                    centerGradientStartColor = surfaceContainerHighest,
+                                    centerGradientEndColor = surfaceContainerLow,
+                                    centerHighlightGradientStartColor = secondaryColor,
+                                    centerHighlightGradientEndColor = secondaryColor,
+                                    separatorColor = textColor,
+                                    textColor = textColor
+                                )
+                            }
+
+                            "custom" -> {
+                                FlickPopupColorTheme(
+                                    segmentColor = customSpecialKeyColor,
+                                    segmentHighlightGradientStartColor = customSpecialKeyColor,
+                                    segmentHighlightGradientEndColor = customSpecialKeyColor,
+                                    centerGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        0.8f
+                                    ),
+                                    centerHighlightGradientStartColor = customSpecialKeyColor,
+                                    centerHighlightGradientEndColor = customSpecialKeyColor,
+                                    separatorColor = customSpecialKeyTextColor,
+                                    textColor = customSpecialKeyTextColor
+                                )
+                            }
+
+                            else -> {
+                                FlickPopupColorTheme(
+                                    segmentColor = surfaceContainerHighest,
+                                    segmentHighlightGradientStartColor = secondaryColor,
+                                    segmentHighlightGradientEndColor = secondaryColor,
+                                    centerGradientStartColor = surfaceContainerHighest,
+                                    centerGradientEndColor = surfaceContainerLow,
+                                    centerHighlightGradientStartColor = secondaryColor,
+                                    centerHighlightGradientEndColor = secondaryColor,
+                                    separatorColor = textColor,
+                                    textColor = textColor
+                                )
+                            }
+                        }
                         setPopupColors(dynamicColorTheme)
                         elevation = 1f
                         this.listener = object : PetalFlickInputController.PetalFlickListener {

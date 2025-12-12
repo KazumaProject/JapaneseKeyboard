@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
 import android.util.AttributeSet
 import android.util.TypedValue
@@ -29,6 +30,12 @@ class CrossFlickPopupView @JvmOverloads constructor(
 
     private lateinit var textView: TextView
     private lateinit var imageView: ImageView
+
+    // 動的に設定される色を保持する変数
+    private var useCustomColors = false
+    private var customBackgroundColor: Int = 0
+    private var customHighlightedBackgroundColor: Int = 0
+    private var customTextColor: Int = Color.WHITE
 
     private fun Context.getColorFromAttr(attrRes: Int): Int {
         val typedValue = TypedValue()
@@ -62,13 +69,42 @@ class CrossFlickPopupView @JvmOverloads constructor(
         addView(imageView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }
 
+    /**
+     * 動的に色を設定する関数
+     * @param backgroundColor 通常時の背景色
+     * @param highlightedBackgroundColor ハイライト時の背景色
+     * @param textColor テキストおよびアイコンの色
+     */
+    fun setColors(backgroundColor: Int, highlightedBackgroundColor: Int, textColor: Int) {
+        this.useCustomColors = true
+        this.customBackgroundColor = backgroundColor
+        this.customHighlightedBackgroundColor = highlightedBackgroundColor
+        this.customTextColor = textColor
+
+        // テキスト色を適用
+        textView.setTextColor(textColor)
+
+        // アイコンにも同じ色を適用（アイコンが白などで作成されている前提）
+        imageView.setColorFilter(textColor, PorterDuff.Mode.SRC_IN)
+
+        // 背景色を再適用
+        updateBackgroundColor()
+    }
+
     private fun updateBackgroundColor() {
         val cornerRadius = 20f
         backgroundShape.cornerRadius = cornerRadius
-        val color = if (isHighlighted) {
-            context.getColorFromAttr(materialR.attr.colorSecondaryContainer)
+
+        val color = if (useCustomColors) {
+            // カスタム色が設定されている場合
+            if (isHighlighted) customHighlightedBackgroundColor else customBackgroundColor
         } else {
-            context.getColorFromAttr(materialR.attr.colorSurfaceContainer)
+            // デフォルトのテーマ属性を使用する場合
+            if (isHighlighted) {
+                context.getColorFromAttr(materialR.attr.colorSecondaryContainer)
+            } else {
+                context.getColorFromAttr(materialR.attr.colorSurfaceContainer)
+            }
         }
         backgroundShape.setColor(color)
     }
@@ -86,19 +122,15 @@ class CrossFlickPopupView @JvmOverloads constructor(
             }
 
             is FlickAction.Action -> {
-                // THE FIX: Check for drawable, then label, then fallback.
                 if (flickAction.drawableResId != null) {
-                    // If a drawable resource is provided, use the ImageView.
                     imageView.setImageResource(flickAction.drawableResId)
                     imageView.visibility = View.VISIBLE
                     textView.visibility = View.GONE
                 } else if (!flickAction.label.isNullOrEmpty()) {
-                    // If no drawable, but a label exists, use the TextView to show the label.
                     textView.text = flickAction.label
                     textView.visibility = View.VISIBLE
                     imageView.visibility = View.GONE
                 } else {
-                    // Fallback for actions with no drawable and no label.
                     textView.text = flickAction.action.javaClass.simpleName.first().toString()
                     textView.visibility = View.VISIBLE
                     imageView.visibility = View.GONE
