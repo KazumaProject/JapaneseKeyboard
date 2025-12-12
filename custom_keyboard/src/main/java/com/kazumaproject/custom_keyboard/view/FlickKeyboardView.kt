@@ -283,9 +283,17 @@ class FlickKeyboardView @JvmOverloads constructor(
     /** (HELPER 1) keyDataに基づいてViewを生成し、基本的な設定（背景、テキスト、パディング等）を行います */
     private fun createKeyView(keyData: KeyData): View {
         val (leftInset, topInset, rightInset, bottomInset) = if (keyData.isSpecialKey) {
-            listOf(6, 12, 6, 6)
+            if (themeMode == "custom") {
+                listOf(6, 12, 6, 6)
+            } else {
+                listOf(0, 0, 0, 0)
+            }
         } else {
-            listOf(6, 9, 6, 9)
+            if (themeMode == "custom") {
+                listOf(6, 9, 6, 9)
+            } else {
+                listOf(0, 0, 0, 0)
+            }
         }
 
         val isDarkTheme = context.isDarkThemeOn()
@@ -1003,6 +1011,15 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         )
                     }
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
+                    }
                     tfbiControllers.add(controller)
                     return controller
                 }
@@ -1042,7 +1059,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         )
                     }
-                    stickyTfbiControllers.add(controller) // 新しいリストに追加
+                    stickyTfbiControllers.add(controller)
                     return controller
                 }
             }
@@ -1097,6 +1114,15 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                         // [修正点 3]
                         attach(keyView, statefulNode)
+                    }
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
                     }
                     hierarchicalTfbiControllers.add(controller)
                     return controller

@@ -78,6 +78,20 @@ class TfbiHierarchicalFlickController(
     private var popupWindow: PopupWindow? = null
     private lateinit var gestureDetector: GestureDetector
 
+    // ▼▼▼ 追加: 色設定保持用の変数 ▼▼▼
+    private var popupBackgroundColor: Int? = null
+    private var popupHighlightedColor: Int? = null
+    private var popupTextColor: Int? = null
+
+    /**
+     * ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
+     */
+    fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
+        this.popupBackgroundColor = backgroundColor
+        this.popupHighlightedColor = highlightedColor
+        this.popupTextColor = textColor
+    }
+
     /**
      * View と階層フリックのルートマップをアタッチします。
      */
@@ -158,14 +172,8 @@ class TfbiHierarchicalFlickController(
         showPopup(view, false)
     }
 
-    /**
-     * ★ 修正点 ★
-     * SubMenu を開く時、および cancelOnTap で閉じる時に、
-     * フリックの基準点(centerStack)を変更しないように修正。
-     */
     private fun handleTouchMove(event: MotionEvent, view: View) {
         // 現在の中心座標とマップをスタックの先頭から取得
-        // [修正点] centerStack は常に DOWN 時の [c1] のみ保持するため peek() で c1 を取得
         val (centerX, centerY) = centerStack.peek() ?: return
         val currentM = currentMap ?: return
 
@@ -176,26 +184,20 @@ class TfbiHierarchicalFlickController(
         // 現在のフリック方向を計算
         val direction = calculateDirection(dx, dy, flickSensitivity, enabledDirections)
 
-        // --- ★ 修正ロジック START ★ ---
         if (direction == TfbiFlickDirection.TAP) {
             // 指が中央に戻った
 
             // 1. ジッターガードが有効か？
             if (isJitterGuardActive) {
-                // ジッターガードが有効な場合、これは SubMenu を開いた直後の
-                // 意図しない TAP とみなし、キャンセル処理を「スキップ」する。
                 isJitterGuardActive = false // ガードを解除
                 popupView?.highlightDirection(currentHighlight) // ハイライトは維持
                 return
             }
 
             // 2. ジッターガードが無効な場合 (通常の TAP 処理)
-            // currentHighlight が TAP でない（＝何かを選択していた）場合のみ、
-            // cancelOnTap のチェックを行う
             if (currentHighlight != TfbiFlickDirection.TAP && mapStack.size > 1) {
 
                 val entryDirection = highlightStack.peek()
-                // [修正点] スタック構造の変更に伴い、親マップの取得方法を変更
                 val parentMap = if (mapStack.size > 1) mapStack.elementAt(1) else rootMap ?: return
                 val sourceNode = parentMap[entryDirection]
 
@@ -204,7 +206,6 @@ class TfbiHierarchicalFlickController(
                     Log.d(TAG, "CancelOnTap: Popping stack.")
 
                     // スタックを1段戻す
-                    // [修正点] centerStack.pop() を削除
                     mapStack.pop()
                     highlightStack.pop()
 
@@ -212,13 +213,7 @@ class TfbiHierarchicalFlickController(
                     currentMap = mapStack.peek()
                     currentHighlight = highlightStack.peek() // 親のハイライト(TAP)
 
-                    // ★ 修正点 (Fix 3) ★
                     // UIを親マップに戻す
-                    // mapStack.size == 1 (root) であっても、
-                    // 既に存在する popupView の内容を更新する必要があるため、
-                    // setupStageUI を呼ぶ。
-                    // showPopup(..., false) は ACTION_DOWN 以外では
-                    // 早期リターンしてしまうため使えない。
                     setupStageUI(currentMap!!)
 
                     popupView?.highlightDirection(currentHighlight)
@@ -230,10 +225,9 @@ class TfbiHierarchicalFlickController(
             popupView?.highlightDirection(currentHighlight)
             return
         }
-        // --- ★ 修正ロジック END ★ ---
 
 
-        // --- 以下は (direction != TAP) の場合の標準フリック処理 ---
+        // --- (direction != TAP) の場合の標準フリック処理 ---
 
         // (TAP 以外の方向に動いたので、ジッターガードは解除)
         isJitterGuardActive = false
@@ -262,7 +256,6 @@ class TfbiHierarchicalFlickController(
 
                 currentMap = node.nextMap
 
-                // [修正点] centerStack.push(...) を削除
                 mapStack.push(currentMap!!)
                 highlightStack.push(highlightTargetDirection) // どの方向から来たかを記録
 
@@ -286,11 +279,6 @@ class TfbiHierarchicalFlickController(
         }
     }
 
-    /**
-     * ★★★ 修正点 ★★★
-     * 状態(Mode)の更新を handleTouchMove に移動したため、
-     * handleTouchUp は文字入力(onFlick)のみに専念する
-     */
     private fun handleTouchUp(event: MotionEvent) {
         val currentM = currentMap ?: return
         val finalDirection = currentHighlight
@@ -325,33 +313,13 @@ class TfbiHierarchicalFlickController(
         }
 
         if (selectedNode != null) {
-            // 1. 文字を入力
             listener?.onFlick(selectedNode.char)
-
-            // 2. ★ 変更点：
-            // 状態更新は handleTouchMove で既に行われているため、
-            // ここでの updateInternalState の呼び出しを削除する
-            // updateInternalState(selectedNode.triggersMode) // <-- 削除
         }
 
         // 1タッチの終了
         resetState()
     }
 
-    /**
-     * ★ 修正点：
-     * 内部状態の更新と同時に、現在操作中のマップとUIも
-     * "ホットスワップ" するように変更。
-     *
-     * [ロジック]
-     * 1. 状態が変更されたら、新しい`rootMap` (例: `g_Map`) を取得する。
-     * 2. 現在の `highlightStack` (例: `[TAP, LEFT]`) を使って、
-     * `newRootMap` の中を `LEFT` までたどり、
-     * 新しい `SubMenu` (例: `subMenu_GI`) を見つける。
-     * 3. スタック全体を、新しいマップ(g_Map, subMenu_GI.nextMap)で再構築する。
-     * 4. [修正] `centerStack` (Size: 1) と `highlightStack` (Size: N) の
-     * サイズが異なることを前提にスタックを再構築する。
-     */
     private fun updateInternalState(newMode: KeyMode?, event: MotionEvent) {
         // 状態遷移のトリガーがなければ何もしない
         if (newMode == null) return
@@ -365,11 +333,12 @@ class TfbiHierarchicalFlickController(
 
         // 1. ★ 状態が変わったことを InputMethodService に通知
         val newLabel = when (currentMode) {
-            KeyMode.NORMAL -> rNode.label // "は"
+            KeyMode.NORMAL -> rNode.label
             KeyMode.DAKUTEN -> rNode.dakutenMap?.get(TfbiFlickDirection.TAP)
-                ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label // "ば"
+                ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label
+
             KeyMode.HANDAKUTEN -> rNode.handakutenMap?.get(TfbiFlickDirection.TAP)
-                ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label // "ぱ"
+                ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label
         }
         listener?.onModeChanged(newLabel)
 
@@ -414,7 +383,6 @@ class TfbiHierarchicalFlickController(
                     // 次の SubMenu マップへ
                     tempMap = nextNode.nextMap
                 } else {
-                    // 並列マップに SubMenu が存在しない（マップ定義エラー）
                     Log.e(
                         TAG,
                         "Map mismatch! New map doesn't have parallel SubMenu at $nextHighlight"
@@ -435,11 +403,8 @@ class TfbiHierarchicalFlickController(
             highlightStack.push(highlightPath.firstOrNull() ?: TfbiFlickDirection.TAP)
         }
 
-        // 8. (削除済み)
-
         // 9. ★ UI（ポップアップ）を即座に更新
         setupStageUI(this.currentMap!!)
-        // currentHighlight は handleTouchMove の上部で既に更新済み
         popupView?.highlightDirection(this.currentHighlight)
     }
 
@@ -447,7 +412,6 @@ class TfbiHierarchicalFlickController(
 
     /**
      * ポップアップウィンドウを表示または更新します。
-     * (前回の修正を適用済み)
      */
     private fun showPopup(
         anchorView: View,
@@ -472,14 +436,14 @@ class TfbiHierarchicalFlickController(
         // Petal（周囲）に表示する文字
         val petalChars = if (showPetals) {
             rootM
-                .filterKeys { it != TfbiFlickDirection.TAP } // ★ 修正点 (Fix 2): TAPキー自体をマップから除外
-                .mapValues { (dir, node) -> // dir に TAP はもう含まれない
+                .filterKeys { it != TfbiFlickDirection.TAP }
+                .mapValues { (dir, node) ->
                     when (node) {
                         is TfbiFlickNode.Input -> node.char
                         is TfbiFlickNode.SubMenu -> {
                             node.label
                                 ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                                ?: "" // ★ 修正点 (Fix 1): "..." を "" に変更
+                                ?: ""
                         }
 
                         is TfbiFlickNode.StatefulKey -> {
@@ -493,6 +457,10 @@ class TfbiHierarchicalFlickController(
         }
 
         popupView = TfbiFlickPopupView(context).apply {
+            // ▼▼▼ 修正: 色設定があれば適用 ▼▼▼
+            if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
+                setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
+            }
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)
         }
@@ -514,7 +482,6 @@ class TfbiHierarchicalFlickController(
 
     /**
      * 第2階層以降のUI（ポップアップの内容）を設定します。
-     * (前回の修正を適用済み)
      */
     private fun setupStageUI(map: Map<TfbiFlickDirection, TfbiFlickNode>) {
         // 中央に表示する文字
@@ -532,14 +499,14 @@ class TfbiHierarchicalFlickController(
 
         // 周囲に表示する文字
         val petalChars = map
-            .filterKeys { it != TfbiFlickDirection.TAP } // ★ 修正点 (Fix 2): TAPキー自体をマップから除外
-            .mapValues { (dir, node) -> // dir に TAP はもう含まれない
+            .filterKeys { it != TfbiFlickDirection.TAP }
+            .mapValues { (dir, node) ->
                 when (node) {
                     is TfbiFlickNode.Input -> node.char
                     is TfbiFlickNode.SubMenu -> {
                         node.label
                             ?: (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
-                            ?: "" // ★ 修正点 (Fix 1): "..." を "" に変更
+                            ?: ""
                     }
 
                     is TfbiFlickNode.StatefulKey -> {
@@ -552,10 +519,6 @@ class TfbiHierarchicalFlickController(
         popupView?.setCharacters(tapCharacter, petalChars)
     }
 
-    /**
-     * 1回のタッチ操作（Down->Up）内の状態をリセットします。
-     * ★ 修正点：ジッターガードフラグもリセット
-     */
     private fun resetState() {
         popupWindow?.dismiss()
         popupWindow = null
@@ -565,26 +528,17 @@ class TfbiHierarchicalFlickController(
         highlightStack.clear()
         currentMap = null
         currentHighlight = TfbiFlickDirection.TAP
-        isJitterGuardActive = false // ★ ジッターガードをリセット
+        isJitterGuardActive = false
 
-        // ★ 変更点：
-        // 1回のタッチ操作が終了したら、必ず NORMAL モードに戻す
         if (currentMode != KeyMode.NORMAL) {
             currentMode = KeyMode.NORMAL
-
-            // ★ 状態が変わったことを InputMethodService (FlickKeyboardView) に通知
-            // （ラベルを "が" -> "か" に戻すため）
             val rNode = rootNode
             if (rNode != null) {
-                // 'rNode.label' は "か" "は" などの通常ラベル
                 listener?.onModeChanged(rNode.label)
             }
         }
     }
 
-    /**
-     * 座標からフリック方向を計算します。
-     */
     private fun calculateDirection(
         dx: Float,
         dy: Float,
