@@ -88,13 +88,14 @@ class SettingMainFragment : Fragment() {
         TabLayoutMediator(binding.settingTabLayout, binding.settingViewPager) { tab, position ->
             tab.text = when (position) {
                 0 -> getString(R.string.category_common)
-                1 -> "zenz"
-                2 -> getString(R.string.category_dictionary)
-                3 -> getString(R.string.category_kana)
-                4 -> "QWERTY"
-                5 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
-                6 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
-                7 -> getString(R.string.tablet_preference_category_title) // タブレット
+                1 -> getString(R.string.keyboardthemefragment)
+                2 -> "zenz"
+                3 -> getString(R.string.category_dictionary)
+                4 -> getString(R.string.category_kana)
+                5 -> "QWERTY"
+                6 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
+                7 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
+                8 -> getString(R.string.tablet_preference_category_title) // タブレット
                 else -> ""
             }
         }.attach()

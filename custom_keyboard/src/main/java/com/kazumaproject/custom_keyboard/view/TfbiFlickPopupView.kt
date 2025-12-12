@@ -18,7 +18,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     private var petalCharacters = mapOf<TfbiFlickDirection, String>()
     private var highlightedDirection: TfbiFlickDirection = TfbiFlickDirection.TAP
 
-    // 各パーツの描画設定
+    // 各パーツの描画設定 (初期値はデフォルトテーマから取得)
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = if (context.isDarkThemeOn()) {
             context.getThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
@@ -44,7 +44,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     private val rects = mutableMapOf<TfbiFlickDirection, RectF>()
     private var cornerRadius = 20f
 
-    // レイアウトをロジックではなくデータとして定義
+    // レイアウト定義
     private val directionLayout = listOf(
         // 0行目 (上段)
         listOf(TfbiFlickDirection.UP_LEFT, TfbiFlickDirection.UP, TfbiFlickDirection.UP_RIGHT),
@@ -55,6 +55,20 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     )
 
     // ===== 公開メソッド =====
+
+    /**
+     * 動的に色を設定する
+     * @param backgroundColor 通常時の背景色
+     * @param highlightedBackgroundColor ハイライト時の背景色
+     * @param textColor テキストおよび枠線の色
+     */
+    fun setColors(backgroundColor: Int, highlightedBackgroundColor: Int, textColor: Int) {
+        bgPaint.color = backgroundColor
+        highlightBgPaint.color = highlightedBackgroundColor
+        strokePaint.color = textColor
+        textPaint.color = textColor
+        invalidate()
+    }
 
     fun setCharacters(tapChar: String, petalChars: Map<TfbiFlickDirection, String>) {
         this.tapCharacter = tapChar
@@ -112,7 +126,6 @@ class TfbiFlickPopupView(context: Context) : View(context) {
                 val bottom = (row + 1) * cellHeight
                 val rect = RectF(left, top, right, bottom)
 
-                // 2次元リストから方向を取得
                 val direction = directionLayout[row][col]
                 rects[direction] = rect
             }

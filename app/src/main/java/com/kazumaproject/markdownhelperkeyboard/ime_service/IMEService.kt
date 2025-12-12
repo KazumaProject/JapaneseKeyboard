@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.hardware.input.InputManager
@@ -50,6 +51,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
+import android.widget.TextView
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -78,6 +80,8 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
+import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHiragana
@@ -446,6 +450,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyKeyIndentSmall: Float? = 9.0f
     private var qwertyKeySideMargin: Float? = 4.0f
     private var qwertyKeyTextSize: Float? = 18.0f
+
+    private var keyboardThemeMode: String? = "default"
+    private var customThemeBgColor: Int? = Color.WHITE
+    private var customThemeKeyColor: Int? = Color.LTGRAY
+    private var customThemeSpecialKeyColor: Int? = Color.GRAY
+    private var customThemeKeyTextColor: Int? = Color.BLACK
+    private var customThemeSpecialKeyTextColor: Int? = Color.BLACK
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -881,6 +892,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyKeySideMargin = qwerty_key_side_margin
             qwertyKeyTextSize = qwerty_key_text_size
 
+            keyboardThemeMode = theme_mode
+            customThemeBgColor = custom_theme_bg_color
+            customThemeKeyColor = custom_theme_key_color
+            customThemeSpecialKeyColor = custom_theme_special_key_color
+            customThemeKeyTextColor = custom_theme_key_text_color
+            customThemeSpecialKeyTextColor = custom_theme_special_key_text_color
+
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -1123,24 +1141,84 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             mainView.apply {
                 if (isKeyboardRounded == true) {
-                    if (DynamicColors.isDynamicColorAvailable()) {
-                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_root)
-                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
-                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
-                    } else {
-                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
-                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                    when (keyboardThemeMode) {
+                        "default" -> {
+                            if (DynamicColors.isDynamicColorAvailable()) {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
+                            } else {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                            }
+                        }
+
+                        "custom" -> {
+                            mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
+                            mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                            mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+
+                            mainView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
+                            mainView.suggestionViewParent.setDrawableSolidColor(
+                                customThemeBgColor ?: Color.WHITE
+                            )
+                            mainView.candidateTabLayout.setDrawableSolidColor(
+                                customThemeBgColor ?: Color.WHITE
+                            )
+                        }
+
+                        else -> {
+                            if (DynamicColors.isDynamicColorAvailable()) {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
+                            } else {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                            }
+                        }
                     }
                 } else {
-                    if (DynamicColors.isDynamicColorAvailable()) {
-                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                    } else {
-                        mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                        mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                        mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                    when (keyboardThemeMode) {
+                        "default" -> {
+                            if (DynamicColors.isDynamicColorAvailable()) {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                            } else {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                            }
+                        }
+
+                        "custom" -> {
+                            mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
+                            mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                            mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+
+                            mainView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
+                            mainView.suggestionViewParent.setDrawableSolidColor(
+                                customThemeBgColor ?: Color.WHITE
+                            )
+                            mainView.candidateTabLayout.setDrawableSolidColor(
+                                customThemeBgColor ?: Color.WHITE
+                            )
+                        }
+
+                        else -> {
+                            if (DynamicColors.isDynamicColorAvailable()) {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                            } else {
+                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                            }
+                        }
                     }
                 }
 
@@ -1356,6 +1434,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyKeyIndentSmall = null
         qwertyKeySideMargin = null
         qwertyKeyTextSize = null
+
+        keyboardThemeMode = null
+        customThemeBgColor = null
+        customThemeKeyColor = null
+        customThemeSpecialKeyColor = null
+        customThemeKeyTextColor = null
+        customThemeSpecialKeyTextColor = null
 
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -1622,19 +1707,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
-        val ctx = if (isDynamicColorsEnable) {
-            val seedColor = appPreference.seedColor
+        val ctx = when (keyboardThemeMode) {
+            "default" -> {
+                if (isDynamicColorsEnable) {
+                    val seedColor = appPreference.seedColor
 
-            if (seedColor == 0x00000000) {
-                DynamicColors.wrapContextIfAvailable(this, R.style.Theme_MarkdownKeyboard)
-            } else {
-                val baseThemedContext = ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
-                val options =
-                    DynamicColorsOptions.Builder().setContentBasedSource(seedColor).build()
-                DynamicColors.wrapContextIfAvailable(baseThemedContext, options)
+                    if (seedColor == 0x00000000) {
+                        DynamicColors.wrapContextIfAvailable(this, R.style.Theme_MarkdownKeyboard)
+                    } else {
+                        val baseThemedContext =
+                            ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+                        val options =
+                            DynamicColorsOptions.Builder().setContentBasedSource(seedColor).build()
+                        DynamicColors.wrapContextIfAvailable(baseThemedContext, options)
+                    }
+                } else {
+                    ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+                }
             }
-        } else {
-            ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+
+            "custom" -> {
+                ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+            }
+
+            else -> {
+                if (isDynamicColorsEnable) {
+                    val seedColor = appPreference.seedColor
+
+                    if (seedColor == 0x00000000) {
+                        DynamicColors.wrapContextIfAvailable(this, R.style.Theme_MarkdownKeyboard)
+                    } else {
+                        val baseThemedContext =
+                            ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+                        val options =
+                            DynamicColorsOptions.Builder().setContentBasedSource(seedColor).build()
+                        DynamicColors.wrapContextIfAvailable(baseThemedContext, options)
+                    }
+                } else {
+                    ContextThemeWrapper(this, R.style.Theme_MarkdownKeyboard)
+                }
+            }
         }
 
         floatingDockView = FloatingDockView(ctx).apply {
@@ -1720,17 +1832,95 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainLayoutBinding?.root?.let { newRootView ->
                 container.addView(newRootView)
                 mainLayoutBinding?.let { mainView ->
-                    if (isDynamicColorsEnable) {
-                        mainView.apply {
-                            root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
-                            suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
-                            suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
-                            candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                    when (keyboardThemeMode) {
+                        "default" -> {
+                            if (isDynamicColorsEnable) {
+                                mainView.apply {
+                                    root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                    suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                    suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                    candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                }
+                                floatingKeyboardBinding?.apply {
+                                    root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                                    suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                                    suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                }
+                            }
                         }
-                        floatingKeyboardBinding?.apply {
-                            root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
-                            suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
-                            suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+
+                        "custom" -> {
+                            mainView.apply {
+                                root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                val symbolKeyBg =
+                                    customThemeKeyColor ?: Color.WHITE
+                                keyboardSymbolView.setKeyboardTheme(
+                                    backgroundColor = manipulateColor(symbolKeyBg, 1.2f),
+                                    iconColor = customThemeKeyTextColor ?: Color.BLACK,
+                                    selectedIconColor = customThemeKeyTextColor ?: Color.BLACK,
+                                    keyBackgroundColor = symbolKeyBg
+                                )
+                                suggestionAdapter?.setCandidateTextColor(
+                                    customThemeKeyTextColor ?: Color.BLACK
+                                )
+                                suggestionAdapterFull?.setCandidateTextColor(
+                                    customThemeKeyTextColor ?: Color.BLACK
+                                )
+                                suggestionAdapter?.setCandidateEmptyDrawableColor(
+                                    customThemeSpecialKeyColor ?: Color.WHITE
+                                )
+
+                                suggestionAdapter?.setCandidateEmptyDrawableTextColor(
+                                    customThemeSpecialKeyTextColor ?: Color.BLACK
+                                )
+
+                                root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
+                                suggestionViewParent.setDrawableSolidColor(
+                                    customThemeBgColor ?: Color.WHITE
+                                )
+                                suggestionVisibility.setDrawableSolidColor(
+                                    customThemeSpecialKeyColor ?: Color.GRAY
+                                )
+                                candidateTabLayout.setLayerTypeSolidColor(
+                                    customThemeBgColor ?: Color.WHITE
+                                )
+
+                                suggestionVisibility.setColorFilter(
+                                    customThemeKeyTextColor ?: Color.BLACK
+                                )
+                            }
+                            floatingKeyboardBinding?.apply {
+                                root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                                suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                                suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+
+                                root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
+                                suggestionViewParent.setDrawableSolidColor(
+                                    customThemeBgColor ?: Color.WHITE
+                                )
+                                suggestionVisibility.setDrawableSolidColor(
+                                    customThemeSpecialKeyColor ?: Color.GRAY
+                                )
+                            }
+                        }
+
+                        else -> {
+                            if (isDynamicColorsEnable) {
+                                mainView.apply {
+                                    root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                    suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                    suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                    candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material)
+                                }
+                                floatingKeyboardBinding?.apply {
+                                    root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                                    suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                                    suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                                }
+                            }
                         }
                     }
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
@@ -2595,6 +2785,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.apply {
+            applyKeyboardTheme(
+                themeMode = keyboardThemeMode ?: "default",
+                currentNightMode = currentNightMode,
+                isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+                customBgColor = customThemeBgColor ?: Color.WHITE,
+                customKeyColor = customThemeKeyColor ?: Color.WHITE,
+                customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+                customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+            )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
@@ -2732,6 +2932,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.tabletView.apply {
+            applyKeyboardTheme(
+                themeMode = keyboardThemeMode ?: "default",
+                currentNightMode = currentNightMode,
+                isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+                customBgColor = customThemeBgColor ?: Color.WHITE,
+                customKeyColor = customThemeKeyColor ?: Color.WHITE,
+                customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+                customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+            )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
@@ -3474,6 +3684,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding?.let { mainView ->
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
             val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
+            when (keyboardThemeMode) {
+                "custom" -> {
+                    popupView.setDrawableSolidColor(customThemeKeyColor ?: Color.WHITE)
+                }
+            }
             val listView = popupView.findViewById<ListView>(R.id.popup_listview)
 
             // A. Enable single choice mode for the ListView
@@ -3492,7 +3707,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             // B. Use your new custom layout file in the ArrayAdapter
-            val adapter = ArrayAdapter(this, R.layout.list_item_layout, items) // Use your layout
+            val adapter = object : ArrayAdapter<String>(this, R.layout.list_item_layout, items) {
+                override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                    // 親クラスのgetViewを呼び出してViewを取得
+                    val view = super.getView(position, convertView, parent) as TextView
+
+                    // カスタムテーマの場合の色設定
+                    if (keyboardThemeMode == "custom") {
+                        // ★ 1. テキスト色の変更
+                        // 背景が SpecialKeyColor (濃い色) になる可能性があるため、テキストは白か黒か、
+                        // あるいは専用の customThemeKeyTextColor 変数があればそれを使ってください。
+                        // ここでは例として、背景が濃いと仮定して白、または動的なテキスト色変数を指定します。
+                        val textColor = customThemeKeyTextColor ?: Color.BLACK // ※変数は適宜合わせてください
+                        view.setTextColor(textColor)
+
+                        // ★ 2. 選択状態に応じた背景色の変更
+                        val listView2 = parent as ListView
+                        if (listView2.isItemChecked(position)) {
+                            // 選択されているアイテムの背景色
+                            // customThemeSpecialKeyColor または ハイライト用の色を使用
+                            val highlightColor =
+                                manipulateColor(customThemeSpecialKeyColor ?: Color.LTGRAY, 1.2f)
+                            view.setBackgroundColor(highlightColor)
+
+                            // 必要であれば選択時のテキスト色もここで上書き可能
+                            view.setTextColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+                        } else {
+                            // 選択されていないアイテムの背景色
+                            // 透明 または popupView全体の背景色に合わせる
+                            view.setBackgroundColor(customThemeKeyColor ?: Color.WHITE)
+                            view.setTextColor(textColor)
+                        }
+                    }
+                    return view
+                }
+            }
             listView.adapter = adapter
 
             keyboardSelectionPopupWindow = PopupWindow(
@@ -3540,6 +3789,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             keyboardSelectionPopupWindow?.showAtLocation(mainView.root, Gravity.CENTER, 0, 0)
         }
+    }
+
+    /**
+     * 色の明るさを調整するヘルパー関数
+     * @param color 元の色
+     * @param factor 1.0より大＝明るく、1.0より小＝暗く
+     */
+    private fun manipulateColor(color: Int, factor: Float): Int {
+        val a = Color.alpha(color)
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.argb(a, r, g, b)
     }
 
 
@@ -4227,6 +4489,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setupCustomKeyboardListeners(mainView: MainLayoutBinding) {
+        mainView.customLayoutDefault.applyKeyboardTheme(
+            themeMode = keyboardThemeMode ?: "default",
+            currentNightMode = currentNightMode,
+            isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+            customBgColor = customThemeBgColor ?: Color.WHITE,
+            customKeyColor = customThemeKeyColor ?: Color.WHITE,
+            customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+            customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+            customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+        )
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
@@ -7447,6 +7719,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.candidateTabLayout.apply {
+            when (keyboardThemeMode) {
+                "custom" -> {
+                    setSelectedTabIndicatorColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+                    setTabTextColors(
+                        customThemeKeyTextColor ?: Color.BLACK,
+                        customThemeSpecialKeyTextColor ?: Color.BLACK
+                    )
+                }
+
+                else -> {}
+            }
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     tab?.let { t ->
@@ -7738,6 +8021,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
             adapter = shortcutAdapter
         }
+        when (keyboardThemeMode) {
+            "custom" -> {
+                shortcutAdapter?.setIconColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+            }
+
+            else -> {
+            }
+        }
         shortcutAdapter?.onItemClicked = { type ->
             when (type) {
                 ShortcutType.SETTINGS -> {
@@ -7949,6 +8240,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.qwertyView.apply {
+            applyKeyboardTheme(
+                themeMode = keyboardThemeMode ?: "default",
+                currentNightMode = currentNightMode,
+                isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+                customBgColor = customThemeBgColor ?: Color.WHITE,
+                customKeyColor = customThemeKeyColor ?: Color.WHITE,
+                customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+                customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+            )
+
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
                     Timber.d("Pressed Key: $qwertyKey")
