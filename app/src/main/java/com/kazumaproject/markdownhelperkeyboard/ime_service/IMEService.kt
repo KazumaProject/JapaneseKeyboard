@@ -4418,6 +4418,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setupCustomKeyboardListeners(mainView: MainLayoutBinding) {
+        mainView.customLayoutDefault.applyKeyboardTheme(
+            themeMode = keyboardThemeMode ?: "default",
+            currentNightMode = currentNightMode,
+            isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+            customBgColor = customThemeBgColor ?: Color.WHITE,
+            customKeyColor = customThemeKeyColor ?: Color.WHITE,
+            customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+            customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+            customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+        )
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 

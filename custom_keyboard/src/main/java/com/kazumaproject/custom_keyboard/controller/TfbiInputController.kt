@@ -2,7 +2,6 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Log
 import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
@@ -51,8 +50,19 @@ class TfbiInputController(
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
 
-    // ★ GestureDetectorをプロパティとして宣言
     private lateinit var gestureDetector: GestureDetector
+
+    // ▼▼▼ 追加: 色設定保持用の変数 ▼▼▼
+    private var popupBackgroundColor: Int? = null
+    private var popupHighlightedColor: Int? = null
+    private var popupTextColor: Int? = null
+
+    // ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
+    fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
+        this.popupBackgroundColor = backgroundColor
+        this.popupHighlightedColor = highlightedColor
+        this.popupTextColor = textColor
+    }
 
     fun attach(
         view: View,
@@ -61,12 +71,9 @@ class TfbiInputController(
         this.attachedView = view
         this.characterMapProvider = provider
 
-        // ★ GestureDetectorを初期化
         gestureDetector =
             GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
                 override fun onLongPress(e: MotionEvent) {
-                    // 長押しが検知されたら、フリックが開始前であることを確認して
-                    // 花びら付きのポップアップを表示する
                     if (flickState == FlickState.NEUTRAL) {
                         popupWindow?.dismiss()
                         showPopup(view, TfbiFlickDirection.TAP, true)
@@ -84,23 +91,20 @@ class TfbiInputController(
     }
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
-        // ★ タッチイベントをまずGestureDetectorに渡す
         gestureDetector.onTouchEvent(event)
-
-        Log.d("TfbInput", "handleTouchEvent: ${MotionEvent.actionToString(event.action)}")
+        // Log.d("TfbInput", "handleTouchEvent: ${MotionEvent.actionToString(event.action)}")
 
         val view = attachedView ?: return false
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                Log.d("TfbInput: handleTouchEvent","ACTION_DOWN")
                 handleTouchDown(event, view)
             }
+
             MotionEvent.ACTION_MOVE -> {
-                Log.d("TfbInput: handleTouchEvent","ACTION_MOVE")
                 handleTouchMove(event, view)
             }
+
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                Log.d("TfbInput: handleTouchEvent","ACTION_UP")
                 handleTouchUp(event)
             }
         }
@@ -108,14 +112,11 @@ class TfbiInputController(
     }
 
     private fun handleTouchDown(event: MotionEvent, view: View) {
-        // 状態リセットはここで行う
         resetState()
         flickState = FlickState.NEUTRAL
         initialTouchX = event.x
         initialTouchY = event.y
 
-        // ★ 長押しタイマーのロジックは不要になった
-        // 最初は必ず花びらなしのポップアップを表示する
         showPopup(view, TfbiFlickDirection.TAP, false)
     }
 
@@ -126,7 +127,6 @@ class TfbiInputController(
             val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
             if (distance >= flickSensitivity) {
-                // ★ 長押しタイマーのキャンセル処理は不要になった
                 val enabledFirstDirections = getEnabledFirstFlickDirections()
                 val determinedDirection =
                     calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
@@ -142,7 +142,6 @@ class TfbiInputController(
                 currentSecondFlickDirection = determinedDirection
             }
         } else {
-            // (変更なし)
             val distanceFromInitial = hypot(
                 (event.x - initialTouchX).toDouble(),
                 (event.y - initialTouchY).toDouble()
@@ -171,13 +170,6 @@ class TfbiInputController(
     }
 
     private fun handleTouchUp(event: MotionEvent) {
-        // ▼▼▼ ログ追加 ▼▼▼
-        Log.d(
-            "TfbInput",
-            "handleTouchUp: START. Current state = $flickState"
-        )
-        // ▲▲▲ ログ追加 ▲▲▲
-
         var finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
             val dx = event.x - intermediateTouchX
@@ -186,21 +178,8 @@ class TfbiInputController(
             finalSecondDirection =
                 calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
 
-            // ▼▼▼ ログ追加 ▼▼▼
-            Log.d(
-                "TfbInput",
-                "handleTouchUp: State=FIRST_FLICK_DETERMINED. dx=$dx, dy=$dy, calculatedDir=$finalSecondDirection"
-            )
-            // ▲▲▲ ログ追加 ▲▲▲
-
             if (finalSecondDirection == TfbiFlickDirection.TAP && currentSecondFlickDirection != TfbiFlickDirection.TAP) {
                 finalSecondDirection = currentSecondFlickDirection
-                // ▼▼▼ ログ追加 ▼▼▼
-                Log.d(
-                    "TfbInput",
-                    "handleTouchUp: Using currentSecondFlickDirection. finalDir=$finalSecondDirection"
-                )
-                // ▲▲▲ ログ追加 ▲▲▲
             }
         } else {
             val dx = event.x - initialTouchX
@@ -209,24 +188,7 @@ class TfbiInputController(
             firstFlickDirection =
                 calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
             finalSecondDirection = TfbiFlickDirection.TAP
-
-            // ▼▼▼ ログ追加 ▼▼▼
-            Log.d(
-                "TfbInput",
-                "handleTouchUp: State=NEUTRAL. dx=$dx, dy=$dy. firstDir=$firstFlickDirection, finalDir=$finalSecondDirection"
-            )
-            // ▲▲▲ ログ追加 ▲▲▲
         }
-
-        // ▼▼▼ ログ追加 ▼▼▼
-        if (listener == null) {
-            Log.w("TfbInput", "handleTouchUp: Listener is NULL!")
-        }
-        Log.d(
-            "TfbInput",
-            "handleTouchUp: Calling onFlick(first=$firstFlickDirection, second=$finalSecondDirection)"
-        )
-        // ▲▲▲ ログ追加 ▲▲▲
 
         listener?.onFlick(firstFlickDirection, finalSecondDirection)
         resetState()
@@ -243,9 +205,6 @@ class TfbiInputController(
 
         val petalChars = if (showPetals) {
             val enabledDirections = getEnabledFirstFlickDirections()
-            // For each direction, get the character by using that direction for BOTH arguments.
-            // This aligns with how your `twoStepFlickMaps` is structured.
-            // For example, for the 'あ' key, provider(LEFT, LEFT) correctly returns 'い'.
             enabledDirections.associateWith { direction ->
                 characterMapProvider?.invoke(direction, direction) ?: ""
             }
@@ -254,6 +213,11 @@ class TfbiInputController(
         }
 
         popupView = TfbiFlickPopupView(context).apply {
+            // ▼▼▼ 修正: 色設定があれば適用 ▼▼▼
+            if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
+                setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
+            }
+
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)
         }
@@ -284,7 +248,6 @@ class TfbiInputController(
 
 
     private fun resetState() {
-        // ★ Handler関連の処理は不要になった
         popupWindow?.dismiss()
         popupWindow = null
         popupView = null
