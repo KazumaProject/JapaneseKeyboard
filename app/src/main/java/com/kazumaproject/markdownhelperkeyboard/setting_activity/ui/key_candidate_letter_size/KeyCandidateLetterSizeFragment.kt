@@ -60,7 +60,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         setKeyboardSize()
         setupRecyclerView()
         setupPreviewData()
-        setupKeyLetterSizeSeekBar()
         setupCandidateLetterSizeSeekBar()
         setupMenu()
 
@@ -168,7 +167,7 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         appPreference.key_letter_size = 0.0f
         val keyProgress =
             (100 * (defaultKeyTextSize - minKeyTextSize) / (maxKeyTextSize - minKeyTextSize)).toInt()
-        binding.keyLetterSizeSeekbar.progress = keyProgress
+        //binding.keyLetterSizeSeekbar.progress = keyProgress
         binding.tenkeyLetterSizePreview.setKeyLetterSize(defaultKeyTextSize)
 
         // Reset candidate letter size
@@ -177,40 +176,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
             (100 * (defaultCandidateTextSize - minCandidateTextSize) / (maxCandidateTextSize - minCandidateTextSize)).toInt()
         binding.candidateLetterSizeSeekbar.progress = candidateProgress
         suggestionAdapter.setCandidateTextSize(defaultCandidateTextSize)
-    }
-
-    private fun setupKeyLetterSizeSeekBar() {
-        binding.keyLetterSizeSeekbar.setOnSeekBarChangeListener(object :
-            SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    val newSize =
-                        minKeyTextSize + (progress.toFloat() / 100f) * (maxKeyTextSize - minKeyTextSize)
-                    binding.tenkeyLetterSizePreview.setKeyLetterSize(newSize)
-                }
-            }
-
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                seekBar?.let {
-                    val newSize =
-                        minKeyTextSize + (it.progress.toFloat() / 100f) * (maxKeyTextSize - minKeyTextSize)
-                    val sizeDelta = newSize - defaultKeyTextSize
-                    appPreference.key_letter_size = sizeDelta
-                }
-            }
-        })
-
-        binding.keyLetterSizeSeekbar.max = 100
-        val savedDelta = appPreference.key_letter_size ?: 0.0f
-        val actualSize = defaultKeyTextSize + savedDelta
-        val keyProgress =
-            (100 * (actualSize - minKeyTextSize) / (maxKeyTextSize - minKeyTextSize)).toInt()
-        binding.keyLetterSizeSeekbar.progress = keyProgress
-        binding.tenkeyLetterSizePreview.post {
-            binding.tenkeyLetterSizePreview.setKeyLetterSize(actualSize)
-        }
     }
 
     private fun setupCandidateLetterSizeSeekBar() {
