@@ -31,6 +31,7 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.util.isNotEmpty
 import androidx.core.util.size
 import androidx.core.view.isVisible
@@ -140,6 +141,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var isNumberKeysShow: Boolean = false
     private var isSymbolKeymapShow: Boolean = false
+
+    private var liquidGlassEnable: Boolean = false
 
     // ★ ポップアップなしで長押しを有効にするキーのリストを追加
     private val longPressEnabledKeys = setOf(
@@ -259,7 +262,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         customKeyColor: Int,
         customSpecialKeyColor: Int,
         customKeyTextColor: Int,
-        customSpecialKeyTextColor: Int
+        customSpecialKeyTextColor: Int,
+        liquidGlassEnable: Boolean,
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -273,6 +277,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.customSpecialKeyColor = customSpecialKeyColor
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
+        this.liquidGlassEnable = liquidGlassEnable
+
         LayoutInflater.from(context)
 
         when (this.themeMode) {
@@ -318,7 +324,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val radius = 8f * density // 角丸の半径 (8dp)
 
         // 1. 全体の背景色を設定
-        this.setBackgroundColor(backgroundColor)
+        if (liquidGlassEnable) {
+            this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
+        } else {
+            this.setBackgroundColor(backgroundColor)
+        }
 
         binding.apply {
             // --- キーの分類リスト定義 ---
@@ -592,7 +602,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 view.id == binding.keyKuten.id ||
                 view.id == binding.keyTouten.id ||
                 view.id == binding.key123.id
-            ) return
+            ) return@forEach
             if (view is TextView) { // QWERTYButton, AppCompatButton は TextView を継承している
                 view.textSize = keyTextSizeSp
             }

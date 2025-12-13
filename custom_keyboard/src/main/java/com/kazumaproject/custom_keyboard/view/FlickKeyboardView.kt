@@ -22,6 +22,7 @@ import android.widget.GridLayout
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
@@ -72,6 +73,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var isCursorMode: Boolean = false
     private var cursorInitialX = 0f
     private var cursorInitialY = 0f
+
+    private var liquidGlassEnable: Boolean = false
 
     /**
      * 動的キー（keyIdを持つキー）の情報を保持するためのマップ
@@ -134,7 +137,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         customKeyColor: Int,
         customSpecialKeyColor: Int,
         customKeyTextColor: Int,
-        customSpecialKeyTextColor: Int
+        customSpecialKeyTextColor: Int,
+        liquidGlassEnable: Boolean,
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -148,6 +152,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.customSpecialKeyColor = customSpecialKeyColor
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
+        this.liquidGlassEnable = liquidGlassEnable
+
+        if (liquidGlassEnable) {
+            this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
+        }
     }
 
     /**

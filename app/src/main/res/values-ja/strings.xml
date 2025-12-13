@@ -396,4 +396,7 @@
     <string name="tenkeycandidatelettersizefragment">キーのサイズ</string>
     <string name="kana_keyboard_letter_size_preference_titile">文字のサイズ</string>
     <string name="kana_keyboard_letter_size_preference_summary">キーに表示する文字の大きさを調整します</string>
+    <string name="liquid_glass_effect">ガラステーマ</string>
+    <string name="enable_glass_blur_effect">ガラスのような半透明な背景のテーマを有効にします</string>
+    <string name="blur_radius">ガラスの透明度</string>
 </resources>
