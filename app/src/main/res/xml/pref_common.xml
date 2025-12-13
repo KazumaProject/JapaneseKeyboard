@@ -36,11 +36,6 @@
             android:title="@string/key_candidate_letter_size_preference_title"
             app:summary="@string/key_candidate_letter_size_preference_summary" />
 
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="round_corner_keyboard_preference"
-            android:summary="@string/pref_round_corner_keyboard_summary"
-            android:title="@string/pref_round_corner_keyboard_title" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/conversion_preference_title">
