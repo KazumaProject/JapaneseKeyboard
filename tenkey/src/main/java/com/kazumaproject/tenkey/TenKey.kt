@@ -266,6 +266,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var customSpecialKeyColor: Int = Color.GRAY
     private var customKeyTextColor: Int = Color.BLACK
     private var customSpecialKeyTextColor: Int = Color.BLACK
+    private var liquidGlassEnable: Boolean = false
 
     /** ← NEW: scope tied to this view; cancel it on detach **/
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -276,11 +277,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding = KeyboardLayoutBinding.inflate(inflater, this)
         // Initialize keyMap
         keyMap = KeyMap()
-        val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
-        val isDarkMode = context.isDarkThemeOn()
-        // Prepare popups using their own bindings
-        // --- Active popup (center) ---
-
 
         // Build the map from Key enum to actual View references
         listKeys = mapOf(
@@ -697,7 +693,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         customKeyColor: Int,
         customSpecialKeyColor: Int,
         customKeyTextColor: Int,
-        customSpecialKeyTextColor: Int
+        customSpecialKeyTextColor: Int,
+        liquidGlassEnable: Boolean,
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -711,6 +708,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.customSpecialKeyColor = customSpecialKeyColor
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
+
+        this.liquidGlassEnable = liquidGlassEnable
+
         val inflater = LayoutInflater.from(context)
 
         when (this.themeMode) {
@@ -838,7 +838,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val radius = 8f * density // 角丸の半径 (8dp)
 
         // 1. 全体の背景色を設定
-        this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
+        if (liquidGlassEnable){
+            this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
+        }else{
+            this.setBackgroundColor(backgroundColor)
+        }
 
         binding.apply {
             // --- キーの分類リスト定義 ---
