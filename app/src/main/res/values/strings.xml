@@ -398,4 +398,7 @@
     <string name="tenkeycandidatelettersizefragment">Adjust key size</string>
     <string name="kana_keyboard_letter_size_preference_titile">Text size</string>
     <string name="kana_keyboard_letter_size_preference_summary">Adjusts the size of the characters displayed on the keys.</string>
+    <string name="liquid_glass_effect">Glass Effect</string>
+    <string name="enable_glass_blur_effect">Enable glass blur effect</string>
+    <string name="blur_radius">Blur Radius</string>
 </resources>

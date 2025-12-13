@@ -77,6 +77,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var themeIconColor: Int = Color.GRAY
     private var themeSelectedIconColor: Int = Color.BLUE
     private var themeKeyBackgroundColor: Int = Color.LTGRAY
+    private var liquidGlassEnable: Boolean = false
 
     // Flag to check if custom theme is applied
     private var isCustomThemeApplied = false
@@ -257,16 +258,22 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         @ColorInt backgroundColor: Int,
         @ColorInt iconColor: Int,
         @ColorInt selectedIconColor: Int,
-        @ColorInt keyBackgroundColor: Int
+        @ColorInt keyBackgroundColor: Int,
+        liquidGlassEnable: Boolean,
     ) {
         this.themeBackgroundColor = backgroundColor
         this.themeIconColor = iconColor
         this.themeSelectedIconColor = selectedIconColor
         this.themeKeyBackgroundColor = keyBackgroundColor
         this.isCustomThemeApplied = true
+        this.liquidGlassEnable = liquidGlassEnable
 
         // 1. 全体の背景色
-        this.setBackgroundColor(backgroundColor)
+        if (liquidGlassEnable){
+            this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
+        }else{
+            this.setBackgroundColor(backgroundColor)
+        }
 
         // 2. ColorStateList の作成
         val states = arrayOf(

@@ -81,7 +81,6 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
-import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
@@ -460,6 +459,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customThemeSpecialKeyColor: Int? = Color.GRAY
     private var customThemeKeyTextColor: Int? = Color.BLACK
     private var customThemeSpecialKeyTextColor: Int? = Color.BLACK
+
+    private var liquidGlassThemePreference: Boolean? = false
+    private var liquidGlassBlurRadiousPreference: Int? = 220
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -902,6 +904,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customThemeKeyTextColor = custom_theme_key_text_color
             customThemeSpecialKeyTextColor = custom_theme_special_key_text_color
 
+            liquidGlassThemePreference = liquid_glass_preference
+            liquidGlassBlurRadiousPreference = liquid_glass_blur_radius
+
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
                     kanaKanjiEngine.buildPersonNamesDictionary(
@@ -1225,9 +1230,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
 
-                mainView.root.setDrawableAlpha(if (isDarkThemeOn()) 220 else 160)
-                mainView.suggestionViewParent.setDrawableAlpha(0)
-                mainView.candidateTabLayout.setDrawableAlpha(0)
+                if (liquidGlassThemePreference == true) {
+                    mainView.root.setDrawableAlpha(liquidGlassBlurRadiousPreference ?: 220)
+                    mainView.suggestionViewParent.setDrawableAlpha(0)
+                    mainView.candidateTabLayout.setDrawableAlpha(0)
+                }
 
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
@@ -1481,6 +1488,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bunsetsuSeparation = null
         conversionKeySwipePreference = null
         bunsetsuPositionList = null
+
+        liquidGlassThemePreference = null
+        liquidGlassBlurRadiousPreference = null
+
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         speechRecognizer?.destroy()
@@ -1502,7 +1513,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
         // Android 12 (API 31) 以上の場合
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && liquidGlassThemePreference == true) {
             // 背景のアプリに対してブラーをかける
             win?.setBackgroundBlurRadius(50)
         }
@@ -1877,7 +1888,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     backgroundColor = manipulateColor(symbolKeyBg, 1.2f),
                                     iconColor = customThemeKeyTextColor ?: Color.BLACK,
                                     selectedIconColor = customThemeKeyTextColor ?: Color.BLACK,
-                                    keyBackgroundColor = symbolKeyBg
+                                    keyBackgroundColor = symbolKeyBg,
+                                    liquidGlassEnable = liquidGlassThemePreference ?: false
                                 )
                                 suggestionAdapter?.setCandidateTextColor(
                                     customThemeKeyTextColor ?: Color.BLACK
@@ -2809,7 +2821,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customKeyColor = customThemeKeyColor ?: Color.WHITE,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
-                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
+                liquidGlassEnable = liquidGlassThemePreference ?: false,
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -2956,7 +2969,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customKeyColor = customThemeKeyColor ?: Color.WHITE,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
-                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
+                liquidGlassEnable = liquidGlassThemePreference ?: false
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -4513,7 +4527,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customKeyColor = customThemeKeyColor ?: Color.WHITE,
             customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
             customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
-            customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+            customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
+            liquidGlassEnable = liquidGlassThemePreference ?: false
         )
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
@@ -8264,7 +8279,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customKeyColor = customThemeKeyColor ?: Color.WHITE,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
-                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK
+                customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
+                liquidGlassEnable = liquidGlassThemePreference ?: false
             )
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {

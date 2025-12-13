@@ -22,6 +22,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
@@ -306,6 +307,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private var customSpecialKeyColor: Int = Color.GRAY
     private var customKeyTextColor: Int = Color.BLACK
     private var customSpecialKeyTextColor: Int = Color.BLACK
+    private var liquidGlassEnable: Boolean = false
 
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
@@ -375,7 +377,8 @@ class TabletKeyboardView @JvmOverloads constructor(
         customKeyColor: Int,
         customSpecialKeyColor: Int,
         customKeyTextColor: Int,
-        customSpecialKeyTextColor: Int
+        customSpecialKeyTextColor: Int,
+        liquidGlassEnable: Boolean,
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -389,6 +392,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         this.customSpecialKeyColor = customSpecialKeyColor
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
+        this.liquidGlassEnable = liquidGlassEnable
         LayoutInflater.from(context)
 
         when (this.themeMode) {
@@ -432,7 +436,11 @@ class TabletKeyboardView @JvmOverloads constructor(
         val radius = 8f * density // 角丸の半径 (8dp)
 
         // 1. 全体の背景色を設定
-        this.setBackgroundColor(backgroundColor)
+        if (liquidGlassEnable) {
+            this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
+        } else {
+            this.setBackgroundColor(backgroundColor)
+        }
 
         binding.apply {
             // --- キーの分類リスト定義 ---
