@@ -167,3 +167,29 @@ fun View.setDrawableSolidColor(@ColorInt color: Int, index: Int = 0) {
         }
     }
 }
+
+/**
+ * Viewの背景Drawableの透明度(Alpha)を変更する拡張関数
+ * すでにある色や形状（Shape, Layer, Borderなど）を維持したまま、透け感のみを変更します。
+ *
+ * @param alpha 透明度 (0:完全透明 〜 255:完全不透明)
+ */
+fun View.setDrawableAlpha(alpha: Int) {
+    val background = this.background ?: return
+    // mutate() してこのView専用のインスタンスにする（他のViewへの影響を防ぐ）
+    background.mutate().alpha = alpha
+}
+
+/**
+ * 色指定と透明度指定を同時に行う便利関数
+ * 既存の setDrawableSolidColor を内部で利用します。
+ *
+ * @param color ベースとなる色 (Color.WHITE など)
+ * @param alpha 透明度 (0:完全透明 〜 255:完全不透明)
+ */
+fun View.setDrawableSolidColorWithAlpha(@ColorInt color: Int, alpha: Int) {
+    // ColorUtilsを使って、指定した色のAlpha値を上書きする
+    val colorWithAlpha = androidx.core.graphics.ColorUtils.setAlphaComponent(color, alpha)
+    // 既存の再帰的カラー適用関数を呼び出す
+    this.setDrawableSolidColor(colorWithAlpha)
+}

@@ -234,6 +234,9 @@ object AppPreference {
     private val QWERTY_KEY_SIDE_MARGIN = Pair("qwerty_key_side_margin_preference", 4.0f)
     private val QWERTY_KEY_TEXT_SIZE = Pair("qwerty_key_text_size_preference", 18.0f)
 
+    private val LIQUID_GLASS_ENABLE = Pair("liquid_glass_preference", false)
+    private val LIQUID_GLASS_BLUR_RADIUS = Pair("liquid_glass_blur_preference", 220)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1089,6 +1092,24 @@ object AppPreference {
     var qwerty_key_text_size: Float?
         get() = preferences.getFloat(QWERTY_KEY_TEXT_SIZE.first, QWERTY_KEY_TEXT_SIZE.second)
         set(value) = preferences.edit { it.putFloat(QWERTY_KEY_TEXT_SIZE.first, value ?: 18.0f) }
+
+    var liquid_glass_preference: Boolean
+        get() = preferences.getBoolean(
+            LIQUID_GLASS_ENABLE.first,
+            LIQUID_GLASS_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(LIQUID_GLASS_ENABLE.first, value)
+        }
+
+    var liquid_glass_blur_radius: Int
+        get() = preferences.getInt(
+            LIQUID_GLASS_BLUR_RADIUS.first,
+            LIQUID_GLASS_BLUR_RADIUS.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(LIQUID_GLASS_BLUR_RADIUS.first, value)
+        }
 
     fun migrateSumirePreferenceIfNeeded() {
         // 古いキーが存在する場合のみ移行処理を実行

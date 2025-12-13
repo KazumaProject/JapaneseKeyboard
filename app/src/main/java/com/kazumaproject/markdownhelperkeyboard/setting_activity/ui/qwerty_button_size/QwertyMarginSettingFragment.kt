@@ -2,10 +2,16 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.qwerty_butt
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentQwertyMarginSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
@@ -39,6 +45,7 @@ class QwertyMarginSettingFragment : Fragment() {
         setupSeekBars()
         setupResetButton()
         updatePreview()
+        setupMenu()
     }
 
     private fun setupSeekBars() {
@@ -173,5 +180,28 @@ class QwertyMarginSettingFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupMenu() {
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+
+            }
+
+            override fun onPrepareMenu(menu: Menu) {
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    android.R.id.home -> {
+                        parentFragmentManager.popBackStack()
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 }
