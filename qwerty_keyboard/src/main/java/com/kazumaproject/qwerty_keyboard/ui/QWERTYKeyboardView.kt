@@ -324,9 +324,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val radius = 8f * density // 角丸の半径 (8dp)
 
         // 1. 全体の背景色を設定
-        if (liquidGlassEnable){
+        if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
-        }else{
+        } else {
             this.setBackgroundColor(backgroundColor)
         }
 
@@ -602,7 +602,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 view.id == binding.keyKuten.id ||
                 view.id == binding.keyTouten.id ||
                 view.id == binding.key123.id
-            ) return
+            ) return@forEach
             if (view is TextView) { // QWERTYButton, AppCompatButton は TextView を継承している
                 view.textSize = keyTextSizeSp
             }
