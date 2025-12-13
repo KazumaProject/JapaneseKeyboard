@@ -35,6 +35,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.inputmethod.CompletionInfo
@@ -80,6 +81,8 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.isDarkThemeOn
+import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
@@ -1195,9 +1198,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         "custom" -> {
-                            mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
-                            mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-                            mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
+                            mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                            mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                            mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
 
                             mainView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                             mainView.suggestionViewParent.setDrawableSolidColor(
@@ -1221,6 +1224,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
                 }
+
+                mainView.root.setDrawableAlpha(if (isDarkThemeOn()) 220 else 160)
+                mainView.suggestionViewParent.setDrawableAlpha(0)
+                mainView.candidateTabLayout.setDrawableAlpha(0)
 
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
@@ -1489,6 +1496,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             outInsets?.contentTopInsets = inputHeight
             outInsets?.visibleTopInsets = inputHeight
             outInsets?.touchableInsets = Insets.TOUCHABLE_INSETS_CONTENT
+        }
+    }
+
+    override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
+        super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        // Android 12 (API 31) 以上の場合
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // 背景のアプリに対してブラーをかける
+            win?.setBackgroundBlurRadius(50)
         }
     }
 

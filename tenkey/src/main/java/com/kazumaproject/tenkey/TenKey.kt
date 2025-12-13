@@ -20,6 +20,7 @@ import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.core.view.setPadding
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
@@ -837,7 +838,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val radius = 8f * density // 角丸の半径 (8dp)
 
         // 1. 全体の背景色を設定
-        this.setBackgroundColor(backgroundColor)
+        this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
 
         binding.apply {
             // --- キーの分類リスト定義 ---
