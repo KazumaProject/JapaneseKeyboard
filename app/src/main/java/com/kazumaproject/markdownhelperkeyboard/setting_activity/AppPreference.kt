@@ -243,6 +243,7 @@ object AppPreference {
     private val LIQUID_GLASS_BLUR_RADIUS = Pair("liquid_glass_blur_preference", 220)
     private val LIQUID_GLASS_KEY_ALPHA = Pair("liquid_glass_key_alpha_preference", 255)
 
+    private val CUSTOM_THEME_INPUT_COLOR_ENABLE = Pair("theme_custom_input_color_enable", false)
     private val CUSTOM_THEME_PRE_EDIT_BG = Pair(
         "theme_custom_pre_edit_bg_color",
         "#440099CC".toColorInt()
@@ -1151,6 +1152,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(LIQUID_GLASS_KEY_ALPHA.first, value)
+        }
+
+    var custom_theme_input_color_enable: Boolean
+        get() = preferences.getBoolean(
+            CUSTOM_THEME_INPUT_COLOR_ENABLE.first,
+            CUSTOM_THEME_INPUT_COLOR_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_THEME_INPUT_COLOR_ENABLE.first, value)
         }
 
     var custom_theme_pre_edit_bg_color: Int
