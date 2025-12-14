@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
@@ -46,8 +47,9 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val PREF_KEY_CUSTOM_BORDER_ENABLE = "theme_custom_border_enable"
         private const val PREF_KEY_CUSTOM_BORDER_COLOR = "theme_custom_border_color"
 
-        // Custom Input Text Keys (New 4 settings)
+        // Custom Input Text Keys (New 5 settings including enable switch)
         private const val CATEGORY_KEY_CUSTOM_INPUT = "category_custom_input"
+        private const val PREF_KEY_CUSTOM_INPUT_ENABLE = "theme_custom_input_color_enable"
         private const val PREF_KEY_CUSTOM_PRE_EDIT_BG = "theme_custom_pre_edit_bg_color"
         private const val PREF_KEY_CUSTOM_PRE_EDIT_TEXT = "theme_custom_pre_edit_text_color"
         private const val PREF_KEY_CUSTOM_POST_EDIT_BG = "theme_custom_post_edit_bg_color"
@@ -226,14 +228,23 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
 
 
         // -------------------------------------------------------
-        // Input Text Category (New 4 settings)
+        // Input Text Category (New Settings)
         // -------------------------------------------------------
         val inputCategory = PreferenceCategory(context).apply {
             key = CATEGORY_KEY_CUSTOM_INPUT
-            // タイトルは strings.xml に追加することを推奨 ("入力テキスト色" など)
+            // タイトルは strings.xml に追加することを推奨
             title = getString(R.string.composing_text)
         }
         screen.addPreference(inputCategory)
+
+        // 0. Enable Custom Input Colors (Switch)
+        val inputColorEnablePref = SwitchPreferenceCompat(context).apply {
+            key = PREF_KEY_CUSTOM_INPUT_ENABLE
+            // タイトル例: "入力テキスト色のカスタマイズを有効化" (strings.xmlに追加推奨)
+            title = getString(R.string.custom_input_color_enable_title) // 新規Stringリソースを想定
+            setDefaultValue(false)
+        }
+        inputCategory.addPreference(inputColorEnablePref)
 
         // 1. Pre-Edit Background (入力中・未変換の背景色)
         val preEditBgPref = createColorPreference(
@@ -267,6 +278,23 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         ) { appPreference.custom_theme_post_edit_text_color }
         inputCategory.addPreference(postEditTextPref)
 
+        // Link Color Preferences to Enable Switch
+        fun updateInputColorPrefsState(enabled: Boolean) {
+            preEditBgPref.isEnabled = enabled
+            preEditTextPref.isEnabled = enabled
+            postEditBgPref.isEnabled = enabled
+            postEditTextPref.isEnabled = enabled
+        }
+
+        // Initialize state
+        updateInputColorPrefsState(inputColorEnablePref.isChecked)
+
+        // Listener
+        inputColorEnablePref.setOnPreferenceChangeListener { _, newValue ->
+            val enabled = newValue as Boolean
+            updateInputColorPrefsState(enabled)
+            true
+        }
 
         preferenceScreen = screen
 
@@ -340,7 +368,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             // Border Color
             PREF_KEY_CUSTOM_BORDER_COLOR -> appPreference.custom_theme_border_color = color
 
-            // Input Colors (New 4 settings)
+            // Input Colors
             PREF_KEY_CUSTOM_PRE_EDIT_BG -> appPreference.custom_theme_pre_edit_bg_color = color
             PREF_KEY_CUSTOM_PRE_EDIT_TEXT -> appPreference.custom_theme_pre_edit_text_color = color
             PREF_KEY_CUSTOM_POST_EDIT_BG -> appPreference.custom_theme_post_edit_bg_color = color
@@ -405,10 +433,8 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
                     android.graphics.Color.BLACK,
                     android.graphics.Color.DKGRAY,
                     android.graphics.Color.LTGRAY,
-                    android.graphics.Color.RED,
-                    android.graphics.Color.GREEN,
-                    android.graphics.Color.BLUE,
-                    android.graphics.Color.YELLOW
+                    "#1C1C1E".toColorInt(),
+                    "#1E2022".toColorInt()
                 ),
                 initialSelection = initialColor,
                 allowCustomArgb = true

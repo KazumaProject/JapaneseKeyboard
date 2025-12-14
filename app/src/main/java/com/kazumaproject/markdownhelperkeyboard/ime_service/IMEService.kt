@@ -470,6 +470,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customKeyBorderEnablePreference: Boolean? = false
     private var customKeyBorderEnableColor: Int? = Color.BLACK
 
+    private var customComposingTextPreference: Boolean? = false
+
     private var inputCompositionBackgroundColor: Int? = "#440099CC".toColorInt()
     private var inputCompositionAfterBackgroundColor: Int? = "#770099CC".toColorInt()
     private var inputCompositionTextColor: Int? = Color.WHITE
@@ -927,6 +929,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customKeyBorderEnablePreference = custom_theme_border_enable
             customKeyBorderEnableColor = custom_theme_border_color
 
+            customComposingTextPreference = custom_theme_input_color_enable
             inputCompositionBackgroundColor = custom_theme_pre_edit_bg_color
             inputCompositionTextColor = custom_theme_pre_edit_text_color
             inputConversionBackgroundColor = custom_theme_post_edit_bg_color
@@ -1523,6 +1526,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customKeyBorderEnablePreference = null
         customKeyBorderEnableColor = null
 
+        customComposingTextPreference = null
         inputCompositionBackgroundColor = null
         inputCompositionTextColor = null
         inputCompositionAfterBackgroundColor = null
@@ -2780,10 +2784,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setComposingTextAfterEdit(
             inputString = selectedSuggestion.word,
             spannableString = spannableString,
-            backgroundColor = inputCompositionAfterBackgroundColor ?: getColor(
-                com.kazumaproject.core.R.color.blue
-            ),
-            textColor = inputCompositionTextColor
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor ?: getColor(
+                    com.kazumaproject.core.R.color.blue
+                )
+            } else {
+                getColor(
+                    com.kazumaproject.core.R.color.blue
+                )
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            }
         )
     }
 
@@ -6042,9 +6056,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setComposingTextAfterEdit(
             inputString = insertString,
             spannableString = spannableString,
-            backgroundColor = inputCompositionAfterBackgroundColor
-                ?: getColor(com.kazumaproject.core.R.color.blue),
-            textColor = inputCompositionTextColor
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            }
         )
         mainLayoutBinding?.suggestionRecyclerView?.apply {
             scrollToPosition(0)
@@ -7384,9 +7406,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingTextPreEdit(
                 inputString = string,
                 spannableString = spannable,
-                backgroundColor = inputCompositionBackgroundColor
-                    ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color),
-                textColor = inputCompositionTextColor
+                backgroundColor = if (customComposingTextPreference == true) {
+                    inputCompositionBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+                } else {
+                    getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+                },
+                textColor = if (customComposingTextPreference == true) inputCompositionTextColor else null
             )
         }
         if (isLiveConversionEnable != true) {
@@ -7394,9 +7420,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingTextAfterEdit(
                 inputString = string,
                 spannableString = spannable,
-                backgroundColor = inputCompositionAfterBackgroundColor
-                    ?: getColor(com.kazumaproject.core.R.color.blue),
-                textColor = inputCompositionTextColor
+                backgroundColor = if (customComposingTextPreference == true) {
+                    inputCompositionAfterBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.blue)
+                } else {
+                    getColor(com.kazumaproject.core.R.color.blue)
+                },
+                textColor = if (customComposingTextPreference == true) {
+                    inputCompositionTextColor
+                } else {
+                    null
+                }
             )
         }
     }
@@ -7410,9 +7444,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingTextPreEdit(
                 inputString = string,
                 spannableString = spannable,
-                backgroundColor = inputCompositionBackgroundColor
-                    ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color),
-                textColor = inputCompositionTextColor
+                backgroundColor = if (customComposingTextPreference == true) {
+                    inputCompositionBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+                } else {
+                    getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+                },
+                textColor = if (customComposingTextPreference == true) inputCompositionTextColor else null
             )
         }
         _suggestionFlag.emit(CandidateShowFlag.Updating)
@@ -7433,9 +7471,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setComposingTextAfterEdit(
                     inputString = string,
                     spannableString = spannable,
-                    backgroundColor = inputCompositionAfterBackgroundColor
-                        ?: getColor(com.kazumaproject.core.R.color.blue),
-                    textColor = inputCompositionTextColor
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
                 )
             }
         }
@@ -7459,9 +7505,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setComposingTextAfterEdit(
             inputString = commitString,
             spannableString = newSpannable,
-            backgroundColor = inputCompositionAfterBackgroundColor
-                ?: getColor(com.kazumaproject.core.R.color.blue),
-            textColor = inputCompositionTextColor
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            }
         )
         endBatchEdit()
     }
@@ -11704,8 +11758,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applyComposingText(
                 text = fullText,
                 highlightLength = correctedReading.length,
-                backgroundColor = inputConversionBackgroundColor?: getColor(com.kazumaproject.core.R.color.orange),
-                textColor = inputConversionTextColor
+                backgroundColor = if (customComposingTextPreference == true) {
+                    inputConversionBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.orange)
+                } else {
+                    getColor(com.kazumaproject.core.R.color.orange)
+                },
+                textColor = if (customComposingTextPreference == true) {
+                    inputConversionTextColor
+                } else {
+                    null
+                }
             )
             return
         }
@@ -11713,8 +11776,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyComposingText(
             text = fullText,
             highlightLength = suggestionText.length,
-            backgroundColor = inputConversionBackgroundColor?: getColor(com.kazumaproject.core.R.color.orange),
-            textColor = inputConversionTextColor
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputConversionBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.orange)
+            } else {
+                getColor(com.kazumaproject.core.R.color.orange)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputConversionTextColor
+            } else {
+                null
+            }
         )
     }
 
