@@ -664,7 +664,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _zenzRequest = MutableSharedFlow<String>(
         extraBufferCapacity = 0
     )
+
     private val zenzRequest = _zenzRequest
+
+    private val lastLocalUpdatedInput = MutableStateFlow<String>("")
 
     private var addUserDictionaryPopup: PopupWindow? = null
 
@@ -6507,8 +6510,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
-            zenzRequest.debounce((zenzDebounceTimePreference ?: 300).toLong()).collectLatest {
+            zenzRequest
+                .debounce((zenzDebounceTimePreference ?: 300).toLong())
+                .collectLatest {
                 val zenzCandidates = performZenzRequest(it)
+                lastLocalUpdatedInput.first { completedInput ->
+                    completedInput == it
+                }
                 _zenzCandidates.update { zenzCandidates }
             }
         }
@@ -9552,6 +9560,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setCandidates(
         insertString: String,
     ) {
+        if (zenzEnableStatePreference == true) {
+            _zenzRequest.emit(insertString)
+        }
         val candidates = getSuggestionList(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
@@ -9573,9 +9584,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         }
-        if (zenzEnableStatePreference == true) {
-            _zenzRequest.emit(insertString)
-        }
+
+        lastLocalUpdatedInput.emit(insertString)
+
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
@@ -9606,6 +9617,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setCandidatesOriginal(
         insertString: String,
     ) {
+        if (zenzEnableStatePreference == true) {
+            _zenzRequest.emit(insertString)
+        }
         val candidates = getSuggestionListOriginal(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
@@ -9627,9 +9641,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         }
-        if (zenzEnableStatePreference == true) {
-            _zenzRequest.emit(insertString)
-        }
+
+        lastLocalUpdatedInput.emit(insertString)
+
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
