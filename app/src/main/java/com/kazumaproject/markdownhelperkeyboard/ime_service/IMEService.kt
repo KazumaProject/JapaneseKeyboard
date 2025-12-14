@@ -462,6 +462,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var liquidGlassThemePreference: Boolean? = false
     private var liquidGlassBlurRadiousPreference: Int? = 220
+    private var liquidGlassKeyBlurRadiousPreference: Int? = 255
+
+    private var customKeyBorderEnablePreference: Boolean? = false
+    private var customKeyBorderEnableColor: Int? = Color.BLACK
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -906,6 +910,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             liquidGlassThemePreference = liquid_glass_preference
             liquidGlassBlurRadiousPreference = liquid_glass_blur_radius
+            liquidGlassKeyBlurRadiousPreference = liquid_glass_key_alpha
+            customKeyBorderEnablePreference = custom_theme_border_enable
+            customKeyBorderEnableColor = custom_theme_border_color
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1491,6 +1498,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         liquidGlassThemePreference = null
         liquidGlassBlurRadiousPreference = null
+        liquidGlassKeyBlurRadiousPreference = null
+        customKeyBorderEnablePreference = null
+        customKeyBorderEnableColor = null
 
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -2823,6 +2833,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
                 customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
                 liquidGlassEnable = liquidGlassThemePreference ?: false,
+                customBorderEnable = customKeyBorderEnablePreference ?: false,
+                customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
+                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -2970,7 +2983,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
                 customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-                liquidGlassEnable = liquidGlassThemePreference ?: false
+                liquidGlassEnable = liquidGlassThemePreference ?: false,
+                customBorderEnable = customKeyBorderEnablePreference ?: false,
+                customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
+                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -4528,7 +4544,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
             customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
             customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-            liquidGlassEnable = liquidGlassThemePreference ?: false
+            liquidGlassEnable = liquidGlassThemePreference ?: false,
+            customBorderEnable = customKeyBorderEnablePreference ?: false,
+            customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
+            liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
         )
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
@@ -8280,7 +8299,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
                 customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
                 customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
-                liquidGlassEnable = liquidGlassThemePreference ?: false
+                liquidGlassEnable = liquidGlassThemePreference ?: false,
+                customBorderEnable = customKeyBorderEnablePreference ?: false,
+                customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
+                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
             )
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
