@@ -269,9 +269,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         this.liquidGlassEnable = liquidGlassEnable
 
         // 1. 全体の背景色
-        if (liquidGlassEnable){
+        if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
-        }else{
+        } else {
             this.setBackgroundColor(backgroundColor)
         }
 
@@ -358,13 +358,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         for (i in 0 until slidingTabStrip.childCount) {
             val tabView = slidingTabStrip.getChildAt(i)
 
-            // マージンを設定 (タブ間に隙間を作り、影を表示させるスペースを確保)
+            // マージンを設定 (影のスペースを確保するため 4dp 程度確保)
             val params = tabView.layoutParams as? ViewGroup.MarginLayoutParams
             if (params != null) {
-                val m = dpToPx(4)
+                val m = dpToPx(6) // 影(4dp) + 余白(2dp) で余裕を持たせる
                 params.setMargins(m, m, m, m)
-                // 必要に応じてサイズ指定を解除（MATCH_PARENTなどで潰れないように）
-                // params.height = ViewGroup.LayoutParams.WRAP_CONTENT
                 tabView.layoutParams = params
             }
 
@@ -372,7 +370,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             val radius = dpToPx(8).toFloat()
             tabView.background = getTabNeumorphDrawable(baseColor, radius)
 
-            // パディング調整 (View内部のアイコン/テキストが影に重ならないように)
+            // パディング調整 (Drawable内のpaddingとは別に、Viewのコンテンツ位置調整)
+            // TenKeyのロジックではDrawable自体がpaddingを持つため、View自体のpaddingは少なめでOK
             val p = dpToPx(4)
             tabView.setPadding(p, p, p, p)
 
@@ -383,66 +382,90 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     /**
-     * タブ用のニューモーフィズムDrawableを生成する
-     * state_selected (選択中) の時に「凹む」ように設定
+     * TenKeyの getDynamicNeumorphDrawable と同等の実装
      */
     private fun getTabNeumorphDrawable(@ColorInt baseColor: Int, radius: Float): Drawable {
-        // ハイライトとシャドウの色計算
-        val highlightColor = ColorUtils.blendARGB(baseColor, Color.WHITE, 0.6f)
-        val shadowColor = ColorUtils.blendARGB(baseColor, Color.BLACK, 0.2f)
+        // 1. 色の計算 (TenKeyと同じ係数を使用)
+        // ハイライト色: 明るくする (1.2f)
+        val highlightColor = manipulateColor(baseColor, 1.2f)
+        // シャドウ色: 暗くする (0.8f)
+        val shadowColor = manipulateColor(baseColor, 0.8f)
+        // 押下時の色: ベースより少し暗く (0.95f)
+        val pressedColor = manipulateColor(baseColor, 0.95f)
 
-        val distance = dpToPx(3)
+        // 2. オフセット量とパディング (TenKeyの設定に合わせる)
+        val density = resources.displayMetrics.density
+        val offset = (4 * density).toInt() // 影のずれ幅
+        val padding = (2 * density).toInt() // メイン面の縮小幅
 
-        // --- A. 通常時 (Unselected / Extruded) ---
+        // --- A. 通常状態 (Idle) の作成 ---
+
+        // レイヤー0: 暗い影 (右下に配置)
         val shadowDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
             setColor(shadowColor)
         }
+
+        // レイヤー1: 明るいハイライト (左上に配置)
         val highlightDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
             setColor(highlightColor)
         }
+
+        // レイヤー2: メインの面
         val surfaceDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
             setColor(baseColor)
         }
 
-        // LayerDrawableで重ねる (Shadow -> Highlight -> Surface)
+        // LayerDrawableで重ねる (下から順に描画)
         val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
-        // Shadow: 右下
-        idleLayer.setLayerInset(0, distance, distance, 0, 0)
-        // Highlight: 左上
-        idleLayer.setLayerInset(1, 0, 0, distance, distance)
-        // Surface: 中央
-        idleLayer.setLayerInset(2, distance, distance, distance, distance)
+
+        // インセット設定 (TenKeyと一致させる)
+        // 影: 左と上を空けて、右下に表示
+        idleLayer.setLayerInset(0, offset, offset, 0, 0)
+        // ハイライト: 右と下を空けて、左上に表示
+        idleLayer.setLayerInset(1, 0, 0, offset, offset)
+        // メイン面: 全体にpaddingを入れて中央に配置
+        idleLayer.setLayerInset(2, padding, padding, padding, padding)
 
 
-        // --- B. 選択時・押下時 (Selected / Pressed / Pressed In) ---
-        // ベースより少し暗くして凹みを表現
-        val pressedSurface = GradientDrawable().apply {
+        // --- B. 押下・選択状態 (Pressed / Selected) の作成 ---
+
+        val pressedDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
-            setColor(ColorUtils.blendARGB(baseColor, Color.BLACK, 0.1f))
+            setColor(pressedColor)
         }
-        val pressedLayer = LayerDrawable(arrayOf(pressedSurface))
-        // 凹んでいるので、Surfaceの位置はそのままか、少しずらす
-        pressedLayer.setLayerInset(0, distance, distance, distance, distance)
+
+        // サイズが変わらないようにLayerDrawableにして同じInsetを与える
+        val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
+        pressedLayer.setLayerInset(0, padding, padding, padding, padding)
 
 
-        // --- C. StateListDrawable ---
-        val stateList = StateListDrawable()
+        // --- C. StateListDrawable (Selector) にまとめる ---
+        val stateListDrawable = StateListDrawable()
 
-        // 選択中 (TabLayoutのタブ用)
-        stateList.addState(intArrayOf(android.R.attr.state_selected), pressedLayer)
-        // 押下中 (通常のボタン用)
-        stateList.addState(intArrayOf(android.R.attr.state_pressed), pressedLayer)
-        // 通常
-        stateList.addState(intArrayOf(), idleLayer)
+        // 選択中 (TabLayout用)
+        stateListDrawable.addState(
+            intArrayOf(android.R.attr.state_selected),
+            pressedLayer
+        )
+        // 押下中 (ボタン用)
+        stateListDrawable.addState(
+            intArrayOf(android.R.attr.state_pressed),
+            pressedLayer
+        )
+        // 通常時
+        stateListDrawable.addState(
+            intArrayOf(),
+            idleLayer
+        )
 
-        return stateList
+        return stateListDrawable
     }
 
     fun setOnDeleteButtonFingerUpListener(listener: () -> Unit) {
@@ -814,6 +837,19 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         val i = categoryTab.selectedTabPosition
         val last = categoryTab.tabCount - 1
         if (i < last) categoryTab.getTabAt(i + 1)?.select()
+    }
+
+    /**
+     * TenKeyと同じ色計算ロジック
+     * @param color 元の色
+     * @param factor 1.0より大＝明るく、1.0より小＝暗く
+     */
+    private fun manipulateColor(color: Int, factor: Float): Int {
+        val a = Color.alpha(color)
+        val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
+        val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
+        val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
+        return Color.argb(a, r, g, b)
     }
 
     fun release() {

@@ -1897,7 +1897,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 keyboardSymbolView.setKeyboardTheme(
                                     backgroundColor = manipulateColor(symbolKeyBg, 1.2f),
                                     iconColor = customThemeKeyTextColor ?: Color.BLACK,
-                                    selectedIconColor = customThemeKeyTextColor ?: Color.BLACK,
+                                    selectedIconColor = manipulateColor(
+                                        customThemeKeyTextColor ?: Color.BLACK, 0.6f
+                                    ),
                                     keyBackgroundColor = symbolKeyBg,
                                     liquidGlassEnable = liquidGlassThemePreference ?: false
                                 )

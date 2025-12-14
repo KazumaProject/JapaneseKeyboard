@@ -487,7 +487,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             width = 0
             height = 0
 
-            if (themeMode == "custom") {
+            if (themeMode == "custom" && !customBorderEnable) {
                 setMargins(3, 6, 3, 6)
             } else {
                 if (keyData.keyType == KeyType.STANDARD_FLICK) {
