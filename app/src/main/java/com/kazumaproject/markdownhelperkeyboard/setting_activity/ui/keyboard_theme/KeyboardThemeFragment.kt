@@ -352,7 +352,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_COLOR)?.isVisible = isVisible
 
         // Input Category Visibility
-        findPreference<PreferenceCategory>(CATEGORY_KEY_CUSTOM_INPUT)?.isVisible = isVisible
+        //findPreference<PreferenceCategory>(CATEGORY_KEY_CUSTOM_INPUT)?.isVisible = isVisible
     }
 
     private fun saveCustomColor(key: String, color: Int) {
