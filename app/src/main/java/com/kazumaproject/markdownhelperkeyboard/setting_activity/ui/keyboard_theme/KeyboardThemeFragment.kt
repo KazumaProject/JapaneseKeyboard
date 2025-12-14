@@ -25,7 +25,16 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
     lateinit var appPreference: AppPreference
 
     companion object {
+        // System Theme Keys
         private const val PREF_KEY_DEFAULT = "theme_default"
+        private const val PREF_KEY_ROUND_CORNER = "round_corner_keyboard_preference"
+
+        // Liquid Glass Keys
+        private const val PREF_KEY_LIQUID_GLASS = "liquid_glass_preference"
+        private const val PREF_KEY_LIQUID_GLASS_BLUR = "liquid_glass_blur_preference"
+        private const val PREF_KEY_LIQUID_GLASS_KEY_ALPHA = "liquid_glass_key_alpha_preference"
+
+        // Custom Theme Keys
         private const val PREF_KEY_CUSTOM = "theme_custom"
         private const val PREF_KEY_CUSTOM_BG = "theme_custom_bg_color"
         private const val PREF_KEY_CUSTOM_KEY = "theme_custom_key_color"
@@ -33,25 +42,29 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val PREF_KEY_CUSTOM_TEXT = "theme_custom_key_text_color"
         private const val PREF_KEY_CUSTOM_SPECIAL_TEXT = "theme_custom_special_key_text_color"
 
-        // New Custom Border Preferences
+        // Custom Border Keys
         private const val PREF_KEY_CUSTOM_BORDER_ENABLE = "theme_custom_border_enable"
         private const val PREF_KEY_CUSTOM_BORDER_COLOR = "theme_custom_border_color"
 
-        private const val PREF_KEY_ROUND_CORNER = "round_corner_keyboard_preference"
+        // Custom Input Text Keys (New 4 settings)
+        private const val CATEGORY_KEY_CUSTOM_INPUT = "category_custom_input"
+        private const val PREF_KEY_CUSTOM_PRE_EDIT_BG = "theme_custom_pre_edit_bg_color"
+        private const val PREF_KEY_CUSTOM_PRE_EDIT_TEXT = "theme_custom_pre_edit_text_color"
+        private const val PREF_KEY_CUSTOM_POST_EDIT_BG = "theme_custom_post_edit_bg_color"
+        private const val PREF_KEY_CUSTOM_POST_EDIT_TEXT = "theme_custom_post_edit_text_color"
 
+        // Modes
         private const val MODE_DEFAULT = "default"
         private const val MODE_CUSTOM = "custom"
-
-        private const val PREF_KEY_LIQUID_GLASS = "liquid_glass_preference"
-        private const val PREF_KEY_LIQUID_GLASS_BLUR = "liquid_glass_blur_preference"
-        private const val PREF_KEY_LIQUID_GLASS_KEY_ALPHA = "liquid_glass_key_alpha_preference"
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         val context = preferenceManager.context
         val screen = preferenceManager.createPreferenceScreen(context)
 
+        // -------------------------------------------------------
         // System Category
+        // -------------------------------------------------------
         val systemCategory = PreferenceCategory(context).apply {
             title = getString(R.string.theme_category_system)
         }
@@ -66,11 +79,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(roundCornerPref)
 
-        // -------------------------------------------------------
-        // Liquid Glass 設定 (Manual Dependency Implementation)
-        // -------------------------------------------------------
-
-        // 1. スイッチを作成
+        // Liquid Glass Settings
         val liquidGlassSwitch = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_LIQUID_GLASS
             title = getString(R.string.liquid_glass_effect)
@@ -79,7 +88,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(liquidGlassSwitch)
 
-        // 2. 背景ブラー半径シークバーを作成
         val liquidGlassBlurPref = SeekBarPreference(context).apply {
             key = PREF_KEY_LIQUID_GLASS_BLUR
             title = getString(R.string.blur_radius)
@@ -90,7 +98,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(liquidGlassBlurPref)
 
-        // 3. キー透明度シークバーを作成 (New Task)
         val liquidGlassKeyAlphaPref = SeekBarPreference(context).apply {
             key = PREF_KEY_LIQUID_GLASS_KEY_ALPHA
             title = getString(R.string.key_transparency)
@@ -101,23 +108,19 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(liquidGlassKeyAlphaPref)
 
-        // 4. 手動で依存関係を制御する (クラッシュ回避策)
-        // 初期状態の同期
+        // Liquid Glass Dependency Logic
         val isLiquidGlassEnabled = liquidGlassSwitch.isChecked
         liquidGlassBlurPref.isEnabled = isLiquidGlassEnabled
         liquidGlassKeyAlphaPref.isEnabled = isLiquidGlassEnabled
 
-        // リスナーを設定: スイッチが切り替わったらシークバーの状態を変更
         liquidGlassSwitch.setOnPreferenceChangeListener { _, newValue ->
             val isEnabled = newValue as Boolean
             liquidGlassBlurPref.isEnabled = isEnabled
             liquidGlassKeyAlphaPref.isEnabled = isEnabled
             true
         }
-        // -------------------------------------------------------
 
-
-        // Default Theme
+        // Default Theme Checkbox
         val defaultPref = CheckBoxPreference(context).apply {
             key = PREF_KEY_DEFAULT
             title = getString(R.string.theme_default)
@@ -138,7 +141,10 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(defaultPref)
 
-        // Custom Category
+
+        // -------------------------------------------------------
+        // Custom Category (Keyboard Appearance)
+        // -------------------------------------------------------
         val customCategory = PreferenceCategory(context).apply {
             title = getString(R.string.theme_category_custom)
         }
@@ -155,57 +161,47 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         customCategory.addPreference(customPref)
 
-        // Custom Color Preferences
+        // Custom Background Color
         val customBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_BG,
             getString(R.string.theme_custom_bg_color)
-        ) {
-            appPreference.custom_theme_bg_color
-        }
+        ) { appPreference.custom_theme_bg_color }
         customCategory.addPreference(customBgPref)
 
+        // Custom Key Color
         val customKeyPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_KEY,
             getString(R.string.theme_custom_key_color)
-        ) {
-            appPreference.custom_theme_key_color
-        }
+        ) { appPreference.custom_theme_key_color }
         customCategory.addPreference(customKeyPref)
 
+        // Custom Special Key Color
         val customSpecialKeyPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SPECIAL_KEY,
             getString(R.string.theme_custom_special_key_color)
-        ) {
-            appPreference.custom_theme_special_key_color
-        }
+        ) { appPreference.custom_theme_special_key_color }
         customCategory.addPreference(customSpecialKeyPref)
 
+        // Custom Text Color
         val customTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_TEXT,
             getString(R.string.theme_custom_key_text_color)
-        ) {
-            appPreference.custom_theme_key_text_color
-        }
+        ) { appPreference.custom_theme_key_text_color }
         customCategory.addPreference(customTextPref)
 
+        // Custom Special Text Color
         val customSpecialTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SPECIAL_TEXT,
             getString(R.string.theme_custom_special_key_text_color)
-        ) {
-            appPreference.custom_theme_special_key_text_color
-        }
+        ) { appPreference.custom_theme_special_key_text_color }
         customCategory.addPreference(customSpecialTextPref)
 
-        // -------------------------------------------------------
-        // Custom Border Settings (New Task)
-        // -------------------------------------------------------
-
-        // Border Enable Switch
+        // Custom Border Settings
         val customBorderEnablePref = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_CUSTOM_BORDER_ENABLE
             title = getString(R.string.custom_border_enable)
@@ -213,24 +209,64 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         customCategory.addPreference(customBorderEnablePref)
 
-        // Border Color Preference
         val customBorderColorPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_BORDER_COLOR,
             getString(R.string.custom_border_color)
-        ) {
-            appPreference.custom_theme_border_color
-        }
+        ) { appPreference.custom_theme_border_color }
         customCategory.addPreference(customBorderColorPref)
 
-        // ボーダー色の有効/無効をスイッチに連動させる
+        // Link Border Color capability to switch
         customBorderColorPref.isEnabled = customBorderEnablePref.isChecked
         customBorderEnablePref.setOnPreferenceChangeListener { _, newValue ->
             val isEnabled = newValue as Boolean
             customBorderColorPref.isEnabled = isEnabled
             true
         }
+
+
         // -------------------------------------------------------
+        // Input Text Category (New 4 settings)
+        // -------------------------------------------------------
+        val inputCategory = PreferenceCategory(context).apply {
+            key = CATEGORY_KEY_CUSTOM_INPUT
+            // タイトルは strings.xml に追加することを推奨 ("入力テキスト色" など)
+            title = getString(R.string.composing_text)
+        }
+        screen.addPreference(inputCategory)
+
+        // 1. Pre-Edit Background (入力中・未変換の背景色)
+        val preEditBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_PRE_EDIT_BG,
+            getString(R.string.pre_edit)
+        ) { appPreference.custom_theme_pre_edit_bg_color }
+        inputCategory.addPreference(preEditBgPref)
+
+        // 2. Pre-Edit Text Color (入力中・未変換の文字色)
+        val preEditTextPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_PRE_EDIT_TEXT,
+            getString(R.string.pre_edit_text)
+        ) { appPreference.custom_theme_pre_edit_text_color }
+        inputCategory.addPreference(preEditTextPref)
+
+        // 3. Post-Edit/Highlight Background (変換中・ハイライトの背景色)
+        val postEditBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_POST_EDIT_BG,
+            getString(R.string.conversion_text_color)
+        ) { appPreference.custom_theme_post_edit_bg_color }
+        inputCategory.addPreference(postEditBgPref)
+
+        // 4. Post-Edit/Highlight Text Color (変換中・ハイライトの文字色)
+        val postEditTextPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_POST_EDIT_TEXT,
+            getString(R.string.conversion_text_color_)
+        ) { appPreference.custom_theme_post_edit_text_color }
+        inputCategory.addPreference(postEditTextPref)
+
 
         preferenceScreen = screen
 
@@ -266,7 +302,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         appPreference.theme_mode = mode
         updateCheckStates(mode)
         updateCustomColorsVisibility(mode == MODE_CUSTOM)
-        // requireActivity().recreate()
+        // requireActivity().recreate() // 必要に応じて有効化
     }
 
     private fun updateCheckStates(selectedMode: String) {
@@ -276,18 +312,24 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
     }
 
     private fun updateCustomColorsVisibility(isVisible: Boolean) {
+        // Base Custom Colors
         findPreference<Preference>(PREF_KEY_CUSTOM_BG)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_KEY)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_KEY)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_TEXT)?.isVisible = isVisible
-        // 新しいボーダー設定の可視性も制御
+
+        // Border Settings
         findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_COLOR)?.isVisible = isVisible
+
+        // Input Category Visibility
+        findPreference<PreferenceCategory>(CATEGORY_KEY_CUSTOM_INPUT)?.isVisible = isVisible
     }
 
     private fun saveCustomColor(key: String, color: Int) {
         when (key) {
+            // Base Colors
             PREF_KEY_CUSTOM_BG -> appPreference.custom_theme_bg_color = color
             PREF_KEY_CUSTOM_KEY -> appPreference.custom_theme_key_color = color
             PREF_KEY_CUSTOM_SPECIAL_KEY -> appPreference.custom_theme_special_key_color = color
@@ -295,7 +337,15 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             PREF_KEY_CUSTOM_SPECIAL_TEXT -> appPreference.custom_theme_special_key_text_color =
                 color
 
+            // Border Color
             PREF_KEY_CUSTOM_BORDER_COLOR -> appPreference.custom_theme_border_color = color
+
+            // Input Colors (New 4 settings)
+            PREF_KEY_CUSTOM_PRE_EDIT_BG -> appPreference.custom_theme_pre_edit_bg_color = color
+            PREF_KEY_CUSTOM_PRE_EDIT_TEXT -> appPreference.custom_theme_pre_edit_text_color = color
+            PREF_KEY_CUSTOM_POST_EDIT_BG -> appPreference.custom_theme_post_edit_bg_color = color
+            PREF_KEY_CUSTOM_POST_EDIT_TEXT -> appPreference.custom_theme_post_edit_text_color =
+                color
         }
     }
 
@@ -306,6 +356,12 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             colorChooser(
                 colors = intArrayOf(
                     0x00000000,
+                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue),
+                    ContextCompat.getColor(
+                        requireContext(),
+                        com.kazumaproject.core.R.color.char_in_edit_color
+                    ),
+                    ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.orange),
                     ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.violet),
                     ContextCompat.getColor(
                         requireContext(),
@@ -348,7 +404,11 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
                     android.graphics.Color.WHITE,
                     android.graphics.Color.BLACK,
                     android.graphics.Color.DKGRAY,
-                    android.graphics.Color.LTGRAY
+                    android.graphics.Color.LTGRAY,
+                    android.graphics.Color.RED,
+                    android.graphics.Color.GREEN,
+                    android.graphics.Color.BLUE,
+                    android.graphics.Color.YELLOW
                 ),
                 initialSelection = initialColor,
                 allowCustomArgb = true

@@ -402,4 +402,9 @@
     <string name="key_transparency">キーの透明度</string>
     <string name="custom_border_enable">キー枠のカスタム色を有効にする</string>
     <string name="custom_border_color">キー枠の色</string>
+    <string name="pre_edit_text">入力中の文字色</string>
+    <string name="pre_edit">入力中の背景色</string>
+    <string name="conversion_text_color">変換中/候補の背景色</string>
+    <string name="conversion_text_color_">変換中/候補の文字色</string>
+    <string name="composing_text">入力テキスト色</string>
 </resources>
