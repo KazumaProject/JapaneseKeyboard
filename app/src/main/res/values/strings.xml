@@ -409,4 +409,5 @@
     <string name="conversion_text_color">Conversion Color</string>
     <string name="conversion_text_color_">Conversion Text Color</string>
     <string name="composing_text">Composing Text</string>
+    <string name="custom_input_color_enable_title">Enable customize</string>
 </resources>
