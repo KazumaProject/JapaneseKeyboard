@@ -27,6 +27,7 @@ import android.speech.SpeechRecognizer
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
 import android.text.style.UnderlineSpan
 import android.view.Gravity
 import android.view.InputDevice
@@ -53,11 +54,13 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
 import android.widget.TextView
+import androidx.annotation.ColorInt
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.graphics.toColorInt
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -466,6 +469,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var customKeyBorderEnablePreference: Boolean? = false
     private var customKeyBorderEnableColor: Int? = Color.BLACK
+
+    private var inputCompositionBackgroundColor: Int? = "#440099CC".toColorInt()
+    private var inputCompositionAfterBackgroundColor: Int? = "#770099CC".toColorInt()
+    private var inputCompositionTextColor: Int? = Color.WHITE
+
+    private var inputConversionBackgroundColor: Int? = "#55FF8800".toColorInt()
+    private var inputConversionTextColor: Int? = Color.WHITE
 
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
@@ -916,6 +926,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             liquidGlassKeyBlurRadiousPreference = liquid_glass_key_alpha
             customKeyBorderEnablePreference = custom_theme_border_enable
             customKeyBorderEnableColor = custom_theme_border_color
+
+            inputCompositionBackgroundColor = custom_theme_pre_edit_bg_color
+            inputCompositionTextColor = custom_theme_pre_edit_text_color
+            inputConversionBackgroundColor = custom_theme_post_edit_bg_color
+            inputConversionTextColor = custom_theme_post_edit_text_color
+
+            inputCompositionAfterBackgroundColor =
+                manipulateColor(custom_theme_pre_edit_bg_color, 1.2f)
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1504,6 +1522,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassKeyBlurRadiousPreference = null
         customKeyBorderEnablePreference = null
         customKeyBorderEnableColor = null
+
+        inputCompositionBackgroundColor = null
+        inputCompositionTextColor = null
+        inputCompositionAfterBackgroundColor = null
+        inputConversionBackgroundColor = null
+        inputConversionTextColor = null
 
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -2754,7 +2778,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val spannableString = SpannableString(selectedSuggestion.word + stringInTail)
         setComposingTextAfterEdit(
-            selectedSuggestion.word, spannableString
+            inputString = selectedSuggestion.word,
+            spannableString = spannableString,
+            backgroundColor = inputCompositionAfterBackgroundColor ?: getColor(
+                com.kazumaproject.core.R.color.blue
+            ),
+            textColor = inputCompositionTextColor
         )
     }
 
@@ -6010,7 +6039,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             stringInTail.set("")
             SpannableString(insertString)
         }
-        setComposingTextAfterEdit(insertString, spannableString)
+        setComposingTextAfterEdit(
+            inputString = insertString,
+            spannableString = spannableString,
+            backgroundColor = inputCompositionAfterBackgroundColor
+                ?: getColor(com.kazumaproject.core.R.color.blue),
+            textColor = inputCompositionTextColor
+        )
         mainLayoutBinding?.suggestionRecyclerView?.apply {
             scrollToPosition(0)
         }
@@ -6513,12 +6548,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzRequest
                 .debounce((zenzDebounceTimePreference ?: 300).toLong())
                 .collectLatest {
-                val zenzCandidates = performZenzRequest(it)
-                lastLocalUpdatedInput.first { completedInput ->
-                    completedInput == it
+                    val zenzCandidates = performZenzRequest(it)
+                    lastLocalUpdatedInput.first { completedInput ->
+                        completedInput == it
+                    }
+                    _zenzCandidates.update { zenzCandidates }
                 }
-                _zenzCandidates.update { zenzCandidates }
-            }
         }
 
         launch {
@@ -7347,12 +7382,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _suggestionFlag.emit(CandidateShowFlag.Updating)
         if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
-                string, spannable
+                inputString = string,
+                spannableString = spannable,
+                backgroundColor = inputCompositionBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color),
+                textColor = inputCompositionTextColor
             )
         }
         if (isLiveConversionEnable != true) {
             // ライブ変換が無効な場合は、入力されたテキストをそのまま表示します。
-            setComposingTextAfterEdit(string, spannable)
+            setComposingTextAfterEdit(
+                inputString = string,
+                spannableString = spannable,
+                backgroundColor = inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue),
+                textColor = inputCompositionTextColor
+            )
         }
     }
 
@@ -7363,7 +7408,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val spannable = createSpannableWithTail(string)
         if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
-                string, spannable
+                inputString = string,
+                spannableString = spannable,
+                backgroundColor = inputCompositionBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color),
+                textColor = inputCompositionTextColor
             )
         }
         _suggestionFlag.emit(CandidateShowFlag.Updating)
@@ -7381,7 +7430,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (shouldCommitOriginalText) {
                 isContinuousTapInputEnabled.set(true)
                 lastFlickConvertedNextHiragana.set(true)
-                setComposingTextAfterEdit(string, spannable)
+                setComposingTextAfterEdit(
+                    inputString = string,
+                    spannableString = spannable,
+                    backgroundColor = inputCompositionAfterBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.blue),
+                    textColor = inputCompositionTextColor
+                )
             }
         }
     }
@@ -7401,7 +7456,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         lastCandidate = commitString
         val newSpannable = createSpannableWithTail(commitString)
-        setComposingTextAfterEdit(commitString, newSpannable)
+        setComposingTextAfterEdit(
+            inputString = commitString,
+            spannableString = newSpannable,
+            backgroundColor = inputCompositionAfterBackgroundColor
+                ?: getColor(com.kazumaproject.core.R.color.blue),
+            textColor = inputCompositionTextColor
+        )
         endBatchEdit()
     }
 
@@ -9142,48 +9203,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFirstClickHasStringTail = false
     }
 
+    /**
+     * 編集前（PreEdit）のテキスト装飾を設定する
+     * * @param backgroundColor 背景色 (Color Int)
+     * @param textColor テキスト色 (Color Int, nullの場合は適用しない)
+     */
     private fun setComposingTextPreEdit(
-        inputString: String, spannableString: SpannableString
+        inputString: String,
+        spannableString: SpannableString,
+        @ColorInt backgroundColor: Int,
+        @ColorInt textColor: Int? = null
     ) {
         val inputLength = inputString.length
         val tailLength = stringInTail.get().length
 
-        if (isContinuousTapInputEnabled.get() && lastFlickConvertedNextHiragana.get()) {
-            spannableString.apply {
+        spannableString.apply {
+            // 背景色の設定
+            setSpan(
+                BackgroundColorSpan(backgroundColor),
+                0,
+                inputLength,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+            )
+
+            // テキスト色の設定（指定がある場合のみ）
+            textColor?.let { color ->
                 setSpan(
-                    BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.green)),
+                    ForegroundColorSpan(color),
                     0,
                     inputLength,
                     Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
                 )
-                setSpan(
-                    UnderlineSpan(),
-                    0,
-                    inputLength + tailLength,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
-                )
             }
-        } else {
-            spannableString.apply {
-                setSpan(
-                    BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.char_in_edit_color)),
-                    0,
-                    inputLength,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
-                )
-                setSpan(
-                    UnderlineSpan(), 0, inputLength + tailLength, Spannable.SPAN_COMPOSING
-                )
-            }
+
+            // 下線の設定
+            setSpan(
+                UnderlineSpan(),
+                0,
+                inputLength + tailLength,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+            )
         }
 
         Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
         setComposingText(spannableString, 1)
     }
 
+    /**
+     * 編集後（AfterEdit）のテキスト装飾を設定する
+     */
     private fun setComposingTextAfterEdit(
         inputString: String,
         spannableString: SpannableString,
+        @ColorInt backgroundColor: Int,
+        @ColorInt textColor: Int? = null
     ) {
         // stringInTail が空でなければ、下線の終了位置を延長する
         val underlineEnd = if (stringInTail.get().isNotEmpty()) {
@@ -9195,15 +9268,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         spannableString.apply {
             // 背景色は inputString の部分だけ
             setSpan(
-                BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.blue)),
+                BackgroundColorSpan(backgroundColor),
                 0,
                 inputString.length,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
             )
 
+            // テキスト色の設定
+            textColor?.let { color ->
+                setSpan(
+                    ForegroundColorSpan(color),
+                    0,
+                    inputString.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+                )
+            }
+
             // 下線は stringInTail があればそこまで含める
             setSpan(
-                UnderlineSpan(), 0, underlineEnd, // 計算した終了位置を使用
+                UnderlineSpan(),
+                0,
+                underlineEnd,
                 Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
             )
         }
@@ -11616,21 +11701,54 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else if (candidateType == 15) {
             val (correctedReading) = nextSuggestion.string.correctReading()
             val fullText = correctedReading + stringInTail
-            applyComposingText(fullText, correctedReading.length)
+            applyComposingText(
+                text = fullText,
+                highlightLength = correctedReading.length,
+                backgroundColor = inputConversionBackgroundColor?: getColor(com.kazumaproject.core.R.color.orange),
+                textColor = inputConversionTextColor
+            )
             return
         }
         val fullText = suggestionText + stringInTail
-        applyComposingText(fullText, suggestionText.length)
+        applyComposingText(
+            text = fullText,
+            highlightLength = suggestionText.length,
+            backgroundColor = inputConversionBackgroundColor?: getColor(com.kazumaproject.core.R.color.orange),
+            textColor = inputConversionTextColor
+        )
     }
 
-    private fun applyComposingText(text: String, highlightLength: Int) {
+    /**
+     * ComposingTextを適用する（ハイライト指定あり）
+     */
+    private fun applyComposingText(
+        text: String,
+        highlightLength: Int,
+        @ColorInt backgroundColor: Int,
+        @ColorInt textColor: Int? = null
+    ) {
         val spannableString = SpannableString(text)
-        spannableString.setSpan(
-            BackgroundColorSpan(getColor(com.kazumaproject.core.R.color.orange)),
-            0,
-            highlightLength,
-            Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-        )
+
+        spannableString.apply {
+            // 背景色
+            setSpan(
+                BackgroundColorSpan(backgroundColor),
+                0,
+                highlightLength,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+
+            // テキスト色
+            textColor?.let { color ->
+                setSpan(
+                    ForegroundColorSpan(color),
+                    0,
+                    highlightLength,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+        }
+
         setComposingText(spannableString, 1)
     }
 
