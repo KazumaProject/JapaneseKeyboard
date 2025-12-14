@@ -23,12 +23,13 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.setPadding
 import androidx.core.widget.ImageViewCompat
-import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.domain.extensions.hide
-import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
+import com.kazumaproject.core.domain.extensions.setBorder
+import com.kazumaproject.core.domain.extensions.setDrawableAlpha
+import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
@@ -267,6 +268,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var customKeyTextColor: Int = Color.BLACK
     private var customSpecialKeyTextColor: Int = Color.BLACK
     private var liquidGlassEnable: Boolean = false
+    private var liquidGlassKeyAlphaEnable: Int = 255
+    private var customBorderEnable: Boolean = false
+    private var customBorderColor: Int = Color.BLACK
 
     /** ← NEW: scope tied to this view; cancel it on detach **/
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -606,6 +610,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 btn.background = ContextCompat
                     .getDrawable(context, centerRes)
                     ?.mutate()
+                if (liquidGlassEnable) {
+                    btn.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
             }
 
             // サイドキー
@@ -617,14 +624,20 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 btn.background = ContextCompat
                     .getDrawable(context, sideRes)
                     ?.mutate()
+                if (liquidGlassEnable) {
+                    btn.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
             }
 
             keyEnter.background = ContextCompat
                 .getDrawable(context, roundRes)
 
+            keyEnter.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+
             keySwitchKeyMode.background = ContextCompat
                 .getDrawable(context, roundRes)
 
+            keySwitchKeyMode.setDrawableAlpha(liquidGlassKeyAlphaEnable)
         }
     }
 
@@ -695,6 +708,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         customKeyTextColor: Int,
         customSpecialKeyTextColor: Int,
         liquidGlassEnable: Boolean,
+        customBorderEnable: Boolean,
+        customBorderColor: Int,
+        liquidGlassKeyAlphaEnable: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -710,6 +726,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
 
         this.liquidGlassEnable = liquidGlassEnable
+
+        this.customBorderEnable = customBorderEnable
+        this.customBorderColor = customBorderColor
+        this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
 
         val inflater = LayoutInflater.from(context)
 
@@ -838,9 +858,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val radius = 8f * density // 角丸の半径 (8dp)
 
         // 1. 全体の背景色を設定
-        if (liquidGlassEnable){
+        if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(backgroundColor, 0))
-        }else{
+        } else {
             this.setBackgroundColor(backgroundColor)
         }
 
@@ -866,7 +886,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
 
             normalKeys.forEach { view ->
-                view.background = normalDrawableState?.newDrawable()?.mutate()
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customKeyColor)
+                    view.setBorder(customBorderColor, 1)
+                } else {
+                    view.background = normalDrawableState?.newDrawable()?.mutate()
+                }
 
                 if (view is MaterialTextView) view.setTextColor(normalColorStateList)
                 if (view is AppCompatButton) view.setTextColor(normalColorStateList)
@@ -874,6 +899,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 if (view is AppCompatImageButton) {
                     ImageViewCompat.setImageTintList(view, normalColorStateList)
                 }
+
+                view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
 
             // 3. 特殊キーへの適用 (specialKeyColorを使用)
@@ -883,13 +910,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
 
             specialKeys.forEach { view ->
-                view.background = specialDrawableState?.newDrawable()?.mutate()
-
-                if (view is MaterialTextView) view.setTextColor(specialColorStateList)
-                if (view is AppCompatButton) view.setTextColor(specialColorStateList)
-
-                if (view is AppCompatImageButton) {
-                    ImageViewCompat.setImageTintList(view, specialColorStateList)
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customSpecialKeyColor)
+                    view.setBorder(customBorderColor, 1)
+                } else {
+                    view.background = specialDrawableState?.newDrawable()?.mutate()
+                }
+                ImageViewCompat.setImageTintList(view, specialColorStateList)
+                view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                if (customBorderEnable) {
+                    view.setBorder(customBorderColor, 1)
                 }
             }
         }
