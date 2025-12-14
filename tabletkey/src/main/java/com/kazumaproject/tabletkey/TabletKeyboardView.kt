@@ -19,7 +19,6 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatButton
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
@@ -31,7 +30,9 @@ import com.kazumaproject.core.data.tablet.TabletCapsLockState
 import com.kazumaproject.core.domain.extensions.hide
 import com.kazumaproject.core.domain.extensions.layoutXPosition
 import com.kazumaproject.core.domain.extensions.layoutYPosition
+import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setBottomToTopOf
+import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setEndToStartOf
 import com.kazumaproject.core.domain.extensions.setHorizontalWeight
@@ -309,13 +310,17 @@ class TabletKeyboardView @JvmOverloads constructor(
     private var customSpecialKeyTextColor: Int = Color.BLACK
     private var liquidGlassEnable: Boolean = false
 
+    private var liquidGlassKeyAlphaEnable: Int = 255
+    private var customBorderEnable: Boolean = false
+    private var customBorderColor: Int = Color.BLACK
+
     init {
         (allButtonKeys + allImageButtonKeys).forEach { it.setOnTouchListener(this) }
         keyMap = KeyMap()
         declarePopupWindows()
         handleCurrentInputModeSwitch(inputMode = currentInputMode.get())
 
-        setMaterialYouTheme()
+        //setMaterialYouTheme()
 
         uiScope.launch {
             tabletCapsLockState.collectLatest { state ->
@@ -351,6 +356,9 @@ class TabletKeyboardView @JvmOverloads constructor(
                         com.kazumaproject.core.R.drawable.tablet_keyboard_center_bg_material
                     )
                 )
+                if (liquidGlassEnable) {
+                    it.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
             }
             allImageButtonKeys.forEach {
                 it.setBackgroundDrawable(
@@ -359,6 +367,9 @@ class TabletKeyboardView @JvmOverloads constructor(
                         com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
                     )
                 )
+                if (liquidGlassEnable) {
+                    it.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
             }
             return
         }
@@ -379,6 +390,9 @@ class TabletKeyboardView @JvmOverloads constructor(
         customKeyTextColor: Int,
         customSpecialKeyTextColor: Int,
         liquidGlassEnable: Boolean,
+        customBorderEnable: Boolean,
+        customBorderColor: Int,
+        liquidGlassKeyAlphaEnable: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -393,6 +407,11 @@ class TabletKeyboardView @JvmOverloads constructor(
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
         this.liquidGlassEnable = liquidGlassEnable
+
+        this.customBorderEnable = customBorderEnable
+        this.customBorderColor = customBorderColor
+        this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
+
         LayoutInflater.from(context)
 
         when (this.themeMode) {
@@ -466,8 +485,13 @@ class TabletKeyboardView @JvmOverloads constructor(
             val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
 
             normalKeys.forEach { view ->
-                view.background = normalDrawableState?.newDrawable()?.mutate()
-                if (view is AppCompatButton) view.setTextColor(normalColorStateList)
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customKeyColor)
+                    view.setBorder(customBorderColor, 1)
+                } else {
+                    view.background = normalDrawableState?.newDrawable()?.mutate()
+                }
+                view.setTextColor(normalColorStateList)
             }
 
             // 3. 特殊キーへの適用
@@ -476,12 +500,13 @@ class TabletKeyboardView @JvmOverloads constructor(
             val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
 
             specialKeys.forEach { view ->
-                view.background = specialDrawableState?.newDrawable()?.mutate()
-                if (view is MaterialTextView) view.setTextColor(specialColorStateList)
-                if (view is AppCompatButton) view.setTextColor(specialColorStateList)
-                if (view is AppCompatImageButton) {
-                    ImageViewCompat.setImageTintList(view, specialColorStateList)
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customSpecialKeyColor)
+                    view.setBorder(customBorderColor, 1)
+                } else {
+                    view.background = specialDrawableState?.newDrawable()?.mutate()
                 }
+                ImageViewCompat.setImageTintList(view, specialColorStateList)
             }
 
         }

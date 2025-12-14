@@ -42,6 +42,8 @@ import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
 import com.kazumaproject.core.domain.extensions.dpToPx
+import com.kazumaproject.core.domain.extensions.setBorder
+import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
@@ -199,6 +201,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var customKeyTextColor: Int = Color.BLACK
     private var customSpecialKeyTextColor: Int = Color.BLACK
 
+    private var liquidGlassKeyAlphaEnable: Int = 255
+    private var customBorderEnable: Boolean = false
+    private var customBorderColor: Int = Color.BLACK
+
     init {
         isClickable = true
         isFocusable = true
@@ -264,6 +270,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         customKeyTextColor: Int,
         customSpecialKeyTextColor: Int,
         liquidGlassEnable: Boolean,
+        customBorderEnable: Boolean,
+        customBorderColor: Int,
+        liquidGlassKeyAlphaEnable: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -278,6 +287,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
         this.liquidGlassEnable = liquidGlassEnable
+
+        this.customBorderEnable = customBorderEnable
+        this.customBorderColor = customBorderColor
+        this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
 
         LayoutInflater.from(context)
 
@@ -353,10 +366,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val normalColorStateList = ColorStateList.valueOf(normalKeyTextColor)
 
             normalKeys.forEach { view ->
-                view.background = normalDrawableState?.newDrawable()?.mutate()
-
-                if (view is QWERTYButton) view.setTextColor(normalColorStateList)
-                if (view is AppCompatButton) view.setTextColor(normalColorStateList)
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customKeyColor)
+                    view.setBorder(customBorderColor, 1)
+                } else {
+                    view.background = normalDrawableState?.newDrawable()?.mutate()
+                }
+                view.setTextColor(normalColorStateList)
+                view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
 
             // 3. 特殊キーへの適用 (specialKeyColorを使用)
@@ -366,7 +383,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val specialColorStateList = ColorStateList.valueOf(specialKeyTextColor)
 
             specialKeys.forEach { view ->
-                view.background = specialDrawableState?.newDrawable()?.mutate()
+                if (customBorderEnable) {
+                    view.setDrawableSolidColor(customSpecialKeyColor)
+                    view.setBorder(customBorderColor, 1)
+                } else {
+                    view.background = specialDrawableState?.newDrawable()?.mutate()
+                }
 
                 if (view is MaterialTextView) view.setTextColor(specialColorStateList)
                 if (view is AppCompatButton) view.setTextColor(specialColorStateList)
@@ -374,6 +396,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (view is AppCompatImageButton) {
                     ImageViewCompat.setImageTintList(view, specialColorStateList)
                 }
+                view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
         }
     }
@@ -878,12 +901,22 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 keyKuten, keyTouten, keyQ, keyW, keyE, keyR, keyT, keyY, keyU, keyI, keyO, keyP,
                 keyA, keyS, keyD, keyF, keyG, keyH, keyJ, keyK, keyAtMark, keyL,
                 keyZ, keyX, keyC, keyV, keyB, keyN, keyM, keySpace
-            ).forEach { it.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes)) }
+            ).forEach {
+                it.setBackgroundDrawable(ContextCompat.getDrawable(context, bgRes))
+                if (liquidGlassEnable) {
+                    it.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
+            }
 
             listOf(
                 keyShift, keyDelete, keySwitchDefault, keyReturn, key123,
                 switchNumberLayout, cursorLeft, cursorRight, switchRomajiEnglish
-            ).forEach { it.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes)) }
+            ).forEach {
+                it.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
+                if (liquidGlassEnable) {
+                    it.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
+            }
         }
     }
 
