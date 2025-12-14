@@ -321,10 +321,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                     isPressed = true
                 }
 
-                if (liquidGlassEnable){
-                    this.setDrawableAlpha(liquidGlassKeyAlphaEnable)
-                }
-
                 // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
@@ -359,6 +355,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                             setColorFilter(customSpecialKeyTextColor)
                         }
                     }
+                }
+
+                if (liquidGlassEnable){
+                    this.setDrawableAlpha(liquidGlassKeyAlphaEnable)
                 }
             }
         } else {
