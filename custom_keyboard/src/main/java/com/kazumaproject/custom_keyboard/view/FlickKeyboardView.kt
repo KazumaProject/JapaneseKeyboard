@@ -25,6 +25,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
+import com.kazumaproject.core.domain.extensions.setBorder
+import com.kazumaproject.core.domain.extensions.setDrawableAlpha
+import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.FlickInputController
 import com.kazumaproject.custom_keyboard.controller.PetalFlickInputController
@@ -107,6 +110,10 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var customKeyTextColor: Int = Color.BLACK
     private var customSpecialKeyTextColor: Int = Color.BLACK
 
+    private var liquidGlassKeyAlphaEnable: Int = 255
+    private var customBorderEnable: Boolean = false
+    private var customBorderColor: Int = Color.BLACK
+
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
@@ -139,6 +146,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         customKeyTextColor: Int,
         customSpecialKeyTextColor: Int,
         liquidGlassEnable: Boolean,
+        customBorderEnable: Boolean,
+        customBorderColor: Int,
+        liquidGlassKeyAlphaEnable: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -153,6 +163,10 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
         this.liquidGlassEnable = liquidGlassEnable
+
+        this.customBorderEnable = customBorderEnable
+        this.customBorderColor = customBorderColor
+        this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
 
         if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
@@ -316,33 +330,43 @@ class FlickKeyboardView @JvmOverloads constructor(
                     isPressed = true
                 }
 
+                if (liquidGlassEnable){
+                    this.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                }
+
                 // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
-                        // 1. ベース（ニューモーフィズム）- QWERTYと同じロジック
-                        val neumorphDrawable = getDynamicNeumorphDrawable(
-                            baseColor = customSpecialKeyColor,
-                            radius = commonCornerRadius
-                        )
+                        if (customBorderEnable){
+                            setDrawableSolidColor(customSpecialKeyColor)
+                            setColorFilter(customSpecialKeyTextColor)
+                            setBorder(customBorderColor,1)
+                        }else{
+                            // 1. ベース（ニューモーフィズム）- QWERTYと同じロジック
+                            val neumorphDrawable = getDynamicNeumorphDrawable(
+                                baseColor = customSpecialKeyColor,
+                                radius = commonCornerRadius
+                            )
 
-                        // 2. 上層（透明なSegmentedDrawable）
-                        // STANDARD_FLICKと見た目を合わせるため、アイコンキーにもダミーのSegmentedDrawableを重ねる
-                        val segmentedDrawable = SegmentedBackgroundDrawable(
-                            label = "",
-                            baseColor = Color.TRANSPARENT,
-                            highlightColor = customSpecialKeyColor,
-                            textColor = customSpecialKeyTextColor,
-                            cornerRadius = commonCornerRadius
-                        )
+                            // 2. 上層（透明なSegmentedDrawable）
+                            // STANDARD_FLICKと見た目を合わせるため、アイコンキーにもダミーのSegmentedDrawableを重ねる
+                            val segmentedDrawable = SegmentedBackgroundDrawable(
+                                label = "",
+                                baseColor = Color.TRANSPARENT,
+                                highlightColor = customSpecialKeyColor,
+                                textColor = customSpecialKeyTextColor,
+                                cornerRadius = commonCornerRadius
+                            )
 
-                        // 3. レイヤー化とインセット設定
-                        val layerDrawable =
-                            LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
-                        val inset = dpToPx(2) // QWERTYに合わせるため小さく
-                        layerDrawable.setLayerInset(1, inset, inset, inset, inset)
+                            // 3. レイヤー化とインセット設定
+                            val layerDrawable =
+                                LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
+                            val inset = dpToPx(2) // QWERTYに合わせるため小さく
+                            layerDrawable.setLayerInset(1, inset, inset, inset, inset)
 
-                        background = layerDrawable
-                        setColorFilter(customSpecialKeyTextColor)
+                            background = layerDrawable
+                            setColorFilter(customSpecialKeyTextColor)
+                        }
                     }
                 }
             }
@@ -412,36 +436,46 @@ class FlickKeyboardView @JvmOverloads constructor(
                 // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
-                        val targetBaseColor =
-                            if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
-                        val targetTextColor =
-                            if (keyData.isSpecialKey) customSpecialKeyTextColor else customKeyTextColor
-                        val targetHighlightColor = if (keyData.isSpecialKey) manipulateColor(
-                            customSpecialKeyColor,
-                            1.2f
-                        ) else customSpecialKeyColor
+                        if (customBorderEnable){
+                            setDrawableSolidColor(customKeyColor)
+                            setTextColor(customKeyTextColor)
+                            setBorder(customBorderColor,1)
+                        }else{
+                            val targetBaseColor =
+                                if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
+                            val targetTextColor =
+                                if (keyData.isSpecialKey) customSpecialKeyTextColor else customKeyTextColor
+                            val targetHighlightColor = if (keyData.isSpecialKey) manipulateColor(
+                                customSpecialKeyColor,
+                                1.2f
+                            ) else customSpecialKeyColor
 
-                        val neumorphDrawable = getDynamicNeumorphDrawable(
-                            baseColor = targetBaseColor,
-                            radius = commonCornerRadius
-                        )
+                            val neumorphDrawable = getDynamicNeumorphDrawable(
+                                baseColor = targetBaseColor,
+                                radius = commonCornerRadius
+                            )
 
-                        val segmentedDrawable = SegmentedBackgroundDrawable(
-                            label = "",
-                            baseColor = Color.TRANSPARENT,
-                            highlightColor = targetHighlightColor,
-                            textColor = targetTextColor,
-                            cornerRadius = commonCornerRadius
-                        )
+                            val segmentedDrawable = SegmentedBackgroundDrawable(
+                                label = "",
+                                baseColor = Color.TRANSPARENT,
+                                highlightColor = targetHighlightColor,
+                                textColor = targetTextColor,
+                                cornerRadius = commonCornerRadius
+                            )
 
-                        val layerDrawable =
-                            LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
-                        val inset = dpToPx(2) // QWERTYに合わせる
-                        layerDrawable.setLayerInset(1, inset, inset, inset, inset)
+                            val layerDrawable =
+                                LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
+                            val inset = dpToPx(2) // QWERTYに合わせる
+                            layerDrawable.setLayerInset(1, inset, inset, inset, inset)
 
-                        background = layerDrawable
-                        setTextColor(targetTextColor)
+                            background = layerDrawable
+                            setTextColor(targetTextColor)
+                        }
                     }
+                }
+
+                if (liquidGlassEnable){
+                    setDrawableAlpha(liquidGlassKeyAlphaEnable)
                 }
             }
         }

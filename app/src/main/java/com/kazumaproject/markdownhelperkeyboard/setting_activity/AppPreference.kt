@@ -168,6 +168,10 @@ object AppPreference {
     private val CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR =
         Pair("custom_theme_special_key_text_color_preference", Color.BLACK)
 
+    // New variables for Custom Border
+    private val CUSTOM_THEME_BORDER_ENABLE = Pair("theme_custom_border_enable", false)
+    private val CUSTOM_THEME_BORDER_COLOR = Pair("theme_custom_border_color", Color.BLACK)
+
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
 
     private val KEY_LETTER_SIZE = Pair("key_letter_size_preference", 0.0f)
@@ -236,6 +240,7 @@ object AppPreference {
 
     private val LIQUID_GLASS_ENABLE = Pair("liquid_glass_preference", false)
     private val LIQUID_GLASS_BLUR_RADIUS = Pair("liquid_glass_blur_preference", 220)
+    private val LIQUID_GLASS_KEY_ALPHA = Pair("liquid_glass_key_alpha_preference", 255)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -1109,6 +1114,33 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(LIQUID_GLASS_BLUR_RADIUS.first, value)
+        }
+
+    var custom_theme_border_enable: Boolean
+        get() = preferences.getBoolean(
+            CUSTOM_THEME_BORDER_ENABLE.first,
+            CUSTOM_THEME_BORDER_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_THEME_BORDER_ENABLE.first, value)
+        }
+
+    var custom_theme_border_color: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_BORDER_COLOR.first,
+            CUSTOM_THEME_BORDER_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_BORDER_COLOR.first, value)
+        }
+
+    var liquid_glass_key_alpha: Int
+        get() = preferences.getInt(
+            LIQUID_GLASS_KEY_ALPHA.first,
+            LIQUID_GLASS_KEY_ALPHA.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(LIQUID_GLASS_KEY_ALPHA.first, value)
         }
 
     fun migrateSumirePreferenceIfNeeded() {
