@@ -404,4 +404,9 @@
     <string name="key_transparency">Key Transparency</string>
     <string name="custom_border_enable">Enable Custom Key Border Color</string>
     <string name="custom_border_color">Key Border Color</string>
+    <string name="pre_edit_text">Pre-Edit Text Color</string>
+    <string name="pre_edit">Pre-Edit Color</string>
+    <string name="conversion_text_color">Conversion Color</string>
+    <string name="conversion_text_color_">Conversion Text Color</string>
+    <string name="composing_text">Composing Text</string>
 </resources>
