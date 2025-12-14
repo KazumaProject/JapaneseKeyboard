@@ -29,17 +29,21 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 642
-        versionName "1.4.521"
+        versionCode 643
+        versionName "1.4.522"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    splits {
-        abi {
-            enable true
-            reset()
-            include 'arm64-v8a', 'x86_64'
-            universalApk false
+    def shouldSplitApks = project.hasProperty('splitApks')
+
+    if (shouldSplitApks) {
+        splits {
+            abi {
+                enable true
+                reset()
+                include 'arm64-v8a', 'x86_64'
+                universalApk false
+            }
         }
     }
 
@@ -64,21 +68,20 @@ android {
     viewBinding {
         enabled = true
     }
-    dependenciesInfo {
-        includeInApk = false
-        includeInBundle = false
-    }
 
     applicationVariants.configureEach { variant ->
         variant.outputs.each { output ->
-            def abi = output.getFilter(com.android.build.OutputFile.ABI)
-            if (abi != null) {
-                if (abi == "arm64-v8a") {
-                    output.versionCodeOverride = variant.versionCode + 1
-                } else if (abi == "x86_64") {
-                    output.versionCodeOverride = variant.versionCode + 2
+            // 分割モードが有効な場合のみ実行
+            if (shouldSplitApks) {
+                def abi = output.getFilter(com.android.build.OutputFile.ABI)
+                if (abi != null) {
+                    if (abi == "arm64-v8a") {
+                        output.versionCodeOverride = variant.versionCode + 1
+                    } else if (abi == "x86_64") {
+                        output.versionCodeOverride = variant.versionCode + 2
+                    }
+                    output.outputFileName = "app-${abi}-${variant.buildType.name}.apk"
                 }
-                output.outputFileName = "app-${abi}-${variant.buildType.name}.apk"
             }
         }
     }
