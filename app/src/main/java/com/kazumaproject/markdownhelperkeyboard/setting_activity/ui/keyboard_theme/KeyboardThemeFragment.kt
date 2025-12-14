@@ -33,6 +33,10 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val PREF_KEY_CUSTOM_TEXT = "theme_custom_key_text_color"
         private const val PREF_KEY_CUSTOM_SPECIAL_TEXT = "theme_custom_special_key_text_color"
 
+        // New Custom Border Preferences
+        private const val PREF_KEY_CUSTOM_BORDER_ENABLE = "theme_custom_border_enable"
+        private const val PREF_KEY_CUSTOM_BORDER_COLOR = "theme_custom_border_color"
+
         private const val PREF_KEY_ROUND_CORNER = "round_corner_keyboard_preference"
 
         private const val MODE_DEFAULT = "default"
@@ -40,6 +44,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
 
         private const val PREF_KEY_LIQUID_GLASS = "liquid_glass_preference"
         private const val PREF_KEY_LIQUID_GLASS_BLUR = "liquid_glass_blur_preference"
+        private const val PREF_KEY_LIQUID_GLASS_KEY_ALPHA = "liquid_glass_key_alpha_preference"
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -74,7 +79,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(liquidGlassSwitch)
 
-        // 2. シークバーを作成 (dependencyプロパティは使用しない)
+        // 2. 背景ブラー半径シークバーを作成
         val liquidGlassBlurPref = SeekBarPreference(context).apply {
             key = PREF_KEY_LIQUID_GLASS_BLUR
             title = getString(R.string.blur_radius)
@@ -85,15 +90,29 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(liquidGlassBlurPref)
 
-        // 3. 手動で依存関係を制御する (クラッシュ回避策)
-        // 初期状態の同期: スイッチがOFFならシークバーを無効化(グレーアウト)
-        liquidGlassBlurPref.isEnabled = liquidGlassSwitch.isChecked
+        // 3. キー透明度シークバーを作成 (New Task)
+        val liquidGlassKeyAlphaPref = SeekBarPreference(context).apply {
+            key = PREF_KEY_LIQUID_GLASS_KEY_ALPHA
+            title = getString(R.string.key_transparency)
+            min = 0
+            max = 255
+            setDefaultValue(255)
+            showSeekBarValue = true
+        }
+        systemCategory.addPreference(liquidGlassKeyAlphaPref)
+
+        // 4. 手動で依存関係を制御する (クラッシュ回避策)
+        // 初期状態の同期
+        val isLiquidGlassEnabled = liquidGlassSwitch.isChecked
+        liquidGlassBlurPref.isEnabled = isLiquidGlassEnabled
+        liquidGlassKeyAlphaPref.isEnabled = isLiquidGlassEnabled
 
         // リスナーを設定: スイッチが切り替わったらシークバーの状態を変更
         liquidGlassSwitch.setOnPreferenceChangeListener { _, newValue ->
             val isEnabled = newValue as Boolean
             liquidGlassBlurPref.isEnabled = isEnabled
-            true // 設定変更を受け入れる
+            liquidGlassKeyAlphaPref.isEnabled = isEnabled
+            true
         }
         // -------------------------------------------------------
 
@@ -182,6 +201,37 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         customCategory.addPreference(customSpecialTextPref)
 
+        // -------------------------------------------------------
+        // Custom Border Settings (New Task)
+        // -------------------------------------------------------
+
+        // Border Enable Switch
+        val customBorderEnablePref = SwitchPreferenceCompat(context).apply {
+            key = PREF_KEY_CUSTOM_BORDER_ENABLE
+            title = getString(R.string.custom_border_enable)
+            setDefaultValue(false)
+        }
+        customCategory.addPreference(customBorderEnablePref)
+
+        // Border Color Preference
+        val customBorderColorPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_BORDER_COLOR,
+            getString(R.string.custom_border_color)
+        ) {
+            appPreference.custom_theme_border_color
+        }
+        customCategory.addPreference(customBorderColorPref)
+
+        // ボーダー色の有効/無効をスイッチに連動させる
+        customBorderColorPref.isEnabled = customBorderEnablePref.isChecked
+        customBorderEnablePref.setOnPreferenceChangeListener { _, newValue ->
+            val isEnabled = newValue as Boolean
+            customBorderColorPref.isEnabled = isEnabled
+            true
+        }
+        // -------------------------------------------------------
+
         preferenceScreen = screen
 
         // Initialize state based on current preference
@@ -231,6 +281,9 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_KEY)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_TEXT)?.isVisible = isVisible
+        // 新しいボーダー設定の可視性も制御
+        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_COLOR)?.isVisible = isVisible
     }
 
     private fun saveCustomColor(key: String, color: Int) {
@@ -241,6 +294,8 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             PREF_KEY_CUSTOM_TEXT -> appPreference.custom_theme_key_text_color = color
             PREF_KEY_CUSTOM_SPECIAL_TEXT -> appPreference.custom_theme_special_key_text_color =
                 color
+
+            PREF_KEY_CUSTOM_BORDER_COLOR -> appPreference.custom_theme_border_color = color
         }
     }
 
