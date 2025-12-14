@@ -407,4 +407,5 @@
     <string name="conversion_text_color">変換中/候補の背景色</string>
     <string name="conversion_text_color_">変換中/候補の文字色</string>
     <string name="composing_text">入力テキスト色</string>
+    <string name="custom_input_color_enable_title">カスタマイズを有効にする</string>
 </resources>
