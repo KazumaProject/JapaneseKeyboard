@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
+import androidx.core.graphics.toColorInt
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -241,6 +242,15 @@ object AppPreference {
     private val LIQUID_GLASS_ENABLE = Pair("liquid_glass_preference", false)
     private val LIQUID_GLASS_BLUR_RADIUS = Pair("liquid_glass_blur_preference", 220)
     private val LIQUID_GLASS_KEY_ALPHA = Pair("liquid_glass_key_alpha_preference", 255)
+
+    private val CUSTOM_THEME_PRE_EDIT_BG = Pair(
+        "theme_custom_pre_edit_bg_color",
+        "#440099CC".toColorInt()
+    )
+    private val CUSTOM_THEME_PRE_EDIT_TEXT = Pair("theme_custom_pre_edit_text_color", Color.WHITE)
+    private val CUSTOM_THEME_POST_EDIT_BG =
+        Pair("theme_custom_post_edit_bg_color", "#55FF8800".toColorInt())
+    private val CUSTOM_THEME_POST_EDIT_TEXT = Pair("theme_custom_post_edit_text_color", Color.WHITE)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -1142,6 +1152,31 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putInt(LIQUID_GLASS_KEY_ALPHA.first, value)
         }
+
+    var custom_theme_pre_edit_bg_color: Int
+        get() = preferences.getInt(CUSTOM_THEME_PRE_EDIT_BG.first, CUSTOM_THEME_PRE_EDIT_BG.second)
+        set(value) = preferences.edit { it.putInt(CUSTOM_THEME_PRE_EDIT_BG.first, value) }
+
+    var custom_theme_pre_edit_text_color: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_PRE_EDIT_TEXT.first,
+            CUSTOM_THEME_PRE_EDIT_TEXT.second
+        )
+        set(value) = preferences.edit { it.putInt(CUSTOM_THEME_PRE_EDIT_TEXT.first, value) }
+
+    var custom_theme_post_edit_bg_color: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_POST_EDIT_BG.first,
+            CUSTOM_THEME_POST_EDIT_BG.second
+        )
+        set(value) = preferences.edit { it.putInt(CUSTOM_THEME_POST_EDIT_BG.first, value) }
+
+    var custom_theme_post_edit_text_color: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_POST_EDIT_TEXT.first,
+            CUSTOM_THEME_POST_EDIT_TEXT.second
+        )
+        set(value) = preferences.edit { it.putInt(CUSTOM_THEME_POST_EDIT_TEXT.first, value) }
 
     fun migrateSumirePreferenceIfNeeded() {
         // 古いキーが存在する場合のみ移行処理を実行
