@@ -500,6 +500,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzMaximumContextSizePreference: Int? = 512
     private var zenzMaximumThreadSizePreference: Int? = 4
 
+    private var sumireEnglishQwertyPreference: Boolean? = false
+
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -684,6 +686,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var addUserDictionaryPopup: PopupWindow? = null
 
     private var filteredCandidateList: List<Candidate>? = emptyList()
+
+    private var previousTenKeyQWERTYMode: TenKeyQWERTYMode? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -939,6 +943,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             inputCompositionAfterBackgroundColor =
                 manipulateColor(custom_theme_pre_edit_bg_color, 1.2f)
+
+            sumireEnglishQwertyPreference = sumire_english_qwerty_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1535,6 +1541,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         inputCompositionAfterBackgroundColor = null
         inputConversionBackgroundColor = null
         inputConversionTextColor = null
+
+        previousTenKeyQWERTYMode = null
+
+        sumireEnglishQwertyPreference = null
 
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -4313,41 +4323,73 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 KeyboardType.SUMIRE -> {
-                    Timber.d("showKeyboard keyboard: ${this.keyboardView.currentInputMode.value}")
-                    customLayoutDefault.isVisible = true
-                    if (qwertyMode.value != TenKeyQWERTYMode.Number) {
-                        currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
-                        val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
-                            mode = customKeyboardMode,
-                            dynamicKeyStates = mapOf(
-                                "enter_key" to currentEnterKeyIndex,
-                                "dakuten_toggle_key" to currentDakutenKeyIndex,
-                                "katakana_toggle_key" to currentKatakanaKeyIndex,
-                                "space_convert_key" to currentSpaceKeyIndex,
-                            ),
-                            inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                            inputStyle = sumireInputStyle ?: "default",
-                            isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
-                        )
-                        customLayoutDefault.setKeyboard(hiraganaLayout)
-                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                    Timber.d("showKeyboard keyboard: ${this.keyboardView.currentInputMode.value} [$customKeyboardMode]")
+                    if (sumireEnglishQwertyPreference == true && customKeyboardMode == KeyboardInputMode.ENGLISH) {
+                        if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                            qwertyView.setSwitchNumberLayoutKeyVisibility(true)
+                            qwertyView.setRomajiMode(false)
+                            setKeyboardSizeSwitchKeyboard(this)
+                            previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
+                            qwertyView.isVisible = true
+                            customLayoutDefault.isVisible = false
+                            keyboardView.isVisible = false
+                        } else {
+                            customLayoutDefault.isVisible = true
+                            customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                            qwertyView.isVisible = false
+                            keyboardView.isVisible = false
+
+                            customKeyboardMode = when (keyboardView.currentInputMode.value) {
+                                InputMode.ModeJapanese -> {
+                                    KeyboardInputMode.HIRAGANA
+                                }
+
+                                InputMode.ModeEnglish -> {
+                                    KeyboardInputMode.ENGLISH
+                                }
+
+                                InputMode.ModeNumber -> {
+                                    KeyboardInputMode.SYMBOLS
+                                }
+                            }
+                        }
                     } else {
-                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
-                    }
-                    qwertyView.isVisible = false
-                    keyboardView.isVisible = false
-
-                    customKeyboardMode = when (keyboardView.currentInputMode.value) {
-                        InputMode.ModeJapanese -> {
-                            KeyboardInputMode.HIRAGANA
+                        customLayoutDefault.isVisible = true
+                        if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                            currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
+                            val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
+                                mode = customKeyboardMode,
+                                dynamicKeyStates = mapOf(
+                                    "enter_key" to currentEnterKeyIndex,
+                                    "dakuten_toggle_key" to currentDakutenKeyIndex,
+                                    "katakana_toggle_key" to currentKatakanaKeyIndex,
+                                    "space_convert_key" to currentSpaceKeyIndex,
+                                ),
+                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                                inputStyle = sumireInputStyle ?: "default",
+                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                            )
+                            customLayoutDefault.setKeyboard(hiraganaLayout)
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                        } else {
+                            customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
                         }
+                        qwertyView.isVisible = false
+                        keyboardView.isVisible = false
 
-                        InputMode.ModeEnglish -> {
-                            KeyboardInputMode.ENGLISH
-                        }
+                        customKeyboardMode = when (keyboardView.currentInputMode.value) {
+                            InputMode.ModeJapanese -> {
+                                KeyboardInputMode.HIRAGANA
+                            }
 
-                        InputMode.ModeNumber -> {
-                            KeyboardInputMode.SYMBOLS
+                            InputMode.ModeEnglish -> {
+                                KeyboardInputMode.ENGLISH
+                            }
+
+                            InputMode.ModeNumber -> {
+                                KeyboardInputMode.SYMBOLS
+                            }
                         }
                     }
                 }
@@ -4419,23 +4461,77 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             TenKeyQWERTYMode.TenKeyQWERTY -> {}
             TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {}
             TenKeyQWERTYMode.Sumire -> {
-                val dynamicStates = mapOf(
-                    "enter_key" to currentEnterKeyIndex,
-                    "dakuten_toggle_key" to currentDakutenKeyIndex,
-                    "space_convert_key" to currentSpaceKeyIndex,
-                    "katakana_toggle_key" to currentKatakanaKeyIndex
-                )
+                when (customKeyboardMode) {
+                    KeyboardInputMode.HIRAGANA -> {
+                        val dynamicStates = mapOf(
+                            "enter_key" to currentEnterKeyIndex,
+                            "dakuten_toggle_key" to currentDakutenKeyIndex,
+                            "space_convert_key" to currentSpaceKeyIndex,
+                            "katakana_toggle_key" to currentKatakanaKeyIndex
+                        )
 
-                Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
+                        Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
 
-                val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
-                    mode = customKeyboardMode,
-                    dynamicKeyStates = dynamicStates,
-                    inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                    inputStyle = sumireInputStyle ?: "default",
-                    isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
-                )
-                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+                            mode = customKeyboardMode,
+                            dynamicKeyStates = dynamicStates,
+                            inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                            inputStyle = sumireInputStyle ?: "default",
+                            isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                        )
+                        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                    }
+
+                    KeyboardInputMode.ENGLISH -> {
+                        if (sumireEnglishQwertyPreference == true) {
+                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                            mainLayoutBinding?.let { mainView ->
+                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
+                                mainView.qwertyView.setRomajiMode(false)
+                                setKeyboardSizeSwitchKeyboard(mainView)
+                                previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
+                            }
+                        } else {
+                            val dynamicStates = mapOf(
+                                "enter_key" to currentEnterKeyIndex,
+                                "dakuten_toggle_key" to currentDakutenKeyIndex,
+                                "space_convert_key" to currentSpaceKeyIndex,
+                                "katakana_toggle_key" to currentKatakanaKeyIndex
+                            )
+
+                            Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
+
+                            val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+                                mode = customKeyboardMode,
+                                dynamicKeyStates = dynamicStates,
+                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                                inputStyle = sumireInputStyle ?: "default",
+                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                            )
+                            mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                        }
+                    }
+
+                    KeyboardInputMode.SYMBOLS -> {
+                        val dynamicStates = mapOf(
+                            "enter_key" to currentEnterKeyIndex,
+                            "dakuten_toggle_key" to currentDakutenKeyIndex,
+                            "space_convert_key" to currentSpaceKeyIndex,
+                            "katakana_toggle_key" to currentKatakanaKeyIndex
+                        )
+
+                        Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
+
+                        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
+                            mode = customKeyboardMode,
+                            dynamicKeyStates = dynamicStates,
+                            inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                            inputStyle = sumireInputStyle ?: "default",
+                            isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                        )
+                        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                    }
+                }
             }
 
             TenKeyQWERTYMode.Number -> {
@@ -8594,9 +8690,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
-                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                            mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
-                            setKeyboardSizeSwitchKeyboard(mainView)
+                            if (previousTenKeyQWERTYMode == null) {
+                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                setKeyboardSizeSwitchKeyboard(mainView)
+                            } else {
+                                previousTenKeyQWERTYMode?.let {
+                                    when (it) {
+                                        TenKeyQWERTYMode.Default -> {
+                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                            mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                            setKeyboardSizeSwitchKeyboard(mainView)
+                                        }
+
+                                        TenKeyQWERTYMode.Sumire -> {
+                                            customKeyboardMode = KeyboardInputMode.SYMBOLS
+                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                                            createNewKeyboardLayoutForSumire()
+                                            setKeyboardSizeSwitchKeyboard(mainView)
+                                        }
+
+                                        else -> {
+                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                            mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                            setKeyboardSizeSwitchKeyboard(mainView)
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         else -> {
@@ -9401,6 +9522,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
                             mainView.qwertyView.setRomajiMode(false)
                             setKeyboardSizeSwitchKeyboard(mainView)
+                            previousTenKeyQWERTYMode = TenKeyQWERTYMode.Default
                         } else {
                             setSideKeySpaceDrawable(
                                 cachedSpaceDrawable

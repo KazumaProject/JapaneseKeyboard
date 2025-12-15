@@ -275,15 +275,15 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
                 keyId = "switch_next_ime"
             ),
-            KeyData("あ", 0, 1, true),
-            KeyData("か", 0, 2, true),
-            KeyData("さ", 0, 3, true),
-            KeyData("た", 1, 1, true),
-            KeyData("な", 1, 2, true),
-            KeyData("は", 1, 3, true),
-            KeyData("ま", 2, 1, true),
-            KeyData("や", 2, 2, true),
-            KeyData("ら", 2, 3, true),
+            KeyData("あ", 0, 1, false),
+            KeyData("か", 0, 2, false),
+            KeyData("さ", 0, 3, false),
+            KeyData("た", 1, 1, false),
+            KeyData("な", 1, 2, false),
+            KeyData("は", 1, 3, false),
+            KeyData("ま", 2, 1, false),
+            KeyData("や", 2, 2, false),
+            KeyData("ら", 2, 3, false),
             KeyData(
                 label = dakutenToggleStates[0].label ?: "",
                 row = 3,
@@ -2684,7 +2684,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2693,7 +2692,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2702,7 +2700,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2711,7 +2708,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2720,7 +2716,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2729,7 +2724,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2738,7 +2732,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2747,7 +2740,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2756,7 +2748,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2774,7 +2765,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), KeyData(
@@ -2783,7 +2773,6 @@ object KeyboardDefaultLayouts {
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
-                    "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
