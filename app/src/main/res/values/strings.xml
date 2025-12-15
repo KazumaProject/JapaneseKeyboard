@@ -410,4 +410,6 @@
     <string name="conversion_text_color_">Conversion Text Color</string>
     <string name="composing_text">Composing Text</string>
     <string name="custom_input_color_enable_title">Enable customize</string>
+    <string name="conversion_candidates_romaji_enable_preference_title">Show Romaji conversion suggestions</string>
+    <string name="conversion_candidates_romaji_enable_preference_summary">Add Romaji conversion suggestions for Hiragana input</string>
 </resources>

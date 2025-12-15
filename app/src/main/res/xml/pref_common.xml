@@ -116,6 +116,12 @@
             android:summaryOff="@string/henkan_delete_key_action_summary_off"
             android:summaryOn="@string/henkan_delete_key_action_summary_on"
             android:title="@string/henkan_delete_key_action_title" />
+
+        <SwitchPreferenceCompat
+            android:key="conversion_candidates_romaji_enable_preference"
+            android:title="@string/conversion_candidates_romaji_enable_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/conversion_candidates_romaji_enable_preference_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_function_title">
