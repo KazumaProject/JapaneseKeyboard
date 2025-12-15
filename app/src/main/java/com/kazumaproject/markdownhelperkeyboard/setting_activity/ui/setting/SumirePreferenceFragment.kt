@@ -15,13 +15,6 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
         val sumireStylePreference =
             findPreference<ListPreference>("sumire_keyboard_style_preference")
         sumireStylePreference?.apply {
-            val originalEntries = this.entries
-            val originalEntryValues = this.entryValues
-            setOnPreferenceClickListener {
-                entries = originalEntries.dropLast(1).toTypedArray()
-                entryValues = originalEntryValues.dropLast(1).toTypedArray()
-                return@setOnPreferenceClickListener true
-            }
             summary = entries[findIndexOfValue(value)].toString()
             setOnPreferenceChangeListener { preference, newValue ->
                 val listPreference = preference as ListPreference
