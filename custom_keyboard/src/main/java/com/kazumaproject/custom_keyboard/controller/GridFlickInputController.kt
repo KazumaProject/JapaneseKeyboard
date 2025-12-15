@@ -25,15 +25,15 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class PetalFlickInputController(
+class GridFlickInputController(
     private val context: Context, private val flickSensitivity: Int
 ) {
 
-    interface PetalFlickListener {
+    interface GridFlickListener {
         fun onFlick(character: String, isFlick: Boolean)
     }
 
-    var listener: PetalFlickListener? = null
+    var listener: GridFlickListener? = null
     private var characterMap: Map<FlickDirection, String> = emptyMap()
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null

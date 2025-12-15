@@ -291,7 +291,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             else -> { // chip_normal
                 isSpecial = false
                 newAction = null
-                newKeyType = KeyType.PETAL_FLICK
+                newKeyType = KeyType.GRID_FLICK
                 newDrawableResId = null
                 newLabel = binding.keyLabelEdittext.text.toString()
                 newFlickMap = currentFlickItems.filter { it.output.isNotEmpty() }

@@ -9,8 +9,6 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
-    private var count = 0
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_sumire, rootKey)
 
@@ -20,14 +18,8 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
             val originalEntries = this.entries
             val originalEntryValues = this.entryValues
             setOnPreferenceClickListener {
-                if (count >= 10) {
-                    entries = originalEntries
-                    entryValues = originalEntryValues
-                } else {
-                    entries = originalEntries.dropLast(1).toTypedArray()
-                    entryValues = originalEntryValues.dropLast(1).toTypedArray()
-                }
-                count++
+                entries = originalEntries.dropLast(1).toTypedArray()
+                entryValues = originalEntryValues.dropLast(1).toTypedArray()
                 return@setOnPreferenceClickListener true
             }
             summary = entries[findIndexOfValue(value)].toString()
