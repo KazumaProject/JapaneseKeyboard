@@ -408,4 +408,6 @@
     <string name="conversion_text_color_">変換中/候補の文字色</string>
     <string name="composing_text">入力テキスト色</string>
     <string name="custom_input_color_enable_title">カスタマイズを有効にする</string>
+    <string name="conversion_candidates_romaji_enable_preference_title">ローマ字変換候補を表示</string>
+    <string name="conversion_candidates_romaji_enable_preference_summary">ローマ字の変換候補を末尾に追加します</string>
 </resources>
