@@ -30,7 +30,7 @@ import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.FlickInputController
-import com.kazumaproject.custom_keyboard.controller.PetalFlickInputController
+import com.kazumaproject.custom_keyboard.controller.GridFlickInputController
 import com.kazumaproject.custom_keyboard.controller.PopupPosition
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
@@ -64,7 +64,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val flickControllers = mutableListOf<FlickInputController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
-    private val petalFlickControllers = mutableListOf<PetalFlickInputController>()
+    private val petalFlickControllers = mutableListOf<GridFlickInputController>()
     private val tfbiControllers = mutableListOf<TfbiInputController>()
     private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
 
@@ -330,11 +330,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                 // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
-                        if (customBorderEnable){
+                        if (customBorderEnable) {
                             setDrawableSolidColor(customSpecialKeyColor)
                             setColorFilter(customSpecialKeyTextColor)
-                            setBorder(customBorderColor,1)
-                        }else{
+                            setBorder(customBorderColor, 1)
+                        } else {
                             // 1. ベース（ニューモーフィズム）- QWERTYと同じロジック
                             val neumorphDrawable = getDynamicNeumorphDrawable(
                                 baseColor = customSpecialKeyColor,
@@ -363,7 +363,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
 
-                if (liquidGlassEnable){
+                if (liquidGlassEnable) {
                     this.setDrawableAlpha(liquidGlassKeyAlphaEnable)
                 }
             }
@@ -433,11 +433,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                 // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
-                        if (customBorderEnable){
+                        if (customBorderEnable) {
                             setDrawableSolidColor(customKeyColor)
                             setTextColor(customKeyTextColor)
-                            setBorder(customBorderColor,1)
-                        }else{
+                            setBorder(customBorderColor, 1)
+                        } else {
                             val targetBaseColor =
                                 if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
                             val targetTextColor =
@@ -471,7 +471,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
 
-                if (liquidGlassEnable){
+                if (liquidGlassEnable) {
                     setDrawableAlpha(liquidGlassKeyAlphaEnable)
                 }
             }
@@ -873,14 +873,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            KeyType.PETAL_FLICK -> {
+            KeyType.GRID_FLICK -> {
                 val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d(
-                    "FlickKeyboardView KeyType.PETAL_FLICK",
+                    "FlickKeyboardView KeyType.GRID_FLICK",
                     "$flickActionMap"
                 )
                 if (flickActionMap != null) {
-                    val controller = PetalFlickInputController(
+                    val controller = GridFlickInputController(
                         context, flickSensitivity
                     ).apply {
                         // ( ... Controllerの各種設定 ... )
@@ -947,7 +947,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
                         setPopupColors(dynamicColorTheme)
                         elevation = 1f
-                        this.listener = object : PetalFlickInputController.PetalFlickListener {
+                        this.listener = object : GridFlickInputController.GridFlickListener {
                             override fun onFlick(character: String, isFlick: Boolean) {
                                 this@FlickKeyboardView.listener?.onKey(
                                     character, isFlick = isFlick
@@ -1112,7 +1112,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 standardFlickControllers.remove(controller)
             }
 
-            is PetalFlickInputController -> {
+            is GridFlickInputController -> {
                 controller.cancel()
                 petalFlickControllers.remove(controller)
             }
