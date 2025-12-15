@@ -253,6 +253,8 @@ object AppPreference {
         Pair("theme_custom_post_edit_bg_color", "#55FF8800".toColorInt())
     private val CUSTOM_THEME_POST_EDIT_TEXT = Pair("theme_custom_post_edit_text_color", Color.WHITE)
 
+    private val SUMIRE_ENGLISH_QWERTY_PREFERENCE = Pair("sumire_english_qwerty_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1187,6 +1189,17 @@ object AppPreference {
             CUSTOM_THEME_POST_EDIT_TEXT.second
         )
         set(value) = preferences.edit { it.putInt(CUSTOM_THEME_POST_EDIT_TEXT.first, value) }
+
+
+    var sumire_english_qwerty_preference: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_ENGLISH_QWERTY_PREFERENCE.first,
+            SUMIRE_ENGLISH_QWERTY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_ENGLISH_QWERTY_PREFERENCE.first, value)
+        }
+
 
     fun migrateSumirePreferenceIfNeeded() {
         // 古いキーが存在する場合のみ移行処理を実行
