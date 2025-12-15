@@ -31,7 +31,6 @@
         <item>Circle input</item>
         <item>Two-step flick input</item>
         <item>Three-step flick input</item>
-        <item>Sumire input</item>
     </string-array>
 
     <string-array name="sumire_keyboard_style_values">
@@ -39,7 +38,6 @@
         <item>circle</item>
         <item>second-flick</item>
         <item>third-flick</item>
-        <item>sumire</item>
     </string-array>
 
     <string-array name="sumire_input_method_options">
