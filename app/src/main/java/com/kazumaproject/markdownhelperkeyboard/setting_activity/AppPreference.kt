@@ -255,6 +255,9 @@ object AppPreference {
 
     private val SUMIRE_ENGLISH_QWERTY_PREFERENCE = Pair("sumire_english_qwerty_preference", false)
 
+    private val CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE =
+        Pair("conversion_candidates_romaji_enable_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1198,6 +1201,16 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SUMIRE_ENGLISH_QWERTY_PREFERENCE.first, value)
+        }
+
+
+    var conversion_candidates_romaji_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE.first,
+            CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE.first, value)
         }
 
 

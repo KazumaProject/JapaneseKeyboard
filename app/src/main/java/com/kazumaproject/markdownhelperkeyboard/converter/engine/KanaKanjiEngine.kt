@@ -1603,7 +1603,7 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        isOmissionSearchEnable: Boolean
+        isOmissionSearchEnable: Boolean,
     ): Pair<List<Candidate>, List<Int>> {
 
         val graph = graphBuilder.constructGraph(
@@ -1857,7 +1857,6 @@ class KanaKanjiEngine {
                     type = 13
                 )
             }
-
 
         if (input.length == 1) {
             val finalListOneLetter =
