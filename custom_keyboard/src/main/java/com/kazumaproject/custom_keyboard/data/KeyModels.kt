@@ -101,7 +101,7 @@ enum class KeyType {
 
     STANDARD_FLICK,
 
-    GRID_FLICK,
+    PETAL_FLICK,
 
     TWO_STEP_FLICK,
 

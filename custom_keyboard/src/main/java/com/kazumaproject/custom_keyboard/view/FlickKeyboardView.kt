@@ -876,10 +876,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
-            KeyType.GRID_FLICK -> {
+            KeyType.PETAL_FLICK -> {
                 val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d(
-                    "FlickKeyboardView KeyType.GRID_FLICK",
+                    "FlickKeyboardView KeyType.PETAL_FLICK",
                     "$flickActionMap"
                 )
                 if (flickActionMap != null) {

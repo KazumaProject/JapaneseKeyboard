@@ -304,7 +304,7 @@ class KeyboardEditorViewModel @Inject constructor(
     private fun createEmptyKey(row: Int, column: Int): KeyData {
         return KeyData(
             label = " ", row = row, column = column, isFlickable = true,
-            keyId = UUID.randomUUID().toString(), keyType = KeyType.GRID_FLICK
+            keyId = UUID.randomUUID().toString(), keyType = KeyType.PETAL_FLICK
         )
     }
 
