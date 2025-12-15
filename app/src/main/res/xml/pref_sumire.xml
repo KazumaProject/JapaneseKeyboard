@@ -24,6 +24,12 @@
             android:key="sumire_keyboard_style_preference"
             android:summary="%s"
             android:title="@string/sumire_keyboard_style_title" />
+
+        <SwitchPreferenceCompat
+            android:key="sumire_english_qwerty_preference"
+            android:title="@string/kana_input_qwerty_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/kana_input_qwerty_preference_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>
