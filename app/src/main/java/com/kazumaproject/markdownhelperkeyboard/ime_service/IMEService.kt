@@ -679,9 +679,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val zenzRequest = _zenzRequest
 
-    private val lastLocalUpdatedInput = MutableStateFlow<String>("")
+    private val lastLocalUpdatedInput = MutableStateFlow("")
 
     private var addUserDictionaryPopup: PopupWindow? = null
+
+    private var filteredCandidateList: List<Candidate>? = emptyList()
 
     override fun onCreate() {
         super.onCreate()
@@ -1411,6 +1413,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardSelectionPopupWindow = null
         hasHardwareKeyboardConnected = null
         clipboardManager.removePrimaryClipChangedListener(clipboardListener)
+        filteredCandidateList = null
         if (mozcUTPersonName == true) kanaKanjiEngine.releasePersonNamesDictionary()
         if (mozcUTPlaces == true) kanaKanjiEngine.releasePlacesDictionary()
         if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
@@ -6587,8 +6590,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (resultFromZenz.isNotEmpty() &&
                             resultFromZenz.first().originalString == insertString
                         ) {
-                            val suggestions = suggestionAdapter?.suggestions ?: emptyList()
-                            if (suggestions.isNotEmpty()) {
+                            val suggestions = filteredCandidateList ?: emptyList()
+                            if (suggestions.isNotEmpty() && suggestions.first().length.toInt() == insertString.length) {
                                 val resultFromZenzToCandidate = resultFromZenz.map {
                                     Candidate(
                                         string = it.string,
@@ -7320,6 +7323,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             _zenzCandidates.update { emptyList() }
             hasConvertedKatakana = false
+            filteredCandidateList = emptyList()
             resetInputString()
             lastCandidate = ""
             hardKeyboardShiftPressd = false
@@ -9141,6 +9145,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stringInTail.set("")
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
+        filteredCandidateList = emptyList()
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         isContinuousTapInputEnabled.set(false)
@@ -9721,10 +9726,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionAdapter?.suggestions = filtered
                 suggestionAdapterFull?.suggestions = filtered
             }
-
         }
 
-        lastLocalUpdatedInput.emit(insertString)
+        if (zenzEnableStatePreference == true) {
+            filteredCandidateList = filtered
+            lastLocalUpdatedInput.emit(insertString)
+        }
 
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
@@ -9781,7 +9788,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         }
 
-        lastLocalUpdatedInput.emit(insertString)
+        if (zenzEnableStatePreference == true) {
+            filteredCandidateList = filtered
+            lastLocalUpdatedInput.emit(insertString)
+        }
 
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
@@ -9933,34 +9943,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = if (bunsetsuSeparation == true) {
-            val result = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                isOmissionSearchEnable = isOmissionSearchEnable ?: false
-            )
-            bunsetsuPositionList = result.second
-            result.first
-        } else {
-            kanaKanjiEngine.getCandidatesOriginal(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                isOmissionSearchEnable = isOmissionSearchEnable ?: false
-            )
+        val engineCandidates = withContext(Dispatchers.Default) {
+            if (bunsetsuSeparation == true) {
+                val result = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
+                    input = insertString,
+                    n = nBest ?: 4,
+                    mozcUtPersonName = mozcUTPersonName,
+                    mozcUTPlaces = mozcUTPlaces,
+                    mozcUTWiki = mozcUTWiki,
+                    mozcUTNeologd = mozcUTNeologd,
+                    mozcUTWeb = mozcUTWeb,
+                    userDictionaryRepository = userDictionaryRepository,
+                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                )
+                bunsetsuPositionList = result.second
+                result.first
+            } else {
+                kanaKanjiEngine.getCandidatesOriginal(
+                    input = insertString,
+                    n = nBest ?: 4,
+                    mozcUtPersonName = mozcUTPersonName,
+                    mozcUTPlaces = mozcUTPlaces,
+                    mozcUTWiki = mozcUTWiki,
+                    mozcUTNeologd = mozcUTNeologd,
+                    mozcUTWeb = mozcUTWeb,
+                    userDictionaryRepository = userDictionaryRepository,
+                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                )
+            }
         }
         val result =
             resultFromUserTemplate + resultFromUserDictionary + engineCandidates
@@ -10015,35 +10027,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = if (bunsetsuSeparation == true) {
-            val candidates = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                isOmissionSearchEnable = isOmissionSearchEnable ?: false
-            )
-            bunsetsuPositionList = candidates.second
-            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.second}")
-            candidates.first
-        } else {
-            kanaKanjiEngine.getCandidates(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                isOmissionSearchEnable = isOmissionSearchEnable ?: false
-            )
+        val engineCandidates = withContext(Dispatchers.Default) {
+            if (bunsetsuSeparation == true) {
+                val candidates = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
+                    input = insertString,
+                    n = nBest ?: 4,
+                    mozcUtPersonName = mozcUTPersonName,
+                    mozcUTPlaces = mozcUTPlaces,
+                    mozcUTWiki = mozcUTWiki,
+                    mozcUTNeologd = mozcUTNeologd,
+                    mozcUTWeb = mozcUTWeb,
+                    userDictionaryRepository = userDictionaryRepository,
+                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                )
+                bunsetsuPositionList = candidates.second
+                Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.second}")
+                candidates.first
+            } else {
+                kanaKanjiEngine.getCandidates(
+                    input = insertString,
+                    n = nBest ?: 4,
+                    mozcUtPersonName = mozcUTPersonName,
+                    mozcUTPlaces = mozcUTPlaces,
+                    mozcUTWiki = mozcUTWiki,
+                    mozcUTNeologd = mozcUTNeologd,
+                    mozcUTWeb = mozcUTWeb,
+                    userDictionaryRepository = userDictionaryRepository,
+                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                )
+            }
         }
         val result =
             resultFromUserTemplate + resultFromUserDictionary + engineCandidates
@@ -10111,32 +10125,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val engineCandidates = if (bunsetsuSeparation == true) {
-            val resultWithBunsetsu = kanaKanjiEngine.getCandidatesWithoutPredictionWithBunsetsu(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            )
-            bunsetsuPositionList = resultWithBunsetsu.second
-            resultWithBunsetsu.first
-        } else {
-            kanaKanjiEngine.getCandidatesWithoutPrediction(
-                input = insertString,
-                n = nBest ?: 4,
-                mozcUtPersonName = mozcUTPersonName,
-                mozcUTPlaces = mozcUTPlaces,
-                mozcUTWiki = mozcUTWiki,
-                mozcUTNeologd = mozcUTNeologd,
-                mozcUTWeb = mozcUTWeb,
-                userDictionaryRepository = userDictionaryRepository,
-                learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-            )
+        val engineCandidates = withContext(Dispatchers.Default) {
+            if (bunsetsuSeparation == true) {
+                val resultWithBunsetsu = kanaKanjiEngine.getCandidatesWithoutPredictionWithBunsetsu(
+                    input = insertString,
+                    n = nBest ?: 4,
+                    mozcUtPersonName = mozcUTPersonName,
+                    mozcUTPlaces = mozcUTPlaces,
+                    mozcUTWiki = mozcUTWiki,
+                    mozcUTNeologd = mozcUTNeologd,
+                    mozcUTWeb = mozcUTWeb,
+                    userDictionaryRepository = userDictionaryRepository,
+                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                )
+                bunsetsuPositionList = resultWithBunsetsu.second
+                resultWithBunsetsu.first
+            } else {
+                kanaKanjiEngine.getCandidatesWithoutPrediction(
+                    input = insertString,
+                    n = nBest ?: 4,
+                    mozcUtPersonName = mozcUTPersonName,
+                    mozcUTPlaces = mozcUTPlaces,
+                    mozcUTWiki = mozcUTWiki,
+                    mozcUTNeologd = mozcUTNeologd,
+                    mozcUTWeb = mozcUTWeb,
+                    userDictionaryRepository = userDictionaryRepository,
+                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                )
+            }
         }
         val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         return result.filter { candidate ->
