@@ -501,6 +501,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzMaximumThreadSizePreference: Int? = 4
 
     private var sumireEnglishQwertyPreference: Boolean? = false
+    private var conversionCandidatesRomajiEnablePreference: Boolean? = false
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
@@ -945,6 +946,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 manipulateColor(custom_theme_pre_edit_bg_color, 1.2f)
 
             sumireEnglishQwertyPreference = sumire_english_qwerty_preference
+            conversionCandidatesRomajiEnablePreference =
+                conversion_candidates_romaji_enable_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1545,6 +1548,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         previousTenKeyQWERTYMode = null
 
         sumireEnglishQwertyPreference = null
+        conversionCandidatesRomajiEnablePreference = null
 
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -10096,8 +10100,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-        val result =
+
+        val result = if (conversionCandidatesRomajiEnablePreference == true) {
+            val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
+                getRomajiCandidates(insertString = insertString)
+            }
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+        } else {
             resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        }
+
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -10181,8 +10193,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-        val result =
+        val result = if (conversionCandidatesRomajiEnablePreference == true) {
+            val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
+                getRomajiCandidates(insertString = insertString)
+            }
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+        } else {
             resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        }
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -10276,7 +10294,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-        val result = resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+
+        val result = if (conversionCandidatesRomajiEnablePreference == true) {
+            val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
+                getRomajiCandidates(insertString = insertString)
+            }
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+        } else {
+            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+        }
+
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
@@ -10295,6 +10322,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             input = insertString,
         )
         return engineCandidates.distinctBy { it.string }
+    }
+
+    private fun getRomajiCandidates(insertString: String): List<Candidate> {
+        val conversionString = romajiConverter?.hiraganaToRomaji(insertString)
+        if (conversionString != null) {
+            val conversionFirstCapitalString =
+                conversionString.replaceFirstChar { it.uppercaseChar() }
+            val conversionFirstCapitalStringHankaku =
+                conversionFirstCapitalString.toHankakuAlphabet()
+            val conversionHankaku = conversionString.toHankakuAlphabet()
+            return listOf(
+                Candidate(
+                    string = conversionString,
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 29000
+                ),
+                Candidate(
+                    string = conversionHankaku,
+                    type = (31).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 29001
+                ),
+                Candidate(
+                    string = conversionFirstCapitalString,
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 29002
+                ),
+                Candidate(
+                    string = conversionFirstCapitalStringHankaku,
+                    type = (31).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 29003
+                ),
+                Candidate(
+                    string = conversionString.uppercase(),
+                    type = (30).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 29004
+                ),
+                Candidate(
+                    string = conversionHankaku.uppercase(),
+                    type = (31).toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 29005
+                ),
+            )
+        } else {
+            return emptyList()
+        }
     }
 
     /**
