@@ -412,4 +412,8 @@
     <string name="custom_input_color_enable_title">カスタマイズを有効にする</string>
     <string name="conversion_candidates_romaji_enable_preference_title">ローマ字変換候補を表示</string>
     <string name="conversion_candidates_romaji_enable_preference_summary">ローマ字の変換候補を末尾に追加します</string>
+    <string name="learn_dictionary_preference_title">先頭の変換候補を学習</string>
+    <string name="learn_dictionary_preference_summary">先頭の変換候補を選択したときに学習します</string>
+    <string name="enable_prediction_search_learn_dictionary_preference_titile">学習辞書で予測変換</string>
+    <string name="enable_prediction_search_learn_dictionary_preference_summary">学習辞書を使った予測変換を有効にします</string>
 </resources>

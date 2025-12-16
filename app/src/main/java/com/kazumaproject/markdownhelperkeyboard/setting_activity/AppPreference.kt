@@ -261,6 +261,9 @@ object AppPreference {
     private val LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE =
         Pair("learn_first_candidate_dictionary_preference", false)
 
+    private val ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE =
+        Pair("enable_prediction_search_learn_dictionary_preference", false)
+
     private val LEARN_PREDICTION_PREFERENCE = Pair("learn_prediction_preference", 2)
 
     fun init(context: Context) {
@@ -1226,6 +1229,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE.first, value)
+        }
+
+    var enable_prediction_search_learn_dictionary_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE.first,
+            ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE.first, value)
         }
 
     var learn_prediction_preference: Int
