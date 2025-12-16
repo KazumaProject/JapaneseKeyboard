@@ -154,6 +154,8 @@
     <string name="open_source_libraries_title">Open Source libraries used</string>
     <string name="app_version_title">App version</string>
 
+    <string name="learn_dictionary_prefix_match_summary">Shows words registered in the learn dictionary as conversion candidates with a prefix match of %1$d characters</string>
+
     <string name="user_dictionary_prefix_match_summary">Shows words registered in the user dictionary as conversion candidates with a prefix match of %1$d characters</string>
 
     <string name="undo_enable_summary_on">Enables the ability to undo when you delete committed text</string>

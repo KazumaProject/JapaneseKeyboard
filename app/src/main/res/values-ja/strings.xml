@@ -156,6 +156,8 @@
     <string name="open_source_libraries_title">使用した Open Source のライブラリ</string>
     <string name="app_version_title">アプリのバージョン</string>
 
+    <string name="learn_dictionary_prefix_match_summary">学習辞書に登録された単語を、前方 %1$d 文字一致で変換候補として表示します</string>
+
     <string name="user_dictionary_prefix_match_summary">ユーザー辞書に登録された単語を、前方 %1$d 文字一致で変換候補として表示します</string>
 
     <string name="undo_enable_summary_on">確定した文字を削除したときに、元に戻せる機能を有効にします</string>
