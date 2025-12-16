@@ -503,6 +503,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireEnglishQwertyPreference: Boolean? = false
     private var conversionCandidatesRomajiEnablePreference: Boolean? = false
 
+    private var learnFirstCandidateDictionaryPreference: Boolean? = false
+    private var enablePredictionSearchLearnDictionaryPreference: Boolean? = false
+    private var learnPredictionPreference: Int? = 2
+
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -948,6 +952,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireEnglishQwertyPreference = sumire_english_qwerty_preference
             conversionCandidatesRomajiEnablePreference =
                 conversion_candidates_romaji_enable_preference
+
+            learnFirstCandidateDictionaryPreference = learn_first_candidate_dictionary_preference
+            enablePredictionSearchLearnDictionaryPreference =
+                enable_prediction_search_learn_dictionary_preference
+            learnPredictionPreference = learn_prediction_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1549,6 +1558,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         sumireEnglishQwertyPreference = null
         conversionCandidatesRomajiEnablePreference = null
+        learnFirstCandidateDictionaryPreference = null
+        enablePredictionSearchLearnDictionaryPreference = null
+        learnPredictionPreference = null
 
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -9201,7 +9213,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && position != 0 && !isPrivateMode) {
+        val isFirstCandidateLearn: Boolean =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                true
+            } else {
+                position != 0
+            }
+        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && isFirstCandidateLearn && !isPrivateMode) {
             ioScope.launch {
                 try {
                     learnRepository.upsertLearnedData(
@@ -9223,14 +9241,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         commitText(candidate.string, 1)
     }
 
-
-    /**
-     * 実際のユーザー辞書登録処理
-     * ここを ViewModel や Repository につなげてもよい
-     */
-    private fun registerUserDictionaryEntry(reading: String, word: String) {
-
-    }
 
     private fun upsertLearnDictionaryMultipleTapCandidate(
         currentInputMode: InputMode,
@@ -10067,6 +10077,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
+
+        val resultFromLearnDictionary =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                withContext(Dispatchers.IO) {
+                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    learnRepository.predictiveSearchByInput(
+                        prefix = insertString, limit = 4
+                    ).map {
+                        Candidate(
+                            string = it.out,
+                            type = (34).toByte(),
+                            length = (it.input.length).toUByte(),
+                            score = it.score.toInt()
+                        )
+                    }.sortedBy { it.score }
+                }
+            } else {
+                emptyList()
+            }
+
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         val engineCandidates = withContext(Dispatchers.Default) {
@@ -10105,9 +10136,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
                 getRomajiCandidates(insertString = insertString)
             }
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
         } else {
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
         return result.filter { candidate ->
@@ -10159,6 +10190,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
+
+        val resultFromLearnDictionary =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                withContext(Dispatchers.IO) {
+                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    learnRepository.predictiveSearchByInput(
+                        prefix = insertString, limit = 4
+                    ).map {
+                        Candidate(
+                            string = it.out,
+                            type = (34).toByte(),
+                            length = (it.input.length).toUByte(),
+                            score = it.score.toInt()
+                        )
+                    }.sortedBy { it.score }
+                }
+            } else {
+                emptyList()
+            }
+
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         val engineCandidates = withContext(Dispatchers.Default) {
@@ -10197,9 +10249,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
                 getRomajiCandidates(insertString = insertString)
             }
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
         } else {
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
         return result.filter { candidate ->
             if (ngWords.isEmpty()) {
@@ -10263,6 +10315,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
+
+        val resultFromLearnDictionary =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                withContext(Dispatchers.IO) {
+                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    learnRepository.predictiveSearchByInput(
+                        prefix = insertString, limit = 4
+                    ).map {
+                        Candidate(
+                            string = it.out,
+                            type = (34).toByte(),
+                            length = (it.input.length).toUByte(),
+                            score = it.score.toInt()
+                        )
+                    }.sortedBy { it.score }
+                }
+            } else {
+                emptyList()
+            }
+
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         val engineCandidates = withContext(Dispatchers.Default) {
@@ -10299,9 +10372,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
                 getRomajiCandidates(insertString = insertString)
             }
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
         } else {
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
         return result.filter { candidate ->

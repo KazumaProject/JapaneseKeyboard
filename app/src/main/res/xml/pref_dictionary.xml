@@ -26,6 +26,29 @@
             android:summaryOn="@string/learn_dictionary_summary_on"
             android:title="@string/learn_dictionary_title" />
 
+        <SwitchPreferenceCompat
+            android:dependency="learn_dictionary_preference"
+            android:key="learn_first_candidate_dictionary_preference"
+            android:title="@string/learn_dictionary_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/learn_dictionary_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:dependency="learn_dictionary_preference"
+            android:key="enable_prediction_search_learn_dictionary_preference"
+            android:title="@string/enable_prediction_search_learn_dictionary_preference_titile"
+            app:defaultValue="false"
+            app:summary="@string/enable_prediction_search_learn_dictionary_preference_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:dependency="enable_prediction_search_learn_dictionary_preference"
+            android:key="learn_prediction_preference"
+            android:max="8"
+            android:title="@string/user_dictionary_prefix_match_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_user_dictionary_title">
