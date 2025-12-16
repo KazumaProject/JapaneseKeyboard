@@ -26,6 +26,22 @@
             android:summaryOn="@string/learn_dictionary_summary_on"
             android:title="@string/learn_dictionary_title" />
 
+        <SwitchPreferenceCompat
+            android:dependency="learn_dictionary_preference"
+            android:key="learn_first_candidate_dictionary_preference"
+            android:title="先頭の変換候補を学習する"
+            app:defaultValue="false"
+            app:summary="一番目の変換候補が選択された際に学習を有効にします" />
+
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:dependency="learn_first_candidate_dictionary_preference"
+            android:key="learn_prediction_preference"
+            android:max="8"
+            android:title="@string/user_dictionary_prefix_match_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_user_dictionary_title">
