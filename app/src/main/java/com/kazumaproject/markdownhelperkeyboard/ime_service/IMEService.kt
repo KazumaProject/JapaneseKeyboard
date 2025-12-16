@@ -504,6 +504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var conversionCandidatesRomajiEnablePreference: Boolean? = false
 
     private var learnFirstCandidateDictionaryPreference: Boolean? = false
+    private var enablePredictionSearchLearnDictionaryPreference: Boolean? = false
     private var learnPredictionPreference: Int? = 2
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
@@ -953,6 +954,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 conversion_candidates_romaji_enable_preference
 
             learnFirstCandidateDictionaryPreference = learn_first_candidate_dictionary_preference
+            enablePredictionSearchLearnDictionaryPreference =
+                enable_prediction_search_learn_dictionary_preference
             learnPredictionPreference = learn_prediction_preference
 
             if (mozcUTPersonName == true) {
@@ -1556,6 +1559,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireEnglishQwertyPreference = null
         conversionCandidatesRomajiEnablePreference = null
         learnFirstCandidateDictionaryPreference = null
+        enablePredictionSearchLearnDictionaryPreference = null
         learnPredictionPreference = null
 
         inputManager.unregisterInputDeviceListener(this)
@@ -9209,11 +9213,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
     ) {
         // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        val isFirstCandidateLearn: Boolean = if (learnFirstCandidateDictionaryPreference == true) {
-            true
-        } else {
-            position != 0
-        }
+        val isFirstCandidateLearn: Boolean =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                true
+            } else {
+                position != 0
+            }
         if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && isFirstCandidateLearn && !isPrivateMode) {
             ioScope.launch {
                 try {
@@ -10072,6 +10077,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
+
+        val resultFromLearnDictionary =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                withContext(Dispatchers.IO) {
+                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    learnRepository.predictiveSearchByInput(
+                        prefix = insertString, limit = 4
+                    ).map {
+                        Candidate(
+                            string = it.out,
+                            type = (34).toByte(),
+                            length = (it.input.length).toUByte(),
+                            score = it.score.toInt()
+                        )
+                    }.sortedBy { it.score }
+                }
+            } else {
+                emptyList()
+            }
+
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         val engineCandidates = withContext(Dispatchers.Default) {
@@ -10110,9 +10136,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
                 getRomajiCandidates(insertString = insertString)
             }
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
         } else {
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
         return result.filter { candidate ->
@@ -10165,24 +10191,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
-        val resultFromLearnDictionary = if (learnFirstCandidateDictionaryPreference == true) {
-            withContext(Dispatchers.IO) {
-                val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
-                if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                learnRepository.predictiveSearchByInput(
-                    prefix = insertString, limit = 4
-                ).map {
-                    Candidate(
-                        string = it.out,
-                        type = (34).toByte(),
-                        length = (it.input.length).toUByte(),
-                        score = it.score.toInt()
-                    )
-                }.sortedBy { it.score }
+        val resultFromLearnDictionary =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                withContext(Dispatchers.IO) {
+                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    learnRepository.predictiveSearchByInput(
+                        prefix = insertString, limit = 4
+                    ).map {
+                        Candidate(
+                            string = it.out,
+                            type = (34).toByte(),
+                            length = (it.input.length).toUByte(),
+                            score = it.score.toInt()
+                        )
+                    }.sortedBy { it.score }
+                }
+            } else {
+                emptyList()
             }
-        } else {
-            emptyList()
-        }
 
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
@@ -10288,6 +10315,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             emptyList()
         }
+
+        val resultFromLearnDictionary =
+            if (enablePredictionSearchLearnDictionaryPreference == true) {
+                withContext(Dispatchers.IO) {
+                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    learnRepository.predictiveSearchByInput(
+                        prefix = insertString, limit = 4
+                    ).map {
+                        Candidate(
+                            string = it.out,
+                            type = (34).toByte(),
+                            length = (it.input.length).toUByte(),
+                            score = it.score.toInt()
+                        )
+                    }.sortedBy { it.score }
+                }
+            } else {
+                emptyList()
+            }
+
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         val engineCandidates = withContext(Dispatchers.Default) {
@@ -10324,9 +10372,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
                 getRomajiCandidates(insertString = insertString)
             }
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
         } else {
-            resultFromUserTemplate + resultFromUserDictionary + engineCandidates
+            resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
         return result.filter { candidate ->

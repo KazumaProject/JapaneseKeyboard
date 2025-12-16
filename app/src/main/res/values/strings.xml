@@ -414,4 +414,8 @@
     <string name="custom_input_color_enable_title">Enable customize</string>
     <string name="conversion_candidates_romaji_enable_preference_title">Show Romaji conversion suggestions</string>
     <string name="conversion_candidates_romaji_enable_preference_summary">Add Romaji conversion suggestions for Hiragana input</string>
+    <string name="learn_dictionary_preference_title">Learn top suggestion</string>
+    <string name="learn_dictionary_preference_summary">Learn when the top conversion suggestion is selected</string>
+    <string name="enable_prediction_search_learn_dictionary_preference_titile">Predictive suggestions from learned dictionary</string>
+    <string name="enable_prediction_search_learn_dictionary_preference_summary">Enable predictive suggestions using the learned dictionary</string>
 </resources>
