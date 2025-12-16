@@ -258,6 +258,14 @@ object AppPreference {
     private val CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE =
         Pair("conversion_candidates_romaji_enable_preference", false)
 
+    private val LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE =
+        Pair("learn_first_candidate_dictionary_preference", false)
+
+    private val ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE =
+        Pair("enable_prediction_search_learn_dictionary_preference", false)
+
+    private val LEARN_PREDICTION_PREFERENCE = Pair("learn_prediction_preference", 2)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1212,6 +1220,32 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(CONVERSION_CANDIDATES_ROMAJI_ENABLE_PREFERENCE.first, value)
         }
+
+
+    var learn_first_candidate_dictionary_preference: Boolean
+        get() = preferences.getBoolean(
+            LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE.first,
+            LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE.first, value)
+        }
+
+    var enable_prediction_search_learn_dictionary_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE.first,
+            ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE.first, value)
+        }
+
+    var learn_prediction_preference: Int
+        get() = preferences.getInt(
+            LEARN_PREDICTION_PREFERENCE.first,
+            LEARN_PREDICTION_PREFERENCE.second
+        )
+        set(value) = preferences.edit { it.putInt(LEARN_PREDICTION_PREFERENCE.first, value) }
 
 
     fun migrateSumirePreferenceIfNeeded() {
