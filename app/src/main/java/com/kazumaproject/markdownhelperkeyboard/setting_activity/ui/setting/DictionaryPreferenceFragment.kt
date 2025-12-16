@@ -53,6 +53,23 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val learnDictionaryPrefixSeekBar =
+            findPreference<SeekBarPreference>("learn_prediction_preference")
+        learnDictionaryPrefixSeekBar?.apply {
+            appPreference.learn_prediction_preference.let {
+                this.summary =
+                    resources.getString(R.string.learn_dictionary_prefix_match_summary, it)
+            }
+            this.setOnPreferenceChangeListener { _, newValue ->
+                this.summary =
+                    resources.getString(
+                        R.string.learn_dictionary_prefix_match_summary,
+                        newValue as Int
+                    )
+                true
+            }
+        }
+
         val userDictionaryPrefixSeekBar =
             findPreference<SeekBarPreference>("user_dictionary_prefix_match_number")
         userDictionaryPrefixSeekBar?.apply {
