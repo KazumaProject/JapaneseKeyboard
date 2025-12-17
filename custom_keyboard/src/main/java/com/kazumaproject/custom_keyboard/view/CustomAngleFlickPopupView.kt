@@ -25,6 +25,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
+    // ... (PaintやThemeの定義は変更なし) ...
     private val targetPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val targetHighlightPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -65,7 +66,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     private var shapeType: ShapeType = ShapeType.CIRCLE
 
     // --- Size Properties ---
-    // デフォルト値は入れますが、ControllerからsetFlickSensitivityで上書きされます
+    // デフォルト値を設定（後で setUiSize で上書き可能）
     private var centerCircleRadius = 60f
     private var orbitRadius = 160f
 
@@ -76,15 +77,19 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
 
     // --- Configuration Methods ---
 
-    /**
-     * フリック感度（閾値）を設定し、中心円（TAPエリア）のサイズに反映させます。
-     */
-    fun setFlickSensitivity(sensitivity: Float) {
-        if (this.centerCircleRadius != sensitivity) {
-            this.centerCircleRadius = sensitivity
-            updateSizesAndRequestLayout()
-        }
+    // ★削除または空にする: Viewは感度(Sensitivity)を知る必要がなくなりました
+    // 感度はController側で判定に使用します
+    // fun setFlickSensitivity(sensitivity: Float) { ... }
+
+    // ★変更: centerRadius を引数に戻し、ここでサイズを確定させます
+    fun setUiSize(orbit: Float, centerRadius: Float, newTextSize: Float) {
+        this.orbitRadius = orbit
+        this.centerCircleRadius = centerRadius // ここで見た目のサイズを固定
+        this.textPaint.textSize = newTextSize
+        updateSizesAndRequestLayout()
     }
+
+    // ... (setCustomRanges, setShapeType, setColors などは変更なし) ...
 
     fun setCustomRanges(ranges: Map<FlickDirection, Pair<Float, Float>>) {
         directionRanges.clear()
@@ -110,13 +115,6 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    // 変更: centerRadius は setFlickSensitivity で管理するため、引数から削除した形に対応
-    fun setUiSize(orbit: Float, newTextSize: Float) {
-        this.orbitRadius = orbit
-        this.textPaint.textSize = newTextSize
-        updateSizesAndRequestLayout()
-    }
-
     fun setCharacterMap(map: Map<FlickDirection, String>) {
         characterMap.clear()
         characterMap.putAll(map)
@@ -136,9 +134,11 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     }
 
     // --- Drawing Logic ---
+    // (onMeasure, onSizeChanged, onDraw, updateShaders などは既存のままでOK)
+    // ※ createPathForDirection 内で centerCircleRadius が使われますが、
+    //    setUiSizeで固定値が入るようになるため、判定感度が変わっても見た目は変わりません。
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        // UIサイズに基づいた固定サイズを返す
         setMeasuredDimension(preferredWidth, preferredHeight)
     }
 
@@ -174,7 +174,6 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
             }
         }
 
-        // 中心円の描画 (半径は flickSensitivity と一致するようになっている)
         val isCenterSelected = (currentFlickDirection == FlickDirection.TAP)
         val centerPaint = if (isCenterSelected) centerHighlightPaint else centerCirclePaint
         canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, centerPaint)
@@ -216,11 +215,8 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
 
         when (shapeType) {
             ShapeType.CIRCLE -> {
-                // 外側の円（orbitRadius）
                 val outerRect =
                     RectF(cx - orbitRadius, cy - orbitRadius, cx + orbitRadius, cy + orbitRadius)
-                // 内側の円（centerCircleRadius = flickSensitivity）
-                // これにより、中心円の外側から花びらが始まる
                 val innerRect = RectF(
                     cx - centerCircleRadius,
                     cy - centerCircleRadius,
@@ -234,7 +230,6 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
             }
 
             ShapeType.ROUNDED_SQUARE -> {
-                // 簡易実装: 円形ベースで内側をくり抜くロジック
                 val r = orbitRadius * 1.5f
                 path.moveTo(cx, cy)
                 path.lineTo(
@@ -254,7 +249,6 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         segmentPaths[direction] = path
 
         val midAngleRad = Math.toRadians((startAngle + sweepAngle / 2).toDouble())
-        // 文字位置は中心円と外周の中間に配置
         val textRadius = (centerCircleRadius + orbitRadius) / 2
 
         val tx = cx + textRadius * cos(midAngleRad).toFloat()
@@ -291,8 +285,6 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     }
 
     private fun updateSizesAndRequestLayout() {
-        // centerCircleRadius か orbitRadius が変わるとView全体のサイズも変わる可能性があるため計算
-        // 実際には orbitRadius でサイズが決まるが、描画パスが変わるため更新が必要
         preferredWidth = (orbitRadius * 2).toInt()
         preferredHeight = (orbitRadius * 2).toInt()
 
@@ -310,7 +302,6 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         val cx = w / 2f
         val cy = h / 2f
 
-        // シェーダーの範囲も centerCircleRadius に依存させる
         targetHighlightPaint.shader = LinearGradient(
             0f, 0f, w, h,
             colorTheme.segmentHighlightGradientStartColor,
