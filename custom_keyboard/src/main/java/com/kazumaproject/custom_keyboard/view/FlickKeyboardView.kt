@@ -114,6 +114,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var customBorderColor: Int = Color.BLACK
     private var customAngleAndRange: Map<FlickDirection, Pair<Float, Float>> = emptyMap()
     private var circularViewScale: Float = 1.0f
+    private var borderWidth: Int = 1
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
@@ -157,7 +158,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         liquidGlassEnable: Boolean,
         customBorderEnable: Boolean,
         customBorderColor: Int,
-        liquidGlassKeyAlphaEnable: Int
+        liquidGlassKeyAlphaEnable: Int,
+        borderWidth: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -176,6 +178,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.customBorderEnable = customBorderEnable
         this.customBorderColor = customBorderColor
         this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
+        this.borderWidth = borderWidth
 
         if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
@@ -345,7 +348,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         if (customBorderEnable) {
                             setDrawableSolidColor(customSpecialKeyColor)
                             setColorFilter(customSpecialKeyTextColor)
-                            setBorder(customBorderColor, 1)
+                            setBorder(customBorderColor, borderWidth)
                         } else {
                             // 1. ベース（ニューモーフィズム）- QWERTYと同じロジック
                             val neumorphDrawable = getDynamicNeumorphDrawable(
@@ -448,7 +451,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         if (customBorderEnable) {
                             setDrawableSolidColor(customKeyColor)
                             setTextColor(customKeyTextColor)
-                            setBorder(customBorderColor, 1)
+                            setBorder(customBorderColor, borderWidth)
                         } else {
                             val targetBaseColor =
                                 if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
@@ -620,8 +623,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         customSpecialKeyColor,
                                         0.8f
                                     ),
-                                    centerHighlightGradientStartColor = customSpecialKeyColor,
-                                    centerHighlightGradientEndColor = customSpecialKeyColor,
+                                    centerHighlightGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerHighlightGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        0.8f
+                                    ),
                                     separatorColor = customSpecialKeyTextColor,
                                     textColor = customSpecialKeyTextColor
                                 )
@@ -955,8 +964,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         customSpecialKeyColor,
                                         0.8f
                                     ),
-                                    centerHighlightGradientStartColor = customSpecialKeyColor,
-                                    centerHighlightGradientEndColor = customSpecialKeyColor,
+                                    centerHighlightGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerHighlightGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        0.8f
+                                    ),
                                     separatorColor = customSpecialKeyTextColor,
                                     textColor = customSpecialKeyTextColor
                                 )

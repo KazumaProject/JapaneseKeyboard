@@ -419,4 +419,5 @@
     <string name="circularflicksettingsfragment">スミレ カスタムアングル</string>
     <string name="sumire_custom_angle_preference_title">カスタムアングルの設定</string>
     <string name="sumire_custom_angle_preference_summary">フリックの角度を調整します。\n変更の適応にはキーボードの再起動が必要です。</string>
+    <string name="custom_border_width">枠線の太さ</string>
 </resources>

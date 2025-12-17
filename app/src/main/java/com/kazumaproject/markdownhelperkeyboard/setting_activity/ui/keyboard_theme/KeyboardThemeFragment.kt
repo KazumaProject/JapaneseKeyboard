@@ -46,8 +46,9 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         // Custom Border Keys
         private const val PREF_KEY_CUSTOM_BORDER_ENABLE = "theme_custom_border_enable"
         private const val PREF_KEY_CUSTOM_BORDER_COLOR = "theme_custom_border_color"
+        private const val PREF_KEY_CUSTOM_BORDER_WIDTH = "theme_custom_border_width"
 
-        // Custom Input Text Keys (New 5 settings including enable switch)
+        // Custom Input Text Keys
         private const val CATEGORY_KEY_CUSTOM_INPUT = "category_custom_input"
         private const val PREF_KEY_CUSTOM_INPUT_ENABLE = "theme_custom_input_color_enable"
         private const val PREF_KEY_CUSTOM_PRE_EDIT_BG = "theme_custom_pre_edit_bg_color"
@@ -218,35 +219,57 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         ) { appPreference.custom_theme_border_color }
         customCategory.addPreference(customBorderColorPref)
 
-        // Link Border Color capability to switch
-        customBorderColorPref.isEnabled = customBorderEnablePref.isChecked
+        // Custom Border Width (修正: 初期値の設定とリスナーの追加)
+        val customBorderWidthPref = SeekBarPreference(context).apply {
+            key = PREF_KEY_CUSTOM_BORDER_WIDTH
+            title = getString(R.string.custom_border_width)
+            min = 1
+            max = 8
+            showSeekBarValue = true
+
+            // AppPreferenceの現在の値をUIにセット
+            value = appPreference.custom_theme_border_width
+
+            // 値が変更されたときにAppPreferenceを更新するリスナー
+            onPreferenceChangeListener = Preference.OnPreferenceChangeListener { _, newValue ->
+                val width = newValue as Int
+                appPreference.custom_theme_border_width = width
+                true
+            }
+        }
+        customCategory.addPreference(customBorderWidthPref)
+
+        // Link Border Color & Width capability to switch
+        val isBorderEnabled = customBorderEnablePref.isChecked
+        customBorderColorPref.isEnabled = isBorderEnabled
+        customBorderWidthPref.isEnabled = isBorderEnabled
+
         customBorderEnablePref.setOnPreferenceChangeListener { _, newValue ->
             val isEnabled = newValue as Boolean
             customBorderColorPref.isEnabled = isEnabled
+            customBorderWidthPref.isEnabled = isEnabled
             true
         }
 
 
         // -------------------------------------------------------
-        // Input Text Category (New Settings)
+        // Input Text Category
         // -------------------------------------------------------
         val inputCategory = PreferenceCategory(context).apply {
             key = CATEGORY_KEY_CUSTOM_INPUT
-            // タイトルは strings.xml に追加することを推奨
             title = getString(R.string.composing_text)
         }
         screen.addPreference(inputCategory)
 
-        // 0. Enable Custom Input Colors (Switch)
+        // 0. Enable Custom Input Colors
         val inputColorEnablePref = SwitchPreferenceCompat(context).apply {
             key = PREF_KEY_CUSTOM_INPUT_ENABLE
-            // タイトル例: "入力テキスト色のカスタマイズを有効化" (strings.xmlに追加推奨)
-            title = getString(R.string.custom_input_color_enable_title) // 新規Stringリソースを想定
+            title = getString(R.string.custom_input_color_enable_title)
             setDefaultValue(false)
         }
         inputCategory.addPreference(inputColorEnablePref)
 
-        // 1. Pre-Edit Background (入力中・未変換の背景色)
+        // 1. Pre-Edit Background
         val preEditBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_PRE_EDIT_BG,
@@ -254,7 +277,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         ) { appPreference.custom_theme_pre_edit_bg_color }
         inputCategory.addPreference(preEditBgPref)
 
-        // 2. Pre-Edit Text Color (入力中・未変換の文字色)
+        // 2. Pre-Edit Text Color
         val preEditTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_PRE_EDIT_TEXT,
@@ -262,7 +285,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         ) { appPreference.custom_theme_pre_edit_text_color }
         inputCategory.addPreference(preEditTextPref)
 
-        // 3. Post-Edit/Highlight Background (変換中・ハイライトの背景色)
+        // 3. Post-Edit/Highlight Background
         val postEditBgPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_POST_EDIT_BG,
@@ -270,7 +293,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         ) { appPreference.custom_theme_post_edit_bg_color }
         inputCategory.addPreference(postEditBgPref)
 
-        // 4. Post-Edit/Highlight Text Color (変換中・ハイライトの文字色)
+        // 4. Post-Edit/Highlight Text Color
         val postEditTextPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_POST_EDIT_TEXT,
@@ -330,7 +353,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         appPreference.theme_mode = mode
         updateCheckStates(mode)
         updateCustomColorsVisibility(mode == MODE_CUSTOM)
-        // requireActivity().recreate() // 必要に応じて有効化
     }
 
     private fun updateCheckStates(selectedMode: String) {
@@ -350,6 +372,7 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         // Border Settings
         findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_COLOR)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_WIDTH)?.isVisible = isVisible
 
         // Input Category Visibility
         //findPreference<PreferenceCategory>(CATEGORY_KEY_CUSTOM_INPUT)?.isVisible = isVisible
