@@ -204,6 +204,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var liquidGlassKeyAlphaEnable: Int = 255
     private var customBorderEnable: Boolean = false
     private var customBorderColor: Int = Color.BLACK
+    private var borderWidth: Int = 1
 
     init {
         isClickable = true
@@ -272,7 +273,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         liquidGlassEnable: Boolean,
         customBorderEnable: Boolean,
         customBorderColor: Int,
-        liquidGlassKeyAlphaEnable: Int
+        liquidGlassKeyAlphaEnable: Int,
+        borderWidth: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -291,6 +293,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.customBorderEnable = customBorderEnable
         this.customBorderColor = customBorderColor
         this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
+        this.borderWidth = borderWidth
 
         LayoutInflater.from(context)
 
@@ -306,7 +309,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     normalKeyColor = customKeyColor,
                     specialKeyColor = customSpecialKeyColor,
                     normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor
+                    specialKeyTextColor = customSpecialKeyTextColor,
+                    borderWidth = borderWidth
                 )
             }
 
@@ -331,7 +335,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         normalKeyColor: Int, // 引数を追加
         specialKeyColor: Int,
         normalKeyTextColor: Int,
-        specialKeyTextColor: Int
+        specialKeyTextColor: Int,
+        borderWidth: Int
     ) {
         val density = context.resources.displayMetrics.density
         val radius = 8f * density // 角丸の半径 (8dp)
@@ -368,7 +373,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             normalKeys.forEach { view ->
                 if (customBorderEnable) {
                     view.setDrawableSolidColor(customKeyColor)
-                    view.setBorder(customBorderColor, 1)
+                    view.setBorder(customBorderColor, borderWidth)
                 } else {
                     view.background = normalDrawableState?.newDrawable()?.mutate()
                 }
@@ -385,7 +390,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             specialKeys.forEach { view ->
                 if (customBorderEnable) {
                     view.setDrawableSolidColor(customSpecialKeyColor)
-                    view.setBorder(customBorderColor, 1)
+                    view.setBorder(customBorderColor, borderWidth)
                 } else {
                     view.background = specialDrawableState?.newDrawable()?.mutate()
                 }
