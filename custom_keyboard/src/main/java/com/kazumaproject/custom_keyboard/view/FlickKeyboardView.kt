@@ -29,9 +29,8 @@ import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
-import com.kazumaproject.custom_keyboard.controller.FlickInputController
+import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
 import com.kazumaproject.custom_keyboard.controller.GridFlickInputController
-import com.kazumaproject.custom_keyboard.controller.PopupPosition
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
 import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
@@ -62,7 +61,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private var listener: OnKeyboardActionListener? = null
-    private val flickControllers = mutableListOf<FlickInputController>()
+    private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val petalFlickControllers = mutableListOf<GridFlickInputController>()
@@ -113,7 +112,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var liquidGlassKeyAlphaEnable: Int = 255
     private var customBorderEnable: Boolean = false
     private var customBorderColor: Int = Color.BLACK
-
+    private var customAngleAndRange: Map<FlickDirection, Pair<Float, Float>> = emptyMap()
+    private var circularViewScale: Float = 1.0f
+    private var borderWidth: Int = 1
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
@@ -129,6 +130,15 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
+    }
+
+    fun setAngleAndRange(
+        range: Map<FlickDirection,
+                Pair<Float, Float>>,
+        circularPopViewScale: Float
+    ) {
+        this.customAngleAndRange = range
+        this.circularViewScale = circularPopViewScale
     }
 
     /**
@@ -148,7 +158,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         liquidGlassEnable: Boolean,
         customBorderEnable: Boolean,
         customBorderColor: Int,
-        liquidGlassKeyAlphaEnable: Int
+        liquidGlassKeyAlphaEnable: Int,
+        borderWidth: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -167,6 +178,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.customBorderEnable = customBorderEnable
         this.customBorderColor = customBorderColor
         this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
+        this.borderWidth = borderWidth
 
         if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
@@ -336,7 +348,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         if (customBorderEnable) {
                             setDrawableSolidColor(customSpecialKeyColor)
                             setColorFilter(customSpecialKeyTextColor)
-                            setBorder(customBorderColor, 1)
+                            setBorder(customBorderColor, borderWidth)
                         } else {
                             // 1. ベース（ニューモーフィズム）- QWERTYと同じロジック
                             val neumorphDrawable = getDynamicNeumorphDrawable(
@@ -439,7 +451,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         if (customBorderEnable) {
                             setDrawableSolidColor(customKeyColor)
                             setTextColor(customKeyTextColor)
-                            setBorder(customBorderColor, 1)
+                            setBorder(customBorderColor, borderWidth)
                         } else {
                             val targetBaseColor =
                                 if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
@@ -573,7 +585,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     "$flickKeyMapsList"
                 )
                 if (!flickKeyMapsList.isNullOrEmpty()) {
-                    val controller = FlickInputController(context).apply {
+                    val controller = CustomAngleFlickController(context, flickSensitivity).apply {
                         // ( ... Controllerの各種設定 ... )
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
@@ -611,8 +623,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         customSpecialKeyColor,
                                         0.8f
                                     ),
-                                    centerHighlightGradientStartColor = customSpecialKeyColor,
-                                    centerHighlightGradientEndColor = customSpecialKeyColor,
+                                    centerHighlightGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerHighlightGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        0.8f
+                                    ),
                                     separatorColor = customSpecialKeyTextColor,
                                     textColor = customSpecialKeyTextColor
                                 )
@@ -633,12 +651,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
                         setPopupColors(dynamicColorTheme)
-                        this.listener = object : FlickInputController.FlickListener {
-                            override fun onStateChanged(
-                                view: View, newMap: Map<FlickDirection, String>
-                            ) {
-                            }
-
+                        this.listener = object : CustomAngleFlickController.FlickListener {
                             override fun onFlick(direction: FlickDirection, character: String) {
                                 if (character.isNotEmpty()) {
                                     this@FlickKeyboardView.listener?.onKey(
@@ -648,30 +661,54 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
 
+                            override fun onStateChanged(
+                                view: View,
+                                newMap: Map<FlickDirection, String>
+                            ) {
+
+                            }
+
                             override fun onFlickDirectionChanged(newDirection: FlickDirection) {
                                 this@FlickKeyboardView.listener?.onFlickDirectionChanged(
                                     newDirection
                                 )
                             }
                         }
-                        setPopupPosition(PopupPosition.CENTER)
                         val stringMaps = flickKeyMapsList.map { actionMap ->
                             actionMap.mapValues { (_, flickAction) ->
                                 (flickAction as? FlickAction.Input)?.char ?: ""
                             }
                         }
                         attach(keyView, stringMaps)
-                        val scaleFactor = 1.4f
-                        val newCenter = 64f * scaleFactor
-                        val newOrbit = 170f * scaleFactor
-                        val newTextSize = 55f * scaleFactor
+                        val newCenter = 64f * circularViewScale
+                        val newOrbit = 170f * circularViewScale
+                        val newTextSize = 55f * circularViewScale
                         setPopupViewSize(
-                            center = newCenter,
-                            target = newOrbit,
                             orbit = newOrbit,
+                            centerRadius = newCenter,
                             textSize = newTextSize
                         )
                     }
+                    val ranges = customAngleAndRange.ifEmpty {
+                        mapOf(
+                            // UP (上): 270度を中心に ±45度
+                            // 開始: 225度, 範囲: 90度 (225° 〜 315°)
+                            FlickDirection.UP to Pair(225f, 90f),
+
+                            // UP_RIGHT_FAR (右): 0度(360度)を中心に ±45度
+                            // 開始: 315度, 範囲: 90度 (315° 〜 45°) ※0度をまたぐ設定
+                            FlickDirection.UP_RIGHT_FAR to Pair(315f, 90f),
+
+                            // DOWN (下): 90度を中心に ±45度
+                            // 開始: 45度, 範囲: 90度 (45° 〜 135°)
+                            FlickDirection.DOWN to Pair(45f, 90f),
+
+                            // UP_LEFT_FAR (左): 180度を中心に ±45度
+                            // 開始: 135度, 範囲: 90度 (135° 〜 225°)
+                            FlickDirection.UP_LEFT_FAR to Pair(135f, 90f)
+                        )
+                    }
+                    controller.setFlickRanges(ranges)
                     flickControllers.add(controller)
                     return controller
                 }
@@ -927,8 +964,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         customSpecialKeyColor,
                                         0.8f
                                     ),
-                                    centerHighlightGradientStartColor = customSpecialKeyColor,
-                                    centerHighlightGradientEndColor = customSpecialKeyColor,
+                                    centerHighlightGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerHighlightGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        0.8f
+                                    ),
                                     separatorColor = customSpecialKeyTextColor,
                                     textColor = customSpecialKeyTextColor
                                 )
@@ -1165,7 +1208,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun detachKeyBehavior(controller: Any?) {
         // コントローラーを解除
         when (controller) {
-            is FlickInputController -> {
+            is CustomAngleFlickController -> {
                 controller.cancel()
                 flickControllers.remove(controller)
             }

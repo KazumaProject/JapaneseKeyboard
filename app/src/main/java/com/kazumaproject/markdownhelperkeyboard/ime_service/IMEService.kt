@@ -506,6 +506,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var learnFirstCandidateDictionaryPreference: Boolean? = false
     private var enablePredictionSearchLearnDictionaryPreference: Boolean? = false
     private var learnPredictionPreference: Int? = 2
+    private var circularFlickWindowScale: Float? = 1.0f
+
+    private var customKeyBorderWidth: Int? = 1
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
@@ -957,6 +960,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             enablePredictionSearchLearnDictionaryPreference =
                 enable_prediction_search_learn_dictionary_preference
             learnPredictionPreference = learn_prediction_preference
+            circularFlickWindowScale = circular_flickWindow_scale
+            customKeyBorderWidth = custom_theme_border_width
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1561,7 +1566,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         learnFirstCandidateDictionaryPreference = null
         enablePredictionSearchLearnDictionaryPreference = null
         learnPredictionPreference = null
-
+        circularFlickWindowScale = null
+        customKeyBorderWidth = null
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         speechRecognizer?.destroy()
@@ -2912,7 +2918,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 liquidGlassEnable = liquidGlassThemePreference ?: false,
                 customBorderEnable = customKeyBorderEnablePreference ?: false,
                 customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
-                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
+                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
+                borderWidth = customKeyBorderWidth ?: 1
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -3063,7 +3070,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 liquidGlassEnable = liquidGlassThemePreference ?: false,
                 customBorderEnable = customKeyBorderEnablePreference ?: false,
                 customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
-                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
+                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
+                borderWidth = customKeyBorderWidth ?: 1
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -4068,6 +4076,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isNotEmpty()) {
             if (zenzEnableLongPressConversionPreference == true) {
                 scope.launch {
+                    filteredCandidateList = suggestionAdapter?.suggestions
                     val candidates = performZenzRequest(insertString)
                     _zenzCandidates.update { candidates }
                 }
@@ -4710,8 +4719,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             liquidGlassEnable = liquidGlassThemePreference ?: false,
             customBorderEnable = customKeyBorderEnablePreference ?: false,
             customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
-            liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
+            liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
+            borderWidth = customKeyBorderWidth ?: 1
         )
+
+        mainView.customLayoutDefault.setAngleAndRange(
+            appPreference.getCircularFlickRanges(),
+            circularFlickWindowScale ?: 1.0f
+        )
+
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
@@ -4818,6 +4834,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         } else {
                             if (zenzEnableLongPressConversionPreference == true) {
                                 scope.launch {
+                                    filteredCandidateList = suggestionAdapter?.suggestions
                                     val candidates = performZenzRequest(insertString)
                                     _zenzCandidates.update { candidates }
                                 }
@@ -5026,6 +5043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (zenzEnableLongPressConversionPreference == true) {
                             val insertString = inputString.value
                             scope.launch {
+                                filteredCandidateList = suggestionAdapter?.suggestions
                                 val candidates = performZenzRequest(insertString)
                                 _zenzCandidates.update { candidates }
                             }
@@ -8543,7 +8561,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 liquidGlassEnable = liquidGlassThemePreference ?: false,
                 customBorderEnable = customKeyBorderEnablePreference ?: false,
                 customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
-                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
+                liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
+                borderWidth = customKeyBorderWidth ?: 1
             )
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
@@ -8848,6 +8867,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 if (zenzEnableLongPressConversionPreference == true) {
                                     scope.launch {
+                                        filteredCandidateList = suggestionAdapter?.suggestions
                                         val candidates = performZenzRequest(insertString)
                                         _zenzCandidates.update { candidates }
                                     }
