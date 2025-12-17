@@ -418,4 +418,7 @@
     <string name="learn_dictionary_preference_summary">Learn when the top conversion suggestion is selected</string>
     <string name="enable_prediction_search_learn_dictionary_preference_titile">Predictive suggestions from learned dictionary</string>
     <string name="enable_prediction_search_learn_dictionary_preference_summary">Enable predictive suggestions using the learned dictionary</string>
+    <string name="circularflicksettingsfragment">Sumire Custom Angle</string>
+    <string name="sumire_custom_angle_preference_title">Custom Flick Angle</string>
+    <string name="sumire_custom_angle_preference_summary">Adjust the flick recognition angle</string>
 </resources>
