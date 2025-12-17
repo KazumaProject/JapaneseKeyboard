@@ -416,4 +416,8 @@
     <string name="learn_dictionary_preference_summary">先頭の変換候補を選択したときに学習します</string>
     <string name="enable_prediction_search_learn_dictionary_preference_titile">学習辞書で予測変換</string>
     <string name="enable_prediction_search_learn_dictionary_preference_summary">学習辞書を使った予測変換を有効にします</string>
+    <string name="circularflicksettingsfragment">ドーナツ入力</string>
+    <string name="sumire_custom_angle_preference_title">ドーナツ入力の設定</string>
+    <string name="sumire_custom_angle_preference_summary">フリックの角度を調整します。\n変更の適応にはキーボードの再起動が必要です。</string>
+    <string name="custom_border_width">枠線の太さ</string>
 </resources>

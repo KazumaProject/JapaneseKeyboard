@@ -30,12 +30,14 @@
         <item>Normal input</item>
         <item>Circle input</item>
         <item>Two-step flick input</item>
+        <item>Donuts input</item>
     </string-array>
 
     <string-array name="sumire_keyboard_style_values">
         <item>default</item>
         <item>circle</item>
         <item>second-flick</item>
+        <item>sumire</item>
     </string-array>
 
     <string-array name="sumire_input_method_options">

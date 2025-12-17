@@ -61,6 +61,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_tenKeyCandidateLetterSizeFragment"
             app:destination="@id/tenKeyCandidateLetterSizeFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_circularFlickSettingsFragment"
+            app:destination="@id/circularFlickSettingsFragment" />
     </fragment>
 
     <fragment
@@ -190,5 +193,9 @@
         android:id="@+id/tenKeyCandidateLetterSizeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting.TenKeyCandidateLetterSizeFragment"
         android:label="@string/tenkeycandidatelettersizefragment" />
+    <fragment
+        android:id="@+id/circularFlickSettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_custom_angle.CircularFlickSettingsFragment"
+        android:label="@string/circularflicksettingsfragment" />
 
 </navigation>

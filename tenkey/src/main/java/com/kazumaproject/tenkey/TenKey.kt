@@ -710,7 +710,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         liquidGlassEnable: Boolean,
         customBorderEnable: Boolean,
         customBorderColor: Int,
-        liquidGlassKeyAlphaEnable: Int
+        liquidGlassKeyAlphaEnable: Int,
+        borderWidth: Int
     ) {
         // メンバ変数に代入
         this.themeMode = themeMode
@@ -822,7 +823,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     normalKeyColor = customKeyColor,
                     specialKeyColor = customSpecialKeyColor,
                     normalKeyTextColor = customKeyTextColor,
-                    specialKeyTextColor = customSpecialKeyTextColor
+                    specialKeyTextColor = customSpecialKeyTextColor,
+                    borderWidth = borderWidth
                 )
             }
 
@@ -852,7 +854,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         normalKeyColor: Int, // 引数を追加
         specialKeyColor: Int,
         normalKeyTextColor: Int,
-        specialKeyTextColor: Int
+        specialKeyTextColor: Int,
+        borderWidth: Int
     ) {
         val density = context.resources.displayMetrics.density
         val radius = 8f * density // 角丸の半径 (8dp)
@@ -888,7 +891,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             normalKeys.forEach { view ->
                 if (customBorderEnable) {
                     view.setDrawableSolidColor(customKeyColor)
-                    view.setBorder(customBorderColor, 1)
+                    view.setBorder(customBorderColor, borderWidth)
                 } else {
                     view.background = normalDrawableState?.newDrawable()?.mutate()
                 }
@@ -912,15 +915,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             specialKeys.forEach { view ->
                 if (customBorderEnable) {
                     view.setDrawableSolidColor(customSpecialKeyColor)
-                    view.setBorder(customBorderColor, 1)
+                    view.setBorder(customBorderColor, borderWidth)
                 } else {
                     view.background = specialDrawableState?.newDrawable()?.mutate()
                 }
                 ImageViewCompat.setImageTintList(view, specialColorStateList)
                 view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
-                if (customBorderEnable) {
-                    view.setBorder(customBorderColor, 1)
-                }
             }
         }
     }
