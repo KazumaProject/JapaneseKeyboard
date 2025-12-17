@@ -21,14 +21,23 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchFiveDirections"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="5方向フリックモードを有効にする"
+            app:layout_constraintTop_toBottomOf="@id/btnReset"
+            app:layout_constraintStart_toStartOf="parent" />
+
         <TextView
             android:id="@+id/tvScaleLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="16dp"
             android:text="ウィンドウサイズ倍率"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnReset" />
+            app:layout_constraintTop_toBottomOf="@id/switchFiveDirections" />
 
         <TextView
             android:id="@+id/tvScaleValue"
@@ -88,6 +97,15 @@
                 android:layout_height="wrap_content"
                 android:checked="true"
                 android:text="上 (UP)" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipUpRight"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="左下 (UP_RIGHT)"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipRight"
