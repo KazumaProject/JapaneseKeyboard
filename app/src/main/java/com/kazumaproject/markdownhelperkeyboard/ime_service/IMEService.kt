@@ -4712,6 +4712,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
             liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255
         )
+
+        mainView.customLayoutDefault.setAngleAndRange(
+            appPreference.getCircularFlickRanges()
+        )
+
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 

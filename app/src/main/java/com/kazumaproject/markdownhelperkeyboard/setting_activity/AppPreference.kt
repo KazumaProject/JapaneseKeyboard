@@ -8,6 +8,7 @@ import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 
@@ -265,6 +266,18 @@ object AppPreference {
         Pair("enable_prediction_search_learn_dictionary_preference", false)
 
     private val LEARN_PREDICTION_PREFERENCE = Pair("learn_prediction_preference", 2)
+
+    private val PREF_UP_START = Pair("circular_flick_up_start", 225f)
+    private val PREF_UP_SWEEP = Pair("circular_flick_up_sweep", 90f)
+
+    private val PREF_RIGHT_START = Pair("circular_flick_right_start", 315f)
+    private val PREF_RIGHT_SWEEP = Pair("circular_flick_right_sweep", 90f)
+
+    private val PREF_DOWN_START = Pair("circular_flick_down_start", 45f)
+    private val PREF_DOWN_SWEEP = Pair("circular_flick_down_sweep", 90f)
+
+    private val PREF_LEFT_START = Pair("circular_flick_left_start", 135f)
+    private val PREF_LEFT_SWEEP = Pair("circular_flick_left_sweep", 90f)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -1247,6 +1260,50 @@ object AppPreference {
         )
         set(value) = preferences.edit { it.putInt(LEARN_PREDICTION_PREFERENCE.first, value) }
 
+    var circularFlickUpStart: Float
+        get() = preferences.getFloat(PREF_UP_START.first, PREF_UP_START.second)
+        set(value) = preferences.edit { it.putFloat(PREF_UP_START.first, value) }
+
+    var circularFlickUpSweep: Float
+        get() = preferences.getFloat(PREF_UP_SWEEP.first, PREF_UP_SWEEP.second)
+        set(value) = preferences.edit { it.putFloat(PREF_UP_SWEEP.first, value) }
+
+    var circularFlickRightStart: Float
+        get() = preferences.getFloat(PREF_RIGHT_START.first, PREF_RIGHT_START.second)
+        set(value) = preferences.edit { it.putFloat(PREF_RIGHT_START.first, value) }
+
+    var circularFlickRightSweep: Float
+        get() = preferences.getFloat(PREF_RIGHT_SWEEP.first, PREF_RIGHT_SWEEP.second)
+        set(value) = preferences.edit { it.putFloat(PREF_RIGHT_SWEEP.first, value) }
+
+    var circularFlickDownStart: Float
+        get() = preferences.getFloat(PREF_DOWN_START.first, PREF_DOWN_START.second)
+        set(value) = preferences.edit { it.putFloat(PREF_DOWN_START.first, value) }
+
+    var circularFlickDownSweep: Float
+        get() = preferences.getFloat(PREF_DOWN_SWEEP.first, PREF_DOWN_SWEEP.second)
+        set(value) = preferences.edit { it.putFloat(PREF_DOWN_SWEEP.first, value) }
+
+    var circularFlickLeftStart: Float
+        get() = preferences.getFloat(PREF_LEFT_START.first, PREF_LEFT_START.second)
+        set(value) = preferences.edit { it.putFloat(PREF_LEFT_START.first, value) }
+
+    var circularFlickLeftSweep: Float
+        get() = preferences.getFloat(PREF_LEFT_SWEEP.first, PREF_LEFT_SWEEP.second)
+        set(value) = preferences.edit { it.putFloat(PREF_LEFT_SWEEP.first, value) }
+
+    /**
+     * キーボード側で使用するためのマップ取得メソッド
+     * 戻り値: Map<FlickDirection, Pair<StartAngle, SweepAngle>>
+     */
+    fun getCircularFlickRanges(): Map<FlickDirection, Pair<Float, Float>> {
+        return mapOf(
+            FlickDirection.UP to Pair(circularFlickUpStart, circularFlickUpSweep),
+            FlickDirection.UP_RIGHT_FAR to Pair(circularFlickRightStart, circularFlickRightSweep),
+            FlickDirection.DOWN to Pair(circularFlickDownStart, circularFlickDownSweep),
+            FlickDirection.UP_LEFT_FAR to Pair(circularFlickLeftStart, circularFlickLeftSweep)
+        )
+    }
 
     fun migrateSumirePreferenceIfNeeded() {
         // 古いキーが存在する場合のみ移行処理を実行
