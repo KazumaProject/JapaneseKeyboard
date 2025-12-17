@@ -298,12 +298,92 @@ object KeyboardDefaultLayouts {
             )
         )
 
+        val small_a = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ぁ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぃ"),
+            FlickDirection.UP to FlickAction.Input("ぅ"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぇ"),
+            FlickDirection.DOWN to FlickAction.Input("ぉ")
+        )
+        val dakuten_a = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゔ"),
+        )
+
+        val ga = mapOf(
+            FlickDirection.TAP to FlickAction.Input("が"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぎ"),
+            FlickDirection.UP to FlickAction.Input("ぐ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("げ"),
+            FlickDirection.DOWN to FlickAction.Input("ご")
+        )
+
+        val za = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ざ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("じ"),
+            FlickDirection.UP to FlickAction.Input("ず"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぜ"),
+            FlickDirection.DOWN to FlickAction.Input("ぞ")
+        )
+
+        val da = mapOf(
+            FlickDirection.TAP to FlickAction.Input("っ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぢ"),
+            FlickDirection.UP to FlickAction.Input("づ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("で"),
+            FlickDirection.DOWN to FlickAction.Input("ど")
+        )
+
+        val ba = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ば"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("び"),
+            FlickDirection.UP to FlickAction.Input("ぶ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゜"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("べ"),
+            FlickDirection.DOWN to FlickAction.Input("ぼ")
+        )
+        val pa = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ぱ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぴ"),
+            FlickDirection.UP to FlickAction.Input("ぷ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛゜"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぺ"),
+            FlickDirection.DOWN to FlickAction.Input("ぽ")
+        )
+
+        val ya_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゃ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ゅ"),
+            FlickDirection.UP to FlickAction.Input("ょ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("大"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("「"),
+            FlickDirection.DOWN to FlickAction.Input("」")
+        )
+
+        val wa_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゎ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("~"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
+        )
+
+        val kuten_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("_"),
+            FlickDirection.UP to FlickAction.Input("@"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/"),
+        )
+
         val a = mapOf(
             FlickDirection.TAP to FlickAction.Input("あ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("い"),
             FlickDirection.UP to FlickAction.Input("う"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("え"),
-            FlickDirection.DOWN to FlickAction.Input("お")
+            FlickDirection.DOWN to FlickAction.Input("お"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val ka = mapOf(
@@ -311,7 +391,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("き"),
             FlickDirection.UP to FlickAction.Input("く"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("け"),
-            FlickDirection.DOWN to FlickAction.Input("こ")
+            FlickDirection.DOWN to FlickAction.Input("こ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val sa = mapOf(
@@ -319,7 +400,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("し"),
             FlickDirection.UP to FlickAction.Input("す"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("せ"),
-            FlickDirection.DOWN to FlickAction.Input("そ")
+            FlickDirection.DOWN to FlickAction.Input("そ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val ta = mapOf(
@@ -327,7 +409,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ち"),
             FlickDirection.UP to FlickAction.Input("つ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("て"),
-            FlickDirection.DOWN to FlickAction.Input("と")
+            FlickDirection.DOWN to FlickAction.Input("と"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val na = mapOf(
@@ -342,7 +425,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ひ"),
             FlickDirection.UP to FlickAction.Input("ふ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("へ"),
-            FlickDirection.DOWN to FlickAction.Input("ほ")
+            FlickDirection.DOWN to FlickAction.Input("ほ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val ma = mapOf(
@@ -357,7 +441,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
             FlickDirection.UP to FlickAction.Input("ゆ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-            FlickDirection.DOWN to FlickAction.Input("よ")
+            FlickDirection.DOWN to FlickAction.Input("よ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val ra = mapOf(
@@ -373,6 +458,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP to FlickAction.Input("ん"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
             FlickDirection.DOWN to FlickAction.Input("〜"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val kuten = mapOf(
@@ -380,7 +466,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("。"),
             FlickDirection.UP to FlickAction.Input("？"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
-            FlickDirection.DOWN to FlickAction.Input("…")
+            FlickDirection.DOWN to FlickAction.Input("…"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
@@ -398,34 +485,34 @@ object KeyboardDefaultLayouts {
                 mutableMapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "あ" to listOf(a),
-                    "か" to listOf(ka),
-                    "さ" to listOf(sa),
-                    "た" to listOf(ta),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
                     "な" to listOf(na),
-                    "は" to listOf(ha),
+                    "は" to listOf(ha, ba, pa),
                     "ま" to listOf(ma),
-                    "や" to listOf(ya),
+                    "や" to listOf(ya, ya_small),
                     "ら" to listOf(ra),
-                    "わ" to listOf(wa),
-                    "、。?!" to listOf(kuten),
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small),
                     "Del" to listOf(deleteActionMap)
                 )
             } else {
                 mutableMapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "あ" to listOf(a),
-                    "か" to listOf(ka),
-                    "さ" to listOf(sa),
-                    "た" to listOf(ta),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
                     "な" to listOf(na),
-                    "は" to listOf(ha),
+                    "は" to listOf(ha, ba, pa),
                     "ま" to listOf(ma),
-                    "や" to listOf(ya),
+                    "や" to listOf(ya, ya_small),
                     "ら" to listOf(ra),
-                    "わ" to listOf(wa),
-                    "、。?!" to listOf(kuten)
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small),
                 )
             }
 
@@ -500,12 +587,92 @@ object KeyboardDefaultLayouts {
             )
         )
 
+        val small_a = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ぁ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぃ"),
+            FlickDirection.UP to FlickAction.Input("ぅ"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぇ"),
+            FlickDirection.DOWN to FlickAction.Input("ぉ")
+        )
+        val dakuten_a = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゔ"),
+        )
+
+        val ga = mapOf(
+            FlickDirection.TAP to FlickAction.Input("が"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぎ"),
+            FlickDirection.UP to FlickAction.Input("ぐ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("げ"),
+            FlickDirection.DOWN to FlickAction.Input("ご")
+        )
+
+        val za = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ざ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("じ"),
+            FlickDirection.UP to FlickAction.Input("ず"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぜ"),
+            FlickDirection.DOWN to FlickAction.Input("ぞ")
+        )
+
+        val da = mapOf(
+            FlickDirection.TAP to FlickAction.Input("っ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぢ"),
+            FlickDirection.UP to FlickAction.Input("づ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("で"),
+            FlickDirection.DOWN to FlickAction.Input("ど")
+        )
+
+        val ba = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ば"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("び"),
+            FlickDirection.UP to FlickAction.Input("ぶ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゜"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("べ"),
+            FlickDirection.DOWN to FlickAction.Input("ぼ")
+        )
+        val pa = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ぱ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぴ"),
+            FlickDirection.UP to FlickAction.Input("ぷ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛゜"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぺ"),
+            FlickDirection.DOWN to FlickAction.Input("ぽ")
+        )
+
+        val ya_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゃ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ゅ"),
+            FlickDirection.UP to FlickAction.Input("ょ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("大"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("「"),
+            FlickDirection.DOWN to FlickAction.Input("」")
+        )
+
+        val wa_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゎ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("~"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
+        )
+
+        val kuten_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("_"),
+            FlickDirection.UP to FlickAction.Input("@"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/"),
+        )
+
         val a = mapOf(
             FlickDirection.TAP to FlickAction.Input("あ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("い"),
             FlickDirection.UP to FlickAction.Input("う"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("え"),
-            FlickDirection.DOWN to FlickAction.Input("お")
+            FlickDirection.DOWN to FlickAction.Input("お"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val ka = mapOf(
@@ -513,7 +680,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("き"),
             FlickDirection.UP to FlickAction.Input("く"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("け"),
-            FlickDirection.DOWN to FlickAction.Input("こ")
+            FlickDirection.DOWN to FlickAction.Input("こ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val sa = mapOf(
@@ -521,7 +689,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("し"),
             FlickDirection.UP to FlickAction.Input("す"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("せ"),
-            FlickDirection.DOWN to FlickAction.Input("そ")
+            FlickDirection.DOWN to FlickAction.Input("そ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val ta = mapOf(
@@ -529,7 +698,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ち"),
             FlickDirection.UP to FlickAction.Input("つ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("て"),
-            FlickDirection.DOWN to FlickAction.Input("と")
+            FlickDirection.DOWN to FlickAction.Input("と"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val na = mapOf(
@@ -544,7 +714,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ひ"),
             FlickDirection.UP to FlickAction.Input("ふ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("へ"),
-            FlickDirection.DOWN to FlickAction.Input("ほ")
+            FlickDirection.DOWN to FlickAction.Input("ほ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val ma = mapOf(
@@ -559,7 +730,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
             FlickDirection.UP to FlickAction.Input("ゆ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-            FlickDirection.DOWN to FlickAction.Input("よ")
+            FlickDirection.DOWN to FlickAction.Input("よ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val ra = mapOf(
@@ -575,6 +747,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP to FlickAction.Input("ん"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
             FlickDirection.DOWN to FlickAction.Input("〜"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val kuten = mapOf(
@@ -582,7 +755,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("。"),
             FlickDirection.UP to FlickAction.Input("？"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
-            FlickDirection.DOWN to FlickAction.Input("…")
+            FlickDirection.DOWN to FlickAction.Input("…"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
@@ -599,33 +773,33 @@ object KeyboardDefaultLayouts {
                 )
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "あ" to listOf(a),
-                    "か" to listOf(ka),
-                    "さ" to listOf(sa),
-                    "た" to listOf(ta),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
                     "な" to listOf(na),
-                    "は" to listOf(ha),
+                    "は" to listOf(ha, ba, pa),
                     "ま" to listOf(ma),
-                    "や" to listOf(ya),
+                    "や" to listOf(ya, ya_small),
                     "ら" to listOf(ra),
-                    "わ" to listOf(wa),
-                    "、。?!" to listOf(kuten),
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small),
                     "Del" to listOf(deleteActionMap)
                 )
             } else {
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "あ" to listOf(a),
-                    "か" to listOf(ka),
-                    "さ" to listOf(sa),
-                    "た" to listOf(ta),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
                     "な" to listOf(na),
-                    "は" to listOf(ha),
+                    "は" to listOf(ha, ba, pa),
                     "ま" to listOf(ma),
-                    "や" to listOf(ya),
+                    "や" to listOf(ya, ya_small),
                     "ら" to listOf(ra),
-                    "わ" to listOf(wa),
-                    "、。?!" to listOf(kuten)
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small),
                 )
             }
 
@@ -727,12 +901,92 @@ object KeyboardDefaultLayouts {
             )
         )
 
+        val small_a = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ぁ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぃ"),
+            FlickDirection.UP to FlickAction.Input("ぅ"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぇ"),
+            FlickDirection.DOWN to FlickAction.Input("ぉ")
+        )
+        val dakuten_a = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゔ"),
+        )
+
+        val ga = mapOf(
+            FlickDirection.TAP to FlickAction.Input("が"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぎ"),
+            FlickDirection.UP to FlickAction.Input("ぐ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("げ"),
+            FlickDirection.DOWN to FlickAction.Input("ご")
+        )
+
+        val za = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ざ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("じ"),
+            FlickDirection.UP to FlickAction.Input("ず"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぜ"),
+            FlickDirection.DOWN to FlickAction.Input("ぞ")
+        )
+
+        val da = mapOf(
+            FlickDirection.TAP to FlickAction.Input("っ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぢ"),
+            FlickDirection.UP to FlickAction.Input("づ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("で"),
+            FlickDirection.DOWN to FlickAction.Input("ど")
+        )
+
+        val ba = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ば"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("び"),
+            FlickDirection.UP to FlickAction.Input("ぶ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゜"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("べ"),
+            FlickDirection.DOWN to FlickAction.Input("ぼ")
+        )
+        val pa = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ぱ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ぴ"),
+            FlickDirection.UP to FlickAction.Input("ぷ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛゜"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ぺ"),
+            FlickDirection.DOWN to FlickAction.Input("ぽ")
+        )
+
+        val ya_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゃ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("ゅ"),
+            FlickDirection.UP to FlickAction.Input("ょ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("大"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("「"),
+            FlickDirection.DOWN to FlickAction.Input("」")
+        )
+
+        val wa_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("ゎ"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("~"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("〜"),
+        )
+
+        val kuten_small = mapOf(
+            FlickDirection.TAP to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("_"),
+            FlickDirection.UP to FlickAction.Input("@"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/"),
+        )
+
         val a = mapOf(
             FlickDirection.TAP to FlickAction.Input("あ"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("い"),
             FlickDirection.UP to FlickAction.Input("う"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("え"),
-            FlickDirection.DOWN to FlickAction.Input("お")
+            FlickDirection.DOWN to FlickAction.Input("お"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val ka = mapOf(
@@ -740,7 +994,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("き"),
             FlickDirection.UP to FlickAction.Input("く"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("け"),
-            FlickDirection.DOWN to FlickAction.Input("こ")
+            FlickDirection.DOWN to FlickAction.Input("こ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val sa = mapOf(
@@ -748,7 +1003,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("し"),
             FlickDirection.UP to FlickAction.Input("す"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("せ"),
-            FlickDirection.DOWN to FlickAction.Input("そ")
+            FlickDirection.DOWN to FlickAction.Input("そ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val ta = mapOf(
@@ -756,7 +1012,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ち"),
             FlickDirection.UP to FlickAction.Input("つ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("て"),
-            FlickDirection.DOWN to FlickAction.Input("と")
+            FlickDirection.DOWN to FlickAction.Input("と"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val na = mapOf(
@@ -771,7 +1028,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("ひ"),
             FlickDirection.UP to FlickAction.Input("ふ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("へ"),
-            FlickDirection.DOWN to FlickAction.Input("ほ")
+            FlickDirection.DOWN to FlickAction.Input("ほ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("゛"),
         )
 
         val ma = mapOf(
@@ -786,7 +1044,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
             FlickDirection.UP to FlickAction.Input("ゆ"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-            FlickDirection.DOWN to FlickAction.Input("よ")
+            FlickDirection.DOWN to FlickAction.Input("よ"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val ra = mapOf(
@@ -802,6 +1061,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP to FlickAction.Input("ん"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("ー"),
             FlickDirection.DOWN to FlickAction.Input("〜"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val kuten = mapOf(
@@ -809,7 +1069,8 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("。"),
             FlickDirection.UP to FlickAction.Input("？"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
-            FlickDirection.DOWN to FlickAction.Input("…")
+            FlickDirection.DOWN to FlickAction.Input("…"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("小"),
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
@@ -827,34 +1088,34 @@ object KeyboardDefaultLayouts {
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorLeftActionMap),
                     "CursorMoveRight" to listOf(cursorRightActionMap),
-                    "あ" to listOf(a),
-                    "か" to listOf(ka),
-                    "さ" to listOf(sa),
-                    "た" to listOf(ta),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
                     "な" to listOf(na),
-                    "は" to listOf(ha),
+                    "は" to listOf(ha, ba, pa),
                     "ま" to listOf(ma),
-                    "や" to listOf(ya),
+                    "や" to listOf(ya, ya_small),
                     "ら" to listOf(ra),
-                    "わ" to listOf(wa),
-                    "、。?!" to listOf(kuten),
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small),
                     "Del" to listOf(deleteActionMap)
                 )
             } else {
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorLeftActionMap),
                     "CursorMoveRight" to listOf(cursorRightActionMap),
-                    "あ" to listOf(a),
-                    "か" to listOf(ka),
-                    "さ" to listOf(sa),
-                    "た" to listOf(ta),
+                    "あ" to listOf(a, small_a, dakuten_a),
+                    "か" to listOf(ka, ga),
+                    "さ" to listOf(sa, za),
+                    "た" to listOf(ta, da),
                     "な" to listOf(na),
-                    "は" to listOf(ha),
+                    "は" to listOf(ha, ba, pa),
                     "ま" to listOf(ma),
-                    "や" to listOf(ya),
+                    "や" to listOf(ya, ya_small),
                     "ら" to listOf(ra),
-                    "わ" to listOf(wa),
-                    "、。?!" to listOf(kuten)
+                    "わ" to listOf(wa, wa_small),
+                    "、。?!" to listOf(kuten, kuten_small),
                 )
             }
 
@@ -1303,30 +1564,35 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("a"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("b"),
             FlickDirection.UP to FlickAction.Input("c"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("2")
         )
         val defLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("d"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("e"),
             FlickDirection.UP to FlickAction.Input("f"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("3")
         )
         val ghiLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("g"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("h"),
             FlickDirection.UP to FlickAction.Input("i"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("4")
         )
         val jklLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("j"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("k"),
             FlickDirection.UP to FlickAction.Input("l"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("5")
         )
         val mnoLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("m"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("n"),
             FlickDirection.UP to FlickAction.Input("o"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("6")
         )
         val pqrsLower = mapOf(
@@ -1334,12 +1600,14 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("q"),
             FlickDirection.UP to FlickAction.Input("r"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("s"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("7")
         )
         val tuvLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("t"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("u"),
             FlickDirection.UP to FlickAction.Input("v"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("8")
         )
         val wxyzLower = mapOf(
@@ -1347,7 +1615,59 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("x"),
             FlickDirection.UP to FlickAction.Input("y"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("z"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("9")
+        )
+
+        val abcUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("A"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("B"),
+            FlickDirection.UP to FlickAction.Input("C"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val defUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("D"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("E"),
+            FlickDirection.UP to FlickAction.Input("F"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val ghiUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("G"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("H"),
+            FlickDirection.UP to FlickAction.Input("I"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val jklUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("J"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("K"),
+            FlickDirection.UP to FlickAction.Input("L"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val mnoUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("M"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("N"),
+            FlickDirection.UP to FlickAction.Input("O"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val pqrsUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("P"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("Q"),
+            FlickDirection.UP to FlickAction.Input("R"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("S")
+        )
+        val tuvUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("T"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("U"),
+            FlickDirection.UP to FlickAction.Input("V"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val wxyzUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("W"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("X"),
+            FlickDirection.UP to FlickAction.Input("Y"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("Z")
         )
 
         // --- 記号キーのflickMap ---
@@ -1373,6 +1693,35 @@ object KeyboardDefaultLayouts {
             FlickDirection.DOWN to FlickAction.Input("-")
         )
 
+        val basicMathOperators = mapOf(
+            FlickDirection.TAP to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+            FlickDirection.UP_LEFT to FlickAction.Input("="),
+            FlickDirection.UP to FlickAction.Input("*"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/"),
+            FlickDirection.DOWN to FlickAction.Input("")
+        )
+
+        val advancedMathSymbols = mapOf(
+            FlickDirection.TAP to FlickAction.Input("x"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("÷"),
+            FlickDirection.UP_LEFT to FlickAction.Input("√"),
+            FlickDirection.UP to FlickAction.Input("^"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("±"),
+            FlickDirection.DOWN to FlickAction.Input("")
+        )
+
+        val programmingSymbols = mapOf(
+            FlickDirection.TAP to FlickAction.Input("`"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("{"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("}"),
+            FlickDirection.UP to FlickAction.Input(";"),
+            FlickDirection.DOWN to FlickAction.Input(":")
+        )
+
         // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
             if (isFlickDeleteEnabled) {
@@ -1389,33 +1738,33 @@ object KeyboardDefaultLayouts {
                 mapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "@#/_" to listOf(symbols1),
-                    "' \" ( )" to listOf(symbols2),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
                     ". , ? !" to listOf(symbols3),
 
-                    "ABC" to if (isUpperCase) listOf(abcLower) else listOf(
-                        abcLower,
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower, abcUpper
                     ),
-                    "DEF" to if (isUpperCase) listOf(defLower) else listOf(
-                        defLower,
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower, defUpper
                     ),
-                    "GHI" to if (isUpperCase) listOf(ghiLower) else listOf(
-                        ghiLower,
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower, ghiUpper
                     ),
-                    "JKL" to if (isUpperCase) listOf(jklLower) else listOf(
-                        jklLower,
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower, jklUpper
                     ),
-                    "MNO" to if (isUpperCase) listOf(mnoLower) else listOf(
-                        mnoLower,
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower, mnoUpper
                     ),
-                    "PQRS" to if (isUpperCase) listOf(pqrsLower) else listOf(
-                        pqrsLower,
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
                     ),
-                    "TUV" to if (isUpperCase) listOf(tuvLower) else listOf(
-                        tuvLower,
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower, tuvUpper
                     ),
-                    "WXYZ" to if (isUpperCase) listOf(wxyzLower) else listOf(
-                        wxyzLower,
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
                     ),
                     "Del" to listOf(deleteActionMap)
                 )
@@ -1423,34 +1772,34 @@ object KeyboardDefaultLayouts {
                 mapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "@#/_" to listOf(symbols1),
-                    "' \" ( )" to listOf(symbols2),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
                     ". , ? !" to listOf(symbols3),
 
-                    "ABC" to if (isUpperCase) listOf(abcLower) else listOf(
-                        abcLower,
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower, abcUpper
                     ),
-                    "DEF" to if (isUpperCase) listOf(defLower) else listOf(
-                        defLower,
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower, defUpper
                     ),
-                    "GHI" to if (isUpperCase) listOf(ghiLower) else listOf(
-                        ghiLower,
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower, ghiUpper
                     ),
-                    "JKL" to if (isUpperCase) listOf(jklLower) else listOf(
-                        jklLower,
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower, jklUpper
                     ),
-                    "MNO" to if (isUpperCase) listOf(mnoLower) else listOf(
-                        mnoLower,
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower, mnoUpper
                     ),
-                    "PQRS" to if (isUpperCase) listOf(pqrsLower) else listOf(
-                        pqrsLower,
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
                     ),
-                    "TUV" to if (isUpperCase) listOf(tuvLower) else listOf(
-                        tuvLower,
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower, tuvUpper
                     ),
-                    "WXYZ" to if (isUpperCase) listOf(wxyzLower) else listOf(
-                        wxyzLower,
-                    )
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
+                    ),
                 )
             }
 
@@ -1513,30 +1862,35 @@ object KeyboardDefaultLayouts {
             FlickDirection.TAP to FlickAction.Input("a"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("b"),
             FlickDirection.UP to FlickAction.Input("c"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("2")
         )
         val defLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("d"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("e"),
             FlickDirection.UP to FlickAction.Input("f"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("3")
         )
         val ghiLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("g"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("h"),
             FlickDirection.UP to FlickAction.Input("i"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("4")
         )
         val jklLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("j"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("k"),
             FlickDirection.UP to FlickAction.Input("l"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("5")
         )
         val mnoLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("m"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("n"),
             FlickDirection.UP to FlickAction.Input("o"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("6")
         )
         val pqrsLower = mapOf(
@@ -1544,12 +1898,14 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("q"),
             FlickDirection.UP to FlickAction.Input("r"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("s"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("7")
         )
         val tuvLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("t"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("u"),
             FlickDirection.UP to FlickAction.Input("v"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("8")
         )
         val wxyzLower = mapOf(
@@ -1557,7 +1913,59 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("x"),
             FlickDirection.UP to FlickAction.Input("y"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("z"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
             FlickDirection.DOWN to FlickAction.Input("9")
+        )
+
+        val abcUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("A"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("B"),
+            FlickDirection.UP to FlickAction.Input("C"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val defUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("D"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("E"),
+            FlickDirection.UP to FlickAction.Input("F"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val ghiUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("G"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("H"),
+            FlickDirection.UP to FlickAction.Input("I"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val jklUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("J"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("K"),
+            FlickDirection.UP to FlickAction.Input("L"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val mnoUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("M"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("N"),
+            FlickDirection.UP to FlickAction.Input("O"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val pqrsUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("P"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("Q"),
+            FlickDirection.UP to FlickAction.Input("R"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("S")
+        )
+        val tuvUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("T"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("U"),
+            FlickDirection.UP to FlickAction.Input("V"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val wxyzUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("W"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("X"),
+            FlickDirection.UP to FlickAction.Input("Y"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("Z")
         )
 
         // --- 記号キーのflickMap ---
@@ -1583,6 +1991,35 @@ object KeyboardDefaultLayouts {
             FlickDirection.DOWN to FlickAction.Input("-")
         )
 
+        val basicMathOperators = mapOf(
+            FlickDirection.TAP to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+            FlickDirection.UP_LEFT to FlickAction.Input("="),
+            FlickDirection.UP to FlickAction.Input("*"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/"),
+            FlickDirection.DOWN to FlickAction.Input("")
+        )
+
+        val advancedMathSymbols = mapOf(
+            FlickDirection.TAP to FlickAction.Input("x"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("÷"),
+            FlickDirection.UP_LEFT to FlickAction.Input("√"),
+            FlickDirection.UP to FlickAction.Input("^"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("±"),
+            FlickDirection.DOWN to FlickAction.Input("")
+        )
+
+        val programmingSymbols = mapOf(
+            FlickDirection.TAP to FlickAction.Input("`"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("{"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("}"),
+            FlickDirection.UP to FlickAction.Input(";"),
+            FlickDirection.DOWN to FlickAction.Input(":")
+        )
+
         // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
             if (isFlickDeleteEnabled) {
@@ -1598,67 +2035,407 @@ object KeyboardDefaultLayouts {
                 )
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "@#/_" to listOf(symbols1),
-                    "' \" ( )" to listOf(symbols2),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
                     ". , ? !" to listOf(symbols3),
 
-                    "ABC" to if (isUpperCase) listOf(abcLower) else listOf(
-                        abcLower,
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower, abcUpper
                     ),
-                    "DEF" to if (isUpperCase) listOf(defLower) else listOf(
-                        defLower,
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower, defUpper
                     ),
-                    "GHI" to if (isUpperCase) listOf(ghiLower) else listOf(
-                        ghiLower,
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower, ghiUpper
                     ),
-                    "JKL" to if (isUpperCase) listOf(jklLower) else listOf(
-                        jklLower
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower, jklUpper
                     ),
-                    "MNO" to if (isUpperCase) listOf(mnoLower) else listOf(
-                        mnoLower
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower, mnoUpper
                     ),
-                    "PQRS" to if (isUpperCase) listOf(pqrsLower) else listOf(
-                        pqrsLower
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
                     ),
-                    "TUV" to if (isUpperCase) listOf(tuvLower) else listOf(
-                        tuvLower
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower, tuvUpper
                     ),
-                    "WXYZ" to if (isUpperCase) listOf(wxyzLower) else listOf(
-                        wxyzLower,
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
                     ),
                     "Del" to listOf(deleteActionMap)
                 )
             } else {
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
-                    "@#/_" to listOf(symbols1),
-                    "' \" ( )" to listOf(symbols2),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
                     ". , ? !" to listOf(symbols3),
 
-                    "ABC" to if (isUpperCase) listOf(abcLower) else listOf(
-                        abcLower,
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower, abcUpper
                     ),
-                    "DEF" to if (isUpperCase) listOf(defLower) else listOf(
-                        defLower,
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower, defUpper
                     ),
-                    "GHI" to if (isUpperCase) listOf(ghiLower) else listOf(
-                        ghiLower,
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower, ghiUpper
                     ),
-                    "JKL" to if (isUpperCase) listOf(jklLower) else listOf(
-                        jklLower,
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower, jklUpper
                     ),
-                    "MNO" to if (isUpperCase) listOf(mnoLower) else listOf(
-                        mnoLower,
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower, mnoUpper
                     ),
-                    "PQRS" to if (isUpperCase) listOf(pqrsLower) else listOf(
-                        pqrsLower,
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
                     ),
-                    "TUV" to if (isUpperCase) listOf(tuvLower) else listOf(
-                        tuvLower,
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower, tuvUpper
                     ),
-                    "WXYZ" to if (isUpperCase) listOf(wxyzLower) else listOf(
-                        wxyzLower,
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
+                    ),
+                )
+            }
+        dakutenToggleStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(emojiStateFlickMap))
+        }
+        dakutenToggleStates.getOrNull(1)?.label?.let { label ->
+            flickMaps.put(label, listOf(dakutenStateFlickMap))
+        }
+
+        spaceConvertStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(spaceActionMap))
+        }
+
+        spaceConvertStates.getOrNull(1)?.label?.let { label ->
+            flickMaps.put(label, listOf(conversionActionMap))
+        }
+
+        return KeyboardLayout(keys, flickMaps, 5, 4)
+    }
+
+    private fun createEnglishLayoutFlickEffective(
+        isUpperCase: Boolean,
+        isFlickDeleteEnabled: Boolean,
+        keys: List<KeyData>
+    ): KeyboardLayout {
+        val cursorLeftActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.MoveCursorRight,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ), FlickDirection.UP to FlickAction.Action(
+                KeyAction.MoveCursorUp,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ), FlickDirection.DOWN to FlickAction.Action(
+                KeyAction.MoveCursorDown,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+            )
+        )
+
+        val cursorRightActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.MoveCursorRight,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.MoveCursorRight,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.MoveCursorLeft,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+            ), FlickDirection.UP to FlickAction.Action(
+                KeyAction.MoveCursorUp,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ), FlickDirection.DOWN to FlickAction.Action(
+                KeyAction.MoveCursorDown,
+                drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+            )
+        )
+
+        val spaceActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Space,
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.Space,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+            )
+        )
+
+        val conversionActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Convert,
+            ),
+        )
+
+        // 状態0 (^_^): タップ操作のみを持つマップ
+        val emojiStateFlickMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.InputText("^_^"), label = "^_^"
+            )
+            // この状態ではフリックアクションを定義しない
+        )
+
+        // 状態1 ( 小゛゜): タップとフリック操作を持つマップ
+        val dakutenStateFlickMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.ToggleDakuten, label = " 小゛゜"
+            ), FlickDirection.UP to FlickAction.Action(
+                KeyAction.InputText("ひらがな小文字"), label = "小"
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.InputText("濁点"), label = "゛"
+            ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                KeyAction.InputText("半濁点"), label = "゜"
+            )
+        )
+
+        val abcLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("a"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("b"),
+            FlickDirection.UP to FlickAction.Input("c"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("2")
+        )
+        val defLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("d"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("e"),
+            FlickDirection.UP to FlickAction.Input("f"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("3")
+        )
+        val ghiLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("g"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("h"),
+            FlickDirection.UP to FlickAction.Input("i"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("4")
+        )
+        val jklLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("j"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("k"),
+            FlickDirection.UP to FlickAction.Input("l"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("5")
+        )
+        val mnoLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("m"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("n"),
+            FlickDirection.UP to FlickAction.Input("o"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("6")
+        )
+        val pqrsLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("p"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("q"),
+            FlickDirection.UP to FlickAction.Input("r"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("s"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("7")
+        )
+        val tuvLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("t"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("u"),
+            FlickDirection.UP to FlickAction.Input("v"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("8")
+        )
+        val wxyzLower = mapOf(
+            FlickDirection.TAP to FlickAction.Input("w"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("x"),
+            FlickDirection.UP to FlickAction.Input("y"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("z"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("9")
+        )
+
+        val abcUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("A"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("B"),
+            FlickDirection.UP to FlickAction.Input("C"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val defUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("D"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("E"),
+            FlickDirection.UP to FlickAction.Input("F"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val ghiUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("G"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("H"),
+            FlickDirection.UP to FlickAction.Input("I"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val jklUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("J"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("K"),
+            FlickDirection.UP to FlickAction.Input("L"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val mnoUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("M"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("N"),
+            FlickDirection.UP to FlickAction.Input("O"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val pqrsUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("P"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("Q"),
+            FlickDirection.UP to FlickAction.Input("R"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("S")
+        )
+        val tuvUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("T"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("U"),
+            FlickDirection.UP to FlickAction.Input("V"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+        )
+        val wxyzUpper = mapOf(
+            FlickDirection.TAP to FlickAction.Input("W"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("X"),
+            FlickDirection.UP to FlickAction.Input("Y"),
+            FlickDirection.UP_RIGHT to FlickAction.Input("a/A"),
+            FlickDirection.DOWN to FlickAction.Input("Z")
+        )
+
+        // --- 記号キーのflickMap ---
+        val symbols1 = mapOf(
+            FlickDirection.TAP to FlickAction.Input("@"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("#"),
+            FlickDirection.UP to FlickAction.Input("/"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("_"),
+            FlickDirection.DOWN to FlickAction.Input("1")
+        )
+        val symbols2 = mapOf(
+            FlickDirection.TAP to FlickAction.Input("'"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
+            FlickDirection.UP to FlickAction.Input("\""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
+            FlickDirection.DOWN to FlickAction.Input("0")
+        )
+        val symbols3 = mapOf(
+            FlickDirection.TAP to FlickAction.Input("."),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input(","),
+            FlickDirection.UP to FlickAction.Input("?"),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("!"),
+            FlickDirection.DOWN to FlickAction.Input("-")
+        )
+
+        val basicMathOperators = mapOf(
+            FlickDirection.TAP to FlickAction.Input("-"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+            FlickDirection.UP_LEFT to FlickAction.Input("="),
+            FlickDirection.UP to FlickAction.Input("*"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("/"),
+            FlickDirection.DOWN to FlickAction.Input("")
+        )
+
+        val advancedMathSymbols = mapOf(
+            FlickDirection.TAP to FlickAction.Input("x"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("÷"),
+            FlickDirection.UP_LEFT to FlickAction.Input("√"),
+            FlickDirection.UP to FlickAction.Input("^"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("±"),
+            FlickDirection.DOWN to FlickAction.Input("")
+        )
+
+        val programmingSymbols = mapOf(
+            FlickDirection.TAP to FlickAction.Input("`"),
+            FlickDirection.UP_LEFT_FAR to FlickAction.Input("{"),
+            FlickDirection.UP_RIGHT to FlickAction.Input(""),
+            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("}"),
+            FlickDirection.UP to FlickAction.Input(";"),
+            FlickDirection.DOWN to FlickAction.Input(":")
+        )
+
+        // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
+        val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
+            if (isFlickDeleteEnabled) {
+                val deleteActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.Delete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                    ), FlickDirection.UP_LEFT to FlickAction.Action(
+                        KeyAction.DeleteUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
                     )
+                )
+                mutableMapOf(
+                    "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                    "CursorMoveRight" to listOf(cursorRightActionMap),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
+                    ". , ? !" to listOf(symbols3),
+
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower, abcUpper
+                    ),
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower, defUpper
+                    ),
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower, ghiUpper
+                    ),
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower, jklUpper
+                    ),
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower, mnoUpper
+                    ),
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
+                    ),
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower, tuvUpper
+                    ),
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
+                    ),
+                    "Del" to listOf(deleteActionMap)
+                )
+            } else {
+                mutableMapOf(
+                    "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                    "CursorMoveRight" to listOf(cursorRightActionMap),
+                    "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
+                    "' \" ( )" to listOf(symbols2, programmingSymbols),
+                    ". , ? !" to listOf(symbols3),
+
+                    "ABC" to if (isUpperCase) listOf(abcUpper, abcLower) else listOf(
+                        abcLower, abcUpper
+                    ),
+                    "DEF" to if (isUpperCase) listOf(defUpper, defLower) else listOf(
+                        defLower, defUpper
+                    ),
+                    "GHI" to if (isUpperCase) listOf(ghiUpper, ghiLower) else listOf(
+                        ghiLower, ghiUpper
+                    ),
+                    "JKL" to if (isUpperCase) listOf(jklUpper, jklLower) else listOf(
+                        jklLower, jklUpper
+                    ),
+                    "MNO" to if (isUpperCase) listOf(mnoUpper, mnoLower) else listOf(
+                        mnoLower, mnoUpper
+                    ),
+                    "PQRS" to if (isUpperCase) listOf(pqrsUpper, pqrsLower) else listOf(
+                        pqrsLower, pqrsUpper
+                    ),
+                    "TUV" to if (isUpperCase) listOf(tuvUpper, tuvLower) else listOf(
+                        tuvLower, tuvUpper
+                    ),
+                    "WXYZ" to if (isUpperCase) listOf(wxyzUpper, wxyzLower) else listOf(
+                        wxyzLower, wxyzUpper
+                    ),
                 )
             }
         dakutenToggleStates.getOrNull(0)?.label?.let { label ->
@@ -6700,7 +7477,7 @@ object KeyboardDefaultLayouts {
 
         when (inputStyle) {
             "sumire" -> {
-                return createEnglishLayoutFlick(isUpperCase, isFlickDeleteEnabled, keys)
+                return createEnglishLayoutFlickEffective(isUpperCase, isFlickDeleteEnabled, keys)
             }
 
             else -> {

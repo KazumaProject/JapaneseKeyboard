@@ -60,9 +60,6 @@ class CustomAngleFlickController(
     private var isLongPressModeActive = false
 
     init {
-        // ★ViewへのSensitivity設定呼び出しを削除 (Viewには見た目のサイズのみ設定する方針へ)
-        // popupView.setFlickSensitivity(...)
-
         // デフォルトの見た目サイズを設定（必要に応じて setPopupViewSize で上書きしてください）
         popupView.setUiSize(160f, 60f, 40f)
     }
@@ -81,7 +78,7 @@ class CustomAngleFlickController(
         popupView.setColors(theme)
     }
 
-    // ★変更: 見た目用に centerRadius (px) を受け取れるようにする
+    // 見た目用に centerRadius (px) を受け取れるようにする
     // これにより、flickSensitivity(判定) と centerRadius(見た目) を別々に管理可能
     fun setPopupViewSize(orbit: Float, centerRadius: Float, textSize: Float) {
         popupView.setUiSize(orbit, centerRadius, textSize)
@@ -101,6 +98,7 @@ class CustomAngleFlickController(
     }
 
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
+        // ACTION_DOWNの時はTAP扱い、それ以外は座標から計算
         val currentDirection = if (event.action == MotionEvent.ACTION_DOWN) {
             FlickDirection.TAP
         } else {
@@ -114,7 +112,7 @@ class CustomAngleFlickController(
                 initialTouchY = event.rawY
                 previousDirection = FlickDirection.TAP
                 isLongPressModeActive = false
-                currentMapIndex = 0
+                currentMapIndex = 0 // タッチ開始時は常に最初のマップにリセット
 
                 popupView.setFullUIMode(false)
 
@@ -142,7 +140,25 @@ class CustomAngleFlickController(
                     if (currentDirection != FlickDirection.TAP) {
                         longPressJob?.cancel()
                     }
+                }
 
+                // ★変更: UP_RIGHT方向フリック検知時のマップ切り替えロジック
+                if (currentDirection == FlickDirection.UP_RIGHT) {
+                    // フルUIモードにして次の候補を見やすくする
+                    popupView.setFullUIMode(true)
+
+                    // 前回がUP_RIGHTでなく、今回UP_RIGHTになった瞬間のみ切り替える
+                    if (previousDirection != FlickDirection.UP_RIGHT) {
+                        if (keyMaps.isNotEmpty()) {
+                            currentMapIndex = (currentMapIndex + 1) % keyMaps.size
+                            val newMap = keyMaps[currentMapIndex]
+                            popupView.setCharacterMap(newMap)
+                            listener?.onStateChanged(view, newMap)
+                        }
+                    }
+                }
+
+                if (currentDirection != previousDirection) {
                     popupView.updateFlickDirection(currentDirection)
                     previousDirection = currentDirection
                 }
@@ -154,16 +170,19 @@ class CustomAngleFlickController(
 
                 val finalDirection = calculateDirection(event.rawX, event.rawY)
 
-                if (keyMaps.isNotEmpty()) {
-                    val currentMap = keyMaps[currentMapIndex]
-                    val character = currentMap[finalDirection] ?: ""
+                // ★変更: UP_RIGHTフリックはマップ切り替え動作のため、文字入力を行わない
+                if (finalDirection != FlickDirection.UP_RIGHT) {
+                    if (keyMaps.isNotEmpty()) {
+                        val currentMap = keyMaps[currentMapIndex]
+                        val character = currentMap[finalDirection] ?: ""
 
-                    if (character.isNotEmpty()) {
-                        listener?.onFlick(finalDirection, character)
-                    } else if (finalDirection == FlickDirection.TAP) {
-                        val tapChar = currentMap[FlickDirection.TAP] ?: ""
-                        if (tapChar.isNotEmpty()) {
-                            listener?.onFlick(FlickDirection.TAP, tapChar)
+                        if (character.isNotEmpty()) {
+                            listener?.onFlick(finalDirection, character)
+                        } else if (finalDirection == FlickDirection.TAP) {
+                            val tapChar = currentMap[FlickDirection.TAP] ?: ""
+                            if (tapChar.isNotEmpty()) {
+                                listener?.onFlick(FlickDirection.TAP, tapChar)
+                            }
                         }
                     }
                 }
@@ -204,7 +223,6 @@ class CustomAngleFlickController(
         val distance = sqrt(dx * dx + dy * dy)
 
         // 判定はコンストラクタで渡された flickSensitivity を使用
-        // これが見た目の中心円半径と一致している必要はありません
         if (distance < flickSensitivity) return FlickDirection.TAP
 
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360

@@ -81,7 +81,6 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     // 感度はController側で判定に使用します
     // fun setFlickSensitivity(sensitivity: Float) { ... }
 
-    // ★変更: centerRadius を引数に戻し、ここでサイズを確定させます
     fun setUiSize(orbit: Float, centerRadius: Float, newTextSize: Float) {
         this.orbitRadius = orbit
         this.centerCircleRadius = centerRadius // ここで見た目のサイズを固定
