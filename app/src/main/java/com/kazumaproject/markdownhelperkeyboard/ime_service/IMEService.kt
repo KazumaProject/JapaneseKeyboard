@@ -506,6 +506,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var learnFirstCandidateDictionaryPreference: Boolean? = false
     private var enablePredictionSearchLearnDictionaryPreference: Boolean? = false
     private var learnPredictionPreference: Int? = 2
+    private var circularFlickWindowScale: Float? = 1.0f
 
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
@@ -957,6 +958,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             enablePredictionSearchLearnDictionaryPreference =
                 enable_prediction_search_learn_dictionary_preference
             learnPredictionPreference = learn_prediction_preference
+            circularFlickWindowScale = circular_flickWindow_scale
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1561,6 +1563,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         learnFirstCandidateDictionaryPreference = null
         enablePredictionSearchLearnDictionaryPreference = null
         learnPredictionPreference = null
+        circularFlickWindowScale = null
 
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -4714,7 +4717,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
 
         mainView.customLayoutDefault.setAngleAndRange(
-            appPreference.getCircularFlickRanges()
+            appPreference.getCircularFlickRanges(),
+            circularFlickWindowScale ?: 1.0f
         )
 
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
