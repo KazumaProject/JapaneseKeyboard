@@ -4071,6 +4071,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isNotEmpty()) {
             if (zenzEnableLongPressConversionPreference == true) {
                 scope.launch {
+                    filteredCandidateList = suggestionAdapter?.suggestions
                     val candidates = performZenzRequest(insertString)
                     _zenzCandidates.update { candidates }
                 }
@@ -4827,6 +4828,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         } else {
                             if (zenzEnableLongPressConversionPreference == true) {
                                 scope.launch {
+                                    filteredCandidateList = suggestionAdapter?.suggestions
                                     val candidates = performZenzRequest(insertString)
                                     _zenzCandidates.update { candidates }
                                 }
@@ -5035,6 +5037,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (zenzEnableLongPressConversionPreference == true) {
                             val insertString = inputString.value
                             scope.launch {
+                                filteredCandidateList = suggestionAdapter?.suggestions
                                 val candidates = performZenzRequest(insertString)
                                 _zenzCandidates.update { candidates }
                             }
@@ -8857,6 +8860,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 if (zenzEnableLongPressConversionPreference == true) {
                                     scope.launch {
+                                        filteredCandidateList = suggestionAdapter?.suggestions
                                         val candidates = performZenzRequest(insertString)
                                         _zenzCandidates.update { candidates }
                                     }
