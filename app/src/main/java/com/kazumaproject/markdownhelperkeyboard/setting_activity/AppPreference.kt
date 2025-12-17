@@ -281,6 +281,8 @@ object AppPreference {
 
     private val CIRCULAR_FLICK_WINDOW_SCALE = Pair("circular_flick_window_scale", 1.0f)
 
+    private val CUSTOM_THEME_BORDER_WIDTH = Pair("theme_custom_border_width", 1)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1268,6 +1270,15 @@ object AppPreference {
             CIRCULAR_FLICK_WINDOW_SCALE.second
         )
         set(value) = preferences.edit { it.putFloat(CIRCULAR_FLICK_WINDOW_SCALE.first, value) }
+
+    var custom_theme_border_width: Int
+        get() = preferences.getInt(
+            CUSTOM_THEME_BORDER_WIDTH.first,
+            CUSTOM_THEME_BORDER_WIDTH.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_BORDER_WIDTH.first, value)
+        }
 
     var circularFlickUpStart: Float
         get() = preferences.getFloat(PREF_UP_START.first, PREF_UP_START.second)
